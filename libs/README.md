@@ -9,12 +9,22 @@ geometry.
 | NopSCADlib   | Mechanical + project utilities, vitamins      | `c9baa0e`   |
 | threads-scad | ISO metric threads, bolts, nuts, washers      | `4ae9aeb`   |
 | MCAD         | General-purpose shape / fastener helpers      | `bd0a7ba`   |
-| BOSL2        | Attachment / transform system; broad toolkit  | `663cd7c`   |
+| BOSL2        | Attachment / transform system; broad toolkit  | `456fcd8`   |
 | QuackWorks   | Multiboard / Multiconnect accessory generators | `6123129`   |
 
 BOSL2 is opt-in (R6 permits); added as a dependency for Multiboard work.
 QuackWorks is **CC BY-NC-SA 4.0** — fine for personal use, derived parts
 cannot be sold.
+
+**BOSL2 pin note (st-kls, 2026-04-17):** pinned back from `663cd7c` (2026-04-16)
+to `456fcd8` (2024-09-22, last commit before PR #1475). BOSL2 PR #1475
+(`ae73c6d`, 2024-09-27) tightened `attachable()` to assert `is_finite(spin)`,
+which breaks QuackWorks `snapConnector.scad:59` and
+`multiconnectSlotDesignBOSL.scad:211` — both pass `spin=[x,y,z]` vectors.
+QuackWorks upstream HEAD (`6123129`) still uses the vector-spin syntax, so a
+forward bump on QuackWorks is not available. The `456fcd8` pin is the newest
+BOSL2 that accepts the syntax every pinned QuackWorks backer (snap + slot)
+depends on. Verified renders without local patches: snap backer, slot backer.
 
 ## NopSCADlib — `use <NopSCADlib/...>`
 
