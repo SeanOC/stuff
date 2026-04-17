@@ -119,3 +119,9 @@ PY
 
 echo ""
 echo "SMOKE OK: $MODEL_PATH → $RENDER_DIR/ → $STL_PATH"
+
+# ---------------------------------------------------------------------------
+# Step 4: artifact browser server smoke (starts on ephemeral port, asserts /).
+# ---------------------------------------------------------------------------
+echo "[4/4] smoke-testing scripts/serve.py..."
+python3 scripts/serve_smoke.py || fail "serve_smoke.py failed"

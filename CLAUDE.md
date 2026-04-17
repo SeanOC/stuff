@@ -67,3 +67,21 @@ _Add a brief overview of your project architecture_
 ## Conventions & Patterns
 
 _Add your project-specific conventions here_
+
+## Remote Artifact Browser
+
+`scripts/serve.py` is a read-only HTTP server (stdlib only) that lists
+every `models/*.scad`, its render thumbnails under `renders/<stem>/`,
+and its `exports/<stem>.stl` download. Useful when the rigs run on a
+headless host but you want to eyeball renders from a laptop. Binds
+`127.0.0.1` by default — forward a port over SSH rather than exposing it.
+
+```bash
+# on the rig host:
+python3 scripts/serve.py            # serves http://127.0.0.1:8765/
+
+# from the laptop:
+ssh -NL 8765:127.0.0.1:8765 rig-host
+# then open http://127.0.0.1:8765/ locally
+```
+
