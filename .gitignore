@@ -3,3 +3,22 @@
 .dolt/
 *.db
 .beads-credential-key
+
+# OpenSCAD workflow artifacts
+renders/*/
+exports/*.stl
+libs/bin/*.AppImage
+
+# Vendored OpenSCAD libraries (cloned; re-fetchable)
+libs/NopSCADlib/
+libs/threads-scad/
+libs/MCAD/
+libs/BOSL2/
+libs/QuackWorks/
+
+# Claude Code local state
+.claude/scheduled_tasks.lock
+
+# Python
+__pycache__/
+*.pyc

@@ -1,0 +1,32 @@
+{
+  "_comment": "Reference shape for what smoke.sh should observe. smoke.sh enforces verdicts + bbox tolerance inline rather than diffing against this file, but this document captures the contract.",
+  "authoring": {
+    "verdict": "authored_ok",
+    "model": "models/smoke_motor_mount.scad",
+    "versioned": false,
+    "render": {
+      "verdict": "rendered_ok",
+      "renders": {
+        "top":   "renders/smoke_motor_mount/top.png",
+        "front": "renders/smoke_motor_mount/front.png",
+        "side":  "renders/smoke_motor_mount/side.png",
+        "iso":   "renders/smoke_motor_mount/iso.png"
+      },
+      "measurements": {
+        "bbox_mm": [60.0, 40.0],
+        "scale_mm_per_px": "≈0.072",
+        "circles_top": "5 holes (1 bore ≈20 mm, 4 clearance ≈3.2 mm) + 4 counterbores ≈6 mm"
+      }
+    }
+  },
+  "override_render": {
+    "verdict": "rendered_ok",
+    "_note": "-D plate_t=8 must produce a front.png that differs byte-for-byte from the default render"
+  },
+  "export": {
+    "verdict": "export_ok",
+    "stl": "exports/smoke_motor_mount.stl",
+    "is_watertight": true,
+    "bbox_mm_tolerance": "±1.0 mm against (60, 40, 7)"
+  }
+}

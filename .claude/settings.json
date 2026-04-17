@@ -22,5 +22,14 @@
         "matcher": ""
       }
     ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(openscad:*)",
+      "Bash(xvfb-run:*)",
+      "Bash(python3 .claude/skills/_lib/*.py:*)",
+      "Bash(python3 .claude/skills/*/scripts/*.py:*)",
+      "Bash(python3 -m pytest .claude/skills/**:*)"
+    ]
   }
 }
