@@ -74,14 +74,15 @@ _Add your project-specific conventions here_
 every `models/*.scad`, its render thumbnails under `renders/<stem>/`,
 and its `exports/<stem>.stl` download. Useful when the rigs run on a
 headless host but you want to eyeball renders from a laptop. Binds
-`127.0.0.1` by default — forward a port over SSH rather than exposing it.
+`0.0.0.0:8765` by default — assumes a trusted network since there's no
+auth. Pass `--host 127.0.0.1` to restrict to loopback instead.
 
 ```bash
 # on the rig host:
-python3 scripts/serve.py            # serves http://127.0.0.1:8765/
+python3 scripts/serve.py            # serves http://<rig-host>:8765/
 
-# from the laptop:
+# loopback-only (SSH-forward from laptop):
+python3 scripts/serve.py --host 127.0.0.1
 ssh -NL 8765:127.0.0.1:8765 rig-host
-# then open http://127.0.0.1:8765/ locally
 ```
 

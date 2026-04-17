@@ -4,10 +4,12 @@
 Serves a list of models from models/<stem>.scad alongside their render
 thumbnails (renders/<stem>/*.png) and STL download (exports/<stem>.stl).
 
-Stdlib only. Bind 127.0.0.1 by default — the operator is expected to
-forward a port over SSH. No writes, no regen triggers.
+Stdlib only. Binds 0.0.0.0 by default so the operator can hit it
+directly from their laptop on the local network. No writes, no regen
+triggers. Assume the host is on a trusted network — there's no auth.
 
-    python3 scripts/serve.py                # 127.0.0.1:8765
+    python3 scripts/serve.py                # 0.0.0.0:8765
+    python3 scripts/serve.py --host 127.0.0.1  # loopback only
     python3 scripts/serve.py --port 9000
 """
 
@@ -217,7 +219,7 @@ def make_server(root: Path, host: str, port: int) -> http.server.HTTPServer:
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--host", default="127.0.0.1")
+    p.add_argument("--host", default="0.0.0.0")
     p.add_argument("--port", type=int, default=8765)
     p.add_argument("--root", type=Path, default=REPO_ROOT, help="repo root (default: script's repo)")
     args = p.parse_args(argv)
