@@ -21,13 +21,15 @@ front_opening_deg  = 120;    // C-ring open-front arc angle (deg)
 // Multiconnect slot backer
 slot_count         = 2;      // number of vertical slots side-by-side
 slot_spacing_mm    = 25;     // Multiconnect pitch (25mm standard)
-backer_height      = 75;     // backer Z extent; longer = more dimple engagements
+slot_region_height = 75;     // multiconnectGenerator cuboid Z extent (slot dimples every 25mm)
+top_band_height    = 5;      // solid band above the topmost slot mouth (st-6zw: keeps top edge continuous)
 backer_thickness   = 6.5;    // library default; accommodates slot depth (~4.15mm)
 
 // === Derived ===
-ring_id    = can_diameter + 2 * clearance;      // 71.5
-ring_od    = ring_id + 2 * wall;                // 77.5
-backer_w   = slot_count * slot_spacing_mm;      // 50 at default
+ring_id       = can_diameter + 2 * clearance;               // 71.5
+ring_od       = ring_id + 2 * wall;                         // 77.5
+backer_w      = slot_count * slot_spacing_mm;               // 50 at default
+backer_height = slot_region_height + top_band_height;       // total printed Z extent (80)
 
 // === Layout ===
 // X — horizontal across backer
@@ -35,29 +37,40 @@ backer_w   = slot_count * slot_spacing_mm;      // 50 at default
 //     with slot openings on its -Y face (BOSL2 FRONT). That face slides
 //     onto the Multiboard wall, so the accessory (cradle) extends into
 //     +Y (away from the wall).
-// Z — vertical; can axis parallel to Z.
-// Origin at backer geometric center.
+// Z — vertical; can axis parallel to Z. The multiconnect region is
+//     centered at origin (z = -slot_region_height/2 .. +slot_region_height/2);
+//     the top band sits above it. Cup/ring anchor at the bottom of the
+//     multiconnect region so their absolute position matches v2 (st-ljl).
 
 ring_cy    = backer_thickness / 2 + ring_od / 2;  // ring center in +Y
-cup_z0     = -backer_height / 2;                  // cup floor at bottom of backer
+cup_z0     = -slot_region_height / 2;             // cup floor at bottom of multiconnect region
 ring_z0    = cup_z0 + cup_depth;
 
 // PRINT_ANCHOR_BBOX — outermost printed bbox in mm (X, Y, Z).
 // X: max(backer_w=50, ring_od=77.5) = 77.5
 // Y: backer_thickness(6.5) + ring_od(77.5) = 84
-// Z: max(backer_height=75, cup_depth+ring_height=40) = 75
-PRINT_ANCHOR_BBOX = [77.5, 84, 75];
+// Z: backer_height(80) > cup_depth+ring_height(40)
+PRINT_ANCHOR_BBOX = [77.5, 84, 80];
 
 // === Geometry ===
 
 module multiconnect_backer() {
     multiconnectGenerator(
         width = backer_w,
-        height = backer_height,
+        height = slot_region_height,
         multiconnectPartType = "Backer",
         distanceBetweenSlots = slot_spacing_mm,
         slotOrientation = "Vertical"
     );
+}
+
+// Solid cap above the multiconnect slot mouths. multiconnectGenerator anchors
+// each slot's rounded-end opening to the top of its cuboid with shiftout=0.01,
+// so without this band the slot domes break the panel's top edge.
+module top_band() {
+    translate([0, 0, slot_region_height / 2 - 0.01])
+        linear_extrude(top_band_height + 0.01)
+            square([backer_w, backer_thickness], center = true);
 }
 
 module cradle() {
@@ -87,4 +100,5 @@ module cradle() {
 // Sibling expressions at root: multiconnectGenerator uses BOSL2 diff()
 // tags internally and breaks when nested inside an outer union().
 multiconnect_backer();
+top_band();
 cradle();
