@@ -95,16 +95,37 @@ def _cmd_add(name: str, url: str) -> int:
         return 2
 
     LIBS_DIR.mkdir(parents=True, exist_ok=True)
-    proc = subprocess.run(
-        ["git", "clone", "--depth=1", url, str(dest)],
-        capture_output=True, text=True, check=False,
-    )
+    pinned = _find_pinned_sha(name)
+    clone_cmd = ["git", "clone", url, str(dest)] if pinned else ["git", "clone", "--depth=1", url, str(dest)]
+    proc = subprocess.run(clone_cmd, capture_output=True, text=True, check=False)
     if proc.returncode != 0:
         _emit({
             "verdict": "add_failed",
             "error": f"git clone exited {proc.returncode}: {proc.stderr.strip()[:200]}",
         })
         return 3
+
+    if pinned:
+        checkout = subprocess.run(
+            ["git", "-C", str(dest), "checkout", pinned],
+            capture_output=True, text=True, check=False,
+        )
+        if checkout.returncode != 0:
+            _emit({
+                "verdict": "add_failed",
+                "error": f"git checkout {pinned} exited {checkout.returncode}: {checkout.stderr.strip()[:200]}",
+            })
+            return 3
+        sha = pinned
+        _emit({
+            "verdict": "added_ok",
+            "name": name,
+            "path": str(dest.relative_to(REPO_ROOT)) if dest.is_relative_to(REPO_ROOT) else str(dest),
+            "commit": sha,
+            "pinned_from_readme": True,
+            "readme_updated": False,
+        })
+        return 0
 
     sha = _head_sha(dest)
     _append_stub(name, url, sha)
@@ -117,6 +138,21 @@ def _cmd_add(name: str, url: str) -> int:
         "readme_updated": README.exists(),
     })
     return 0
+
+
+_TABLE_ROW_RE = re.compile(
+    r"^\|\s*(?P<name>[A-Za-z0-9][A-Za-z0-9_.-]*)\s*\|[^|]*\|\s*`(?P<sha>[0-9a-f]{7,40})`\s*\|",
+    re.MULTILINE,
+)
+
+
+def _find_pinned_sha(name: str) -> str | None:
+    if not README.exists():
+        return None
+    for m in _TABLE_ROW_RE.finditer(README.read_text()):
+        if m.group("name") == name:
+            return m.group("sha")
+    return None
 
 
 def _head_sha(repo: Path) -> str:
