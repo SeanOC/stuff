@@ -1,0 +1,12 @@
+# scad-send Python deps. Install with:
+#   pip install -r .claude/skills/scad-send/requirements.txt
+#
+# The Bambu cloud library is unofficial and not on PyPI under this
+# name — it must be installed from the upstream git URL. The repo is
+# marked "Big commit in progress", so the API may change without
+# warning. The _cloud.py shim isolates that surface so we only edit
+# one file when the lib breaks.
+git+https://github.com/coelacant1/Bambu-Lab-Cloud-API@main#egg=bambulabs_cloud_api
+
+# YAML config parser for printers.yaml.
+PyYAML>=6.0
