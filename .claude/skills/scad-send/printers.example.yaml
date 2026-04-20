@@ -1,0 +1,25 @@
+# Example scad-send config. Copy to ~/.config/bambu-send/printers.yaml
+# and edit the device_id and profile paths to match your setup.
+#
+# DO NOT commit a populated copy of this file — device_id is account-
+# scoped data and profile paths are user-local.
+
+default_printer: garage-x1c
+
+printers:
+  garage-x1c:
+    # "Serial Number" from the printer touchscreen → Settings → About.
+    device_id: "01S00A0B1234567"
+    # `global` for api.bambulab.com, `china` for api.bambulab.cn.
+    region: global
+    profile_set: x1c-pla
+
+profile_sets:
+  # Each profile_set must point at three FULL-config JSONs exported
+  # from Bambu Studio user presets (gear icon → Export preset). The
+  # partials shipped under resources/profiles/BBL/ will NOT work — the
+  # CLI rejects them with a load_filaments error.
+  x1c-pla:
+    machine:  /home/you/.config/bambu-send/profiles/x1c-machine.json
+    process:  /home/you/.config/bambu-send/profiles/0.20mm-standard.json
+    filament: /home/you/.config/bambu-send/profiles/bambu-pla-basic.json
