@@ -25,14 +25,20 @@ slot_region_height = 75;     // multiconnectGenerator cuboid Z extent
 top_band_height    = 5;      // solid band above topmost slot mouth
 backer_thickness   = 6.5;    // library default; accommodates slot depth
 
-// Edge treatments + structural gusset. ring_od here is ~52.5 — only
-// ~6% larger than the 42mm sibling's 49.5mm, so gusset dimensions
-// carry over unchanged.
+// Edge treatments + structural gusset. Gusset enlarged for build-plate
+// adhesion (st-skn): the backer's bed contact is a thin 50×6.5 strip
+// and prints were curling at the corners. Widening the trapezoid so
+// it spans nearly the full backer width and reaches past the ring's
+// near tangent (Y≈3.25 at X=0) lets the gusset's footprint blend into
+// the cup floor, turning two narrow contact patches into one large
+// bonded region. The gusset's bottom chamfer is also dropped — it
+// faces the build plate, so chamfering it just shrinks first-layer
+// area for an invisible edge.
 outer_chamfer      = 1.0;
 inner_chamfer      = 0.5;
-gusset_back_w      = 20;     // trapezoid width where gusset meets backer (mm)
-gusset_front_w     = 8;      // trapezoid width where gusset meets ring wall (mm)
-gusset_depth       = 6;      // gusset reach from backer into +Y (mm)
+gusset_back_w      = 46;     // ~full backer width (2mm clear each side); was 20
+gusset_front_w     = 30;     // wide front so trap embraces the cup tangent zone; was 8
+gusset_depth       = 10;     // reach past ring tangent into the cup-wall region; was 6
 
 // === Derived ===
 ring_id       = can_diameter + 2 * clearance;               // 46.5
@@ -115,8 +121,7 @@ module gusset() {
     difference() {
         translate([0, 0, cup_z0])
             offset_sweep(trap, height = cradle_h,
-                         top    = os_chamfer(height = outer_chamfer),
-                         bottom = os_chamfer(height = outer_chamfer));
+                         top    = os_chamfer(height = outer_chamfer));
         translate([0, ring_cy, cup_z0 - 0.1])
             cylinder(h = cradle_h + 0.2, d = ring_id);
     }
