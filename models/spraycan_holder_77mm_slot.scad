@@ -10,18 +10,18 @@ use <QuackWorks/Modules/multiconnectSlotDesignBOSL.scad>
 $fn = 64;
 
 // === User-tunable parameters ===
-can_diameter       = 77;     // nominal can OD (mm)
-clearance          = 0.75;   // radial slip between can and ring (mm)
-ring_height        = 35;     // C-ring band height along can axis (mm)
-wall               = 3;      // wall thickness, ring + cup (mm)
-cup_depth          = 5;      // drip-cup depth below ring (mm)
+can_diameter       = 77;     // @param number min=30 max=200 step=0.5 label="Can diameter (mm)"
+clearance          = 0.75;   // @param number min=0 max=2 step=0.05 label="Slip clearance (mm)"
+ring_height        = 35;     // @param number min=10 max=200 step=1 label="Ring height (mm)"
+wall               = 3;      // @param number min=1 max=10 step=0.5 label="Wall thickness (mm)"
+cup_depth          = 5;      // @param number min=0 max=30 step=0.5 label="Drip-cup depth (mm)"
 cup_floor          = 2;      // drip-cup floor thickness (mm)
-front_opening_deg  = 120;    // C-ring open-front arc angle (deg)
+front_opening_deg  = 120;    // @param number min=0 max=270 step=5 label="Front opening arc (deg)"
 
 // Multiconnect slot backer
-slot_count         = 2;      // number of vertical slots side-by-side
+slot_count         = 2;      // @param integer min=1 max=6 label="Slot count"
 slot_spacing_mm    = 25;     // Multiconnect pitch (25mm standard)
-slot_region_height = 75;     // multiconnectGenerator cuboid Z extent (slot dimples every 25mm)
+slot_region_height = 75;     // @param number min=25 max=150 step=5 label="Slot region height (mm)"
 top_band_height    = 5;      // solid band above the topmost slot mouth (st-6zw: keeps top edge continuous)
 backer_thickness   = 6.5;    // library default; accommodates slot depth (~4.15mm)
 
