@@ -3,8 +3,8 @@ import { listModels, loadModel, slugToStem, stemToSlug } from "./discover";
 
 describe("stem/slug conversion", () => {
   it("round-trips underscore <-> dash", () => {
-    expect(stemToSlug("cylinder_holder_46mm_slot")).toBe("cylinder-holder-46mm-slot");
-    expect(slugToStem("cylinder-holder-46mm-slot")).toBe("cylinder_holder_46mm_slot");
+    expect(stemToSlug("cylindrical_holder_slot")).toBe("cylindrical-holder-slot");
+    expect(slugToStem("cylindrical-holder-slot")).toBe("cylindrical_holder_slot");
   });
 
   it("leaves no-underscore stems untouched", () => {
@@ -30,8 +30,8 @@ describe("listModels", () => {
     const models = await listModels();
     expect(models.length).toBeGreaterThan(0);
     const slugs = models.map((m) => m.slug);
-    // Sorted alphabetically by stem; spot-check the Phase 1 slug exists.
-    expect(slugs).toContain("cylinder-holder-46mm-slot");
+    // Sorted alphabetically by stem; spot-check a known slug exists.
+    expect(slugs).toContain("cylindrical-holder-slot");
     // Slug should be stable derivation, not random.
     expect(slugs).toEqual([...slugs].sort());
   });

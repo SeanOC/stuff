@@ -14,6 +14,6 @@ test("gallery ↔ model page round-trip via link + back button", async ({ page }
   await expect(page.getByRole("heading", { name: /stuff — parametric models/ })).toBeVisible();
 
   // Forward into a different model.
-  await page.locator('a[href="/models/cylinder-holder-46mm-slot"]').click();
-  await expect(page).toHaveURL(/\/models\/cylinder-holder-46mm-slot$/);
+  await page.locator('a[href="/models/cylindrical-holder-slot"]').click();
+  await expect(page).toHaveURL(/\/models\/cylindrical-holder-slot$/);
 });

@@ -128,7 +128,7 @@ describe("parseScadParams", () => {
     expect(out.params.map((p) => p.name)).toEqual(["b"]);
   });
 
-  it("survives the real cylinder_holder_46mm_slot header pattern", () => {
+  it("survives the real cylindrical_holder_slot header pattern", () => {
     // Mirrors the actual file's section delimiter style.
     const src = `
 include <BOSL2/std.scad>

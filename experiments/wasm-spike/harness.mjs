@@ -125,8 +125,8 @@ probes.push(await probe({
 }));
 
 probes.push(await probe({
-  name: "3-cylinder-holder-46mm-slot",
-  scadFromFile: path.join(MODELS_DIR, "cylinder_holder_46mm_slot.scad"),
+  name: "3-cylindrical-holder-slot",
+  scadFromFile: path.join(MODELS_DIR, "cylindrical_holder_slot.scad"),
 }));
 
 console.log(JSON.stringify({

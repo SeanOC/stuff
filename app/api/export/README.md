@@ -10,7 +10,7 @@ POST /api/export
 content-type: application/json
 
 {
-  "model": "models/cylinder_holder_46mm_slot.scad",
+  "model": "models/cylindrical_holder_slot.scad",
   "params": { "can_diameter": 50, "ring_height": 60 }
 }
 ```
@@ -26,7 +26,7 @@ content-type: application/json
 ```
 200 OK
 content-type: application/sla
-content-disposition: attachment; filename="cylinder_holder_46mm_slot.stl"
+content-disposition: attachment; filename="cylindrical_holder_slot.stl"
 x-render-ms: 4321
 x-libs-mounted: 18
 ```

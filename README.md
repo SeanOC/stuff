@@ -15,12 +15,9 @@ twiddle sliders and grab a fresh STL.
 
 | File | Description |
 | --- | --- |
-| `cylinder_holder_42mm_slot.scad` | Multiboard-mounted holder for a 42mm-diameter cylindrical item (Multiconnect slot backer). |
-| `cylinder_holder_46mm_slot.scad` | Multiboard-mounted holder for a 46mm-diameter cylindrical item (Multiconnect slot backer). |
+| `cylindrical_holder_slot.scad` | Multiboard-mounted parametric holder for any cylindrical item (42–77mm tested), Multiconnect slot backer. Consolidates four earlier fixed-diameter variants. |
 | `smoke_motor_mount.scad` | Smoke-test plate: rectangular base with centered bore + boss and four counter-bored mounts. Used as the minimum end-to-end model for the pipeline. |
 | `spraycan_holder_70mm.scad` | Multiboard-mounted spray-can holder (70mm), snap-connector backer variant. |
-| `spraycan_holder_70mm_slot.scad` | Multiboard-mounted spray-can holder (70mm), Multiconnect slot backer variant. |
-| `spraycan_holder_77mm_slot.scad` | Multiboard-mounted spray-can holder (77mm), Multiconnect slot backer variant. |
 
 ## Web app
 

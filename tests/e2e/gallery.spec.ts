@@ -4,12 +4,9 @@ import { expect, test } from "@playwright/test";
 // sort in listModels(). If a model is added/removed, update this list
 // AND verify the gallery-spec snapshot still makes sense.
 const EXPECTED_SLUGS = [
-  "cylinder-holder-42mm-slot",
-  "cylinder-holder-46mm-slot",
+  "cylindrical-holder-slot",
   "smoke-motor-mount",
   "spraycan-holder-70mm",
-  "spraycan-holder-70mm-slot",
-  "spraycan-holder-77mm-slot",
 ];
 
 test.describe("gallery", () => {

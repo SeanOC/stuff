@@ -13,11 +13,11 @@ import { parseScadParams, type Param } from "../scad-params/parse";
 const MODELS_DIR = path.resolve(process.cwd(), "models");
 
 export interface ModelEntry {
-  /** Filename stem, e.g. "cylinder_holder_46mm_slot". */
+  /** Filename stem, e.g. "cylindrical_holder_slot". */
   stem: string;
   /** URL-safe slug derived from stem, dashes for underscores. */
   slug: string;
-  /** Repo-relative path, e.g. "models/cylinder_holder_46mm_slot.scad". */
+  /** Repo-relative path, e.g. "models/cylindrical_holder_slot.scad". */
   modelPath: string;
   /** First non-blank comment line, or stem-derived fallback. */
   title: string;
