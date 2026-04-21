@@ -56,7 +56,8 @@ export async function buildIncludeClosure(
   const { entrySource, fetchLibFile } = opts;
   const maxFiles = opts.maxFiles ?? 1500;
 
-  const visited = new Set<string>();
+  const tried = new Set<string>();
+  const resolved = new Set<string>();
   const files: ClosureFile[] = [];
   const missing: string[] = [];
 
@@ -68,32 +69,33 @@ export async function buildIncludeClosure(
 
   while (queue.length > 0 && files.length < maxFiles) {
     const candidates = queue.shift()!;
-    const remaining = candidates.filter((c) => !visited.has(c));
-    if (remaining.length === 0) continue;
+    if (candidates.some((c) => resolved.has(c))) continue;
 
-    let resolved: { rel: string; source: string } | null = null;
-    for (const rel of remaining) {
-      visited.add(rel);
+    let loaded: { rel: string; source: string } | null = null;
+    for (const rel of candidates) {
+      if (tried.has(rel)) continue;
+      tried.add(rel);
       const source = await fetchLibFile(rel);
       if (source !== null) {
-        resolved = { rel, source };
+        loaded = { rel, source };
         break;
       }
     }
 
-    if (!resolved) {
+    if (!loaded) {
       missing.push(candidates[0]);
       continue;
     }
+    resolved.add(loaded.rel);
 
-    files.push({ fsPath: `/libraries/${resolved.rel}`, source: resolved.source });
+    files.push({ fsPath: `/libraries/${loaded.rel}`, source: loaded.source });
 
     // For each child include, resolve as-is first (lib-root), then
     // relative to the current file's directory. OpenSCAD tries both.
-    const childDir = resolved.rel.includes("/")
-      ? resolved.rel.slice(0, resolved.rel.lastIndexOf("/"))
+    const childDir = loaded.rel.includes("/")
+      ? loaded.rel.slice(0, loaded.rel.lastIndexOf("/"))
       : "";
-    for (const childRel of extractIncludes(resolved.source)) {
+    for (const childRel of extractIncludes(loaded.source)) {
       const childCandidates = childDir
         ? [childRel, `${childDir}/${childRel}`]
         : [childRel];

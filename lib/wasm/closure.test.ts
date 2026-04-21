@@ -112,4 +112,25 @@ describe("buildIncludeClosure", () => {
     });
     expect(result.missing).toEqual(["truly_gone.scad"]);
   });
+
+  it("does not flag already-resolved includes as missing", async () => {
+    // Entry pulls in BOSL2/std.scad at lib-root, then a sub-lib
+    // `include <BOSL2/std.scad>` from inside QuackWorks/Modules/. The
+    // resolver should recognize the lib-root path is already loaded
+    // and skip the sibling probe entirely.
+    const lib: Record<string, string> = {
+      "BOSL2/std.scad": "// leaf",
+      "QuackWorks/Modules/slot.scad": "include <BOSL2/std.scad>",
+    };
+    const result = await buildIncludeClosure({
+      entrySource:
+        "include <BOSL2/std.scad>\nuse <QuackWorks/Modules/slot.scad>",
+      fetchLibFile: async (p) => lib[p] ?? null,
+    });
+    expect(result.missing).toEqual([]);
+    expect(result.files.map((f) => f.fsPath).sort()).toEqual([
+      "/libraries/BOSL2/std.scad",
+      "/libraries/QuackWorks/Modules/slot.scad",
+    ]);
+  });
 });
