@@ -1,4 +1,4 @@
-// Serves a model's top-view thumbnail from `renders/<stem>/top.png`.
+// Serves a model's iso-view thumbnail from `renders/<stem>/iso.png`.
 // Returns 404 if the file isn't there — the gallery shows a blank tile
 // in that case (no need for a server-side placeholder).
 //
@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     return new Response("invalid model slug", { status: 403 });
   }
 
-  const abs = path.join(RENDERS_ROOT, stem, "top.png");
+  const abs = path.join(RENDERS_ROOT, stem, "iso.png");
   try {
     const data = await fs.readFile(abs);
     return new Response(new Uint8Array(data), {

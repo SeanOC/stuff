@@ -69,6 +69,9 @@ function bootstrapScene(container: HTMLDivElement): SceneHandle {
   scene.background = new THREE.Color(0x161b22);
 
   const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 5000);
+  // OpenSCAD STLs are Z-up; three.js defaults to Y-up. Without this the
+  // model lies on its side and OrbitControls rotates around the wrong axis.
+  camera.up.set(0, 0, 1);
   camera.position.set(120, 120, 120);
   camera.lookAt(0, 0, 0);
 
@@ -107,6 +110,7 @@ function bootstrapScene(container: HTMLDivElement): SceneHandle {
     const dist = (maxDim / 2) / Math.tan(fov / 2) * 1.8;
     const dir = new THREE.Vector3(1, 1, 1).normalize();
     camera.position.copy(center).addScaledVector(dir, dist);
+    camera.up.set(0, 0, 1);
     camera.lookAt(center);
     camera.near = Math.max(dist / 1000, 0.1);
     camera.far = dist * 10;
