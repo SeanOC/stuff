@@ -50,15 +50,9 @@ jobs:
         if: steps.pw-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
 
-      - name: Vendor SCAD libraries
-        run: |
-          mkdir -p libs
-          cd libs
-          git clone --quiet https://github.com/BelfrySCAD/BOSL2.git BOSL2
-          git -C BOSL2 checkout --quiet 456fcd8
-          git clone --quiet https://github.com/AndyLevesque/QuackWorks.git QuackWorks
-          git -C QuackWorks checkout --quiet 6123129
-
+      # SCAD libraries (BOSL2, QuackWorks) are vendored by the `prebuild`
+      # npm hook — scripts/vendor-libs.sh runs automatically as part of
+      # `npm run build` below.
       - name: Build Next.js
         run: npm run build
 
