@@ -1,13 +1,18 @@
 "use client";
 
-// Renders an STL byte array in a three.js canvas. Iso-style camera,
-// auto-fit to model bbox, no controls (Phase 1 — Phase 3 can add
-// orbit). Reuses the renderer/scene across STL updates so we only
-// rebuild the geometry on each render.
+// Renders an STL byte array in a three.js canvas. Iso-style camera
+// with OrbitControls (left-drag rotate, right/shift-drag pan, wheel
+// zoom). Auto-fits to the model bbox on each STL update. Reuses the
+// renderer/scene across updates so we only rebuild geometry.
+//
+// Render-on-demand: no rAF loop. renderer.render() is called from the
+// OrbitControls 'change' event and from setStl/handleResize. Damping
+// is off — enabling it would require a rAF loop to animate inertia.
 
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 interface Props {
   stl: Uint8Array;
@@ -76,6 +81,19 @@ function bootstrapScene(container: HTMLDivElement): SceneHandle {
   key.position.set(1, 1, 1);
   scene.add(key);
 
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = false;
+  const onControlsChange = () => renderer.render(scene, camera);
+  controls.addEventListener("change", onControlsChange);
+
+  // Expose camera/controls on the canvas for e2e tests (see
+  // tests/e2e/preview-controls.spec.ts). Cheap — single property — and
+  // keeps the component API unchanged. Not part of the public contract.
+  (renderer.domElement as unknown as { __stlViewer: unknown }).__stlViewer = {
+    camera,
+    controls,
+  };
+
   let mesh: THREE.Mesh | null = null;
   const loader = new STLLoader();
 
@@ -93,6 +111,8 @@ function bootstrapScene(container: HTMLDivElement): SceneHandle {
     camera.near = Math.max(dist / 1000, 0.1);
     camera.far = dist * 10;
     camera.updateProjectionMatrix();
+    controls.target.copy(center);
+    controls.update();
   }
 
   function setStl(data: Uint8Array) {
@@ -143,6 +163,8 @@ function bootstrapScene(container: HTMLDivElement): SceneHandle {
     setStl,
     handleResize,
     dispose() {
+      controls.removeEventListener("change", onControlsChange);
+      controls.dispose();
       renderer.dispose();
       if (mesh) {
         mesh.geometry.dispose();
