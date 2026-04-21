@@ -12,6 +12,24 @@ bd close <id>         # Complete work
 bd dolt push          # Push beads data to remote
 ```
 
+## Listing Page Thumbnails (auto-render in CI)
+
+The gallery (`/`) pulls tile thumbnails from `renders/<stem>/top.png`, served
+by `app/api/thumbnail/route.ts`. Those PNGs are **tracked in git** so Vercel
+deploys ship with them — `renders/*/` is intentionally NOT in `.gitignore`.
+
+The `render` job in `.github/workflows/ci.yml` regenerates them:
+
+- On **push to main**: always runs; commits any diff back via `github-actions[bot]`.
+- On **pull requests**: runs only when `models/**`, the scad-render skill,
+  `scripts/render-all.{py,sh}`, or `libs/README.md` changed; commits back to
+  the PR branch.
+
+If you edit a model locally and want thumbnails for preview before pushing,
+run `python3 scripts/render-all.py` (needs `openscad` + `xvfb-run` on PATH and
+`scripts/vendor-libs.sh` already run). Otherwise, just open the PR and let CI
+do it.
+
 ## Non-Interactive Shell Commands
 
 **ALWAYS use non-interactive flags** with file operations to avoid hanging on confirmation prompts.

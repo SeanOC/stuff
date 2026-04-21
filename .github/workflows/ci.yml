@@ -11,6 +11,82 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  render:
+    name: render preview images
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Check out the PR branch itself (not the merge commit) so the
+          # commit-back step can push straight back to it.
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Filter paths (PRs only)
+        id: filter
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            render:
+              - 'models/**'
+              - '.claude/skills/scad-render/**'
+              - '.claude/skills/_lib/**'
+              - 'scripts/render-all.py'
+              - 'scripts/vendor-libs.sh'
+              - 'libs/README.md'
+
+      - name: Install openscad + xvfb
+        if: github.event_name == 'push' || steps.filter.outputs.render == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openscad xvfb
+
+      - name: Vendor SCAD libraries
+        if: github.event_name == 'push' || steps.filter.outputs.render == 'true'
+        run: bash scripts/vendor-libs.sh
+
+      - name: Render all models
+        if: github.event_name == 'push' || steps.filter.outputs.render == 'true'
+        run: python3 scripts/render-all.py
+
+      - name: Commit regenerated renders (PRs)
+        if: github.event_name == 'pull_request' && steps.filter.outputs.render == 'true'
+        # PR_HEAD_REF comes from github.event.pull_request.head.ref, which is
+        # attacker-controllable (fork branch names). Keep it in env and only
+        # pass through `git push "$PR_HEAD_REF"` — never interpolate directly
+        # into a shell line.
+        env:
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add renders/
+          if git diff --cached --quiet; then
+            echo "No render changes to commit."
+          else
+            git commit -m "ci: regenerate model thumbnails"
+            git push origin "HEAD:$PR_HEAD_REF"
+          fi
+
+      - name: Commit regenerated renders (main)
+        if: github.event_name == 'push'
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add renders/
+          if git diff --cached --quiet; then
+            echo "No render changes to commit."
+          else
+            git commit -m "ci: regenerate model thumbnails"
+            git push origin "HEAD:$BRANCH"
+          fi
+
   unit:
     name: unit tests (vitest)
     runs-on: ubuntu-latest

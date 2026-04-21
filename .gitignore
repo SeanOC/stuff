@@ -5,7 +5,8 @@
 .beads-credential-key
 
 # OpenSCAD workflow artifacts
-renders/*/
+# renders/*/ is tracked — regenerated in CI (.github/workflows/ci.yml `render` job)
+# so Vercel deploys ship baseline thumbnails for the listing page.
 exports/*.stl
 libs/bin/*.AppImage
 
