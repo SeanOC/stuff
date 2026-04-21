@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyParamOverrides,
   defaultsOf,
   formatDFlags,
   formatScadLiteral,
   parseScadParams,
   type EnumParam,
   type NumberParam,
+  type Param,
 } from "./parse";
 
 const HEADER = "// === User-tunable parameters ===\n";
@@ -187,5 +189,61 @@ describe("defaultsOf / formatScadLiteral / formatDFlags", () => {
       '-D s="hi"',
       '-D e="x"',
     ]);
+  });
+});
+
+describe("applyParamOverrides", () => {
+  const params: Param[] = [
+    { kind: "number", name: "can_diameter", default: 46 },
+    { kind: "boolean", name: "use_cup", default: true },
+    { kind: "enum", name: "variant", default: "round", choices: ["round", "square"] },
+  ];
+
+  it("rewrites the @param's own assignment line", () => {
+    const src = [
+      "// === User-tunable parameters ===",
+      "can_diameter = 46;     // @param number",
+      "use_cup      = true;   // @param boolean",
+      "variant      = \"round\"; // @param enum choices=round|square",
+      "// === Derived ===",
+      "ring_id = can_diameter + 1;",
+    ].join("\n");
+    const out = applyParamOverrides(src, params, {
+      can_diameter: 80,
+      use_cup: false,
+      variant: "square",
+    });
+    // Aligned whitespace around `=` is preserved so the file stays
+    // visually consistent if anyone inspects it later.
+    expect(out).toContain("can_diameter = 80;");
+    expect(out).toContain("use_cup      = false;");
+    expect(out).toContain('variant      = "square";');
+    // Derived expressions are untouched (still reference the variable).
+    expect(out).toContain("ring_id = can_diameter + 1;");
+  });
+
+  it("falls back to defaults for missing keys", () => {
+    const src = "can_diameter = 46;     // @param number\n";
+    const out = applyParamOverrides(src, params.slice(0, 1), {});
+    expect(out).toContain("can_diameter = 46;");
+  });
+
+  it("only replaces the first (top-level) assignment, not later mentions", () => {
+    const src = [
+      "can_diameter = 46;     // @param number",
+      "module foo() { can_diameter = 999; cube(can_diameter); }",
+    ].join("\n");
+    const out = applyParamOverrides(src, [params[0]], { can_diameter: 80 });
+    expect(out).toContain("can_diameter = 80;");
+    // The module-local reassignment is left alone.
+    expect(out).toContain("can_diameter = 999;");
+  });
+
+  it("escapes regex-meaningful characters in param names", () => {
+    // OpenSCAD allows underscores; just confirms we don't crash on
+    // realistic names that look benign but pass through escapeRegex.
+    const p: Param[] = [{ kind: "number", name: "a_b_c", default: 1 }];
+    const out = applyParamOverrides("a_b_c = 1;", p, { a_b_c: 9 });
+    expect(out).toBe("a_b_c = 9;");
   });
 });

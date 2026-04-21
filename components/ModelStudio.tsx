@@ -6,9 +6,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  applyParamOverrides,
   defaultsOf,
   formatDFlags,
-  formatScadLiteral,
   type Param,
   type ParamValue,
 } from "@/lib/scad-params/parse";
@@ -31,6 +31,7 @@ export default function ModelStudio({ modelPath, source, params }: Props) {
   const [debouncedValues, setDebouncedValues] = useState(values);
   const [showDebug, setShowDebug] = useState(false);
   const [renderState, setRenderState] = useState<RenderState>({ kind: "idle" });
+  const [exportState, setExportState] = useState<ExportState>({ kind: "idle" });
   const renderToken = useRef(0);
 
   // Debounce values → debouncedValues (250ms) — bead spec.
@@ -44,15 +45,14 @@ export default function ModelStudio({ modelPath, source, params }: Props) {
     [params, debouncedValues],
   );
 
-  // Build the SCAD source actually shipped to WASM: original source +
-  // overrides at the top so user values win over the file defaults
-  // without us having to mutate the original file content.
-  const scadWithOverrides = useMemo(() => {
-    const overrides = params
-      .map((p) => `${p.name} = ${formatScadLiteral(p, debouncedValues[p.name] ?? p.default)};`)
-      .join("\n");
-    return `${overrides}\n${source}`;
-  }, [params, debouncedValues, source]);
+  // Mutate each param's assignment line in-source. openscad-wasm-prebuilt
+  // ignores `-D`, and a prepended prelude gets clobbered by the file's
+  // own defaults (last-assignment-wins). Source-rewrite is the only
+  // override path that sticks under WASM.
+  const sourceWithOverrides = useMemo(
+    () => applyParamOverrides(source, params, debouncedValues),
+    [source, params, debouncedValues],
+  );
 
   // Trigger a render on every debounced-values change. Use a token so
   // out-of-order completions don't clobber a newer in-flight render.
@@ -60,7 +60,7 @@ export default function ModelStudio({ modelPath, source, params }: Props) {
     const myToken = ++renderToken.current;
     setRenderState({ kind: "rendering", since: performance.now() });
     void renderToStl({
-      source: scadWithOverrides,
+      source: sourceWithOverrides,
       fetchLibFile: fetchLibFromApi,
     }).then((result) => {
       if (myToken !== renderToken.current) return; // stale
@@ -70,12 +70,67 @@ export default function ModelStudio({ modelPath, source, params }: Props) {
           : { kind: "error", result },
       );
     });
-  }, [scadWithOverrides]);
+  }, [sourceWithOverrides]);
+
+  async function handleDownload() {
+    setExportState({ kind: "exporting" });
+    try {
+      const res = await fetch("/api/export", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ model: modelPath, params: debouncedValues }),
+      });
+      if (!res.ok) {
+        const detail = await res.text().catch(() => "");
+        let msg = `HTTP ${res.status}`;
+        try { msg = JSON.parse(detail).error ?? msg; } catch { /* keep msg */ }
+        setExportState({ kind: "error", message: msg });
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filenameFromContentDisposition(res.headers.get("content-disposition")) ?? "model.stl";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setExportState({ kind: "idle" });
+    } catch (e) {
+      setExportState({
+        kind: "error",
+        message: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "320px 1fr", gap: "1.5rem", marginTop: "1rem" }}>
       <aside>
         <ParamForm params={params} values={values} onChange={setValues} />
+        <button
+          onClick={handleDownload}
+          disabled={exportState.kind === "exporting" || renderState.kind === "rendering"}
+          style={{
+            marginTop: "1rem",
+            width: "100%",
+            padding: "0.55rem 0.6rem",
+            background: exportState.kind === "exporting" ? "#1f6feb55" : "#1f6feb",
+            color: "#ffffff",
+            border: "1px solid #388bfd",
+            borderRadius: 4,
+            cursor: exportState.kind === "exporting" ? "wait" : "pointer",
+            fontWeight: 600,
+          }}
+        >
+          {exportState.kind === "exporting" ? "Exporting…" : "Download STL"}
+        </button>
+        {exportState.kind === "error" && (
+          <p style={{ color: "#ffb4b4", fontSize: "0.8rem", marginTop: "0.4rem" }}>
+            export failed: {exportState.message}
+          </p>
+        )}
         <button
           onClick={() => setShowDebug((s) => !s)}
           style={{
@@ -143,6 +198,17 @@ type RenderState =
   | { kind: "rendering"; since: number }
   | { kind: "ok"; result: RenderResult; stl: Uint8Array }
   | { kind: "error"; result: RenderResult };
+
+type ExportState =
+  | { kind: "idle" }
+  | { kind: "exporting" }
+  | { kind: "error"; message: string };
+
+function filenameFromContentDisposition(header: string | null): string | null {
+  if (!header) return null;
+  const m = header.match(/filename="([^"]+)"/);
+  return m ? m[1] : null;
+}
 
 function RenderStatusLine({ state }: { state: RenderState }) {
   if (state.kind === "ok") {
