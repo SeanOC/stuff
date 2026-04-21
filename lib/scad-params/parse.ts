@@ -211,6 +211,37 @@ export function formatDFlags(
   });
 }
 
+/**
+ * Replace each parsed param's top-level assignment in `source` with the
+ * caller's value. Required because openscad-wasm-prebuilt silently
+ * ignores command-line `-D` flags — we cannot override at the CLI, so
+ * we mutate the source instead.
+ *
+ * Only the first occurrence of `<name> = ...;` (anchored to the start
+ * of a line) is replaced, which is the @param's own declaration line.
+ * Later assignments (e.g. inside a module body) are untouched.
+ */
+export function applyParamOverrides(
+  source: string,
+  params: Param[],
+  values: Record<string, ParamValue>,
+): string {
+  let out = source;
+  for (const p of params) {
+    const v = values[p.name] ?? p.default;
+    const re = new RegExp(
+      `^([ \\t]*)${escapeRegex(p.name)}([ \\t]*=)[^;]+;`,
+      "m",
+    );
+    out = out.replace(re, `$1${p.name}$2 ${formatScadLiteral(p, v)};`);
+  }
+  return out;
+}
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 /** Render a SCAD-source-safe literal for one param value. */
 export function formatScadLiteral(param: Param, value: ParamValue): string {
   switch (param.kind) {
