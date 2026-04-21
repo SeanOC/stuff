@@ -125,7 +125,13 @@ function bootstrapScene(container: HTMLDivElement): SceneHandle {
   function handleResize() {
     const { clientWidth: w, clientHeight: h } = container;
     if (w === 0 || h === 0) return;
-    renderer.setSize(w, h, false);
+    // `setSize(w, h)` (default updateStyle=true) applies CSS width/height
+    // to the canvas. Without this, on retina displays (devicePixelRatio>1)
+    // the canvas attribute size becomes w*DPR and — with no CSS size — the
+    // canvas renders at that attribute size, overflowing the container and
+    // being clipped by overflow:hidden. The viewport ends up showing only
+    // empty space at the top-left of the too-large canvas: blank.
+    renderer.setSize(w, h);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     renderer.render(scene, camera);
