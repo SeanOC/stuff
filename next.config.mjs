@@ -6,6 +6,16 @@ const nextConfig = {
   // letting webpack/turbopack inline it triggers a 10MB+ string
   // serialization that has caused OOM on Vercel builds in the past.
   serverExternalPackages: ["openscad-wasm-prebuilt"],
+
+  // The API routes read from models/, libs/, and renders/ via
+  // `process.cwd()` at request time. Next.js file-tracing can't see
+  // those dynamic reads, so without explicit includes nothing ships
+  // with the function bundle and every request 500s on Vercel.
+  outputFileTracingIncludes: {
+    "/api/source": ["./libs/**/*.scad", "./models/**/*.scad"],
+    "/api/export": ["./libs/**/*.scad", "./models/**/*.scad"],
+    "/api/thumbnail": ["./renders/**/*.png"],
+  },
 };
 
 export default nextConfig;
