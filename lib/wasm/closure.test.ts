@@ -96,5 +96,20 @@ describe("buildIncludeClosure", () => {
     const paths = result.files.map((f) => f.fsPath).sort();
     expect(paths).toContain("/libraries/BOSL2/std.scad");
     expect(paths).toContain("/libraries/BOSL2/util.scad");
+    // The as-is probe (`util.scad`) is expected to 404; that's a
+    // normal resolution step, not a genuinely missing file.
+    expect(result.missing).toEqual([]);
+  });
+
+  it("only reports missing when every candidate fails", async () => {
+    const lib: Record<string, string> = {
+      "BOSL2/std.scad": "include <util.scad>\ninclude <truly_gone.scad>",
+      "BOSL2/util.scad": "// leaf",
+    };
+    const result = await buildIncludeClosure({
+      entrySource: "include <BOSL2/std.scad>",
+      fetchLibFile: async (p) => lib[p] ?? null,
+    });
+    expect(result.missing).toEqual(["truly_gone.scad"]);
   });
 });
