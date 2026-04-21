@@ -60,32 +60,44 @@ export async function buildIncludeClosure(
   const files: ClosureFile[] = [];
   const missing: string[] = [];
 
-  // Queue items are lib-relative paths like "BOSL2/std.scad".
-  const queue: string[] = [];
-  for (const rel of extractIncludes(entrySource)) queue.push(rel);
+  // Queue items are ordered candidate lists for a single logical
+  // include: we try the lib-root path first, then the sibling path.
+  // An include counts as "missing" only if every candidate fails.
+  const queue: string[][] = [];
+  for (const rel of extractIncludes(entrySource)) queue.push([rel]);
 
   while (queue.length > 0 && files.length < maxFiles) {
-    const rel = queue.shift()!;
-    if (visited.has(rel)) continue;
-    visited.add(rel);
+    const candidates = queue.shift()!;
+    const remaining = candidates.filter((c) => !visited.has(c));
+    if (remaining.length === 0) continue;
 
-    const source = await fetchLibFile(rel);
-    if (source === null) {
-      missing.push(rel);
+    let resolved: { rel: string; source: string } | null = null;
+    for (const rel of remaining) {
+      visited.add(rel);
+      const source = await fetchLibFile(rel);
+      if (source !== null) {
+        resolved = { rel, source };
+        break;
+      }
+    }
+
+    if (!resolved) {
+      missing.push(candidates[0]);
       continue;
     }
 
-    files.push({ fsPath: `/libraries/${rel}`, source });
+    files.push({ fsPath: `/libraries/${resolved.rel}`, source: resolved.source });
 
-    // Resolve each child include both as-is and relative to the
-    // current file's directory. OpenSCAD tries both.
-    const childDir = rel.includes("/") ? rel.slice(0, rel.lastIndexOf("/")) : "";
-    for (const childRel of extractIncludes(source)) {
-      if (!visited.has(childRel)) queue.push(childRel);
-      if (childDir) {
-        const sibling = `${childDir}/${childRel}`;
-        if (!visited.has(sibling)) queue.push(sibling);
-      }
+    // For each child include, resolve as-is first (lib-root), then
+    // relative to the current file's directory. OpenSCAD tries both.
+    const childDir = resolved.rel.includes("/")
+      ? resolved.rel.slice(0, resolved.rel.lastIndexOf("/"))
+      : "";
+    for (const childRel of extractIncludes(resolved.source)) {
+      const childCandidates = childDir
+        ? [childRel, `${childDir}/${childRel}`]
+        : [childRel];
+      queue.push(childCandidates);
     }
   }
 
