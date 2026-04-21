@@ -8,19 +8,19 @@ use <QuackWorks/Modules/snapConnector.scad>
 $fn = 64;
 
 // === User-tunable parameters ===
-can_diameter       = 70;     // nominal can OD (mm)
-clearance          = 0.75;   // radial slip between can and ring (mm)
-ring_height        = 35;     // C-ring band height along can axis (mm)
-wall               = 3;      // wall thickness, ring + cup (mm)
-cup_depth          = 5;      // drip-cup depth below ring (mm)
-backer_cells_x     = 3;      // Multiboard grid cells, X
-backer_cells_y     = 3;      // Multiboard grid cells, Z (vertical on wall)
+can_diameter       = 70;     // @param number min=30 max=200 step=0.5 label="Can diameter (mm)"
+clearance          = 0.75;   // @param number min=0 max=2 step=0.05 label="Slip clearance (mm)"
+ring_height        = 35;     // @param number min=10 max=200 step=1 label="Ring height (mm)"
+wall               = 3;      // @param number min=1 max=10 step=0.5 label="Wall thickness (mm)"
+cup_depth          = 5;      // @param number min=0 max=30 step=0.5 label="Drip-cup depth (mm)"
+backer_cells_x     = 3;      // @param integer min=1 max=8 label="Backer cells X"
+backer_cells_y     = 3;      // @param integer min=1 max=8 label="Backer cells Y (vertical)"
 snap_type          = "Moderate WB";  // informational label; geometry uses
                                      // QuackWorks snapConnectBacker (default)
-holding_tolerance  = 1.0;    // QuackWorks snap snugness (0.5..1.5)
+holding_tolerance  = 1.0;    // @param number min=0.5 max=1.5 step=0.05 label="Snap snugness"
 grid_pitch         = 25;     // Multiboard grid pitch (mm)
-front_opening_deg  = 120;    // C-ring open-front arc angle (deg)
-backer_thickness   = 3;      // backer plate thickness (mm)
+front_opening_deg  = 120;    // @param number min=0 max=270 step=5 label="Front opening arc (deg)"
+backer_thickness   = 3;      // @param number min=2 max=10 step=0.5 label="Backer thickness (mm)"
 cup_floor          = 2;      // drip-cup floor thickness (mm)
 
 // === Derived ===
