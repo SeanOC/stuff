@@ -26,9 +26,59 @@ slug routing, and Vercel deploy config.
 ```bash
 npm install
 npm run dev          # http://localhost:3000
-npm test             # vitest, 33 tests
+npm test             # vitest, 33 unit tests
 npm run build        # production build
 ```
+
+## Tests
+
+Two tiers:
+
+```bash
+npm test              # vitest (unit)
+npm run test:e2e      # playwright (e2e, boots its own server on :3111)
+npm run test:e2e:ui   # playwright UI mode — interactive debugging
+npm run test:all      # unit + e2e
+```
+
+The e2e run boots `next dev` locally (faster feedback) and `next start`
+in CI (post-build fidelity). Both bind to 127.0.0.1:3111 so they don't
+collide with a developer's `next dev` on :3000. Set `PLAYWRIGHT_PORT`
+to override.
+
+### Adding a new e2e test
+
+1. Drop a `tests/e2e/<name>.spec.ts`. Playwright auto-discovers.
+2. Hit pages via `page.goto("/models/…")` — `baseURL` is already set.
+3. Lean on the status-line text pattern (`/rendered in \d+ms · [\d,]+ bytes/`)
+   when you need to wait for a WASM render to complete — it's the most
+   stable signal the coordinator exposes.
+4. For anything that might vary by render (byte counts, bboxes), assert
+   on deltas between two states, not absolute values — keeps the test
+   robust across OpenSCAD version bumps.
+
+### Debugging a CI failure
+
+CI uploads `playwright-report/` and `test-results/` as workflow
+artifacts on failure (including trace + screenshot + video). Download
+from the Actions run, then:
+
+```bash
+npx playwright show-report playwright-report/
+```
+
+Local repro: `CI=1 npm run test:e2e` runs in CI mode (prod build, 1
+retry, 2 workers). Add `--headed` to watch it run.
+
+### Silent-override regression
+
+`tests/fixtures/bug_regression.scad` + `tests/e2e/bug-regression.spec.ts`
+exist specifically to guard the Phase 1/2 silent-override bug: the
+class where the form reports new values but the render sees old ones.
+Test asserts the STL's X-extent shifts from 40mm (default) to 160mm
+(override). If `applyParamOverrides` ever becomes a no-op, the
+override render produces a 40mm plate and the assertion fails with a
+numeric diff, not a timeout.
 
 Open <http://localhost:3000/>. The gallery lists every `.scad` file in
 `models/` with a thumbnail, title, and parameter count. Click a card to

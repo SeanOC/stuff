@@ -37,7 +37,12 @@ export const maxDuration = 120;
 const REPO_ROOT = process.cwd();
 const LIBS_ROOT = path.resolve(REPO_ROOT, "libs");
 const MODELS_ROOT = path.resolve(REPO_ROOT, "models");
-const MODEL_PATH_RE = /^models\/[A-Za-z0-9._/-]+\.scad$/;
+const FIXTURES_ROOT = path.resolve(REPO_ROOT, "tests/fixtures");
+// Two roots: real user models under models/, plus a narrow allowance
+// for e2e fixtures under tests/fixtures/. Fixtures stay out of the
+// gallery but are render-callable so bug-regression.spec.ts can
+// exercise the same export path users hit.
+const MODEL_PATH_RE = /^(?:models|tests\/fixtures)\/[A-Za-z0-9._/-]+\.scad$/;
 
 interface ExportBody {
   model: string;
@@ -62,8 +67,11 @@ export async function POST(req: NextRequest) {
     return jsonError(403, "model path not allowed");
   }
   const abs = path.resolve(REPO_ROOT, body.model);
-  if (!abs.startsWith(MODELS_ROOT + path.sep)) {
-    return jsonError(403, "model path escapes models/");
+  if (
+    !abs.startsWith(MODELS_ROOT + path.sep) &&
+    !abs.startsWith(FIXTURES_ROOT + path.sep)
+  ) {
+    return jsonError(403, "model path escapes allowed roots");
   }
 
   let source: string;
