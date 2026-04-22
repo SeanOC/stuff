@@ -4,8 +4,8 @@ test("gallery ↔ model page round-trip via link + back button", async ({ page }
   await page.goto("/");
   await expect(page.getByRole("heading", { name: /stuff — parametric models/ })).toBeVisible();
 
-  await page.locator('a[href="/models/smoke-motor-mount"]').click();
-  await expect(page).toHaveURL(/\/models\/smoke-motor-mount$/);
+  await page.locator('a[href="/models/popcorn-kernel"]').click();
+  await expect(page).toHaveURL(/\/models\/popcorn-kernel$/);
   await expect(page.getByRole("link", { name: /all models/i })).toBeVisible();
 
   // "← all models" link back to gallery.

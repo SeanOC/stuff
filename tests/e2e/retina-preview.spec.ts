@@ -9,7 +9,7 @@ import { expect, test } from "@playwright/test";
 test.use({ deviceScaleFactor: 2 });
 
 test("STL preview canvas fits the container on retina (DPR=2)", async ({ page }) => {
-  await page.goto("/models/smoke-motor-mount");
+  await page.goto("/models/popcorn-kernel");
   await expect(page.getByText(/rendered in \d+ms · [\d,]+ bytes/)).toBeVisible({
     timeout: 60_000,
   });

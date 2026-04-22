@@ -8,7 +8,7 @@ import { expect, test } from "@playwright/test";
 // place to extend it.
 
 test("out-of-range numeric input is marked :invalid", async ({ page }) => {
-  await page.goto("/models/smoke-motor-mount");
+  await page.goto("/models/popcorn-kernel");
 
   // plate_w is @param number min=20 max=200.
   const plate = page.locator("#param-plate_w");

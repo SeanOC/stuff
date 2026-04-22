@@ -16,7 +16,7 @@ async function readStatusBytes(page: Page): Promise<number> {
 }
 
 test("changing a param re-renders with a different STL", async ({ page }) => {
-  await page.goto("/models/smoke-motor-mount");
+  await page.goto("/models/popcorn-kernel");
 
   const initial = await readStatusBytes(page);
 

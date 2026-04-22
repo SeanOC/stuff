@@ -23,7 +23,7 @@ test.describe("error paths", () => {
   test("export API rejects unknown param key", async ({ request }) => {
     const res = await request.post("/api/export", {
       data: {
-        model: "models/smoke_motor_mount.scad",
+        model: "models/popcorn_kernel.scad",
         params: { made_up_param: 42 },
       },
     });

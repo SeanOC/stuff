@@ -8,7 +8,7 @@ import { expect, test } from "@playwright/test";
 // inspection here; the component API is unchanged.
 
 test("STL preview responds to wheel (camera moves)", async ({ page }) => {
-  await page.goto("/models/smoke-motor-mount");
+  await page.goto("/models/popcorn-kernel");
   await expect(page.getByText(/rendered in \d+ms · [\d,]+ bytes/)).toBeVisible({
     timeout: 60_000,
   });

@@ -5,7 +5,7 @@ import { expect, test } from "@playwright/test";
 // — the preview-rerender test doesn't cover the API export route at all.
 
 test("Download STL produces a non-empty STL file", async ({ page }) => {
-  await page.goto("/models/smoke-motor-mount");
+  await page.goto("/models/popcorn-kernel");
 
   // Wait for first preview render so the button isn't disabled.
   await expect(page.getByText(/rendered in \d+ms · [\d,]+ bytes/)).toBeVisible({ timeout: 60_000 });
@@ -17,7 +17,7 @@ test("Download STL produces a non-empty STL file", async ({ page }) => {
     button.click(),
   ]);
 
-  expect(download.suggestedFilename()).toBe("smoke_motor_mount.stl");
+  expect(download.suggestedFilename()).toBe("popcorn_kernel.stl");
 
   const path = await download.path();
   expect(path).toBeTruthy();

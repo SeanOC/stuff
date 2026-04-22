@@ -16,8 +16,7 @@ twiddle sliders and grab a fresh STL.
 | File | Description |
 | --- | --- |
 | `cylindrical_holder_slot.scad` | Multiboard-mounted parametric holder for any cylindrical item (42–77mm tested), Multiconnect slot backer. Consolidates four earlier fixed-diameter variants. |
-| `smoke_motor_mount.scad` | Smoke-test plate: rectangular base with centered bore + boss and four counter-bored mounts. Used as the minimum end-to-end model for the pipeline. |
-| `spraycan_holder_70mm.scad` | Multiboard-mounted spray-can holder (70mm), snap-connector backer variant. |
+| `popcorn_kernel.scad` | Cartoonish popped popcorn kernel — replacement piece for a Disney toddler-toy popcorn stand. Solid union of overlapping spheres, flat-cut base. |
 
 ## Web app
 
@@ -41,7 +40,7 @@ Render a model directly via OpenSCAD (Manifold backend required; CGAL
 OOMs on BOSL2):
 
 ```bash
-openscad --backend Manifold -o out.stl models/smoke_motor_mount.scad
+openscad --backend Manifold -o out.stl models/cylindrical_holder_slot.scad
 ```
 
 Run the web app locally (Next.js project is rooted at the repo root;

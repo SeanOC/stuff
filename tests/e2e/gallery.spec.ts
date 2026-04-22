@@ -6,8 +6,6 @@ import { expect, test } from "@playwright/test";
 const EXPECTED_SLUGS = [
   "cylindrical-holder-slot",
   "popcorn-kernel",
-  "smoke-motor-mount",
-  "spraycan-holder-70mm",
 ];
 
 test.describe("gallery", () => {
@@ -49,8 +47,8 @@ test.describe("gallery", () => {
 
   test("clicking a card navigates to the model page", async ({ page }) => {
     await page.goto("/");
-    await page.locator('a[href="/models/smoke-motor-mount"]').click();
-    await expect(page).toHaveURL(/\/models\/smoke-motor-mount$/);
-    await expect(page.locator("code", { hasText: "models/smoke_motor_mount.scad" })).toBeVisible();
+    await page.locator('a[href="/models/popcorn-kernel"]').click();
+    await expect(page).toHaveURL(/\/models\/popcorn-kernel$/);
+    await expect(page.locator("code", { hasText: "models/popcorn_kernel.scad" })).toBeVisible();
   });
 });

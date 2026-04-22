@@ -252,7 +252,7 @@ Handy / Studio to monitor.
 ```bash
 python3 .claude/skills/scad-send/scripts/login.py && \
 python3 .claude/skills/scad-send/scripts/send.py \
-  --stl exports/spraycan_holder_70mm_slot.stl \
+  --stl exports/cylindrical_holder_slot.stl \
   --printer garage-x1c --dry-run
 ```
 
