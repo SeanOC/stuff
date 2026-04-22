@@ -5,6 +5,7 @@ import { expect, test } from "@playwright/test";
 // AND verify the gallery-spec snapshot still makes sense.
 const EXPECTED_SLUGS = [
   "cylindrical-holder-slot",
+  "popcorn-kernel",
   "smoke-motor-mount",
   "spraycan-holder-70mm",
 ];
