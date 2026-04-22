@@ -43,11 +43,16 @@ jobs:
               - 'scripts/vendor-libs.sh'
               - 'libs/README.md'
 
-      - name: Install openscad + xvfb
+      - name: Install openscad + xvfb + python deps
         if: github.event_name == 'push' || steps.filter.outputs.render == 'true'
+        # python3-numpy + python3-pil are required by .claude/skills/_lib/measure.py,
+        # which scripts/render-all.py invokes for hole/feature measurement. Without
+        # them every render fails with ModuleNotFoundError before any PNG is written
+        # (broken since st-dd1 introduced render-all.py). Static package list — no
+        # untrusted input flows into this run block.
         run: |
           sudo apt-get update
-          sudo apt-get install -y openscad xvfb
+          sudo apt-get install -y openscad xvfb python3-numpy python3-pil
 
       - name: Vendor SCAD libraries
         if: github.event_name == 'push' || steps.filter.outputs.render == 'true'
