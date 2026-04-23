@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { listModels, loadModel, slugToStem, stemToSlug } from "./discover";
+import { deriveTitle, listModels, loadModel, slugToStem, stemToSlug } from "./discover";
 
 describe("stem/slug conversion", () => {
   it("round-trips underscore <-> dash", () => {
@@ -10,6 +10,39 @@ describe("stem/slug conversion", () => {
   it("leaves no-underscore stems untouched", () => {
     expect(stemToSlug("cube")).toBe("cube");
     expect(slugToStem("cube")).toBe("cube");
+  });
+});
+
+describe("deriveTitle", () => {
+  it("returns the first prose comment line", () => {
+    const src = "// Hello world\nx = 1;\n";
+    expect(deriveTitle(src, "fallback")).toBe("Hello world");
+  });
+
+  it("skips the SPDX + Copyright block so the prose line wins", () => {
+    // Regression guard for st-1hh. Before the fix, the first //
+    // line (`SPDX-License-Identifier: ...`) was returned verbatim
+    // and the real title sat three lines below.
+    const src = [
+      "// SPDX-License-Identifier: CC-BY-NC-SA-4.0",
+      "// Copyright (c) 2026 Sean O'Connor",
+      "//",
+      "// Multiboard-mounted holder for a cylindrical item",
+      "// Additional prose here.",
+      "",
+      "x = 1;",
+    ].join("\n");
+    expect(deriveTitle(src, "fallback")).toBe(
+      "Multiboard-mounted holder for a cylindrical item",
+    );
+  });
+
+  it("falls back to the stem when no leading comment exists", () => {
+    expect(deriveTitle("x = 1;\n", "popcorn_kernel")).toBe("popcorn kernel");
+  });
+
+  it("trims a trailing em/en/hyphen dash from the title", () => {
+    expect(deriveTitle("// Cradle —\n", "fallback")).toBe("Cradle");
   });
 });
 

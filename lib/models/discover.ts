@@ -118,17 +118,19 @@ function isSafeStem(stem: string): boolean {
   return /^[A-Za-z0-9_]+$/.test(stem);
 }
 
-function deriveTitle(source: string, stem: string): string {
+export function deriveTitle(source: string, stem: string): string {
   for (const raw of source.split(/\r?\n/)) {
     const line = raw.trim();
     if (!line) continue;
-    if (line.startsWith("//")) {
-      const text = line.replace(/^\/\/+\s*/, "").trim();
-      if (text) return text.replace(/[—–-]\s*$/, "").trim();
-    }
-    // Stop at the first non-comment, non-blank line — title only
-    // comes from the file's leading comment block.
-    break;
+    if (!line.startsWith("//")) break;
+    const text = line.replace(/^\/\/+\s*/, "").trim();
+    if (!text) continue;
+    // Skip license-metadata lines so the SPDX/Copyright block that
+    // leads every .scad file doesn't become the title. The title is
+    // the first prose `//` line after any metadata header.
+    if (/^SPDX-[A-Za-z]+-[A-Za-z]+:/i.test(text)) continue;
+    if (/^Copyright\b/i.test(text)) continue;
+    return text.replace(/[—–-]\s*$/, "").trim();
   }
   return stem.replaceAll("_", " ");
 }
