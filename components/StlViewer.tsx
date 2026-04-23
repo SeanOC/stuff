@@ -55,7 +55,8 @@ export default function StlViewer({ stl }: Props) {
   return (
     <div
       ref={containerRef}
-      className="h-full w-full overflow-hidden bg-panel2"
+      className="absolute inset-0 overflow-hidden"
+      data-testid="stl-viewer"
     />
   );
 }
@@ -68,7 +69,11 @@ interface SceneHandle {
 
 function bootstrapScene(container: HTMLDivElement): SceneHandle {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x161b22);
+  // No scene.background — the WebGL canvas clears to alpha=0 so the
+  // DOM GridOverlay (rendered as an earlier sibling under the same
+  // relative parent) shows through where the model doesn't cover.
+  // The viewer section's bg-panel2 is the true background color.
+  // (st-lpt)
 
   const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 5000);
   // OpenSCAD STLs are Z-up; three.js defaults to Y-up. Without this the
@@ -77,7 +82,8 @@ function bootstrapScene(container: HTMLDivElement): SceneHandle {
   camera.position.set(120, 120, 120);
   camera.lookAt(0, 0, 0);
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setClearColor(0x000000, 0);
   renderer.setPixelRatio(window.devicePixelRatio);
   container.appendChild(renderer.domElement);
 

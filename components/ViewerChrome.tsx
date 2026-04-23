@@ -86,6 +86,12 @@ export function ViewerChrome({
       className="relative flex flex-col bg-panel2 focus:outline-none"
     >
       <div ref={viewerContainerRef} className="relative min-h-[480px] flex-1">
+        {/* Grid paints first so the model occludes it. StlViewer's canvas
+            clears with alpha=0 so the grid shows through where the model
+            doesn't cover. AxesIndicator + ViewPresetTabs are intentional
+            top-layer UI and stay last. (st-lpt) */}
+        {showGrid && <GridOverlay />}
+
         {state.kind === "ready" && <StlViewer stl={state.result.stlBytes} />}
         {state.kind === "loading" && (
           <ViewerPlaceholder>rendering…</ViewerPlaceholder>
@@ -100,7 +106,6 @@ export function ViewerChrome({
           </ViewerPlaceholder>
         )}
 
-        {showGrid && <GridOverlay />}
         <AxesIndicator camera={camera} />
 
         <ViewPresetTabs camera={camera} onPick={chooseCamera} />
@@ -136,6 +141,7 @@ function GridOverlay() {
     <svg
       className="pointer-events-none absolute inset-0 h-full w-full"
       aria-hidden="true"
+      data-testid="viewer-grid"
     >
       <defs>
         <pattern
