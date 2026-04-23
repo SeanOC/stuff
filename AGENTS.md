@@ -30,6 +30,50 @@ run `python3 scripts/render-all.py` (needs `openscad` + `xvfb-run` on PATH and
 `scripts/vendor-libs.sh` already run). Otherwise, just open the PR and let CI
 do it.
 
+## Per-model invariants (auto-checked in CI)
+
+Every model in `models/` ships with a sidecar `models/<stem>.invariants.py`
+that asserts structural claims the model makes — footprint aspect,
+clearance margins, single-body topology, anything that's bitten us
+before. The driver `scripts/check-invariants.py <stem>` loads the
+corresponding `exports/<stem>.stl`, applies a small set of built-in
+checks (watertight, orphan fragments, triangle ceiling, `PRINT_ANCHOR_BBOX`
+drift) and then calls the sidecar's `check(ctx)`.
+
+### Adding a model
+
+Always create a sidecar. Minimum skeleton:
+
+```python
+# models/<stem>.invariants.py
+from scripts.invariants import Failure, as_default_params, expect_connected_solids
+
+def check(ctx):
+    failures = []
+    p = as_default_params(ctx["params"])
+    # Example claim — replace with whatever your model actually asserts:
+    # if ctx["bbox_mm"][2] > 250:
+    #     failures.append(Failure("envelope", "Z > 250mm; won't fit on X1C bed"))
+    return failures
+```
+
+The sidecar may also call `expect_connected_solids(ctx, n)` to pin
+topology (single-body models pass `n=1`; multi-body tray designs
+pass the expected count).
+
+### Running locally
+
+```bash
+python3 scripts/export-all.py            # openscad → exports/<stem>.stl
+python3 scripts/check-invariants-all.py  # runs every sidecar + built-ins
+```
+
+Or one model: `python3 scripts/check-invariants.py spraycan_carrier_6x50mm`.
+
+CI runs both steps on every PR that touches `models/**` or the
+invariants infra, and on every push to `main`. Failures are visible
+in the GitHub check.
+
 ## Non-Interactive Shell Commands
 
 **ALWAYS use non-interactive flags** with file operations to avoid hanging on confirmation prompts.

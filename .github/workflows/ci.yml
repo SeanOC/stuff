@@ -62,6 +62,29 @@ jobs:
         if: github.event_name == 'push' || steps.filter.outputs.render == 'true'
         run: python3 scripts/render-all.py
 
+      - name: Install trimesh (for export + invariants)
+        if: github.event_name == 'push' || steps.filter.outputs.render == 'true'
+        # trimesh is pulled in here so we don't inflate the render-only
+        # path with it. export.py loads the STL via trimesh to assert
+        # watertightness; check-invariants.py extends that with
+        # connected-component + per-model sidecar checks (st-cjn).
+        run: |
+          sudo apt-get install -y python3-trimesh python3-pytest || \
+            python3 -m pip install --break-system-packages trimesh pytest
+
+      - name: Export STLs + invariants
+        if: github.event_name == 'push' || steps.filter.outputs.render == 'true'
+        # The export job produces exports/<stem>.stl which the invariant
+        # driver then analyzes. Either step failing is a CI failure —
+        # don't keep building on a broken geometry.
+        run: |
+          python3 scripts/export-all.py
+          python3 scripts/check-invariants-all.py
+
+      - name: Invariant core unit tests
+        if: github.event_name == 'push' || steps.filter.outputs.render == 'true'
+        run: python3 -m pytest scripts/invariants/ -v
+
       - name: Commit regenerated renders (PRs)
         if: github.event_name == 'pull_request' && steps.filter.outputs.render == 'true'
         # PR_HEAD_REF comes from github.event.pull_request.head.ref, which is

@@ -57,3 +57,59 @@ Not in repo: any CAD-aware compound-engineering plugin. Closest adjacents (`desi
 - CI: run on PR; block `gt done` locally via a hook in `CLAUDE.local.md`'s Completion Protocol.
 
 Fold P1 (vision checklist) in the same hook for the st-hnd class, but ship P2 first — the invariants are what stop the bleeding.
+
+## 6. Prototype landed
+
+P2 ships in bead **st-cjn** (this commit). Driver is
+`scripts/check-invariants.py <stem>`; batch entry point is
+`scripts/check-invariants-all.py`.
+
+### What landed
+
+- `scripts/invariants/__init__.py` — built-in invariants (topology
+  orphan-fragment detector, watertight, triangle ceiling, anchor bbox
+  drift) plus `Failure`, `as_default_params`, `expect_connected_solids`
+  helpers.
+- `scripts/invariants/params.py` — a tiny Python port of
+  `lib/scad-params/parse.ts` so CI doesn't need Node to probe defaults.
+- `scripts/invariants/test_invariants.py` — 18 pytest cases pinning
+  the built-in logic against mock ctx dicts (no openscad/trimesh
+  required). Green locally.
+- `models/<stem>.invariants.py` × 3 — sidecars seeded for
+  cylindrical_holder_slot, popcorn_kernel, spraycan_carrier_6x50mm,
+  with st-3ta footprint + st-8ac clearance claims on the spraycan.
+- `scripts/export-all.py` + `scripts/check-invariants-all.py` —
+  batch drivers for CI.
+- `.github/workflows/ci.yml` — installs python3-trimesh alongside the
+  existing render toolchain, runs export-all → check-invariants-all →
+  pytest. Failure visible as a GitHub check.
+- `AGENTS.md` — "Per-model invariants (auto-checked in CI)" section
+  with skeleton + local-run instructions.
+
+### Retroactive check notes
+
+- **st-3ta (footprint)** — pre-fix, `base_margin` was a single knob so
+  `base_d == base_w`. The sidecar's `base_d > base_w` check can't flag
+  equal — it's looking for the inverted-aspect case that would have
+  emerged if Y ever crept past X. Partial catch: the claim is still
+  worth keeping as the footprint invariant, but would have fired only
+  on a future regression, not st-3ta itself. The `PRINT_ANCHOR_BBOX`
+  drift check is the better retroactive gate.
+- **st-8ac (clearance)** — retro check skipped: the pre-fix model
+  didn't expose `handle_height` as a `@param`, so the sidecar's
+  clearance claim would have silently no-op'd. Marked as partial per
+  the bead's acceptance.
+- **st-v7k (topology)** — the post-st-v7k STL has 7 legitimate
+  connected components (baseplate + 6 coplanar-seated cradles). A
+  strict `connected_solids == 1` built-in would have flagged this
+  correct model; the landed built-in instead watches for tiny
+  (≤50-tri) orphan fragments, which is the actual bug signature.
+
+### Regression caught by the new gate
+
+While wiring the invariants up, the driver flagged
+`spraycan_carrier_6x50mm` as not watertight on current `main` — the
+**st-hnd** path_sweep approach produced unclosed endpoint caps that
+trimesh rejected. Reverted the sweep to `linear_extrude` in this bead;
+a follow-up bead will re-attempt C¹ continuity with a manifold-safe
+approach. First real proof the system does what the research predicted.
