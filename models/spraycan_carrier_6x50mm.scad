@@ -21,12 +21,14 @@
 // through the wall at the bottom of the ring on the solid back arc so
 // water can't sit between can and cradle.
 //
-// Kid-safe: base corners and handle posts are filleted (BOSL2 cuboid
-// rounding), cradle top rims get an outer chamfer plus an inner lead-in,
-// and the handle arch's X-Z corners are rounded by construction (annular
-// half-disc). The arch's Y-face edges are sharp — a follow-up bead will
-// re-attempt the path-sweep continuity fix with a manifold-preserving
-// approach (the first attempt, st-hnd, broke watertight; see st-cjn).
+// Kid-safe: base has rounded top-rim + vertical corners (bottom rim
+// stays sharp so it prints flush against the build plate — st-so7),
+// handle posts are filleted (BOSL2 cuboid rounding), cradle top rims
+// get an outer chamfer plus an inner lead-in, and the handle arch's
+// X-Z corners are rounded by construction (annular half-disc). The
+// arch's Y-face edges are sharp — a follow-up bead will re-attempt
+// the path-sweep continuity fix with a manifold-preserving approach
+// (the first attempt, st-hnd, broke watertight; see st-cjn).
 
 include <BOSL2/std.scad>
 include <BOSL2/rounding.scad>
@@ -111,9 +113,14 @@ PRINT_ANCHOR_BBOX = [213.5, 157.5, 253];
 module base_plate() {
     difference() {
         translate([0, 0, base_thickness / 2])
+            // Round the 4 top-rim edges + 4 vertical corners; leave the
+            // 4 bottom-rim edges sharp so the plate sits flush against
+            // the build plate (a fillet there would pull the print off
+            // the bed and introduce an unneeded overhang). st-so7.
             cuboid([base_w, base_d, base_thickness],
                    rounding = fillet_r,
-                   edges = "Z");
+                   edges    = "ALL",
+                   except   = BOTTOM);
         base_drains();
     }
 }
