@@ -78,6 +78,7 @@ export default function DetailPage({ model }: Props) {
             toggleGrid={detail.toggleGrid}
             toggleDims={detail.toggleDims}
             downloadSlot={downloadButton}
+            history={render.history}
           />
         </div>
         <aside

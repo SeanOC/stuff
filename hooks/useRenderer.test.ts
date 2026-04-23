@@ -127,3 +127,50 @@ describe("useRenderer — stale token cancellation", () => {
     expect(result.current.history[0].stlBytes[0]).toBe(0xbb);
   });
 });
+
+describe("useRenderer — error state populates RenderError.line", () => {
+  it("extracts a line number from stderr and surfaces it on the error state", async () => {
+    const { useRenderer } = await import("./useRenderer");
+
+    const params: Param[] = [{ kind: "number", name: "x", default: 1 }];
+    const { result } = renderHook(() =>
+      useRenderer({
+        modelPath: "models/test.scad",
+        source: "x = 1; // @param number\n",
+        params,
+        values: { x: 1 },
+      }),
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+    expect(pending.length).toBe(1);
+
+    // WASM returns an error-shaped result with a parseable stderr.
+    await act(async () => {
+      pending[0].resolve({
+        ok: false,
+        wallMs: 12,
+        filesMounted: 0,
+        missing: [],
+        errorMessage: "openscad exit=1",
+        stderr: [
+          "WARNING: Can't open include <missing.scad>",
+          'ERROR: Parser error in file "test.scad", line 42: syntax error',
+        ],
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.state.kind).toBe("error");
+    });
+    const errState = result.current.state;
+    if (errState.kind !== "error") throw new Error("expected error");
+    expect(errState.error.line).toBe(42);
+    expect(errState.error.message).toContain("Parser error");
+    // Log stays as the full stderr — "view full log" shows this.
+    expect(errState.error.log).toContain("WARNING:");
+    expect(errState.error.log).toContain("ERROR:");
+  });
+});

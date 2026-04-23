@@ -17,6 +17,12 @@
   --color-accent-soft: #e7e2d614;
   --color-accent-line: #e7e2d644;
   --color-red: #d96a6a;
+  /* ~10% red over the viewer's panel2 — the error-strip fill per
+     spec § "Loading / Error / Empty". A baked color lets us keep
+     Tailwind's static-class scanner happy (bg-red/10 opacity syntax
+     works but needs a runtime CSS var our current v4 config doesn't
+     ship a utility for). st-bg4. */
+  --color-red-tint: #d96a6a1a;
   --color-green: #8ee29d;
   --color-blue: #7ab6ff;
   --color-warn: #f0c06a;
@@ -48,6 +54,9 @@
 
   /* Desktop 3-col kicks in at 1200px per Caliper responsive spec. */
   --breakpoint-xl: 1200px;
+
+  /* Modal-only drop shadow per spec § "Shadows". */
+  --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.55);
 
   /* Fonts — next/font injects the actual CSS variables via the html tag. */
   --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;

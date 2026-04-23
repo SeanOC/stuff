@@ -13,6 +13,7 @@ import {
   type ParamValue,
 } from "@/lib/scad-params/parse";
 import { renderToStl } from "@/lib/wasm/render";
+import { parseRenderError } from "@/lib/wasm/render-error";
 
 const RENDER_DEBOUNCE_MS = 250;
 const HISTORY_MAX = 5;
@@ -93,14 +94,19 @@ export function useRenderer(input: RenderInput): UseRendererReturn {
         setState({ kind: "ready", result });
         setHistory((prev) => [result, ...prev].slice(0, HISTORY_MAX));
       } else {
+        const log = raw.stderr.join("\n");
+        // parseRenderError looks for the first ERROR: line in stderr
+        // and extracts a `line N` reference if present. Phase 2a
+        // (st-bg4) — earlier phases left line=null and message as the
+        // generic `errorMessage`. Fall back to those if stderr has
+        // nothing parseable (rare: WASM-level aborts).
+        const parsed = parseRenderError(log);
         setState({
           kind: "error",
           error: {
-            // Phase 1 can't point at a specific source line yet — the
-            // wasm bridge doesn't surface parser positions. 1c wires it.
-            line: null,
-            message: raw.errorMessage ?? "render failed",
-            log: raw.stderr.join("\n"),
+            line: parsed?.line ?? null,
+            message: parsed?.message ?? raw.errorMessage ?? "render failed",
+            log,
           },
         });
       }

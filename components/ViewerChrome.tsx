@@ -10,10 +10,10 @@
 // container (Fullscreen API). No R-reset — phase 3 global map owns it.
 
 import clsx from "clsx";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import StlViewer, { type StlViewerHandle } from "./StlViewer";
 import type { CameraPreset } from "@/hooks/useDetailState";
-import type { RenderState } from "@/hooks/useRenderer";
+import type { RenderError, RenderResult, RenderState } from "@/hooks/useRenderer";
 
 interface Props {
   state: RenderState;
@@ -24,6 +24,12 @@ interface Props {
   toggleGrid: () => void;
   toggleDims: () => void;
   downloadSlot?: React.ReactNode;
+  /**
+   * Ring buffer of recent successful renders, most-recent first. When
+   * an error occurs the most recent is kept visible (dimmed) behind
+   * the error strip — per spec § "Loading / Error / Empty".
+   */
+  history?: RenderResult[];
 }
 
 const PRESETS: readonly CameraPreset[] = ["top", "front", "iso"] as const;
@@ -37,9 +43,22 @@ export function ViewerChrome({
   toggleGrid,
   toggleDims,
   downloadSlot,
+  history = [],
 }: Props) {
   const sectionRef = useRef<HTMLElement>(null);
   const viewerContainerRef = useRef<HTMLDivElement>(null);
+  const [logOpen, setLogOpen] = useState(false);
+
+  // Close the log modal whenever the error clears (render succeeded or
+  // state transitioned back to loading/idle). Otherwise the modal would
+  // hang around showing stale log text.
+  useEffect(() => {
+    if (state.kind !== "error" && logOpen) setLogOpen(false);
+  }, [state.kind, logOpen]);
+
+  // Last-good STL shown dimmed behind the error strip. Empty when the
+  // error happened before a single successful render.
+  const lastGood = state.kind === "error" ? history[0] : null;
 
   // Drive the StlViewer camera via the __stlViewer DOM debug handle —
   // 1c extends it with setCameraPreset so tabs and the number-key
@@ -100,12 +119,17 @@ export function ViewerChrome({
           <ViewerPlaceholder>rendering…</ViewerPlaceholder>
         )}
         {state.kind === "idle" && <ViewerPlaceholder>idle</ViewerPlaceholder>}
-        {state.kind === "error" && (
+        {state.kind === "error" && lastGood && (
+          // Keep the last good render painted so the user can still see
+          // what they were tweaking; overlay dims it to signal "stale".
+          <>
+            <StlViewer stl={lastGood.stlBytes} />
+            <div className="pointer-events-none absolute inset-0 bg-bg/70" />
+          </>
+        )}
+        {state.kind === "error" && !lastGood && (
           <ViewerPlaceholder tone="error">
             <div className="font-semibold">render failed</div>
-            <pre className="mt-8 max-w-[560px] overflow-auto whitespace-pre-wrap font-mono text-11">
-              {state.error.message}
-            </pre>
           </ViewerPlaceholder>
         )}
 
@@ -114,8 +138,16 @@ export function ViewerChrome({
         <ViewPresetTabs camera={camera} onPick={chooseCamera} />
 
         {showDims && <DimsPlaceholder />}
+
+        <ErrorStrip
+          error={state.kind === "error" ? state.error : null}
+          onViewLog={() => setLogOpen(true)}
+        />
       </div>
       <StatStrip state={state} downloadSlot={downloadSlot} />
+      {logOpen && state.kind === "error" && (
+        <ErrorLogModal log={state.error.log} onClose={() => setLogOpen(false)} />
+      )}
     </section>
   );
 }
@@ -293,6 +325,103 @@ function Stat({ label, value }: { label: string; value: string }) {
     <div className="flex items-baseline gap-4">
       <span className="text-text-mute">{label}</span>
       <span className="text-text">{value}</span>
+    </div>
+  );
+}
+
+function ErrorStrip({
+  error,
+  onViewLog,
+}: {
+  error: RenderError | null;
+  onViewLog: () => void;
+}) {
+  // The strip "slides in" per spec § "Error": translate the whole row
+  // up from below the viewer's bottom edge. Keeps the DOM mounted so
+  // the transition plays both directions (error → ready also fades).
+  const shown = error != null;
+  return (
+    <div
+      role="alert"
+      data-testid="error-strip"
+      aria-hidden={!shown}
+      className={clsx(
+        "pointer-events-none absolute inset-x-0 bottom-0 z-10",
+        "flex items-center gap-12 border-t border-red bg-red-tint px-12 py-8",
+        "font-mono text-11 transition-transform duration-200 ease-out",
+        shown ? "translate-y-0" : "translate-y-full",
+      )}
+    >
+      {shown && (
+        <>
+          <span className="shrink-0 font-semibold text-red">error</span>
+          {error.line != null && (
+            <span className="shrink-0 text-text-dim">line {error.line}</span>
+          )}
+          <span className="flex-1 truncate text-text">{error.message}</span>
+          <button
+            type="button"
+            onClick={onViewLog}
+            className="pointer-events-auto shrink-0 text-accent hover:underline"
+          >
+            view full log
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+function ErrorLogModal({
+  log,
+  onClose,
+}: {
+  log: string;
+  onClose: () => void;
+}) {
+  // Close on Escape; also close when the backdrop (not the dialog body)
+  // is clicked. Dialog uses Caliper's modal radius + shadow per spec.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      data-testid="error-log-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Render error log"
+      onClick={onClose}
+      className="fixed inset-0 z-20 flex items-center justify-center bg-bg/60 p-24"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className={clsx(
+          "max-h-full w-full max-w-[720px] overflow-hidden",
+          "rounded-6 border border-line bg-panel shadow-modal",
+        )}
+      >
+        <div className="flex items-center justify-between border-b border-line px-14 py-8">
+          <span className="font-mono text-11 uppercase tracking-wide text-text-dim">
+            Render log
+          </span>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close render log"
+            className="font-mono text-11 text-text-dim hover:text-text"
+          >
+            ✕
+          </button>
+        </div>
+        <pre className="max-h-[60vh] overflow-auto whitespace-pre-wrap px-14 py-12 font-mono text-11 text-text">
+          {log || "(empty)"}
+        </pre>
+      </div>
     </div>
   );
 }
