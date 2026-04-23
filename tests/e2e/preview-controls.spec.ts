@@ -49,3 +49,42 @@ test("STL preview responds to wheel (camera moves)", async ({ page }) => {
   test.skip(moved < 1e-6, "headless wheel event was not delivered to the canvas");
   expect(moved).toBeGreaterThan(1e-6);
 });
+
+// View-preset tabs route through StlViewer's __stlViewer.setCameraPreset
+// so clicking "top" should move the camera onto the +Z axis above the
+// model center (x≈0, y≈0 relative to target, z>0).
+test("clicking the 'top' view preset reorients the camera to +Z", async ({ page }) => {
+  await page.goto("/models/popcorn-kernel");
+  await expect(page.getByText(/\d+ms · [\d.]+kb/).first()).toBeVisible({
+    timeout: 60_000,
+  });
+
+  const canvas = page.locator("canvas").first();
+  await expect(canvas).toBeVisible();
+
+  await page.getByRole("tab", { name: "top" }).click();
+  await page.waitForTimeout(50);
+
+  const state = await canvas.evaluate((el: HTMLCanvasElement) => {
+    const h = (el as unknown as {
+      __stlViewer?: {
+        camera: { position: { x: number; y: number; z: number } };
+        controls: { target: { x: number; y: number; z: number } };
+      };
+    }).__stlViewer;
+    if (!h) return null;
+    const p = h.camera.position;
+    const t = h.controls.target;
+    return {
+      dx: p.x - t.x,
+      dy: p.y - t.y,
+      dz: p.z - t.z,
+    };
+  });
+  expect(state, "StlViewer handle missing after clicking top preset").not.toBeNull();
+  // Direction from target to camera is +Z for "top". Other axes are
+  // essentially zero — tolerate floating point, not a full-on drift.
+  expect(state!.dz).toBeGreaterThan(0);
+  expect(Math.abs(state!.dx)).toBeLessThan(1e-3);
+  expect(Math.abs(state!.dy)).toBeLessThan(1e-3);
+});

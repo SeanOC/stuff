@@ -18,6 +18,14 @@ interface Props {
   stl: Uint8Array;
 }
 
+export type CameraPreset = "top" | "front" | "iso";
+
+export interface StlViewerHandle {
+  camera: THREE.PerspectiveCamera;
+  controls: OrbitControls;
+  setCameraPreset(preset: CameraPreset): void;
+}
+
 export default function StlViewer({ stl }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<SceneHandle | null>(null);
@@ -47,13 +55,7 @@ export default function StlViewer({ stl }: Props) {
   return (
     <div
       ref={containerRef}
-      style={{
-        height: 480,
-        background: "#161b22",
-        border: "1px solid #30363d",
-        borderRadius: 4,
-        overflow: "hidden",
-      }}
+      className="h-full w-full overflow-hidden bg-panel2"
     />
   );
 }
@@ -92,9 +94,32 @@ function bootstrapScene(container: HTMLDivElement): SceneHandle {
   // Expose camera/controls on the canvas for e2e tests (see
   // tests/e2e/preview-controls.spec.ts). Cheap — single property — and
   // keeps the component API unchanged. Not part of the public contract.
-  (renderer.domElement as unknown as { __stlViewer: unknown }).__stlViewer = {
+  // Extended in 1c with setCameraPreset so ViewerChrome's view-tabs can
+  // drive the camera without a typed imperative handle (phase-2 job).
+  function setCameraPreset(preset: CameraPreset) {
+    const center = controls.target.clone();
+    const dist = camera.position.distanceTo(center);
+    // Direction vectors in the Z-up world. "front" looks back toward -Y,
+    // so the camera sits on +Y; "top" sits on +Z; "iso" matches the
+    // initial fitCameraToBbox orientation.
+    const dir =
+      preset === "top"
+        ? new THREE.Vector3(0, 0, 1)
+        : preset === "front"
+          ? new THREE.Vector3(0, 1, 0)
+          : new THREE.Vector3(1, 1, 1).normalize();
+    camera.position.copy(center).addScaledVector(dir, dist);
+    camera.up.set(0, 0, 1);
+    camera.lookAt(center);
+    camera.updateProjectionMatrix();
+    controls.update();
+    renderer.render(scene, camera);
+  }
+
+  (renderer.domElement as unknown as { __stlViewer: StlViewerHandle }).__stlViewer = {
     camera,
     controls,
+    setCameraPreset,
   };
 
   let mesh: THREE.Mesh | null = null;
