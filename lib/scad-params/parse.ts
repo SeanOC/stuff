@@ -2,24 +2,30 @@
 //
 // Convention:
 //   // === User-tunable parameters ===
-//   can_diameter = 46;     // @param number min=20 max=200 step=1 unit=mm group=geometry label="Can diameter"
-//   front_open  = true;    // @param boolean label="Open front?"
-//   variant     = "round"; // @param enum choices=round|square|hex
+//   can_diameter = 46;     // @param number min=20 max=200 step=1 unit=mm group=geometry short=d label="Can diameter"
+//   front_open  = true;    // @param boolean short=fo label="Open front?"
+//   variant     = "round"; // @param enum choices=round|square|hex short=v
 //   ...
+//   // @preset id="46mm-cylinder" label="46mm cylinder" can_diameter=46 clearance=0.25
 //   // === Anything else ===     <-- parser stops here
 //
-// `unit=` and `group=` are optional free-form annotations. `unit` is a
-// display-only string shown next to the control (e.g. "mm", "deg", "ms").
-// `group=` is a slug used to bucket params in the UI — first-occurrence
-// order is the display order of groups.
+// `unit=` and `group=` are optional display hints. `short=` names the
+// URL-short alias for the share encoder (phase 3); if absent, the
+// parser defaults `shortKey` to `name` so every Param has a non-null
+// `shortKey: string` post-parse. Uniqueness is validated; collisions
+// throw.
 //
-// Pure function, no fs/io. Every public type is exported so the form
-// builder and the WASM driver can share param shapes.
+// `@preset` lines are collected into `Preset[]` alongside params.
+// Values are coerced to the declared param's kind at parse time;
+// unknown or type-mismatched keys throw (caught by the CI invariant).
+//
+// Pure function, no fs/io.
 
 export type ParamType = "number" | "integer" | "boolean" | "string" | "enum";
 
 export interface ParamBase {
   name: string;
+  shortKey: string;
   label?: string;
   group?: string;
   unit?: string;
@@ -51,30 +57,48 @@ export interface EnumParam extends ParamBase {
 
 export type Param = NumberParam | BooleanParam | StringParam | EnumParam;
 
+export type ParamValue = number | boolean | string;
+
+export interface Preset {
+  id: string;
+  label: string;
+  values: Record<string, ParamValue>;
+}
+
 export interface ParseResult {
   params: Param[];
+  presets: Preset[];
   warnings: string[];
 }
 
 const SECTION_RE = /^\s*\/\/\s*={2,}\s*(.*?)\s*={2,}\s*$/;
 const USER_TUNABLE_RE = /user[-_ ]tunable/i;
-// Capture: name, default-expression, trailing comment
 const PARAM_LINE_RE =
   /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([^;]+);\s*\/\/\s*(.*)$/;
 const ANNOTATION_RE = /^@param\s+(\w+)\b\s*(.*)$/;
+const PRESET_LINE_RE = /^\s*\/\/\s*@preset\s+(.*)$/;
 
 export function parseScadParams(source: string): ParseResult {
   const lines = source.split(/\r?\n/);
   const params: Param[] = [];
+  const presetLines: Array<{ attrText: string; lineNo: number }> = [];
   const warnings: string[] = [];
+
+  // @preset lines can live anywhere in the file — a convention some
+  // models use is a single cluster after the param block. Scan in a
+  // separate pass so the param-block section logic doesn't need to
+  // know about presets.
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(PRESET_LINE_RE);
+    if (m) presetLines.push({ attrText: m[1], lineNo: i + 1 });
+  }
 
   let inBlock = false;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+
     const section = line.match(SECTION_RE);
     if (section) {
-      // A `// === ... ===` line either starts the user-tunable block
-      // or terminates it (any subsequent === ends the section).
       if (!inBlock && USER_TUNABLE_RE.test(section[1])) {
         inBlock = true;
       } else if (inBlock) {
@@ -88,7 +112,7 @@ export function parseScadParams(source: string): ParseResult {
     if (!m) continue;
     const [, name, rawDefault, comment] = m;
     const ann = comment.trim().match(ANNOTATION_RE);
-    if (!ann) continue; // line has a comment but no @param — silently skip
+    if (!ann) continue;
 
     const [, typeKw, attrText] = ann;
     const attrs = parseAttrs(attrText);
@@ -103,7 +127,27 @@ export function parseScadParams(source: string): ParseResult {
     if (param) params.push(param);
   }
 
-  return { params, warnings };
+  // Uniqueness of shortKey across all params. Collisions are author
+  // bugs, not user input — throw rather than warn so CI catches them.
+  const seen = new Map<string, string>();
+  for (const p of params) {
+    const prior = seen.get(p.shortKey);
+    if (prior != null && prior !== p.name) {
+      throw new Error(
+        `duplicate shortKey "${p.shortKey}" on ${p.name} (also on ${prior})`,
+      );
+    }
+    seen.set(p.shortKey, p.name);
+  }
+
+  const paramsByName = new Map(params.map((p) => [p.name, p]));
+  const presets: Preset[] = [];
+  for (const { attrText, lineNo } of presetLines) {
+    const preset = buildPreset(attrText, paramsByName, lineNo, warnings);
+    if (preset) presets.push(preset);
+  }
+
+  return { params, presets, warnings };
 }
 
 // ---- internal helpers --------------------------------------------------
@@ -173,11 +217,78 @@ function buildParam(args: {
   }
 }
 
-// Extract common ParamBase fields (name + optional label/group/unit) from
-// the attribute map. Builds the object with only set keys so `toEqual`
-// comparisons against sparse test fixtures keep working.
+function buildPreset(
+  attrText: string,
+  paramsByName: Map<string, Param>,
+  lineNo: number,
+  warnings: string[],
+): Preset | null {
+  const attrs = parseAttrs(attrText);
+  const id = attrs.get("id");
+  const label = attrs.get("label");
+  if (!id) {
+    warnings.push(`line ${lineNo}: @preset missing id=`);
+    return null;
+  }
+  const values: Record<string, ParamValue> = {};
+  for (const [key, raw] of attrs) {
+    if (key === "id" || key === "label") continue;
+    const param = paramsByName.get(key);
+    if (!param) {
+      throw new Error(
+        `line ${lineNo}: @preset "${id}" references unknown param "${key}"`,
+      );
+    }
+    const coerced = coerceToParam(param, raw, id, lineNo);
+    values[key] = coerced;
+  }
+  return { id, label: label ?? id, values };
+}
+
+function coerceToParam(
+  param: Param,
+  raw: string,
+  presetId: string,
+  lineNo: number,
+): ParamValue {
+  switch (param.kind) {
+    case "number":
+    case "integer": {
+      const n = Number(raw);
+      if (!Number.isFinite(n)) {
+        throw new Error(
+          `line ${lineNo}: @preset "${presetId}" value for ${param.name} is not numeric: ${JSON.stringify(raw)}`,
+        );
+      }
+      return param.kind === "integer" ? Math.trunc(n) : n;
+    }
+    case "boolean": {
+      const lower = raw.toLowerCase();
+      if (lower !== "true" && lower !== "false") {
+        throw new Error(
+          `line ${lineNo}: @preset "${presetId}" value for ${param.name} must be true/false: ${JSON.stringify(raw)}`,
+        );
+      }
+      return lower === "true";
+    }
+    case "enum": {
+      if (!param.choices.includes(raw)) {
+        throw new Error(
+          `line ${lineNo}: @preset "${presetId}" value ${JSON.stringify(raw)} for ${param.name} not in choices [${param.choices.join(",")}]`,
+        );
+      }
+      return raw;
+    }
+    case "string":
+      return raw;
+  }
+}
+
+// Extract common ParamBase fields. shortKey is required post-parse —
+// defaults to the param name so every param has a canonical alias
+// even when the .scad file doesn't declare short=.
 function pickBaseAttrs(name: string, attrs: Map<string, string>): ParamBase {
-  const out: ParamBase = { name };
+  const out: ParamBase = { name, shortKey: attrs.get("short") ?? name };
   const label = attrs.get("label");
   const group = attrs.get("group");
   const unit = attrs.get("unit");
@@ -207,8 +318,6 @@ function unquote(s: string): string {
 }
 
 // ---- runtime helpers exported for the form ----------------------------
-
-export type ParamValue = number | boolean | string;
 
 /** Build a `name=value` dict of defaults for initializing form state. */
 export function defaultsOf(params: Param[]): Record<string, ParamValue> {

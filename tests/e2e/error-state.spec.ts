@@ -46,14 +46,14 @@ test.describe("error state", () => {
     await page.keyboard.press("Escape");
     await expect(modal).toBeHidden();
 
-    // Re-open; backdrop click closes it too.
+    // Re-open; backdrop click closes it too. Phase 3a (st-1j9)
+    // migrated ErrorLogModal to the shared <Modal>, which puts the
+    // click-to-close handler on the outer role="presentation"
+    // backdrop. Click there, not on the dialog body.
     await strip.getByRole("button", { name: /view full log/i }).click();
     const reopened = page.getByTestId("error-log-modal");
     await expect(reopened).toBeVisible();
-    // Click top-left of the backdrop — well clear of the dialog body.
-    const box = await reopened.boundingBox();
-    if (!box) throw new Error("modal has no bounding box");
-    await page.mouse.click(box.x + 10, box.y + 10);
+    await page.locator('[role="presentation"]').click({ position: { x: 5, y: 5 } });
     await expect(reopened).toBeHidden();
   });
 

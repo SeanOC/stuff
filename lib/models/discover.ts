@@ -8,7 +8,7 @@
 
 import fs from "node:fs/promises";
 import path from "node:path";
-import { parseScadParams, type Param } from "../scad-params/parse";
+import { parseScadParams, type Param, type Preset } from "../scad-params/parse";
 import { CATALOG } from "./catalog";
 
 const MODELS_DIR = path.resolve(process.cwd(), "models");
@@ -35,6 +35,8 @@ export interface ModelEntry {
 export interface ModelDetail extends ModelEntry {
   source: string;
   params: Param[];
+  /** Stock presets declared inline via `@preset` in the .scad source. */
+  presets: Preset[];
   warnings: string[];
 }
 
@@ -81,7 +83,7 @@ export async function loadModel(slug: string): Promise<ModelDetail | null> {
     if ((e as NodeJS.ErrnoException).code === "ENOENT") return null;
     throw e;
   }
-  const { params, warnings } = parseScadParams(source);
+  const { params, presets, warnings } = parseScadParams(source);
   const catalogEntry = CATALOG[stem];
   if (!catalogEntry) {
     throw new Error(
@@ -99,6 +101,7 @@ export async function loadModel(slug: string): Promise<ModelDetail | null> {
     blurb: catalogEntry.blurb,
     source,
     params,
+    presets,
     warnings,
   };
 }

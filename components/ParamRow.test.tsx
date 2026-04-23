@@ -15,6 +15,7 @@ describe("ParamRow number input", () => {
     const param: NumberParam = {
       kind: "number",
       name: "can_diameter",
+      shortKey: "d",
       label: "Item diameter",
       unit: "mm",
       default: 70,

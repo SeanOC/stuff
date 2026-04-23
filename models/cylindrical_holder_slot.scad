@@ -28,18 +28,18 @@ use <QuackWorks/Modules/multiconnectSlotDesignBOSL.scad>
 $fn = 64;
 
 // === User-tunable parameters ===
-can_diameter          = 70;    // @param number min=20 max=200 step=0.5 unit=mm group=item label="Item diameter"
-clearance             = 0.5;   // @param number min=0 max=2 step=0.05 unit=mm group=item label="Slip clearance"
-ring_height           = 40;    // @param number min=5 max=200 step=1 unit=mm group=ring label="Ring height"
-wall                  = 3;     // @param number min=1 max=10 step=0.5 unit=mm group=ring label="Wall thickness"
-cup_depth             = 5;     // @param number min=0 max=30 step=0.5 unit=mm group=ring label="Drip-cup depth"
+can_diameter          = 70;    // @param number min=20 max=200 step=0.5 unit=mm group=item short=d label="Item diameter"
+clearance             = 0.5;   // @param number min=0 max=2 step=0.05 unit=mm group=item short=c label="Slip clearance"
+ring_height           = 40;    // @param number min=5 max=200 step=1 unit=mm group=ring short=rh label="Ring height"
+wall                  = 3;     // @param number min=1 max=10 step=0.5 unit=mm group=ring short=w label="Wall thickness"
+cup_depth             = 5;     // @param number min=0 max=30 step=0.5 unit=mm group=ring short=cd label="Drip-cup depth"
 cup_floor             = 2;     // drip-cup floor thickness (mm)
-front_opening_deg     = 120;   // @param number min=0 max=270 step=5 unit=deg group=ring label="Front opening arc"
+front_opening_deg     = 120;   // @param number min=0 max=270 step=5 unit=deg group=ring short=fo label="Front opening arc"
 
 // Multiconnect slot backer
-slot_count            = 2;     // @param integer min=1 max=6 group=mount label="Slot count"
+slot_count            = 2;     // @param integer min=1 max=6 group=mount short=sc label="Slot count"
 slot_spacing_mm       = 25;    // Multiconnect pitch (25mm standard)
-slot_region_height    = 75;    // @param number min=25 max=150 step=5 unit=mm group=mount label="Slot region height"
+slot_region_height    = 75;    // @param number min=25 max=150 step=5 unit=mm group=mount short=sh label="Slot region height"
 top_band_height       = 5;     // solid band above topmost slot mouth
 backer_thickness      = 6.5;   // library default; accommodates slot depth
 
@@ -49,10 +49,19 @@ backer_thickness      = 6.5;   // library default; accommodates slot depth
 // bottom chamfer dropped — st-skn).
 outer_chamfer         = 1.0;
 inner_chamfer         = 0.5;
-gusset_back_w         = 28;    // @param number min=5 max=60 step=1 unit=mm group=gusset label="Gusset back width"
-gusset_front_w        = 10;    // @param number min=2 max=40 step=1 unit=mm group=gusset label="Gusset front width"
-gusset_depth          = 6;     // @param number min=2 max=20 step=0.5 unit=mm group=gusset label="Gusset depth"
-gusset_bottom_chamfer = true;  // @param boolean group=gusset label="Chamfer gusset bottom (false = max bed adhesion)"
+gusset_back_w         = 28;    // @param number min=5 max=60 step=1 unit=mm group=gusset short=gb label="Gusset back width"
+gusset_front_w        = 10;    // @param number min=2 max=40 step=1 unit=mm group=gusset short=gf label="Gusset front width"
+gusset_depth          = 6;     // @param number min=2 max=20 step=0.5 unit=mm group=gusset short=gd label="Gusset depth"
+gusset_bottom_chamfer = true;  // @param boolean group=gusset short=gc label="Chamfer gusset bottom (false = max bed adhesion)"
+
+// Historic presets — four configurations that existed as separate
+// .scad files before st-0br consolidated them. Each was
+// field-tested; keep these as the stock roster the detail page
+// surfaces in the left rail. (st-1j9)
+// @preset id="42mm-cylinder"  label="42mm cylinder"  can_diameter=42 clearance=0.25 ring_height=50 gusset_back_w=20 gusset_front_w=8  gusset_depth=6  gusset_bottom_chamfer=true
+// @preset id="46mm-cylinder"  label="46mm cylinder"  can_diameter=46 clearance=0.25 ring_height=50 gusset_back_w=46 gusset_front_w=30 gusset_depth=10 gusset_bottom_chamfer=false
+// @preset id="70mm-spraycan"  label="70mm spraycan"  can_diameter=70 clearance=0.75 ring_height=35 gusset_back_w=28 gusset_front_w=10 gusset_depth=6  gusset_bottom_chamfer=true
+// @preset id="77mm-spraycan"  label="77mm spraycan"  can_diameter=77 clearance=0.75 ring_height=35 gusset_back_w=32 gusset_front_w=10 gusset_depth=6  gusset_bottom_chamfer=true
 
 // === Derived ===
 ring_id       = can_diameter + 2 * clearance;

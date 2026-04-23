@@ -142,5 +142,66 @@ class TestFailureFormat:
         assert f.format() == "[footprint] base_d=180 > base_w=100"
 
 
+class TestPresetInvariant:
+    def _params(self):
+        return {
+            "can_d": {"kind": "number", "default": 46.0, "min": 20, "max": 200},
+            "rows": {"kind": "integer", "default": 2},
+            "open": {"kind": "boolean", "default": True},
+            "shape": {"kind": "enum", "default": "round", "choices": ["round", "square"]},
+        }
+
+    def test_ok_preset_produces_no_failures(self):
+        src = '// @preset id="default" label="Default" can_d=46 rows=2 open=true shape="round"'
+        ctx = _ctx(source=src, params=self._params())
+        failures = [f for f in run_builtins(ctx) if f.kind == "preset"]
+        assert failures == []
+
+    def test_unknown_param_key_fails(self):
+        src = '// @preset id="bad" label="Bad" made_up_param=5'
+        failures = [
+            f for f in run_builtins(_ctx(source=src, params=self._params()))
+            if f.kind == "preset"
+        ]
+        assert len(failures) == 1
+        assert 'unknown param "made_up_param"' in failures[0].detail
+
+    def test_type_mismatch_fails(self):
+        src = '// @preset id="bad" label="Bad" can_d=not_a_number'
+        failures = [
+            f for f in run_builtins(_ctx(source=src, params=self._params()))
+            if f.kind == "preset"
+        ]
+        assert len(failures) == 1
+        assert "not numeric" in failures[0].detail
+
+    def test_enum_value_out_of_choices_fails(self):
+        src = '// @preset id="hex" label="Hex" shape="hex"'
+        failures = [
+            f for f in run_builtins(_ctx(source=src, params=self._params()))
+            if f.kind == "preset"
+        ]
+        assert len(failures) == 1
+        assert "not in choices" in failures[0].detail
+
+    def test_boolean_non_true_false_fails(self):
+        src = '// @preset id="bad" label="Bad" open=maybe'
+        failures = [
+            f for f in run_builtins(_ctx(source=src, params=self._params()))
+            if f.kind == "preset"
+        ]
+        assert len(failures) == 1
+        assert "true/false" in failures[0].detail
+
+    def test_missing_id_fails(self):
+        src = '// @preset label="Nameless" can_d=46'
+        failures = [
+            f for f in run_builtins(_ctx(source=src, params=self._params()))
+            if f.kind == "preset"
+        ]
+        assert len(failures) == 1
+        assert "missing id" in failures[0].detail
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

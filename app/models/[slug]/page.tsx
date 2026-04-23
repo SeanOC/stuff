@@ -24,9 +24,11 @@ export default async function ModelPage({ params }: Props) {
     <DetailPage
       model={{
         title: model.title,
+        slug: model.slug,
         modelPath: model.modelPath,
         source: model.source,
         params: model.params,
+        presets: model.presets,
         warnings: model.warnings,
       }}
     />

@@ -1,28 +1,32 @@
 "use client";
 
-// 3-column detail shell. 240px source quick-jump + render log ·
+// 3-column detail shell. 240px source quick-jump + preset list + render log ·
 // flex viewer with grid overlay, axes, view tabs, and 36px stat strip ·
 // 360px grouped param rail. Collapses to a single column below the xl
 // breakpoint (1200px).
 
 import Link from "next/link";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 import { ParamRail } from "./ParamRail";
 import { ViewerChrome } from "./ViewerChrome";
 import { useDetailState } from "@/hooks/useDetailState";
 import {
   useRenderer,
-  type RenderResult,
   type RenderState,
 } from "@/hooks/useRenderer";
-import type { Param, ParamValue } from "@/lib/scad-params/parse";
+import { useShortcut } from "@/hooks/useShortcut";
+import { useUI } from "@/contexts/UIContext";
+import type { Param, ParamValue, Preset } from "@/lib/scad-params/parse";
+import type { RenderResult } from "@/hooks/useRenderer";
 
 export interface DetailPageModel {
   title: string;
+  slug: string;
   modelPath: string;
   source: string;
   params: Param[];
+  presets: Preset[];
   warnings: string[];
 }
 
@@ -31,19 +35,59 @@ interface Props {
 }
 
 export default function DetailPage({ model }: Props) {
-  const detail = useDetailState(model.params);
+  const detail = useDetailState({
+    params: model.params,
+    stockPresets: model.presets,
+    slug: model.slug,
+  });
   const render = useRenderer({
     modelPath: model.modelPath,
     source: model.source,
     params: model.params,
     values: detail.state.params,
   });
+  const { modal } = useUI();
+
+  const downloadRef = useRef<() => void>(() => {});
+
+  // ⌘E downloads the STL from anywhere on the detail page. Gates on
+  // render.state === "ready" so we don't POST an empty body before
+  // the first render completes.
+  useShortcut(
+    "$mod+e",
+    () => {
+      if (render.state.kind === "ready") downloadRef.current();
+    },
+    { enabled: modal.kind === "none" },
+  );
+
+  // ⌘1–⌘9 pick a preset by flat-list index (stock first, then user).
+  useShortcut("$mod+1", () => detail.loadPresetByIndex(1), { enabled: modal.kind === "none" });
+  useShortcut("$mod+2", () => detail.loadPresetByIndex(2), { enabled: modal.kind === "none" });
+  useShortcut("$mod+3", () => detail.loadPresetByIndex(3), { enabled: modal.kind === "none" });
+  useShortcut("$mod+4", () => detail.loadPresetByIndex(4), { enabled: modal.kind === "none" });
+  useShortcut("$mod+5", () => detail.loadPresetByIndex(5), { enabled: modal.kind === "none" });
+  useShortcut("$mod+6", () => detail.loadPresetByIndex(6), { enabled: modal.kind === "none" });
+  useShortcut("$mod+7", () => detail.loadPresetByIndex(7), { enabled: modal.kind === "none" });
+  useShortcut("$mod+8", () => detail.loadPresetByIndex(8), { enabled: modal.kind === "none" });
+  useShortcut("$mod+9", () => detail.loadPresetByIndex(9), { enabled: modal.kind === "none" });
+
+  // ⌘S opens the inline save-preset row in the left rail. No modal.
+  const [saveRowOpen, setSaveRowOpen] = useState(false);
+  useShortcut(
+    "$mod+s",
+    () => setSaveRowOpen(true),
+    { enabled: modal.kind === "none" },
+  );
 
   const downloadButton = (
     <DownloadButton
       modelPath={model.modelPath}
       values={detail.state.params}
       canDownload={render.state.kind === "ready"}
+      registerHandler={(fn) => {
+        downloadRef.current = fn;
+      }}
     />
   );
 
@@ -51,9 +95,7 @@ export default function DetailPage({ model }: Props) {
   // top bar from AppShell) so the viewer never leaves the visible area.
   // The grid's three columns each get min-h-0 so they can shrink below
   // content size, and the two rails scroll internally while the viewer
-  // stays fixed. Below 1200px we intentionally fall back to the natural
-  // single-column scroll — phase 4 owns the mobile bottom-sheet design.
-  // (st-fl4)
+  // stays fixed. (st-fl4)
   return (
     <div
       data-testid="detail-root"
@@ -70,6 +112,14 @@ export default function DetailPage({ model }: Props) {
             history={render.history}
             state={render.state}
             warnings={model.warnings}
+            presets={detail.allPresets}
+            activePresetId={detail.state.activePresetId}
+            modified={detail.state.modified}
+            onLoadPreset={detail.loadPreset}
+            onDeletePreset={detail.deleteUserPreset}
+            onSavePreset={detail.saveAsPreset}
+            saveRowOpen={saveRowOpen}
+            setSaveRowOpen={setSaveRowOpen}
           />
         </aside>
         <div className="min-h-0 min-[1200px]:overflow-hidden">
@@ -127,11 +177,27 @@ function DetailLeftRail({
   history,
   state,
   warnings,
+  presets,
+  activePresetId,
+  modified,
+  onLoadPreset,
+  onDeletePreset,
+  onSavePreset,
+  saveRowOpen,
+  setSaveRowOpen,
 }: {
   modelPath: string;
   history: RenderResult[];
   state: RenderState;
   warnings: string[];
+  presets: Array<{ id: string; label: string; isUser: boolean }>;
+  activePresetId: string | null;
+  modified: boolean;
+  onLoadPreset: (id: string) => void;
+  onDeletePreset: (id: string) => void;
+  onSavePreset: (label: string) => void;
+  saveRowOpen: boolean;
+  setSaveRowOpen: (open: boolean) => void;
 }) {
   return (
     <div className="p-10">
@@ -141,6 +207,74 @@ function DetailLeftRail({
       <div className="mt-4 block break-all font-mono text-10 text-text-dim">
         {modelPath}
       </div>
+
+      <div className="mt-18 flex items-center justify-between">
+        <span className="font-mono text-10 uppercase tracking-wide text-text-mute">
+          Presets
+        </span>
+        <button
+          type="button"
+          onClick={() => setSaveRowOpen(true)}
+          className="font-mono text-10 text-text-dim hover:text-text"
+          aria-label="Save current params as preset"
+        >
+          + save
+        </button>
+      </div>
+      {saveRowOpen && (
+        <SavePresetRow
+          onSave={(label) => {
+            onSavePreset(label);
+            setSaveRowOpen(false);
+          }}
+          onCancel={() => setSaveRowOpen(false)}
+        />
+      )}
+      <ul
+        data-testid="preset-list"
+        className="mt-4 flex flex-col gap-2 font-mono text-11"
+      >
+        {presets.length === 0 && !saveRowOpen && (
+          <li className="text-text-mute">—</li>
+        )}
+        {presets.map((p) => (
+          <li
+            key={p.id}
+            className={clsx(
+              "flex items-center justify-between gap-6 rounded-3 border border-transparent px-6 py-2",
+              activePresetId === p.id
+                ? "border-accent-line bg-accent-soft text-text"
+                : "text-text-dim hover:border-line hover:text-text",
+            )}
+          >
+            <button
+              type="button"
+              onClick={() => onLoadPreset(p.id)}
+              data-preset-id={p.id}
+              className="flex-1 truncate text-left"
+            >
+              {p.label}
+              {activePresetId === p.id && modified && (
+                <span
+                  data-testid="modified-dot"
+                  aria-label="modified since preset"
+                  className="ml-6 inline-block h-2 w-2 rounded-full bg-warn"
+                />
+              )}
+            </button>
+            {p.isUser && (
+              <button
+                type="button"
+                onClick={() => onDeletePreset(p.id)}
+                aria-label={`Delete preset ${p.label}`}
+                className="text-text-mute hover:text-red"
+              >
+                ✕
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
 
       <div className="mt-18 font-mono text-10 uppercase tracking-wide text-text-mute">
         Render log
@@ -183,18 +317,78 @@ function DetailLeftRail({
   );
 }
 
+function SavePresetRow({
+  onSave,
+  onCancel,
+}: {
+  onSave: (label: string) => void;
+  onCancel: () => void;
+}) {
+  const [label, setLabel] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  const submit = useCallback(() => {
+    if (!label.trim()) return;
+    onSave(label);
+  }, [label, onSave]);
+
+  return (
+    <div className="mt-4 flex items-center gap-4">
+      <input
+        ref={inputRef}
+        data-testid="save-preset-input"
+        value={label}
+        onChange={(e) => setLabel(e.target.value)}
+        placeholder="Preset name…"
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            submit();
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            onCancel();
+          }
+        }}
+        className="min-w-0 flex-1 rounded-3 border border-line bg-panel2 px-6 py-2 font-mono text-11 text-text"
+      />
+      <button
+        type="button"
+        onClick={submit}
+        className="rounded-3 border border-accent-line bg-accent px-6 py-2 font-mono text-10 text-accent-ink"
+      >
+        save
+      </button>
+      <button
+        type="button"
+        onClick={onCancel}
+        aria-label="Cancel save"
+        className="font-mono text-10 text-text-mute hover:text-text"
+      >
+        ✕
+      </button>
+    </div>
+  );
+}
+
 function DownloadButton({
   modelPath,
   values,
   canDownload,
+  registerHandler,
 }: {
   modelPath: string;
   values: Record<string, ParamValue>;
   canDownload: boolean;
+  registerHandler: (fn: () => void) => void;
 }) {
   const [exportState, setExportState] = useState<ExportState>({ kind: "idle" });
 
-  async function handleDownload() {
+  const handleDownload = useCallback(async () => {
+    if (!canDownload) return;
     setExportState({ kind: "exporting" });
     try {
       const res = await fetch("/api/export", {
@@ -231,7 +425,13 @@ function DownloadButton({
         message: e instanceof Error ? e.message : String(e),
       });
     }
-  }
+  }, [canDownload, modelPath, values]);
+
+  // Register the latest handler so the ⌘E shortcut in DetailPage has a
+  // stable reference. Avoids threading a ref down through props.
+  useEffect(() => {
+    registerHandler(handleDownload);
+  }, [handleDownload, registerHandler]);
 
   return (
     <div className="flex items-center gap-8">

@@ -6,10 +6,18 @@
 // DOM sibling paints on top — so the grid must come first.
 // Also covers the error-state UI (st-bg4).
 
-import { cleanup, fireEvent, render } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render as rtlRender } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ViewerChrome } from "./ViewerChrome";
+import { UIProvider } from "@/contexts/UIContext";
+import type { ReactElement } from "react";
 import type { RenderResult, RenderState } from "@/hooks/useRenderer";
+
+// ViewerChrome consumes UIContext (modal arbitration, errorLog dispatch).
+// Every test renders inside a fresh UIProvider so the hook doesn't throw.
+function render(ui: ReactElement) {
+  return rtlRender(<UIProvider>{ui}</UIProvider>);
+}
 
 // StlViewer touches WebGL on mount via three.js. jsdom has no WebGL.
 // The stacking assertion only cares about DOM order, so stub the
@@ -40,7 +48,18 @@ const commonProps = {
   onRefresh: () => {},
 };
 
-afterEach(() => cleanup());
+// The Modal component portals into #modal-root. Provide that target
+// for every test; jsdom doesn't ship one by default.
+beforeEach(() => {
+  const root = document.createElement("div");
+  root.id = "modal-root";
+  document.body.appendChild(root);
+});
+
+afterEach(() => {
+  cleanup();
+  document.getElementById("modal-root")?.remove();
+});
 
 describe("ViewerChrome grid/model stacking", () => {
   it("renders GridOverlay before StlViewer in DOM order (grid is behind)", () => {
@@ -129,8 +148,13 @@ describe("ViewerChrome error state (st-bg4)", () => {
     const modal = getByTestId("error-log-modal");
     expect(modal.textContent).toContain("Parser error");
 
-    // Click the backdrop (the modal wrapper itself, not the dialog body).
-    fireEvent.click(modal);
+    // The shared <Modal> puts its click-to-close handler on the
+    // outer `role="presentation"` backdrop. Clicking the inner
+    // dialog body (which carries the testid) deliberately does
+    // NOT close the modal.
+    const backdrop = document.querySelector('[role="presentation"]') as HTMLElement;
+    expect(backdrop).not.toBeNull();
+    fireEvent.click(backdrop);
     expect(queryByTestId("error-log-modal")).toBeNull();
   });
 
@@ -166,11 +190,12 @@ describe("ViewerChrome states (st-psn)", () => {
       />,
     );
     const section = getByLabelText("3D preview");
-    // React's synthetic KeyboardEvent is happy with a keydown dispatch.
-    section.focus();
-    section.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
-    );
+    // fireEvent.focus dispatches through React's synthetic-event
+    // system, which is what updates `focusInViewer` (the shortcut gate).
+    // The raw `section.focus()` call used to flip tabIndex but not
+    // React's state, so the gate stayed closed and Enter no-op'd.
+    fireEvent.focus(section);
+    fireEvent.keyDown(window, { key: "Enter" });
     expect(onRefresh).toHaveBeenCalledTimes(1);
   });
 

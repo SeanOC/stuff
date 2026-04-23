@@ -47,9 +47,11 @@ export default async function BrokenSyntaxPage() {
     <DetailPage
       model={{
         title: "broken syntax fixture (test-only)",
+        slug: "broken-syntax",
         modelPath: "tests/fixtures/models/broken_syntax.scad",
         source,
         params: [],
+        presets: [],
         warnings: [],
       }}
     />

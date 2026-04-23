@@ -90,6 +90,7 @@ def run_builtins(ctx: dict[str, Any]) -> list[Failure]:
     failures.extend(_check_watertight(ctx))
     failures.extend(_check_triangle_count(ctx))
     failures.extend(_check_anchor_bbox(ctx))
+    failures.extend(_check_presets(ctx))
     return failures
 
 
@@ -148,6 +149,80 @@ def _check_anchor_bbox(ctx: dict[str, Any]) -> list[Failure]:
                 f"PRINT_ANCHOR_BBOX {a:.2f}mm (> {_ANCHOR_BBOX_TOLERANCE_MM}mm tol)",
             ))
     return failures
+
+
+_PRESET_RE = re.compile(r"^\s*//\s*@preset\s+(.*)$")
+_ATTR_RE = re.compile(r'(\w+)=("(?:[^"\\]|\\.)*"|\S+)')
+
+
+def _check_presets(ctx: dict[str, Any]) -> list[Failure]:
+    """Every @preset key must be a declared @param; values must coerce.
+
+    Phase 3 (st-1j9) — unknown keys and type mismatches are author bugs
+    that would crash the TS parser and break the webapp load. CI
+    surfaces them as invariant failures so a PR that ships a bad
+    preset fails loudly. Out-of-range values are allowed (param
+    bounds are advisory, not authoritative — phase 1 explicitly
+    allows typed out-of-range user input).
+    """
+    source = ctx.get("source") or ""
+    params = ctx.get("params") or {}
+    failures: list[Failure] = []
+    for line_no, raw in enumerate(source.splitlines(), start=1):
+        m = _PRESET_RE.match(raw)
+        if not m:
+            continue
+        attrs: dict[str, str] = {}
+        for am in _ATTR_RE.finditer(m.group(1)):
+            key, value = am.group(1), am.group(2)
+            if len(value) >= 2 and value.startswith('"') and value.endswith('"'):
+                value = value[1:-1]
+            attrs[key] = value
+        preset_id = attrs.get("id", f"<line {line_no}>")
+        if "id" not in attrs:
+            failures.append(Failure(
+                "preset",
+                f"line {line_no}: @preset missing id=",
+            ))
+            continue
+        for key, raw_value in attrs.items():
+            if key in ("id", "label"):
+                continue
+            param = params.get(key)
+            if param is None:
+                failures.append(Failure(
+                    "preset",
+                    f'line {line_no}: preset "{preset_id}" references unknown param "{key}"',
+                ))
+                continue
+            err = _check_preset_value(param, raw_value)
+            if err is not None:
+                failures.append(Failure(
+                    "preset",
+                    f'line {line_no}: preset "{preset_id}" value for {key}: {err}',
+                ))
+    return failures
+
+
+def _check_preset_value(param: dict[str, Any], raw: str) -> str | None:
+    kind = param.get("kind")
+    if kind in ("number", "integer"):
+        try:
+            float(raw)
+        except ValueError:
+            return f"not numeric: {raw!r}"
+        return None
+    if kind == "boolean":
+        if raw.lower() not in ("true", "false"):
+            return f"expected true/false, got {raw!r}"
+        return None
+    if kind == "enum":
+        choices = param.get("choices") or []
+        if raw not in choices:
+            return f"{raw!r} not in choices [{'|'.join(choices)}]"
+        return None
+    # strings accept anything
+    return None
 
 
 # ---------------------------------------------------------------------------

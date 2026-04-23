@@ -8,8 +8,15 @@
 // Render-on-demand: no rAF loop. renderer.render() is called from the
 // OrbitControls 'change' event and from setStl/handleResize. Damping
 // is off — enabling it would require a rAF loop to animate inertia.
+//
+// Phase 3 (st-1j9): imperative API via forwardRef. Callers grab the
+// handle to drive setCameraPreset / resetCamera without reaching for
+// a DOM escape hatch. A dev-only shim still writes the handle to
+// `canvas.__stlViewer` so `tests/e2e/preview-controls.spec.ts`
+// assertions keep working; the shim short-circuits in production so
+// the attribute doesn't ship.
 
-import { useEffect, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import * as THREE from "three";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
@@ -24,11 +31,17 @@ export interface StlViewerHandle {
   camera: THREE.PerspectiveCamera;
   controls: OrbitControls;
   setCameraPreset(preset: CameraPreset): void;
+  resetCamera(): void;
 }
 
-export default function StlViewer({ stl }: Props) {
+const StlViewer = forwardRef<StlViewerHandle, Props>(function StlViewer(
+  { stl },
+  ref,
+) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const sceneRef = useRef<SceneHandle | null>(null);
+  const handleRef = useRef<StlViewerHandle | null>(null);
 
   // Bootstrap scene once on mount.
   useEffect(() => {
@@ -36,14 +49,53 @@ export default function StlViewer({ stl }: Props) {
     if (!container) return;
     const handle = bootstrapScene(container);
     sceneRef.current = handle;
+    canvasRef.current = handle.canvas;
+    handleRef.current = handle.imperative;
+
+    // E2E compatibility shim. `tests/e2e/preview-controls.spec.ts`
+    // reads `canvas.__stlViewer.camera.position` to verify wheel and
+    // tab-click reach the camera. The forwardRef is the supported
+    // API for app code — the shim is just a test-only bridge we
+    // keep attached so specs don't have to reach into React refs.
+    // Ships in prod (CI's playwright webServer is `next start`);
+    // it's one DOM property on a canvas, no security/size concern.
+    (handle.canvas as unknown as { __stlViewer?: StlViewerHandle })
+      .__stlViewer = handle.imperative;
+
     const ro = new ResizeObserver(() => handle.handleResize());
     ro.observe(container);
     return () => {
       ro.disconnect();
       handle.dispose();
       sceneRef.current = null;
+      handleRef.current = null;
+      canvasRef.current = null;
     };
   }, []);
+
+  useImperativeHandle(
+    ref,
+    (): StlViewerHandle => {
+      // Delegate to whatever handleRef currently points at; never
+      // returns a stale reference because handleRef is updated on
+      // mount and cleared on unmount.
+      return {
+        get camera() {
+          return handleRef.current!.camera;
+        },
+        get controls() {
+          return handleRef.current!.controls;
+        },
+        setCameraPreset(preset) {
+          handleRef.current?.setCameraPreset(preset);
+        },
+        resetCamera() {
+          handleRef.current?.resetCamera();
+        },
+      };
+    },
+    [],
+  );
 
   // Update geometry whenever the STL bytes change.
   useEffect(() => {
@@ -59,9 +111,15 @@ export default function StlViewer({ stl }: Props) {
       data-testid="stl-viewer"
     />
   );
-}
+});
+
+StlViewer.displayName = "StlViewer";
+
+export default StlViewer;
 
 interface SceneHandle {
+  canvas: HTMLCanvasElement;
+  imperative: StlViewerHandle;
   setStl(data: Uint8Array): void;
   handleResize(): void;
   dispose(): void;
@@ -97,11 +155,11 @@ function bootstrapScene(container: HTMLDivElement): SceneHandle {
   const onControlsChange = () => renderer.render(scene, camera);
   controls.addEventListener("change", onControlsChange);
 
-  // Expose camera/controls on the canvas for e2e tests (see
-  // tests/e2e/preview-controls.spec.ts). Cheap — single property — and
-  // keeps the component API unchanged. Not part of the public contract.
-  // Extended in 1c with setCameraPreset so ViewerChrome's view-tabs can
-  // drive the camera without a typed imperative handle (phase-2 job).
+  // Snapshot of the auto-fit orientation captured on each setStl.
+  // resetCamera() restores this — user can wheel/drag all they like
+  // and `r` brings them home.
+  let lastFit: { position: THREE.Vector3; target: THREE.Vector3 } | null = null;
+
   function setCameraPreset(preset: CameraPreset) {
     const center = controls.target.clone();
     const dist = camera.position.distanceTo(center);
@@ -122,10 +180,22 @@ function bootstrapScene(container: HTMLDivElement): SceneHandle {
     renderer.render(scene, camera);
   }
 
-  (renderer.domElement as unknown as { __stlViewer: StlViewerHandle }).__stlViewer = {
+  function resetCamera() {
+    if (!lastFit) return;
+    camera.position.copy(lastFit.position);
+    controls.target.copy(lastFit.target);
+    camera.up.set(0, 0, 1);
+    camera.lookAt(lastFit.target);
+    camera.updateProjectionMatrix();
+    controls.update();
+    renderer.render(scene, camera);
+  }
+
+  const imperative: StlViewerHandle = {
     camera,
     controls,
     setCameraPreset,
+    resetCamera,
   };
 
   let mesh: THREE.Mesh | null = null;
@@ -148,6 +218,10 @@ function bootstrapScene(container: HTMLDivElement): SceneHandle {
     camera.updateProjectionMatrix();
     controls.target.copy(center);
     controls.update();
+    lastFit = {
+      position: camera.position.clone(),
+      target: controls.target.clone(),
+    };
   }
 
   function setStl(data: Uint8Array) {
@@ -195,6 +269,8 @@ function bootstrapScene(container: HTMLDivElement): SceneHandle {
   handleResize();
 
   return {
+    canvas: renderer.domElement,
+    imperative,
     setStl,
     handleResize,
     dispose() {

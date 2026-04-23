@@ -6,14 +6,19 @@
 // ResizeObserver.
 //
 // Keyboard: 1/2/3 pick camera preset; G toggles grid; D toggles dim
-// labels (phase 2 renders them); F enters fullscreen on the viewer
-// container (Fullscreen API). No R-reset — phase 3 global map owns it.
+// labels; F enters fullscreen; R resets camera; Enter fires the first
+// render from idle. All routed through `useShortcut` with a shared
+// `focusInViewer && modal.kind === "none"` gate — input rail typing
+// doesn't fire viewer keys, and any open modal parks all of them. (st-1j9)
 
 import clsx from "clsx";
 import { useCallback, useEffect, useRef, useState } from "react";
 import StlViewer, { type StlViewerHandle } from "./StlViewer";
+import { Modal } from "./Modal";
 import type { CameraPreset } from "@/hooks/useDetailState";
 import type { RenderError, RenderResult, RenderState } from "@/hooks/useRenderer";
+import { useShortcut } from "@/hooks/useShortcut";
+import { useUI } from "@/contexts/UIContext";
 
 interface Props {
   state: RenderState;
@@ -28,7 +33,7 @@ interface Props {
   /**
    * Ring buffer of recent successful renders, most-recent first. When
    * an error occurs the most recent is kept visible (dimmed) behind
-   * the error strip — per spec § "Loading / Error / Empty".
+   * the error strip.
    */
   history?: RenderResult[];
 }
@@ -48,80 +53,81 @@ export function ViewerChrome({
   history = [],
 }: Props) {
   const sectionRef = useRef<HTMLElement>(null);
-  const viewerContainerRef = useRef<HTMLDivElement>(null);
-  const [logOpen, setLogOpen] = useState(false);
+  const viewerRef = useRef<StlViewerHandle>(null);
+  const [focusInViewer, setFocusInViewer] = useState(false);
+  const { modal, dispatch } = useUI();
 
-  // Close the log modal whenever the error clears (render succeeded or
-  // state transitioned back to loading/idle). Otherwise the modal would
-  // hang around showing stale log text.
-  useEffect(() => {
-    if (state.kind !== "error" && logOpen) setLogOpen(false);
-  }, [state.kind, logOpen]);
-
-  // Last-good STL shown dimmed behind the error strip. Empty when the
-  // error happened before a single successful render.
   const lastGood = state.kind === "error" ? history[0] : null;
-
-  // Drive the StlViewer camera via the __stlViewer DOM debug handle —
-  // 1c extends it with setCameraPreset so tabs and the number-key
-  // keymap both share the same path. A phase-2 follow-up replaces this
-  // with a typed useImperativeHandle.
-  const applyCameraToCanvas = useCallback((preset: CameraPreset) => {
-    const canvas = viewerContainerRef.current?.querySelector("canvas");
-    const handle = (canvas as unknown as { __stlViewer?: StlViewerHandle } | null)
-      ?.__stlViewer;
-    handle?.setCameraPreset(preset);
-  }, []);
 
   const chooseCamera = useCallback(
     (preset: CameraPreset) => {
       setCamera(preset);
-      applyCameraToCanvas(preset);
+      viewerRef.current?.setCameraPreset(preset);
     },
-    [setCamera, applyCameraToCanvas],
+    [setCamera],
   );
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLElement>) {
-    // Ignore keys when the event target is a form field — prevents
-    // "G" from toggling the grid while the user types into a param
-    // input. All row inputs/buttons/selects should absorb their own
-    // keys before bubbling up here.
-    const tag = (e.target as HTMLElement).tagName;
-    if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
-    if (e.key === "1") chooseCamera("top");
-    else if (e.key === "2") chooseCamera("front");
-    else if (e.key === "3") chooseCamera("iso");
-    else if (e.key === "g" || e.key === "G") toggleGrid();
-    else if (e.key === "d" || e.key === "D") toggleDims();
-    else if (e.key === "f" || e.key === "F") toggleFullscreen(sectionRef.current);
-    // Enter kicks off the first render from idle. Also acts as a
-    // manual re-render trigger from ready/error states — low cost
-    // and matches the "⏎ to render" affordance shown on the empty
-    // state card. (st-psn)
-    else if (e.key === "Enter") onRefresh();
-    else return;
-    e.preventDefault();
-  }
+  const resetCamera = useCallback(() => {
+    viewerRef.current?.resetCamera();
+  }, []);
+
+  // Viewer shortcuts are gated on (a) no modal open and (b) focus
+  // inside the viewer section. The focus gate avoids the "G fires
+  // while typing into a param input" class of bug.
+  const gate = modal.kind === "none" && focusInViewer;
+
+  useShortcut("1", () => chooseCamera("top"), { enabled: gate });
+  useShortcut("2", () => chooseCamera("front"), { enabled: gate });
+  useShortcut("3", () => chooseCamera("iso"), { enabled: gate });
+  useShortcut("g", toggleGrid, { enabled: gate });
+  useShortcut("d", toggleDims, { enabled: gate });
+  useShortcut("r", resetCamera, { enabled: gate });
+  useShortcut("f", () => toggleFullscreen(sectionRef.current), {
+    enabled: gate,
+  });
+  useShortcut("Enter", onRefresh, {
+    enabled: gate && (state.kind === "idle" || state.kind === "error"),
+  });
+
+  // Escape closes the error-log modal. UIContext is the arbiter —
+  // the shortcut only fires when that modal is the current one, so
+  // the palette's own Escape (landed in 3b) won't collide.
+  useShortcut(
+    "Escape",
+    () => dispatch({ type: "close" }),
+    { enabled: modal.kind === "errorLog" },
+  );
+
+  // Close the log modal whenever the error clears (render succeeded
+  // or state transitioned back to loading/idle).
+  useEffect(() => {
+    if (state.kind !== "error" && modal.kind === "errorLog") {
+      dispatch({ type: "close" });
+    }
+  }, [state.kind, modal.kind, dispatch]);
 
   return (
     <section
       ref={sectionRef}
       tabIndex={0}
-      onKeyDown={handleKeyDown}
+      onFocus={() => setFocusInViewer(true)}
+      onBlur={(e) => {
+        // Blur fires when focus moves to a nested child too — only
+        // flip the gate off when focus actually leaves the section.
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+          setFocusInViewer(false);
+        }
+      }}
       aria-label="3D preview"
       className="relative flex h-full flex-col bg-panel2 focus:outline-none"
     >
-      <div
-        ref={viewerContainerRef}
-        className="relative flex-1 min-h-[480px] min-[1200px]:min-h-0"
-      >
-        {/* Grid paints first so the model occludes it. StlViewer's canvas
-            clears with alpha=0 so the grid shows through where the model
-            doesn't cover. AxesIndicator + ViewPresetTabs are intentional
-            top-layer UI and stay last. (st-lpt) */}
+      <div className="relative flex-1 min-h-[480px] min-[1200px]:min-h-0">
+        {/* Grid paints first so the model occludes it. StlViewer's
+            canvas clears with alpha=0 so the grid shows through where
+            the model doesn't cover. (st-lpt) */}
         {showGrid && <GridOverlay />}
 
-        {state.kind === "ready" && <StlViewer stl={state.result.stlBytes} />}
+        {state.kind === "ready" && <StlViewer ref={viewerRef} stl={state.result.stlBytes} />}
         {state.kind === "loading" && (
           <>
             <ViewerPlaceholder>rendering…</ViewerPlaceholder>
@@ -142,10 +148,8 @@ export function ViewerChrome({
           </ViewerPlaceholder>
         )}
         {state.kind === "error" && lastGood && (
-          // Keep the last good render painted so the user can still see
-          // what they were tweaking; overlay dims it to signal "stale".
           <>
-            <StlViewer stl={lastGood.stlBytes} />
+            <StlViewer ref={viewerRef} stl={lastGood.stlBytes} />
             <div className="pointer-events-none absolute inset-0 bg-bg/70" />
           </>
         )}
@@ -163,14 +167,49 @@ export function ViewerChrome({
 
         <ErrorStrip
           error={state.kind === "error" ? state.error : null}
-          onViewLog={() => setLogOpen(true)}
+          onViewLog={() => {
+            if (state.kind === "error") {
+              dispatch({ type: "open", modal: { kind: "errorLog", log: state.error.log } });
+            }
+          }}
         />
       </div>
       <StatStrip state={state} downloadSlot={downloadSlot} />
-      {logOpen && state.kind === "error" && (
-        <ErrorLogModal log={state.error.log} onClose={() => setLogOpen(false)} />
-      )}
+      <ErrorLogModal />
     </section>
+  );
+}
+
+function ErrorLogModal() {
+  const { modal, dispatch } = useUI();
+  const open = modal.kind === "errorLog";
+  const log = modal.kind === "errorLog" ? modal.log : "";
+  return (
+    <Modal
+      open={open}
+      onClose={() => dispatch({ type: "close" })}
+      label="Render error log"
+      className="w-full max-w-[720px]"
+    >
+      <div data-testid="error-log-modal">
+        <div className="flex items-center justify-between border-b border-line px-14 py-8">
+          <span className="font-mono text-11 uppercase tracking-wide text-text-dim">
+            Render log
+          </span>
+          <button
+            type="button"
+            onClick={() => dispatch({ type: "close" })}
+            aria-label="Close render log"
+            className="font-mono text-11 text-text-dim hover:text-text"
+          >
+            ✕
+          </button>
+        </div>
+        <pre className="max-h-[60vh] overflow-auto whitespace-pre-wrap px-14 py-12 font-mono text-11 text-text">
+          {log || "(empty)"}
+        </pre>
+      </div>
+    </Modal>
   );
 }
 
@@ -235,9 +274,6 @@ function GridOverlay() {
 }
 
 function AxesIndicator({ camera }: { camera: CameraPreset }) {
-  // Hint the current view by rotating the axes tripod's wrapper. The
-  // 3D axes are placeholder glyphs — the actual camera orientation
-  // lives in three.js. Phase 2 can switch to a live-computed gizmo.
   const rot =
     camera === "top" ? "rotate-90" : camera === "front" ? "-rotate-12" : "rotate-0";
   return (
@@ -303,8 +339,6 @@ function ViewPresetTabs({
 }
 
 function DimsPlaceholder() {
-  // Phase 2 hooks up the real bounding-box-derived dimension labels.
-  // For now, just signal the toggle is alive so `D` feels responsive.
   return (
     <div
       className={clsx(
@@ -325,17 +359,10 @@ function StatStrip({
   state: RenderState;
   downloadSlot?: React.ReactNode;
 }) {
-  // Loading → terse "compiling…" caption; WASM doesn't surface true
-  // progress, so a stream of live stats would mostly show stale 0s.
-  // Idle → "press ⏎ to render" matches the viewer placeholder's
-  // affordance so the user has one consistent cue.
   if (state.kind === "loading") {
     return (
       <StatStripShell downloadSlot={downloadSlot}>
-        <span
-          data-testid="stat-strip-status"
-          className="text-text-dim"
-        >
+        <span data-testid="stat-strip-status" className="text-text-dim">
           compiling…
         </span>
       </StatStripShell>
@@ -344,10 +371,7 @@ function StatStrip({
   if (state.kind === "idle") {
     return (
       <StatStripShell downloadSlot={downloadSlot}>
-        <span
-          data-testid="stat-strip-status"
-          className="text-text-mute"
-        >
+        <span data-testid="stat-strip-status" className="text-text-mute">
           press ⏎ to render
         </span>
       </StatStripShell>
@@ -356,10 +380,7 @@ function StatStrip({
   if (state.kind === "error") {
     return (
       <StatStripShell downloadSlot={downloadSlot}>
-        <span
-          data-testid="stat-strip-status"
-          className="text-red"
-        >
+        <span data-testid="stat-strip-status" className="text-red">
           error
         </span>
       </StatStripShell>
@@ -401,8 +422,6 @@ function StatStripShell({
 }
 
 function LoadingProgressBar() {
-  // 2px indeterminate bar tucked just above the 36px stat strip —
-  // one axis of progress the user can see even when WASM is silent.
   return (
     <div
       data-testid="loading-progress"
@@ -436,9 +455,6 @@ function ErrorStrip({
   error: RenderError | null;
   onViewLog: () => void;
 }) {
-  // The strip "slides in" per spec § "Error": translate the whole row
-  // up from below the viewer's bottom edge. Keeps the DOM mounted so
-  // the transition plays both directions (error → ready also fades).
   const shown = error != null;
   return (
     <div
@@ -468,60 +484,6 @@ function ErrorStrip({
           </button>
         </>
       )}
-    </div>
-  );
-}
-
-function ErrorLogModal({
-  log,
-  onClose,
-}: {
-  log: string;
-  onClose: () => void;
-}) {
-  // Close on Escape; also close when the backdrop (not the dialog body)
-  // is clicked. Dialog uses Caliper's modal radius + shadow per spec.
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  return (
-    <div
-      data-testid="error-log-modal"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Render error log"
-      onClick={onClose}
-      className="fixed inset-0 z-20 flex items-center justify-center bg-bg/60 p-24"
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className={clsx(
-          "max-h-full w-full max-w-[720px] overflow-hidden",
-          "rounded-6 border border-line bg-panel shadow-modal",
-        )}
-      >
-        <div className="flex items-center justify-between border-b border-line px-14 py-8">
-          <span className="font-mono text-11 uppercase tracking-wide text-text-dim">
-            Render log
-          </span>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close render log"
-            className="font-mono text-11 text-text-dim hover:text-text"
-          >
-            ✕
-          </button>
-        </div>
-        <pre className="max-h-[60vh] overflow-auto whitespace-pre-wrap px-14 py-12 font-mono text-11 text-text">
-          {log || "(empty)"}
-        </pre>
-      </div>
     </div>
   );
 }
