@@ -23,6 +23,7 @@ interface Props {
   setCamera: (c: CameraPreset) => void;
   toggleGrid: () => void;
   toggleDims: () => void;
+  onRefresh: () => void;
   downloadSlot?: React.ReactNode;
   /**
    * Ring buffer of recent successful renders, most-recent first. When
@@ -42,6 +43,7 @@ export function ViewerChrome({
   setCamera,
   toggleGrid,
   toggleDims,
+  onRefresh,
   downloadSlot,
   history = [],
 }: Props) {
@@ -92,6 +94,11 @@ export function ViewerChrome({
     else if (e.key === "g" || e.key === "G") toggleGrid();
     else if (e.key === "d" || e.key === "D") toggleDims();
     else if (e.key === "f" || e.key === "F") toggleFullscreen(sectionRef.current);
+    // Enter kicks off the first render from idle. Also acts as a
+    // manual re-render trigger from ready/error states — low cost
+    // and matches the "⏎ to render" affordance shown on the empty
+    // state card. (st-psn)
+    else if (e.key === "Enter") onRefresh();
     else return;
     e.preventDefault();
   }
@@ -116,9 +123,24 @@ export function ViewerChrome({
 
         {state.kind === "ready" && <StlViewer stl={state.result.stlBytes} />}
         {state.kind === "loading" && (
-          <ViewerPlaceholder>rendering…</ViewerPlaceholder>
+          <>
+            <ViewerPlaceholder>rendering…</ViewerPlaceholder>
+            <LoadingProgressBar />
+          </>
         )}
-        {state.kind === "idle" && <ViewerPlaceholder>idle</ViewerPlaceholder>}
+        {state.kind === "idle" && (
+          <ViewerPlaceholder>
+            <div className="flex flex-col items-center gap-6">
+              <div>no render yet</div>
+              <kbd
+                data-testid="press-enter-hint"
+                className="rounded-3 border border-line bg-panel2 px-5 py-1 font-mono text-10 text-text-dim"
+              >
+                press ⏎ to render
+              </kbd>
+            </div>
+          </ViewerPlaceholder>
+        )}
         {state.kind === "error" && lastGood && (
           // Keep the last good render painted so the user can still see
           // what they were tweaking; overlay dims it to signal "stale".
@@ -303,21 +325,99 @@ function StatStrip({
   state: RenderState;
   downloadSlot?: React.ReactNode;
 }) {
-  const tri = state.kind === "ready" ? state.result.triCount : null;
-  const ms = state.kind === "ready" ? state.result.ms.toFixed(0) : null;
-  const kb =
-    state.kind === "ready"
-      ? (state.result.stlBytes.byteLength / 1024).toFixed(1)
-      : null;
+  // Loading → terse "compiling…" caption; WASM doesn't surface true
+  // progress, so a stream of live stats would mostly show stale 0s.
+  // Idle → "press ⏎ to render" matches the viewer placeholder's
+  // affordance so the user has one consistent cue.
+  if (state.kind === "loading") {
+    return (
+      <StatStripShell downloadSlot={downloadSlot}>
+        <span
+          data-testid="stat-strip-status"
+          className="text-text-dim"
+        >
+          compiling…
+        </span>
+      </StatStripShell>
+    );
+  }
+  if (state.kind === "idle") {
+    return (
+      <StatStripShell downloadSlot={downloadSlot}>
+        <span
+          data-testid="stat-strip-status"
+          className="text-text-mute"
+        >
+          press ⏎ to render
+        </span>
+      </StatStripShell>
+    );
+  }
+  if (state.kind === "error") {
+    return (
+      <StatStripShell downloadSlot={downloadSlot}>
+        <span
+          data-testid="stat-strip-status"
+          className="text-red"
+        >
+          error
+        </span>
+      </StatStripShell>
+    );
+  }
+  const { result } = state;
+  const dims = `${fmt1(result.dimensions.x)} × ${fmt1(result.dimensions.y)} × ${fmt1(result.dimensions.z)} mm`;
+  const kb = (result.stlBytes.byteLength / 1024).toFixed(1);
   return (
-    <div className="flex h-36 items-center gap-18 border-t border-line bg-panel px-12 font-mono text-10 text-text-dim">
-      <Stat label="TRI" value={tri != null ? tri.toLocaleString() : "—"} />
-      <Stat label="MS" value={ms ?? "—"} />
-      <Stat label="KB" value={kb ?? "—"} />
+    <StatStripShell downloadSlot={downloadSlot}>
+      <span data-testid="stat-strip-dimensions">
+        <span className="text-text-mute">DIM </span>
+        <span className="text-text">{dims}</span>
+      </span>
+      <Stat label="TRI" value={result.triCount.toLocaleString()} />
+      <Stat label="MS" value={result.ms.toFixed(0)} />
+      <Stat label="KB" value={kb} />
+    </StatStripShell>
+  );
+}
+
+function StatStripShell({
+  children,
+  downloadSlot,
+}: {
+  children: React.ReactNode;
+  downloadSlot?: React.ReactNode;
+}) {
+  return (
+    <div
+      data-testid="stat-strip"
+      className="flex h-36 items-center gap-18 border-t border-line bg-panel px-12 font-mono text-10 text-text-dim"
+    >
+      {children}
       <span className="flex-1" />
       {downloadSlot}
     </div>
   );
+}
+
+function LoadingProgressBar() {
+  // 2px indeterminate bar tucked just above the 36px stat strip —
+  // one axis of progress the user can see even when WASM is silent.
+  return (
+    <div
+      data-testid="loading-progress"
+      className="pointer-events-none absolute inset-x-0 bottom-0 h-2 overflow-hidden bg-panel"
+    >
+      <div
+        className="h-full w-1/3 bg-accent"
+        style={{ animation: "caliper-slide 1.2s ease-in-out infinite" }}
+      />
+    </div>
+  );
+}
+
+function fmt1(n: number): string {
+  return n.toFixed(1);
 }
 
 function Stat({ label, value }: { label: string; value: string }) {

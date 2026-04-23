@@ -20,6 +20,12 @@ test.describe("model page", () => {
   test("download button present and status line renders", async ({ page }) => {
     await page.goto("/models/popcorn-kernel");
     await expect(page.getByRole("button", { name: /Download STL/i })).toBeVisible();
+
+    // Phase 2b: viewer starts idle — must press Enter to trigger the
+    // first render (st-psn). See ViewerChrome.handleKeyDown.
+    await page.locator('section[aria-label="3D preview"]').focus();
+    await page.keyboard.press("Enter");
+
     // Render log entries in the left rail use compact "Nms · N.Nkb" form.
     await expect(page.getByText(/\d+ms · [\d.]+kb/).first()).toBeVisible({ timeout: 60_000 });
   });

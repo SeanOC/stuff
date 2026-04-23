@@ -5,6 +5,11 @@
 // error), a token-cancelled effect so stale renders can't clobber a
 // newer in-flight one, and a small ring buffer of recent successes the
 // detail-page left rail can show as a render log.
+//
+// Phase-2 change (st-psn): renders no longer fire automatically on
+// mount. Initial state is `idle` and stays there until `refresh()` is
+// called (ViewerChrome wires Enter). After the first explicit render,
+// subsequent value changes debounce-render as before.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -30,10 +35,17 @@ export interface RenderInput {
   values: Record<string, ParamValue>;
 }
 
+export interface Dimensions {
+  x: number;
+  y: number;
+  z: number;
+}
+
 export interface RenderResult {
   stlBytes: Uint8Array;
   triCount: number;
   ms: number;
+  dimensions: Dimensions;
 }
 
 export interface RenderError {
@@ -76,8 +88,14 @@ export function useRenderer(input: RenderInput): UseRendererReturn {
   const [history, setHistory] = useState<RenderResult[]>([]);
   const [refreshToken, setRefreshToken] = useState(0);
   const cancelToken = useRef(0);
+  // Gates the auto-debounce path: param changes are ignored until the
+  // user has kicked off the first render (via refresh()). Phase 2's
+  // "press ⏎ to render" idle state depends on this — otherwise the
+  // mount-time effect races past idle before the UI paints.
+  const hasStarted = useRef(false);
 
   useEffect(() => {
+    if (!hasStarted.current) return;
     const myToken = ++cancelToken.current;
     setState({ kind: "loading", since: performance.now() });
     void renderToStl({
@@ -90,6 +108,7 @@ export function useRenderer(input: RenderInput): UseRendererReturn {
           stlBytes: raw.stl,
           triCount: triCountFromStl(raw.stl),
           ms: raw.wallMs,
+          dimensions: dimensionsFromStl(raw.stl),
         };
         setState({ kind: "ready", result });
         setHistory((prev) => [result, ...prev].slice(0, HISTORY_MAX));
@@ -116,7 +135,10 @@ export function useRenderer(input: RenderInput): UseRendererReturn {
   return {
     state,
     history,
-    refresh: () => setRefreshToken((n) => n + 1),
+    refresh: () => {
+      hasStarted.current = true;
+      setRefreshToken((n) => n + 1);
+    },
   };
 }
 
@@ -134,7 +156,112 @@ async function fetchLibFromApi(relPath: string): Promise<string | null> {
 
 // Exported for the smoke test — otherwise the token-cancel contract is
 // invisible from the outside. Pure function, no state.
+//
+// OpenSCAD-wasm sometimes writes ASCII STL (starts with "solid "),
+// other times binary. Binary can also technically begin with "solid"
+// in its 80-byte header, so we can't read the first word alone. The
+// reliable tell: in a well-formed binary STL, byteLength ==
+// 84 + nTri * 50 where nTri is the uint32 at byte 80. When that
+// identity fails, treat the buffer as ASCII.
 export function triCountFromStl(bytes: Uint8Array): number {
-  if (bytes.byteLength < BIN_STL_HEADER_BYTES) return 0;
-  return Math.max(0, Math.floor((bytes.byteLength - BIN_STL_HEADER_BYTES) / BIN_STL_TRI_BYTES));
+  if (isBinaryStl(bytes)) {
+    return readBinaryTriCount(bytes);
+  }
+  return countAsciiFacets(bytes);
+}
+
+// Compute per-axis extents from an STL. Handles binary and ASCII;
+// openscad-wasm is known to emit either depending on build flags.
+// Pure function so the stat strip doesn't need three.js. Returns
+// zeros on malformed/short input rather than throwing.
+export function dimensionsFromStl(bytes: Uint8Array): Dimensions {
+  const box = isBinaryStl(bytes)
+    ? bboxFromBinaryStl(bytes)
+    : bboxFromAsciiStl(bytes);
+  if (!box) return { x: 0, y: 0, z: 0 };
+  return {
+    x: round1(box.max[0] - box.min[0]),
+    y: round1(box.max[1] - box.min[1]),
+    z: round1(box.max[2] - box.min[2]),
+  };
+}
+
+function isBinaryStl(bytes: Uint8Array): boolean {
+  if (bytes.byteLength < BIN_STL_HEADER_BYTES) return false;
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const claimed = dv.getUint32(80, true);
+  return bytes.byteLength === BIN_STL_HEADER_BYTES + claimed * BIN_STL_TRI_BYTES;
+}
+
+function readBinaryTriCount(bytes: Uint8Array): number {
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  return dv.getUint32(80, true);
+}
+
+// Binary STL layout per triangle (50 bytes):
+//   bytes  0–11   normal (3 × float32)  — ignored for bbox
+//   bytes 12–47   v0, v1, v2 vertices (9 × float32)
+//   bytes 48–49   attribute byte count (uint16)
+function bboxFromBinaryStl(bytes: Uint8Array): Bbox | null {
+  const nTri = readBinaryTriCount(bytes);
+  if (nTri === 0) return null;
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let minX = Infinity, minY = Infinity, minZ = Infinity;
+  let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+  for (let t = 0; t < nTri; t++) {
+    const base = BIN_STL_HEADER_BYTES + t * BIN_STL_TRI_BYTES;
+    for (let v = 0; v < 3; v++) {
+      const o = base + 12 + v * 12;
+      const x = view.getFloat32(o, true);
+      const y = view.getFloat32(o + 4, true);
+      const z = view.getFloat32(o + 8, true);
+      if (x < minX) minX = x; if (x > maxX) maxX = x;
+      if (y < minY) minY = y; if (y > maxY) maxY = y;
+      if (z < minZ) minZ = z; if (z > maxZ) maxZ = z;
+    }
+  }
+  return { min: [minX, minY, minZ], max: [maxX, maxY, maxZ] };
+}
+
+// ASCII STL uses `vertex X Y Z` lines. A single regex sweep over a
+// TextDecoder'd string is plenty fast for our size range (a few MB
+// in the hot path) and needs no parser state. Only `vertex` lines
+// contribute to the bbox — `normal` and other directives are skipped.
+const VERTEX_RE = /vertex\s+(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)\s+(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)\s+(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g;
+
+function bboxFromAsciiStl(bytes: Uint8Array): Bbox | null {
+  const text = decodeUtf8(bytes);
+  let minX = Infinity, minY = Infinity, minZ = Infinity;
+  let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+  let any = false;
+  VERTEX_RE.lastIndex = 0;
+  for (const m of text.matchAll(VERTEX_RE)) {
+    any = true;
+    const x = Number(m[1]), y = Number(m[2]), z = Number(m[3]);
+    if (x < minX) minX = x; if (x > maxX) maxX = x;
+    if (y < minY) minY = y; if (y > maxY) maxY = y;
+    if (z < minZ) minZ = z; if (z > maxZ) maxZ = z;
+  }
+  return any ? { min: [minX, minY, minZ], max: [maxX, maxY, maxZ] } : null;
+}
+
+function countAsciiFacets(bytes: Uint8Array): number {
+  const text = decodeUtf8(bytes);
+  let n = 0;
+  const re = /facet normal/g;
+  while (re.exec(text) !== null) n++;
+  return n;
+}
+
+function decodeUtf8(bytes: Uint8Array): string {
+  return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+}
+
+interface Bbox {
+  min: [number, number, number];
+  max: [number, number, number];
+}
+
+function round1(n: number): number {
+  return Math.round(n * 10) / 10;
 }

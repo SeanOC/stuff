@@ -12,6 +12,9 @@ test.describe("detail page layout", () => {
   test("param rail scrolls internally, document does not scroll", async ({ page }) => {
     // cylindrical_holder_slot has 12 @params — tallest current fixture.
     await page.goto("/models/cylindrical-holder-slot");
+    // Phase 2b (st-psn): first render is user-triggered via Enter.
+    await page.locator('section[aria-label="3D preview"]').focus();
+    await page.keyboard.press("Enter");
     await expect(page.getByText(/\d+ms · [\d.]+kb/).first()).toBeVisible({
       timeout: 60_000,
     });
@@ -72,6 +75,9 @@ test.describe("detail page layout — stacked (< xl)", () => {
 
   test("stacked layout scrolls the document naturally", async ({ page }) => {
     await page.goto("/models/cylindrical-holder-slot");
+    // Phase 2b (st-psn): first render is user-triggered via Enter.
+    await page.locator('section[aria-label="3D preview"]').focus();
+    await page.keyboard.press("Enter");
     await expect(page.getByText(/\d+ms · [\d.]+kb/).first()).toBeVisible({
       timeout: 60_000,
     });

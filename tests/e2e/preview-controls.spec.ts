@@ -9,6 +9,9 @@ import { expect, test } from "@playwright/test";
 
 test("STL preview responds to wheel (camera moves)", async ({ page }) => {
   await page.goto("/models/popcorn-kernel");
+  // Phase 2b (st-psn): Enter triggers the first render from idle.
+  await page.locator('section[aria-label="3D preview"]').focus();
+  await page.keyboard.press("Enter");
   await expect(page.getByText(/\d+ms · [\d.]+kb/).first()).toBeVisible({
     timeout: 60_000,
   });
@@ -55,6 +58,9 @@ test("STL preview responds to wheel (camera moves)", async ({ page }) => {
 // model center (x≈0, y≈0 relative to target, z>0).
 test("clicking the 'top' view preset reorients the camera to +Z", async ({ page }) => {
   await page.goto("/models/popcorn-kernel");
+  // Phase 2b (st-psn): Enter triggers the first render from idle.
+  await page.locator('section[aria-label="3D preview"]').focus();
+  await page.keyboard.press("Enter");
   await expect(page.getByText(/\d+ms · [\d.]+kb/).first()).toBeVisible({
     timeout: 60_000,
   });

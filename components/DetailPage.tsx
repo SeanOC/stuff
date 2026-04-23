@@ -40,7 +40,11 @@ export default function DetailPage({ model }: Props) {
   });
 
   const downloadButton = (
-    <DownloadButton modelPath={model.modelPath} values={detail.state.params} />
+    <DownloadButton
+      modelPath={model.modelPath}
+      values={detail.state.params}
+      canDownload={render.state.kind === "ready"}
+    />
   );
 
   // At ≥1200px, pin the layout to the viewport (minus the 38px sticky
@@ -77,6 +81,7 @@ export default function DetailPage({ model }: Props) {
             setCamera={detail.setCamera}
             toggleGrid={detail.toggleGrid}
             toggleDims={detail.toggleDims}
+            onRefresh={render.refresh}
             downloadSlot={downloadButton}
             history={render.history}
           />
@@ -181,9 +186,11 @@ function DetailLeftRail({
 function DownloadButton({
   modelPath,
   values,
+  canDownload,
 }: {
   modelPath: string;
   values: Record<string, ParamValue>;
+  canDownload: boolean;
 }) {
   const [exportState, setExportState] = useState<ExportState>({ kind: "idle" });
 
@@ -234,11 +241,12 @@ function DownloadButton({
       <button
         type="button"
         onClick={handleDownload}
-        disabled={exportState.kind === "exporting"}
+        disabled={exportState.kind === "exporting" || !canDownload}
         className={clsx(
           "rounded-3 border border-accent-line bg-accent px-8 py-2",
           "font-semibold text-accent-ink",
-          "disabled:cursor-wait disabled:opacity-60",
+          "disabled:cursor-not-allowed disabled:opacity-60",
+          exportState.kind === "exporting" && "disabled:cursor-wait",
         )}
       >
         {exportState.kind === "exporting" ? "Exporting…" : "Download STL"}

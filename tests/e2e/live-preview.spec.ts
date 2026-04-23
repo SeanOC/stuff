@@ -18,6 +18,11 @@ async function readTopLogKb(page: Page): Promise<number> {
 test("changing a param re-renders with a different STL", async ({ page }) => {
   await page.goto("/models/popcorn-kernel");
 
+  // Phase 2b: kick off the first render via the idle-state Enter
+  // affordance (st-psn).
+  await page.locator('section[aria-label="3D preview"]').focus();
+  await page.keyboard.press("Enter");
+
   const initial = await readTopLogKb(page);
 
   // Bump base_cut down so the chop removes less of the kernel, growing
@@ -39,4 +44,19 @@ test("changing a param re-renders with a different STL", async ({ page }) => {
     await page.waitForTimeout(250);
   }
   expect(updated, "STL size did not change after param edit").not.toBe(initial);
+});
+
+// Phase 2b (st-psn): the stat strip leads with per-axis dimensions
+// once a render completes. Asserting the format here pins the
+// "bbox went missing" regression class in the same file that pins
+// the "override silently ignored" class.
+test("stat strip shows W × D × H mm dimensions after render", async ({ page }) => {
+  await page.goto("/models/popcorn-kernel");
+  await page.locator('section[aria-label="3D preview"]').focus();
+  await page.keyboard.press("Enter");
+
+  const dims = page.getByTestId("stat-strip-dimensions");
+  await expect(dims).toBeVisible({ timeout: 60_000 });
+  const txt = (await dims.textContent()) ?? "";
+  expect(txt).toMatch(/\d+(\.\d+)?\s*×\s*\d+(\.\d+)?\s*×\s*\d+(\.\d+)?\s*mm/);
 });

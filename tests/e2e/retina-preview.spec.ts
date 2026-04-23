@@ -10,6 +10,9 @@ test.use({ deviceScaleFactor: 2 });
 
 test("STL preview canvas fits the container on retina (DPR=2)", async ({ page }) => {
   await page.goto("/models/popcorn-kernel");
+  // Phase 2b (st-psn): Enter kicks off the first render from idle.
+  await page.locator('section[aria-label="3D preview"]').focus();
+  await page.keyboard.press("Enter");
   await expect(page.getByText(/\d+ms · [\d.]+kb/).first()).toBeVisible({
     timeout: 60_000,
   });
