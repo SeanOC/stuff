@@ -2,47 +2,51 @@
 //
 // Convention:
 //   // === User-tunable parameters ===
-//   can_diameter = 46;     // @param number min=20 max=200 step=1 label="Can diameter"
+//   can_diameter = 46;     // @param number min=20 max=200 step=1 unit=mm group=geometry label="Can diameter"
 //   front_open  = true;    // @param boolean label="Open front?"
 //   variant     = "round"; // @param enum choices=round|square|hex
 //   ...
 //   // === Anything else ===     <-- parser stops here
+//
+// `unit=` and `group=` are optional free-form annotations. `unit` is a
+// display-only string shown next to the control (e.g. "mm", "deg", "ms").
+// `group=` is a slug used to bucket params in the UI — first-occurrence
+// order is the display order of groups.
 //
 // Pure function, no fs/io. Every public type is exported so the form
 // builder and the WASM driver can share param shapes.
 
 export type ParamType = "number" | "integer" | "boolean" | "string" | "enum";
 
-export interface NumberParam {
-  kind: "number" | "integer";
+export interface ParamBase {
   name: string;
+  label?: string;
+  group?: string;
+  unit?: string;
+}
+
+export interface NumberParam extends ParamBase {
+  kind: "number" | "integer";
   default: number;
   min?: number;
   max?: number;
   step?: number;
-  label?: string;
 }
 
-export interface BooleanParam {
+export interface BooleanParam extends ParamBase {
   kind: "boolean";
-  name: string;
   default: boolean;
-  label?: string;
 }
 
-export interface StringParam {
+export interface StringParam extends ParamBase {
   kind: "string";
-  name: string;
   default: string;
-  label?: string;
 }
 
-export interface EnumParam {
+export interface EnumParam extends ParamBase {
   kind: "enum";
-  name: string;
   default: string;
   choices: string[];
-  label?: string;
 }
 
 export type Param = NumberParam | BooleanParam | StringParam | EnumParam;
@@ -113,7 +117,7 @@ function buildParam(args: {
   warnings: string[];
 }): Param | null {
   const { name, typeKw, rawDefault, attrs, lineNo, warnings } = args;
-  const label = attrs.get("label");
+  const base = pickBaseAttrs(name, attrs);
   switch (typeKw) {
     case "number":
     case "integer": {
@@ -123,14 +127,13 @@ function buildParam(args: {
         return null;
       }
       const out: NumberParam = {
+        ...base,
         kind: typeKw,
-        name,
         default: typeKw === "integer" ? Math.trunc(def) : def,
       };
       if (attrs.has("min")) out.min = Number(attrs.get("min"));
       if (attrs.has("max")) out.max = Number(attrs.get("max"));
       if (attrs.has("step")) out.step = Number(attrs.get("step"));
-      if (label) out.label = label;
       return out;
     }
     case "boolean": {
@@ -139,11 +142,11 @@ function buildParam(args: {
         warnings.push(`line ${lineNo}: ${name} boolean default must be true/false`);
         return null;
       }
-      return { kind: "boolean", name, default: lower === "true", ...(label && { label }) };
+      return { ...base, kind: "boolean", default: lower === "true" };
     }
     case "string": {
       const unquoted = unquote(rawDefault);
-      return { kind: "string", name, default: unquoted, ...(label && { label }) };
+      return { ...base, kind: "string", default: unquoted };
     }
     case "enum": {
       const choicesRaw = attrs.get("choices");
@@ -162,12 +165,26 @@ function buildParam(args: {
           `line ${lineNo}: ${name} default ${JSON.stringify(def)} not in choices [${choices.join(",")}]`,
         );
       }
-      return { kind: "enum", name, default: def, choices, ...(label && { label }) };
+      return { ...base, kind: "enum", default: def, choices };
     }
     default:
       warnings.push(`line ${lineNo}: ${name} unknown @param type ${typeKw}`);
       return null;
   }
+}
+
+// Extract common ParamBase fields (name + optional label/group/unit) from
+// the attribute map. Builds the object with only set keys so `toEqual`
+// comparisons against sparse test fixtures keep working.
+function pickBaseAttrs(name: string, attrs: Map<string, string>): ParamBase {
+  const out: ParamBase = { name };
+  const label = attrs.get("label");
+  const group = attrs.get("group");
+  const unit = attrs.get("unit");
+  if (label) out.label = label;
+  if (group) out.group = group;
+  if (unit) out.unit = unit;
+  return out;
 }
 
 // Parse `min=20 max=200 step=1 label="Can diameter" choices=a|b|c`. Quoted

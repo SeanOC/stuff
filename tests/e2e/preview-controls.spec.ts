@@ -9,7 +9,7 @@ import { expect, test } from "@playwright/test";
 
 test("STL preview responds to wheel (camera moves)", async ({ page }) => {
   await page.goto("/models/popcorn-kernel");
-  await expect(page.getByText(/rendered in \d+ms · [\d,]+ bytes/)).toBeVisible({
+  await expect(page.getByText(/\d+ms · [\d.]+kb/).first()).toBeVisible({
     timeout: 60_000,
   });
 

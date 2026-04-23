@@ -5,8 +5,8 @@
 
 $fn = 96;
 
-// === Tunable ===
-base_cut = 4;  // @param number min=2 max=10 step=0.5 label="Base flat-cut (mm)"
+// === User-tunable parameters ===
+base_cut = 4;  // @param number min=2 max=10 step=0.5 unit=mm group=geometry label="Base flat-cut"
 
 // === PRINT_ANCHOR_BBOX ===
 // Raw union bbox (from sphere extents listed below):

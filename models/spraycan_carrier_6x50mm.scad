@@ -35,35 +35,35 @@ $fn = 64;
 // === User-tunable parameters ===
 
 // ----- Can + cell -----
-can_diameter      = 50;    // @param number min=20 max=120 step=0.5 label="Can diameter (mm)"
-can_height        = 195;   // @param number min=80 max=300 step=1 label="Target can height (mm)"
-clearance         = 0.75;  // @param number min=0 max=2 step=0.05 label="Slip clearance (mm)"
-ring_height       = 35;    // @param number min=10 max=120 step=1 label="Cradle ring height (mm)"
-wall              = 3;     // @param number min=1.5 max=8 step=0.5 label="Wall thickness (mm)"
-rows              = 2;     // @param integer min=1 max=6 label="Rows"
-cols              = 3;     // @param integer min=1 max=6 label="Columns"
-cell_spacing_x    = 60;    // @param number min=40 max=120 step=1 label="Cell X spacing — along handle (mm)"
-cell_spacing_y    = 90;    // @param number min=40 max=140 step=1 label="Cell Y spacing — across handle (mm)"
-front_opening_deg = 100;   // @param number min=0 max=200 step=5 label="Cradle front opening arc (deg)"
+can_diameter      = 50;    // @param number min=20 max=120 step=0.5 unit=mm group=cans label="Can diameter"
+can_height        = 195;   // @param number min=80 max=300 step=1 unit=mm group=cans label="Target can height"
+clearance         = 0.75;  // @param number min=0 max=2 step=0.05 unit=mm group=cans label="Slip clearance"
+ring_height       = 35;    // @param number min=10 max=120 step=1 unit=mm group=geometry label="Cradle ring height"
+wall              = 3;     // @param number min=1.5 max=8 step=0.5 unit=mm group=geometry label="Wall thickness"
+rows              = 2;     // @param integer min=1 max=6 group=geometry label="Rows"
+cols              = 3;     // @param integer min=1 max=6 group=geometry label="Columns"
+cell_spacing_x    = 60;    // @param number min=40 max=120 step=1 unit=mm group=geometry label="Cell X spacing — along handle"
+cell_spacing_y    = 90;    // @param number min=40 max=140 step=1 unit=mm group=geometry label="Cell Y spacing — across handle"
+front_opening_deg = 100;   // @param number min=0 max=200 step=5 unit=deg group=geometry label="Cradle front opening arc"
 
 // ----- Base + drainage -----
-base_thickness     = 3;        // @param number min=1.5 max=8 step=0.5 label="Base thickness (mm)"
-base_margin        = 18;       // @param number min=6 max=40 step=0.5 label="Base margin beyond rings (mm)"
-base_drain_pattern = "slots";  // @param enum choices=slots|holes|open label="Base drain pattern"
-drain_hole_d       = 5;        // @param number min=2 max=15 step=0.5 label="Drain hole diameter (mm)"
-drain_hole_count   = 3;        // @param integer min=0 max=8 label="Cradle drain holes per cell"
+base_thickness     = 3;        // @param number min=1.5 max=8 step=0.5 unit=mm group=geometry label="Base thickness"
+base_margin        = 18;       // @param number min=6 max=40 step=0.5 unit=mm group=geometry label="Base margin beyond rings"
+base_drain_pattern = "slots";  // @param enum choices=slots|holes|open group=geometry label="Base drain pattern"
+drain_hole_d       = 5;        // @param number min=2 max=15 step=0.5 unit=mm group=geometry label="Drain hole diameter"
+drain_hole_count   = 3;        // @param integer min=0 max=8 group=geometry label="Cradle drain holes per cell"
 
 // ----- Handle -----
 // handle_height default = can_height + 55mm so fingers clear the tallest
 // can top comfortably when lifting. Lower values still print, but the
 // arch will intrude into the can's vertical envelope.
-handle_height    = 250;  // @param number min=50 max=400 step=1 label="Handle apex height above base (mm)"
-handle_post_w    = 14;   // @param number min=6 max=30 step=0.5 label="Handle post width X (mm)"
-handle_thickness = 20;   // @param number min=8 max=40 step=0.5 label="Handle thickness Y (mm)"
+handle_height    = 250;  // @param number min=50 max=400 step=1 unit=mm group=handle label="Handle apex height above base"
+handle_post_w    = 14;   // @param number min=6 max=30 step=0.5 unit=mm group=handle label="Handle post width X"
+handle_thickness = 20;   // @param number min=8 max=40 step=0.5 unit=mm group=handle label="Handle thickness Y"
 
 // ----- Edge treatment -----
-fillet_r  = 2;   // @param number min=0 max=5 step=0.25 label="Fillet radius (mm)"
-chamfer_r = 1;   // @param number min=0 max=3 step=0.25 label="Chamfer radius (mm)"
+fillet_r  = 2;   // @param number min=0 max=5 step=0.25 unit=mm group=handle label="Fillet radius"
+chamfer_r = 1;   // @param number min=0 max=3 step=0.25 unit=mm group=handle label="Chamfer radius"
 
 // === Derived ===
 

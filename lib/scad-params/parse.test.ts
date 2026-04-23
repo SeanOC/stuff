@@ -128,6 +128,55 @@ describe("parseScadParams", () => {
     expect(out.params.map((p) => p.name)).toEqual(["b"]);
   });
 
+  it("parses unit= only", () => {
+    const out = parseScadParams(wrap("w = 3; // @param number unit=mm"));
+    expect(out.params).toHaveLength(1);
+    expect(out.params[0].unit).toBe("mm");
+    expect(out.params[0].group).toBeUndefined();
+  });
+
+  it("parses group= only", () => {
+    const out = parseScadParams(wrap("rows = 2; // @param integer group=layout"));
+    expect(out.params).toHaveLength(1);
+    expect(out.params[0].group).toBe("layout");
+    expect(out.params[0].unit).toBeUndefined();
+  });
+
+  it("leaves unit and group undefined when both absent", () => {
+    const out = parseScadParams(wrap("a = 1; // @param number"));
+    expect(out.params).toHaveLength(1);
+    expect(out.params[0].unit).toBeUndefined();
+    expect(out.params[0].group).toBeUndefined();
+  });
+
+  it("parses unit= and group= together on any @param kind", () => {
+    const out = parseScadParams(
+      wrap(
+        'can_d = 46;  // @param number min=20 max=200 unit=mm group=cans label="Can diameter"\n' +
+          'drain  = "slots"; // @param enum choices=slots|holes|open unit="" group=drainage\n' +
+          'open   = true; // @param boolean group=cans',
+      ),
+    );
+    expect(out.params).toHaveLength(3);
+    expect(out.params[0]).toMatchObject({
+      name: "can_d",
+      kind: "number",
+      unit: "mm",
+      group: "cans",
+      label: "Can diameter",
+    });
+    expect(out.params[1]).toMatchObject({
+      name: "drain",
+      kind: "enum",
+      group: "drainage",
+    });
+    expect(out.params[2]).toMatchObject({
+      name: "open",
+      kind: "boolean",
+      group: "cans",
+    });
+  });
+
   it("survives the real cylindrical_holder_slot header pattern", () => {
     // Mirrors the actual file's section delimiter style.
     const src = `

@@ -8,7 +8,7 @@ test("Download STL produces a non-empty STL file", async ({ page }) => {
   await page.goto("/models/popcorn-kernel");
 
   // Wait for first preview render so the button isn't disabled.
-  await expect(page.getByText(/rendered in \d+ms · [\d,]+ bytes/)).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByText(/\d+ms · [\d.]+kb/).first()).toBeVisible({ timeout: 60_000 });
   const button = page.getByRole("button", { name: /Download STL/i });
   await expect(button).toBeEnabled();
 
