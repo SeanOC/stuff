@@ -47,11 +47,17 @@ cell_spacing_y    = 90;    // @param number min=40 max=140 step=1 unit=mm group=
 front_opening_deg = 100;   // @param number min=0 max=200 step=5 unit=deg group=geometry label="Cradle front opening arc"
 
 // ----- Base + drainage -----
-base_thickness     = 3;        // @param number min=1.5 max=8 step=0.5 unit=mm group=geometry label="Base thickness"
-base_margin        = 18;       // @param number min=6 max=40 step=0.5 unit=mm group=geometry label="Base margin beyond rings"
-base_drain_pattern = "slots";  // @param enum choices=slots|holes|open group=geometry label="Base drain pattern"
-drain_hole_d       = 5;        // @param number min=2 max=15 step=0.5 unit=mm group=geometry label="Drain hole diameter"
-drain_hole_count   = 3;        // @param integer min=0 max=8 group=geometry label="Cradle drain holes per cell"
+// base_margin is split per-axis (st-3ta). X (handle side) must leave room
+// for the handle posts — reducing below ~10mm detaches the posts from a
+// valid seat, the existing geometry failure mode. Y (other side) has no
+// structural role once the rings are fully under the plate, so its floor
+// can drop much lower; 5mm leaves just the corner fillet + a narrow rim.
+base_thickness          = 3;        // @param number min=1.5 max=8 step=0.5 unit=mm group=geometry label="Base thickness"
+base_margin_handle_side = 18;       // @param number min=6 max=40 step=0.5 unit=mm group=geometry label="Base margin — handle side (X)"
+base_margin_other_side  = 5;        // @param number min=1 max=40 step=0.5 unit=mm group=geometry label="Base margin — other side (Y)"
+base_drain_pattern      = "slots";  // @param enum choices=slots|holes|open group=geometry label="Base drain pattern"
+drain_hole_d            = 5;        // @param number min=2 max=15 step=0.5 unit=mm group=geometry label="Drain hole diameter"
+drain_hole_count        = 3;        // @param integer min=0 max=8 group=geometry label="Cradle drain holes per cell"
 
 // ----- Handle -----
 // handle_height default = can_height + 55mm so fingers clear the tallest
@@ -73,8 +79,8 @@ ring_od = ring_id + 2 * wall;
 function cell_x(c) = (c - (cols - 1) / 2) * cell_spacing_x;
 function cell_y(r) = (r - (rows - 1) / 2) * cell_spacing_y;
 
-base_w = cell_spacing_x * (cols - 1) + ring_od + 2 * base_margin;
-base_d = cell_spacing_y * (rows - 1) + ring_od + 2 * base_margin;
+base_w = cell_spacing_x * (cols - 1) + ring_od + 2 * base_margin_handle_side;
+base_d = cell_spacing_y * (rows - 1) + ring_od + 2 * base_margin_other_side;
 
 // Handle posts sit in the X-margin region, centered in Y. Pulled inward
 // from the base edge by fillet_r + 2mm so the post wall doesn't crowd
@@ -89,12 +95,15 @@ post_inner_x  = post_center_x - handle_post_w / 2;
 arch_z_start = handle_height - post_outer_x;
 
 // PRINT_ANCHOR_BBOX at defaults (rows=2 cols=3, cell_spacing_x=60,
-// cell_spacing_y=90, base_margin=18, can_diameter=50, clearance=0.75,
-// wall=3, handle_height=250):
+// cell_spacing_y=90, base_margin_handle_side=18, base_margin_other_side=5,
+// can_diameter=50, clearance=0.75, wall=3, handle_height=250):
 //   X: base_w = 60*2 + (50 + 1.5 + 6) + 2*18 = 120 + 57.5 + 36 = 213.5
-//   Y: max(base_d, handle_thickness) = max(90 + 57.5 + 36, 20) = 183.5
+//   Y: max(base_d, handle_thickness) = max(90 + 57.5 + 10, 20) = 157.5
 //   Z: base_thickness + handle_height = 3 + 250 = 253
-PRINT_ANCHOR_BBOX = [213.5, 183.5, 253];
+// Y footprint dropped 26mm vs the pre-st-3ta single base_margin=18 default
+// (was 183.5mm) — the Y margin had no structural role and the cleaner
+// rectangle saves roughly 14% of base-plate plastic.
+PRINT_ANCHOR_BBOX = [213.5, 157.5, 253];
 
 // ================= Base plate =================
 
