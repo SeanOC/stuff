@@ -2,14 +2,14 @@
 
 An experiment in authoring parametric 3D-printable designs with
 [Claude Code](https://claude.com/claude-code). Models are written as
-single-file OpenSCAD parametric designs (on top of
+single-file OpenSCAD parametric designs on top of
 [BOSL2](https://github.com/BelfrySCAD/BOSL2) and
-[QuackWorks](https://github.com/AndyLevesque/QuackWorks)); a Next.js
-+ WASM web UI exposes every model with live sliders, a browser
-preview, and STL export. The interesting part isn't the models
-themselves — it's the authoring loop.
+[QuackWorks](https://github.com/AndyLevesque/QuackWorks).
 
-**Live:** [stuff.seanoc.com](https://stuff.seanoc.com)
+A Next.js + WASM web UI exposes every model with live sliders, a
+browser preview, and STL export — see it at
+[stuff.seanoc.com](https://stuff.seanoc.com). The interesting part
+isn't the models themselves; it's the authoring loop.
 
 ## Models
 
@@ -25,13 +25,18 @@ twiddle sliders and grab a fresh STL.
 
 ## Authoring a new model
 
-The loop, end to end: describe the part to Claude Code ("parametric
-holder for X, fits Y range, mounts to Z"); Claude writes the `.scad`,
-annotates each `@param`, seeds a `<stem>.invariants.py` sidecar, adds
-an entry to `lib/models/catalog.ts`, and renders thumbnails; push;
-CI regenerates thumbnails, runs the invariants gate, and ships to
-Vercel. Open the model's page on the live site to tweak sliders and
-download an STL.
+**The loop, end to end:**
+
+1. Describe the part to Claude Code ("parametric holder for X, fits
+   Y range, mounts to Z").
+2. Claude writes the `.scad`, annotates each `@param`, seeds a
+   `<stem>.invariants.py` sidecar, and adds an entry to
+   `lib/models/catalog.ts`.
+3. Push the branch. CI regenerates thumbnails and runs the
+   invariants gate.
+4. Vercel deploys on merge to `main`.
+5. Open the model's page on the live site to tweak sliders and
+   download an STL.
 
 A minimal first prompt worth copy-pasting:
 
@@ -104,10 +109,15 @@ suite and the Vercel deploy flow.
 
 ## Continuous integration
 
-Every push and pull request runs: render-thumbnail regeneration (when
-`models/**` or the scad-render skill changes), per-model invariants
-(watertight, single-body, triangle ceiling, `PRINT_ANCHOR_BBOX`
-drift), Playwright end-to-end tests, and vitest unit tests.
+Every push and pull request runs:
+
+- **Render-thumbnail regeneration** — when `models/**` or the
+  scad-render skill changes.
+- **Per-model invariants** — watertight, single-body, triangle
+  ceiling, `PRINT_ANCHOR_BBOX` drift. Mandatory gate.
+- **Playwright end-to-end tests** — full UI flow on every PR.
+- **Vitest unit tests** — parser, hooks, library utilities.
+
 Thumbnails and invariants are mandatory gates — a PR that breaks
 either blocks merge. See [`docs/ci.md`](docs/ci.md) for the full
 pipeline, file-change triggers, and local reproduction commands.
