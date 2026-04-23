@@ -3,6 +3,13 @@
 // minus the Multiboard backer) sit on a drainage base plate, with a
 // semicircular-arched handle spanning the long axis for standalone carry.
 //
+// Handle clearance (st-8ac fix): cell_spacing_x and cell_spacing_y are
+// split so the two rows sit far enough apart in Y that the handle's
+// thickness (y=+-handle_thickness/2) fits in the gap between the rows
+// without ever passing over a can. The handle apex also sits above
+// can_height + a grip-clearance band so a full-height can seats fully
+// and the carrier can be lifted with cans in place.
+//
 // Print orientation: base down, handle up. Defaults keep every overhang
 // <=45deg: the handle arch is a semicircle of radius = post_outer_x, so
 // max overhang is 45deg at each post-top junction and smoothly climbs to
@@ -29,12 +36,14 @@ $fn = 64;
 
 // ----- Can + cell -----
 can_diameter      = 50;    // @param number min=20 max=120 step=0.5 label="Can diameter (mm)"
+can_height        = 195;   // @param number min=80 max=300 step=1 label="Target can height (mm)"
 clearance         = 0.75;  // @param number min=0 max=2 step=0.05 label="Slip clearance (mm)"
 ring_height       = 35;    // @param number min=10 max=120 step=1 label="Cradle ring height (mm)"
 wall              = 3;     // @param number min=1.5 max=8 step=0.5 label="Wall thickness (mm)"
 rows              = 2;     // @param integer min=1 max=6 label="Rows"
 cols              = 3;     // @param integer min=1 max=6 label="Columns"
-cell_spacing      = 60;    // @param number min=40 max=120 step=1 label="Cell center-to-center (mm)"
+cell_spacing_x    = 60;    // @param number min=40 max=120 step=1 label="Cell X spacing — along handle (mm)"
+cell_spacing_y    = 90;    // @param number min=40 max=140 step=1 label="Cell Y spacing — across handle (mm)"
 front_opening_deg = 100;   // @param number min=0 max=200 step=5 label="Cradle front opening arc (deg)"
 
 // ----- Base + drainage -----
@@ -45,7 +54,10 @@ drain_hole_d       = 5;        // @param number min=2 max=15 step=0.5 label="Dra
 drain_hole_count   = 3;        // @param integer min=0 max=8 label="Cradle drain holes per cell"
 
 // ----- Handle -----
-handle_height    = 125;  // @param number min=50 max=250 step=1 label="Handle apex height above base (mm)"
+// handle_height default = can_height + 55mm so fingers clear the tallest
+// can top comfortably when lifting. Lower values still print, but the
+// arch will intrude into the can's vertical envelope.
+handle_height    = 250;  // @param number min=50 max=400 step=1 label="Handle apex height above base (mm)"
 handle_post_w    = 14;   // @param number min=6 max=30 step=0.5 label="Handle post width X (mm)"
 handle_thickness = 20;   // @param number min=8 max=40 step=0.5 label="Handle thickness Y (mm)"
 
@@ -58,11 +70,11 @@ chamfer_r = 1;   // @param number min=0 max=3 step=0.25 label="Chamfer radius (m
 ring_id = can_diameter + 2 * clearance;
 ring_od = ring_id + 2 * wall;
 
-function cell_x(c) = (c - (cols - 1) / 2) * cell_spacing;
-function cell_y(r) = (r - (rows - 1) / 2) * cell_spacing;
+function cell_x(c) = (c - (cols - 1) / 2) * cell_spacing_x;
+function cell_y(r) = (r - (rows - 1) / 2) * cell_spacing_y;
 
-base_w = cell_spacing * (cols - 1) + ring_od + 2 * base_margin;
-base_d = cell_spacing * (rows - 1) + ring_od + 2 * base_margin;
+base_w = cell_spacing_x * (cols - 1) + ring_od + 2 * base_margin;
+base_d = cell_spacing_y * (rows - 1) + ring_od + 2 * base_margin;
 
 // Handle posts sit in the X-margin region, centered in Y. Pulled inward
 // from the base edge by fillet_r + 2mm so the post wall doesn't crowd
@@ -76,12 +88,13 @@ post_inner_x  = post_center_x - handle_post_w / 2;
 // handle_height. arch_z_start is where the post tops join the arch.
 arch_z_start = handle_height - post_outer_x;
 
-// PRINT_ANCHOR_BBOX at defaults (rows=2 cols=3, cell_spacing=60,
-// base_margin=18, can_diameter=50, clearance=0.75, wall=3):
+// PRINT_ANCHOR_BBOX at defaults (rows=2 cols=3, cell_spacing_x=60,
+// cell_spacing_y=90, base_margin=18, can_diameter=50, clearance=0.75,
+// wall=3, handle_height=250):
 //   X: base_w = 60*2 + (50 + 1.5 + 6) + 2*18 = 120 + 57.5 + 36 = 213.5
-//   Y: max(base_d, handle_thickness) = max(60 + 57.5 + 36, 20) = 153.5
-//   Z: base_thickness + handle_height = 3 + 125 = 128
-PRINT_ANCHOR_BBOX = [213.5, 153.5, 128];
+//   Y: max(base_d, handle_thickness) = max(90 + 57.5 + 36, 20) = 183.5
+//   Z: base_thickness + handle_height = 3 + 250 = 253
+PRINT_ANCHOR_BBOX = [213.5, 183.5, 253];
 
 // ================= Base plate =================
 
