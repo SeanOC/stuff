@@ -33,9 +33,14 @@ export default defineConfig({
     // Use the prod server in CI for fidelity; dev server locally for
     // speed. Both bind to 127.0.0.1 explicitly so `reuseExistingServer`
     // doesn't collide with a human's `next dev` on :3000.
+    //
+    // STUFF_ENABLE_TEST_ROUTES unlocks app/dev/** routes under the
+    // prod build so tests/e2e/error-state.spec.ts can drive the broken
+    // fixture (st-yom). Unset in Vercel → the routes 404 in prod.
     command: isCI
       ? `npx next start -p ${PORT} -H 127.0.0.1`
       : `npx next dev -p ${PORT} -H 127.0.0.1`,
+    env: { STUFF_ENABLE_TEST_ROUTES: "1" },
     port: PORT,
     reuseExistingServer: !isCI,
     timeout: 120_000,
