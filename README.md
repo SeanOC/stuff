@@ -45,6 +45,18 @@ and the clone procedure.
 
 ## Development
 
+After cloning, run once to enable the repo's git hooks:
+
+```bash
+./scripts/setup-git-hooks.sh
+```
+
+This points `core.hooksPath` at `.githooks/`, which currently ships a
+`prepare-commit-msg` hook that appends the Claude Code attribution
+trailer to every authored commit (matching the "Built with Claude
+Code" note below). Idempotent — `--amend` and re-commits don't
+duplicate the trailer.
+
 Render a model directly via OpenSCAD (Manifold backend required; CGAL
 OOMs on BOSL2):
 

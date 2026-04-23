@@ -1,0 +1,39 @@
+#!/bin/sh
+# Append the Claude Code attribution trailer to every authored commit.
+#
+# Idempotent: re-running on an --amended message that already carries
+# the trailer (or any message a human pasted it into) is a no-op.
+# Merges and squashes are left untouched — they already carry their
+# own structure and the trailer would be noise.
+#
+# Enable in a clone by running `./scripts/setup-git-hooks.sh` once,
+# which points `core.hooksPath` at this directory.
+#
+# Args from git:
+#   $1 = path to the commit message file
+#   $2 = commit source: message | template | merge | squash | commit
+#   $3 = commit SHA when amending
+
+MSG_FILE="$1"
+SOURCE="$2"
+
+case "$SOURCE" in
+    merge|squash) exit 0 ;;
+esac
+
+if grep -q "Generated with \[Claude Code\]" "$MSG_FILE"; then
+    exit 0
+fi
+
+# Guarantee a blank line separator before the trailer, unless the
+# file is empty (bare `git commit` that git will abort anyway).
+if [ -s "$MSG_FILE" ] && [ -n "$(tail -c 1 "$MSG_FILE")" ]; then
+    printf '\n' >> "$MSG_FILE"
+fi
+
+cat >> "$MSG_FILE" <<'TRAILER'
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+TRAILER
