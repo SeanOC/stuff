@@ -29,9 +29,10 @@
 // handle posts are filleted (BOSL2 cuboid rounding), cradle top rims
 // get an outer chamfer plus an inner lead-in, and the handle arch's
 // X-Z corners are rounded by construction (annular half-disc). The
-// arch's Y-face edges are sharp — a follow-up bead will re-attempt
-// the path-sweep continuity fix with a manifold-preserving approach
-// (the first attempt, st-hnd, broke watertight; see st-cjn).
+// arch's Y-face edges carry the same fillet_r via rotate_extrude of
+// a filleted rectangle profile (st-djm, restoring the st-hnd intent
+// with manifold-safe geometry that passes the st-cjn watertight
+// invariant). Result: the post→arch junction is visually continuous.
 
 include <BOSL2/std.scad>
 include <BOSL2/rounding.scad>
@@ -74,7 +75,7 @@ handle_post_w    = 14;   // @param number min=6 max=30 step=0.5 unit=mm group=ha
 handle_thickness = 20;   // @param number min=8 max=40 step=0.5 unit=mm group=handle label="Handle thickness Y"
 
 // ----- Edge treatment -----
-fillet_r  = 2;   // @param number min=0 max=5 step=0.25 unit=mm group=handle label="Fillet radius (posts)"
+fillet_r  = 2;   // @param number min=0 max=5 step=0.25 unit=mm group=handle label="Fillet radius (posts + arch Y-faces)"
 chamfer_r = 1;   // @param number min=0 max=3 step=0.25 unit=mm group=handle label="Chamfer radius"
 
 // === Derived ===
@@ -232,34 +233,27 @@ module handle() {
             cuboid([handle_post_w, handle_thickness, post_h],
                    rounding = fillet_r,
                    edges = "Z");
-    // Semicircular annular arch. Outer radius = post_outer_x (touches
-    // post outer face); inner radius = post_inner_x (touches post
-    // inner face). Extruded along Y by handle_thickness.
+    // Semicircular arch swept around the Z axis by rotate_extrude
+    // (st-djm). The profile is a filleted rectangle handle_post_w
+    // (radial) × handle_thickness (along the sweep-axis direction),
+    // with rounding = fillet_r on all four corners. After sweeping 180°
+    // and rotating [90, 0, 0] into the XZ plane, those four corners
+    // become the arch's Y-face edges — the radius matches the post's
+    // Z-edge fillet, so the post→arch junction is continuous.
     //
-    // st-hnd revert: the BOSL2 path_sweep approach shipped the
-    // continuity fix but produced a non-watertight STL (sweep endpoint
-    // caps didn't close — see st-cjn invariants catching it). Back to
-    // linear_extrude until a manifold-preserving continuity fix lands
-    // in a follow-up bead.
+    // rotate_extrude closes the swept volume into a manifold solid by
+    // construction — unlike path_sweep which needs explicit endpoint
+    // caps (the st-hnd approach that broke watertight and was reverted
+    // by st-so7). The endpoints at θ=0° / θ=180° are the natural start
+    // and end of the extrusion; they sit flush on the posts with the
+    // same 1mm interpenetration the posts use with the baseplate.
+    arch_r_mid = (post_outer_x + post_inner_x) / 2;
     translate([0, 0, base_thickness + arch_z_start])
         rotate([90, 0, 0])
-            linear_extrude(height = handle_thickness, center = true, convexity = 4)
-                handle_arch_2d();
-}
-
-module handle_arch_2d() {
-    difference() {
-        intersection() {
-            circle(r = post_outer_x);
-            translate([0, post_outer_x])
-                square([4 * post_outer_x, 2 * post_outer_x], center = true);
-        }
-        intersection() {
-            circle(r = post_inner_x);
-            translate([0, post_outer_x])
-                square([4 * post_outer_x, 2 * post_outer_x], center = true);
-        }
-    }
+            rotate_extrude(angle = 180, convexity = 4)
+                translate([arch_r_mid, 0])
+                    rect([handle_post_w, handle_thickness],
+                         rounding = fillet_r, anchor = CENTER);
 }
 
 // ================= Assembly =================
