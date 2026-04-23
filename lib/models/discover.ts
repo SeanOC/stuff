@@ -9,6 +9,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { parseScadParams, type Param } from "../scad-params/parse";
+import { CATALOG } from "./catalog";
 
 const MODELS_DIR = path.resolve(process.cwd(), "models");
 
@@ -25,6 +26,10 @@ export interface ModelEntry {
   annotated: boolean;
   /** Number of parsed @param annotations. */
   paramCount: number;
+  /** Catalog category. Joined from lib/models/catalog.ts. */
+  categoryId: string;
+  /** Two-line library card blurb. Joined from lib/models/catalog.ts. */
+  blurb: string;
 }
 
 export interface ModelDetail extends ModelEntry {
@@ -45,6 +50,12 @@ export async function listModels(): Promise<ModelEntry[]> {
     const modelPath = `models/${stem}.scad`;
     const source = await fs.readFile(path.join(MODELS_DIR, `${stem}.scad`), "utf8");
     const { params } = parseScadParams(source);
+    const catalogEntry = CATALOG[stem];
+    if (!catalogEntry) {
+      throw new Error(
+        `No catalog entry for "${stem}". Add it to lib/models/catalog.ts.`,
+      );
+    }
     return {
       stem,
       slug: stemToSlug(stem),
@@ -52,6 +63,8 @@ export async function listModels(): Promise<ModelEntry[]> {
       title: deriveTitle(source, stem),
       annotated: params.length > 0,
       paramCount: params.length,
+      categoryId: catalogEntry.categoryId,
+      blurb: catalogEntry.blurb,
     };
   }));
 }
@@ -69,6 +82,12 @@ export async function loadModel(slug: string): Promise<ModelDetail | null> {
     throw e;
   }
   const { params, warnings } = parseScadParams(source);
+  const catalogEntry = CATALOG[stem];
+  if (!catalogEntry) {
+    throw new Error(
+      `No catalog entry for "${stem}". Add it to lib/models/catalog.ts.`,
+    );
+  }
   return {
     stem,
     slug,
@@ -76,6 +95,8 @@ export async function loadModel(slug: string): Promise<ModelDetail | null> {
     title: deriveTitle(source, stem),
     annotated: params.length > 0,
     paramCount: params.length,
+    categoryId: catalogEntry.categoryId,
+    blurb: catalogEntry.blurb,
     source,
     params,
     warnings,

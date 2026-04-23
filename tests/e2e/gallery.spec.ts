@@ -11,13 +11,13 @@ const EXPECTED_SLUGS = [
 test.describe("gallery", () => {
   test("renders one card per model with title + link", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: /stuff — parametric models/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Parametric things/i })).toBeVisible();
 
     for (const slug of EXPECTED_SLUGS) {
       const link = page.locator(`a[href="/models/${slug}"]`);
       await expect(link, `card for ${slug}`).toBeVisible();
       // Filename mono code appears inside the card, confirms the stem rendered.
-      await expect(link).toContainText(/\.scad$/);
+      await expect(link).toContainText(/\.scad/);
     }
   });
 

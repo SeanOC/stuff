@@ -1,15 +1,14 @@
 import type { ReactNode } from "react";
 
-// Caliper top bar + left rail scaffold. Categories in the rail fill in phase 1;
-// this bead only wires the chrome so phase-1 beads have somewhere to land.
+// Caliper top bar only. Per phase-1 D4, each route renders its own left rail
+// in the scope appropriate for that view (library categories, detail presets,
+// etc.) — AppShell stops at the top bar so those rails can behave differently
+// per route.
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-bg text-text">
       <TopBar />
-      <div className="flex">
-        <LeftRail />
-        <main className="flex-1 min-w-0">{children}</main>
-      </div>
+      <main className="min-w-0">{children}</main>
     </div>
   );
 }
@@ -57,13 +56,3 @@ function TopBar() {
   );
 }
 
-function LeftRail() {
-  return (
-    <aside
-      className="hidden shrink-0 border-r border-line bg-panel xl:block"
-      style={{ width: 220 }}
-    >
-      {/* Categories populate in phase 1. */}
-    </aside>
-  );
-}

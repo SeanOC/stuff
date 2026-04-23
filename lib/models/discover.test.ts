@@ -42,4 +42,14 @@ describe("listModels", () => {
       expect(m.title.length).toBeGreaterThan(0);
     }
   });
+
+  it("joins catalog fields onto every entry", async () => {
+    const models = await listModels();
+    for (const m of models) {
+      expect(m.categoryId, `categoryId for ${m.stem}`).toBeTruthy();
+      expect(m.blurb.length, `blurb for ${m.stem}`).toBeGreaterThan(0);
+    }
+    const spraycan = models.find((m) => m.stem === "spraycan_carrier_6x50mm");
+    expect(spraycan?.categoryId).toBe("storage");
+  });
 });
