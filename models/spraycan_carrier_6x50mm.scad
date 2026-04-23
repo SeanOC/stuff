@@ -201,21 +201,24 @@ module cradles() {
 // ================= Handle =================
 
 module handle() {
-    translate([0, 0, base_thickness]) {
-        // Two posts, one at each short end of the base, centered in Y.
-        for (sx = [-1, 1])
-            translate([sx * post_center_x, 0, arch_z_start / 2])
-                cuboid([handle_post_w, handle_thickness, arch_z_start],
-                       rounding = fillet_r,
-                       edges = "Z");
-        // Semicircular annular arch. Outer radius = post_outer_x (touches
-        // post outer face); inner radius = post_inner_x (touches post
-        // inner face). Extruded along Y by handle_thickness.
-        translate([0, 0, arch_z_start])
-            rotate([90, 0, 0])
-                linear_extrude(height = handle_thickness, center = true, convexity = 4)
-                    handle_arch_2d();
-    }
+    // Posts span z=0 (baseplate bottom) through arch_z_start+1, so they
+    // overlap the base fully and interpenetrate the arch by 1mm. Without
+    // this overlap, post-base and post-arch join at zero-thickness planes,
+    // which preview renderers (e.g. WASM OpenSCAD F5) display as floating
+    // disconnected bodies (st-v7k).
+    post_h = base_thickness + arch_z_start + 1;
+    for (sx = [-1, 1])
+        translate([sx * post_center_x, 0, post_h / 2])
+            cuboid([handle_post_w, handle_thickness, post_h],
+                   rounding = fillet_r,
+                   edges = "Z");
+    // Semicircular annular arch. Outer radius = post_outer_x (touches
+    // post outer face); inner radius = post_inner_x (touches post
+    // inner face). Extruded along Y by handle_thickness.
+    translate([0, 0, base_thickness + arch_z_start])
+        rotate([90, 0, 0])
+            linear_extrude(height = handle_thickness, center = true, convexity = 4)
+                handle_arch_2d();
 }
 
 module handle_arch_2d() {
