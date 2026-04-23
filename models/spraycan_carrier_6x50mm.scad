@@ -24,11 +24,12 @@
 // Kid-safe: base corners and handle posts are filleted (BOSL2 cuboid
 // rounding), cradle top rims get an outer chamfer plus an inner lead-in,
 // and the handle arch's X-Z corners are rounded by construction (annular
-// half-disc). Remaining Y-faces of the arch are the only sharp edges --
-// cheap to break with sandpaper.
+// half-disc). The arch's Y-face edges are filleted to match (st-hnd) so
+// the transition from post to arch is visually continuous in preview.
 
 include <BOSL2/std.scad>
 include <BOSL2/rounding.scad>
+include <BOSL2/skin.scad>
 
 $fn = 64;
 
@@ -68,7 +69,10 @@ handle_post_w    = 14;   // @param number min=6 max=30 step=0.5 unit=mm group=ha
 handle_thickness = 20;   // @param number min=8 max=40 step=0.5 unit=mm group=handle label="Handle thickness Y"
 
 // ----- Edge treatment -----
-fillet_r  = 2;   // @param number min=0 max=5 step=0.25 unit=mm group=handle label="Fillet radius"
+// fillet_r applies to both the handle post vertical edges and the arch's
+// Y-face edges (st-hnd) so the fillet carries continuously through the
+// post→arch junction.
+fillet_r  = 2;   // @param number min=0 max=5 step=0.25 unit=mm group=handle label="Fillet radius (posts + arch Y-faces)"
 chamfer_r = 1;   // @param number min=0 max=3 step=0.25 unit=mm group=handle label="Chamfer radius"
 
 // === Derived ===
@@ -221,30 +225,27 @@ module handle() {
             cuboid([handle_post_w, handle_thickness, post_h],
                    rounding = fillet_r,
                    edges = "Z");
-    // Semicircular annular arch. Outer radius = post_outer_x (touches
-    // post outer face); inner radius = post_inner_x (touches post
-    // inner face). Extruded along Y by handle_thickness.
+    // Semicircular arch built by sweeping a rounded rectangle along a
+    // half-circle path at the posts' mean radius. The rectangle's
+    // corners are filleted by fillet_r — these corners become the
+    // arch's Y-face edges, identical in radius to the post's Z-edge
+    // fillet. When the rectangle's end sits on top of a post the two
+    // filleted profiles coincide, so the post→arch junction is
+    // continuous with no visible seam (st-hnd).
     translate([0, 0, base_thickness + arch_z_start])
-        rotate([90, 0, 0])
-            linear_extrude(height = handle_thickness, center = true, convexity = 4)
-                handle_arch_2d();
+        handle_arch_3d();
 }
 
-module handle_arch_2d() {
-    difference() {
-        // Upper half-disc at radius = post_outer_x
-        intersection() {
-            circle(r = post_outer_x);
-            translate([0, post_outer_x])
-                square([4 * post_outer_x, 2 * post_outer_x], center = true);
-        }
-        // Subtract inner half-disc at radius = post_inner_x
-        intersection() {
-            circle(r = post_inner_x);
-            translate([0, post_outer_x])
-                square([4 * post_outer_x, 2 * post_outer_x], center = true);
-        }
-    }
+module handle_arch_3d() {
+    // Cross-section perpendicular to the sweep tangent: handle_post_w
+    // in the radial direction (X of the shape, swept through the XZ
+    // plane), handle_thickness along Y, with fillet_r corners.
+    cross_section = rect([handle_post_w, handle_thickness], rounding = fillet_r);
+    arch_r = (post_outer_x + post_inner_x) / 2;
+    n = $fn > 0 ? $fn : 64;
+    path = [for (i = [0:n]) let (a = 180 * i / n)
+        [arch_r * cos(a), 0, arch_r * sin(a)]];
+    path_sweep(cross_section, path, convexity = 4);
 }
 
 // ================= Assembly =================
