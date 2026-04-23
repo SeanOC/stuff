@@ -70,6 +70,23 @@ CI runs both steps on every PR that touches `models/**` or the
 invariants infra, and on every push to `main`. Failures surface as a
 GitHub check.
 
+## Scope discipline: don't silently revert prior-bead work
+
+If your bead's work exposes that a prior bead's change is broken
+(fails a test, fails an invariant, fails a manual check), **stop and
+file a new bead**. Do not revert the prior change as part of your
+current PR. Your commit's stated scope is a contract — if the diff
+does more, the commit history lies, bisects are poisoned, and
+user-visible regressions look like they came from unrelated work.
+
+Correct path:
+
+1. Finish (or scope down) your current bead's intended change.
+2. File a new bead describing what the prior work got wrong and what
+   needs doing.
+3. Submit your current bead as planned.
+4. The new bead picks up in its own PR.
+
 ## Non-interactive shell commands
 
 Shell commands like `cp`, `mv`, and `rm` are often aliased to `-i`
