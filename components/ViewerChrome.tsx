@@ -83,9 +83,12 @@ export function ViewerChrome({
       tabIndex={0}
       onKeyDown={handleKeyDown}
       aria-label="3D preview"
-      className="relative flex flex-col bg-panel2 focus:outline-none"
+      className="relative flex h-full flex-col bg-panel2 focus:outline-none"
     >
-      <div ref={viewerContainerRef} className="relative min-h-[480px] flex-1">
+      <div
+        ref={viewerContainerRef}
+        className="relative flex-1 min-h-[480px] min-[1200px]:min-h-0"
+      >
         {/* Grid paints first so the model occludes it. StlViewer's canvas
             clears with alpha=0 so the grid shows through where the model
             doesn't cover. AxesIndicator + ViewPresetTabs are intentional

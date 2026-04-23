@@ -43,27 +43,47 @@ export default function DetailPage({ model }: Props) {
     <DownloadButton modelPath={model.modelPath} values={detail.state.params} />
   );
 
+  // At ≥1200px, pin the layout to the viewport (minus the 38px sticky
+  // top bar from AppShell) so the viewer never leaves the visible area.
+  // The grid's three columns each get min-h-0 so they can shrink below
+  // content size, and the two rails scroll internally while the viewer
+  // stays fixed. Below 1200px we intentionally fall back to the natural
+  // single-column scroll — phase 4 owns the mobile bottom-sheet design.
+  // (st-fl4)
   return (
-    <div className="flex flex-col">
+    <div
+      data-testid="detail-root"
+      className="flex flex-col min-[1200px]:h-[calc(100vh-38px)]"
+    >
       <DetailHeader title={model.title} modelPath={model.modelPath} />
-      <div className="grid grid-cols-1 min-[1200px]:grid-cols-[240px_1fr_360px]">
-        <DetailLeftRail
-          modelPath={model.modelPath}
-          history={render.history}
-          state={render.state}
-          warnings={model.warnings}
-        />
-        <ViewerChrome
-          state={render.state}
-          camera={detail.state.camera}
-          showGrid={detail.state.showGrid}
-          showDims={detail.state.showDims}
-          setCamera={detail.setCamera}
-          toggleGrid={detail.toggleGrid}
-          toggleDims={detail.toggleDims}
-          downloadSlot={downloadButton}
-        />
-        <aside className="border-t border-line bg-panel min-[1200px]:border-l min-[1200px]:border-t-0">
+      <div className="grid flex-1 min-h-0 grid-cols-1 min-[1200px]:grid-cols-[240px_1fr_360px] min-[1200px]:grid-rows-[1fr]">
+        <aside
+          data-testid="detail-left-col"
+          className="min-h-0 border-b border-line bg-panel min-[1200px]:overflow-y-auto min-[1200px]:border-b-0 min-[1200px]:border-r"
+        >
+          <DetailLeftRail
+            modelPath={model.modelPath}
+            history={render.history}
+            state={render.state}
+            warnings={model.warnings}
+          />
+        </aside>
+        <div className="min-h-0 min-[1200px]:overflow-hidden">
+          <ViewerChrome
+            state={render.state}
+            camera={detail.state.camera}
+            showGrid={detail.state.showGrid}
+            showDims={detail.state.showDims}
+            setCamera={detail.setCamera}
+            toggleGrid={detail.toggleGrid}
+            toggleDims={detail.toggleDims}
+            downloadSlot={downloadButton}
+          />
+        </div>
+        <aside
+          data-testid="param-rail-col"
+          className="min-h-0 border-t border-line bg-panel min-[1200px]:overflow-y-auto min-[1200px]:border-l min-[1200px]:border-t-0"
+        >
           <ParamRail
             params={model.params}
             values={detail.state.params}
@@ -108,7 +128,7 @@ function DetailLeftRail({
   warnings: string[];
 }) {
   return (
-    <aside className="border-b border-line bg-panel p-10 min-[1200px]:border-b-0 min-[1200px]:border-r">
+    <div className="p-10">
       <div className="font-mono text-10 uppercase tracking-wide text-text-mute">
         Source
       </div>
@@ -153,7 +173,7 @@ function DetailLeftRail({
           </ul>
         </>
       )}
-    </aside>
+    </div>
   );
 }
 
