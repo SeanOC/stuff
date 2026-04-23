@@ -5,71 +5,46 @@ export default async function Home() {
   const models = await listModels();
 
   return (
-    <main style={{ padding: "2rem", maxWidth: 1200, margin: "0 auto" }}>
-      <h1 style={{ marginTop: 0 }}>stuff — parametric models</h1>
-      <p style={{ color: "#8b949e", marginTop: 0 }}>
+    <div className="px-24 py-24">
+      <h1 className="m-0 text-22 font-semibold">stuff — parametric models</h1>
+      <p className="mt-6 mb-24 text-12 text-text-dim">
         {models.length} {models.length === 1 ? "model" : "models"}. Open one to
         tune params and download the STL.
       </p>
       <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-          gap: "1rem",
-          marginTop: "1.5rem",
-        }}
+        className="grid gap-14"
+        style={{ gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))" }}
       >
         {models.map((m) => (
           <Link
             key={m.slug}
             href={`/models/${m.slug}`}
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              background: "#0d1117",
-              border: "1px solid #30363d",
-              borderRadius: 6,
-              overflow: "hidden",
-              textDecoration: "none",
-              color: "inherit",
-              transition: "border-color 120ms",
-            }}
+            className="flex flex-col overflow-hidden rounded-4 border border-line bg-panel no-underline text-text transition-colors hover:border-accent-line hover:bg-panel-hi"
           >
             <div
+              className="border-b border-line-soft"
               style={{
                 aspectRatio: "4 / 3",
-                background: `#161b22 url("/api/thumbnail?model=${encodeURIComponent(m.slug)}") center / cover no-repeat`,
-                borderBottom: "1px solid #30363d",
+                background: `var(--color-panel2) url("/api/thumbnail?model=${encodeURIComponent(m.slug)}") center / cover no-repeat`,
               }}
               aria-label={`top view of ${m.title}`}
             />
-            <div style={{ padding: "0.75rem 0.9rem" }}>
-              <div style={{ fontWeight: 600, color: "#e6edf3" }}>{m.title}</div>
+            <div className="p-12">
+              <div className="font-semibold text-13 text-text">{m.title}</div>
               <div
-                style={{
-                  marginTop: "0.2rem",
-                  fontSize: "0.8rem",
-                  color: m.annotated ? "#8b949e" : "#d29922",
-                }}
+                className={`mt-3 text-11 ${m.annotated ? "text-text-dim" : "text-warn"}`}
               >
                 {m.annotated
                   ? `${m.paramCount} parameter${m.paramCount === 1 ? "" : "s"}`
                   : "not yet annotated"}
               </div>
-              <code
-                style={{
-                  display: "block",
-                  marginTop: "0.35rem",
-                  fontSize: "0.72rem",
-                  color: "#6e7681",
-                }}
-              >
+              <code className="mt-4 block font-mono text-10 text-text-mute">
                 {m.stem}.scad
               </code>
             </div>
           </Link>
         ))}
       </div>
-    </main>
+    </div>
   );
 }
