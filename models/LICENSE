@@ -1,0 +1,42 @@
+Models in this directory are licensed under the Creative Commons
+Attribution-NonCommercial-ShareAlike 4.0 International License
+(CC BY-NC-SA 4.0).
+
+Copyright (c) 2026 Sean O'Connor
+
+You are free to:
+
+  Share — copy and redistribute the material in any medium or format.
+  Adapt — remix, transform, and build upon the material.
+
+Under the following terms:
+
+  Attribution — You must give appropriate credit, provide a link to
+    the license, and indicate if changes were made. You may do so in
+    any reasonable manner, but not in any way that suggests the
+    licensor endorses you or your use.
+
+  NonCommercial — You may not use the material for commercial
+    purposes.
+
+  ShareAlike — If you remix, transform, or build upon the material,
+    you must distribute your contributions under the same license as
+    the original.
+
+  No additional restrictions — You may not apply legal terms or
+    technological measures that legally restrict others from doing
+    anything the license permits.
+
+Full legal code:
+  https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode
+
+Human-readable summary:
+  https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+SPDX-License-Identifier: CC-BY-NC-SA-4.0
+
+Note: this license covers the `.scad` source files in this directory.
+The Next.js web app and Python tooling at the repo root are MIT-
+licensed (see the root `LICENSE` file). Bundled OpenSCAD libraries
+under `libs/` retain their own licenses (`libs/BOSL2/LICENSE`
+BSD-2-Clause; `libs/QuackWorks/LICENSE` CC BY-NC-SA 4.0).

@@ -1,13 +1,11 @@
 # Project Instructions for AI Agents
 
-This file provides instructions and context for AI coding agents working on this project.
+This file provides context for AI coding agents working on this project.
 
-<!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
-## Beads Issue Tracker
+## Issue tracking — beads (`bd`)
 
-This project uses **bd (beads)** for issue tracking. Run `bd prime` to see full workflow context and commands.
-
-### Quick Reference
+This project uses [beads](https://github.com/steveklabnik/beads) for issue
+tracking. Run `bd prime` to see the full command reference.
 
 ```bash
 bd ready              # Find available work
@@ -16,73 +14,54 @@ bd update <id> --claim  # Claim work
 bd close <id>         # Complete work
 ```
 
-### Rules
+Use `bd` for task tracking; don't maintain parallel markdown TODO lists.
 
-- Use `bd` for ALL task tracking — do NOT use TodoWrite, TaskCreate, or markdown TODO lists
-- Run `bd prime` for detailed command reference and session close protocol
-- Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
-
-## Session Completion
-
-**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
-
-**MANDATORY WORKFLOW:**
-
-1. **File issues for remaining work** - Create issues for anything that needs follow-up
-2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Close finished work, update in-progress items
-4. **PUSH TO REMOTE** - This is MANDATORY:
-   ```bash
-   git pull --rebase
-   bd dolt push
-   git push
-   git status  # MUST show "up to date with origin"
-   ```
-5. **Clean up** - Clear stashes, prune remote branches
-6. **Verify** - All changes committed AND pushed
-7. **Hand off** - Provide context for next session
-
-**CRITICAL RULES:**
-- Work is NOT complete until `git push` succeeds
-- NEVER stop before pushing - that leaves work stranded locally
-- NEVER say "ready to push when you are" - YOU must push
-- If push fails, resolve and retry until it succeeds
-<!-- END BEADS INTEGRATION -->
-
-
-## Build & Test
-
-_Add your build and test commands here_
+## Build, test, lint
 
 ```bash
-# Example:
-# npm install
-# npm test
+npm install           # Install web-app deps
+npm run dev           # Local dev server on http://localhost:3000
+npm test              # Vitest unit tests
+npm run test:e2e      # Playwright end-to-end tests
+npm run build         # Production Next.js build
 ```
 
-## Architecture Overview
+Model-level checks (OpenSCAD renders + per-model invariants) — see
+[AGENTS.md](AGENTS.md) for the render pipeline and invariants sidecar
+convention.
 
-_Add a brief overview of your project architecture_
+## Architecture overview
 
-## Conventions & Patterns
+- `app/` — Next.js App Router frontend. Gallery at `/`, dynamic detail
+  page at `/models/[slug]`. Server components load `.scad` sources
+  from disk; the client re-renders on param edits via
+  `openscad-wasm-prebuilt`.
+- `components/` — React UI (StlViewer, DetailPage, ParamRail, etc.).
+- `hooks/` — `useRenderer`, `useDetailState`.
+- `lib/scad-params/` — pure TS parser for `@param` annotations in
+  `.scad` files (source of truth for auto-generated form controls).
+- `lib/wasm/` — browser-side WASM render driver + include-closure walker.
+- `lib/models/` — filesystem-backed model discovery.
+- `models/` — parametric `.scad` sources. Each model ships a sidecar
+  `<stem>.invariants.py` asserting machine-checkable claims.
+- `libs/` — vendored OpenSCAD libraries (BOSL2, QuackWorks). Pinned
+  in `libs/README.md`; cloned by `scripts/vendor-libs.sh`.
+- `scripts/` — Python tooling: render-all, export-all, invariants,
+  artifact server.
+- `.claude/skills/` — project-local Claude Code skills (`scad-new`,
+  `scad-render`, `scad-export`, `scad-lib`, `scad-send`).
 
-_Add your project-specific conventions here_
-
-## Remote Artifact Browser
+## Remote artifact browser
 
 `scripts/serve.py` is a read-only HTTP server (stdlib only) that lists
 every `models/*.scad`, its render thumbnails under `renders/<stem>/`,
-and its `exports/<stem>.stl` download. Useful when the rigs run on a
-headless host but you want to eyeball renders from a laptop. Binds
+and its `exports/<stem>.stl` download. Useful when the dev host is
+headless but you want to eyeball renders from a laptop. Binds
 `0.0.0.0:8765` by default — assumes a trusted network since there's no
-auth. Pass `--host 127.0.0.1` to restrict to loopback instead.
+auth. Pass `--host 127.0.0.1` to restrict to loopback.
 
 ```bash
-# on the rig host:
-python3 scripts/serve.py            # serves http://<rig-host>:8765/
-
-# loopback-only (SSH-forward from laptop):
-python3 scripts/serve.py --host 127.0.0.1
-ssh -NL 8765:127.0.0.1:8765 rig-host
+python3 scripts/serve.py                       # http://<host>:8765/
+python3 scripts/serve.py --host 127.0.0.1      # loopback only
+ssh -NL 8765:127.0.0.1:8765 dev-host           # forward to laptop
 ```
-

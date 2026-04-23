@@ -30,31 +30,31 @@ Already in repo:
 
 Not in repo: any CAD-aware compound-engineering plugin. Closest adjacents (`design-implementation-reviewer`, `design-iterator`) are Figma-only and don't transfer. `gemini-imagegen` generates, doesn't diff. No CAD skill exists upstream that we'd just install.
 
-**Spike conclusions** (`docs/brainstorms/2026-04-16-openscad-vision-spike-results.md:66–75`, `…-ai-workflow-requirements.md:26`): multi-angle orthographic PNGs + pixel-measured anchor dimensions are decisive; the missing piece is that this loop is skill-invocable but not *mandatory* before `gt done`.
+**Spike conclusions** (`docs/brainstorms/2026-04-16-openscad-vision-spike-results.md:66–75`, `…-ai-workflow-requirements.md:26`): multi-angle orthographic PNGs + pixel-measured anchor dimensions are decisive; the missing piece is that this loop is skill-invocable but not *mandatory* before `submit`.
 
 ## 3. Gap analysis
 
-- **Pre-submit gate**: None. `gt done` pushes without re-rendering. Nothing forces a polecat to look at its own output.
+- **Pre-submit gate**: None. `submit` pushes without re-rendering. Nothing forces an agent to look at its own output.
 - **Topology invariants**: watertight is checked on export, but st-v7k was a *preview* mismatch — nothing currently compares OpenCSG vs Manifold output, nor asserts `num_connected_solids == 1` on the preview path.
 - **Per-model invariants**: no place to declare `arch_z_start ≥ can_height` or `base_d ≤ base_w * 0.9`. `PRINT_ANCHOR_BBOX` is the only machine-readable claim a model makes about itself.
 - **Visual-continuity class (st-hnd)**: no idiom short of a vision pass or a structural rewrite to `path_sweep`. Invariants can't express C¹ smoothness cheaply.
 
 ## 4. Three proposals, ranked effort → payoff
 
-**P1 — Pre-`gt done` vision self-review (LOW effort).** Polecat runs `scripts/render-all.py` on changed models, opens iso + top + side PNGs, and silently critiques against a 5-line checklist ("single body? footprint tight? proportions match spec? seams? clearances?"). Add to `CLAUDE.local.md` completion protocol. Catches st-v7k (iso), st-3ta (top). Misses st-hnd (too subtle) and st-8ac (needs clearance number, not vision).
+**P1 — Pre-`submit` vision self-review (LOW effort).** Agent runs `scripts/render-all.py` on changed models, opens iso + top + side PNGs, and silently critiques against a 5-line checklist ("single body? footprint tight? proportions match spec? seams? clearances?"). Add to `CLAUDE.local.md` completion protocol. Catches st-v7k (iso), st-3ta (top). Misses st-hnd (too subtle) and st-8ac (needs clearance number, not vision).
 
-**P2 — Invariants sidecar (MEDIUM).** Per-model `models/<stem>.invariants.py` (or `.json`) declares machine-checkable claims: bbox range, `num_connected_solids`, free-form lambdas over STL bbox + parsed params (`arch_z_start(params) >= params.can_height`). New `scripts/check-invariants.py` runs on the Manifold-export STL + source-parsed params, exits non-zero on fail. Wire into CI alongside the render job and as a mandatory pre-`gt done` step. Catches st-v7k (connected-body), st-8ac (clearance), st-3ta (per-axis margin). **Does not** catch st-hnd.
+**P2 — Invariants sidecar (MEDIUM).** Per-model `models/<stem>.invariants.py` (or `.json`) declares machine-checkable claims: bbox range, `num_connected_solids`, free-form lambdas over STL bbox + parsed params (`arch_z_start(params) >= params.can_height`). New `scripts/check-invariants.py` runs on the Manifold-export STL + source-parsed params, exits non-zero on fail. Wire into CI alongside the render job and as a mandatory pre-`submit` step. Catches st-v7k (connected-body), st-8ac (clearance), st-3ta (per-axis margin). **Does not** catch st-hnd.
 
-**P3 — `/review-scad` skill + sub-agent (HIGH).** On any modified `.scad`: render → export → invariants → vision pass → structured PASS/FAIL. Blocks `gt done`. Catches all four CAD classes. Bundles P1 + P2 plus LLM judgment.
+**P3 — `/review-scad` skill + sub-agent (HIGH).** On any modified `.scad`: render → export → invariants → vision pass → structured PASS/FAIL. Blocks `submit`. Catches all four CAD classes. Bundles P1 + P2 plus LLM judgment.
 
 ## 5. Recommendation
 
-**Prototype P2 as the next bead.** Rationale: (a) closes three of four defect classes with deterministic, reviewable truth — no LLM drift; (b) composes with P1 cheaply later (add the vision checklist to the same pre-`gt done` hook); (c) each invariant is a one-liner against already-available outputs (trimesh STL, parsed params, `PRINT_ANCHOR_BBOX`). Initial scope sketch:
+**Prototype P2 as the next bead.** Rationale: (a) closes three of four defect classes with deterministic, reviewable truth — no LLM drift; (b) composes with P1 cheaply later (add the vision checklist to the same pre-`submit` hook); (c) each invariant is a one-liner against already-available outputs (trimesh STL, parsed params, `PRINT_ANCHOR_BBOX`). Initial scope sketch:
 
 - `scripts/check-invariants.py <model.scad>` — reads source, parses `@param`s and constants, loads STL from `exports/`, asserts claims.
 - Per-model `models/<stem>.invariants.py` with a single `def check(model, stl): -> list[Failure]`.
 - Seed invariants: `connected==1`, `bbox ≈ PRINT_ANCHOR_BBOX ±1mm`, `base_d ≤ base_w` (catches st-3ta once seeded), `arch_z_start ≥ can_height` (st-8ac).
-- CI: run on PR; block `gt done` locally via a hook in `CLAUDE.local.md`'s Completion Protocol.
+- CI: run on PR; block `submit` locally via a hook in `CLAUDE.local.md`'s Completion Protocol.
 
 Fold P1 (vision checklist) in the same hook for the st-hnd class, but ship P2 first — the invariants are what stop the bleeding.
 

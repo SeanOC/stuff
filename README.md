@@ -15,15 +15,24 @@ twiddle sliders and grab a fresh STL.
 
 | File | Description |
 | --- | --- |
-| `cylindrical_holder_slot.scad` | Multiboard-mounted parametric holder for any cylindrical item (42–77mm tested), Multiconnect slot backer. Consolidates four earlier fixed-diameter variants. |
+| `cylindrical_holder_slot.scad` | Multiboard-mounted parametric holder for any cylindrical item (42–77 mm tested), Multiconnect slot backer. Consolidates four earlier fixed-diameter variants. |
 | `popcorn_kernel.scad` | Cartoonish popped popcorn kernel — replacement piece for a Disney toddler-toy popcorn stand. Solid union of overlapping spheres, flat-cut base. |
+| `spraycan_carrier_6x50mm.scad` | 2×3 spray-can tote carrier for 50 mm cans: six open-front C-ring cradles on a drainage base plate with a semicircular-arched handle. Kid-safe, wet-safe, tall-can (195 mm) clearance. |
 
 ## Web app
 
+### Live preview
+
+![Detail page — Caliper UI](docs/design/caliper/screenshots/02-detail-desktop.png)
+
+*The model detail page: 3D preview in the middle, render log + source
+info on the left, grouped parameter rail on the right. Every slider
+re-renders the STL in the browser via `openscad-wasm-prebuilt`.*
+
 `app/` is a Next.js App Router frontend that exposes every model as a
-live parametric page: sliders for each `@param`, in-browser WASM render
-driving a three.js preview, and a server-side STL export for download.
-Deployed on Vercel. See [`app/README.md`](app/README.md) for
+live parametric page: sliders for each `@param`, in-browser WASM
+render driving a three.js preview, and a server-side STL export for
+download. Deployed on Vercel. See [`app/README.md`](app/README.md) for
 architecture, the `@param` annotation grammar, and the deploy flow.
 
 ## Libraries
@@ -53,3 +62,16 @@ npm run dev          # http://localhost:3000
 
 `app/README.md` has the full picture, including the Playwright e2e
 suite, CI workflow, and the Vercel deploy flow.
+
+## License
+
+- **Code** (Next.js app, TypeScript + Python tooling) — [MIT](LICENSE).
+- **Models** (`models/*.scad`) — [CC BY-NC-SA 4.0](models/LICENSE).
+- Bundled OpenSCAD libraries retain their own licenses:
+  [`libs/BOSL2/LICENSE`](libs/BOSL2/LICENSE) (BSD-2-Clause) and
+  [`libs/QuackWorks/LICENSE`](libs/QuackWorks/LICENSE) (CC BY-NC-SA 4.0).
+
+---
+
+*Built with [Claude Code](https://claude.com/claude-code) using a
+multi-agent authoring workflow.*

@@ -20,6 +20,12 @@ libs/QuackWorks/
 # Claude Code local state
 .claude/scheduled_tasks.lock
 
+# Local-only project context + multi-agent runbook commands.
+# These reference internal tooling and are intentionally not shipped.
+CLAUDE.local.md
+.claude/commands/done.md
+.claude/commands/handoff.md
+
 # Python
 __pycache__/
 *.pyc

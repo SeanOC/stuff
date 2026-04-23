@@ -7,7 +7,7 @@ any export failed.
 
 Used by CI (and available locally) so scripts/check-invariants.py has
 an STL per model to analyze. The scad-export skill still owns the
-human-in-the-loop gate for exporting a single model from a polecat
+human-in-the-loop gate for exporting a single model from an interactive
 session; this script is for batch runs where no approval step applies.
 """
 

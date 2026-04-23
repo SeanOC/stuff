@@ -25,7 +25,7 @@ Phase 0 (shipped)
                     └── 1.c Detail chrome: viewer + param rail
 ```
 
-1.a and 1.b can run in parallel on two polecats. 1.c depends on 1.b.
+1.a and 1.b can run in parallel on two agents. 1.c depends on 1.b.
 
 ## Architectural decisions
 

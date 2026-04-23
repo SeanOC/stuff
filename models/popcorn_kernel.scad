@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: CC-BY-NC-SA-4.0
+// Copyright (c) 2026 Sean O'Connor
+//
 // Cartoonish popped popcorn kernel — replacement piece for a Disney
 // toddler-toy popcorn stand. Union of overlapping spheres so each sphere
 // reads as a visible popcorn "lobe"; sphere-sphere intersections are smooth

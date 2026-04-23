@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: CC-BY-NC-SA-4.0
+// Copyright (c) 2026 Sean O'Connor
+//
 // Parametric 2x3 spray-can tote carrier. Six open-front C-ring cradles
 // (same geometry family as the 70mm preset of cylindrical_holder_slot.scad,
 // minus the Multiboard backer) sit on a drainage base plate, with a

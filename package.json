@@ -2,6 +2,12 @@
   "name": "stuff-web",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
+  "author": "Sean O'Connor",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/seanoconnor/stuff"
+  },
   "scripts": {
     "dev": "next dev",
     "prebuild": "./scripts/vendor-libs.sh",

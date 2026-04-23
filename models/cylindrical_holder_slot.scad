@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: CC-BY-NC-SA-4.0
+// Copyright (c) 2026 Sean O'Connor
+//
 // Multiboard-mounted holder for a cylindrical item — Multiconnect slot variant.
 // Consolidates four earlier _slot variants (42mm, 46mm, 70mm, 77mm) that shared
 // an identical backer + cradle + gusset pattern and differed only in tunable
