@@ -118,7 +118,7 @@ corner_tabs            = true; // @param boolean group=fit label="Rear-extending
 corner_wedge_clearance = 0.4;  // @param number min=0 max=1.5 step=0.05 unit=mm group=fit label="Radial clearance between wedge arc and bib corner"
 
 // ----- Part geometry -----
-width           = 78;   // @param number min=50 max=100 step=0.5 unit=mm  group=geometry label="Part width (X)"
+width           = 72;   // @param number min=50 max=100 step=0.5 unit=mm  group=geometry label="Part width (X) — matches bib_plate_width by default to remove the shoulder at the wedge seam"
 tab_depth       = 10;   // @param number min=5  max=30  step=0.5 unit=mm  group=geometry label="VHB tab depth (Y)"
 flap_length     = 32;   // @param number min=15 max=60  step=0.5 unit=mm  group=geometry label="Flap length (along the plate)"
 flap_angle      = 38;   // @param number min=15 max=60  step=1   unit=deg group=geometry label="Flap angle above horizontal"
@@ -177,12 +177,13 @@ _inner_arc_exit = [_inner_end_y + flap_length * cos(_fa),
 // reach is along the wedge's outer edge, where the bib-corner
 // cylinder cuts in last: Y_min = −sqrt((R+c)² − R²) ≈ −6.29 mm at
 // R = 9, c = 0.4. So total Y extent = 42.6 + 6.29 ≈ 48.89 mm. X is
-// unchanged: the wedges reach to ±bib_plate_width/2 = ±36, but the
-// VHB tab is wider at ±width/2 = ±39, so the tab still dominates
-// X. Z stays at 24.22 (flap's inner tip). (st-6pc)
-PRINT_ANCHOR_BBOX = [78, 48.89, 24.22];
+// `width` = bib_plate_width by default (72 mm) — the wedges reach
+// exactly to ±bib_plate_width/2 = ±36, flush with the tab/bend/flap
+// side edges so there's no shoulder at the seam (st-70l). Z stays
+// at 24.22 (flap's inner tip).
+PRINT_ANCHOR_BBOX = [72, 48.89, 24.22];
 
-// @preset id="aquor-72x100" label="Aquor 72×100mm (default)" bib_plate_width=72 bib_plate_height=100 bib_plate_thickness=6 bib_corner_radius=9 corner_tabs=true corner_wedge_clearance=0.4 width=78 tab_depth=10 flap_length=32 flap_angle=38 plate_thickness=2.5 bend_radius=12 contour_depth=1.5 contour_side_rim_width=1.5 debug_colors=true
+// @preset id="aquor-72x100" label="Aquor 72×100mm (default)" bib_plate_width=72 bib_plate_height=100 bib_plate_thickness=6 bib_corner_radius=9 corner_tabs=true corner_wedge_clearance=0.4 width=72 tab_depth=10 flap_length=32 flap_angle=38 plate_thickness=2.5 bend_radius=12 contour_depth=1.5 contour_side_rim_width=1.5 debug_colors=true
 
 // === Geometry ===
 
