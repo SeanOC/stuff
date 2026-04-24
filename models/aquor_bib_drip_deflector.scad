@@ -12,30 +12,58 @@
 //
 // === INSTALL ORIENTATION ===
 //
-// The printed part is rotated 90° about the X axis before install.
-// In print coordinates:
-//   +X = width (along bib width)            — unchanged in install
-//   +Y = toward the flap/drip edge           — becomes −Z (toward floor) in install
-//   +Z = up off the print bed                — becomes +Y (away from wall) in install
+// The deflector mounts as a VERTICAL wall panel under the hose bib.
+// The blue tab's VHB face is pressed against the wall; the green
+// flap hangs forward-and-down at `flap_angle` below horizontal.
+// Water runs down the wall, onto the blue panel's outward face, over
+// the bend, down the green flap, and drips off the front edge clear
+// of the drywall below. Install axes (independent of print pose):
+//   install +X = along bib width    (unchanged from the part's +X)
+//   install +Y = outward from wall  (normal to wall plane)
+//   install +Z = up toward ceiling
 //
-// So the blue tab's print-Z=0 face (the smooth bed-side face) is the
-// VHB-to-wall surface. The blue tab becomes a vertical panel on the
-// wall below the bib. The green flap hangs down and forward. Water
-// from the bib runs down the wall → blue's exposed face (+Y in
-// install / +Z in print) → bend → flap → drips off the front edge.
+// === PRINT ORIENTATION (v12, st-me9) ===
 //
-// Coordinate cheat sheet (print vs install):
-//   print +Z up              → install +Y outward
-//   print +Y flap-ward       → install −Z downward
-//   print −Y rear-of-tab     → install +Z toward the bib
+// v12 flipped the print pose so the GREEN FLAP lies flat on the
+// build plate (was: blue tab on the bed, v7 through v11). Rationale:
+// bigger first-layer contact area = better adhesion; the VHB face is
+// no longer the bed face but the user will flip/install anyway.
+//
+// The rotation from the part's logical frame (which is also the
+// OLD print frame) to the NEW print frame is:
+//   rotate([−flap_angle, 0, 0])  then  translate([0, 0, +lift])
+// where `lift = tab_depth·sin(flap_angle) + bend_radius·(1−cos
+// (flap_angle))` puts the flap's underside flush on Z=0. In the new
+// print frame the flap is flat on the bed, the bend curves up from
+// the flap's near end, and the blue tab rises from the bend at
+// `flap_angle` above horizontal. The red wedges, still coplanar
+// with the blue tab in the logical frame, continue that same plane
+// past blue's rear edge — in the new print they stick up above
+// blue's top-back edge.
+//
+// Coordinate cheat sheet (logical / old-print axes → new print axes,
+// rotate by −flap_angle about +X):
+//   logical +X                 → new print +X      (unchanged)
+//   logical +Y (toward drip)   → new print +Y·cos(fa) − Z·sin(fa) — forward + slightly down
+//   logical +Z (flap top)      → new print +Y·sin(fa) + Z·cos(fa) — forward + up
+//
+// At flap_angle = 45° the blue tab's top face points up-and-forward
+// (normal (0, sin 45°, cos 45°) in new print) and its underside
+// points down-and-backward. Both blue faces are at 45° from
+// horizontal, i.e. 45° from vertical overhang — right at the
+// support-free threshold for typical slicer profiles, which is why
+// `flap_angle` default bumped from 38° → 45° in this revision.
 //
 // Features keyed off this:
-//   - Blue tab's Z=0 face in print → wall-contact / VHB in install.
-//   - Red corner wedges extend in print −Y → install +Z, with their
-//     arcs tracing the bib's bottom-corner outline so they nest
-//     under each lower corner of the face plate.
-//   - Flap's V-groove on the print-Z-positive face → water-contact
-//     face in install; groove depth grows toward the drip edge.
+//   - Flap's water-contact face (the one with the V-groove) — still
+//     carved on the plate's `+Z`-in-logical side. In the new print
+//     frame that face ends up UP-facing at Z ≈ plate_thickness;
+//     the groove's concavity faces away from the bed.
+//   - Flap's underside — FLAT on Z=0 across the full flap length
+//     (~32 mm × width ≈ 72 mm). That's the first-layer.
+//   - Red corner wedges extend from blue's rear edge in the logical
+//     −Y direction → in the new print they extend up-and-back from
+//     blue's top corners (the highest point of the part).
 //
 // === GEOMETRY ===
 //
@@ -121,7 +149,7 @@ corner_wedge_clearance = 0.4;  // @param number min=0 max=1.5 step=0.05 unit=mm 
 width           = 72;   // @param number min=50 max=100 step=0.5 unit=mm  group=geometry label="Part width (X) — matches bib_plate_width by default to remove the shoulder at the wedge seam"
 tab_depth       = 10;   // @param number min=5  max=30  step=0.5 unit=mm  group=geometry label="VHB tab depth (Y)"
 flap_length     = 32;   // @param number min=15 max=60  step=0.5 unit=mm  group=geometry label="Flap length (along the plate)"
-flap_angle      = 38;   // @param number min=15 max=60  step=1   unit=deg group=geometry label="Flap angle above horizontal"
+flap_angle      = 45;   // @param number min=15 max=60  step=1   unit=deg group=geometry label="Flap angle from horizontal (drives print-orientation rotation too)"
 plate_thickness = 2.5;  // @param number min=1.5 max=4   step=0.25 unit=mm group=geometry label="Plate thickness (uniform)"
 
 // ----- Bend -----
@@ -173,17 +201,26 @@ _flap_inner_tip = [_flap_outer_tip[0] - _t * sin(_fa),
 _inner_arc_exit = [_inner_end_y + flap_length * cos(_fa),
                    _inner_end_z + flap_length * sin(_fa)];
 
-// PRINT_ANCHOR_BBOX at defaults. The corner wedges' farthest −Y
-// reach is along the wedge's outer edge, where the bib-corner
-// cylinder cuts in last: Y_min = −sqrt((R+c)² − R²) ≈ −6.29 mm at
-// R = 9, c = 0.4. So total Y extent = 42.6 + 6.29 ≈ 48.89 mm. X is
-// `width` = bib_plate_width by default (72 mm) — the wedges reach
-// exactly to ±bib_plate_width/2 = ±36, flush with the tab/bend/flap
-// side edges so there's no shoulder at the seam (st-70l). Z stays
-// at 24.22 (flap's inner tip).
-PRINT_ANCHOR_BBOX = [72, 48.89, 24.22];
+// Print-pose transform (st-me9). The logical frame used by all the
+// sub-modules below still has the tab flat on Z=0 and the flap
+// rising at flap_angle above horizontal (the "old" print frame);
+// the new print frame is produced by a final
+// `translate([0, 0, _print_lift]) rotate([-flap_angle, 0, 0])`
+// wrapper applied in `aquor_bib_drip_deflector()`. `_print_lift`
+// pushes the flap's underside onto Z=0 — it's the absolute value of
+// the flap-bend outer-arc endpoint's Z coordinate after the rotation.
+_print_lift = tab_depth * sin(_fa) + _R * (1 - cos(_fa));
 
-// @preset id="aquor-72x100" label="Aquor 72×100mm (default)" bib_plate_width=72 bib_plate_height=100 bib_plate_thickness=6 bib_corner_radius=9 corner_tabs=true corner_wedge_clearance=0.4 width=72 tab_depth=10 flap_length=32 flap_angle=38 plate_thickness=2.5 bend_radius=12 contour_depth=1.5 contour_side_rim_width=1.5 debug_colors=true
+// PRINT_ANCHOR_BBOX at defaults in the NEW print frame (st-me9).
+// With flap_angle = 45° the flap lies flat at Z=0..plate_thickness
+// across Y ≈ 15.56..47.56; blue tab + wedges tilt up at 45° from
+// the bend, reaching Z ≈ 16.8 at the wedge tips. X unchanged at
+// `width` (72 mm default). Y extends from wedge tips (−4.45 mm
+// behind the origin) to the flap drip tip (≈ 47.56 mm), total ≈
+// 52 mm.
+PRINT_ANCHOR_BBOX = [72, 52.01, 16.79];
+
+// @preset id="aquor-72x100" label="Aquor 72×100mm (default)" bib_plate_width=72 bib_plate_height=100 bib_plate_thickness=6 bib_corner_radius=9 corner_tabs=true corner_wedge_clearance=0.4 width=72 tab_depth=10 flap_length=32 flap_angle=45 plate_thickness=2.5 bend_radius=12 contour_depth=1.5 contour_side_rim_width=1.5 debug_colors=true
 
 // === Geometry ===
 
@@ -357,7 +394,10 @@ module color_if(cond, c) {
     else children();
 }
 
-module aquor_bib_drip_deflector() {
+// Core assembly in the logical / old-print frame (blue tab flat on
+// Z=0, flap rising at flap_angle). The public `aquor_bib_drip_
+// deflector()` wraps this in the new print-pose transform.
+module _assembled() {
     difference() {
         union() {
             color_if(debug_colors, "cornflowerblue")  _tab_slice();
@@ -367,6 +407,12 @@ module aquor_bib_drip_deflector() {
         }
         if (contour_depth > 0 && _Rd > 0) _contour_cutter();
     }
+}
+
+module aquor_bib_drip_deflector() {
+    translate([0, 0, _print_lift])
+        rotate([-_fa, 0, 0])
+            _assembled();
 }
 
 aquor_bib_drip_deflector();
