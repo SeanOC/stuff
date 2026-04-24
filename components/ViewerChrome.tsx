@@ -185,7 +185,10 @@ export function ViewerChrome({
 
         <AxesIndicator axes={axes} preset={camera} />
 
-        <ViewPresetTabs camera={camera} onPick={chooseCamera} />
+        <div className="absolute right-12 top-12 flex items-center gap-10">
+          <ViewPresetTabs camera={camera} onPick={chooseCamera} />
+          <FullscreenButton sectionRef={sectionRef} />
+        </div>
 
         {showDims && <DimsPlaceholder />}
 
@@ -456,7 +459,7 @@ function ViewPresetTabs({
   onPick: (c: CameraPreset) => void;
 }) {
   return (
-    <div className="absolute right-12 top-12 flex gap-2" role="tablist" aria-label="View presets">
+    <div className="flex gap-2" role="tablist" aria-label="View presets">
       {PRESETS.map((p) => (
         <button
           key={p}
@@ -475,18 +478,91 @@ function ViewPresetTabs({
           {p}
         </button>
       ))}
-      <button
-        type="button"
-        onClick={(e) => toggleFullscreen(e.currentTarget.closest("section"))}
-        className={clsx(
-          "rounded-3 border border-line bg-panel px-6 py-2",
-          "font-mono text-10 uppercase tracking-wide text-text-dim hover:text-text",
-        )}
-        aria-label="Toggle fullscreen viewer"
-      >
-        full
-      </button>
     </div>
+  );
+}
+
+// Separated from the view-preset pills (st-iz1) because toggling
+// fullscreen is a categorically different action from picking a
+// camera — the icon + visible gap stop the user reading it as "the
+// fourth preset." The icon flips between maximize/minimize based on
+// `document.fullscreenElement`, synced through a `fullscreenchange`
+// listener so the button also updates when the user presses Esc or
+// the F shortcut.
+function FullscreenButton({
+  sectionRef,
+}: {
+  sectionRef: React.RefObject<HTMLElement | null>;
+}) {
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const onChange = () => {
+      setIsFullscreen(document.fullscreenElement !== null);
+    };
+    onChange();
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  const label = isFullscreen ? "Exit fullscreen" : "Enter fullscreen";
+  return (
+    <button
+      type="button"
+      onClick={() => toggleFullscreen(sectionRef.current)}
+      className={clsx(
+        "inline-flex h-24 w-24 items-center justify-center rounded-3 border",
+        isFullscreen
+          ? "border-accent-line bg-accent-soft text-accent"
+          : "border-line bg-panel text-text-dim hover:bg-panel-hi hover:text-text",
+      )}
+      aria-label={label}
+      title="Fullscreen (F)"
+    >
+      {isFullscreen ? <MinimizeIcon /> : <MaximizeIcon />}
+    </button>
+  );
+}
+
+function MaximizeIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+      <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+      <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+      <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+    </svg>
+  );
+}
+
+function MinimizeIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M8 3v3a2 2 0 0 1-2 2H3" />
+      <path d="M21 8h-3a2 2 0 0 1-2-2V3" />
+      <path d="M3 16h3a2 2 0 0 1 2 2v3" />
+      <path d="M16 21v-3a2 2 0 0 1 2-2h3" />
+    </svg>
   );
 }
 
