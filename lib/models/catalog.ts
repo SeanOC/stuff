@@ -8,6 +8,7 @@ export const MODEL_CATEGORIES = [
   { id: "storage", label: "Storage" },
   { id: "multiboard", label: "Multiboard" },
   { id: "toys", label: "Toys" },
+  { id: "household", label: "Household" },
 ] as const;
 
 export type CategoryId = (typeof MODEL_CATEGORIES)[number]["id"];
@@ -18,6 +19,11 @@ export interface CatalogEntry {
 }
 
 export const CATALOG: Record<string, CatalogEntry> = {
+  aquor_bib_drip_deflector: {
+    categoryId: "household",
+    blurb:
+      "Under-bib drip deflector for Aquor hose bibs. VHB-mounts to the face-plate underside and kicks freeze-drain water outward, clear of the wall.",
+  },
   cylindrical_holder_slot: {
     categoryId: "multiboard",
     blurb:

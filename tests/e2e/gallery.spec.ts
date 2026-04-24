@@ -4,6 +4,7 @@ import { expect, test } from "@playwright/test";
 // sort in listModels(). If a model is added/removed, update this list
 // AND verify the gallery-spec snapshot still makes sense.
 const EXPECTED_SLUGS = [
+  "aquor-bib-drip-deflector",
   "cylindrical-holder-slot",
   "popcorn-kernel",
 ];
