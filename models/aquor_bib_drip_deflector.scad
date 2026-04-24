@@ -104,6 +104,12 @@ bend_radius     = 12;   // @param number min=4  max=20  step=0.5 unit=mm  group=
 contour_depth          = 1.5; // @param number min=0   max=3   step=0.25 unit=mm group=shape label="Contour dish depth at the drip edge (tapers from 0 at the bend)"
 contour_side_rim_width = 1.5; // @param number min=0.5 max=8   step=0.25 unit=mm group=shape label="Raised side-rim width on the flap top"
 
+// ----- Debug / visualization -----
+// Preview-only tint; does NOT affect the exported STL (colours aren't
+// carried in binary STL). Default on while the corner-filler geometry
+// is still being dialled in (st-57r) — flip off once shape is final.
+debug_colors = true; // @param boolean group=debug label="Color regions (preview only; not exported)"
+
 // === Derived ===
 
 _fa = flap_angle;
@@ -155,7 +161,7 @@ _corner_arc_radius = bib_corner_radius + bib_clearance;        // subtracted cyl
 // flap tip, so bbox Z is unchanged from v4/v6. (st-002)
 PRINT_ANCHOR_BBOX = [78, 42.6, 24.22];
 
-// @preset id="aquor-72x100" label="Aquor 72×100mm (default)" bib_plate_width=72 bib_plate_height=100 bib_plate_thickness=6 bib_corner_radius=9 bib_clearance=0.4 width=78 tab_depth=10 flap_length=32 flap_angle=38 plate_thickness=2.5 bend_radius=12 contour_depth=1.5 contour_side_rim_width=1.5
+// @preset id="aquor-72x100" label="Aquor 72×100mm (default)" bib_plate_width=72 bib_plate_height=100 bib_plate_thickness=6 bib_corner_radius=9 bib_clearance=0.4 width=78 tab_depth=10 flap_length=32 flap_angle=38 plate_thickness=2.5 bend_radius=12 contour_depth=1.5 contour_side_rim_width=1.5 debug_colors=true
 
 // === Geometry ===
 
@@ -190,6 +196,67 @@ module _bent_plate_solid() {
             linear_extrude(width)
                 _side_profile();
 }
+
+// --- Region-specific sub-profiles (for the debug colour palette) -------
+//
+// Splitting `_side_profile` into three sub-polygons lets each region
+// live in its own extrude + `color()` call, which the Manifold preview
+// renderer then carries through the downstream union/difference without
+// collapsing to a single tint (intersect-and-slice didn't — the backend
+// merged the touching faces back into one colour). The sub-polygons
+// share their seam edges exactly so the union reproduces the original
+// bent-plate solid.
+//
+// Bend–flap seam is a vertical polygon-space line at X = _outer_end_y.
+// The inner flap surface at that X is `_inner_z_at_outer_end_y` — linear
+// interpolation between (_inner_end_y, _inner_end_z) and
+// (_inner_arc_exit).
+_inner_flap_dX = _inner_arc_exit[0] - _inner_end_y;
+_inner_flap_dY = _inner_arc_exit[1] - _inner_end_z;
+_inner_z_at_outer_end_y =
+    _inner_end_z + (_outer_end_y - _inner_end_y) * _inner_flap_dY / _inner_flap_dX;
+
+module _tab_profile() {
+    polygon([
+        [0, 0],
+        [tab_depth, 0],
+        [tab_depth, _t],
+        [0, _t],
+    ]);
+}
+
+module _bend_profile() {
+    n = 20;
+    outer_arc = _arc_samples(tab_depth, _R, _R,  270, 270 + _fa, n);
+    inner_arc = _arc_samples(tab_depth, _R, _Ri, 270 + _fa, 270, n);
+    polygon(concat(
+        [[tab_depth, 0]],
+        outer_arc,
+        [[_outer_end_y, _inner_z_at_outer_end_y]],
+        inner_arc,
+        [[tab_depth, _t]]
+    ));
+}
+
+module _flap_profile() {
+    polygon([
+        [_outer_end_y, _outer_end_z],
+        _flap_outer_tip,
+        _flap_inner_tip,
+        _inner_arc_exit,
+        [_outer_end_y, _inner_z_at_outer_end_y],
+    ]);
+}
+
+module _extruded_profile(prof) {
+    translate([-width / 2, 0, 0])
+        rotate([90, 0, 90])
+            linear_extrude(width) children();
+}
+
+module _tab_slice()  { _extruded_profile() _tab_profile();  }
+module _bend_slice() { _extruded_profile() _bend_profile(); }
+module _flap_slice() { _extruded_profile() _flap_profile(); }
 
 // Tapered V-groove cutter. A truncated cone whose axis lies in the
 // flap-local X=0, Z=(_t+_Rd-contour_depth) line, pointing along the
@@ -299,11 +366,21 @@ module _rear_corner_cutters() {
     }
 }
 
+// Debug-palette helper. Wraps children in `color()` only when the
+// `debug_colors` flag is on; no-ops otherwise. STL export has no
+// colour channel so this only affects the preview/thumbnail.
+module color_if(cond, c) {
+    if (cond) color(c) children();
+    else children();
+}
+
 module aquor_bib_drip_deflector() {
     difference() {
         union() {
-            _bent_plate_solid();
-            _corner_fillers();
+            color_if(debug_colors, "cornflowerblue")  _tab_slice();
+            color_if(debug_colors, "gold")            _bend_slice();
+            color_if(debug_colors, "mediumseagreen")  _flap_slice();
+            color_if(debug_colors, "mediumorchid")    _corner_fillers();
         }
         if (contour_depth > 0 && _Rd > 0) _contour_cutter();
         _rear_corner_cutters();
