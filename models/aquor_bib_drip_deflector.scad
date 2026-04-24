@@ -2,44 +2,39 @@
 // Copyright (c) 2026 Sean O'Connor
 //
 // Aquor hose-bib drip deflector — bent sheet-metal form (st-r38,
-// revised st-if3 / st-hkn / st-vu1 / st-002). One continuous plate of
-// uniform thickness, smoothly bent from a horizontal VHB tab to a
-// down-angled flap, with two quarter-arc corner fillers on the tab's
-// rear that nest into the voids under the bib's rounded-corner bottom
-// arc. In install orientation the tab's top face is VHB-taped to the
-// Aquor face-plate underside; the fillers ride inside the bib's own
-// plate volume at each lower corner, where the bib's flat bottom edge
-// curves upward into the left/right sides. The flap hangs outward-
-// and-downward past the wall plane so drain water sheds off its
-// front edge clear of the drywall below.
+// revised st-if3 / st-hkn / st-vu1 / st-002 / st-hxy). One continuous
+// plate of uniform thickness, smoothly bent from a horizontal VHB tab
+// to a down-angled flap, with two small upright tabs at the rear-
+// outer corners of the VHB tab that butt up against the outside of
+// the bib's lower rounded corners. In install orientation the tab's
+// top face is VHB-taped to the Aquor face-plate underside; the
+// corner tabs rise `corner_tab_height` (~= `bib_corner_radius`) above
+// the tab top so their upper inside edges reach the point where the
+// bib's side edge begins, keying the deflector against sideways
+// drift during cure. The flap hangs outward-and-downward past the
+// wall plane so drain water sheds off its front edge clear of the
+// drywall below.
 //
-// Four geometric features on top of the raw L-shape:
+// Three geometric features on top of the raw L-shape:
 //
 //   1. **Large-radius bend.** Tab→flap junction is a filleted corner
 //      (outer radius `bend_radius`, default 12 mm at the bib size).
 //      Longer arc smooths the transition — it reads as a continuous
 //      bend, not a fold line.
 //
-//   2. **Rounded rear tab corners** matching the Aquor face-plate's
-//      rounded-rectangle bottom edge (`bib_corner_radius`).
+//   2. **Upright end-corner tabs** at the VHB tab's two rear-outer
+//      corners (st-hxy — replaces the v7 pie-slice fillers and the
+//      v4/v7 rounded rear-tab-corner outline). Each is a small
+//      rectangular post sitting flush with the rear edge (Y=0) at
+//      X = ±(width/2 − corner_tab_width), rising `corner_tab_height`
+//      above the tab top. Outer X face ends at ±(width/2), so the
+//      posts don't poke outside the tab's footprint. At default
+//      dimensions there is a ~2 mm air gap between each post's outer
+//      face and the bib's side edge (bib is 72 mm wide, tab is 78 mm
+//      → posts actually extend past the bib sides by 3 mm; set
+//      `width = bib_plate_width` for flush fit).
 //
-//   3. **Quarter-arc corner fillers** at the tab's top-rear at each
-//      bib-corner footprint (st-002, replacing st-vu1's mislocated
-//      upright ears). Each filler is a `bib_corner_radius`-wide block
-//      rising `bib_corner_radius` above the tab top, carved out by a
-//      cylinder at the bib's lower-corner centre (radius
-//      `bib_corner_radius + bib_clearance`, axis along +Y). The result
-//      is a pie-slice wedge whose concave top surface matches the
-//      bib's corner arc — it hides INSIDE the bib's plate volume when
-//      installed (not outside wrapping the corner — that was v6's
-//      mistake). Depth in Y equals `bib_plate_thickness` so the
-//      filler spans the full face-plate thickness at the corner.
-//      Print caveat: the concave top arc faces upward in print
-//      orientation, giving a ceiling-bridge overhang of up to 90° at
-//      the arc's sides; the 9 mm span is short enough for routine
-//      slicer bridging.
-//
-//   4. **Tapered V-groove** on the flap top. Dish depth grows
+//   3. **Tapered V-groove** on the flap top. Dish depth grows
 //      linearly from ~0 at the bend to `contour_depth` at the drip
 //      edge so the contour "grows in" from the fold rather than
 //      starting abruptly. Implemented as a truncated-cone subtract
@@ -47,12 +42,17 @@
 //      perpendicular to +Y (not tilted) so they land cleanly outside
 //      the plate bounds.
 //
-// Construction — polygon side profile + linear_extrude (bent plate),
-// union'd with two corner-filler blocks (each = rectangular prism
-// minus a cylinder at the bib's corner centre), then boolean subtracts
-// (contour cone, rear-corner anti-round prisms). Subtract cutters
-// extend past the main body by an `eps` to kill coplanar-face
-// artefacts.
+// Debug colour legend (when `debug_colors=true`):
+//   tab          → cornflowerblue
+//   bend         → gold
+//   flap         → mediumseagreen
+//   corner tabs  → tomato
+//
+// Construction — polygon side profile + linear_extrude (bent plate,
+// as three tab/bend/flap sub-polygons for the colour palette),
+// union'd with two simple corner-tab cubes, then the contour-cone
+// subtract. No rear-corner anti-round cutter any more — the VHB
+// tab's top-down outline is a plain rectangle.
 //
 // Install orientation:
 //   +Y = outward from wall; +Z = up; +X = along bib width.
@@ -82,13 +82,17 @@ bib_plate_height    = 100; // @param number min=80 max=120 step=0.5 unit=mm  gro
 bib_plate_thickness = 6;   // @param number min=0  max=12  step=0.5 unit=mm  group=bib label="Aquor face-plate protrusion from wall"
 bib_corner_radius   = 9;   // @param number min=0  max=20  step=0.5 unit=mm  group=bib label="Aquor face-plate corner radius"
 
-// ----- Fit (clearance against the bib) -----
-// Both the corner-filler subtract and the rear-corner anti-round cutter
-// derive their radii from `bib_corner_radius`. `bib_clearance` pads the
-// filler's arc-subtract so the bib's actual corner slides in without
-// grinding; the filler's X-width and Z-height are fixed at
-// `bib_corner_radius`, its Y-depth at `bib_plate_thickness`. (st-002)
-bib_clearance  = 0.4;  // @param number min=0   max=1.5 step=0.05 unit=mm group=fit label="Clearance around bib corner arc"
+// ----- Fit (upright corner tabs at the rear-outer tab corners) -----
+// Two small vertical posts at the VHB tab's two rear-outer corners
+// (st-hxy). Each post's outer X-face sits at ±(width/2); it extends
+// `corner_tab_width` inward and `corner_tab_depth` forward from the
+// rear edge (Y=0). Height = `corner_tab_height`, defaulting to
+// `bib_corner_radius` so the post's top reaches the height where the
+// bib's rounded corner transitions from bottom to side edge.
+corner_tabs       = true; // @param boolean group=fit label="Upright corner tabs at the rear-outer VHB-tab corners"
+corner_tab_height = 9;    // @param number min=0 max=20 step=0.5 unit=mm group=fit label="Corner-tab height above the VHB tab top (≈ bib_corner_radius)"
+corner_tab_width  = 4;    // @param number min=2 max=10 step=0.5 unit=mm group=fit label="Corner-tab X extent (inward from the tab's outer edge)"
+corner_tab_depth  = 4;    // @param number min=2 max=10 step=0.5 unit=mm group=fit label="Corner-tab Y extent (forward from the rear edge)"
 
 // ----- Part geometry -----
 width           = 78;   // @param number min=50 max=100 step=0.5 unit=mm  group=geometry label="Part width (X)"
@@ -146,22 +150,13 @@ _flap_inner_tip = [_flap_outer_tip[0] - _t * sin(_fa),
 _inner_arc_exit = [_inner_end_y + flap_length * cos(_fa),
                    _inner_end_z + flap_length * sin(_fa)];
 
-// Corner-filler geometry. Each filler sits at a bib lower-corner
-// footprint: a block of X-width × Z-height = bib_corner_radius each,
-// Y-depth = bib_plate_thickness, with the bib's corner-arc cylinder
-// subtracted so the filler's concave top surface matches the bib's
-// rounded-rectangle bottom arc (plus bib_clearance slop).
-_corner_cx         = bib_plate_width / 2 - bib_corner_radius;  // |X| of each bib lower-corner centre
-_corner_cz         = _t + bib_corner_radius;                   // Z of the corner arc centre (above tab top)
-_corner_arc_radius = bib_corner_radius + bib_clearance;        // subtracted cylinder radius
-
 // PRINT_ANCHOR_BBOX at defaults. Z is dominated by the flap's inner
-// tip (~24.22 mm at flap_length=32, flap_angle=38°). The new corner
-// fillers rise to _t + bib_corner_radius = 11.5 mm — well under the
-// flap tip, so bbox Z is unchanged from v4/v6. (st-002)
+// tip (~24.22 mm at flap_length=32, flap_angle=38°); the new upright
+// corner tabs rise to _t + corner_tab_height = 11.5 mm — well under
+// the flap tip, so bbox Z is unchanged from v7. (st-hxy)
 PRINT_ANCHOR_BBOX = [78, 42.6, 24.22];
 
-// @preset id="aquor-72x100" label="Aquor 72×100mm (default)" bib_plate_width=72 bib_plate_height=100 bib_plate_thickness=6 bib_corner_radius=9 bib_clearance=0.4 width=78 tab_depth=10 flap_length=32 flap_angle=38 plate_thickness=2.5 bend_radius=12 contour_depth=1.5 contour_side_rim_width=1.5 debug_colors=true
+// @preset id="aquor-72x100" label="Aquor 72×100mm (default)" bib_plate_width=72 bib_plate_height=100 bib_plate_thickness=6 bib_corner_radius=9 corner_tabs=true corner_tab_height=9 corner_tab_width=4 corner_tab_depth=4 width=78 tab_depth=10 flap_length=32 flap_angle=38 plate_thickness=2.5 bend_radius=12 contour_depth=1.5 contour_side_rim_width=1.5 debug_colors=true
 
 // === Geometry ===
 
@@ -298,70 +293,23 @@ module _contour_cutter() {
                     cylinder(h = cutter_len, r1 = r_back_cap, r2 = r_front_cap);
 }
 
-// Corner-fillers (st-002). Two pie-slice wedges, one under each of
-// the bib's rounded-rectangle bottom corners. In the install pose the
-// bib's flat bottom edge is at the tab's top face; at each lower
-// corner the bib's bottom edge curves upward along a quarter-arc of
-// radius `bib_corner_radius`, leaving a curved void between tab top
-// and bib underside. This module fills that void.
-//
-// For the left corner (sign = -1): a cube spanning X ∈ [-bib_plate
-// _width/2, -bib_plate_width/2 + bib_corner_radius], Y ∈ [0, bib_plate
-// _thickness], Z ∈ [_t, _t + bib_corner_radius], minus a cylinder
-// (axis along +Y) at the bib's corner centre (X = -_corner_cx,
-// Z = _corner_cz) with radius `_corner_arc_radius`. Subtraction keeps
-// the region OUTSIDE the arc — the pie slice under the bib's
-// curve. Mirror for the right corner.
-//
-// Unioned with the bent plate before the rear-corner cutters subtract.
-// The rear-corner cutter's Z-range extends up to `_t + eps`, nicking a
-// ~0.1 mm sliver off the filler's rear-outer bottom edge; the sliver
-// is well under slicer resolution and keeps the tab-filler seam
-// manifold where the tab's rear-outer corner rounds off.
-module _corner_fillers() {
-    for (sign = [-1, 1]) {
-        corner_x = sign * _corner_cx;
-        block_x_min = sign < 0
-            ? -bib_plate_width / 2
-            :  _corner_cx;
-        difference() {
-            translate([block_x_min, 0, _t])
-                cube([bib_corner_radius, bib_plate_thickness, bib_corner_radius]);
-            // Cylinder passes fully through the block along +Y; pad
-            // each end by `eps` so the caps don't coincide with the
-            // block's Y faces (coplanar-face jitter territory).
-            translate([corner_x, -0.02, _corner_cz])
-                rotate([-90, 0, 0])
-                    cylinder(h = bib_plate_thickness + 0.04,
-                             r = _corner_arc_radius);
-        }
-    }
-}
-
-// Anti-round corner cutters for the tab's two rear corners (Y=0
-// side). Each cutter = a corner cube minus a vertical quarter-
-// cylinder at the inset corner; the difference leaves a rounded-
-// rectangle rear corner of radius `bib_corner_radius`. Only acts on
-// the tab portion (Y < bib_corner_radius); the flap is untouched.
-// Cutter extents bump out of the main body by `eps` on every
-// would-be-coplanar face so Manifold doesn't leave zero-thickness
-// artefacts at the edges.
-module _rear_corner_cutters() {
-    if (bib_corner_radius <= 0) {
+// Upright end-corner tabs (st-hxy). Two small rectangular posts at
+// the VHB tab's two rear-outer corners. Each post spans:
+//   X ∈ [±width/2 − corner_tab_width, ±width/2]  (inward from the edge)
+//   Y ∈ [0, corner_tab_depth]                     (forward from wall)
+//   Z ∈ [_t, _t + corner_tab_height]              (above the tab top)
+// Outer X face is flush with the tab's own outer edge so the post's
+// footprint sits entirely on solid tab material (no cantilever off
+// the build plate).
+module _corner_tabs_geom() {
+    if (!corner_tabs || corner_tab_height <= 0) {
         // no-op
     } else {
-        R = bib_corner_radius;
-        eps = 0.1;
-        h = _t + 2 * eps;
         for (sign = [-1, 1]) {
-            x_lo = sign < 0 ? -width / 2 - eps : width / 2 - R;
-            cx_cyl = sign * (width / 2 - R);
-            difference() {
-                translate([x_lo, -eps, -eps])
-                    cube([R + eps, R + eps, h]);
-                translate([cx_cyl, R, -eps])
-                    cylinder(h = h, r = R);
-            }
+            x_outer = sign * width / 2;
+            x_min = sign < 0 ? x_outer : x_outer - corner_tab_width;
+            translate([x_min, 0, _t])
+                cube([corner_tab_width, corner_tab_depth, corner_tab_height]);
         }
     }
 }
@@ -380,10 +328,9 @@ module aquor_bib_drip_deflector() {
             color_if(debug_colors, "cornflowerblue")  _tab_slice();
             color_if(debug_colors, "gold")            _bend_slice();
             color_if(debug_colors, "mediumseagreen")  _flap_slice();
-            color_if(debug_colors, "mediumorchid")    _corner_fillers();
+            color_if(debug_colors, "tomato")          _corner_tabs_geom();
         }
         if (contour_depth > 0 && _Rd > 0) _contour_cutter();
-        _rear_corner_cutters();
     }
 }
 
