@@ -29,6 +29,77 @@ test.describe("ViewerChrome states", () => {
     await expect(download).toBeEnabled();
   });
 
+  test("axes indicator tracks live camera orbit, not just preset clicks (st-oc3)", async ({
+    page,
+  }) => {
+    await page.goto("/models/popcorn-kernel");
+    await expect(page.getByTestId("stat-strip-dimensions")).toBeVisible({
+      timeout: 60_000,
+    });
+
+    // Capture the X-axis line endpoints at the current preset.
+    const xLine = page.locator('[data-testid="axes-indicator"] g[data-axis="x"] line');
+    await expect(xLine).toBeVisible();
+    const beforeX = await xLine.getAttribute("x2");
+    const beforeY = await xLine.getAttribute("y2");
+    expect(beforeX).not.toBeNull();
+
+    // Drag across the viewer canvas to orbit the camera. OrbitControls
+    // hooks mousedown/move/up on the canvas; dispatching to the
+    // [data-testid="stl-viewer"] container hits the canvas (the renderer
+    // domElement is appended inside it). A 200px diagonal drag is
+    // enough to pull the orientation off any of the preset tangents.
+    const viewer = page.getByTestId("stl-viewer");
+    const box = await viewer.boundingBox();
+    if (!box) throw new Error("viewer bounding box missing");
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+    await page.mouse.move(cx, cy);
+    await page.mouse.down();
+    await page.mouse.move(cx + 160, cy - 120, { steps: 20 });
+    await page.mouse.up();
+
+    // The X-axis endpoint should have moved. Polling via toPass gives
+    // React a frame or two to flush the setAxes state update from the
+    // OrbitControls 'change' handler.
+    await expect
+      .poll(async () => ({
+        x: await xLine.getAttribute("x2"),
+        y: await xLine.getAttribute("y2"),
+      }))
+      .not.toEqual({ x: beforeX, y: beforeY });
+  });
+
+  test("axes indicator snaps with view-preset tab click (st-oc3)", async ({ page }) => {
+    await page.goto("/models/popcorn-kernel");
+    await expect(page.getByTestId("stat-strip-dimensions")).toBeVisible({
+      timeout: 60_000,
+    });
+
+    const xLine = page.locator('[data-testid="axes-indicator"] g[data-axis="x"] line');
+    await expect(xLine).toBeVisible();
+    const before = {
+      x: await xLine.getAttribute("x2"),
+      y: await xLine.getAttribute("y2"),
+    };
+
+    // Click the Top preset. The tab flips aria-selected, and the
+    // camera snaps, which routes through OrbitControls.update() →
+    // 'change' → onCameraChange → indicator redraw. Both the preset
+    // attribute and the X-axis line endpoint change.
+    await page.getByRole("tab", { name: /top/i }).click();
+    await expect(page.getByTestId("axes-indicator")).toHaveAttribute(
+      "data-preset",
+      "top",
+    );
+    await expect
+      .poll(async () => ({
+        x: await xLine.getAttribute("x2"),
+        y: await xLine.getAttribute("y2"),
+      }))
+      .not.toEqual(before);
+  });
+
   test("Enter still triggers a re-render (kept for the error-retry path)", async ({ page }) => {
     await page.goto("/models/popcorn-kernel");
     // Wait for the initial auto-render so the renderer is in a sane

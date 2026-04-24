@@ -23,9 +23,23 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 interface Props {
   stl: Uint8Array;
+  onCameraChange?: (axes: CameraAxes) => void;
 }
 
 export type CameraPreset = "top" | "front" | "iso";
+
+// Projected world basis vectors in view space. Each entry is the tuple
+// [screen_right, screen_up, depth] — screen_right/up are unit direction
+// components in the screen plane (range roughly -1..1; use with SVG Y
+// flipped). depth>0 means the axis tip extends toward the viewer (out
+// of the screen); depth<0 means it extends into the scene (behind the
+// origin relative to the camera). Three.js cameras look down -Z in
+// view space, hence the sign. (st-oc3)
+export interface CameraAxes {
+  x: [number, number, number];
+  y: [number, number, number];
+  z: [number, number, number];
+}
 
 export interface StlViewerHandle {
   camera: THREE.PerspectiveCamera;
@@ -35,19 +49,28 @@ export interface StlViewerHandle {
 }
 
 const StlViewer = forwardRef<StlViewerHandle, Props>(function StlViewer(
-  { stl },
+  { stl, onCameraChange },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const sceneRef = useRef<SceneHandle | null>(null);
   const handleRef = useRef<StlViewerHandle | null>(null);
+  // Prop stored in a ref so the scene's long-lived OrbitControls 'change'
+  // handler can call the latest callback without re-registering when the
+  // parent passes a new function identity on re-render.
+  const onCameraChangeRef = useRef(onCameraChange);
+  useEffect(() => {
+    onCameraChangeRef.current = onCameraChange;
+  }, [onCameraChange]);
 
   // Bootstrap scene once on mount.
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-    const handle = bootstrapScene(container);
+    const emitAxes = (cam: THREE.PerspectiveCamera) =>
+      onCameraChangeRef.current?.(computeCameraAxes(cam));
+    const handle = bootstrapScene(container, emitAxes);
     sceneRef.current = handle;
     canvasRef.current = handle.canvas;
     handleRef.current = handle.imperative;
@@ -125,7 +148,27 @@ interface SceneHandle {
   dispose(): void;
 }
 
-function bootstrapScene(container: HTMLDivElement): SceneHandle {
+export function computeCameraAxes(camera: THREE.Camera): CameraAxes {
+  // World→view rotation: inverse of the camera's world matrix applied
+  // to a direction. `transformDirection` ignores translation + scale.
+  // Caller is responsible for the camera's matrixWorld being current
+  // (OrbitControls.update() calls camera.updateMatrixWorld).
+  const inv = new THREE.Matrix4().copy(camera.matrixWorld).invert();
+  const project = (x: number, y: number, z: number): [number, number, number] => {
+    const r = new THREE.Vector3(x, y, z).transformDirection(inv);
+    return [r.x, r.y, r.z];
+  };
+  return {
+    x: project(1, 0, 0),
+    y: project(0, 1, 0),
+    z: project(0, 0, 1),
+  };
+}
+
+function bootstrapScene(
+  container: HTMLDivElement,
+  emitAxes: (camera: THREE.PerspectiveCamera) => void,
+): SceneHandle {
   const scene = new THREE.Scene();
   // No scene.background — the WebGL canvas clears to alpha=0 so the
   // DOM GridOverlay (rendered as an earlier sibling under the same
@@ -152,7 +195,14 @@ function bootstrapScene(container: HTMLDivElement): SceneHandle {
 
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = false;
-  const onControlsChange = () => renderer.render(scene, camera);
+  const onControlsChange = () => {
+    renderer.render(scene, camera);
+    // OrbitControls emits 'change' on mouse drag, wheel zoom, and any
+    // controls.update() call (including the ones from setCameraPreset,
+    // resetCamera, and fitCameraToBbox). Piping the axes here keeps
+    // the consumer's indicator in sync regardless of input source. (st-oc3)
+    emitAxes(camera);
+  };
   controls.addEventListener("change", onControlsChange);
 
   // Snapshot of the auto-fit orientation captured on each setStl.
@@ -267,6 +317,14 @@ function bootstrapScene(container: HTMLDivElement): SceneHandle {
   }
 
   handleResize();
+  // Seed the consumer with the initial camera orientation so the axes
+  // indicator has something to render before the first OrbitControls
+  // 'change' event (which only fires on user input or an update() that
+  // saw a delta — the initial fit will fire, but emitting here makes
+  // it explicit and defensive against future OrbitControls semantics
+  // changes). (st-oc3)
+  camera.updateMatrixWorld();
+  emitAxes(camera);
 
   return {
     canvas: renderer.domElement,

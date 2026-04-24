@@ -13,7 +13,7 @@
 
 import clsx from "clsx";
 import { useCallback, useEffect, useRef, useState } from "react";
-import StlViewer, { type StlViewerHandle } from "./StlViewer";
+import StlViewer, { type CameraAxes, type StlViewerHandle } from "./StlViewer";
 import { Modal } from "./Modal";
 import type { CameraPreset } from "@/hooks/useDetailState";
 import type { RenderError, RenderResult, RenderState } from "@/hooks/useRenderer";
@@ -55,6 +55,10 @@ export function ViewerChrome({
   const sectionRef = useRef<HTMLElement>(null);
   const viewerRef = useRef<StlViewerHandle>(null);
   const [focusInViewer, setFocusInViewer] = useState(false);
+  // Live camera orientation, updated on every OrbitControls 'change'
+  // event via onCameraChange. Drives the axes indicator; the `camera`
+  // preset prop is kept for the tab highlight only. (st-oc3)
+  const [axes, setAxes] = useState<CameraAxes | null>(null);
   const { modal, dispatch } = useUI();
 
   const lastGood = state.kind === "error" ? history[0] : null;
@@ -137,7 +141,13 @@ export function ViewerChrome({
             the model doesn't cover. (st-lpt) */}
         {showGrid && <GridOverlay />}
 
-        {state.kind === "ready" && <StlViewer ref={viewerRef} stl={state.result.stlBytes} />}
+        {state.kind === "ready" && (
+          <StlViewer
+            ref={viewerRef}
+            stl={state.result.stlBytes}
+            onCameraChange={setAxes}
+          />
+        )}
         {state.kind === "loading" && (
           <>
             <ViewerPlaceholder>rendering…</ViewerPlaceholder>
@@ -159,7 +169,11 @@ export function ViewerChrome({
         )}
         {state.kind === "error" && lastGood && (
           <>
-            <StlViewer ref={viewerRef} stl={lastGood.stlBytes} />
+            <StlViewer
+              ref={viewerRef}
+              stl={lastGood.stlBytes}
+              onCameraChange={setAxes}
+            />
             <div className="pointer-events-none absolute inset-0 bg-bg/70" />
           </>
         )}
@@ -169,7 +183,7 @@ export function ViewerChrome({
           </ViewerPlaceholder>
         )}
 
-        <AxesIndicator camera={camera} />
+        <AxesIndicator axes={axes} preset={camera} />
 
         <ViewPresetTabs camera={camera} onPick={chooseCamera} />
 
@@ -283,26 +297,154 @@ function GridOverlay() {
   );
 }
 
-function AxesIndicator({ camera }: { camera: CameraPreset }) {
-  const rot =
-    camera === "top" ? "rotate-90" : camera === "front" ? "-rotate-12" : "rotate-0";
+// Axes indicator — bottom-left, 56×56. When the live camera has fired
+// at least one onCameraChange (axes != null) the three lines point in
+// the screen-space direction of the world X/Y/Z basis vectors. Before
+// that (cold mount, before the scene boots), fall back to the preset-
+// name-driven static orientation so the indicator isn't blank. (st-oc3)
+function AxesIndicator({
+  axes,
+  preset,
+}: {
+  axes: CameraAxes | null;
+  preset: CameraPreset;
+}) {
+  // SVG viewBox is 72×72; keep the origin near the bottom-left quadrant
+  // (20, 52) to match the previous visual placement within the 56×56
+  // frame. Line length R is 22px — slightly longer than the old fixed
+  // lines so the labels sit clear of the origin on all orientations.
+  const cx = 26;
+  const cy = 46;
+  const R = 22;
   return (
     <div
-      className={clsx(
-        "pointer-events-none absolute bottom-12 left-12 font-mono text-10 transition-transform",
-        rot,
-      )}
-      aria-label={`camera: ${camera}`}
+      className="pointer-events-none absolute bottom-12 left-12 font-mono text-10"
+      aria-label={`camera: ${preset}`}
+      data-testid="axes-indicator"
+      data-preset={preset}
     >
       <svg width="56" height="56" viewBox="0 0 72 72">
-        <line x1="20" y1="52" x2="50" y2="52" className="stroke-red" strokeWidth="1.2" />
-        <text x="54" y="55" className="fill-red" fontSize="9">X</text>
-        <line x1="20" y1="52" x2="20" y2="22" className="stroke-green" strokeWidth="1.2" />
-        <text x="14" y="20" className="fill-green" fontSize="9">Z</text>
-        <line x1="20" y1="52" x2="38" y2="64" className="stroke-blue" strokeWidth="1.2" />
-        <text x="40" y="68" className="fill-blue" fontSize="9">Y</text>
+        {axes ? (
+          <>
+            <AxisLine cx={cx} cy={cy} dir={axes.x} R={R} color="red" label="X" />
+            <AxisLine cx={cx} cy={cy} dir={axes.z} R={R} color="green" label="Z" />
+            <AxisLine cx={cx} cy={cy} dir={axes.y} R={R} color="blue" label="Y" />
+          </>
+        ) : (
+          <StaticAxes cx={cx} cy={cy} R={R} preset={preset} />
+        )}
       </svg>
     </div>
+  );
+}
+
+function AxisLine({
+  cx,
+  cy,
+  dir,
+  R,
+  color,
+  label,
+}: {
+  cx: number;
+  cy: number;
+  dir: [number, number, number];
+  R: number;
+  color: "red" | "green" | "blue";
+  label: string;
+}) {
+  // dir is in view space: x = screen right, y = screen up (SVG y flips),
+  // z = depth. Three.js cameras look down -Z in view space, so positive
+  // z points toward the viewer (axis tip out of screen) and negative z
+  // points into the scene (axis tip hidden behind). Dim the away-facing
+  // axes so the ones extending toward the viewer read as dominant.
+  const [dx, dy, dz] = dir;
+  const x2 = cx + dx * R;
+  const y2 = cy - dy * R;
+  const labelX = cx + dx * (R + 6);
+  const labelY = cy - dy * (R + 6);
+  const opacity = dz < -0.05 ? 0.35 : 1;
+  const stroke =
+    color === "red"
+      ? "stroke-red"
+      : color === "green"
+        ? "stroke-green"
+        : "stroke-blue";
+  const fill =
+    color === "red"
+      ? "fill-red"
+      : color === "green"
+        ? "fill-green"
+        : "fill-blue";
+  return (
+    <g opacity={opacity} data-axis={label.toLowerCase()}>
+      <line
+        x1={cx}
+        y1={cy}
+        x2={x2}
+        y2={y2}
+        className={stroke}
+        strokeWidth="1.2"
+        strokeLinecap="round"
+      />
+      <text
+        x={labelX}
+        y={labelY}
+        className={fill}
+        fontSize="9"
+        textAnchor="middle"
+        dominantBaseline="middle"
+      >
+        {label}
+      </text>
+    </g>
+  );
+}
+
+// Pre-callback fallback. Matches the pre-st-oc3 orientation so the
+// indicator isn't blank on a cold SSR paint or between mount and the
+// first controls change. Once onCameraChange fires (usually within a
+// frame of mount) this is replaced by the live projection.
+function StaticAxes({
+  cx,
+  cy,
+  R,
+  preset,
+}: {
+  cx: number;
+  cy: number;
+  R: number;
+  preset: CameraPreset;
+}) {
+  // Preset-specific hand-drawn placeholder. Angles chosen to roughly
+  // match what the live projection lands at for each preset.
+  const table: Record<
+    CameraPreset,
+    { x: [number, number, number]; y: [number, number, number]; z: [number, number, number] }
+  > = {
+    top: {
+      x: [1, 0, 0],
+      y: [0, 1, 0],
+      z: [0, 0, -1],
+    },
+    front: {
+      x: [1, 0, 0],
+      y: [0, 0, 1],
+      z: [0, 1, 0],
+    },
+    iso: {
+      x: [0.81, -0.3, -0.5],
+      y: [-0.5, -0.3, -0.81],
+      z: [0, 0.9, -0.42],
+    },
+  };
+  const t = table[preset];
+  return (
+    <>
+      <AxisLine cx={cx} cy={cy} dir={t.x} R={R} color="red" label="X" />
+      <AxisLine cx={cx} cy={cy} dir={t.z} R={R} color="green" label="Z" />
+      <AxisLine cx={cx} cy={cy} dir={t.y} R={R} color="blue" label="Y" />
+    </>
   );
 }
 

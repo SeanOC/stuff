@@ -6,12 +6,13 @@
 // DOM sibling paints on top — so the grid must come first.
 // Also covers the error-state UI (st-bg4).
 
-import { cleanup, fireEvent, render as rtlRender } from "@testing-library/react";
+import { act, cleanup, fireEvent, render as rtlRender } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ViewerChrome } from "./ViewerChrome";
 import { UIProvider } from "@/contexts/UIContext";
 import type { ReactElement } from "react";
 import type { RenderResult, RenderState } from "@/hooks/useRenderer";
+import type { CameraAxes } from "./StlViewer";
 
 // ViewerChrome consumes UIContext (modal arbitration, errorLog dispatch).
 // Every test renders inside a fresh UIProvider so the hook doesn't throw.
@@ -21,10 +22,20 @@ function render(ui: ReactElement) {
 
 // StlViewer touches WebGL on mount via three.js. jsdom has no WebGL.
 // The stacking assertion only cares about DOM order, so stub the
-// component to a labeled marker div.
+// component to a labeled marker div. The mock also captures the
+// onCameraChange prop so tests can simulate OrbitControls events from
+// the outside. (st-oc3)
+let mockOnCameraChange: ((axes: CameraAxes) => void) | null = null;
 vi.mock("./StlViewer", () => ({
   __esModule: true,
-  default: () => <div data-testid="stl-viewer" />,
+  default: ({
+    onCameraChange,
+  }: {
+    onCameraChange?: (axes: CameraAxes) => void;
+  }) => {
+    mockOnCameraChange = onCameraChange ?? null;
+    return <div data-testid="stl-viewer" />;
+  },
 }));
 
 const READY: RenderState = {
@@ -59,6 +70,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   document.getElementById("modal-root")?.remove();
+  mockOnCameraChange = null;
 });
 
 describe("ViewerChrome grid/model stacking", () => {
@@ -222,3 +234,102 @@ describe("ViewerChrome states (st-psn)", () => {
     expect(getByTestId("stat-strip-status").textContent).toMatch(/compil/i);
   });
 });
+
+describe("ViewerChrome axes indicator (st-oc3)", () => {
+  // The X line endpoint x2 for (1,0,0) at the static "iso" fallback is
+  // (cx + 0.81*R) ≈ 26 + 17.82 = 43.82. Reading the attribute gives an
+  // SVG-rounded string like "43.82"; we just compare the whole attribute
+  // tuple after a simulated camera change to see it moved.
+  function xAxisEndpoint(el: HTMLElement): { x2: string; y2: string } {
+    const x = el.querySelector('g[data-axis="x"] line') as SVGLineElement | null;
+    if (!x) throw new Error("X-axis <line> not found in indicator SVG");
+    return {
+      x2: x.getAttribute("x2") ?? "",
+      y2: x.getAttribute("y2") ?? "",
+    };
+  }
+
+  it("renders the static fallback when onCameraChange hasn't fired yet", () => {
+    const { getByTestId } = render(
+      <ViewerChrome state={READY} showGrid={false} {...commonProps} />,
+    );
+    const indicator = getByTestId("axes-indicator");
+    // Data-preset attribute proxies the tab-highlight state. The iso
+    // fallback renders X at the baked-in 0.81*R offset; the next test
+    // shows it moves once a change event arrives.
+    expect(indicator.getAttribute("data-preset")).toBe("iso");
+    const { x2 } = xAxisEndpoint(indicator);
+    // iso static: cx + 0.81 * 22 ≈ 43.82
+    expect(parseFloat(x2)).toBeCloseTo(26 + 0.81 * 22, 1);
+  });
+
+  it("updates indicator lines when onCameraChange fires", () => {
+    const { getByTestId } = render(
+      <ViewerChrome state={READY} showGrid={false} {...commonProps} />,
+    );
+    const before = xAxisEndpoint(getByTestId("axes-indicator"));
+
+    // Simulate the OrbitControls 'change' path: StlViewer's emitAxes
+    // walks up through onCameraChange. Push an unambiguous "front"
+    // orientation: X along screen-right, Z pointing up.
+    act(() => {
+      mockOnCameraChange?.({
+        x: [1, 0, 0],
+        y: [0, 0, 1],
+        z: [0, 1, 0],
+      });
+    });
+
+    const after = xAxisEndpoint(getByTestId("axes-indicator"));
+    // X direction (1,0,0) with R=22 → x2 = cx + 22 = 48 exactly.
+    expect(parseFloat(after.x2)).toBeCloseTo(48, 1);
+    // The indicator moved off the iso fallback.
+    expect(after.x2).not.toBe(before.x2);
+  });
+
+  it("preserves the preset tab highlight independent of camera orientation", () => {
+    const setCamera = vi.fn();
+    const { getByRole, rerender, getByTestId } = render(
+      <ViewerChrome
+        state={READY}
+        showGrid={false}
+        {...commonProps}
+        camera="top"
+        setCamera={setCamera}
+      />,
+    );
+    // The "top" tab is selected based on the preset prop, not the live
+    // axes — so even if the orbit lands somewhere else, the tab stays
+    // pinned to the last preset click.
+    const topTab = getByRole("tab", { name: /top/i });
+    expect(topTab.getAttribute("aria-selected")).toBe("true");
+
+    act(() => {
+      mockOnCameraChange?.({
+        x: [0.7, 0.2, -0.3],
+        y: [-0.3, 0.2, 0.7],
+        z: [0.1, 0.9, 0.1],
+      });
+    });
+
+    // Indicator reflects the live direction, tab highlight stays "top".
+    const indicator = getByTestId("axes-indicator");
+    expect(indicator.getAttribute("data-preset")).toBe("top");
+    expect(topTab.getAttribute("aria-selected")).toBe("true");
+
+    // Re-rendering with a new preset prop flips the tab highlight.
+    rerender(
+      <UIProvider>
+        <ViewerChrome
+          state={READY}
+          showGrid={false}
+          {...commonProps}
+          camera="front"
+          setCamera={setCamera}
+        />
+      </UIProvider>,
+    );
+    expect(topTab.getAttribute("aria-selected")).toBe("false");
+  });
+});
+
