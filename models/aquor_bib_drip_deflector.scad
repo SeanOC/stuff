@@ -2,12 +2,15 @@
 // Copyright (c) 2026 Sean O'Connor
 //
 // Aquor hose-bib drip deflector — bent sheet-metal form (st-r38,
-// revised st-if3, revised again st-hkn). One continuous plate of
-// uniform thickness, smoothly bent from a horizontal VHB tab to a
-// down-angled flap. In install orientation the tab's top face is
-// VHB-taped to the Aquor face-plate underside; the flap hangs
-// outward-and-downward past the wall plane so drain water sheds off
-// its front edge clear of the drywall below.
+// revised st-if3 / st-hkn / st-vu1). One continuous plate of uniform
+// thickness, smoothly bent from a horizontal VHB tab to a down-
+// angled flap, with two upright ears on the tab's rear that cradle
+// the bib's lower-corner radii. In install orientation the tab's
+// top face is VHB-taped to the Aquor face-plate underside; the ears
+// wrap around the bib's bottom-corner curves from the outside,
+// keying the deflector laterally. The flap hangs outward-and-
+// downward past the wall plane so drain water sheds off its front
+// edge clear of the drywall below.
 //
 // Four geometric features on top of the raw L-shape:
 //
@@ -19,25 +22,30 @@
 //   2. **Rounded rear tab corners** matching the Aquor face-plate's
 //      rounded-rectangle bottom edge (`bib_corner_radius`).
 //
-//   3. **Bib-bottom recess** in the tab's top-rear region (st-hkn).
-//      A rounded-rectangle pocket sized to match the bib's bottom
-//      footprint (`bib_plate_width` × `bib_plate_thickness` plus a
-//      small `bib_recess_clearance` for slop). When installed, the
-//      bib's bottom perimeter nestles into this recess — the VHB
-//      bond is inside the pocket floor, and the lateral keying stops
-//      the deflector from sliding sideways during the adhesive cure.
+//   3. **Upright corner ears** at the rear of the tab (st-vu1). Two
+//      small blocks rising vertically from the tab top to the bib's
+//      protrusion height (`bib_plate_thickness`). Each ear's inner
+//      face is a concave 90° arc that matches the bib's bottom-
+//      corner curve plus `bib_clearance`, so the bib's lower corner
+//      radii mechanically key into the ears during install. `ear_depth`
+//      controls how far forward the ear extends from the rear edge
+//      along +Y; `ear_thickness` controls the radial wrap outside
+//      the bib's corner.
 //
 //   4. **Tapered V-groove** on the flap top. Dish depth grows
 //      linearly from ~0 at the bend to `contour_depth` at the drip
 //      edge so the contour "grows in" from the fold rather than
-//      starting abruptly. Achieved by tilting the subtracted
-//      cylinder's axis so it's tangent to the flap top at the
-//      hinge-end and dips `contour_depth` below it at the front end.
+//      starting abruptly. Implemented as a truncated-cone subtract
+//      whose radius grows along the flap, keeping the cone caps
+//      perpendicular to +Y (not tilted) so they land cleanly outside
+//      the plate bounds.
 //
-// Construction — polygon side profile + linear_extrude + three
-// boolean subtracts (tilted dish cylinder, bib recess, rear-corner
-// anti-round prisms). All subtract cutters extend past the main
-// body by an `eps` to kill coplanar-face artefacts.
+// Construction — polygon side profile + linear_extrude (bent plate),
+// union'd with two ear blocks (each = rectangular prism minus a
+// cylinder at the bib's corner center), then boolean subtracts
+// (contour cone, rear-corner anti-round prisms). Subtract cutters
+// extend past the main body by an `eps` to kill coplanar-face
+// artefacts.
 //
 // Install orientation:
 //   +Y = outward from wall; +Z = up; +X = along bib width.
@@ -67,12 +75,13 @@ bib_plate_height    = 100; // @param number min=80 max=120 step=0.5 unit=mm  gro
 bib_plate_thickness = 6;   // @param number min=0  max=12  step=0.5 unit=mm  group=bib label="Aquor face-plate protrusion from wall"
 bib_corner_radius   = 9;   // @param number min=0  max=20  step=0.5 unit=mm  group=bib label="Aquor face-plate corner radius"
 
-// ----- Bib recess (pocket in the tab top that mates to the bib) -----
-bib_recess_depth     = 1.5;  // @param number min=0   max=4   step=0.25 unit=mm group=fit label="Recess depth in the tab top"
-bib_recess_clearance = 0.4;  // @param number min=0   max=1.5 step=0.05 unit=mm group=fit label="Clearance around bib in recess"
+// ----- Fit (clearance + ear geometry against the bib) -----
+bib_clearance  = 0.4;  // @param number min=0   max=1.5 step=0.05 unit=mm group=fit label="Clearance around bib (ears + corner radii)"
+ear_thickness  = 2.5;  // @param number min=1.5 max=5   step=0.25 unit=mm group=fit label="Radial ear thickness wrapping outside the bib corner"
+ear_depth      = 8;    // @param number min=4   max=15  step=0.5  unit=mm group=fit label="Ear forward extent (along +Y from the rear edge)"
 
 // ----- Part geometry -----
-width           = 68;   // @param number min=40 max=90  step=0.5 unit=mm  group=geometry label="Part width (X)"
+width           = 78;   // @param number min=50 max=100 step=0.5 unit=mm  group=geometry label="Part width (X)"
 tab_depth       = 10;   // @param number min=5  max=30  step=0.5 unit=mm  group=geometry label="VHB tab depth (Y)"
 flap_length     = 32;   // @param number min=15 max=60  step=0.5 unit=mm  group=geometry label="Flap length (along the plate)"
 flap_angle      = 38;   // @param number min=15 max=60  step=1   unit=deg group=geometry label="Flap angle above horizontal"
@@ -121,25 +130,20 @@ _flap_inner_tip = [_flap_outer_tip[0] - _t * sin(_fa),
 _inner_arc_exit = [_inner_end_y + flap_length * cos(_fa),
                    _inner_end_z + flap_length * sin(_fa)];
 
-// Recess footprint. Radius clamp so the rounded-rectangle stays
-// manifold even when bib_corner_radius exceeds the recess's narrow
-// dimension (a 9 mm radius can't actually fit inside a 6 mm-deep
-// rectangle — the real geometry is an approximation of the bib's
-// bottom projection where the face plate's rounded corners meet
-// its bottom edge).
-_recess_w = bib_plate_width + 2 * bib_recess_clearance;
-_recess_d = bib_plate_thickness + 2 * bib_recess_clearance;
-_recess_r = min(
-    bib_corner_radius,
-    _recess_d / 2 - 0.01,
-    _recess_w / 2 - 0.01
-);
+// Ear geometry. Each ear's inner face is a 90° concave arc centered
+// at the bib's lower-corner center. Outer shape is a rectangular
+// block; subtracting the (bib_corner_radius + bib_clearance) disc
+// at the corner center gives the wrapping crescent.
+_ear_corner_cx     = bib_plate_width / 2 - bib_corner_radius;   // |X| of the bib's lower-corner centre
+_ear_corner_cz     = _t + bib_corner_radius;                    // Z of that centre (arc sweeps tangent to tab top)
+_ear_inner_radius  = bib_corner_radius + bib_clearance;         // inner arc radius
+_ear_outer_x_extent = bib_plate_width / 2 + bib_clearance + ear_thickness;
 
 // PRINT_ANCHOR_BBOX at defaults. Measured from the rendered STL;
-// recomputed whenever the bend or flap params shift materially.
-PRINT_ANCHOR_BBOX = [68, 42.6, 24.22];
+// recomputed whenever the bend, flap, or ear params shift materially.
+PRINT_ANCHOR_BBOX = [78, 42.6, 24.22];
 
-// @preset id="aquor-72x100" label="Aquor 72×100mm (default)" bib_plate_width=72 bib_plate_height=100 bib_plate_thickness=6 bib_corner_radius=9 bib_recess_depth=1.5 bib_recess_clearance=0.4 width=68 tab_depth=10 flap_length=32 flap_angle=38 plate_thickness=2.5 bend_radius=12 contour_depth=1.5 contour_side_rim_width=1.5
+// @preset id="aquor-72x100" label="Aquor 72×100mm (default)" bib_plate_width=72 bib_plate_height=100 bib_plate_thickness=6 bib_corner_radius=9 bib_clearance=0.4 ear_thickness=2.5 ear_depth=8 width=78 tab_depth=10 flap_length=32 flap_angle=38 plate_thickness=2.5 bend_radius=12 contour_depth=1.5 contour_side_rim_width=1.5
 
 // === Geometry ===
 
@@ -215,22 +219,33 @@ module _contour_cutter() {
                     cylinder(h = cutter_len, r1 = r_back_cap, r2 = r_front_cap);
 }
 
-// Bib-bottom recess. A rounded-rectangle pocket on the tab's top
-// surface, centered in X with the rear edge at Y = 0. The
-// subtraction starts at Z = t − recess_depth and extends upward
-// past the tab top by `eps` so no coplanar-face artefact remains
-// at the tab surface.
-module _bib_recess_cutter() {
-    if (bib_recess_depth <= 0) {
-        // no-op
-    } else {
-        eps = 0.05;
-        h = bib_recess_depth + eps;
-        translate([0, _recess_d / 2, _t - bib_recess_depth])
-            linear_extrude(h)
-                rect([_recess_w, _recess_d],
-                     rounding = _recess_r,
-                     anchor = CENTER);
+// Upright bib-corner ears (st-vu1). Two rectangular blocks rising
+// vertically from the tab top, each minus a cylinder at the bib's
+// lower-corner centre to produce a concave arc on the block's inner
+// face. The ears' rear face is flush with Y = 0 (tab's back edge);
+// they extend forward to Y = ear_depth. Blocks are UNION'd with the
+// bent plate before the contour + corner cutters subtract, so the
+// rear-corner cutter (which only reaches Z ≤ _t) doesn't touch
+// them.
+module _ears() {
+    for (sign = [-1, 1]) {
+        corner_X = sign * _ear_corner_cx;
+        block_X_min = sign < 0
+            ? -_ear_outer_x_extent
+            :  _ear_corner_cx;
+        block_width = _ear_outer_x_extent - _ear_corner_cx;
+        difference() {
+            translate([block_X_min, 0, _t])
+                cube([block_width, ear_depth, bib_plate_thickness]);
+            // The inside-the-bib disc (with clearance) that the ear
+            // wraps around. Extended in Y by `eps` on both ends so
+            // the cylinder cleanly passes through the block without
+            // coplanar caps.
+            translate([corner_X, -0.02, _ear_corner_cz])
+                rotate([-90, 0, 0])
+                    cylinder(h = ear_depth + 0.04,
+                             r = _ear_inner_radius);
+        }
     }
 }
 
@@ -264,9 +279,11 @@ module _rear_corner_cutters() {
 
 module aquor_bib_drip_deflector() {
     difference() {
-        _bent_plate_solid();
+        union() {
+            _bent_plate_solid();
+            _ears();
+        }
         if (contour_depth > 0 && _Rd > 0) _contour_cutter();
-        _bib_recess_cutter();
         _rear_corner_cutters();
     }
 }
