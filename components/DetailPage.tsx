@@ -6,9 +6,11 @@
 // breakpoint (1200px).
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
 import { ParamRail } from "./ParamRail";
+import { ShareDialog } from "./ShareDialog";
+import { Toast } from "./Toast";
 import { ViewerChrome } from "./ViewerChrome";
 import { useDetailState } from "@/hooks/useDetailState";
 import {
@@ -17,6 +19,7 @@ import {
 } from "@/hooks/useRenderer";
 import { useShortcut } from "@/hooks/useShortcut";
 import { useUI } from "@/contexts/UIContext";
+import { encodeShare } from "@/lib/share/encode";
 import type { Param, ParamValue, Preset } from "@/lib/scad-params/parse";
 import type { RenderResult } from "@/hooks/useRenderer";
 
@@ -32,13 +35,16 @@ export interface DetailPageModel {
 
 interface Props {
   model: DetailPageModel;
+  /** Share-URL–decoded params from the server page. */
+  initialValues?: Partial<Record<string, ParamValue>>;
 }
 
-export default function DetailPage({ model }: Props) {
+export default function DetailPage({ model, initialValues }: Props) {
   const detail = useDetailState({
     params: model.params,
     stockPresets: model.presets,
     slug: model.slug,
+    initialValues,
   });
   const render = useRenderer({
     modelPath: model.modelPath,
@@ -46,9 +52,49 @@ export default function DetailPage({ model }: Props) {
     params: model.params,
     values: detail.state.params,
   });
-  const { modal } = useUI();
+  const { modal, dispatch } = useUI();
 
   const downloadRef = useRef<() => void>(() => {});
+
+  // Full share URL (origin + /models/<slug>?<shortKey>=<value>...).
+  // Computed on-the-fly whenever the copied action fires; the dialog
+  // reads it through a ref too so the rendered URL always reflects
+  // the *current* state, not the state at dialog-open time.
+  const shareUrl = useMemo(() => {
+    const q = encodeShare(model.params, detail.state.params);
+    // On the server side this runs during render but `window` isn't
+    // available — return a relative URL and let the dialog upgrade
+    // at mount time via useEffect. In practice the dialog only
+    // opens after mount so the branch is rarely hit.
+    const origin =
+      typeof window !== "undefined" ? window.location.origin : "";
+    const path = `/models/${model.slug}`;
+    return q ? `${origin}${path}?${q}` : `${origin}${path}`;
+  }, [model.params, model.slug, detail.state.params]);
+
+  const [toast, setToast] = useState<{
+    message: string;
+    hint?: string;
+  } | null>(null);
+
+  const copyLink = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setToast({ message: "Link copied", hint: "⌘⇧C" });
+    } catch {
+      // Clipboard blocked (http-only / no permission). Swallow —
+      // a follow-up bead can add a textarea fallback.
+    }
+  }, [shareUrl]);
+
+  // ⌘⇧C direct-copies without opening the share dialog.
+  useShortcut(
+    "$mod+Shift+c",
+    () => {
+      void copyLink();
+    },
+    { enabled: modal.kind === "none" },
+  );
 
   // ⌘E downloads the STL from anywhere on the detail page. Gates on
   // render.state === "ready" so we don't POST an empty body before
@@ -101,7 +147,28 @@ export default function DetailPage({ model }: Props) {
       data-testid="detail-root"
       className="flex flex-col min-[1200px]:h-[calc(100vh-38px)]"
     >
-      <DetailHeader title={model.title} modelPath={model.modelPath} />
+      <DetailHeader
+        title={model.title}
+        modelPath={model.modelPath}
+        onShare={() =>
+          dispatch({ type: "open", modal: { kind: "share" } })
+        }
+      />
+      <ShareDialog
+        modelTitle={model.title}
+        modelSlug={model.slug}
+        shareUrl={shareUrl}
+        params={detail.state.params}
+        onCopied={() =>
+          setToast({ message: "Link copied", hint: "⌘⇧C" })
+        }
+      />
+      <Toast
+        open={toast !== null}
+        message={toast?.message ?? ""}
+        hint={toast?.hint}
+        onDismiss={() => setToast(null)}
+      />
       <div className="grid flex-1 min-h-0 grid-cols-1 min-[1200px]:grid-cols-[240px_1fr_360px] min-[1200px]:grid-rows-[1fr]">
         <aside
           data-testid="detail-left-col"
@@ -154,9 +221,11 @@ export default function DetailPage({ model }: Props) {
 function DetailHeader({
   title,
   modelPath,
+  onShare,
 }: {
   title: string;
   modelPath: string;
+  onShare: () => void;
 }) {
   return (
     <div className="flex items-baseline gap-12 border-b border-line bg-panel px-12 py-8">
@@ -168,6 +237,18 @@ function DetailHeader({
       </Link>
       <h1 className="m-0 text-14 font-semibold text-text">{title}</h1>
       <code className="font-mono text-10 text-text-mute">{modelPath}</code>
+      <span className="flex-1" />
+      <button
+        type="button"
+        onClick={onShare}
+        aria-label="Share these parameters"
+        className={clsx(
+          "rounded-3 border border-line bg-panel px-8 py-2",
+          "font-mono text-11 text-text-dim hover:border-accent-line hover:text-text",
+        )}
+      >
+        Share
+      </button>
     </div>
   );
 }
