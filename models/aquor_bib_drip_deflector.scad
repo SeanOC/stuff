@@ -2,73 +2,85 @@
 // Copyright (c) 2026 Sean O'Connor
 //
 // Aquor hose-bib drip deflector — bent sheet-metal form (st-r38,
-// revised st-if3 / st-hkn / st-vu1 / st-002 / st-hxy). One continuous
-// plate of uniform thickness, smoothly bent from a horizontal VHB tab
-// to a down-angled flap, with two small upright tabs at the rear-
-// outer corners of the VHB tab that butt up against the outside of
-// the bib's lower rounded corners. In install orientation the tab's
-// top face is VHB-taped to the Aquor face-plate underside; the
-// corner tabs rise `corner_tab_height` (~= `bib_corner_radius`) above
-// the tab top so their upper inside edges reach the point where the
-// bib's side edge begins, keying the deflector against sideways
-// drift during cure. The flap hangs outward-and-downward past the
-// wall plane so drain water sheds off its front edge clear of the
-// drywall below.
+// revised st-if3 / st-hkn / st-vu1 / st-002 / st-hxy / st-c7x). One
+// continuous plate of uniform thickness, smoothly bent from a VHB-
+// bonded wall-panel section to a down-and-forward-angled flap. Two
+// small coplanar rear-extending tabs at the back of the VHB section
+// butt up against the bib's lower-side corners during install,
+// keying the deflector laterally under the face-plate.
 //
-// Three geometric features on top of the raw L-shape:
+// === INSTALL ORIENTATION ===
+//
+// The printed part is rotated 90° about the X axis before install.
+// In print coordinates:
+//   +X = width (along bib width)            — unchanged in install
+//   +Y = toward the flap/drip edge           — becomes −Z (toward floor) in install
+//   +Z = up off the print bed                — becomes +Y (away from wall) in install
+//
+// So the blue tab's print-Z=0 face (the smooth bed-side face) is the
+// VHB-to-wall surface. The blue tab becomes a vertical panel on the
+// wall below the bib. The green flap hangs down and forward. Water
+// from the bib runs down the wall → blue's exposed face (+Y in
+// install / +Z in print) → bend → flap → drips off the front edge.
+//
+// Coordinate cheat sheet (print vs install):
+//   print +Z up              → install +Y outward
+//   print +Y flap-ward       → install −Z downward
+//   print −Y rear-of-tab     → install +Z toward the bib
+//
+// Features keyed off this:
+//   - Blue tab's Z=0 face in print → wall-contact / VHB in install.
+//   - Red corner tabs extend in print −Y → install +Z, reaching up
+//     to butt against the bib's bottom-side corners.
+//   - Flap's V-groove on the print-Z-positive face → water-contact
+//     face in install; groove depth grows toward the drip edge.
+//
+// === GEOMETRY ===
+//
+// Three features on top of the raw L-shape:
 //
 //   1. **Large-radius bend.** Tab→flap junction is a filleted corner
 //      (outer radius `bend_radius`, default 12 mm at the bib size).
 //      Longer arc smooths the transition — it reads as a continuous
 //      bend, not a fold line.
 //
-//   2. **Upright end-corner tabs** at the VHB tab's two rear-outer
-//      corners (st-hxy — replaces the v7 pie-slice fillers and the
-//      v4/v7 rounded rear-tab-corner outline). Each is a small
-//      rectangular post sitting flush with the rear edge (Y=0) at
-//      X = ±(width/2 − corner_tab_width), rising `corner_tab_height`
-//      above the tab top. Outer X face ends at ±(width/2), so the
-//      posts don't poke outside the tab's footprint. At default
-//      dimensions there is a ~2 mm air gap between each post's outer
-//      face and the bib's side edge (bib is 72 mm wide, tab is 78 mm
-//      → posts actually extend past the bib sides by 3 mm; set
-//      `width = bib_plate_width` for flush fit).
+//   2. **Rear-extending corner tabs** at the VHB section's two rear-
+//      outer corners (st-c7x — relocated from v8's +Z posts). Each
+//      is a coplanar `corner_tab_width × corner_tab_ext × _t` prism
+//      extending −Y past the tab's rear edge, flush with the build
+//      plate (Z = 0..plate_thickness). In install orientation these
+//      become upward-reaching tabs that butt against the bib's
+//      bottom-side corners.
 //
-//   3. **Tapered V-groove** on the flap top. Dish depth grows
-//      linearly from ~0 at the bend to `contour_depth` at the drip
-//      edge so the contour "grows in" from the fold rather than
-//      starting abruptly. Implemented as a truncated-cone subtract
+//   3. **Tapered V-groove** on the flap top (print +Z face). Dish
+//      depth grows linearly from ~0 at the bend to `contour_depth`
+//      at the drip edge. Implemented as a truncated-cone subtract
 //      whose radius grows along the flap, keeping the cone caps
 //      perpendicular to +Y (not tilted) so they land cleanly outside
 //      the plate bounds.
 //
 // Debug colour legend (when `debug_colors=true`):
-//   tab          → cornflowerblue
-//   bend         → gold
-//   flap         → mediumseagreen
-//   corner tabs  → tomato
+//   tab                → cornflowerblue
+//   bend               → gold
+//   flap               → mediumseagreen
+//   corner tabs (−Y)   → tomato
 //
 // Construction — polygon side profile + linear_extrude (bent plate,
 // as three tab/bend/flap sub-polygons for the colour palette),
-// union'd with two simple corner-tab cubes, then the contour-cone
-// subtract. No rear-corner anti-round cutter any more — the VHB
-// tab's top-down outline is a plain rectangle.
-//
-// Install orientation:
-//   +Y = outward from wall; +Z = up; +X = along bib width.
-//   Flip the printed part top-to-bottom for install: the printed-
-//   bed-facing tab surface becomes the VHB zone pressed UP against
-//   the bib underside; the flap hangs DOWN-and-outward at
-//   `flap_angle` below horizontal.
+// union'd with two simple rear-extending corner-tab cubes, then the
+// contour-cone subtract.
 //
 // Print orientation (how this file models the part):
-//   Tab lies flat on the build plate, Z = [0, plate_thickness].
-//   Flap rises at `flap_angle` above horizontal from the bend. First-
-//   layer contact area depends on `width × tab_depth` minus the
-//   rear-corner roundings. The flap's bed-facing underside has
-//   ~1.28× overhang per layer at 38° — above the classic
-//   45°-from-vertical threshold but manageable for a thin plate.
-//   Drop flap_angle to 45°+ if a cleaner underside finish is needed.
+//   VHB section lies flat on the build plate, Z = [0, plate_thickness].
+//   Flap rises at `flap_angle` above horizontal from the bend — this
+//   is entirely a print-time convenience; in install orientation the
+//   flap hangs forward-and-DOWN at `flap_angle` below horizontal,
+//   since the whole part has been rotated 90° about X. The flap's
+//   bed-facing underside has ~1.28× overhang per layer at 38° — above
+//   the classic 45°-from-vertical threshold but manageable for a thin
+//   plate. Drop flap_angle to 45°+ if a cleaner underside finish is
+//   needed. The new rear-extending corner tabs are coplanar with the
+//   VHB section's first layer so they print without supports.
 
 include <BOSL2/std.scad>
 
@@ -82,17 +94,18 @@ bib_plate_height    = 100; // @param number min=80 max=120 step=0.5 unit=mm  gro
 bib_plate_thickness = 6;   // @param number min=0  max=12  step=0.5 unit=mm  group=bib label="Aquor face-plate protrusion from wall"
 bib_corner_radius   = 9;   // @param number min=0  max=20  step=0.5 unit=mm  group=bib label="Aquor face-plate corner radius"
 
-// ----- Fit (upright corner tabs at the rear-outer tab corners) -----
-// Two small vertical posts at the VHB tab's two rear-outer corners
-// (st-hxy). Each post's outer X-face sits at ±(width/2); it extends
-// `corner_tab_width` inward and `corner_tab_depth` forward from the
-// rear edge (Y=0). Height = `corner_tab_height`, defaulting to
-// `bib_corner_radius` so the post's top reaches the height where the
-// bib's rounded corner transitions from bottom to side edge.
-corner_tabs       = true; // @param boolean group=fit label="Upright corner tabs at the rear-outer VHB-tab corners"
-corner_tab_height = 9;    // @param number min=0 max=20 step=0.5 unit=mm group=fit label="Corner-tab height above the VHB tab top (≈ bib_corner_radius)"
-corner_tab_width  = 4;    // @param number min=2 max=10 step=0.5 unit=mm group=fit label="Corner-tab X extent (inward from the tab's outer edge)"
-corner_tab_depth  = 4;    // @param number min=2 max=10 step=0.5 unit=mm group=fit label="Corner-tab Y extent (forward from the rear edge)"
+// ----- Fit (rear-extending corner tabs) -----
+// Two coplanar rear-extending tabs at the VHB section's two rear-
+// outer corners (st-c7x — relocated from v8's +Z posts). Each tab's
+// outer X-face sits at ±(width/2); it extends `corner_tab_width`
+// inward in X and `corner_tab_ext` in −Y (past the rear edge). Z
+// spans the full plate thickness so the tab is coplanar with the
+// VHB section's bed-side surface. In install orientation the tab
+// becomes an upward post (print −Y → install +Z) reaching the bib's
+// bottom-side corner; default 9 mm ≈ `bib_corner_radius`.
+corner_tabs      = true; // @param boolean group=fit label="Rear-extending corner tabs"
+corner_tab_ext   = 9;    // @param number min=0 max=20 step=0.5 unit=mm group=fit label="Corner-tab extension past the rear edge (print −Y / install +Z)"
+corner_tab_width = 4;    // @param number min=2 max=10 step=0.5 unit=mm group=fit label="Corner-tab X extent (inward from the tab's outer edge)"
 
 // ----- Part geometry -----
 width           = 78;   // @param number min=50 max=100 step=0.5 unit=mm  group=geometry label="Part width (X)"
@@ -150,13 +163,14 @@ _flap_inner_tip = [_flap_outer_tip[0] - _t * sin(_fa),
 _inner_arc_exit = [_inner_end_y + flap_length * cos(_fa),
                    _inner_end_z + flap_length * sin(_fa)];
 
-// PRINT_ANCHOR_BBOX at defaults. Z is dominated by the flap's inner
-// tip (~24.22 mm at flap_length=32, flap_angle=38°); the new upright
-// corner tabs rise to _t + corner_tab_height = 11.5 mm — well under
-// the flap tip, so bbox Z is unchanged from v7. (st-hxy)
-PRINT_ANCHOR_BBOX = [78, 42.6, 24.22];
+// PRINT_ANCHOR_BBOX at defaults. The rear-extending corner tabs
+// push the Y extent back by `corner_tab_ext` (to Y = −9 mm at
+// defaults), so total Y extent grows to 42.6 + 9 = 51.6 mm. Z is
+// unchanged — no more vertical posts on the top face; max Z is the
+// flap's inner tip (~24.22 mm). (st-c7x)
+PRINT_ANCHOR_BBOX = [78, 51.6, 24.22];
 
-// @preset id="aquor-72x100" label="Aquor 72×100mm (default)" bib_plate_width=72 bib_plate_height=100 bib_plate_thickness=6 bib_corner_radius=9 corner_tabs=true corner_tab_height=9 corner_tab_width=4 corner_tab_depth=4 width=78 tab_depth=10 flap_length=32 flap_angle=38 plate_thickness=2.5 bend_radius=12 contour_depth=1.5 contour_side_rim_width=1.5 debug_colors=true
+// @preset id="aquor-72x100" label="Aquor 72×100mm (default)" bib_plate_width=72 bib_plate_height=100 bib_plate_thickness=6 bib_corner_radius=9 corner_tabs=true corner_tab_ext=9 corner_tab_width=4 width=78 tab_depth=10 flap_length=32 flap_angle=38 plate_thickness=2.5 bend_radius=12 contour_depth=1.5 contour_side_rim_width=1.5 debug_colors=true
 
 // === Geometry ===
 
@@ -293,23 +307,24 @@ module _contour_cutter() {
                     cylinder(h = cutter_len, r1 = r_back_cap, r2 = r_front_cap);
 }
 
-// Upright end-corner tabs (st-hxy). Two small rectangular posts at
-// the VHB tab's two rear-outer corners. Each post spans:
-//   X ∈ [±width/2 − corner_tab_width, ±width/2]  (inward from the edge)
-//   Y ∈ [0, corner_tab_depth]                     (forward from wall)
-//   Z ∈ [_t, _t + corner_tab_height]              (above the tab top)
-// Outer X face is flush with the tab's own outer edge so the post's
-// footprint sits entirely on solid tab material (no cantilever off
-// the build plate).
+// Rear-extending corner tabs (st-c7x). Two coplanar tabs extending
+// backward from the VHB section's rear-outer corners. Each spans:
+//   X ∈ [±width/2 − corner_tab_width, ±width/2]  (inward from edge)
+//   Y ∈ [−corner_tab_ext, 0]                     (back past the rear)
+//   Z ∈ [0, _t]                                  (full plate thickness)
+// Outer X face is flush with the VHB section's own outer edge; Y=0
+// face is coincident with the tab rear so the union merges cleanly.
+// In install orientation these become upward-reaching posts that
+// butt against the bib's bottom-side corners.
 module _corner_tabs_geom() {
-    if (!corner_tabs || corner_tab_height <= 0) {
+    if (!corner_tabs || corner_tab_ext <= 0) {
         // no-op
     } else {
         for (sign = [-1, 1]) {
             x_outer = sign * width / 2;
             x_min = sign < 0 ? x_outer : x_outer - corner_tab_width;
-            translate([x_min, 0, _t])
-                cube([corner_tab_width, corner_tab_depth, corner_tab_height]);
+            translate([x_min, -corner_tab_ext, 0])
+                cube([corner_tab_width, corner_tab_ext, _t]);
         }
     }
 }
