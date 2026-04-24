@@ -100,7 +100,13 @@ def _check_topology(ctx: dict[str, Any]) -> list[Failure]:
     # body. Legitimate multi-part designs (baseplate + cradles) land
     # at N × (reasonably large) components, which we don't want to
     # punish here — sidecars can tighten to an exact count.
+    #
+    # Single-component models can legitimately be small (e.g. a thin
+    # bent plate at ~30 tris — st-2ln). "Orphan" presumes a main body
+    # to orphan from, so skip the check when there's nothing else.
     sizes = ctx.get("component_sizes") or []
+    if len(sizes) <= 1:
+        return []
     orphans = [n for n in sizes if n <= _ORPHAN_FRAGMENT_MAX_TRIS]
     if not orphans:
         return []

@@ -1,117 +1,100 @@
 // SPDX-License-Identifier: CC-BY-NC-SA-4.0
 // Copyright (c) 2026 Sean O'Connor
 //
-// Aquor hose-bib drip deflector. Mounts under the face plate of a
-// flush-mount Aquor hose bib (face plate 2-7/8" × 4" = 72×100 mm) with
-// VHB tape and catches the freeze-drain water that exits the bib's
-// lower drain port on hose disconnect, redirecting it outward past the
-// wall plane so it drops clear of the drywall below.
+// Aquor hose-bib drip deflector — bent-plate form factor (st-2ln).
+// Two pieces welded at one edge: a small horizontal VHB tab that
+// presses against the underside of the Aquor bib face plate, and a
+// thin flap that hinges at the tab's outer-top edge and angles
+// up-and-outward. Installed upside-down from the printed orientation:
+// the tab's top-in-print face bonds to the bib with VHB tape, and the
+// flap hangs down-and-outward past the wall plane, shedding drain
+// water well clear of the drywall below.
 //
-// Install orientation:
-//   +Y = outward from the wall
+// Install orientation (implied by inverting the printed part):
+//   tab top (VHB zone) pressed UP against the bib face-plate
+//   underside; flap hangs DOWN-AND-OUTWARD at flap_angle below
+//   horizontal.
+//
+// Print orientation (how the file is modelled):
+//   +Y = outward from wall (eventual install direction)
 //   +Z = up
 //   +X = along the bib width
-//   The back face (Y=0) sits flush against the wall. The top-rear strip
-//   (Y < vhb_contact_depth, Z = deflector_thickness) is a flat zone
-//   for VHB tape — bonded to the smooth Aquor face plate underside, NOT
-//   to drywall (paint/paper tears). Beyond the VHB zone, the top slopes
-//   down-and-out at ramp_angle and a recessed channel funnels water
-//   off the open front edge.
+//   Tab lies flat on the build plate, Z = [0, top_thickness]. Flap
+//   hinges at the tab's front-top corner (Y = tab_depth,
+//   Z = top_thickness) and rises up at flap_angle.
 //
-// Print orientation:
-//   Place the back face (Y=0) on the build plate. Every outward- or
-//   upward-facing surface sits at ≤ ramp_angle from horizontal or
-//   vertical, so no supports are needed. The channel pocket opens UP
-//   (toward the would-be-wall on the printer, which is +Y), i.e. the
-//   cavity has no ceiling to span. First-layer adhesion is the full
-//   deflector_width × deflector_thickness back face.
+// Overhang note: the flap's bed-facing underside sits at flap_angle
+// above horizontal. With the default 38°, each print layer overhangs
+// its predecessor by ~1.28 × the layer height — above the classic
+// 45°-from-vertical "safe" threshold but well within what modern
+// printers handle unsupported for a thin, short plate. If a finer
+// surface finish matters on the flap's underside, drop flap_angle
+// to 45° (the borderline) or add tree supports at slice time.
+//
+// First-layer contact footprint at defaults: width × tab_depth =
+// 68 × 10 = 680 mm². Plenty for adhesion.
 
-include <BOSL2/std.scad>
-
-$fn = 64;
+$fn = 48;
 
 // === User-tunable parameters ===
 
-// ----- Aquor face-plate reference (for fit; not printed) -----
-bib_plate_width  = 72;   // @param number min=60 max=90 step=0.5 unit=mm group=bib label="Aquor face-plate width"
-bib_plate_height = 100;  // @param number min=80 max=120 step=0.5 unit=mm group=bib label="Aquor face-plate height"
+// ----- Bib reference (not printed; drives defaults only) -----
+bib_plate_width  = 72;  // @param number min=60 max=90  step=0.5 unit=mm  group=bib label="Aquor face-plate width"
 
-// ----- Deflector geometry -----
-deflector_width     = 70;  // @param number min=40 max=90 step=0.5 unit=mm group=geometry label="Deflector width (X)"
-deflector_depth     = 40;  // @param number min=25 max=80 step=0.5 unit=mm group=geometry label="Deflector depth — outward from wall (Y)"
-deflector_thickness = 18;  // @param number min=10 max=35 step=0.5 unit=mm group=geometry label="Deflector max thickness (Z)"
-vhb_contact_depth   = 22;  // @param number min=8  max=60 step=0.5 unit=mm group=geometry label="VHB flat zone depth from wall"
-ramp_angle          = 15;  // @param number min=5  max=30 step=1   unit=deg group=shape label="Top downslope past the VHB zone"
-corner_radius       = 3;   // @param number min=0  max=8  step=0.5 unit=mm group=shape label="Outer vertical corner fillet"
+// ----- Part geometry -----
+width          = 68;    // @param number min=40 max=90  step=0.5 unit=mm  group=geometry label="Part width (X, along bib width)"
+tab_depth      = 10;    // @param number min=5  max=30  step=0.5 unit=mm  group=geometry label="VHB tab depth (Y, outward from wall)"
+top_thickness  = 2.5;   // @param number min=1.5 max=5 step=0.25 unit=mm group=geometry label="Tab thickness"
+flap_thickness = 2.5;   // @param number min=1.5 max=5 step=0.25 unit=mm group=geometry label="Flap thickness"
+flap_length    = 32;    // @param number min=15 max=60  step=0.5 unit=mm  group=geometry label="Flap length (along the plate)"
+flap_angle     = 38;    // @param number min=15 max=60  step=1   unit=deg group=geometry label="Flap angle above horizontal (print-orientation)"
+corner_radius  = 0;     // @param number min=0  max=3   step=0.25 unit=mm group=finish label="Exposed-edge fillet (0 = sharp; minkowski cost rises quickly)"
 
-// ----- Channel (gutter) -----
-channel_depth   = 4;    // @param number min=0   max=10 step=0.5 unit=mm group=channel label="Channel pocket depth below the ramp"
-wall_thickness  = 2.5;  // @param number min=1.5 max=6  step=0.5 unit=mm group=channel label="Channel side-wall thickness"
+// ----- Derived (for the PRINT_ANCHOR_BBOX comment + the preset) -----
+flap_far_y    = tab_depth + flap_length * cos(flap_angle);
+flap_far_z    = top_thickness + flap_length * sin(flap_angle) + flap_thickness * cos(flap_angle);
 
-// === Derived ===
+// PRINT_ANCHOR_BBOX at defaults. Measured from the rendered STL
+// (OpenSCAD + trimesh): extents 68 × 35.22 × 24.17 mm before any
+// corner_radius minkowski expansion. Kept sub-mm precise so the
+// 1 mm invariant tolerance absorbs only real drift.
+PRINT_ANCHOR_BBOX = [68, 35.22, 24.17];
 
-// Vertical drop from VHB-zone top to the front-top edge along the ramp.
-ramp_drop       = (deflector_depth - vhb_contact_depth) * tan(ramp_angle);
-// Material thickness at the front edge (load-bearing cue — keep
-// > ~5 mm so the front lip doesn't feel flimsy). Not parametric;
-// tune deflector_thickness / ramp_angle to shift it.
-front_thickness = deflector_thickness - ramp_drop;
-channel_width   = max(deflector_width - 2 * wall_thickness, 0.1);
-
-// PRINT_ANCHOR_BBOX — outermost printed bbox (X, Y, Z) in mm at defaults.
-// Raw prism extents. The ramp and channel cuts remove material from
-// inside these bounds; they don't add to them.
-PRINT_ANCHOR_BBOX = [deflector_width, deflector_depth, deflector_thickness];
-
-// @preset id="aquor-72x100" label="Aquor 72×100mm (default)" bib_plate_width=72 bib_plate_height=100 deflector_width=70 deflector_depth=40 deflector_thickness=18 vhb_contact_depth=22 ramp_angle=15 corner_radius=3 channel_depth=4 wall_thickness=2.5
+// @preset id="aquor-72x100" label="Aquor 72×100mm (default)" bib_plate_width=72 width=68 tab_depth=10 top_thickness=2.5 flap_thickness=2.5 flap_length=32 flap_angle=38 corner_radius=0
 
 // === Geometry ===
 
-// The base prism sits anchored with its back face at Y=0, build-plate
-// side at Z=0, centered in X. BOSL2 `cuboid` defaults to CENTER anchor
-// so we translate half-extents into place.
-module main_prism() {
-    translate([0, deflector_depth / 2, deflector_thickness / 2])
-        cuboid(
-            [deflector_width, deflector_depth, deflector_thickness],
-            rounding = corner_radius,
-            edges    = "Z"   // fillet only the four vertical corners
-        );
+module aquor_bib_drip_deflector_body() {
+    // Tab: horizontal plate, flat on the print bed.
+    translate([-width / 2, 0, 0])
+        cube([width, tab_depth, top_thickness]);
+
+    // Flap: hinges at the tab's front-top corner. The rotate()
+    // about +X by flap_angle lifts the flap's +Y end upward while
+    // the back-bottom edge (pre-rotate origin) stays anchored. The
+    // 0.5 mm pre-rotate overlap into the tab-side guarantees a
+    // solid boolean union at the hinge; without it the two cubes
+    // share only a line, which OpenSCAD's Manifold backend accepts
+    // but trimesh's STL-based watertight check refuses.
+    HINGE_OVERLAP = 0.5;
+    translate([0, tab_depth, top_thickness])
+        rotate([flap_angle, 0, 0])
+            translate([-width / 2, -HINGE_OVERLAP, 0])
+                cube([width, flap_length + HINGE_OVERLAP, flap_thickness]);
 }
 
-// Diagonal cutter that shaves the top-forward material above the ramp
-// plane. The cutter's bottom face passes through the pivot line at
-// (Y=vhb_contact_depth, Z=deflector_thickness) and tilts down by
-// ramp_angle, so the subtraction leaves a flat VHB zone at the rear
-// and a clean ramp from there to the front.
-module ramp_cutter() {
-    big = 3 * max(deflector_width, deflector_depth, deflector_thickness);
-    translate([0, vhb_contact_depth, deflector_thickness])
-        rotate([-ramp_angle, 0, 0])
-            translate([-big / 2, 0, 0])
-                cube([big, big, big]);
-}
-
-// Channel pocket. Same tilt as the ramp cutter but shifted along the
-// rotated normal by -channel_depth so the cutter's bottom face is
-// channel_depth below the ramp surface. Narrower than the deflector
-// in X (leaves wall_thickness sidewalls) and shorter in Y by
-// wall_thickness at the back (keeps a tiny lip between the VHB zone
-// and the channel floor — avoids a knife-edge where they meet).
-module channel_cutter() {
-    big = 3 * max(deflector_width, deflector_depth, deflector_thickness);
-    translate([0, vhb_contact_depth + wall_thickness, deflector_thickness])
-        rotate([-ramp_angle, 0, 0])
-            translate([-channel_width / 2, 0, -channel_depth])
-                cube([channel_width, big, big]);
-}
-
-module deflector() {
-    difference() {
-        main_prism();
-        ramp_cutter();
-        if (channel_depth > 0) channel_cutter();
+module aquor_bib_drip_deflector() {
+    if (corner_radius > 0) {
+        // Minkowski with a small sphere rounds every exposed edge
+        // at once. Expensive — facets multiply — so keep the
+        // radius small and $fn modest.
+        minkowski() {
+            aquor_bib_drip_deflector_body();
+            sphere(r = corner_radius);
+        }
+    } else {
+        aquor_bib_drip_deflector_body();
     }
 }
 
-deflector();
+aquor_bib_drip_deflector();

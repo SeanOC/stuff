@@ -61,6 +61,15 @@ class TestBuiltinTopology:
         assert len(failures) == 1
         assert "orphan" in failures[0].detail
 
+    def test_single_small_component_passes(self):
+        # Lone-component parts can legitimately be small (thin bent
+        # plate, ~30 tris — st-2ln bent-plate deflector). With nothing
+        # else in the STL to "orphan from," the orphan check should
+        # skip rather than flag the main body as its own fragment.
+        ctx = _ctx(connected_solids=1, component_sizes=[28])
+        failures = [f for f in run_builtins(ctx) if f.kind == "topology"]
+        assert failures == []
+
 
 class TestBuiltinWatertight:
     def test_pass(self):
