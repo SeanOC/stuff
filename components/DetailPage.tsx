@@ -51,6 +51,24 @@ export default function DetailPage({ model }: Props) {
   const downloadRef = useRef<() => void>(() => {});
   const [saveRowOpen, setSaveRowOpen] = useState(false);
 
+  // Auto-fire the first render on mount (st-2y4). Phase 2b shipped a
+  // deliberate idle-until-Enter gate per Caliper spec §Loading/Empty
+  // (docs/design/caliper/README.md:58), reasoning that WASM compile +
+  // three.js init is pricey if the visitor just leaves the tab. For
+  // this project (≤5 models, personal tool) that trade-off doesn't
+  // pencil out — every visit wants the preview. The idle UI + press-⏎
+  // hint + disabled Download STL all stay in the tree as the error-
+  // recovery path: a render failure drops back to idle and the user
+  // presses Enter to retry. refresh() is idempotent when the render
+  // is already live, so double-firing is harmless.
+  useEffect(() => {
+    if (render.state.kind === "idle") render.refresh();
+    // Mount-only on purpose. `render.refresh` is stable but listing it
+    // here risks retriggering on re-renders that happen to clear the
+    // idle state momentarily — we want one fire, ever.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Publish a bridge to the command palette so the Actions / Presets
   // groups can dispatch download/save/load against this page (st-3lc).
   // Cleared on unmount + whenever the bridge's shape changes so the

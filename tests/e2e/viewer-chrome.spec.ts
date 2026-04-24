@@ -1,39 +1,50 @@
 import { expect, test } from "@playwright/test";
 
-// Phase 2b (st-psn): the idle/loading/ready states are observable UI
-// contracts, not just internal machinery. Empty state shows a
-// "press ⏎ to render" hint and disables Download STL. Pressing Enter
-// transitions out of idle. Once a render completes, the stat strip
-// leads with the model's per-axis dimensions.
+// Viewer state contracts. Phase 2b (st-psn) made idle/loading/ready/
+// error observable; phase-3c-era revert (st-2y4) flipped the default
+// to auto-fire on mount, so a cold model page goes straight through
+// idle → loading → ready without a key press. The press-⏎ hint UI
+// stays in the tree as the error-recovery path; it's just not the
+// default empty state anymore.
 
 test.describe("ViewerChrome states", () => {
-  test("empty state shows press-enter hint and disables Download STL", async ({ page }) => {
+  test("cold page load auto-fires the render — no press-⏎ hint", async ({ page }) => {
     await page.goto("/models/popcorn-kernel");
 
-    // The hint sits inside the viewer placeholder, visible immediately
-    // on mount because nothing has triggered the first render yet.
-    await expect(page.getByTestId("press-enter-hint")).toBeVisible();
-    await expect(page.getByTestId("stat-strip-status")).toHaveText(/press/i);
+    // The hint should never appear on a healthy cold load. It's kept in
+    // the tree for the error-recovery path (which is exercised by
+    // tests/e2e/error-state.spec.ts), but on a fresh valid model the
+    // mount effect fires refresh() before React paints idle.
+    await expect(page.getByTestId("press-enter-hint")).toHaveCount(0);
 
-    // Download button exists (rendered by DetailPage's DownloadButton)
-    // but is disabled until state.kind === 'ready'.
+    // The viewer transitions straight through loading to ready and the
+    // stat strip ends up showing dimensions.
+    await expect(page.getByTestId("stat-strip-dimensions")).toBeVisible({
+      timeout: 60_000,
+    });
+
+    // Download enables once state.kind === "ready".
     const download = page.getByRole("button", { name: /Download STL/i });
     await expect(download).toBeVisible();
-    await expect(download).toBeDisabled();
+    await expect(download).toBeEnabled();
   });
 
-  test("pressing Enter on the viewer kicks off the first render", async ({ page }) => {
+  test("Enter still triggers a re-render (kept for the error-retry path)", async ({ page }) => {
     await page.goto("/models/popcorn-kernel");
-    await expect(page.getByTestId("press-enter-hint")).toBeVisible();
+    // Wait for the initial auto-render so the renderer is in a sane
+    // state; without this, the focused Enter could race the mount.
+    await expect(page.getByTestId("stat-strip-dimensions")).toBeVisible({
+      timeout: 60_000,
+    });
 
     await page.locator('section[aria-label="3D preview"]').focus();
     await page.keyboard.press("Enter");
 
-    // Idle → loading → ready. The hint disappears once we leave idle.
-    await expect(page.getByTestId("press-enter-hint")).toBeHidden({ timeout: 60_000 });
-
-    // Ready: the stat strip has dimensions and the Download button enables.
-    await expect(page.getByTestId("stat-strip-dimensions")).toBeVisible({ timeout: 60_000 });
-    await expect(page.getByRole("button", { name: /Download STL/i })).toBeEnabled();
+    // After Enter, the viewer cycles back through loading and lands
+    // at ready again. The dimensions stat strip remains the ready-
+    // state marker.
+    await expect(page.getByTestId("stat-strip-dimensions")).toBeVisible({
+      timeout: 60_000,
+    });
   });
 });
