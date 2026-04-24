@@ -16,7 +16,7 @@ test("Download STL produces a non-empty STL file", async ({ page }) => {
 
   await page.locator('section[aria-label="3D preview"]').focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByText(/\d+ms · [\d.]+kb/).first()).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByTestId("stat-strip-dimensions")).toBeVisible({ timeout: 60_000 });
   await expect(button).toBeEnabled();
 
   const [download] = await Promise.all([

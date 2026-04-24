@@ -13,7 +13,7 @@ test("STL preview canvas fits the container on retina (DPR=2)", async ({ page })
   // Phase 2b (st-psn): Enter kicks off the first render from idle.
   await page.locator('section[aria-label="3D preview"]').focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByText(/\d+ms · [\d.]+kb/).first()).toBeVisible({
+  await expect(page.getByTestId("stat-strip-dimensions")).toBeVisible({
     timeout: 60_000,
   });
 

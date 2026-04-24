@@ -83,10 +83,11 @@ test.describe("error state", () => {
 
     await page.locator('section[aria-label="3D preview"]').focus();
     await page.keyboard.press("Enter");
-    // A successful render writes the compact log entry; that's our
-    // signal the hook transitioned back to `ready` on this route.
+    // Stat-strip dimensions appear once the hook has transitioned
+    // back to `ready` on this route. (Swapped from the render-log
+    // entry which st-j98 now hides behind the collapsed left rail.)
     await expect(
-      page.getByText(/\d+ms · [\d.]+kb/).first(),
+      page.getByTestId("stat-strip-dimensions"),
     ).toBeVisible({ timeout: 60_000 });
   });
 });

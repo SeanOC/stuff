@@ -15,6 +15,7 @@ import {
   useRenderer,
   type RenderState,
 } from "@/hooks/useRenderer";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useShortcut } from "@/hooks/useShortcut";
 import { useUI } from "@/contexts/UIContext";
 import type { Param, ParamValue, Preset } from "@/lib/scad-params/parse";
@@ -50,6 +51,12 @@ export default function DetailPage({ model }: Props) {
 
   const downloadRef = useRef<() => void>(() => {});
   const [saveRowOpen, setSaveRowOpen] = useState(false);
+  // Left-rail collapsed state. Default is collapsed — at ≥1200px most
+  // visits don't need the preset/log quick-jump sidebar, so hand the
+  // width over to viewer and param rail by default and let returning
+  // users stick with whichever mode they chose. (st-j98)
+  const [leftRailCollapsed, setLeftRailCollapsed] =
+    useLocalStorage<boolean>("stuff.v1.detail.leftRailCollapsed", true);
 
   // Auto-fire the first render on mount (st-2y4). Phase 2b shipped a
   // deliberate idle-until-Enter gate per Caliper spec §Loading/Empty
@@ -163,7 +170,14 @@ export default function DetailPage({ model }: Props) {
       className="flex flex-col min-[1200px]:h-[calc(100vh-38px)]"
     >
       <DetailHeader title={model.title} modelPath={model.modelPath} />
-      <div className="grid flex-1 min-h-0 grid-cols-1 min-[1200px]:grid-cols-[240px_1fr_360px] min-[1200px]:grid-rows-[1fr]">
+      <div
+        className={clsx(
+          "grid flex-1 min-h-0 grid-cols-1 min-[1200px]:grid-rows-[1fr]",
+          leftRailCollapsed
+            ? "min-[1200px]:grid-cols-[32px_1fr_360px]"
+            : "min-[1200px]:grid-cols-[240px_1fr_360px]",
+        )}
+      >
         <aside
           data-testid="detail-left-col"
           className="min-h-0 border-b border-line bg-panel min-[1200px]:overflow-y-auto min-[1200px]:border-b-0 min-[1200px]:border-r"
@@ -181,6 +195,8 @@ export default function DetailPage({ model }: Props) {
             onSavePreset={detail.saveAsPreset}
             saveRowOpen={saveRowOpen}
             setSaveRowOpen={setSaveRowOpen}
+            collapsed={leftRailCollapsed}
+            onToggleCollapsed={() => setLeftRailCollapsed((c) => !c)}
           />
         </aside>
         <div className="min-h-0 min-[1200px]:overflow-hidden">
@@ -246,6 +262,8 @@ function DetailLeftRail({
   onSavePreset,
   saveRowOpen,
   setSaveRowOpen,
+  collapsed,
+  onToggleCollapsed,
 }: {
   modelPath: string;
   history: RenderResult[];
@@ -259,9 +277,117 @@ function DetailLeftRail({
   onSavePreset: (label: string) => void;
   saveRowOpen: boolean;
   setSaveRowOpen: (open: boolean) => void;
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
+}) {
+  // Below 1200px the detail shell stacks to a single column and the
+  // rail content is shown inline — the collapsed state only kicks in
+  // at xl. Hide the collapsed-state DOM below xl so the mobile/tablet
+  // layout keeps full content. The expanded content is still rendered
+  // on every layout via the `<div className="min-[1200px]:hidden">`
+  // escape — except we don't need that since `collapsed` only affects
+  // the xl grid; at smaller widths we always show the full content.
+  if (collapsed) {
+    return (
+      <>
+        <div
+          data-testid="detail-left-rail-collapsed"
+          className="hidden min-[1200px]:flex min-[1200px]:flex-col min-[1200px]:items-center min-[1200px]:pt-10"
+        >
+          <button
+            type="button"
+            onClick={onToggleCollapsed}
+            aria-label="Expand left rail"
+            title="Expand metadata (presets, log, source)"
+            className="inline-flex h-24 w-24 items-center justify-center rounded-3 border border-line bg-panel2 text-text-dim hover:bg-panel-hi hover:text-text"
+          >
+            <ChevronRightIcon />
+          </button>
+        </div>
+        {/* Below xl the grid is single-column and the rail content
+            must still be visible — mirror the expanded content here. */}
+        <div className="min-[1200px]:hidden">
+          <DetailLeftRailContent
+            modelPath={modelPath}
+            history={history}
+            state={state}
+            warnings={warnings}
+            presets={presets}
+            activePresetId={activePresetId}
+            modified={modified}
+            onLoadPreset={onLoadPreset}
+            onDeletePreset={onDeletePreset}
+            onSavePreset={onSavePreset}
+            saveRowOpen={saveRowOpen}
+            setSaveRowOpen={setSaveRowOpen}
+          />
+        </div>
+      </>
+    );
+  }
+  return (
+    <DetailLeftRailContent
+      modelPath={modelPath}
+      history={history}
+      state={state}
+      warnings={warnings}
+      presets={presets}
+      activePresetId={activePresetId}
+      modified={modified}
+      onLoadPreset={onLoadPreset}
+      onDeletePreset={onDeletePreset}
+      onSavePreset={onSavePreset}
+      saveRowOpen={saveRowOpen}
+      setSaveRowOpen={setSaveRowOpen}
+      onCollapse={onToggleCollapsed}
+    />
+  );
+}
+
+function DetailLeftRailContent({
+  modelPath,
+  history,
+  state,
+  warnings,
+  presets,
+  activePresetId,
+  modified,
+  onLoadPreset,
+  onDeletePreset,
+  onSavePreset,
+  saveRowOpen,
+  setSaveRowOpen,
+  onCollapse,
+}: {
+  modelPath: string;
+  history: RenderResult[];
+  state: RenderState;
+  warnings: string[];
+  presets: Array<{ id: string; label: string; isUser: boolean }>;
+  activePresetId: string | null;
+  modified: boolean;
+  onLoadPreset: (id: string) => void;
+  onDeletePreset: (id: string) => void;
+  onSavePreset: (label: string) => void;
+  saveRowOpen: boolean;
+  setSaveRowOpen: (open: boolean) => void;
+  onCollapse?: () => void;
 }) {
   return (
     <div className="p-10">
+      {onCollapse && (
+        <div className="mb-8 hidden justify-end min-[1200px]:flex">
+          <button
+            type="button"
+            onClick={onCollapse}
+            aria-label="Collapse left rail"
+            title="Collapse metadata"
+            className="inline-flex h-20 w-20 items-center justify-center rounded-3 border border-line bg-panel2 text-text-dim hover:bg-panel-hi hover:text-text"
+          >
+            <ChevronLeftIcon />
+          </button>
+        </div>
+      )}
       <div className="font-mono text-10 uppercase tracking-wide text-text-mute">
         Source
       </div>
@@ -525,4 +651,40 @@ function filenameFromContentDisposition(header: string | null): string | null {
   if (!header) return null;
   const m = header.match(/filename="([^"]+)"/);
   return m ? m[1] : null;
+}
+
+function ChevronRightIcon() {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="m9 18 6-6-6-6" />
+    </svg>
+  );
+}
+
+function ChevronLeftIcon() {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="m15 18-6-6 6-6" />
+    </svg>
+  );
 }

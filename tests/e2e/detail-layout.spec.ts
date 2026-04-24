@@ -15,7 +15,10 @@ test.describe("detail page layout", () => {
     // Phase 2b (st-psn): first render is user-triggered via Enter.
     await page.locator('section[aria-label="3D preview"]').focus();
     await page.keyboard.press("Enter");
-    await expect(page.getByText(/\d+ms · [\d.]+kb/).first()).toBeVisible({
+    // Wait for render completion via the stat strip (not the render-log
+    // `<li>` in the left rail — that's hidden by st-j98's collapsed
+    // default).
+    await expect(page.getByTestId("stat-strip-dimensions")).toBeVisible({
       timeout: 60_000,
     });
 
@@ -78,7 +81,7 @@ test.describe("detail page layout — stacked (< xl)", () => {
     // Phase 2b (st-psn): first render is user-triggered via Enter.
     await page.locator('section[aria-label="3D preview"]').focus();
     await page.keyboard.press("Enter");
-    await expect(page.getByText(/\d+ms · [\d.]+kb/).first()).toBeVisible({
+    await expect(page.getByTestId("stat-strip-dimensions")).toBeVisible({
       timeout: 60_000,
     });
 

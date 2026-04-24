@@ -17,6 +17,9 @@ async function readTopLogKb(page: Page): Promise<number> {
 
 test("changing a param re-renders with a different STL", async ({ page }) => {
   await page.goto("/models/popcorn-kernel");
+  // st-j98: left rail starts collapsed, which hides the render log
+  // that this test reads kb from. Expand before reading.
+  await page.getByRole("button", { name: /Expand left rail/i }).click();
 
   // Phase 2b: kick off the first render via the idle-state Enter
   // affordance (st-psn).

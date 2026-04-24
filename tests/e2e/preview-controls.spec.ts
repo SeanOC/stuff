@@ -12,7 +12,7 @@ test("STL preview responds to wheel (camera moves)", async ({ page }) => {
   // Phase 2b (st-psn): Enter triggers the first render from idle.
   await page.locator('section[aria-label="3D preview"]').focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByText(/\d+ms · [\d.]+kb/).first()).toBeVisible({
+  await expect(page.getByTestId("stat-strip-dimensions")).toBeVisible({
     timeout: 60_000,
   });
 
@@ -61,7 +61,7 @@ test("clicking the 'top' view preset reorients the camera to +Z", async ({ page 
   // Phase 2b (st-psn): Enter triggers the first render from idle.
   await page.locator('section[aria-label="3D preview"]').focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByText(/\d+ms · [\d.]+kb/).first()).toBeVisible({
+  await expect(page.getByTestId("stat-strip-dimensions")).toBeVisible({
     timeout: 60_000,
   });
 
