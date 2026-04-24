@@ -4,10 +4,16 @@ type: feat
 date: 2026-04-23
 epic: st-gtb
 phase: 3
-revised: 2026-04-23 (post plan_review synthesis — DHH, Kieran-TS, Simplicity)
+revised: 2026-04-24 (post-3c revert; plan kept as authored for archival)
 ---
 
 # Caliper Redesign Phase 3 — Presets, Command Palette, Share
+
+> **Update 2026-04-24 (st-jfn):** Phase 3c reverted per user decision —
+> URL encoding, share dialog, Toast, and the `⌘⇧C` shortcut were removed.
+> Phase 3 final scope = 3a (presets + foundation) + 3b (command palette
+> + shortcut sheet). The `Share` sections below are retained as-is for
+> archival context; they describe work that did not ship.
 
 Phases 0, 1, 2 are shipped. Phase 3 adds presets (stock inline in source, user in localStorage), a hand-rolled ⌘K palette, a global keyboard registry replacing phase-1c's viewer-local handler, and a share dialog with URL-encoded param snapshots.
 

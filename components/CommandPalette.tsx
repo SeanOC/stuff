@@ -128,17 +128,6 @@ export function CommandPalette() {
         enabled: !!detail,
       },
       {
-        id: "action:copy-share",
-        label: "Copy share link",
-        blurb: "Copy the current URL to the clipboard",
-        hint: "$mod+Shift+c",
-        action: () => {
-          void copyShareLink();
-          closeModal();
-        },
-        enabled: typeof window !== "undefined",
-      },
-      {
         id: "action:shortcuts",
         label: "Open shortcut sheet",
         blurb: "Keyboard reference for every Caliper binding",
@@ -360,15 +349,6 @@ function formatHint(b: Binding): string {
     .replace(/\+/g, "")
     .toLowerCase()
     .replace(/^(ctrl|⌘|⇧)/, (s) => s.toUpperCase());
-}
-
-async function copyShareLink(): Promise<void> {
-  if (typeof navigator === "undefined" || !navigator.clipboard) return;
-  try {
-    await navigator.clipboard.writeText(window.location.href);
-  } catch {
-    // Silent — browser permission denial or HTTP page.
-  }
 }
 
 function useRecentSlugs(open: boolean): string[] {

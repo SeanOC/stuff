@@ -94,13 +94,4 @@ describe("useShortcut", () => {
     expect(h).not.toHaveBeenCalled();
   });
 
-  it("matches Shift+$mod+c as declared", () => {
-    const h = vi.fn();
-    render(<Harness binding="$mod+Shift+c" onFire={h} />);
-    press({ key: "c", metaKey: true, shiftKey: true });
-    expect(h).toHaveBeenCalledTimes(1);
-    // Same chord without Shift must not fire.
-    press({ key: "c", metaKey: true });
-    expect(h).toHaveBeenCalledTimes(1);
-  });
 });

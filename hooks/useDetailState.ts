@@ -40,14 +40,6 @@ export interface UseDetailStateArgs {
   params: Param[];
   stockPresets: Preset[];
   slug: string;
-  /**
-   * Values hydrated from the URL share-string (?d=70&c=0.25&...).
-   * When provided, they override per-param defaults on mount but are
-   * applied only to keys listed — unlisted params keep their defaults.
-   * Priority on mount: initialValues > defaults. (localStorage-backed
-   * last-edited recall is deferred to a future bead.)
-   */
-  initialValues?: Partial<Record<string, ParamValue>>;
 }
 
 export interface UseDetailStateReturn {
@@ -68,24 +60,8 @@ export function useDetailState({
   params,
   stockPresets,
   slug,
-  initialValues,
 }: UseDetailStateArgs): UseDetailStateReturn {
-  const initialParams = useMemo<Record<string, ParamValue>>(
-    () => {
-      const defaults = defaultsOf(params);
-      if (!initialValues) return defaults;
-      for (const [k, v] of Object.entries(initialValues)) {
-        if (v !== undefined) defaults[k] = v;
-      }
-      return defaults;
-    },
-    // initialValues is a server-provided object; its identity is
-    // stable for the mount, and we deliberately don't re-apply on
-    // every render — rereading a URL mid-session would clobber the
-    // user's edits.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [params],
-  );
+  const initialParams = useMemo(() => defaultsOf(params), [params]);
   const [values, setValues] = useState<Record<string, ParamValue>>(initialParams);
   const [camera, setCamera] = useState<CameraPreset>("iso");
   const [showGrid, setShowGrid] = useState(true);

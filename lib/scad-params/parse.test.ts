@@ -32,7 +32,6 @@ describe("parseScadParams", () => {
       {
         kind: "number",
         name: "can_d",
-        shortKey: "can_d",
         default: 46,
         min: 20,
         max: 200,
@@ -64,8 +63,8 @@ describe("parseScadParams", () => {
       wrap("a = true;  // @param boolean\nb = false; // @param boolean label=\"Open?\""),
     );
     expect(out.params).toEqual([
-      { kind: "boolean", name: "a", shortKey: "a", default: true },
-      { kind: "boolean", name: "b", shortKey: "b", default: false, label: "Open?" },
+      { kind: "boolean", name: "a", default: true },
+      { kind: "boolean", name: "b", default: false, label: "Open?" },
     ]);
   });
 
@@ -104,7 +103,7 @@ describe("parseScadParams", () => {
   it("parses a string with default", () => {
     const out = parseScadParams(wrap('label = "hello world"; // @param string'));
     expect(out.params).toEqual([
-      { kind: "string", name: "label", shortKey: "label", default: "hello world" },
+      { kind: "string", name: "label", default: "hello world" },
     ]);
   });
 
@@ -244,9 +243,9 @@ describe("defaultsOf / formatScadLiteral / formatDFlags", () => {
 
 describe("applyParamOverrides", () => {
   const params: Param[] = [
-    { kind: "number", name: "can_diameter", shortKey: "can_diameter", default: 46 },
-    { kind: "boolean", name: "use_cup", shortKey: "use_cup", default: true },
-    { kind: "enum", name: "variant", shortKey: "variant", default: "round", choices: ["round", "square"] },
+    { kind: "number", name: "can_diameter", default: 46 },
+    { kind: "boolean", name: "use_cup", default: true },
+    { kind: "enum", name: "variant", default: "round", choices: ["round", "square"] },
   ];
 
   it("rewrites the @param's own assignment line", () => {
@@ -292,29 +291,9 @@ describe("applyParamOverrides", () => {
   it("escapes regex-meaningful characters in param names", () => {
     // OpenSCAD allows underscores; just confirms we don't crash on
     // realistic names that look benign but pass through escapeRegex.
-    const p: Param[] = [{ kind: "number", name: "a_b_c", shortKey: "a_b_c", default: 1 }];
+    const p: Param[] = [{ kind: "number", name: "a_b_c", default: 1 }];
     const out = applyParamOverrides("a_b_c = 1;", p, { a_b_c: 9 });
     expect(out).toBe("a_b_c = 9;");
-  });
-});
-
-describe("shortKey handling", () => {
-  it("defaults shortKey to the param name when short= is absent", () => {
-    const out = parseScadParams(wrap("wall = 3; // @param number"));
-    expect(out.params[0].shortKey).toBe("wall");
-  });
-
-  it("honors an explicit short= attribute", () => {
-    const out = parseScadParams(wrap('can_d = 46; // @param number short=d'));
-    expect(out.params[0].shortKey).toBe("d");
-  });
-
-  it("throws on duplicate shortKeys across params", () => {
-    const src = wrap(
-      "can_d = 46; // @param number short=d\n" +
-        "depth = 10; // @param number short=d",
-    );
-    expect(() => parseScadParams(src)).toThrow(/duplicate shortKey "d"/);
   });
 });
 

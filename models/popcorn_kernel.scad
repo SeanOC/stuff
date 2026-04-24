@@ -9,7 +9,7 @@
 $fn = 96;
 
 // === User-tunable parameters ===
-base_cut = 4;  // @param number min=2 max=10 step=0.5 unit=mm group=geometry short=bc label="Base flat-cut"
+base_cut = 4;  // @param number min=2 max=10 step=0.5 unit=mm group=geometry label="Base flat-cut"
 
 // @preset id="default" label="Default" base_cut=4
 

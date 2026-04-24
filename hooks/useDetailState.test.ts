@@ -6,9 +6,9 @@ import { paramsEqual, useDetailState } from "./useDetailState";
 import type { Param, Preset } from "@/lib/scad-params/parse";
 
 const PARAMS: Param[] = [
-  { kind: "number", name: "d", shortKey: "d", default: 70 },
-  { kind: "number", name: "c", shortKey: "c", default: 0.5 },
-  { kind: "boolean", name: "open", shortKey: "o", default: true },
+  { kind: "number", name: "d", default: 70 },
+  { kind: "number", name: "c", default: 0.5 },
+  { kind: "boolean", name: "open", default: true },
 ];
 
 const STOCK: Preset[] = [

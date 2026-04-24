@@ -31,7 +31,6 @@ import type { Preset } from "@/lib/scad-params/parse";
 export type Modal =
   | { kind: "none" }
   | { kind: "palette" }
-  | { kind: "share" }
   | { kind: "errorLog"; log: string }
   | { kind: "shortcutSheet" };
 

@@ -36,7 +36,6 @@ const SECTIONS: Section[] = [
     rows: [
       { keys: ["⌘", "E"], label: "Download STL" },
       { keys: ["⌘", "S"], label: "Save preset" },
-      { keys: ["⌘", "⇧", "C"], label: "Copy share link" },
     ],
   },
   {

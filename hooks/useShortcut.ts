@@ -21,7 +21,6 @@ export const BINDINGS = [
   "$mod+l",
   "$mod+s",
   "$mod+e",
-  "$mod+Shift+c",
   "$mod+1",
   "$mod+2",
   "$mod+3",

@@ -75,7 +75,7 @@ describe("useRenderer — stale token cancellation", () => {
     const { useRenderer } = await import("./useRenderer");
 
     const params: Param[] = [
-      { kind: "number", name: "x", shortKey: "x", default: 1 },
+      { kind: "number", name: "x", default: 1 },
     ];
 
     const { result, rerender } = renderHook(
@@ -151,7 +151,7 @@ describe("useRenderer — stale token cancellation", () => {
       useRenderer({
         modelPath: "models/test.scad",
         source: "x = 1; // @param number\n",
-        params: [{ kind: "number", name: "x", shortKey: "x", default: 1 }],
+        params: [{ kind: "number", name: "x", default: 1 }],
         values: { x: 1 },
       }),
     );
@@ -217,7 +217,7 @@ describe("useRenderer — error state populates RenderError.line", () => {
   it("extracts a line number from stderr and surfaces it on the error state", async () => {
     const { useRenderer } = await import("./useRenderer");
 
-    const params: Param[] = [{ kind: "number", name: "x", shortKey: "x", default: 1 }];
+    const params: Param[] = [{ kind: "number", name: "x", default: 1 }];
     const { result } = renderHook(() =>
       useRenderer({
         modelPath: "models/test.scad",

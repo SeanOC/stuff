@@ -42,16 +42,16 @@ $fn = 64;
 // === User-tunable parameters ===
 
 // ----- Can + cell -----
-can_diameter      = 50;    // @param number min=20 max=120 step=0.5 unit=mm group=cans short=d label="Can diameter"
-can_height        = 195;   // @param number min=80 max=300 step=1 unit=mm group=cans short=ch label="Target can height"
-clearance         = 0.75;  // @param number min=0 max=2 step=0.05 unit=mm group=cans short=c label="Slip clearance"
-ring_height       = 35;    // @param number min=10 max=120 step=1 unit=mm group=geometry short=rh label="Cradle ring height"
-wall              = 3;     // @param number min=1.5 max=8 step=0.5 unit=mm group=geometry short=w label="Wall thickness"
-rows              = 2;     // @param integer min=1 max=6 group=geometry short=r label="Rows"
-cols              = 3;     // @param integer min=1 max=6 group=geometry short=co label="Columns"
-cell_spacing_x    = 60;    // @param number min=40 max=120 step=1 unit=mm group=geometry short=sx label="Cell X spacing — along handle"
-cell_spacing_y    = 90;    // @param number min=40 max=140 step=1 unit=mm group=geometry short=sy label="Cell Y spacing — across handle"
-front_opening_deg = 100;   // @param number min=0 max=200 step=5 unit=deg group=geometry short=fo label="Cradle front opening arc"
+can_diameter      = 50;    // @param number min=20 max=120 step=0.5 unit=mm group=cans label="Can diameter"
+can_height        = 195;   // @param number min=80 max=300 step=1 unit=mm group=cans label="Target can height"
+clearance         = 0.75;  // @param number min=0 max=2 step=0.05 unit=mm group=cans label="Slip clearance"
+ring_height       = 35;    // @param number min=10 max=120 step=1 unit=mm group=geometry label="Cradle ring height"
+wall              = 3;     // @param number min=1.5 max=8 step=0.5 unit=mm group=geometry label="Wall thickness"
+rows              = 2;     // @param integer min=1 max=6 group=geometry label="Rows"
+cols              = 3;     // @param integer min=1 max=6 group=geometry label="Columns"
+cell_spacing_x    = 60;    // @param number min=40 max=120 step=1 unit=mm group=geometry label="Cell X spacing — along handle"
+cell_spacing_y    = 90;    // @param number min=40 max=140 step=1 unit=mm group=geometry label="Cell Y spacing — across handle"
+front_opening_deg = 100;   // @param number min=0 max=200 step=5 unit=deg group=geometry label="Cradle front opening arc"
 
 // ----- Base + drainage -----
 // base_margin is split per-axis (st-3ta). X (handle side) must leave room
@@ -59,24 +59,24 @@ front_opening_deg = 100;   // @param number min=0 max=200 step=5 unit=deg group=
 // valid seat, the existing geometry failure mode. Y (other side) has no
 // structural role once the rings are fully under the plate, so its floor
 // can drop much lower; 5mm leaves just the corner fillet + a narrow rim.
-base_thickness          = 3;        // @param number min=1.5 max=8 step=0.5 unit=mm group=geometry short=bt label="Base thickness"
-base_margin_handle_side = 18;       // @param number min=6 max=40 step=0.5 unit=mm group=geometry short=mx label="Base margin — handle side (X)"
-base_margin_other_side  = 5;        // @param number min=1 max=40 step=0.5 unit=mm group=geometry short=my label="Base margin — other side (Y)"
-base_drain_pattern      = "slots";  // @param enum choices=slots|holes|open group=geometry short=bd label="Base drain pattern"
-drain_hole_d            = 5;        // @param number min=2 max=15 step=0.5 unit=mm group=geometry short=dh label="Drain hole diameter"
-drain_hole_count        = 3;        // @param integer min=0 max=8 group=geometry short=dn label="Cradle drain holes per cell"
+base_thickness          = 3;        // @param number min=1.5 max=8 step=0.5 unit=mm group=geometry label="Base thickness"
+base_margin_handle_side = 18;       // @param number min=6 max=40 step=0.5 unit=mm group=geometry label="Base margin — handle side (X)"
+base_margin_other_side  = 5;        // @param number min=1 max=40 step=0.5 unit=mm group=geometry label="Base margin — other side (Y)"
+base_drain_pattern      = "slots";  // @param enum choices=slots|holes|open group=geometry label="Base drain pattern"
+drain_hole_d            = 5;        // @param number min=2 max=15 step=0.5 unit=mm group=geometry label="Drain hole diameter"
+drain_hole_count        = 3;        // @param integer min=0 max=8 group=geometry label="Cradle drain holes per cell"
 
 // ----- Handle -----
 // handle_height default = can_height + 55mm so fingers clear the tallest
 // can top comfortably when lifting. Lower values still print, but the
 // arch will intrude into the can's vertical envelope.
-handle_height    = 250;  // @param number min=50 max=400 step=1 unit=mm group=handle short=hh label="Handle apex height above base"
-handle_post_w    = 14;   // @param number min=6 max=30 step=0.5 unit=mm group=handle short=hw label="Handle post width X"
-handle_thickness = 20;   // @param number min=8 max=40 step=0.5 unit=mm group=handle short=ht label="Handle thickness Y"
+handle_height    = 250;  // @param number min=50 max=400 step=1 unit=mm group=handle label="Handle apex height above base"
+handle_post_w    = 14;   // @param number min=6 max=30 step=0.5 unit=mm group=handle label="Handle post width X"
+handle_thickness = 20;   // @param number min=8 max=40 step=0.5 unit=mm group=handle label="Handle thickness Y"
 
 // ----- Edge treatment -----
-fillet_r  = 2;   // @param number min=0 max=5 step=0.25 unit=mm group=handle short=fr label="Fillet radius (posts + arch Y-faces)"
-chamfer_r = 1;   // @param number min=0 max=3 step=0.25 unit=mm group=handle short=cr label="Chamfer radius"
+fillet_r  = 2;   // @param number min=0 max=5 step=0.25 unit=mm group=handle label="Fillet radius (posts + arch Y-faces)"
+chamfer_r = 1;   // @param number min=0 max=3 step=0.25 unit=mm group=handle label="Chamfer radius"
 
 // @preset id="stock" label="Stock 2×3 / 50mm" can_diameter=50 can_height=195 clearance=0.75 ring_height=35 wall=3 rows=2 cols=3 cell_spacing_x=60 cell_spacing_y=90 front_opening_deg=100 base_thickness=3 base_margin_handle_side=18 base_margin_other_side=5 drain_hole_d=5 drain_hole_count=3 handle_height=250 handle_post_w=14 handle_thickness=20 fillet_r=2 chamfer_r=1
 

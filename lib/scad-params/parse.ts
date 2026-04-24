@@ -9,11 +9,7 @@
 //   // @preset id="46mm-cylinder" label="46mm cylinder" can_diameter=46 clearance=0.25
 //   // === Anything else ===     <-- parser stops here
 //
-// `unit=` and `group=` are optional display hints. `short=` names the
-// URL-short alias for the share encoder (phase 3); if absent, the
-// parser defaults `shortKey` to `name` so every Param has a non-null
-// `shortKey: string` post-parse. Uniqueness is validated; collisions
-// throw.
+// `unit=` and `group=` are optional display hints on any `@param` line.
 //
 // `@preset` lines are collected into `Preset[]` alongside params.
 // Values are coerced to the declared param's kind at parse time;
@@ -25,7 +21,6 @@ export type ParamType = "number" | "integer" | "boolean" | "string" | "enum";
 
 export interface ParamBase {
   name: string;
-  shortKey: string;
   label?: string;
   group?: string;
   unit?: string;
@@ -125,19 +120,6 @@ export function parseScadParams(source: string): ParseResult {
       warnings,
     });
     if (param) params.push(param);
-  }
-
-  // Uniqueness of shortKey across all params. Collisions are author
-  // bugs, not user input — throw rather than warn so CI catches them.
-  const seen = new Map<string, string>();
-  for (const p of params) {
-    const prior = seen.get(p.shortKey);
-    if (prior != null && prior !== p.name) {
-      throw new Error(
-        `duplicate shortKey "${p.shortKey}" on ${p.name} (also on ${prior})`,
-      );
-    }
-    seen.set(p.shortKey, p.name);
   }
 
   const paramsByName = new Map(params.map((p) => [p.name, p]));
@@ -284,11 +266,11 @@ function coerceToParam(
   }
 }
 
-// Extract common ParamBase fields. shortKey is required post-parse —
-// defaults to the param name so every param has a canonical alias
-// even when the .scad file doesn't declare short=.
+// Extract common ParamBase fields (name + optional label/group/unit).
+// Builds the object with only set keys so `toEqual` comparisons
+// against sparse test fixtures stay tidy.
 function pickBaseAttrs(name: string, attrs: Map<string, string>): ParamBase {
-  const out: ParamBase = { name, shortKey: attrs.get("short") ?? name };
+  const out: ParamBase = { name };
   const label = attrs.get("label");
   const group = attrs.get("group");
   const unit = attrs.get("unit");
