@@ -6,27 +6,48 @@
 // minus the Multiboard backer) sit on a drainage base plate, with an
 // arched handle spanning the long axis for standalone carry.
 //
-// Handle clearance (st-8ac fix): cell_spacing_x and cell_spacing_y are
-// split so the two rows sit far enough apart in Y that the handle's
-// thickness (y=+-handle_thickness/2) fits in the gap between the rows
-// without ever passing over a can. The handle apex also sits above
-// can_height + a grip-clearance band so a full-height can seats fully
-// and the carrier can be lifted with cans in place.
+// === Load-bearing invariants (don't regress) ===
 //
-// Arch styles (`arch_style` param, st-qt4):
-//   - "ogive" (default) — two circular arcs meeting at a point above
+//   - `cell_spacing_y = 90` (st-8ac). The two rows must sit 90 mm
+//     apart in Y so the handle thickness (±handle_thickness/2 at Y=0)
+//     fits in the can-free corridor between them. At defaults the
+//     can rims reach Y = ±20 from each row centre; the Y=0 corridor
+//     is 50 mm wide (±25) — plenty for a 20 mm-thick handle. Reducing
+//     cell_spacing_y below 90 would re-introduce the st-8ac can-over-
+//     handle collision.
+//   - **Handle posts live at Y=0.** Any other Y places a post over a
+//     can. Don't move them.
+//
+// Handle clearance (st-8ac context): the cell spacings enable the
+// handle to pass through the middle of the array without ever sitting
+// over a can. The handle apex also sits above can_height + a grip-
+// clearance band so a full-height can seats fully and the carrier
+// can be lifted with cans in place.
+//
+// Arch styles (`arch_style` param):
+//   - "squared" (st-kyz, default) — toolbox handle: two vertical
+//     posts plus a horizontal crossbar (cross-section
+//     `handle_post_w × handle_thickness`) bridging their tops, with
+//     `corner_fillet` rounding at the crossbar corners. Crossbar
+//     bridge = 2·post_center_x (~80 mm at defaults) — comfortably
+//     bridgeable without supports for typical slicer settings.
+//   - "ogive" (st-qt4) — two circular arcs meeting at a point above
 //     the centerline. Each arc's center sits on the opposite side of
 //     the arch at X = ±k·post_outer_x with radius (k+1)·post_outer_x
 //     (so each arc passes through the opposite post top AND through
-//     the apex). This is the "pointed/gothic" profile. It prints
-//     without the long horizontal bridge the semicircular apex has,
-//     which the user reported sagging on their first-print.
-//     `arch_point_offset` is k; 1.4 is the default pointed-but-not-
-//     extreme setting.
+//     the apex). `arch_point_offset` is k; 1.4 is the default
+//     pointed-but-not-extreme setting.
 //   - "semicircular" — the v-prior shape (rotate_extrude of a filleted
-//     rectangle, landed in st-djm b855a35). Kept as a legacy choice
-//     for anyone reprinting the original. Its apex is a long horizontal
-//     bridge, known-problematic for some slicers.
+//     rectangle, landed in st-djm b855a35). Kept as a legacy choice.
+//     Its apex is a long horizontal bridge, known-problematic for
+//     some slicers.
+//
+// Compact footprint (st-kyz): posts were pulled inward from the base
+// edges (new default `post_center_x = 40`, was derived from
+// `base_w/2 - ...` ≈ 94 mm) and the base margins zeroed (was 18 mm
+// handle-side + 5 mm other-side). Baseplate now hugs the ring array
+// with no slack; the handle posts live in the Y=0 corridor between
+// the inner edges of the middle-column rings (see invariant above).
 //
 // Handle post-to-base reinforcement (st-qt4): the posts used to be a
 // bare 14×20 mm cuboid meeting the baseplate at a sharp corner, which
@@ -92,8 +113,8 @@ front_opening_deg = 100;   // @param number min=0 max=200 step=5 unit=deg group=
 // structural role once the rings are fully under the plate, so its floor
 // can drop much lower; 5mm leaves just the corner fillet + a narrow rim.
 base_thickness          = 3;        // @param number min=1.5 max=8 step=0.5 unit=mm group=geometry label="Base thickness"
-base_margin_handle_side = 18;       // @param number min=6 max=40 step=0.5 unit=mm group=geometry label="Base margin — handle side (X)"
-base_margin_other_side  = 5;        // @param number min=1 max=40 step=0.5 unit=mm group=geometry label="Base margin — other side (Y)"
+base_margin_handle_side = 0;        // @param number min=0 max=40 step=0.5 unit=mm group=geometry label="Base margin — handle side (X)"
+base_margin_other_side  = 0;        // @param number min=0 max=40 step=0.5 unit=mm group=geometry label="Base margin — other side (Y)"
 base_drain_pattern      = "slots";  // @param enum choices=slots|holes|open group=geometry label="Base drain pattern"
 drain_hole_d            = 5;        // @param number min=2 max=15 step=0.5 unit=mm group=geometry label="Drain hole diameter"
 drain_hole_count        = 3;        // @param integer min=0 max=8 group=geometry label="Cradle drain holes per cell"
@@ -105,12 +126,19 @@ drain_hole_count        = 3;        // @param integer min=0 max=8 group=geometry
 handle_height    = 250;  // @param number min=50 max=400 step=1 unit=mm group=handle label="Handle apex height above base"
 handle_post_w    = 14;   // @param number min=6 max=30 step=0.5 unit=mm group=handle label="Handle post width X"
 handle_thickness = 20;   // @param number min=8 max=40 step=0.5 unit=mm group=handle label="Handle thickness Y"
+// Post X position. Must stay within the Y=0 can-free corridor (keeps
+// posts clear of cans at Y=±cell_spacing_y/2) and clear of the middle
+// column ring at X=0. At defaults (post at X=±40, inner post edge at
+// ±33) that leaves ~5 mm gap to the middle ring (ring_od/2 ≈ 28.75).
+post_center_x    = 40;   // @param number min=40 max=120 step=0.5 unit=mm group=handle label="Handle post X centre"
 
 // ----- Arch style (st-qt4) -----
+// `squared` = toolbox-style posts + crossbar (new default, st-kyz);
 // `ogive` = pointed arch, self-supporting; `semicircular` = the v-prior
 // half-donut arch (legacy; apex bridges horizontally).
-arch_style        = "ogive";  // @param enum choices=ogive|semicircular group=handle label="Arch style"
-arch_point_offset = 1.4;      // @param number min=1.1 max=2.5 step=0.05 group=handle label="Ogive point offset (k-factor)"
+arch_style        = "squared"; // @param enum choices=squared|ogive|semicircular group=handle label="Arch style"
+arch_point_offset = 1.4;       // @param number min=1.1 max=2.5 step=0.05 group=handle label="Ogive point offset (k-factor)"
+corner_fillet     = 4;         // @param number min=0 max=10 step=0.25 unit=mm group=handle label="Squared-handle crossbar corner fillet"
 
 // ----- Post-to-base reinforcement (st-qt4) -----
 post_base_gussets = true;  // @param boolean group=handle label="Post-base gussets (±X faces)"
@@ -125,8 +153,9 @@ flare_width       = 4;     // @param number min=0 max=10 step=0.25 unit=mm group
 fillet_r  = 2;   // @param number min=0 max=5 step=0.25 unit=mm group=handle label="Fillet radius (posts + arch Y-faces)"
 chamfer_r = 1;   // @param number min=0 max=3 step=0.25 unit=mm group=handle label="Chamfer radius"
 
-// @preset id="stock" label="Stock 2×3 / 50mm (ogive)" can_diameter=50 can_height=195 clearance=0.75 ring_height=35 wall=3 rows=2 cols=3 cell_spacing_x=60 cell_spacing_y=90 front_opening_deg=100 base_thickness=3 base_margin_handle_side=18 base_margin_other_side=5 drain_hole_d=5 drain_hole_count=3 handle_height=250 handle_post_w=14 handle_thickness=20 arch_style="ogive" arch_point_offset=1.4 post_base_gussets=true gusset_base_len=10 gusset_height=12 gusset_thickness=3 post_flare=true flare_height=10 flare_width=4 fillet_r=2 chamfer_r=1
-// @preset id="legacy-semicircular" label="Legacy semicircular (v-prior)" can_diameter=50 can_height=195 clearance=0.75 ring_height=35 wall=3 rows=2 cols=3 cell_spacing_x=60 cell_spacing_y=90 front_opening_deg=100 base_thickness=3 base_margin_handle_side=18 base_margin_other_side=5 drain_hole_d=5 drain_hole_count=3 handle_height=250 handle_post_w=14 handle_thickness=20 arch_style="semicircular" arch_point_offset=1.4 post_base_gussets=false gusset_base_len=10 gusset_height=12 gusset_thickness=3 post_flare=false flare_height=10 flare_width=4 fillet_r=2 chamfer_r=1
+// @preset id="stock" label="Stock 2×3 / 50mm (squared, compact)" can_diameter=50 can_height=195 clearance=0.75 ring_height=35 wall=3 rows=2 cols=3 cell_spacing_x=60 cell_spacing_y=90 front_opening_deg=100 base_thickness=3 base_margin_handle_side=0 base_margin_other_side=0 drain_hole_d=5 drain_hole_count=3 handle_height=250 handle_post_w=14 handle_thickness=20 post_center_x=40 arch_style="squared" arch_point_offset=1.4 corner_fillet=4 post_base_gussets=true gusset_base_len=10 gusset_height=12 gusset_thickness=3 post_flare=true flare_height=10 flare_width=4 fillet_r=2 chamfer_r=1
+// @preset id="legacy-ogive" label="Legacy ogive (st-qt4)" can_diameter=50 can_height=195 clearance=0.75 ring_height=35 wall=3 rows=2 cols=3 cell_spacing_x=60 cell_spacing_y=90 front_opening_deg=100 base_thickness=3 base_margin_handle_side=18 base_margin_other_side=5 drain_hole_d=5 drain_hole_count=3 handle_height=250 handle_post_w=14 handle_thickness=20 post_center_x=94 arch_style="ogive" arch_point_offset=1.4 corner_fillet=4 post_base_gussets=true gusset_base_len=10 gusset_height=12 gusset_thickness=3 post_flare=true flare_height=10 flare_width=4 fillet_r=2 chamfer_r=1
+// @preset id="legacy-semicircular" label="Legacy semicircular (v-prior)" can_diameter=50 can_height=195 clearance=0.75 ring_height=35 wall=3 rows=2 cols=3 cell_spacing_x=60 cell_spacing_y=90 front_opening_deg=100 base_thickness=3 base_margin_handle_side=18 base_margin_other_side=5 drain_hole_d=5 drain_hole_count=3 handle_height=250 handle_post_w=14 handle_thickness=20 post_center_x=94 arch_style="semicircular" arch_point_offset=1.4 corner_fillet=4 post_base_gussets=false gusset_base_len=10 gusset_height=12 gusset_thickness=3 post_flare=false flare_height=10 flare_width=4 fillet_r=2 chamfer_r=1
 
 // === Derived ===
 
@@ -139,21 +168,22 @@ function cell_y(r) = (r - (rows - 1) / 2) * cell_spacing_y;
 base_w = cell_spacing_x * (cols - 1) + ring_od + 2 * base_margin_handle_side;
 base_d = cell_spacing_y * (rows - 1) + ring_od + 2 * base_margin_other_side;
 
-// Handle posts sit in the X-margin region, centered in Y. Pulled inward
-// from the base edge by fillet_r + 2mm so the post wall doesn't crowd
-// the rounded base corner.
-post_center_x = base_w / 2 - handle_post_w / 2 - fillet_r - 2;
+// Handle-post X span. `post_center_x` is now a user-tunable @param
+// (st-kyz). Posts live at Y=0 on the handle-axis corridor; see the
+// load-bearing invariants in the header.
 post_outer_x  = post_center_x + handle_post_w / 2;
 post_inner_x  = post_center_x - handle_post_w / 2;
 
 // Arch apex height above the post tops:
+//   - squared: the crossbar height IS the apex rise (handle_post_w).
 //   - semicircular: radius = post_outer_x, apex rises by post_outer_x.
 //   - ogive: two arcs with centers at (±k·post_outer_x, post_top) and
 //     radius (k+1)·post_outer_x. The apex sits at X=0 at a height
 //     post_outer_x · sqrt(2k+1) above the post tops.
-arch_apex_rise = arch_style == "ogive"
-    ? post_outer_x * sqrt(2 * arch_point_offset + 1)
-    : post_outer_x;
+arch_apex_rise =
+    arch_style == "squared" ? handle_post_w
+  : arch_style == "ogive"   ? post_outer_x * sqrt(2 * arch_point_offset + 1)
+  :                           post_outer_x;  // semicircular
 
 // handle_height = apex above baseplate top (unchanged). arch_z_start is
 // the z of the post tops above the baseplate top. For the ogive default
@@ -163,13 +193,14 @@ arch_apex_rise = arch_style == "ogive"
 // posts (e.g. to clear a can-plus-grip band), increase handle_height.
 arch_z_start = handle_height - arch_apex_rise;
 
-// PRINT_ANCHOR_BBOX at defaults. Z is fixed at base_thickness +
-// handle_height = 253 mm regardless of arch_style (both styles peak at
-// handle_height). X: base_w = 60*2 + (50 + 1.5 + 6) + 2*18 = 213.5.
-// Y: max(base_d, handle_thickness + …) = 90 + 57.5 + 10 = 157.5. The
-// gusset and flare additions stay well within the baseplate's X,Y
-// footprint by construction. (st-qt4)
-PRINT_ANCHOR_BBOX = [213.5, 157.5, 253];
+// PRINT_ANCHOR_BBOX at defaults. With compact margins (both 0) and
+// posts pulled in to ±40 (st-kyz):
+//   X = base_w = cell_spacing_x*(cols-1) + ring_od = 120 + 57.5 = 177.5
+//   Y = base_d = cell_spacing_y*(rows-1) + ring_od = 90  + 57.5 = 147.5
+//   Z = base_thickness + handle_height = 3 + 250 = 253
+// The posts (X=±40±7) and crossbar (spans X=±47) sit well within the
+// baseplate X footprint.
+PRINT_ANCHOR_BBOX = [177.5, 147.5, 253];
 
 // ================= Base plate =================
 
@@ -299,8 +330,26 @@ module handle() {
         _post(sx);
         if (post_base_gussets) _post_gussets(sx);
     }
-    if (arch_style == "ogive") _arch_ogive();
-    else                       _arch_semicircle();
+    if      (arch_style == "squared") _arch_squared();
+    else if (arch_style == "ogive")   _arch_ogive();
+    else                              _arch_semicircle();
+}
+
+// --- Squared / toolbox crossbar (st-kyz, new default) ---
+// Horizontal crossbar sitting on top of the two posts. Cross-section
+// `handle_post_w × handle_thickness` — the crossbar is the same
+// thickness (Y) as the posts, so post sides and crossbar Y-faces are
+// flush. Extends in X to ±post_outer_x so its outer faces line up
+// with the posts' outer faces. Bridges `2·post_inner_x` of open air
+// between the posts — trivially bridgeable at default defaults
+// (~66 mm between post inner faces). Rounded at the 4 X-Z corners
+// with `corner_fillet` so the silhouette has a toolbox-ish soft top.
+module _arch_squared() {
+    crossbar_w = 2 * post_outer_x;
+    translate([0, 0, post_top_z + handle_post_w / 2])
+        cuboid([crossbar_w, handle_thickness, handle_post_w],
+               rounding = corner_fillet,
+               edges    = "Y");
 }
 
 // A single handle post. Optionally flared over the lowest flare_height
