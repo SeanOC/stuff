@@ -85,8 +85,18 @@ export function ViewerChrome({
   useShortcut("f", () => toggleFullscreen(sectionRef.current), {
     enabled: gate,
   });
+  // Enter on idle/error kicks off the first render. Unlike the other
+  // viewer keys, this doesn't require focusInViewer — the useShortcut
+  // input-field guard already keeps Enter-in-a-param-input quiet, and
+  // demanding a focus hand-off before the user can trigger the first
+  // render is hostile (the viewer has nothing to focus at idle). The
+  // guard against in-progress renders still applies via the state
+  // check. (st-3lc relaxed gate to beat a hydration race that tight
+  // focus→Enter sequences were losing after the phase-3b bundle bump.)
   useShortcut("Enter", onRefresh, {
-    enabled: gate && (state.kind === "idle" || state.kind === "error"),
+    enabled:
+      modal.kind === "none" &&
+      (state.kind === "idle" || state.kind === "error"),
   });
 
   // Escape closes the error-log modal. UIContext is the arbiter —

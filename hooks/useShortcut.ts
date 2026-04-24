@@ -98,12 +98,21 @@ export function useShortcut(
     const parsed = parse(binding);
     const isChord = parsed.mod || parsed.shift || parsed.alt;
 
+    // Symbol keys like "?" require Shift to type on most layouts.
+    // Pinning shiftKey=false for those would make the binding
+    // unreachable, so skip the shift check unless the binding is a
+    // letter or an explicit named key. Letters ("g" vs Shift+g) and
+    // named keys ("Enter") still honour the check.
+    const keyIsLetter = /^[a-zA-Z]$/.test(parsed.key);
+    const keyIsNamed = parsed.key.length > 1;
+    const checkShift = parsed.shift || keyIsLetter || keyIsNamed;
+
     function onKeyDown(e: KeyboardEvent) {
       // Mod resolution happens per-event to pick up Ctrl on win/linux
       // and Meta on mac without the hook asking who it is.
       const mod = e.metaKey || e.ctrlKey;
       if (parsed.mod !== mod) return;
-      if (parsed.shift !== e.shiftKey) return;
+      if (checkShift && parsed.shift !== e.shiftKey) return;
       if (parsed.alt !== e.altKey) return;
       if (!matchesKey(e, parsed.key)) return;
       // Guard bare keys against form-control typing; always fire chords.

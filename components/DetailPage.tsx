@@ -52,9 +52,53 @@ export default function DetailPage({ model, initialValues }: Props) {
     params: model.params,
     values: detail.state.params,
   });
-  const { modal, dispatch } = useUI();
+  const { modal, dispatch, setDetail } = useUI();
 
   const downloadRef = useRef<() => void>(() => {});
+  const [saveRowOpen, setSaveRowOpen] = useState(false);
+
+  // Publish a bridge to the command palette so the Actions / Presets
+  // groups can dispatch download/save/load against this page (st-3lc).
+  // Cleared on unmount + whenever the bridge's shape changes so the
+  // palette never fires stale handles after a route change.
+  useEffect(() => {
+    const canDownload = render.state.kind === "ready";
+    setDetail({
+      slug: model.slug,
+      title: model.title,
+      presets: detail.allPresets,
+      canDownload,
+      downloadStl: () => downloadRef.current(),
+      loadPreset: (id: string) => detail.loadPreset(id),
+      openSaveRow: () => setSaveRowOpen(true),
+    });
+    return () => setDetail(null);
+  }, [
+    model.slug,
+    model.title,
+    detail.allPresets,
+    detail.loadPreset,
+    render.state.kind,
+    setDetail,
+  ]);
+
+  // Recent-models LRU — last 5 distinct slugs, most-recent first. Read
+  // by CommandPalette's Recent group (st-3lc).
+  useEffect(() => {
+    const key = "stuff.v1.recent.models";
+    try {
+      const raw = localStorage.getItem(key);
+      const prev: unknown = raw ? JSON.parse(raw) : [];
+      const prevSlugs = Array.isArray(prev)
+        ? prev.filter((s): s is string => typeof s === "string")
+        : [];
+      const next = [model.slug, ...prevSlugs.filter((s) => s !== model.slug)].slice(0, 5);
+      localStorage.setItem(key, JSON.stringify(next));
+    } catch {
+      // localStorage unavailable (SSR never reaches this effect; test
+      // env may quota-exceed) — silently skip the LRU this visit.
+    }
+  }, [model.slug]);
 
   // Full share URL (origin + /models/<slug>?<shortKey>=<value>...).
   // Computed on-the-fly whenever the copied action fires; the dialog
@@ -119,7 +163,6 @@ export default function DetailPage({ model, initialValues }: Props) {
   useShortcut("$mod+9", () => detail.loadPresetByIndex(9), { enabled: modal.kind === "none" });
 
   // ⌘S opens the inline save-preset row in the left rail. No modal.
-  const [saveRowOpen, setSaveRowOpen] = useState(false);
   useShortcut(
     "$mod+s",
     () => setSaveRowOpen(true),
