@@ -2,12 +2,13 @@
 // Copyright (c) 2026 Sean O'Connor
 //
 // Aquor hose-bib drip deflector — bent sheet-metal form (st-r38,
-// revised st-if3 / st-hkn / st-vu1 / st-002 / st-hxy / st-c7x). One
-// continuous plate of uniform thickness, smoothly bent from a VHB-
-// bonded wall-panel section to a down-and-forward-angled flap. Two
-// small coplanar rear-extending tabs at the back of the VHB section
-// butt up against the bib's lower-side corners during install,
-// keying the deflector laterally under the face-plate.
+// revised st-if3 / st-hkn / st-vu1 / st-002 / st-hxy / st-c7x /
+// st-6pc). One continuous plate of uniform thickness, smoothly bent
+// from a VHB-bonded wall-panel section to a down-and-forward-angled
+// flap. Two coplanar quarter-arc wedges at the back of the VHB
+// section trace the bib's bottom-corner outline so they nest under
+// the face-plate's lower corners during install, keying the
+// deflector laterally.
 //
 // === INSTALL ORIENTATION ===
 //
@@ -30,8 +31,9 @@
 //
 // Features keyed off this:
 //   - Blue tab's Z=0 face in print → wall-contact / VHB in install.
-//   - Red corner tabs extend in print −Y → install +Z, reaching up
-//     to butt against the bib's bottom-side corners.
+//   - Red corner wedges extend in print −Y → install +Z, with their
+//     arcs tracing the bib's bottom-corner outline so they nest
+//     under each lower corner of the face plate.
 //   - Flap's V-groove on the print-Z-positive face → water-contact
 //     face in install; groove depth grows toward the drip edge.
 //
@@ -44,13 +46,18 @@
 //      Longer arc smooths the transition — it reads as a continuous
 //      bend, not a fold line.
 //
-//   2. **Rear-extending corner tabs** at the VHB section's two rear-
-//      outer corners (st-c7x — relocated from v8's +Z posts). Each
-//      is a coplanar `corner_tab_width × corner_tab_ext × _t` prism
-//      extending −Y past the tab's rear edge, flush with the build
-//      plate (Z = 0..plate_thickness). In install orientation these
-//      become upward-reaching tabs that butt against the bib's
-//      bottom-side corners.
+//   2. **Rear-extending corner wedges** at the VHB section's two
+//      rear-outer corners (st-6pc — reshaped from v9's rectangular
+//      tabs). Each wedge has a quarter-arc curved inner edge that
+//      traces the bib's bottom-corner outline. Footprint: a
+//      `bib_corner_radius` × `bib_corner_radius` box at the corner
+//      position minus a cylinder of radius `bib_corner_radius +
+//      corner_wedge_clearance` at the bib's corner centre. Coplanar
+//      with the VHB section (Z ∈ [0, plate_thickness]); flush with
+//      the build plate so they print without supports. In install
+//      orientation the wedge nests under the bib's curving lower
+//      corner — the curved edge on the wedge faces UP toward the
+//      bib's outline.
 //
 //   3. **Tapered V-groove** on the flap top (print +Z face). Dish
 //      depth grows linearly from ~0 at the bend to `contour_depth`
@@ -60,10 +67,10 @@
 //      the plate bounds.
 //
 // Debug colour legend (when `debug_colors=true`):
-//   tab                → cornflowerblue
-//   bend               → gold
-//   flap               → mediumseagreen
-//   corner tabs (−Y)   → tomato
+//   tab                  → cornflowerblue
+//   bend                 → gold
+//   flap                 → mediumseagreen
+//   corner wedges (−Y)   → tomato
 //
 // Construction — polygon side profile + linear_extrude (bent plate,
 // as three tab/bend/flap sub-polygons for the colour palette),
@@ -94,18 +101,21 @@ bib_plate_height    = 100; // @param number min=80 max=120 step=0.5 unit=mm  gro
 bib_plate_thickness = 6;   // @param number min=0  max=12  step=0.5 unit=mm  group=bib label="Aquor face-plate protrusion from wall"
 bib_corner_radius   = 9;   // @param number min=0  max=20  step=0.5 unit=mm  group=bib label="Aquor face-plate corner radius"
 
-// ----- Fit (rear-extending corner tabs) -----
-// Two coplanar rear-extending tabs at the VHB section's two rear-
-// outer corners (st-c7x — relocated from v8's +Z posts). Each tab's
-// outer X-face sits at ±(width/2); it extends `corner_tab_width`
-// inward in X and `corner_tab_ext` in −Y (past the rear edge). Z
-// spans the full plate thickness so the tab is coplanar with the
-// VHB section's bed-side surface. In install orientation the tab
-// becomes an upward post (print −Y → install +Z) reaching the bib's
-// bottom-side corner; default 9 mm ≈ `bib_corner_radius`.
-corner_tabs      = true; // @param boolean group=fit label="Rear-extending corner tabs"
-corner_tab_ext   = 9;    // @param number min=0 max=20 step=0.5 unit=mm group=fit label="Corner-tab extension past the rear edge (print −Y / install +Z)"
-corner_tab_width = 4;    // @param number min=2 max=10 step=0.5 unit=mm group=fit label="Corner-tab X extent (inward from the tab's outer edge)"
+// ----- Fit (rear-extending corner wedges) -----
+// Two coplanar rear-extending wedges at the VHB section's two rear-
+// outer corners (st-6pc). Each wedge's footprint is a
+// `bib_corner_radius`-square box at X ∈ [±bib_plate_width/2,
+// ±(bib_plate_width/2 − bib_corner_radius)], Y ∈ [−bib_corner_radius,
+// 0], with a cylinder (radius `bib_corner_radius + corner_wedge_
+// clearance`, axis along +Z) at the bib's lower-corner centre
+// subtracted. The remaining material is a quarter-pie wedge whose
+// curved inner edge traces the bib's bottom-corner arc — in install
+// orientation the wedge fills the void between the blue panel's top
+// edge and the bib's curving bottom. `corner_wedge_clearance` is the
+// radial slop so the printed wedge clears the bib's actual corner
+// without grinding.
+corner_tabs            = true; // @param boolean group=fit label="Rear-extending corner wedges (trace bib's corner arc)"
+corner_wedge_clearance = 0.4;  // @param number min=0 max=1.5 step=0.05 unit=mm group=fit label="Radial clearance between wedge arc and bib corner"
 
 // ----- Part geometry -----
 width           = 78;   // @param number min=50 max=100 step=0.5 unit=mm  group=geometry label="Part width (X)"
@@ -163,14 +173,16 @@ _flap_inner_tip = [_flap_outer_tip[0] - _t * sin(_fa),
 _inner_arc_exit = [_inner_end_y + flap_length * cos(_fa),
                    _inner_end_z + flap_length * sin(_fa)];
 
-// PRINT_ANCHOR_BBOX at defaults. The rear-extending corner tabs
-// push the Y extent back by `corner_tab_ext` (to Y = −9 mm at
-// defaults), so total Y extent grows to 42.6 + 9 = 51.6 mm. Z is
-// unchanged — no more vertical posts on the top face; max Z is the
-// flap's inner tip (~24.22 mm). (st-c7x)
-PRINT_ANCHOR_BBOX = [78, 51.6, 24.22];
+// PRINT_ANCHOR_BBOX at defaults. The corner wedges' farthest −Y
+// reach is along the wedge's outer edge, where the bib-corner
+// cylinder cuts in last: Y_min = −sqrt((R+c)² − R²) ≈ −6.29 mm at
+// R = 9, c = 0.4. So total Y extent = 42.6 + 6.29 ≈ 48.89 mm. X is
+// unchanged: the wedges reach to ±bib_plate_width/2 = ±36, but the
+// VHB tab is wider at ±width/2 = ±39, so the tab still dominates
+// X. Z stays at 24.22 (flap's inner tip). (st-6pc)
+PRINT_ANCHOR_BBOX = [78, 48.89, 24.22];
 
-// @preset id="aquor-72x100" label="Aquor 72×100mm (default)" bib_plate_width=72 bib_plate_height=100 bib_plate_thickness=6 bib_corner_radius=9 corner_tabs=true corner_tab_ext=9 corner_tab_width=4 width=78 tab_depth=10 flap_length=32 flap_angle=38 plate_thickness=2.5 bend_radius=12 contour_depth=1.5 contour_side_rim_width=1.5 debug_colors=true
+// @preset id="aquor-72x100" label="Aquor 72×100mm (default)" bib_plate_width=72 bib_plate_height=100 bib_plate_thickness=6 bib_corner_radius=9 corner_tabs=true corner_wedge_clearance=0.4 width=78 tab_depth=10 flap_length=32 flap_angle=38 plate_thickness=2.5 bend_radius=12 contour_depth=1.5 contour_side_rim_width=1.5 debug_colors=true
 
 // === Geometry ===
 
@@ -307,24 +319,31 @@ module _contour_cutter() {
                     cylinder(h = cutter_len, r1 = r_back_cap, r2 = r_front_cap);
 }
 
-// Rear-extending corner tabs (st-c7x). Two coplanar tabs extending
-// backward from the VHB section's rear-outer corners. Each spans:
-//   X ∈ [±width/2 − corner_tab_width, ±width/2]  (inward from edge)
-//   Y ∈ [−corner_tab_ext, 0]                     (back past the rear)
-//   Z ∈ [0, _t]                                  (full plate thickness)
-// Outer X face is flush with the VHB section's own outer edge; Y=0
-// face is coincident with the tab rear so the union merges cleanly.
-// In install orientation these become upward-reaching posts that
-// butt against the bib's bottom-side corners.
-module _corner_tabs_geom() {
-    if (!corner_tabs || corner_tab_ext <= 0) {
+// Rear-extending corner wedges (st-6pc). Quarter-pie wedges whose
+// curved inner edge traces the bib's bottom-corner arc. Built as a
+// `bib_corner_radius`-square box at the corner footprint minus a
+// cylinder of radius `bib_corner_radius + corner_wedge_clearance`
+// at the bib's corner centre. In install orientation the wedge
+// fills the void between the blue panel's top edge and the bib's
+// curving lower outline.
+module _corner_wedges_geom() {
+    if (!corner_tabs || bib_corner_radius <= 0) {
         // no-op
     } else {
+        R   = bib_corner_radius;
+        c   = corner_wedge_clearance;
+        eps = 0.02;
         for (sign = [-1, 1]) {
-            x_outer = sign * width / 2;
-            x_min = sign < 0 ? x_outer : x_outer - corner_tab_width;
-            translate([x_min, -corner_tab_ext, 0])
-                cube([corner_tab_width, corner_tab_ext, _t]);
+            cx_box = sign < 0 ? -bib_plate_width / 2 : bib_plate_width / 2 - R;
+            cx_cyl = sign * (bib_plate_width / 2 - R);
+            difference() {
+                translate([cx_box, -R, 0])
+                    cube([R, R, _t]);
+                // Cylinder at the bib's corner centre; pad in Z so
+                // the cap planes don't sit on the wedge's Z faces.
+                translate([cx_cyl, -R, -eps])
+                    cylinder(h = _t + 2 * eps, r = R + c);
+            }
         }
     }
 }
@@ -343,7 +362,7 @@ module aquor_bib_drip_deflector() {
             color_if(debug_colors, "cornflowerblue")  _tab_slice();
             color_if(debug_colors, "gold")            _bend_slice();
             color_if(debug_colors, "mediumseagreen")  _flap_slice();
-            color_if(debug_colors, "tomato")          _corner_tabs_geom();
+            color_if(debug_colors, "tomato")          _corner_wedges_geom();
         }
         if (contour_depth > 0 && _Rd > 0) _contour_cutter();
     }
