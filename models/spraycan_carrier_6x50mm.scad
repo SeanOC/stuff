@@ -26,11 +26,20 @@
 //
 // Arch styles (`arch_style` param):
 //   - "squared" (st-kyz, default) — toolbox handle: two vertical
-//     posts plus a horizontal crossbar (cross-section
-//     `handle_post_w × handle_thickness`) bridging their tops, with
-//     `corner_fillet` rounding at the crossbar corners. Crossbar
-//     bridge = 2·post_center_x (~80 mm at defaults) — comfortably
-//     bridgeable without supports for typical slicer settings.
+//     cylindrical posts plus a horizontal cylindrical crossbar
+//     bridging their tops. Each post-to-crossbar inside corner is a
+//     true tangent-arc blend (st-y1q): a quarter-torus of tube
+//     radius `handle_post_d/2` swept on a radius of `corner_sweep_r`
+//     (default 12 mm), tangent-vertical at the post end and tangent-
+//     horizontal at the crossbar end. The blend replaces the v-prior
+//     hull-of-two-disks corner, which read as a chamfer rather than
+//     a sweep. Posts shorten and the crossbar shortens to make room
+//     for the swept blend; both junctions overlap the torus by 1 mm
+//     to dodge the zero-thickness coincident-face issue from st-v7k.
+//     Crossbar bridge = 2·(post_center_x − corner_sweep_r)
+//     (~56 mm at defaults) — comfortably bridgeable without supports.
+//     Legacy `corner_fillet` is a no-op for the squared style; kept
+//     in the param list only for backward compat with old presets.
 //   - "ogive" (st-qt4) — two circular arcs meeting at a point above
 //     the centerline. Each arc's center sits on the opposite side of
 //     the arch at X = ±k·post_outer_x with radius (k+1)·post_outer_x
@@ -139,17 +148,21 @@ post_center_x    = 40;   // @param number min=40 max=120 step=0.5 unit=mm group=
 // half-donut arch (legacy; apex bridges horizontally).
 arch_style        = "squared"; // @param enum choices=squared|ogive|semicircular group=handle label="Arch style"
 arch_point_offset = 1.4;       // @param number min=1.1 max=2.5 step=0.05 group=handle label="Ogive point offset (k-factor)"
-corner_fillet     = 4;         // @param number min=0 max=10 step=0.25 unit=mm group=handle label="Squared-handle crossbar corner fillet"
+corner_sweep_r    = 12;        // @param number min=0 max=25 step=0.5 unit=mm group=handle label="Squared-handle corner sweep radius (st-y1q)"
+corner_fillet     = 4;         // @param number min=0 max=10 step=0.25 unit=mm group=handle label="Legacy squared-handle corner fillet (no-op since st-y1q)"
 
-// ----- Post-base reinforcement (st-4ac) -----
-// Conical flare at the bottom of each post, replacing the v-prior
-// gussets. The flare diameter at the bed is `handle_post_d +
-// 2·flare_width`, tapering linearly up to `handle_post_d` over
-// `flare_height`. Replaces bending moment-absorbing gussets with a
-// single axisymmetric cone — simpler, fewer edge artefacts, still
-// effective as post-base reinforcement. Legacy ogive/semicircular
-// arch styles use the same flare; their rectangular posts keep the
-// prismoid-flare implementation.
+// ----- Post-base reinforcement (st-4ac, refined st-y1q) -----
+// Concave quarter-ellipse flare at the bottom of each squared-style
+// post, replacing the v-prior linear cone. The flare profile is a
+// 2D arc swept around the post axis via `rotate_extrude`; the arc
+// is tangent-horizontal where it meets the baseplate (so the
+// transition is a smooth fillet rather than a chamfer) and tangent-
+// vertical where it meets the post wall (so the post→flare
+// transition is also smooth). Semi-axes: flare_width radial,
+// flare_height vertical. Legacy ogive/semicircular arch styles keep
+// the prismoid linear-taper flare on their rectangular posts —
+// their 2D-extrude arch maths assume rectangular post cross-
+// sections, so the cylindrical-flare path doesn't apply there.
 post_flare   = true;  // @param boolean group=handle label="Post bottom flare"
 flare_height = 12;    // @param number min=0 max=25 step=0.5 unit=mm group=handle label="Flare height (Z)"
 flare_width  = 5;     // @param number min=0 max=10 step=0.25 unit=mm group=handle label="Flare widening (radial, each side)"
@@ -158,7 +171,7 @@ flare_width  = 5;     // @param number min=0 max=10 step=0.25 unit=mm group=hand
 fillet_r  = 2;   // @param number min=0 max=5 step=0.25 unit=mm group=handle label="Fillet radius (posts + arch Y-faces)"
 chamfer_r = 1;   // @param number min=0 max=3 step=0.25 unit=mm group=handle label="Chamfer radius"
 
-// @preset id="stock" label="Stock 2×3 / 50mm (cylindrical, compact)" can_diameter=50 can_height=195 clearance=0.75 ring_height=35 wall=3 rows=2 cols=3 cell_spacing_x=60 cell_spacing_y=90 front_opening_deg=100 base_thickness=3 base_margin_handle_side=0 base_margin_other_side=0 drain_hole_d=5 drain_hole_count=3 handle_height=250 handle_post_d=14 handle_post_w=14 handle_thickness=20 post_center_x=40 arch_style="squared" arch_point_offset=1.4 corner_fillet=8 post_flare=true flare_height=12 flare_width=5 fillet_r=2 chamfer_r=1
+// @preset id="stock" label="Stock 2×3 / 50mm (cylindrical, compact)" can_diameter=50 can_height=195 clearance=0.75 ring_height=35 wall=3 rows=2 cols=3 cell_spacing_x=60 cell_spacing_y=90 front_opening_deg=100 base_thickness=3 base_margin_handle_side=0 base_margin_other_side=0 drain_hole_d=5 drain_hole_count=3 handle_height=250 handle_post_d=14 handle_post_w=14 handle_thickness=20 post_center_x=40 arch_style="squared" arch_point_offset=1.4 corner_sweep_r=12 corner_fillet=8 post_flare=true flare_height=12 flare_width=5 fillet_r=2 chamfer_r=1
 // @preset id="legacy-ogive" label="Legacy ogive (st-qt4)" can_diameter=50 can_height=195 clearance=0.75 ring_height=35 wall=3 rows=2 cols=3 cell_spacing_x=60 cell_spacing_y=90 front_opening_deg=100 base_thickness=3 base_margin_handle_side=18 base_margin_other_side=5 drain_hole_d=5 drain_hole_count=3 handle_height=250 handle_post_d=14 handle_post_w=14 handle_thickness=20 post_center_x=94 arch_style="ogive" arch_point_offset=1.4 corner_fillet=4 post_flare=true flare_height=12 flare_width=5 fillet_r=2 chamfer_r=1
 // @preset id="legacy-semicircular" label="Legacy semicircular (v-prior)" can_diameter=50 can_height=195 clearance=0.75 ring_height=35 wall=3 rows=2 cols=3 cell_spacing_x=60 cell_spacing_y=90 front_opening_deg=100 base_thickness=3 base_margin_handle_side=18 base_margin_other_side=5 drain_hole_d=5 drain_hole_count=3 handle_height=250 handle_post_d=14 handle_post_w=14 handle_thickness=20 post_center_x=94 arch_style="semicircular" arch_point_offset=1.4 corner_fillet=4 post_flare=false flare_height=12 flare_width=5 fillet_r=2 chamfer_r=1
 
@@ -344,84 +357,129 @@ module handle() {
     }
 }
 
-// --- Squared / toolbox cylindrical handle (st-4ac) ---
-// Two vertical rods + one horizontal crossbar rod + conical flares
-// at each post base + hull() corner fillets blending the post tops
-// into the crossbar ends. No gussets — the flare carries the
-// bending-moment reinforcement by itself.
+// --- Squared / toolbox cylindrical handle (st-4ac, refined st-y1q) ---
+// Two vertical rods + one horizontal crossbar rod + concave quarter-
+// ellipse flares at each post base + true tangent-arc quarter-torus
+// blends at each post→crossbar inside corner. No gussets, no hull-
+// of-disks chamfers — the flare and corner sweep carry the bending-
+// moment reinforcement by themselves and read as continuous
+// curvature in the viewer/STL.
 //
-// Post cylinders run from Z=0 up to the crossbar axis (so the
-// post's top disk-face is INSIDE the crossbar, which welds them
-// together with no seam). The corner hull connects a thin slice of
-// the post near its top with a thin slice of the crossbar near its
-// endpoint — giving a smoothly blended inside-corner.
+// Geometry: post tops sit `corner_sweep_r` below the crossbar axis;
+// crossbar endpoints sit `corner_sweep_r` inside the post X. The
+// quarter-torus blend bridges the gap, tangent-vertical at the post
+// (matching the post's wall direction) and tangent-horizontal at
+// the crossbar (matching the crossbar's axis direction). Each post
+// and each crossbar end overlaps the torus by 1 mm to dodge the
+// zero-thickness coincident-face issue from st-v7k.
 module _handle_squared_cyl() {
     post_r          = handle_post_d / 2;
     apex_z          = base_thickness + handle_height;   // top of crossbar
     crossbar_axis_z = apex_z - post_r;
-    // Post extends to crossbar's axis height so the two cylinders
-    // overlap by post_r at the junction.
-    post_total_h    = crossbar_axis_z;
+    overlap         = 1;  // st-v7k: avoid zero-thickness coincident faces
 
-    for (sx = [-1, 1]) {
-        _post_cyl(sx, post_r, post_total_h);
-        _handle_corner_fillet(sx, post_r, crossbar_axis_z);
-    }
-    _crossbar_cyl(post_r, crossbar_axis_z);
-}
-
-// A single cylindrical post with optional conical flare at the base.
-// The post runs from Z=0 (below the baseplate surface) up to the
-// crossbar axis height so the post-top disk sits inside the
-// crossbar — union cleans up the seam.
-module _post_cyl(sx, post_r, post_total_h) {
-    translate([sx * post_center_x, 0, 0]) {
-        if (post_flare && flare_height > 0 && flare_width > 0) {
-            // Conical flare from (post_r + flare_width) at bed to
-            // post_r at flare_height. Above that, a straight cylinder
-            // up to the crossbar axis.
-            cylinder(h = flare_height,
-                     r1 = post_r + flare_width,
-                     r2 = post_r);
-            translate([0, 0, flare_height])
-                cylinder(h = post_total_h - flare_height, r = post_r);
-        } else {
-            cylinder(h = post_total_h, r = post_r);
+    if (corner_sweep_r > 0) {
+        // Posts shorten so their tops meet the start of the corner
+        // sweep (with `overlap` of interpenetration). Crossbar
+        // shortens so its endpoints meet the end of the corner
+        // sweep (with `overlap` on each side).
+        post_total_h    = crossbar_axis_z - corner_sweep_r + overlap;
+        crossbar_half_x = post_center_x - corner_sweep_r + overlap;
+        for (sx = [-1, 1]) {
+            _post_cyl(sx, post_r, post_total_h);
+            _handle_corner_sweep(sx, post_r, crossbar_axis_z);
         }
+        _crossbar_cyl(post_r, crossbar_axis_z, crossbar_half_x);
+    } else {
+        // No corner sweep: post extends to crossbar axis, crossbar
+        // extends past each post axis by post_r (legacy join).
+        post_total_h    = crossbar_axis_z;
+        crossbar_half_x = post_center_x + post_r;
+        for (sx = [-1, 1])
+            _post_cyl(sx, post_r, post_total_h);
+        _crossbar_cyl(post_r, crossbar_axis_z, crossbar_half_x);
     }
 }
 
-// Horizontal cylinder (crossbar) spanning between the two post
-// axes. Diameter matches the posts for visual uniformity. Extends
-// slightly past each post axis (by post_r) so its endpoint sits
-// inside the post cylinder — union merges the seam.
-module _crossbar_cyl(post_r, crossbar_axis_z) {
-    crossbar_len = 2 * post_center_x + 2 * post_r;
-    translate([-post_center_x - post_r, 0, crossbar_axis_z])
+// A single cylindrical post with optional concave quarter-ellipse
+// flare at the base. Post + flare are a single rotate_extrude of a
+// 2D radial profile so the flare→post transition is one manifold
+// surface (no seam, no zero-thickness boolean junction). The flare
+// arc is tangent-horizontal at z=0 (smooth fillet into the
+// baseplate) and tangent-vertical at z=flare_height (smooth into
+// the post wall).
+module _post_cyl(sx, post_r, post_total_h) {
+    translate([sx * post_center_x, 0, 0])
+        rotate_extrude(convexity = 4)
+            _post_profile_2d(post_r, post_total_h);
+}
+
+// Radial profile (X = radius, Y = z) for the post + base flare.
+// Polygon walks: origin → flare bottom-outer corner → up the
+// concave arc to flare top-inner corner → up the post wall to the
+// top → back to the axis → close.
+module _post_profile_2d(post_r, post_total_h) {
+    if (post_flare && flare_height > 0 && flare_width > 0) {
+        // Concave quarter-ellipse from (post_r+flare_width, 0)
+        // [tangent-horizontal] sweeping to (post_r, flare_height)
+        // [tangent-vertical]. Centre at (post_r+flare_width,
+        // flare_height); semi-axes (flare_width, flare_height).
+        n = 24;
+        flare_arc = [
+            for (i = [0 : n])
+                let(t = i * 90 / n)
+                    [post_r + flare_width - flare_width * sin(t),
+                     flare_height - flare_height * cos(t)]
+        ];
+        polygon(concat(
+            [[0, 0]],
+            flare_arc,
+            [[post_r, post_total_h], [0, post_total_h]]
+        ));
+    } else {
+        polygon([[0, 0],
+                 [post_r, 0],
+                 [post_r, post_total_h],
+                 [0, post_total_h]]);
+    }
+}
+
+// Horizontal cylinder (crossbar) spanning between the two corner-
+// sweep endpoints. Diameter matches the posts. `half_len` is the
+// crossbar's half-length (centre to one endpoint) — the caller
+// pre-computes it from post_center_x, corner_sweep_r, and the
+// junction overlap so this module stays geometry-agnostic.
+module _crossbar_cyl(post_r, crossbar_axis_z, half_len) {
+    crossbar_len = 2 * half_len;
+    translate([-half_len, 0, crossbar_axis_z])
         rotate([0, 90, 0])
             cylinder(h = crossbar_len, r = post_r);
 }
 
-// Inside-corner fillet at a post-crossbar junction. Implemented as
-// `hull()` of two thin disks: one at the post's top slice and one
-// at the crossbar's endpoint slice, both oriented so the hull
-// interpolates smoothly around the inside of the U. Bulges a
-// `corner_fillet`-sized blend into the otherwise-sharp junction.
-module _handle_corner_fillet(sx, post_r, crossbar_axis_z) {
-    if (corner_fillet <= 0) {
-        // no-op
-    } else {
-        // Post top slice (thin horizontal disk, slightly below the
-        // crossbar axis).
-        hull() {
-            translate([sx * post_center_x, 0, crossbar_axis_z - corner_fillet])
-                cylinder(h = 0.01, r = post_r);
-            // Crossbar slice, corner_fillet inside the endpoint.
-            translate([sx * (post_center_x - corner_fillet), 0, crossbar_axis_z])
-                rotate([0, 90, 0])
-                    cylinder(h = 0.01, r = post_r);
-        }
-    }
+// True tangent-arc inside-corner blend at a post→crossbar junction
+// (st-y1q). Quarter-torus of tube radius `post_r`, swept on radius
+// `corner_sweep_r` around an axis parallel to Y. Sweep centre sits
+// at (sx·(post_center_x − corner_sweep_r), 0,
+//     crossbar_axis_z − corner_sweep_r), so the tube traces from
+// (sx·post_center_x, 0, crossbar_axis_z − corner_sweep_r) [tangent-
+// vertical, joining the post] to (sx·(post_center_x −
+// corner_sweep_r), 0, crossbar_axis_z) [tangent-horizontal, joining
+// the crossbar]. scale([sx,1,1]) mirrors the right-side construction
+// for the left side.
+//
+// rotate_extrude sweeps around the Z axis by default; rotate([90,
+// 0, 0]) tilts the sweep axis from Z to −Y, which puts the swept
+// arc into the X-Z plane (where the post and crossbar already
+// live).
+module _handle_corner_sweep(sx, post_r, crossbar_axis_z) {
+    if (corner_sweep_r > 0)
+        scale([sx, 1, 1])
+            translate([post_center_x - corner_sweep_r, 0,
+                       crossbar_axis_z - corner_sweep_r])
+                rotate([90, 0, 0])
+                    rotate_extrude(angle = 90, convexity = 4)
+                        translate([corner_sweep_r, 0])
+                            circle(r = post_r);
 }
 
 // --- Legacy rectangular post (for ogive / semicircular styles) ---
