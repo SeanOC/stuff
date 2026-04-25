@@ -5,11 +5,10 @@ import { expect, test } from "@playwright/test";
 // because it ships four historic stock presets (42/46/70/77 mm).
 
 test.describe("presets", () => {
-  test("left rail lists stock presets and loading one sets active + clears modified", async ({ page }) => {
+  test("param rail lists stock presets and loading one sets active + clears modified", async ({ page }) => {
     await page.goto("/models/cylindrical-holder-slot");
-    // st-j98: left rail defaults to collapsed. Expand it so the
-    // preset list is visible.
-    await page.getByRole("button", { name: /Expand left rail/i }).click();
+    // st-yxj: presets now live at the top of the param rail (right
+    // column), always visible at desktop viewport sizes.
 
     const list = page.getByTestId("preset-list");
     await expect(list).toBeVisible();
@@ -30,9 +29,8 @@ test.describe("presets", () => {
 
   test("⌘S opens the inline save-row; Enter persists; new preset appears active", async ({ page }) => {
     await page.goto("/models/cylindrical-holder-slot");
-    // st-j98: expand the left rail so the save-row and the saved
-    // preset's resulting list item are in the visible tree.
-    await page.getByRole("button", { name: /Expand left rail/i }).click();
+    // st-yxj: save-row + preset list now live in the param rail —
+    // visible by default, no expand step needed.
 
     // Bump a param so the save captures a distinct state.
     await page.locator("#param-can_diameter").fill("55");

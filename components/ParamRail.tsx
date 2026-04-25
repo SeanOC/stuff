@@ -12,6 +12,7 @@
 import clsx from "clsx";
 import { useMemo, useState } from "react";
 import { ParamRow } from "./ParamRow";
+import { PresetSection } from "./PresetSection";
 import type { Param, ParamValue } from "@/lib/scad-params/parse";
 
 const UNGROUPED_ID = "__ungrouped__";
@@ -21,12 +22,43 @@ interface Props {
   params: Param[];
   values: Record<string, ParamValue>;
   onChange: (name: string, value: ParamValue) => void;
+  // Preset section (st-yxj moved this here from the left metadata
+  // rail). Optional — the rail still works without it for fixtures
+  // that don't pipe preset state through. When provided, renders
+  // above the param groups with a divider.
+  presets?: Array<{ id: string; label: string; isUser: boolean }>;
+  activePresetId?: string | null;
+  modified?: boolean;
+  onLoadPreset?: (id: string) => void;
+  onDeletePreset?: (id: string) => void;
+  onSavePreset?: (label: string) => void;
+  saveRowOpen?: boolean;
+  setSaveRowOpen?: (open: boolean) => void;
 }
 
-export function ParamRail({ params, values, onChange }: Props) {
+export function ParamRail({
+  params,
+  values,
+  onChange,
+  presets,
+  activePresetId,
+  modified,
+  onLoadPreset,
+  onDeletePreset,
+  onSavePreset,
+  saveRowOpen,
+  setSaveRowOpen,
+}: Props) {
   const groups = useMemo(() => groupParams(params), [params]);
+  const showPresets =
+    presets !== undefined &&
+    onLoadPreset !== undefined &&
+    onDeletePreset !== undefined &&
+    onSavePreset !== undefined &&
+    saveRowOpen !== undefined &&
+    setSaveRowOpen !== undefined;
 
-  if (params.length === 0) {
+  if (params.length === 0 && !showPresets) {
     return (
       <p className="p-14 text-12 text-text-dim">No parameters in this model.</p>
     );
@@ -34,9 +66,25 @@ export function ParamRail({ params, values, onChange }: Props) {
 
   return (
     <div className="flex flex-col">
-      {groups.map((g) => (
-        <ParamGroup key={g.id} group={g} values={values} onChange={onChange} />
-      ))}
+      {showPresets && (
+        <PresetSection
+          presets={presets}
+          activePresetId={activePresetId ?? null}
+          modified={modified ?? false}
+          onLoadPreset={onLoadPreset}
+          onDeletePreset={onDeletePreset}
+          onSavePreset={onSavePreset}
+          saveRowOpen={saveRowOpen}
+          setSaveRowOpen={setSaveRowOpen}
+        />
+      )}
+      {params.length === 0 ? (
+        <p className="p-14 text-12 text-text-dim">No parameters in this model.</p>
+      ) : (
+        groups.map((g) => (
+          <ParamGroup key={g.id} group={g} values={values} onChange={onChange} />
+        ))
+      )}
     </div>
   );
 }

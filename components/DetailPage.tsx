@@ -51,12 +51,16 @@ export default function DetailPage({ model }: Props) {
 
   const downloadRef = useRef<() => void>(() => {});
   const [saveRowOpen, setSaveRowOpen] = useState(false);
-  // Left-rail collapsed state. Default is collapsed — at ≥1200px most
-  // visits don't need the preset/log quick-jump sidebar, so hand the
-  // width over to viewer and param rail by default and let returning
-  // users stick with whichever mode they chose. (st-j98)
+  // Left-rail collapsed state at ≥1200px (st-j98). At smaller widths
+  // the layout stacks and this flag is unused.
   const [leftRailCollapsed, setLeftRailCollapsed] =
     useLocalStorage<boolean>("stuff.v1.detail.leftRailCollapsed", true);
+  // Mobile/tablet (<1200px) disclosure state for the metadata pane
+  // (st-yxj). Default closed so visitors land on the viewer + params
+  // rather than a wall of metadata. Persisted under the same prefix
+  // pattern as the desktop collapse flag.
+  const [mobileMetadataOpen, setMobileMetadataOpen] =
+    useLocalStorage<boolean>("stuff.v1.detail.mobileMetadataOpen", false);
 
   // Auto-fire the first render on mount (st-2y4). Phase 2b shipped a
   // deliberate idle-until-Enter gate per Caliper spec §Loading/Empty
@@ -187,16 +191,10 @@ export default function DetailPage({ model }: Props) {
             history={render.history}
             state={render.state}
             warnings={model.warnings}
-            presets={detail.allPresets}
-            activePresetId={detail.state.activePresetId}
-            modified={detail.state.modified}
-            onLoadPreset={detail.loadPreset}
-            onDeletePreset={detail.deleteUserPreset}
-            onSavePreset={detail.saveAsPreset}
-            saveRowOpen={saveRowOpen}
-            setSaveRowOpen={setSaveRowOpen}
             collapsed={leftRailCollapsed}
             onToggleCollapsed={() => setLeftRailCollapsed((c) => !c)}
+            mobileOpen={mobileMetadataOpen}
+            onToggleMobileOpen={() => setMobileMetadataOpen((o) => !o)}
           />
         </aside>
         <div className="min-h-0 min-[1200px]:overflow-hidden">
@@ -221,6 +219,14 @@ export default function DetailPage({ model }: Props) {
             params={model.params}
             values={detail.state.params}
             onChange={detail.setParam}
+            presets={detail.allPresets}
+            activePresetId={detail.state.activePresetId}
+            modified={detail.state.modified}
+            onLoadPreset={detail.loadPreset}
+            onDeletePreset={detail.deleteUserPreset}
+            onSavePreset={detail.saveAsPreset}
+            saveRowOpen={saveRowOpen}
+            setSaveRowOpen={setSaveRowOpen}
           />
         </aside>
       </div>
@@ -254,42 +260,51 @@ function DetailLeftRail({
   history,
   state,
   warnings,
-  presets,
-  activePresetId,
-  modified,
-  onLoadPreset,
-  onDeletePreset,
-  onSavePreset,
-  saveRowOpen,
-  setSaveRowOpen,
   collapsed,
   onToggleCollapsed,
+  mobileOpen,
+  onToggleMobileOpen,
 }: {
   modelPath: string;
   history: RenderResult[];
   state: RenderState;
   warnings: string[];
-  presets: Array<{ id: string; label: string; isUser: boolean }>;
-  activePresetId: string | null;
-  modified: boolean;
-  onLoadPreset: (id: string) => void;
-  onDeletePreset: (id: string) => void;
-  onSavePreset: (label: string) => void;
-  saveRowOpen: boolean;
-  setSaveRowOpen: (open: boolean) => void;
   collapsed: boolean;
   onToggleCollapsed: () => void;
+  mobileOpen: boolean;
+  onToggleMobileOpen: () => void;
 }) {
-  // Below 1200px the detail shell stacks to a single column and the
-  // rail content is shown inline — the collapsed state only kicks in
-  // at xl. Hide the collapsed-state DOM below xl so the mobile/tablet
-  // layout keeps full content. The expanded content is still rendered
-  // on every layout via the `<div className="min-[1200px]:hidden">`
-  // escape — except we don't need that since `collapsed` only affects
-  // the xl grid; at smaller widths we always show the full content.
-  if (collapsed) {
-    return (
-      <>
+  // The rail has THREE rendering modes that switch at the 1200px
+  // breakpoint:
+  //   • mobile (<1200px): single disclosure row above the viewer that
+  //     expands to the full content. Default closed (st-yxj).
+  //   • desktop collapsed (≥1200px, `collapsed=true`): 32px-wide
+  //     column with a chevron-right button.
+  //   • desktop expanded (≥1200px, `collapsed=false`): full-width
+  //     content with a chevron-left collapse button at the top.
+  //
+  // The mobile disclosure and the desktop collapse are orthogonal —
+  // one viewport's state never affects the other.
+  return (
+    <>
+      {/* Mobile disclosure */}
+      <div className="min-[1200px]:hidden">
+        <MetadataMobileDisclosure
+          history={history}
+          warnings={warnings}
+          open={mobileOpen}
+          onToggle={onToggleMobileOpen}
+        >
+          <DetailLeftRailContent
+            modelPath={modelPath}
+            history={history}
+            state={state}
+            warnings={warnings}
+          />
+        </MetadataMobileDisclosure>
+      </div>
+      {/* Desktop ≥1200px */}
+      {collapsed ? (
         <div
           data-testid="detail-left-rail-collapsed"
           className="hidden min-[1200px]:flex min-[1200px]:flex-col min-[1200px]:items-center min-[1200px]:pt-10"
@@ -298,49 +313,81 @@ function DetailLeftRail({
             type="button"
             onClick={onToggleCollapsed}
             aria-label="Expand left rail"
-            title="Expand metadata (presets, log, source)"
+            title="Expand metadata (log, warnings, source)"
             className="inline-flex h-24 w-24 items-center justify-center rounded-3 border border-line bg-panel2 text-text-dim hover:bg-panel-hi hover:text-text"
           >
             <ChevronRightIcon />
           </button>
         </div>
-        {/* Below xl the grid is single-column and the rail content
-            must still be visible — mirror the expanded content here. */}
-        <div className="min-[1200px]:hidden">
+      ) : (
+        <div className="hidden min-[1200px]:block">
           <DetailLeftRailContent
             modelPath={modelPath}
             history={history}
             state={state}
             warnings={warnings}
-            presets={presets}
-            activePresetId={activePresetId}
-            modified={modified}
-            onLoadPreset={onLoadPreset}
-            onDeletePreset={onDeletePreset}
-            onSavePreset={onSavePreset}
-            saveRowOpen={saveRowOpen}
-            setSaveRowOpen={setSaveRowOpen}
+            onCollapse={onToggleCollapsed}
           />
         </div>
-      </>
-    );
-  }
+      )}
+    </>
+  );
+}
+
+// Mobile-only disclosure header that summarises the metadata pane in
+// one line and opens to the full content on tap. Uses a native
+// <details> + <summary> for keyboard/AT support and zero dependency
+// cost. Persisted-open state lives one level up via `mobileOpen`.
+function MetadataMobileDisclosure({
+  history,
+  warnings,
+  open,
+  onToggle,
+  children,
+}: {
+  history: RenderResult[];
+  warnings: string[];
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  const summary = `Metadata · ${history.length} render${history.length === 1 ? "" : "s"} · ${
+    warnings.length > 0 ? `${warnings.length} warning${warnings.length === 1 ? "" : "s"}` : "clean"
+  }`;
   return (
-    <DetailLeftRailContent
-      modelPath={modelPath}
-      history={history}
-      state={state}
-      warnings={warnings}
-      presets={presets}
-      activePresetId={activePresetId}
-      modified={modified}
-      onLoadPreset={onLoadPreset}
-      onDeletePreset={onDeletePreset}
-      onSavePreset={onSavePreset}
-      saveRowOpen={saveRowOpen}
-      setSaveRowOpen={setSaveRowOpen}
-      onCollapse={onToggleCollapsed}
-    />
+    <details
+      data-testid="metadata-mobile-disclosure"
+      open={open}
+      onToggle={(e) => {
+        // Sync the persisted state with the native <details> open
+        // attribute. React's controlled <details> is awkward; we
+        // toggle the parent's flag whenever the element's open state
+        // doesn't match.
+        const nextOpen = (e.currentTarget as HTMLDetailsElement).open;
+        if (nextOpen !== open) onToggle();
+      }}
+    >
+      <summary
+        className={clsx(
+          "flex cursor-pointer items-center gap-8 border-b border-line bg-panel px-12 py-8",
+          "font-mono text-10 uppercase tracking-wide text-text-dim",
+          "list-none [&::-webkit-details-marker]:hidden",
+          "hover:text-text",
+        )}
+      >
+        <span
+          aria-hidden="true"
+          className={clsx(
+            "inline-block transition-transform",
+            open ? "rotate-90" : "rotate-0",
+          )}
+        >
+          ▸
+        </span>
+        <span>{summary}</span>
+      </summary>
+      {children}
+    </details>
   );
 }
 
@@ -349,32 +396,16 @@ function DetailLeftRailContent({
   history,
   state,
   warnings,
-  presets,
-  activePresetId,
-  modified,
-  onLoadPreset,
-  onDeletePreset,
-  onSavePreset,
-  saveRowOpen,
-  setSaveRowOpen,
   onCollapse,
 }: {
   modelPath: string;
   history: RenderResult[];
   state: RenderState;
   warnings: string[];
-  presets: Array<{ id: string; label: string; isUser: boolean }>;
-  activePresetId: string | null;
-  modified: boolean;
-  onLoadPreset: (id: string) => void;
-  onDeletePreset: (id: string) => void;
-  onSavePreset: (label: string) => void;
-  saveRowOpen: boolean;
-  setSaveRowOpen: (open: boolean) => void;
   onCollapse?: () => void;
 }) {
   return (
-    <div className="p-10">
+    <div data-testid="detail-left-rail-content" className="p-10">
       {onCollapse && (
         <div className="mb-8 hidden justify-end min-[1200px]:flex">
           <button
@@ -394,74 +425,6 @@ function DetailLeftRailContent({
       <div className="mt-4 block break-all font-mono text-10 text-text-dim">
         {modelPath}
       </div>
-
-      <div className="mt-18 flex items-center justify-between">
-        <span className="font-mono text-10 uppercase tracking-wide text-text-mute">
-          Presets
-        </span>
-        <button
-          type="button"
-          onClick={() => setSaveRowOpen(true)}
-          className="font-mono text-10 text-text-dim hover:text-text"
-          aria-label="Save current params as preset"
-        >
-          + save
-        </button>
-      </div>
-      {saveRowOpen && (
-        <SavePresetRow
-          onSave={(label) => {
-            onSavePreset(label);
-            setSaveRowOpen(false);
-          }}
-          onCancel={() => setSaveRowOpen(false)}
-        />
-      )}
-      <ul
-        data-testid="preset-list"
-        className="mt-4 flex flex-col gap-2 font-mono text-11"
-      >
-        {presets.length === 0 && !saveRowOpen && (
-          <li className="text-text-mute">—</li>
-        )}
-        {presets.map((p) => (
-          <li
-            key={p.id}
-            className={clsx(
-              "flex items-center justify-between gap-6 rounded-3 border border-transparent px-6 py-2",
-              activePresetId === p.id
-                ? "border-accent-line bg-accent-soft text-text"
-                : "text-text-dim hover:border-line hover:text-text",
-            )}
-          >
-            <button
-              type="button"
-              onClick={() => onLoadPreset(p.id)}
-              data-preset-id={p.id}
-              className="flex-1 truncate text-left"
-            >
-              {p.label}
-              {activePresetId === p.id && modified && (
-                <span
-                  data-testid="modified-dot"
-                  aria-label="modified since preset"
-                  className="ml-6 inline-block h-2 w-2 rounded-full bg-warn"
-                />
-              )}
-            </button>
-            {p.isUser && (
-              <button
-                type="button"
-                onClick={() => onDeletePreset(p.id)}
-                aria-label={`Delete preset ${p.label}`}
-                className="text-text-mute hover:text-red"
-              >
-                ✕
-              </button>
-            )}
-          </li>
-        ))}
-      </ul>
 
       <div className="mt-18 font-mono text-10 uppercase tracking-wide text-text-mute">
         Render log
@@ -500,63 +463,6 @@ function DetailLeftRailContent({
           </ul>
         </>
       )}
-    </div>
-  );
-}
-
-function SavePresetRow({
-  onSave,
-  onCancel,
-}: {
-  onSave: (label: string) => void;
-  onCancel: () => void;
-}) {
-  const [label, setLabel] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
-
-  const submit = useCallback(() => {
-    if (!label.trim()) return;
-    onSave(label);
-  }, [label, onSave]);
-
-  return (
-    <div className="mt-4 flex items-center gap-4">
-      <input
-        ref={inputRef}
-        data-testid="save-preset-input"
-        value={label}
-        onChange={(e) => setLabel(e.target.value)}
-        placeholder="Preset name…"
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            submit();
-          } else if (e.key === "Escape") {
-            e.preventDefault();
-            onCancel();
-          }
-        }}
-        className="min-w-0 flex-1 rounded-3 border border-line bg-panel2 px-6 py-2 font-mono text-11 text-text"
-      />
-      <button
-        type="button"
-        onClick={submit}
-        className="rounded-3 border border-accent-line bg-accent px-6 py-2 font-mono text-10 text-accent-ink"
-      >
-        save
-      </button>
-      <button
-        type="button"
-        onClick={onCancel}
-        aria-label="Cancel save"
-        className="font-mono text-10 text-text-mute hover:text-text"
-      >
-        ✕
-      </button>
     </div>
   );
 }
