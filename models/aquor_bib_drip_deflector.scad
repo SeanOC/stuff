@@ -22,48 +22,58 @@
 //   install +Y = outward from wall  (normal to wall plane)
 //   install +Z = up toward ceiling
 //
-// === PRINT ORIENTATION (v12, st-me9) ===
+// === PRINT ORIENTATIONS ===
 //
-// v12 flipped the print pose so the GREEN FLAP lies flat on the
-// build plate (was: blue tab on the bed, v7 through v11). Rationale:
-// bigger first-layer contact area = better adhesion; the VHB face is
-// no longer the bed face but the user will flip/install anyway.
+// `print_orientation` selects the pose that goes to the slicer.
+// Defaults to "side" (v13) — the user's v12 first-print landed a
+// borderline 45° overhang on the bend's underside, right at the FDM
+// no-support threshold. Side-printing rotates the part to stand on
+// one of its X-end corner-tab faces; the bent-plate shape is uniform
+// along its logical X axis (the linear_extrude of `_side_profile`),
+// so every print Z layer is the same 2D side-profile silhouette
+// stacked on the previous — no overhangs anywhere, including the
+// bend.
 //
-// The rotation from the part's logical frame (which is also the
-// OLD print frame) to the NEW print frame is:
-//   rotate([−flap_angle, 0, 0])  then  translate([0, 0, +lift])
-// where `lift = tab_depth·sin(flap_angle) + bend_radius·(1−cos
-// (flap_angle))` puts the flap's underside flush on Z=0. In the new
-// print frame the flap is flat on the bed, the bend curves up from
-// the flap's near end, and the blue tab rises from the bend at
-// `flap_angle` above horizontal. The red wedges, still coplanar
-// with the blue tab in the logical frame, continue that same plane
-// past blue's rear edge — in the new print they stick up above
-// blue's top-back edge.
+// --- "side" (v13, st-97h, default) ---
+//   Transform: rotate([0, -90, 0]) followed by a translate to put
+//     the rotated part's min-Z on Z=0 and shift in X so the bbox
+//     starts at X=0.
+//   Bed face: the part's logical -X end face (one of the two
+//     symmetric corner-tab end faces).
+//   Print bbox at defaults (fa=45°, width=72): roughly
+//     [28, 50, 72] mm — tall and narrow.
+//   First-layer footprint: the X-end's 2D silhouette (the side
+//     profile of the bent plate plus a corner wedge), about
+//     2.5 × 50 mm. Slim — use a slicer brim, or set
+//     `print_foot=true` to add a sacrificial slab.
+//   Install→print axes (verified against the rotate output):
+//     install +X (along bib width)  → print +Z
+//     install +Y (outward from wall) → print +Y
+//     install +Z (up toward ceiling) → print -X
 //
-// Coordinate cheat sheet (logical / old-print axes → new print axes,
-// rotate by −flap_angle about +X):
-//   logical +X                 → new print +X      (unchanged)
-//   logical +Y (toward drip)   → new print +Y·cos(fa) − Z·sin(fa) — forward + slightly down
-//   logical +Z (flap top)      → new print +Y·sin(fa) + Z·cos(fa) — forward + up
+// --- "flap_on_bed" (v12, st-me9, legacy) ---
+//   Transform: rotate([-flap_angle, 0, 0]) then translate(+lift in Z),
+//     where lift = tab_depth·sin(fa) + bend_radius·(1−cos(fa)). The
+//     green flap lies flat on Z=0; the blue tab + red wedges rise at
+//     flap_angle above horizontal.
+//   Print bbox at defaults: [72, 52, 16.8] mm — wide and short.
+//   First-layer footprint: the full flap underside (~32 × 72 mm).
+//   Install→print axes:
+//     install +X                     → print +X (unchanged)
+//     install +Y (toward drip)       → print +Y·cos(fa) − Z·sin(fa)
+//     install +Z (flap top)          → print +Y·sin(fa) + Z·cos(fa)
+//   Trade-off (the v13 motivation): the flap-bottom and tab-bottom
+//     faces both sit at fa from vertical overhang; at fa=45° that's
+//     right at the support-free limit and slicer-dependent.
 //
-// At flap_angle = 45° the blue tab's top face points up-and-forward
-// (normal (0, sin 45°, cos 45°) in new print) and its underside
-// points down-and-backward. Both blue faces are at 45° from
-// horizontal, i.e. 45° from vertical overhang — right at the
-// support-free threshold for typical slicer profiles, which is why
-// `flap_angle` default bumped from 38° → 45° in this revision.
-//
-// Features keyed off this:
-//   - Flap's water-contact face (the one with the V-groove) — still
-//     carved on the plate's `+Z`-in-logical side. In the new print
-//     frame that face ends up UP-facing at Z ≈ plate_thickness;
-//     the groove's concavity faces away from the bed.
-//   - Flap's underside — FLAT on Z=0 across the full flap length
-//     (~32 mm × width ≈ 72 mm). That's the first-layer.
-//   - Red corner wedges extend from blue's rear edge in the logical
-//     −Y direction → in the new print they extend up-and-back from
-//     blue's top corners (the highest point of the part).
+// Features that depend on the pose:
+//   - V-groove on the flap top (logical +Z face): in flap_on_bed
+//     it ends up up-facing near Z = plate_thickness; in side it
+//     ends up at print -X (centered well inside the print bbox).
+//   - Corner wedges (logical Y < 0): in flap_on_bed they tilt up
+//     above the tab's top-rear edge; in side they sit at print Z
+//     near 0 (one wedge) and print Z near `width` (the other),
+//     both as flat-bed-coplanar slices.
 //
 // === GEOMETRY ===
 //
@@ -159,6 +169,21 @@ bend_radius     = 12;   // @param number min=4  max=20  step=0.5 unit=mm  group=
 contour_depth          = 1.5; // @param number min=0   max=3   step=0.25 unit=mm group=shape label="Contour dish depth at the drip edge (tapers from 0 at the bend)"
 contour_side_rim_width = 1.5; // @param number min=0.5 max=8   step=0.25 unit=mm group=shape label="Raised side-rim width on the flap top"
 
+// ----- Print orientation (st-97h) -----
+// "side" (default) stands the part on one X-end corner-tab face so
+// every print Z layer is the same 2D side-profile slice (no overhangs
+// anywhere, including the bend). "flap_on_bed" preserves v12's pose
+// for anyone reprinting the original or with a saved slicer profile.
+print_orientation   = "side";  // @param enum choices=side|flap_on_bed group=print label="Print orientation"
+
+// Optional sacrificial print-foot for the side orientation. The first-
+// layer footprint of side is slim (~2.5 × 50 mm); a slicer brim is the
+// preferred adhesion aid, but a print-foot offers a dimensional spec
+// for cases where the brim isn't enough. Default OFF.
+print_foot          = false; // @param boolean group=print label="Sacrificial print-foot (side orientation only)"
+print_foot_height   = 0.4;   // @param number min=0.2 max=1.0 step=0.1 unit=mm group=print label="Print-foot Z height"
+print_foot_overhang = 1.5;   // @param number min=0 max=4 step=0.25 unit=mm group=print label="Print-foot overhang past part footprint"
+
 // ----- Debug / visualization -----
 // Preview-only tint; does NOT affect the exported STL (colours aren't
 // carried in binary STL). Default on while the corner-filler geometry
@@ -201,26 +226,55 @@ _flap_inner_tip = [_flap_outer_tip[0] - _t * sin(_fa),
 _inner_arc_exit = [_inner_end_y + flap_length * cos(_fa),
                    _inner_end_z + flap_length * sin(_fa)];
 
-// Print-pose transform (st-me9). The logical frame used by all the
-// sub-modules below still has the tab flat on Z=0 and the flap
-// rising at flap_angle above horizontal (the "old" print frame);
-// the new print frame is produced by a final
+// Print-pose transforms.
+//
+// flap_on_bed (v12 / st-me9). The logical frame has the tab flat on
+// Z=0 and the flap rising at flap_angle above horizontal (the "old"
+// print frame); the new print frame is produced by a final
 // `translate([0, 0, _print_lift]) rotate([-flap_angle, 0, 0])`
-// wrapper applied in `aquor_bib_drip_deflector()`. `_print_lift`
-// pushes the flap's underside onto Z=0 — it's the absolute value of
-// the flap-bend outer-arc endpoint's Z coordinate after the rotation.
+// wrapper. `_print_lift` pushes the flap's underside onto Z=0 — it's
+// the absolute value of the flap-bend outer-arc endpoint's Z
+// coordinate after the rotation.
 _print_lift = tab_depth * sin(_fa) + _R * (1 - cos(_fa));
 
-// PRINT_ANCHOR_BBOX at defaults in the NEW print frame (st-me9).
-// With flap_angle = 45° the flap lies flat at Z=0..plate_thickness
-// across Y ≈ 15.56..47.56; blue tab + wedges tilt up at 45° from
-// the bend, reaching Z ≈ 16.8 at the wedge tips. X unchanged at
-// `width` (72 mm default). Y extends from wedge tips (−4.45 mm
-// behind the origin) to the flap drip tip (≈ 47.56 mm), total ≈
-// 52 mm.
-PRINT_ANCHOR_BBOX = [72, 52.01, 16.79];
+// side (v13 / st-97h). rotate([0, -90, 0]) maps logical (X, Y, Z) to
+// world (-Z, Y, X), so logical +X — the linear_extrude axis of the
+// bent plate — becomes print +Z. Translate in Z by `width/2` so the
+// rotated part's min-Z (logical X = -width/2) lands on the bed.
+// Translate in X by `_side_print_x_shift` so the part's bbox starts
+// at print X = 0; the X extent is dominated by the flap's inner-tip
+// logical Z (it's the part's max-Z corner — the flap rises into +Z
+// in the logical frame, which becomes -X in the side print frame).
+_side_print_z_lift  = width / 2;
+_side_print_x_shift = _flap_inner_tip[1] + 0.05;  // tiny pad so X-min lands at +0.05
 
-// @preset id="aquor-72x100" label="Aquor 72×100mm (default)" bib_plate_width=72 bib_plate_height=100 bib_plate_thickness=6 bib_corner_radius=9 corner_tabs=true corner_wedge_clearance=0.4 width=72 tab_depth=10 flap_length=32 flap_angle=45 plate_thickness=2.5 bend_radius=12 contour_depth=1.5 contour_side_rim_width=1.5 debug_colors=true
+// Wedge Y-min: the cylinder cut leaves the wedge material starting
+// at Y = -R + sqrt(2Rc + c²) at the X-end faces (X = ±bib_plate
+// _width/2). At defaults (R=9, c=0.4) that's about Y = -6.29 mm,
+// not -9 mm — the cylinder eats most of the cube's bottom corner.
+_wedge_y_min = -bib_corner_radius
+    + sqrt(2 * bib_corner_radius * corner_wedge_clearance
+           + corner_wedge_clearance * corner_wedge_clearance);
+
+// PRINT_ANCHOR_BBOX at defaults — depends on print_orientation.
+//   flap_on_bed: with flap_angle = 45° the flap lies flat at Z =
+//     0..plate_thickness across Y ≈ 15.56..47.56; blue tab + wedges
+//     tilt up at 45° from the bend, reaching Z ≈ 16.8 at the wedge
+//     tips. X unchanged at `width` (72 mm default). Y extends from
+//     wedge tips (~ −4.45 mm) to the flap drip tip (~ 47.56 mm),
+//     total ≈ 52 mm.
+//   side: rotated to stand on the X-end. X bbox = max logical Z
+//     (≈ flap inner-tip Z); Y bbox = logical Y span from the wedge's
+//     surviving inner edge (_wedge_y_min) to the flap outer tip;
+//     Z bbox = `width`.
+PRINT_ANCHOR_BBOX = print_orientation == "side"
+    ? [_side_print_x_shift + 0.05,
+       _flap_outer_tip[0] - _wedge_y_min,
+       width]
+    : [72, 52.01, 16.79];
+
+// @preset id="aquor-72x100" label="Aquor 72×100mm (default, side)" bib_plate_width=72 bib_plate_height=100 bib_plate_thickness=6 bib_corner_radius=9 corner_tabs=true corner_wedge_clearance=0.4 width=72 tab_depth=10 flap_length=32 flap_angle=45 plate_thickness=2.5 bend_radius=12 contour_depth=1.5 contour_side_rim_width=1.5 print_orientation="side" print_foot=false print_foot_height=0.4 print_foot_overhang=1.5 debug_colors=true
+// @preset id="aquor-72x100-flap-on-bed" label="Aquor 72×100mm (legacy flap_on_bed)" bib_plate_width=72 bib_plate_height=100 bib_plate_thickness=6 bib_corner_radius=9 corner_tabs=true corner_wedge_clearance=0.4 width=72 tab_depth=10 flap_length=32 flap_angle=45 plate_thickness=2.5 bend_radius=12 contour_depth=1.5 contour_side_rim_width=1.5 print_orientation="flap_on_bed" print_foot=false print_foot_height=0.4 print_foot_overhang=1.5 debug_colors=true
 
 // === Geometry ===
 
@@ -409,10 +463,40 @@ module _assembled() {
     }
 }
 
+// Sacrificial print-foot for the side orientation. A thin slab at
+// print Z ∈ [0, print_foot_height] under the bed-contact area, padded
+// outward by `print_foot_overhang` mm. The bed contact at print Z = 0
+// in the side pose is the part's logical X-min slice — a thin band
+// roughly (max logical Z) × (logical Y span) shaped like the side
+// profile + the wedge quarter-pie at Y < 0. Approximate the footprint
+// by the bbox rectangle for adhesion purposes — it's a sacrificial
+// foot, not load-bearing. (st-97h)
+module _print_foot_side() {
+    if (print_foot && print_foot_height > 0) {
+        oh = print_foot_overhang;
+        // Bbox rectangle in print X-Y at Z=0:
+        x0 = -oh;
+        x1 = _side_print_x_shift + 0.05 + oh;
+        y0 = -bib_corner_radius - oh;
+        y1 = _flap_outer_tip[0] + oh;
+        translate([x0, y0, 0])
+            cube([x1 - x0, y1 - y0, print_foot_height]);
+    }
+}
+
 module aquor_bib_drip_deflector() {
-    translate([0, 0, _print_lift])
-        rotate([-_fa, 0, 0])
-            _assembled();
+    if (print_orientation == "side") {
+        union() {
+            translate([_side_print_x_shift, 0, _side_print_z_lift])
+                rotate([0, -90, 0])
+                    _assembled();
+            _print_foot_side();
+        }
+    } else {
+        translate([0, 0, _print_lift])
+            rotate([-_fa, 0, 0])
+                _assembled();
+    }
 }
 
 aquor_bib_drip_deflector();
