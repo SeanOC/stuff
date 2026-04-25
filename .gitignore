@@ -35,6 +35,10 @@ node_modules/
 .next/
 .runtime/
 
+# Next.js auto-generated; regenerated on every dev/build
+next-env.d.ts
+*.tsbuildinfo
+
 # Playwright
 playwright-report/
 test-results/
