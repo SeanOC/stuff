@@ -124,8 +124,9 @@ drain_hole_count        = 3;        // @param integer min=0 max=8 group=geometry
 // can top comfortably when lifting. Lower values still print, but the
 // arch will intrude into the can's vertical envelope.
 handle_height    = 250;  // @param number min=50 max=400 step=1 unit=mm group=handle label="Handle apex height above base"
-handle_post_w    = 14;   // @param number min=6 max=30 step=0.5 unit=mm group=handle label="Handle post width X"
-handle_thickness = 20;   // @param number min=8 max=40 step=0.5 unit=mm group=handle label="Handle thickness Y"
+handle_post_d    = 14;   // @param number min=12 max=30 step=0.5 unit=mm group=handle label="Squared-cylindrical post / crossbar diameter"
+handle_post_w    = 14;   // @param number min=6 max=30 step=0.5 unit=mm group=handle label="Legacy (ogive/semicircular) post width X"
+handle_thickness = 20;   // @param number min=8 max=40 step=0.5 unit=mm group=handle label="Legacy (ogive/semicircular) post thickness Y"
 // Post X position. Must stay within the Y=0 can-free corridor (keeps
 // posts clear of cans at Y=±cell_spacing_y/2) and clear of the middle
 // column ring at X=0. At defaults (post at X=±40, inner post edge at
@@ -140,22 +141,26 @@ arch_style        = "squared"; // @param enum choices=squared|ogive|semicircular
 arch_point_offset = 1.4;       // @param number min=1.1 max=2.5 step=0.05 group=handle label="Ogive point offset (k-factor)"
 corner_fillet     = 4;         // @param number min=0 max=10 step=0.25 unit=mm group=handle label="Squared-handle crossbar corner fillet"
 
-// ----- Post-to-base reinforcement (st-qt4) -----
-post_base_gussets = true;  // @param boolean group=handle label="Post-base gussets (±X faces)"
-gusset_base_len   = 10;    // @param number min=0 max=25 step=0.5 unit=mm group=handle label="Gusset base length (X)"
-gusset_height     = 12;    // @param number min=0 max=30 step=0.5 unit=mm group=handle label="Gusset height (Z)"
-gusset_thickness  = 3;     // @param number min=1 max=8  step=0.5 unit=mm group=handle label="Gusset thickness (Y)"
-post_flare        = true;  // @param boolean group=handle label="Post bottom flare"
-flare_height      = 10;    // @param number min=0 max=25 step=0.5 unit=mm group=handle label="Flare height (Z)"
-flare_width       = 4;     // @param number min=0 max=10 step=0.25 unit=mm group=handle label="Flare widening (each side)"
+// ----- Post-base reinforcement (st-4ac) -----
+// Conical flare at the bottom of each post, replacing the v-prior
+// gussets. The flare diameter at the bed is `handle_post_d +
+// 2·flare_width`, tapering linearly up to `handle_post_d` over
+// `flare_height`. Replaces bending moment-absorbing gussets with a
+// single axisymmetric cone — simpler, fewer edge artefacts, still
+// effective as post-base reinforcement. Legacy ogive/semicircular
+// arch styles use the same flare; their rectangular posts keep the
+// prismoid-flare implementation.
+post_flare   = true;  // @param boolean group=handle label="Post bottom flare"
+flare_height = 12;    // @param number min=0 max=25 step=0.5 unit=mm group=handle label="Flare height (Z)"
+flare_width  = 5;     // @param number min=0 max=10 step=0.25 unit=mm group=handle label="Flare widening (radial, each side)"
 
 // ----- Edge treatment -----
 fillet_r  = 2;   // @param number min=0 max=5 step=0.25 unit=mm group=handle label="Fillet radius (posts + arch Y-faces)"
 chamfer_r = 1;   // @param number min=0 max=3 step=0.25 unit=mm group=handle label="Chamfer radius"
 
-// @preset id="stock" label="Stock 2×3 / 50mm (squared, compact)" can_diameter=50 can_height=195 clearance=0.75 ring_height=35 wall=3 rows=2 cols=3 cell_spacing_x=60 cell_spacing_y=90 front_opening_deg=100 base_thickness=3 base_margin_handle_side=0 base_margin_other_side=0 drain_hole_d=5 drain_hole_count=3 handle_height=250 handle_post_w=14 handle_thickness=20 post_center_x=40 arch_style="squared" arch_point_offset=1.4 corner_fillet=4 post_base_gussets=true gusset_base_len=10 gusset_height=12 gusset_thickness=3 post_flare=true flare_height=10 flare_width=4 fillet_r=2 chamfer_r=1
-// @preset id="legacy-ogive" label="Legacy ogive (st-qt4)" can_diameter=50 can_height=195 clearance=0.75 ring_height=35 wall=3 rows=2 cols=3 cell_spacing_x=60 cell_spacing_y=90 front_opening_deg=100 base_thickness=3 base_margin_handle_side=18 base_margin_other_side=5 drain_hole_d=5 drain_hole_count=3 handle_height=250 handle_post_w=14 handle_thickness=20 post_center_x=94 arch_style="ogive" arch_point_offset=1.4 corner_fillet=4 post_base_gussets=true gusset_base_len=10 gusset_height=12 gusset_thickness=3 post_flare=true flare_height=10 flare_width=4 fillet_r=2 chamfer_r=1
-// @preset id="legacy-semicircular" label="Legacy semicircular (v-prior)" can_diameter=50 can_height=195 clearance=0.75 ring_height=35 wall=3 rows=2 cols=3 cell_spacing_x=60 cell_spacing_y=90 front_opening_deg=100 base_thickness=3 base_margin_handle_side=18 base_margin_other_side=5 drain_hole_d=5 drain_hole_count=3 handle_height=250 handle_post_w=14 handle_thickness=20 post_center_x=94 arch_style="semicircular" arch_point_offset=1.4 corner_fillet=4 post_base_gussets=false gusset_base_len=10 gusset_height=12 gusset_thickness=3 post_flare=false flare_height=10 flare_width=4 fillet_r=2 chamfer_r=1
+// @preset id="stock" label="Stock 2×3 / 50mm (cylindrical, compact)" can_diameter=50 can_height=195 clearance=0.75 ring_height=35 wall=3 rows=2 cols=3 cell_spacing_x=60 cell_spacing_y=90 front_opening_deg=100 base_thickness=3 base_margin_handle_side=0 base_margin_other_side=0 drain_hole_d=5 drain_hole_count=3 handle_height=250 handle_post_d=14 handle_post_w=14 handle_thickness=20 post_center_x=40 arch_style="squared" arch_point_offset=1.4 corner_fillet=8 post_flare=true flare_height=12 flare_width=5 fillet_r=2 chamfer_r=1
+// @preset id="legacy-ogive" label="Legacy ogive (st-qt4)" can_diameter=50 can_height=195 clearance=0.75 ring_height=35 wall=3 rows=2 cols=3 cell_spacing_x=60 cell_spacing_y=90 front_opening_deg=100 base_thickness=3 base_margin_handle_side=18 base_margin_other_side=5 drain_hole_d=5 drain_hole_count=3 handle_height=250 handle_post_d=14 handle_post_w=14 handle_thickness=20 post_center_x=94 arch_style="ogive" arch_point_offset=1.4 corner_fillet=4 post_flare=true flare_height=12 flare_width=5 fillet_r=2 chamfer_r=1
+// @preset id="legacy-semicircular" label="Legacy semicircular (v-prior)" can_diameter=50 can_height=195 clearance=0.75 ring_height=35 wall=3 rows=2 cols=3 cell_spacing_x=60 cell_spacing_y=90 front_opening_deg=100 base_thickness=3 base_margin_handle_side=18 base_margin_other_side=5 drain_hole_d=5 drain_hole_count=3 handle_height=250 handle_post_d=14 handle_post_w=14 handle_thickness=20 post_center_x=94 arch_style="semicircular" arch_point_offset=1.4 corner_fillet=4 post_flare=false flare_height=12 flare_width=5 fillet_r=2 chamfer_r=1
 
 // === Derived ===
 
@@ -165,8 +170,17 @@ ring_od = ring_id + 2 * wall;
 function cell_x(c) = (c - (cols - 1) / 2) * cell_spacing_x;
 function cell_y(r) = (r - (rows - 1) / 2) * cell_spacing_y;
 
-base_w = cell_spacing_x * (cols - 1) + ring_od + 2 * base_margin_handle_side;
-base_d = cell_spacing_y * (rows - 1) + ring_od + 2 * base_margin_other_side;
+// Base is sized so the TOP FACE is flush with the outermost ring
+// ODs (st-4ac). The baseplate's top edges are rounded by `fillet_r`,
+// which shrinks the top-face extent relative to base_w/base_d by
+// that radius; without the compensation the rings poked over the
+// top-face rim into the rounded-edge curve. So the baseplate total
+// extent is ring_span + 2·fillet_r + 2·margin, leaving the top face
+// at ring_span + 2·margin exactly.
+_ring_span_x = cell_spacing_x * (cols - 1) + ring_od;
+_ring_span_y = cell_spacing_y * (rows - 1) + ring_od;
+base_w = _ring_span_x + 2 * (fillet_r + base_margin_handle_side);
+base_d = _ring_span_y + 2 * (fillet_r + base_margin_other_side);
 
 // Handle-post X span. `post_center_x` is now a user-tunable @param
 // (st-kyz). Posts live at Y=0 on the handle-axis corridor; see the
@@ -175,13 +189,14 @@ post_outer_x  = post_center_x + handle_post_w / 2;
 post_inner_x  = post_center_x - handle_post_w / 2;
 
 // Arch apex height above the post tops:
-//   - squared: the crossbar height IS the apex rise (handle_post_w).
+//   - squared: the cylindrical crossbar's diameter IS the apex rise
+//     (handle_post_d).
 //   - semicircular: radius = post_outer_x, apex rises by post_outer_x.
 //   - ogive: two arcs with centers at (±k·post_outer_x, post_top) and
 //     radius (k+1)·post_outer_x. The apex sits at X=0 at a height
 //     post_outer_x · sqrt(2k+1) above the post tops.
 arch_apex_rise =
-    arch_style == "squared" ? handle_post_w
+    arch_style == "squared" ? handle_post_d
   : arch_style == "ogive"   ? post_outer_x * sqrt(2 * arch_point_offset + 1)
   :                           post_outer_x;  // semicircular
 
@@ -193,14 +208,14 @@ arch_apex_rise =
 // posts (e.g. to clear a can-plus-grip band), increase handle_height.
 arch_z_start = handle_height - arch_apex_rise;
 
-// PRINT_ANCHOR_BBOX at defaults. With compact margins (both 0) and
-// posts pulled in to ±40 (st-kyz):
-//   X = base_w = cell_spacing_x*(cols-1) + ring_od = 120 + 57.5 = 177.5
-//   Y = base_d = cell_spacing_y*(rows-1) + ring_od = 90  + 57.5 = 147.5
+// PRINT_ANCHOR_BBOX at defaults (st-4ac). Base extent now includes
+// fillet_r on each side so the rounded top edges don't clip the
+// outer rings; with margin=0 that yields base 181.5 × 151.5 at
+// defaults. Z still dominated by handle_height + base_thickness.
+//   X = _ring_span_x + 2·fillet_r = 177.5 + 4 = 181.5
+//   Y = _ring_span_y + 2·fillet_r = 147.5 + 4 = 151.5
 //   Z = base_thickness + handle_height = 3 + 250 = 253
-// The posts (X=±40±7) and crossbar (spans X=±47) sit well within the
-// baseplate X footprint.
-PRINT_ANCHOR_BBOX = [177.5, 147.5, 253];
+PRINT_ANCHOR_BBOX = [181.5, 151.5, 253];
 
 // ================= Base plate =================
 
@@ -318,49 +333,104 @@ post_top_z = base_thickness + arch_z_start;
 post_arch_overlap = 1;
 post_h = post_top_z + post_arch_overlap;
 
-// Outer gusset X-reach is clamped so the gusset doesn't cantilever past
-// the baseplate. Inner gusset reaches the default length (there's
-// ample room between the post's inner face and the carrier centerline).
-_outer_gusset_len_limit = max(0, base_w / 2 - post_outer_x);
-_outer_gusset_len = min(gusset_base_len, _outer_gusset_len_limit);
-_inner_gusset_len = gusset_base_len;
-
 module handle() {
-    for (sx = [-1, 1]) {
-        _post(sx);
-        if (post_base_gussets) _post_gussets(sx);
+    if (arch_style == "squared") {
+        _handle_squared_cyl();
+    } else {
+        // Legacy rectangular posts + ogive/semicircular arch.
+        for (sx = [-1, 1]) _post_rect(sx);
+        if (arch_style == "ogive") _arch_ogive();
+        else                       _arch_semicircle();
     }
-    if      (arch_style == "squared") _arch_squared();
-    else if (arch_style == "ogive")   _arch_ogive();
-    else                              _arch_semicircle();
 }
 
-// --- Squared / toolbox crossbar (st-kyz, new default) ---
-// Horizontal crossbar sitting on top of the two posts. Cross-section
-// `handle_post_w × handle_thickness` — the crossbar is the same
-// thickness (Y) as the posts, so post sides and crossbar Y-faces are
-// flush. Extends in X to ±post_outer_x so its outer faces line up
-// with the posts' outer faces. Bridges `2·post_inner_x` of open air
-// between the posts — trivially bridgeable at default defaults
-// (~66 mm between post inner faces). Rounded at the 4 X-Z corners
-// with `corner_fillet` so the silhouette has a toolbox-ish soft top.
-module _arch_squared() {
-    crossbar_w = 2 * post_outer_x;
-    translate([0, 0, post_top_z + handle_post_w / 2])
-        cuboid([crossbar_w, handle_thickness, handle_post_w],
-               rounding = corner_fillet,
-               edges    = "Y");
+// --- Squared / toolbox cylindrical handle (st-4ac) ---
+// Two vertical rods + one horizontal crossbar rod + conical flares
+// at each post base + hull() corner fillets blending the post tops
+// into the crossbar ends. No gussets — the flare carries the
+// bending-moment reinforcement by itself.
+//
+// Post cylinders run from Z=0 up to the crossbar axis (so the
+// post's top disk-face is INSIDE the crossbar, which welds them
+// together with no seam). The corner hull connects a thin slice of
+// the post near its top with a thin slice of the crossbar near its
+// endpoint — giving a smoothly blended inside-corner.
+module _handle_squared_cyl() {
+    post_r          = handle_post_d / 2;
+    apex_z          = base_thickness + handle_height;   // top of crossbar
+    crossbar_axis_z = apex_z - post_r;
+    // Post extends to crossbar's axis height so the two cylinders
+    // overlap by post_r at the junction.
+    post_total_h    = crossbar_axis_z;
+
+    for (sx = [-1, 1]) {
+        _post_cyl(sx, post_r, post_total_h);
+        _handle_corner_fillet(sx, post_r, crossbar_axis_z);
+    }
+    _crossbar_cyl(post_r, crossbar_axis_z);
 }
 
-// A single handle post. Optionally flared over the lowest flare_height
-// of its Z extent. Above flare_height the post is the plain filleted
-// cuboid from the v-prior design.
-module _post(sx) {
+// A single cylindrical post with optional conical flare at the base.
+// The post runs from Z=0 (below the baseplate surface) up to the
+// crossbar axis height so the post-top disk sits inside the
+// crossbar — union cleans up the seam.
+module _post_cyl(sx, post_r, post_total_h) {
+    translate([sx * post_center_x, 0, 0]) {
+        if (post_flare && flare_height > 0 && flare_width > 0) {
+            // Conical flare from (post_r + flare_width) at bed to
+            // post_r at flare_height. Above that, a straight cylinder
+            // up to the crossbar axis.
+            cylinder(h = flare_height,
+                     r1 = post_r + flare_width,
+                     r2 = post_r);
+            translate([0, 0, flare_height])
+                cylinder(h = post_total_h - flare_height, r = post_r);
+        } else {
+            cylinder(h = post_total_h, r = post_r);
+        }
+    }
+}
+
+// Horizontal cylinder (crossbar) spanning between the two post
+// axes. Diameter matches the posts for visual uniformity. Extends
+// slightly past each post axis (by post_r) so its endpoint sits
+// inside the post cylinder — union merges the seam.
+module _crossbar_cyl(post_r, crossbar_axis_z) {
+    crossbar_len = 2 * post_center_x + 2 * post_r;
+    translate([-post_center_x - post_r, 0, crossbar_axis_z])
+        rotate([0, 90, 0])
+            cylinder(h = crossbar_len, r = post_r);
+}
+
+// Inside-corner fillet at a post-crossbar junction. Implemented as
+// `hull()` of two thin disks: one at the post's top slice and one
+// at the crossbar's endpoint slice, both oriented so the hull
+// interpolates smoothly around the inside of the U. Bulges a
+// `corner_fillet`-sized blend into the otherwise-sharp junction.
+module _handle_corner_fillet(sx, post_r, crossbar_axis_z) {
+    if (corner_fillet <= 0) {
+        // no-op
+    } else {
+        // Post top slice (thin horizontal disk, slightly below the
+        // crossbar axis).
+        hull() {
+            translate([sx * post_center_x, 0, crossbar_axis_z - corner_fillet])
+                cylinder(h = 0.01, r = post_r);
+            // Crossbar slice, corner_fillet inside the endpoint.
+            translate([sx * (post_center_x - corner_fillet), 0, crossbar_axis_z])
+                rotate([0, 90, 0])
+                    cylinder(h = 0.01, r = post_r);
+        }
+    }
+}
+
+// --- Legacy rectangular post (for ogive / semicircular styles) ---
+// Same prismoid-flared post the v-prior design used. Kept for the
+// non-squared arch styles which assume rectangular post cross-
+// sections in their arch-silhouette math.
+module _post_rect(sx) {
     cx = sx * post_center_x;
     if (post_flare && flare_height > 0 && flare_width > 0) {
-        // Flared base: prismoid from (hpw + 2fw, hth + 2fw) at z=0 to
-        // (hpw, hth) at z=flare_height. BOSL2 prismoid anchors to BOTTOM
-        // so `translate([cx, 0, 0])` puts its base flush on the ground.
         translate([cx, 0, 0])
             prismoid(
                 size1 = [handle_post_w + 2 * flare_width,
@@ -369,7 +439,6 @@ module _post(sx) {
                 h     = flare_height,
                 anchor = BOTTOM
             );
-        // Unflared section above the flare. Z ∈ [flare_height, post_h].
         straight_h = post_h - flare_height;
         translate([cx, 0, flare_height + straight_h / 2])
             cuboid([handle_post_w, handle_thickness, straight_h],
@@ -380,42 +449,6 @@ module _post(sx) {
             cuboid([handle_post_w, handle_thickness, post_h],
                    rounding = fillet_r,
                    edges = "Z");
-    }
-}
-
-// Four gussets per post pair (two per post, on the +X and -X faces).
-// Each is a right-triangle prism in the XZ plane: base along X from the
-// post face outward by `gl`, height along Z from the baseplate top to
-// `base_thickness + gusset_height`. Thickness in Y = gusset_thickness
-// centered on the post.
-module _post_gussets(sx) {
-    for (side = [+1, -1]) {
-        // side = +1 → gusset on the post face further from the carrier
-        // center (outer); side = -1 → inner face. Post faces sit at
-        //   outer face: sx * post_outer_x
-        //   inner face: sx * post_inner_x
-        face_x = sx * (side > 0 ? post_outer_x : post_inner_x);
-        gl = side > 0 ? _outer_gusset_len : _inner_gusset_len;
-        if (gl > 0 && gusset_height > 0) {
-            // The triangle in XZ (extruded along Y):
-            //   A = (face_x, base_thickness)                — inner corner at post+base
-            //   B = (face_x + sx*side*gl, base_thickness)   — outer tip at base level
-            //   C = (face_x, base_thickness + gusset_height) — top corner at post
-            // The X offset uses sx*side so the gusset always grows AWAY
-            // from the post face: +sx for outer (away from center), -sx
-            // for inner (toward center).
-            ax = face_x;
-            bx = face_x + sx * side * gl;
-            z0 = base_thickness;
-            z1 = base_thickness + gusset_height;
-            translate([0, 0, 0])
-                rotate([90, 0, 0])
-                    translate([0, 0, -gusset_thickness / 2])
-                        linear_extrude(height = gusset_thickness)
-                            polygon([[ax, z0],
-                                     [bx, z0],
-                                     [ax, z1]]);
-        }
     }
 }
 
