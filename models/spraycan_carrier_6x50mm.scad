@@ -3,82 +3,66 @@
 //
 // Parametric 2x3 spray-can tote carrier. Six open-front C-ring cradles
 // (same geometry family as the 70mm preset of cylindrical_holder_slot.scad,
-// minus the Multiboard backer) sit on a drainage base plate, with an
-// arched handle spanning the long axis for standalone carry.
+// minus the Multiboard backer) sit on a drainage base plate, with a
+// squared/toolbox-style cylindrical handle spanning the long axis for
+// standalone carry: two vertical cylindrical posts plus a horizontal
+// cylindrical crossbar bridging their tops, with quarter-torus tangent-
+// arc blends at the inside corners (st-y1q) and concave quarter-ellipse
+// flares at each post base (st-y1q).
 //
 // === Load-bearing invariants (don't regress) ===
 //
 //   - `cell_spacing_y = 90` (st-8ac). The two rows must sit 90 mm
-//     apart in Y so the handle thickness (±handle_thickness/2 at Y=0)
-//     fits in the can-free corridor between them. At defaults the
-//     can rims reach Y = ±20 from each row centre; the Y=0 corridor
-//     is 50 mm wide (±25) — plenty for a 20 mm-thick handle. Reducing
-//     cell_spacing_y below 90 would re-introduce the st-8ac can-over-
-//     handle collision.
+//     apart in Y so the handle posts (at Y=0) don't sit over a can.
+//     At defaults the can rims reach Y = ±20 from each row centre;
+//     the Y=0 corridor is 50 mm wide (±25). Reducing cell_spacing_y
+//     below 90 would re-introduce the st-8ac can-over-handle
+//     collision.
 //   - **Handle posts live at Y=0.** Any other Y places a post over a
 //     can. Don't move them.
+//   - **Handle posts must clear the middle-column ring at X=0.** Each
+//     post's inner X edge sits at handle_width/2 − handle_post_d/2;
+//     the middle ring's outer edge sits at ring_od/2. Reducing
+//     `handle_width` below ~72 mm at default ring/post sizes pulls
+//     the posts into the middle ring. The @param min on
+//     `handle_width` enforces the safe floor for the default
+//     config; tweaking can_diameter/wall/handle_post_d may require
+//     adjusting it.
 //
-// Handle clearance (st-8ac context): the cell spacings enable the
-// handle to pass through the middle of the array without ever sitting
-// over a can. The handle apex also sits above can_height + a grip-
-// clearance band so a full-height can seats fully and the carrier
-// can be lifted with cans in place.
+// Handle clearance (st-8ac context): the cell spacings put the handle
+// posts in the middle of the array without sitting over a can. The
+// handle apex also sits above can_height + a grip-clearance band so
+// a full-height can seats fully and the carrier can be lifted with
+// cans in place.
 //
-// Arch styles (`arch_style` param):
-//   - "squared" (st-kyz, default) — toolbox handle: two vertical
-//     cylindrical posts plus a horizontal cylindrical crossbar
-//     bridging their tops. Each post-to-crossbar inside corner is a
-//     true tangent-arc blend (st-y1q): a quarter-torus of tube
-//     radius `handle_post_d/2` swept on a radius of `corner_sweep_r`
-//     (default 12 mm), tangent-vertical at the post end and tangent-
-//     horizontal at the crossbar end. The blend replaces the v-prior
-//     hull-of-two-disks corner, which read as a chamfer rather than
-//     a sweep. Posts shorten and the crossbar shortens to make room
-//     for the swept blend; both junctions overlap the torus by 1 mm
-//     to dodge the zero-thickness coincident-face issue from st-v7k.
-//     Crossbar bridge = 2·(post_center_x − corner_sweep_r)
-//     (~56 mm at defaults) — comfortably bridgeable without supports.
-//     Legacy `corner_fillet` is a no-op for the squared style; kept
-//     in the param list only for backward compat with old presets.
-//   - "ogive" (st-qt4) — two circular arcs meeting at a point above
-//     the centerline. Each arc's center sits on the opposite side of
-//     the arch at X = ±k·post_outer_x with radius (k+1)·post_outer_x
-//     (so each arc passes through the opposite post top AND through
-//     the apex). `arch_point_offset` is k; 1.4 is the default
-//     pointed-but-not-extreme setting.
-//   - "semicircular" — the v-prior shape (rotate_extrude of a filleted
-//     rectangle, landed in st-djm b855a35). Kept as a legacy choice.
-//     Its apex is a long horizontal bridge, known-problematic for
-//     some slicers.
+// Compact footprint (st-kyz): posts pulled inward from the base
+// edges (default `handle_width = 80` → post centres at X=±40, was
+// derived from `base_w/2 − …` ≈ 94 mm) and the base margins zeroed.
+// Baseplate hugs the ring array with no slack.
 //
-// Compact footprint (st-kyz): posts were pulled inward from the base
-// edges (new default `post_center_x = 40`, was derived from
-// `base_w/2 - ...` ≈ 94 mm) and the base margins zeroed (was 18 mm
-// handle-side + 5 mm other-side). Baseplate now hugs the ring array
-// with no slack; the handle posts live in the Y=0 corridor between
-// the inner edges of the middle-column rings (see invariant above).
+// Post-to-base reinforcement (st-4ac, refined st-y1q): a concave
+// quarter-ellipse flare at each post's base, swept around the post
+// axis via `rotate_extrude` of a 2D radial profile. Tangent-
+// horizontal where the flare meets the baseplate (smooth fillet)
+// and tangent-vertical where it meets the post wall. Semi-axes
+// flare_width radial × flare_height vertical. Replaces the v-prior
+// gussets-plus-linear-cone pair with a single axisymmetric organic
+// blend.
 //
-// Handle post-to-base reinforcement (st-qt4): the posts used to be a
-// bare 14×20 mm cuboid meeting the baseplate at a sharp corner, which
-// took the arch's bending moment at its most stress-concentrated spot.
-// Two additions soften that joint:
-//   - **Gussets** (`post_base_gussets`, on by default): small triangular
-//     fillet prisms on the +X and -X faces of each post, with legs
-//     along the baseplate (X) and up the post (Z). The outer gusset's
-//     reach in X is clamped to available baseplate room so it can't
-//     cantilever over the edge.
-//   - **Bottom flare** (`post_flare`, on by default): over the lowest
-//     `flare_height` of each post, the cross-section tapers linearly
-//     from (handle_post_w + 2·flare_width) × (handle_thickness +
-//     2·flare_width) at z=0 down to the unflared post size at
-//     z=flare_height. Adds section modulus right at the joint without
-//     altering the grip above.
+// Post→crossbar inside corners (st-y1q): a quarter-torus tangent-arc
+// blend at each junction, tube radius = handle_post_d/2, sweep
+// radius = `corner_sweep_r`. Tangent-vertical at the post end,
+// tangent-horizontal at the crossbar end. Posts shorten by
+// corner_sweep_r so their tops meet the start of the sweep;
+// crossbar shortens by corner_sweep_r on each end. 1 mm overlap on
+// each junction (st-v7k) avoids zero-thickness coincident faces in
+// preview.
 //
-// Print orientation: base down, handle up. The ogive arch is self-
-// supporting everywhere (each arc's tangent tips past the bridge-free
-// slope well before it reaches the apex). For `arch_style="semicircular"`
-// the apex is a horizontal bridge and a slicer bridging pass is needed
-// — this is what the user's first-print caught.
+// Print orientation: base down, handle up. The crossbar's apex is a
+// short horizontal segment (~2·post_center_x − 2·corner_sweep_r =
+// ~56 mm at defaults), comfortably bridgeable. The corner sweep is
+// self-supporting at every angle (45° tangent at the post end,
+// horizontal at the crossbar end, radius of curvature = post_r).
 //
 // Wet-safe: the base drops water through four radial slots under each
 // cradle (selectable between 'slots', 'holes', or 'open' via
@@ -88,13 +72,9 @@
 //
 // Kid-safe: base has rounded top-rim + vertical corners (bottom rim
 // stays sharp so it prints flush against the build plate — st-so7),
-// handle posts are filleted (BOSL2 cuboid rounding), cradle top rims
-// get an outer chamfer plus an inner lead-in, and the handle arch's
-// X-Z corners are rounded by construction. The semicircular variant
-// carries fillet_r on its Y-face edges (rotate_extrude of a filleted
-// rectangle profile — st-djm). The ogive variant has sharp Y-face
-// edges by default; the post→arch junction is continuous via the
-// post's matching fillet_r + shared handle_post_w footprint.
+// cradle top rims get an outer chamfer plus an inner lead-in, and
+// the handle is all cylindrical surfaces and tangent blends — no
+// sharp edges to break.
 
 include <BOSL2/std.scad>
 include <BOSL2/rounding.scad>
@@ -133,47 +113,29 @@ drain_hole_count        = 3;        // @param integer min=0 max=8 group=geometry
 // can top comfortably when lifting. Lower values still print, but the
 // arch will intrude into the can's vertical envelope.
 handle_height    = 250;  // @param number min=50 max=400 step=1 unit=mm group=handle label="Handle apex height above base"
-handle_post_d    = 14;   // @param number min=12 max=30 step=0.5 unit=mm group=handle label="Squared-cylindrical post / crossbar diameter"
-handle_post_w    = 14;   // @param number min=6 max=30 step=0.5 unit=mm group=handle label="Legacy (ogive/semicircular) post width X"
-handle_thickness = 20;   // @param number min=8 max=40 step=0.5 unit=mm group=handle label="Legacy (ogive/semicircular) post thickness Y"
-// Post X position. Must stay within the Y=0 can-free corridor (keeps
-// posts clear of cans at Y=±cell_spacing_y/2) and clear of the middle
-// column ring at X=0. At defaults (post at X=±40, inner post edge at
-// ±33) that leaves ~5 mm gap to the middle ring (ring_od/2 ≈ 28.75).
-post_center_x    = 40;   // @param number min=40 max=120 step=0.5 unit=mm group=handle label="Handle post X centre"
-
-// ----- Arch style (st-qt4) -----
-// `squared` = toolbox-style posts + crossbar (new default, st-kyz);
-// `ogive` = pointed arch, self-supporting; `semicircular` = the v-prior
-// half-donut arch (legacy; apex bridges horizontally).
-arch_style        = "squared"; // @param enum choices=squared|ogive|semicircular group=handle label="Arch style"
-arch_point_offset = 1.4;       // @param number min=1.1 max=2.5 step=0.05 group=handle label="Ogive point offset (k-factor)"
-corner_sweep_r    = 12;        // @param number min=0 max=25 step=0.5 unit=mm group=handle label="Squared-handle corner sweep radius (st-y1q)"
-corner_fillet     = 4;         // @param number min=0 max=10 step=0.25 unit=mm group=handle label="Legacy squared-handle corner fillet (no-op since st-y1q)"
+// handle_width is the centre-to-centre span between the two posts in X
+// (st-q1y). Default 80 mm matches the v-prior post_center_x=40. Floor
+// of 72 mm keeps the post inner edges clear of the middle-column ring
+// outer edge at default ring_od (≈57.5) and handle_post_d (14). See
+// the load-bearing-invariants header.
+handle_width     = 80;   // @param number min=72 max=180 step=1 unit=mm group=handle label="Handle width — post-centre to post-centre span (X)"
+handle_post_d    = 14;   // @param number min=12 max=30 step=0.5 unit=mm group=handle label="Handle post / crossbar diameter"
+corner_sweep_r   = 12;   // @param number min=0 max=25 step=0.5 unit=mm group=handle label="Squared-handle corner sweep radius (st-y1q)"
 
 // ----- Post-base reinforcement (st-4ac, refined st-y1q) -----
-// Concave quarter-ellipse flare at the bottom of each squared-style
-// post, replacing the v-prior linear cone. The flare profile is a
-// 2D arc swept around the post axis via `rotate_extrude`; the arc
-// is tangent-horizontal where it meets the baseplate (so the
-// transition is a smooth fillet rather than a chamfer) and tangent-
-// vertical where it meets the post wall (so the post→flare
-// transition is also smooth). Semi-axes: flare_width radial,
-// flare_height vertical. Legacy ogive/semicircular arch styles keep
-// the prismoid linear-taper flare on their rectangular posts —
-// their 2D-extrude arch maths assume rectangular post cross-
-// sections, so the cylindrical-flare path doesn't apply there.
+// Concave quarter-ellipse flare at the bottom of each post, swept via
+// `rotate_extrude` around the post axis. Tangent-horizontal at the
+// baseplate, tangent-vertical at the post wall.
 post_flare   = true;  // @param boolean group=handle label="Post bottom flare"
 flare_height = 12;    // @param number min=0 max=25 step=0.5 unit=mm group=handle label="Flare height (Z)"
 flare_width  = 5;     // @param number min=0 max=10 step=0.25 unit=mm group=handle label="Flare widening (radial, each side)"
 
 // ----- Edge treatment -----
-fillet_r  = 2;   // @param number min=0 max=5 step=0.25 unit=mm group=handle label="Fillet radius (posts + arch Y-faces)"
-chamfer_r = 1;   // @param number min=0 max=3 step=0.25 unit=mm group=handle label="Chamfer radius"
+fillet_r  = 2;   // @param number min=0 max=5 step=0.25 unit=mm group=handle label="Base-plate top-rim fillet radius"
+chamfer_r = 1;   // @param number min=0 max=3 step=0.25 unit=mm group=handle label="Cradle top-rim chamfer radius"
 
-// @preset id="stock" label="Stock 2×3 / 50mm (cylindrical, compact)" can_diameter=50 can_height=195 clearance=0.75 ring_height=35 wall=3 rows=2 cols=3 cell_spacing_x=60 cell_spacing_y=90 front_opening_deg=100 base_thickness=3 base_margin_handle_side=0 base_margin_other_side=0 drain_hole_d=5 drain_hole_count=3 handle_height=250 handle_post_d=14 handle_post_w=14 handle_thickness=20 post_center_x=40 arch_style="squared" arch_point_offset=1.4 corner_sweep_r=12 corner_fillet=8 post_flare=true flare_height=12 flare_width=5 fillet_r=2 chamfer_r=1
-// @preset id="legacy-ogive" label="Legacy ogive (st-qt4)" can_diameter=50 can_height=195 clearance=0.75 ring_height=35 wall=3 rows=2 cols=3 cell_spacing_x=60 cell_spacing_y=90 front_opening_deg=100 base_thickness=3 base_margin_handle_side=18 base_margin_other_side=5 drain_hole_d=5 drain_hole_count=3 handle_height=250 handle_post_d=14 handle_post_w=14 handle_thickness=20 post_center_x=94 arch_style="ogive" arch_point_offset=1.4 corner_fillet=4 post_flare=true flare_height=12 flare_width=5 fillet_r=2 chamfer_r=1
-// @preset id="legacy-semicircular" label="Legacy semicircular (v-prior)" can_diameter=50 can_height=195 clearance=0.75 ring_height=35 wall=3 rows=2 cols=3 cell_spacing_x=60 cell_spacing_y=90 front_opening_deg=100 base_thickness=3 base_margin_handle_side=18 base_margin_other_side=5 drain_hole_d=5 drain_hole_count=3 handle_height=250 handle_post_d=14 handle_post_w=14 handle_thickness=20 post_center_x=94 arch_style="semicircular" arch_point_offset=1.4 corner_fillet=4 post_flare=false flare_height=12 flare_width=5 fillet_r=2 chamfer_r=1
+// @preset id="stock" label="Stock 2×3 / 50mm" can_diameter=50 can_height=195 clearance=0.75 ring_height=35 wall=3 rows=2 cols=3 cell_spacing_x=60 cell_spacing_y=90 front_opening_deg=100 base_thickness=3 base_margin_handle_side=0 base_margin_other_side=0 drain_hole_d=5 drain_hole_count=3 handle_height=250 handle_width=80 handle_post_d=14 corner_sweep_r=12 post_flare=true flare_height=12 flare_width=5 fillet_r=2 chamfer_r=1
+// @preset id="wide-grip" label="Wide grip (handle_width=120)" can_diameter=50 can_height=195 clearance=0.75 ring_height=35 wall=3 rows=2 cols=3 cell_spacing_x=60 cell_spacing_y=90 front_opening_deg=100 base_thickness=3 base_margin_handle_side=0 base_margin_other_side=0 drain_hole_d=5 drain_hole_count=3 handle_height=250 handle_width=120 handle_post_d=14 corner_sweep_r=12 post_flare=true flare_height=12 flare_width=5 fillet_r=2 chamfer_r=1
 
 // === Derived ===
 
@@ -195,36 +157,14 @@ _ring_span_y = cell_spacing_y * (rows - 1) + ring_od;
 base_w = _ring_span_x + 2 * (fillet_r + base_margin_handle_side);
 base_d = _ring_span_y + 2 * (fillet_r + base_margin_other_side);
 
-// Handle-post X span. `post_center_x` is now a user-tunable @param
-// (st-kyz). Posts live at Y=0 on the handle-axis corridor; see the
-// load-bearing invariants in the header.
-post_outer_x  = post_center_x + handle_post_w / 2;
-post_inner_x  = post_center_x - handle_post_w / 2;
+// Each post's X centre. Derived from `handle_width` (st-q1y) so the
+// user's grip span is the discoverable parameter.
+post_center_x = handle_width / 2;
 
-// Arch apex height above the post tops:
-//   - squared: the cylindrical crossbar's diameter IS the apex rise
-//     (handle_post_d).
-//   - semicircular: radius = post_outer_x, apex rises by post_outer_x.
-//   - ogive: two arcs with centers at (±k·post_outer_x, post_top) and
-//     radius (k+1)·post_outer_x. The apex sits at X=0 at a height
-//     post_outer_x · sqrt(2k+1) above the post tops.
-arch_apex_rise =
-    arch_style == "squared" ? handle_post_d
-  : arch_style == "ogive"   ? post_outer_x * sqrt(2 * arch_point_offset + 1)
-  :                           post_outer_x;  // semicircular
-
-// handle_height = apex above baseplate top (unchanged). arch_z_start is
-// the z of the post tops above the baseplate top. For the ogive default
-// (k=1.4) arch_apex_rise ≈ 1.95 · post_outer_x, so the post height
-// drops ~95 mm below the v-prior semicircle when keeping apex fixed —
-// that's the price of an apex-matched pointed arch. If you need taller
-// posts (e.g. to clear a can-plus-grip band), increase handle_height.
-arch_z_start = handle_height - arch_apex_rise;
-
-// PRINT_ANCHOR_BBOX at defaults (st-4ac). Base extent now includes
-// fillet_r on each side so the rounded top edges don't clip the
-// outer rings; with margin=0 that yields base 181.5 × 151.5 at
-// defaults. Z still dominated by handle_height + base_thickness.
+// PRINT_ANCHOR_BBOX at defaults. Base extent includes fillet_r on
+// each side so the rounded top edges don't clip the outer rings;
+// with margin=0 that yields base 181.5 × 151.5 at defaults. Z is
+// dominated by handle_height + base_thickness.
 //   X = _ring_span_x + 2·fillet_r = 177.5 + 4 = 181.5
 //   Y = _ring_span_y + 2·fillet_r = 147.5 + 4 = 151.5
 //   Z = base_thickness + handle_height = 3 + 250 = 253
@@ -339,50 +279,24 @@ module cradles() {
 
 // ================= Handle =================
 
-// Post top Z (above baseplate top); arch sits above this.
-post_top_z = base_thickness + arch_z_start;
-// Posts overlap the arch by 1mm at their top — see st-v7k. Posts span
-// z=0 through post_top_z + post_arch_overlap.
-post_arch_overlap = 1;
-post_h = post_top_z + post_arch_overlap;
-
-module handle() {
-    if (arch_style == "squared") {
-        _handle_squared_cyl();
-    } else {
-        // Legacy rectangular posts + ogive/semicircular arch.
-        for (sx = [-1, 1]) _post_rect(sx);
-        if (arch_style == "ogive") _arch_ogive();
-        else                       _arch_semicircle();
-    }
-}
-
-// --- Squared / toolbox cylindrical handle (st-4ac, refined st-y1q) ---
-// Two vertical rods + one horizontal crossbar rod + concave quarter-
-// ellipse flares at each post base + true tangent-arc quarter-torus
-// blends at each post→crossbar inside corner. No gussets, no hull-
-// of-disks chamfers — the flare and corner sweep carry the bending-
-// moment reinforcement by themselves and read as continuous
-// curvature in the viewer/STL.
+// Squared / toolbox cylindrical handle. Two vertical posts + one
+// horizontal crossbar + concave quarter-ellipse flares at each post
+// base + true tangent-arc quarter-torus blends at each post→crossbar
+// inside corner. Posts and crossbar share `handle_post_d`.
 //
 // Geometry: post tops sit `corner_sweep_r` below the crossbar axis;
 // crossbar endpoints sit `corner_sweep_r` inside the post X. The
 // quarter-torus blend bridges the gap, tangent-vertical at the post
-// (matching the post's wall direction) and tangent-horizontal at
-// the crossbar (matching the crossbar's axis direction). Each post
-// and each crossbar end overlaps the torus by 1 mm to dodge the
-// zero-thickness coincident-face issue from st-v7k.
-module _handle_squared_cyl() {
+// and tangent-horizontal at the crossbar. Each post and each crossbar
+// end overlaps the torus by 1 mm to dodge the zero-thickness
+// coincident-face issue from st-v7k.
+module handle() {
     post_r          = handle_post_d / 2;
     apex_z          = base_thickness + handle_height;   // top of crossbar
     crossbar_axis_z = apex_z - post_r;
     overlap         = 1;  // st-v7k: avoid zero-thickness coincident faces
 
     if (corner_sweep_r > 0) {
-        // Posts shorten so their tops meet the start of the corner
-        // sweep (with `overlap` of interpenetration). Crossbar
-        // shortens so its endpoints meet the end of the corner
-        // sweep (with `overlap` on each side).
         post_total_h    = crossbar_axis_z - corner_sweep_r + overlap;
         crossbar_half_x = post_center_x - corner_sweep_r + overlap;
         for (sx = [-1, 1]) {
@@ -480,115 +394,6 @@ module _handle_corner_sweep(sx, post_r, crossbar_axis_z) {
                     rotate_extrude(angle = 90, convexity = 4)
                         translate([corner_sweep_r, 0])
                             circle(r = post_r);
-}
-
-// --- Legacy rectangular post (for ogive / semicircular styles) ---
-// Same prismoid-flared post the v-prior design used. Kept for the
-// non-squared arch styles which assume rectangular post cross-
-// sections in their arch-silhouette math.
-module _post_rect(sx) {
-    cx = sx * post_center_x;
-    if (post_flare && flare_height > 0 && flare_width > 0) {
-        translate([cx, 0, 0])
-            prismoid(
-                size1 = [handle_post_w + 2 * flare_width,
-                         handle_thickness + 2 * flare_width],
-                size2 = [handle_post_w, handle_thickness],
-                h     = flare_height,
-                anchor = BOTTOM
-            );
-        straight_h = post_h - flare_height;
-        translate([cx, 0, flare_height + straight_h / 2])
-            cuboid([handle_post_w, handle_thickness, straight_h],
-                   rounding = fillet_r,
-                   edges = "Z");
-    } else {
-        translate([cx, 0, post_h / 2])
-            cuboid([handle_post_w, handle_thickness, post_h],
-                   rounding = fillet_r,
-                   edges = "Z");
-    }
-}
-
-// --- Semicircular arch (legacy; st-djm rotate_extrude) ---
-// Kept as a choice under arch_style="semicircular" for reprints of the
-// v-prior design. The profile is a filleted rectangle handle_post_w
-// (radial) × handle_thickness (along the sweep-axis direction), with
-// rounding = fillet_r on all four corners. After sweeping 180° and
-// rotating [90, 0, 0] into the XZ plane, those four corners become the
-// arch's Y-face edges — the radius matches the post's Z-edge fillet.
-// rotate_extrude closes the swept volume into a manifold solid by
-// construction. Endpoints at θ=0°/θ=180° sit flush on the posts with
-// the same 1mm interpenetration the posts use with the baseplate.
-module _arch_semicircle() {
-    arch_r_mid = (post_outer_x + post_inner_x) / 2;
-    translate([0, 0, post_top_z])
-        rotate([90, 0, 0])
-            rotate_extrude(angle = 180, convexity = 4)
-                translate([arch_r_mid, 0])
-                    rect([handle_post_w, handle_thickness],
-                         rounding = fillet_r, anchor = CENTER);
-}
-
-// --- Ogive arch (st-qt4, new default) ---
-// Two circular arcs meeting at a point directly above the centerline.
-// 2D silhouette of the arch band (annular ogive) in OpenSCAD's XY plane
-// — which maps to world's XZ after linear_extrude + rotate([90,0,0]).
-// OpenSCAD-2D X = world X; OpenSCAD-2D Y = world Z (offset by post_top_z
-// after the final translate).
-//
-// Construction: outer polygon (filled ogive of radius r_out) minus
-// inner polygon (same construction with r_in = r_out - handle_post_w).
-// Both polygons close at Y=0 via their implicit last→first edge, so the
-// band at Y=0 covers only the post-top X strips [-post_outer_x, -
-// post_inner_x] and [+post_inner_x, +post_outer_x] — flush with the
-// posts beneath.
-module _arch_ogive() {
-    translate([0, 0, post_top_z])
-        rotate([90, 0, 0])
-            linear_extrude(height = handle_thickness, center = true)
-                _arch_ogive_band_2d();
-}
-
-module _arch_ogive_band_2d() {
-    difference() {
-        _arch_ogive_filled_2d((arch_point_offset + 1) * post_outer_x);
-        _arch_ogive_filled_2d((arch_point_offset + 1) * post_outer_x
-                              - handle_post_w);
-    }
-}
-
-// Filled ogive polygon of outer radius `r`, centered on X=0 with its
-// flat bottom at Y=0. The two arcs share centers at (±k·post_outer_x,
-// 0) and meet at (0, sqrt(r² − (k·post_outer_x)²)). Guarded against
-// degenerate r ≤ k·post_outer_x (which would make the inner subtract
-// vanish) — callers ensure r > k·post_outer_x.
-module _arch_ogive_filled_2d(r) {
-    k       = arch_point_offset;
-    kR      = k * post_outer_x;
-    footprint_half = r - kR;   // 2D X at Y=0 of the arc endpoints.
-    y_apex  = sqrt(r * r - kR * kR);
-    // Angle at the apex, measured CCW from +X from the right-arc
-    // centre (-kR, 0). At this angle the right arc reaches (0, y_apex).
-    apex_angle = atan2(y_apex, kR);
-    n = 40;
-    // Left arc: centre (+kR, 0), from angle 180° (→ (-footprint_half, 0))
-    // sweeping CW to (180° - apex_angle) (→ apex).
-    left_arc = [
-        for (i = [0 : n])
-            let(t = 180 - i * apex_angle / n)
-                [kR + r * cos(t), r * sin(t)]
-    ];
-    // Right arc: centre (-kR, 0), from angle apex_angle (→ apex) sweeping
-    // CW to 0° (→ (+footprint_half, 0)).
-    right_arc = [
-        for (i = [0 : n])
-            let(t = apex_angle - i * apex_angle / n)
-                [-kR + r * cos(t), r * sin(t)]
-    ];
-    // Polygon: (-footprint_half, 0) → apex → (+footprint_half, 0) →
-    // implicit close along Y=0.
-    polygon(concat(left_arc, right_arc));
 }
 
 // ================= Assembly =================
