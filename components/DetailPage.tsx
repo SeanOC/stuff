@@ -8,6 +8,10 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
+import {
+  AccessoriesSection,
+  type DetailPageAccessory,
+} from "./AccessoriesSection";
 import { ParamRail } from "./ParamRail";
 import { ViewerChrome } from "./ViewerChrome";
 import { useDetailState } from "@/hooks/useDetailState";
@@ -31,11 +35,19 @@ export interface DetailPageModel {
   warnings: string[];
 }
 
+// `DetailPageAccessory` lives in components/AccessoriesSection so the
+// client bundle never imports lib/accessories/discover (which pulls
+// node:fs/promises). Re-exported here for callers that import from
+// DetailPage.
+export type { DetailPageAccessory } from "./AccessoriesSection";
+
 interface Props {
   model: DetailPageModel;
+  /** M:N accessories compatible with this model. Empty list = no UI. */
+  accessories?: DetailPageAccessory[];
 }
 
-export default function DetailPage({ model }: Props) {
+export default function DetailPage({ model, accessories = [] }: Props) {
   const detail = useDetailState({
     params: model.params,
     stockPresets: model.presets,
@@ -191,6 +203,7 @@ export default function DetailPage({ model }: Props) {
             history={render.history}
             state={render.state}
             warnings={model.warnings}
+            accessories={accessories}
             collapsed={leftRailCollapsed}
             onToggleCollapsed={() => setLeftRailCollapsed((c) => !c)}
             mobileOpen={mobileMetadataOpen}
@@ -260,6 +273,7 @@ function DetailLeftRail({
   history,
   state,
   warnings,
+  accessories,
   collapsed,
   onToggleCollapsed,
   mobileOpen,
@@ -269,6 +283,7 @@ function DetailLeftRail({
   history: RenderResult[];
   state: RenderState;
   warnings: string[];
+  accessories: DetailPageAccessory[];
   collapsed: boolean;
   onToggleCollapsed: () => void;
   mobileOpen: boolean;
@@ -292,6 +307,7 @@ function DetailLeftRail({
         <MetadataMobileDisclosure
           history={history}
           warnings={warnings}
+          accessories={accessories}
           open={mobileOpen}
           onToggle={onToggleMobileOpen}
         >
@@ -300,6 +316,7 @@ function DetailLeftRail({
             history={history}
             state={state}
             warnings={warnings}
+            accessories={accessories}
           />
         </MetadataMobileDisclosure>
       </div>
@@ -326,6 +343,7 @@ function DetailLeftRail({
             history={history}
             state={state}
             warnings={warnings}
+            accessories={accessories}
             onCollapse={onToggleCollapsed}
           />
         </div>
@@ -341,19 +359,25 @@ function DetailLeftRail({
 function MetadataMobileDisclosure({
   history,
   warnings,
+  accessories,
   open,
   onToggle,
   children,
 }: {
   history: RenderResult[];
   warnings: string[];
+  accessories: DetailPageAccessory[];
   open: boolean;
   onToggle: () => void;
   children: React.ReactNode;
 }) {
+  const accessorySegment =
+    accessories.length > 0
+      ? ` · ${accessories.length} accessor${accessories.length === 1 ? "y" : "ies"}`
+      : "";
   const summary = `Metadata · ${history.length} render${history.length === 1 ? "" : "s"} · ${
     warnings.length > 0 ? `${warnings.length} warning${warnings.length === 1 ? "" : "s"}` : "clean"
-  }`;
+  }${accessorySegment}`;
   return (
     <details
       data-testid="metadata-mobile-disclosure"
@@ -396,12 +420,14 @@ function DetailLeftRailContent({
   history,
   state,
   warnings,
+  accessories,
   onCollapse,
 }: {
   modelPath: string;
   history: RenderResult[];
   state: RenderState;
   warnings: string[];
+  accessories: DetailPageAccessory[];
   onCollapse?: () => void;
 }) {
   return (
@@ -463,6 +489,8 @@ function DetailLeftRailContent({
           </ul>
         </>
       )}
+
+      <AccessoriesSection accessories={accessories} />
     </div>
   );
 }

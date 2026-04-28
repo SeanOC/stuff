@@ -15,6 +15,11 @@ const nextConfig = {
     "/api/source": ["./libs/**/*.scad", "./models/**/*.scad"],
     "/api/export": ["./libs/**/*.scad", "./models/**/*.scad"],
     "/api/thumbnail": ["./renders/**/*.png"],
+    // Accessory STL streamer + the model page that lists them — both
+    // stat / read files under accessories/ via process.cwd() at request
+    // time, so the file tracer needs the include hint.
+    "/api/accessories/[slug]": ["./accessories/**/*.stl"],
+    "/models/[slug]": ["./accessories/**/*.stl"],
   },
 };
 

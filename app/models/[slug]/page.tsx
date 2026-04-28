@@ -4,6 +4,7 @@
 
 import { notFound } from "next/navigation";
 import DetailPage from "@/components/DetailPage";
+import { getAccessoriesForModel } from "@/lib/accessories/discover";
 import { listModels, loadModel } from "@/lib/models/discover";
 
 interface Props {
@@ -20,6 +21,8 @@ export default async function ModelPage({ params }: Props) {
   const model = await loadModel(slug);
   if (!model) notFound();
 
+  const accessories = await getAccessoriesForModel(model.stem);
+
   return (
     <DetailPage
       model={{
@@ -31,6 +34,14 @@ export default async function ModelPage({ params }: Props) {
         presets: model.presets,
         warnings: model.warnings,
       }}
+      accessories={accessories.map((a) => ({
+        slug: a.slug,
+        title: a.title,
+        blurb: a.blurb,
+        downloadUrl: a.downloadUrl,
+        fileSize: a.fileSize,
+        attribution: a.attribution,
+      }))}
     />
   );
 }
