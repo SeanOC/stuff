@@ -39,4 +39,9 @@ export const CATALOG: Record<string, CatalogEntry> = {
     blurb:
       "Six-cell tote for 50 mm spray cans. Drainage base plate, semicircular carry handle, kid-safe filleted edges.",
   },
+  gridfinity_bin: {
+    categoryId: "storage",
+    blurb:
+      "Parametric Gridfinity bin: pick a footprint, height, compartments, and base options. Snaps onto any standard 42mm Gridfinity baseplate.",
+  },
 };

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Clone BOSL2 and QuackWorks into libs/ at the commits pinned in
-# libs/README.md. Idempotent: skips if the target is already at the
+# Clone vendored OpenSCAD libraries into libs/ at the commits pinned
+# in libs/README.md. Idempotent: skips if the target is already at the
 # pinned SHA, a symlink (dev setup), or manually populated.
 #
 # Invoked from `prebuild` so Vercel/CI builds have the libraries
@@ -39,5 +39,6 @@ vendor() {
   echo "$sha" > "$dir/.vendor-sha"
 }
 
-vendor BOSL2      https://github.com/BelfrySCAD/BOSL2.git    456fcd8
-vendor QuackWorks https://github.com/AndyLevesque/QuackWorks.git 6123129
+vendor BOSL2                       https://github.com/BelfrySCAD/BOSL2.git                     456fcd8
+vendor QuackWorks                  https://github.com/AndyLevesque/QuackWorks.git              6123129
+vendor gridfinity-rebuilt-openscad https://github.com/kennetek/gridfinity-rebuilt-openscad.git 910e22d

@@ -4,13 +4,14 @@ These are exposed to OpenSCAD via `OPENSCADPATH=libs/` (set by the skill
 helpers). When authoring a model, prefer a library primitive over hand-rolling
 geometry.
 
-| Library      | Purpose                                       | Pinned SHA  |
-|--------------|-----------------------------------------------|-------------|
-| NopSCADlib   | Mechanical + project utilities, vitamins      | `c9baa0e`   |
-| threads-scad | ISO metric threads, bolts, nuts, washers      | `4ae9aeb`   |
-| MCAD         | General-purpose shape / fastener helpers      | `bd0a7ba`   |
-| BOSL2        | Attachment / transform system; broad toolkit  | `456fcd8`   |
-| QuackWorks   | Multiboard / Multiconnect accessory generators | `6123129`   |
+| Library                     | Purpose                                          | Pinned SHA |
+|-----------------------------|--------------------------------------------------|------------|
+| NopSCADlib                  | Mechanical + project utilities, vitamins         | `c9baa0e`  |
+| threads-scad                | ISO metric threads, bolts, nuts, washers         | `4ae9aeb`  |
+| MCAD                        | General-purpose shape / fastener helpers         | `bd0a7ba`  |
+| BOSL2                       | Attachment / transform system; broad toolkit     | `456fcd8`  |
+| gridfinity-rebuilt-openscad | Gridfinity bins, baseplates, lite variants (MIT) | `910e22d`  |
+| QuackWorks                  | Multiboard / Multiconnect accessory generators   | `6123129`  |
 
 BOSL2 is opt-in (R6 permits); added as a dependency for Multiboard work.
 QuackWorks is **CC BY-NC-SA 4.0** — fine for personal use, derived parts
@@ -79,6 +80,35 @@ it relies on global constants and operators.
 - `use <BOSL2/screws.scad>;` — ISO/UTS screw + nut generators.
 - `use <BOSL2/rounding.scad>;` — fillet / chamfer 2D+3D utilities.
 - `use <BOSL2/gears.scad>;` — involute gears, racks, worm gears.
+
+## gridfinity-rebuilt-openscad — `use <gridfinity-rebuilt-openscad/...>`
+
+Parametric Gridfinity generator (kennetek/gridfinity-rebuilt-openscad,
+v2.0.0). Produces bins, baseplates, and "lite" hollow-base bins that
+fit the standard 42mm Gridfinity grid. The repo bundles its own copy of
+`threads-scad` under `src/external/`, so the upstream `threads-scad/`
+library row above is independent of this one.
+
+- `use <gridfinity-rebuilt-openscad/gridfinity-rebuilt-bins.scad>;` —
+  top-level customizer-style file. Easier to crib from than to call;
+  most of its work is at the top level rather than inside a module.
+- `include <gridfinity-rebuilt-openscad/src/core/standard.scad>;` —
+  spec constants (`GRID_DIMENSIONS_MM`, `BASE_HEIGHT`, `d_wall`,
+  `d_div`, hole radii, stacking-lip geometry). `include` (not `use`)
+  because the API depends on the global constants.
+- `use <gridfinity-rebuilt-openscad/src/core/gridfinity-rebuilt-utility.scad>;` —
+  `height()` / `fromGridfinityUnits()` / `bundle_hole_options()`.
+- `use <gridfinity-rebuilt-openscad/src/core/bin.scad>;` —
+  `new_bin(...)`, `bin_render(bin) { ... }`, `bin_subdivide(bin, [x, y])`.
+- `use <gridfinity-rebuilt-openscad/src/core/cutouts.scad>;` —
+  `cut_compartment_auto(size, style_tab, top_left_only, scoop)`.
+- `use <gridfinity-rebuilt-openscad/gridfinity-rebuilt-baseplate.scad>;` /
+  `gridfinity-rebuilt-lite.scad` — sibling top-level files for plates
+  and lite bins (no project model wires them up yet).
+
+To override a stock spec constant (e.g. wall thickness), `include` the
+`standard.scad` file and reassign after the include — OpenSCAD's
+last-write-wins variable scoping makes this safe.
 
 ## QuackWorks — Multiboard / Multiconnect accessories
 

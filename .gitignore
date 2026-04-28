@@ -16,6 +16,7 @@ libs/threads-scad/
 libs/MCAD/
 libs/BOSL2/
 libs/QuackWorks/
+libs/gridfinity-rebuilt-openscad/
 
 # Claude Code local state
 .claude/scheduled_tasks.lock
