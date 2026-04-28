@@ -148,6 +148,18 @@ interface SceneHandle {
   dispose(): void;
 }
 
+// Headlight setup: ambient at scene level (direction-independent),
+// directional light parented to the camera so its world position
+// orbits with the viewer. The local offset gives form-defining
+// shading — pure (0, 0, 0) would render as a perfectly flat
+// front-light. (st-czo)
+export function addLights(scene: THREE.Scene, camera: THREE.Camera): void {
+  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+  const key = new THREE.DirectionalLight(0xffffff, 0.9);
+  key.position.set(0.5, 1, 0.5);
+  camera.add(key);
+}
+
 export function computeCameraAxes(camera: THREE.Camera): CameraAxes {
   // World→view rotation: inverse of the camera's world matrix applied
   // to a direction. `transformDirection` ignores translation + scale.
@@ -188,10 +200,11 @@ function bootstrapScene(
   renderer.setPixelRatio(window.devicePixelRatio);
   container.appendChild(renderer.domElement);
 
-  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-  const key = new THREE.DirectionalLight(0xffffff, 0.9);
-  key.position.set(1, 1, 1);
-  scene.add(key);
+  // Camera must be in the scene graph for camera-attached lights to
+  // get their matrixWorld updated during render. Three.js skips matrix
+  // updates for objects outside the graph. (st-czo)
+  scene.add(camera);
+  addLights(scene, camera);
 
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = false;

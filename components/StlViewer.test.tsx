@@ -4,7 +4,7 @@
 
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
-import { computeCameraAxes } from "./StlViewer";
+import { addLights, computeCameraAxes } from "./StlViewer";
 
 function makeCamera(
   position: [number, number, number],
@@ -18,6 +18,32 @@ function makeCamera(
   cam.updateMatrixWorld();
   return cam;
 }
+
+describe("addLights", () => {
+  it("parents the directional light to the camera so it orbits as a headlight", () => {
+    // Pin the structural choice: the key light must be camera-local so
+    // surfaces facing the viewer stay lit regardless of orbit angle. A
+    // refactor that re-attaches the directional light to the scene
+    // would silently regress this. (st-czo)
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
+    addLights(scene, camera);
+
+    const dirLightOnCamera = camera.children.some(
+      (c) => c instanceof THREE.DirectionalLight,
+    );
+    const ambientOnScene = scene.children.some(
+      (c) => c instanceof THREE.AmbientLight,
+    );
+    const dirLightOnScene = scene.children.some(
+      (c) => c instanceof THREE.DirectionalLight,
+    );
+
+    expect(dirLightOnCamera).toBe(true);
+    expect(ambientOnScene).toBe(true);
+    expect(dirLightOnScene).toBe(false);
+  });
+});
 
 describe("computeCameraAxes", () => {
   it("front view (+Y looking at origin): world-X is screen-right", () => {
