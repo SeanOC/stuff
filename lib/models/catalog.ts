@@ -44,4 +44,9 @@ export const CATALOG: Record<string, CatalogEntry> = {
     blurb:
       "Parametric Gridfinity bin: pick a footprint, height, compartments, and base options. Snaps onto any standard 42mm Gridfinity baseplate.",
   },
+  disney_ear_hanger: {
+    categoryId: "household",
+    blurb:
+      "Vendored MakerWorld Disney ear hanger — wall-mount clip for Mickey/Minnie ear headbands. Original by an upstream MakerWorld author; see the file header for attribution.",
+  },
 };
