@@ -1,4 +1,4 @@
-"""Invariants for the goBlu RV water filter holder (st-r3t).
+"""Invariants for the goBlu RV water filter holder (st-r3t, st-hxk).
 
 Beyond the built-in checks (watertight, single-body component count,
 PRINT_ANCHOR_BBOX drift, triangle ceiling), this sidecar pins the
@@ -30,11 +30,19 @@ load-bearing structural claims the bead spelled out:
      collar before the bottom seats, which puts the collar in shear
      rather than the housing body in compression.
 
-  6. **Single connected solid.** pod_count separate pods would
-     produce N orphan components in the STL; assert == 1 at defaults
-     (pod_count=3, dovetails enabled) since adjacent pods share the
-     dovetail tongue volume and merge into a single body in the
-     stock_3up preset's union.
+  6. **Array extent matches the layout formula (st-hxk).** The X
+     bounding-box of the assembly must equal pod_count · pod_w +
+     (pod_count − 1) · pod_gap. Catches three regressions at once:
+     stock_3up accidentally widening (default pod_gap drifting off 0),
+     slicer_3up not actually separating pods (pod_gap not threaded
+     through pod_x), or the pod_w derivation desyncing from
+     housing_diameter + 2·clearance + 2·side_wall_t.
+
+  7. **Topology matches gap config (st-hxk).** At pod_gap == 0 the
+     pods touch and merge into one connected solid. At pod_gap > 0
+     the STL has pod_count disjoint pod bodies — that's the whole
+     point of the slicer_3up preset. The default config is
+     pod_gap == 0, so the connected-solids built-in expects 1.
 """
 
 from __future__ import annotations
@@ -60,6 +68,7 @@ def check(ctx):
     collar_headroom = p.get("collar_headroom")
     pod_count = p.get("pod_count")
     dovetail_enabled = p.get("dovetail_enabled")
+    pod_gap = p.get("pod_gap")
 
     # 1. Pocket ID = housing OD + 2·clearance — at defaults this is the
     #    bead's "91 mm" anchor. Not directly observable from the STL,
@@ -111,10 +120,32 @@ def check(ctx):
             f"rim will load the collar in shear before the housing seats.",
         ))
 
-    # 6. Single connected solid at defaults. End-cap-aware: if pods are
-    #    flush + dovetailed, they merge into one body. If dovetail is
-    #    disabled, pods still touch flush at their side walls, which
-    #    OpenSCAD's union() collapses to one body too.
-    failures.extend(expect_connected_solids(ctx, 1))
+    # 6. Array X-extent matches the layout formula. Re-derives pod_w
+    #    from the housing/wall params so this also catches drift between
+    #    the .scad's pod_w expression and what actually got rendered.
+    if (housing_diameter is not None and clearance is not None
+            and side_wall_t is not None and pod_count is not None
+            and pod_gap is not None):
+        pod_w = housing_diameter + 2 * clearance + 2 * side_wall_t
+        expected_x = pod_count * pod_w + (pod_count - 1) * pod_gap
+        actual_x = ctx["bbox_mm"][0]
+        # 1mm tolerance matches the built-in PRINT_ANCHOR_BBOX check.
+        if abs(actual_x - expected_x) > 1.0:
+            failures.append(Failure(
+                "array_extent",
+                f"STL x-extent {actual_x:.2f}mm ≠ "
+                f"pod_count·pod_w + (pod_count−1)·pod_gap = "
+                f"{pod_count}·{pod_w:.2f} + {pod_count - 1}·{pod_gap} = "
+                f"{expected_x:.2f}mm. Either pod_x() lost the pod_gap "
+                f"term, the default pod_gap drifted off 0, or pod_w "
+                f"desynced from housing_diameter + 2·clearance + "
+                f"2·side_wall_t.",
+            ))
+
+    # 7. Topology matches gap config. At pod_gap == 0 pods merge into
+    #    one connected solid; at pod_gap > 0 they split into pod_count.
+    expected_components = pod_count if (pod_gap and pod_gap > 0) else 1
+    if expected_components is not None:
+        failures.extend(expect_connected_solids(ctx, expected_components))
 
     return failures
