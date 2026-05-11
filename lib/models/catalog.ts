@@ -49,4 +49,9 @@ export const CATALOG: Record<string, CatalogEntry> = {
     blurb:
       "Vendored MakerWorld Disney ear hanger — wall-mount clip for Mickey/Minnie ear headbands. Original by an upstream MakerWorld author; see the file header for attribution.",
   },
+  goblu_filter_holder_3x90mm: {
+    categoryId: "household",
+    blurb:
+      "Side-mount holder for the goBlu 3-cylinder RV water filter assembly. Three flush-touching pods cradle 90mm filter housings; flat back face VHB-mounts to the RV wall.",
+  },
 };
