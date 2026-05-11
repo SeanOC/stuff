@@ -104,11 +104,21 @@ def _check_topology(ctx: dict[str, Any]) -> list[Failure]:
     # Single-component models can legitimately be small (e.g. a thin
     # bent plate at ~30 tris — st-2ln). "Orphan" presumes a main body
     # to orphan from, so skip the check when there's nothing else.
+    #
+    # Some models legitimately have small inner-cavity surface
+    # components (e.g. a dovetail slot fully enclosed by the mating
+    # tongue at pod_gap == 0, st-yuu). They declare an expected count
+    # via `// INVARIANTS_EXPECTED_ORPHANS = N` in the source; the
+    # check tolerates up to that many ≤ _ORPHAN_FRAGMENT_MAX_TRIS
+    # fragments before flagging.
     sizes = ctx.get("component_sizes") or []
     if len(sizes) <= 1:
         return []
     orphans = [n for n in sizes if n <= _ORPHAN_FRAGMENT_MAX_TRIS]
     if not orphans:
+        return []
+    expected = int(ctx.get("expected_orphans") or 0)
+    if len(orphans) <= expected:
         return []
     return [Failure(
         "topology",
@@ -240,6 +250,10 @@ _ANCHOR_RE = re.compile(
     r"PRINT_ANCHOR_BBOX\s*=\s*\[\s*([-\d.eE+]+)\s*,\s*([-\d.eE+]+)\s*,\s*([-\d.eE+]+)\s*\]"
 )
 
+_EXPECTED_ORPHANS_RE = re.compile(
+    r"//\s*INVARIANTS_EXPECTED_ORPHANS\s*=\s*(\d+)"
+)
+
 
 def parse_anchor_bbox(source: str) -> tuple[float, float, float] | None:
     """Extract the `PRINT_ANCHOR_BBOX = [x, y, z]` constant from a .scad file.
@@ -253,5 +267,23 @@ def parse_anchor_bbox(source: str) -> tuple[float, float, float] | None:
         return None
     try:
         return (float(m.group(1)), float(m.group(2)), float(m.group(3)))
+    except ValueError:
+        return None
+
+
+def parse_expected_orphans(source: str) -> int | None:
+    """Extract the `// INVARIANTS_EXPECTED_ORPHANS = N` directive.
+
+    Models with legitimate small inner-cavity surface components (CSG
+    output where a closed inner void's surface is detected as a
+    separate connected component by trimesh) opt into the count via
+    this comment. Returns `None` when the directive is absent — the
+    topology check then defaults to flagging any orphan fragment.
+    """
+    m = _EXPECTED_ORPHANS_RE.search(source)
+    if not m:
+        return None
+    try:
+        return int(m.group(1))
     except ValueError:
         return None

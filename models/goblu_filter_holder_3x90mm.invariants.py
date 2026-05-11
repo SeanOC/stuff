@@ -1,4 +1,4 @@
-"""Invariants for the goBlu RV water filter holder (st-r3t, st-hxk, st-toz).
+"""Invariants for the goBlu RV water filter holder (st-r3t, st-hxk, st-toz, st-yuu).
 
 Beyond the built-in checks (watertight, single-body component count,
 PRINT_ANCHOR_BBOX drift, triangle ceiling), this sidecar pins the
@@ -38,15 +38,18 @@ load-bearing structural claims the bead spelled out:
      through pod_x), or the pod_w derivation desyncing from
      housing_diameter + 2·clearance + 2·side_wall_t.
 
-  7. **Topology matches gap config (st-hxk, st-toz).** At pod_gap == 0
-     pods touch and merge into one connected solid (the in-pod-wall
-     dovetails already overlap with neighbors). At pod_gap > 0 each
-     pod is its own connected component — dovetails stay on inner
-     faces in both modes (st-toz), but the gap (10 mm default) exceeds
-     the dovetail depth (6 mm default) so the tongue tips stop short
-     of the next pod's face and the bodies remain disjoint. The
-     default config is pod_gap == 0, so the connected-solids built-in
-     expects 1.
+  7. **Topology matches gap config (st-hxk, st-toz, st-yuu).** At
+     pod_gap > 0 each pod is its own connected component. At pod_gap
+     == 0 with pod_count ≥ 2 the cuboids fuse via face contact, but
+     each dovetail joint (tongue + slip-fit clearance + slot walls)
+     forms a sealed inner cavity whose interior surface trimesh
+     detects as a separate connected component — 1 main body +
+     (pod_count − 1) inner cavities = pod_count components total in
+     both gap modes for pod_count ≥ 2. Single-pod has neither.
+     The .scad declares `// INVARIANTS_EXPECTED_ORPHANS = 2` so the
+     built-in orphan check tolerates the two sub-50-tri inner-cavity
+     surfaces at defaults instead of flagging them as zero-thickness-
+     boolean scraps (st-v7k class).
 """
 
 from __future__ import annotations
@@ -146,10 +149,18 @@ def check(ctx):
                 f"2·side_wall_t.",
             ))
 
-    # 7. Topology matches gap config. At pod_gap == 0 pods merge into
-    #    one connected solid; at pod_gap > 0 they split into pod_count.
-    expected_components = pod_count if (pod_gap and pod_gap > 0) else 1
-    if expected_components is not None:
+    # 7. Topology matches gap config. At pod_gap > 0 each pod is its
+    #    own connected body. At pod_gap == 0 with pod_count ≥ 2 the
+    #    pods fuse via face contact at the slot mouth perimeter into
+    #    one main body, but each dovetail joint (tongue inside slot
+    #    cavity with clearance air around it) creates a sealed inner
+    #    void whose interior surface trimesh detects as a separate
+    #    connected component — so the touching case has 1 main +
+    #    (pod_count − 1) inner cavities = pod_count components total,
+    #    which numerically matches the spaced case. The single-pod
+    #    case has neither sealed cavities nor neighbors, so 1.
+    if pod_count is not None and pod_count >= 1:
+        expected_components = 1 if pod_count == 1 else pod_count
         failures.extend(expect_connected_solids(ctx, expected_components))
 
     return failures

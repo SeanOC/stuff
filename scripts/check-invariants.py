@@ -34,7 +34,12 @@ EXPORTS_DIR = REPO_ROOT / "exports"
 # scripts/check-invariants.py ...` (no package context) or via `-m`.
 sys.path.insert(0, str(REPO_ROOT))
 
-from scripts.invariants import Failure, parse_anchor_bbox, run_builtins  # noqa: E402
+from scripts.invariants import (  # noqa: E402
+    Failure,
+    parse_anchor_bbox,
+    parse_expected_orphans,
+    run_builtins,
+)
 from scripts.invariants.params import parse_params  # noqa: E402
 
 
@@ -105,6 +110,7 @@ def _build_context(
         "anchor_bbox_mm": parse_anchor_bbox(source),
         "connected_solids": len(sizes),
         "component_sizes": sizes,
+        "expected_orphans": parse_expected_orphans(source),
     }
 
 
