@@ -63,11 +63,19 @@
 // === Pod-to-pod interconnect ===
 //
 // Vertical-slide dovetail. Each pod has a male tongue on its +X face
-// and a female slot on its -X face, both running vertically over
-// dovetail_height (default 80 mm, centred on the pod's mid-height).
-// Tongue cross-section is a trapezoid wider at its tip than its base,
-// so once two pods are stacked the slot mechanically locks the tongue
-// against -Y pull (the direction VHB peels worst).
+// (centred on the pod's mid-height, dovetail_height tall) and a female
+// slot on its -X face that runs from the pod's bottom up to the
+// tongue's top (st-6xj). Tongue cross-section is a trapezoid wider at
+// its tip than its base, so once two pods are stacked the slot
+// mechanically locks the tongue against -Y pull (the direction VHB
+// peels worst).
+//
+// Assembly workflow: VHB pod A to the wall first; hold pod B above and
+// to the side; lower pod B straight down so A's tongue enters B's
+// bottom-open slot and rides up as B descends. When B's bottom aligns
+// with A's, the closed top of B's slot meets the top of A's tongue
+// and arrests further descent — the joint is self-aligning ("drop and
+// stop"). VHB pod B once aligned.
 //
 // When pod_count > 1 the model auto-caps the outermost faces (the
 // leftmost pod's -X slot is filled, the rightmost pod's +X tongue is
@@ -161,17 +169,11 @@ dovetail_cz = pod_h / 2;
 // via the `dovetail_enabled` @param.
 dovetails_active = dovetail_enabled;
 
-// At pod_gap == 0 each tongue ends up sitting inside its mating slot's
-// cavity with clearance air on all four perimeter sides, which CGAL
-// outputs as a sealed inner void — the slot cavity's inner surface
-// shows up as a separate connected component in the rendered STL,
-// distinct from the outer body. That's a known harmless artifact of
-// the dovetail's slip-fit geometry, not a real defect. The model
-// declares two expected such orphan components below
-// (// INVARIANTS_EXPECTED_ORPHANS = 2) so the topology check tolerates
-// them. At pod_gap > 0 (slicer_3up) the pods are spaced apart and each
-// tongue/slot is on the outer surface of its own pod — no enclosed
-// voids, no orphans.
+// Each dovetail slot is open at the pod's bottom face (st-6xj) so an
+// adjacent pod's tongue has a path to slide in during VHB install. At
+// pod_gap == 0 the slot's clearance-air ring around the mated tongue
+// vents to outside through that bottom opening — no sealed inner void,
+// so CGAL outputs the 3-pod assembly as a single connected surface.
 
 // Array X-offset for pod index i in [0, pod_count). Centre-to-centre
 // spacing is pod_w + pod_gap; at pod_gap = 0 this collapses to pods
@@ -184,14 +186,11 @@ function pod_x(i) = (i - (pod_count - 1) / 2) * (pod_w + pod_gap);
 //   Z = pod_h = 123
 PRINT_ANCHOR_BBOX = [363, 103, 123];
 
-// At pod_gap == 0 each mated tongue/slot forms a fully-enclosed inner
-// cavity (the tongue + clearance air ring + slot walls are sealed in
-// by the tongue base contacting the slot mouth perimeter). CGAL emits
-// the cavity's inner surface as a separate connected component. The
-// 3-pod stock_3up assembly has two such cavities (pod0→pod1 and
-// pod1→pod2 dovetail joints), so the topology check tolerates two
-// orphans below the standard 50-tri threshold. (st-yuu)
-// INVARIANTS_EXPECTED_ORPHANS = 2
+// Each dovetail slot is open at the pod's bottom face (st-6xj) so
+// the cavity is no longer a sealed inner void at pod_gap == 0 — the
+// air ring around the mated tongue drains out through the bottom
+// opening, and CGAL outputs the assembly as a single connected
+// surface. No INVARIANTS_EXPECTED_ORPHANS directive is needed.
 
 // === Dovetail primitive ===
 //
@@ -261,25 +260,33 @@ module pod(expose_left_slot, expose_right_tongue) {
                      d = max(pocket_id - 2 * bottom_lip_w, 1));
 
         // Dovetail slot on -X face. Cut the same tongue shape into the
-        // wall, oversized by `effective_clearance` for slip fit.
-        // `dovetail_tongue` extends in +X from its anchor: anchored at
-        // x=-pod_w/2, the polygon walks inward through the wall — narrow
-        // at the face, widening to the dovetail tip. That's the inverse
-        // profile of an adjacent pod's +X tongue (which is narrow at
-        // its base, widest at its tip), so the two mate with slip fit.
-        // At pod_gap == 0 the effective clearance collapses to 0 so the
-        // tongue and slot share boundary surfaces — required for CGAL
-        // to fuse them into one connected solid (otherwise the tongue
-        // orphans inside the slot cavity, st-yuu / st-v7k). (st-yuu —
-        // earlier code rotated the subtrahend 180° and cut into empty
-        // space outside the pod.)
-        if (dovetails_active && expose_left_slot)
-            translate([-pod_w / 2, 0, dovetail_cz])
+        // wall, oversized by `dovetail_clearance` for slip fit.
+        // `dovetail_tongue` extends in +X from its anchor at x=-pod_w/2,
+        // so the polygon walks inward through the wall — narrow at the
+        // face, widening to the dovetail tip. That's the inverse profile
+        // of an adjacent pod's +X tongue, so the two mate with slip fit.
+        //
+        // Slot extends DOWN through the pod's bottom face (st-6xj) so an
+        // adjacent pod's tongue has a path in: install pod A on the wall,
+        // hold pod B above and to the side, lower pod B straight down,
+        // and A's tongue enters B's slot through B's bottom and slides
+        // up as B descends. The top stays closed at the original
+        // `dovetail_cz + dovetail_height/2` position — when B descends
+        // far enough that its bottom aligns with A's, the slot top hits
+        // the tongue top and arrests further descent ("drop and stop",
+        // self-aligning).
+        if (dovetails_active && expose_left_slot) {
+            slot_top_z = dovetail_cz + dovetail_height / 2;
+            slot_bot_z = -0.1;  // overshoot the pod base for a clean cut
+            slot_h     = slot_top_z - slot_bot_z;
+            slot_cz    = (slot_top_z + slot_bot_z) / 2;
+            translate([-pod_w / 2, 0, slot_cz])
                 dovetail_tongue(
                     dovetail_w_base + 2 * dovetail_clearance,
                     dovetail_w_tip  + 2 * dovetail_clearance,
-                    dovetail_depth + 0.1,  // slot floor overshoot
-                    dovetail_height + 0.01);
+                    dovetail_depth + 0.1,  // slot floor overshoot in X
+                    slot_h);
+        }
     }
 }
 
