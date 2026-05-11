@@ -1,4 +1,4 @@
-"""Invariants for the goBlu RV water filter holder (st-r3t, st-hxk).
+"""Invariants for the goBlu RV water filter holder (st-r3t, st-hxk, st-toz).
 
 Beyond the built-in checks (watertight, single-body component count,
 PRINT_ANCHOR_BBOX drift, triangle ceiling), this sidecar pins the
@@ -38,11 +38,15 @@ load-bearing structural claims the bead spelled out:
      through pod_x), or the pod_w derivation desyncing from
      housing_diameter + 2·clearance + 2·side_wall_t.
 
-  7. **Topology matches gap config (st-hxk).** At pod_gap == 0 the
-     pods touch and merge into one connected solid. At pod_gap > 0
-     the STL has pod_count disjoint pod bodies — that's the whole
-     point of the slicer_3up preset. The default config is
-     pod_gap == 0, so the connected-solids built-in expects 1.
+  7. **Topology matches gap config (st-hxk, st-toz).** At pod_gap == 0
+     pods touch and merge into one connected solid (the in-pod-wall
+     dovetails already overlap with neighbors). At pod_gap > 0 each
+     pod is its own connected component — dovetails stay on inner
+     faces in both modes (st-toz), but the gap (10 mm default) exceeds
+     the dovetail depth (6 mm default) so the tongue tips stop short
+     of the next pod's face and the bodies remain disjoint. The
+     default config is pod_gap == 0, so the connected-solids built-in
+     expects 1.
 """
 
 from __future__ import annotations

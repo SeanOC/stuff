@@ -75,19 +75,30 @@
 // pod_count = 1 renders a single pod with both dovetail features
 // exposed (useful as the print-time slice).
 //
-// === pod_gap and the slicer_3up preset (st-hxk) ===
+// === pod_gap and the slicer_3up preset (st-hxk, corrected by st-toz) ===
 //
-// Production geometry uses `pod_gap = 0` (stock_3up): pods touch flush,
-// dovetails mate, the STL is a single connected body. That's what gets
-// installed on the wall.
+// `pod_gap` is print-time air space, nothing more. It pushes adjacent
+// pods apart in X so the slicer sees each pod as an independent body
+// (per-pod move, rotate, support). Dovetail features are NOT suppressed
+// when pod_gap > 0 — they're the post-print assembly mechanism: the
+// user prints the pods separately, then slides them together by hand
+// and the tongues engage the slots.
 //
-// For per-pod slicer manipulation — rotating one pod, raising another,
-// applying different supports — the slicer needs to see each pod as a
-// separate body. Setting `pod_gap > 0` (e.g. slicer_3up preset uses 10 mm)
-// pushes adjacent pods apart by that distance in X, and globally suppresses
-// dovetails (since a tongue protruding into open air just confuses the
-// slicer and the user). The resulting STL contains pod_count disjoint
-// bodies that load straight in as independent objects.
+// End-cap suppression is independent of pod_gap and runs in both
+// modes: the leftmost pod's -X slot is filled, the rightmost pod's +X
+// tongue is omitted. So for pod_count = 3 you always get four dovetail
+// features — leftmost tongue (+X inner), middle slot+tongue (both
+// inner-facing), rightmost slot (-X inner). The outer faces of the
+// end pods stay flat in both modes.
+//
+// pod_gap = 0 (stock_3up): pods touch flush, the tongues already sit
+// inside the adjacent slots, and the union collapses to a single
+// connected body. That's the installed-on-the-wall geometry.
+//
+// pod_gap > 0 (slicer_3up uses 10 mm): tongues protrude into open air
+// short of the next pod's face (default tongue depth 6 mm < 10 mm
+// gap, so 4 mm clearance), each pod is its own connected component,
+// and post-print the user slides them together to engage.
 
 include <BOSL2/std.scad>
 include <BOSL2/rounding.scad>
@@ -128,7 +139,7 @@ edge_round_r          = 1.5;   // @param number min=0 max=5 step=0.25 unit=mm gr
 // @preset id="stock_3up"   label="Stock goBlu 3-up (3×90mm, 30mm gap)"      housing_diameter=90 clearance=0.5 pocket_depth=115 collar_headroom=3 top_lead_in_r=5 bottom_ring_thickness=5 bottom_lip_w=5 back_wall_t=7 front_wall_t=5 side_wall_t=15 pod_count=3 dovetail_enabled=true  dovetail_w_base=14 dovetail_w_tip=18 dovetail_depth=6 dovetail_height=80 dovetail_clearance=0.2 pod_gap=0  edge_round_r=1.5
 // @preset id="single_pod"  label="Single pod (print one at a time)"        housing_diameter=90 clearance=0.5 pocket_depth=115 collar_headroom=3 top_lead_in_r=5 bottom_ring_thickness=5 bottom_lip_w=5 back_wall_t=7 front_wall_t=5 side_wall_t=15 pod_count=1 dovetail_enabled=true  dovetail_w_base=14 dovetail_w_tip=18 dovetail_depth=6 dovetail_height=80 dovetail_clearance=0.2 pod_gap=0  edge_round_r=1.5
 // @preset id="flush_3up"   label="3-up, no dovetails (VHB only)"           housing_diameter=90 clearance=0.5 pocket_depth=115 collar_headroom=3 top_lead_in_r=5 bottom_ring_thickness=5 bottom_lip_w=5 back_wall_t=7 front_wall_t=5 side_wall_t=15 pod_count=3 dovetail_enabled=false dovetail_w_base=14 dovetail_w_tip=18 dovetail_depth=6 dovetail_height=80 dovetail_clearance=0.2 pod_gap=0  edge_round_r=1.5
-// @preset id="slicer_3up"  label="3-up for slicer (10mm gap, dovetails off)" housing_diameter=90 clearance=0.5 pocket_depth=115 collar_headroom=3 top_lead_in_r=5 bottom_ring_thickness=5 bottom_lip_w=5 back_wall_t=7 front_wall_t=5 side_wall_t=15 pod_count=3 dovetail_enabled=true  dovetail_w_base=14 dovetail_w_tip=18 dovetail_depth=6 dovetail_height=80 dovetail_clearance=0.2 pod_gap=10 edge_round_r=1.5
+// @preset id="slicer_3up"  label="3-up for slicer (10mm gap, dovetails on inner faces)" housing_diameter=90 clearance=0.5 pocket_depth=115 collar_headroom=3 top_lead_in_r=5 bottom_ring_thickness=5 bottom_lip_w=5 back_wall_t=7 front_wall_t=5 side_wall_t=15 pod_count=3 dovetail_enabled=true  dovetail_w_base=14 dovetail_w_tip=18 dovetail_depth=6 dovetail_height=80 dovetail_clearance=0.2 pod_gap=10 edge_round_r=1.5
 
 // === Derived ===
 
@@ -143,10 +154,12 @@ pocket_cy = -pod_d / 2 + back_wall_t + pocket_id / 2;
 // Dovetail Z-centre (centred on pod height).
 dovetail_cz = pod_h / 2;
 
-// Dovetails are physically meaningless when pods are rendered with a
-// gap between them — a tongue protruding into open air just confuses
-// the slicer. Suppress them globally when pod_gap > 0 (st-hxk).
-dovetails_active = dovetail_enabled && pod_gap == 0;
+// Dovetails are the post-print assembly mechanism — they stay enabled
+// regardless of pod_gap (st-toz, correcting st-hxk's over-suppression).
+// End-cap suppression in `array()` is what keeps outer faces flat on
+// end pods; this flag just gates the per-pod feature on/off globally
+// via the `dovetail_enabled` @param.
+dovetails_active = dovetail_enabled;
 
 // Array X-offset for pod index i in [0, pod_count). Centre-to-centre
 // spacing is pod_w + pod_gap; at pod_gap = 0 this collapses to pods
@@ -242,12 +255,13 @@ module pod(expose_left_slot, expose_right_tongue) {
 // === Array layout ===
 //
 // pod_count pods placed at cell_spacing = pod_w + pod_gap along X.
-// When pod_gap == 0 (stock_3up), pods touch flush and the dovetail
-// caps run: leftmost pod's -X slot is suppressed, rightmost pod's +X
-// tongue is suppressed. When pod_gap > 0 (slicer_3up), `dovetails_active`
-// is false, so the cap booleans are moot — no tongues or slots are
-// emitted on any face, and the slicer sees pod_count free-standing
-// pod bodies separated by air.
+// End-cap suppression runs identically in both gap modes (st-toz):
+// leftmost pod's -X slot is suppressed (flat outer face), rightmost
+// pod's +X tongue is suppressed (flat outer face). For pod_count = 3
+// that yields four dovetail features — one tongue + one slot on each
+// inner-facing interface — in both `stock_3up` (pods touching, dovetails
+// already mated) and `slicer_3up` (pods spaced apart, user mates them
+// post-print).
 //
 // Single pod (pod_count=1) shows both dovetail features when active,
 // for inspection during print prep.
