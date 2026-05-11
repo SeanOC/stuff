@@ -63,12 +63,14 @@
 // === Pod-to-pod interconnect ===
 //
 // Vertical-slide dovetail. Each pod has a male tongue on its +X face
-// (centred on the pod's mid-height, dovetail_height tall) and a female
-// slot on its -X face that runs from the pod's bottom up to the
-// tongue's top (st-6xj). Tongue cross-section is a trapezoid wider at
-// its tip than its base, so once two pods are stacked the slot
-// mechanically locks the tongue against -Y pull (the direction VHB
-// peels worst).
+// and a female slot on its -X face; both run from the pod's bottom
+// (z=0 for the tongue, z=-0.1 for the slot — slightly below the base
+// for a clean cut, st-6xj) up to `dovetail_top_z`, with the top
+// `dovetail_top_taper_h` of each tapering to a point so the print is
+// support-free (st-nn5). Tongue cross-section is a trapezoid wider at
+// the +X tip than at the wall face, so once two pods are stacked the
+// slot mechanically locks the tongue against -Y pull (the direction
+// VHB peels worst).
 //
 // Assembly workflow: VHB pod A to the wall first; hold pod B above and
 // to the side; lower pod B straight down so A's tongue enters B's
@@ -139,15 +141,16 @@ dovetail_w_tip        = 18;    // @param number min=6 max=40 step=0.5 unit=mm gr
 dovetail_depth        = 6;     // @param number min=2 max=12 step=0.5 unit=mm group=array label="Dovetail depth (X-protrusion / slot-cut)"
 dovetail_height       = 80;    // @param number min=20 max=200 step=1 unit=mm group=array label="Dovetail vertical extent"
 dovetail_clearance    = 0.2;   // @param number min=0 max=1 step=0.05 unit=mm group=array label="Dovetail slip clearance (slot oversize)"
+dovetail_top_taper_h  = 9;     // @param number min=0 max=30 step=0.5 unit=mm group=array label="Dovetail top taper (0 = flat top, needs support; ≥w_tip/2 prints support-free)"
 pod_gap               = 0;     // @param number min=0 max=50 step=1 unit=mm group=array label="Gap between adjacent pods (for slicer export)"
 
 // ----- Edge treatment -----
 edge_round_r          = 1.5;   // @param number min=0 max=5 step=0.25 unit=mm group=edges label="Outer edge rounding"
 
-// @preset id="stock_3up"   label="Stock goBlu 3-up (3×90mm, 30mm gap)"      housing_diameter=90 clearance=0.5 pocket_depth=115 collar_headroom=3 top_lead_in_r=5 bottom_ring_thickness=5 bottom_lip_w=5 back_wall_t=7 front_wall_t=5 side_wall_t=15 pod_count=3 dovetail_enabled=true  dovetail_w_base=14 dovetail_w_tip=18 dovetail_depth=6 dovetail_height=80 dovetail_clearance=0.2 pod_gap=0  edge_round_r=1.5
-// @preset id="single_pod"  label="Single pod (print one at a time)"        housing_diameter=90 clearance=0.5 pocket_depth=115 collar_headroom=3 top_lead_in_r=5 bottom_ring_thickness=5 bottom_lip_w=5 back_wall_t=7 front_wall_t=5 side_wall_t=15 pod_count=1 dovetail_enabled=true  dovetail_w_base=14 dovetail_w_tip=18 dovetail_depth=6 dovetail_height=80 dovetail_clearance=0.2 pod_gap=0  edge_round_r=1.5
-// @preset id="flush_3up"   label="3-up, no dovetails (VHB only)"           housing_diameter=90 clearance=0.5 pocket_depth=115 collar_headroom=3 top_lead_in_r=5 bottom_ring_thickness=5 bottom_lip_w=5 back_wall_t=7 front_wall_t=5 side_wall_t=15 pod_count=3 dovetail_enabled=false dovetail_w_base=14 dovetail_w_tip=18 dovetail_depth=6 dovetail_height=80 dovetail_clearance=0.2 pod_gap=0  edge_round_r=1.5
-// @preset id="slicer_3up"  label="3-up for slicer (10mm gap, dovetails on inner faces)" housing_diameter=90 clearance=0.5 pocket_depth=115 collar_headroom=3 top_lead_in_r=5 bottom_ring_thickness=5 bottom_lip_w=5 back_wall_t=7 front_wall_t=5 side_wall_t=15 pod_count=3 dovetail_enabled=true  dovetail_w_base=14 dovetail_w_tip=18 dovetail_depth=6 dovetail_height=80 dovetail_clearance=0.2 pod_gap=10 edge_round_r=1.5
+// @preset id="stock_3up"   label="Stock goBlu 3-up (3×90mm, 30mm gap)"      housing_diameter=90 clearance=0.5 pocket_depth=115 collar_headroom=3 top_lead_in_r=5 bottom_ring_thickness=5 bottom_lip_w=5 back_wall_t=7 front_wall_t=5 side_wall_t=15 pod_count=3 dovetail_enabled=true  dovetail_w_base=14 dovetail_w_tip=18 dovetail_depth=6 dovetail_height=80 dovetail_clearance=0.2 dovetail_top_taper_h=9 pod_gap=0  edge_round_r=1.5
+// @preset id="single_pod"  label="Single pod (print one at a time)"        housing_diameter=90 clearance=0.5 pocket_depth=115 collar_headroom=3 top_lead_in_r=5 bottom_ring_thickness=5 bottom_lip_w=5 back_wall_t=7 front_wall_t=5 side_wall_t=15 pod_count=1 dovetail_enabled=true  dovetail_w_base=14 dovetail_w_tip=18 dovetail_depth=6 dovetail_height=80 dovetail_clearance=0.2 dovetail_top_taper_h=9 pod_gap=0  edge_round_r=1.5
+// @preset id="flush_3up"   label="3-up, no dovetails (VHB only)"           housing_diameter=90 clearance=0.5 pocket_depth=115 collar_headroom=3 top_lead_in_r=5 bottom_ring_thickness=5 bottom_lip_w=5 back_wall_t=7 front_wall_t=5 side_wall_t=15 pod_count=3 dovetail_enabled=false dovetail_w_base=14 dovetail_w_tip=18 dovetail_depth=6 dovetail_height=80 dovetail_clearance=0.2 dovetail_top_taper_h=9 pod_gap=0  edge_round_r=1.5
+// @preset id="slicer_3up"  label="3-up for slicer (10mm gap, dovetails on inner faces)" housing_diameter=90 clearance=0.5 pocket_depth=115 collar_headroom=3 top_lead_in_r=5 bottom_ring_thickness=5 bottom_lip_w=5 back_wall_t=7 front_wall_t=5 side_wall_t=15 pod_count=3 dovetail_enabled=true  dovetail_w_base=14 dovetail_w_tip=18 dovetail_depth=6 dovetail_height=80 dovetail_clearance=0.2 dovetail_top_taper_h=9 pod_gap=10 edge_round_r=1.5
 
 // === Derived ===
 
@@ -159,8 +162,12 @@ pod_h     = bottom_ring_thickness + pocket_depth + collar_headroom; // 123
 // Pocket centred in Y such that the -Y back wall is back_wall_t thick.
 pocket_cy = -pod_d / 2 + back_wall_t + pocket_id / 2;
 
-// Dovetail Z-centre (centred on pod height).
-dovetail_cz = pod_h / 2;
+// Dovetail Z geometry. `dovetail_cz` is the legacy z-centre value that
+// `dovetail_height` was symmetric around; the tongue / slot top sits at
+// that value plus half the dovetail_height — both features now anchor
+// at the pod base and rise up to `dovetail_top_z` (st-nn5).
+dovetail_cz    = pod_h / 2;
+dovetail_top_z = dovetail_cz + dovetail_height / 2;
 
 // Dovetails are the post-print assembly mechanism — they stay enabled
 // regardless of pod_gap (st-toz, correcting st-hxk's over-suppression).
@@ -170,10 +177,15 @@ dovetail_cz = pod_h / 2;
 dovetails_active = dovetail_enabled;
 
 // Each dovetail slot is open at the pod's bottom face (st-6xj) so an
-// adjacent pod's tongue has a path to slide in during VHB install. At
-// pod_gap == 0 the slot's clearance-air ring around the mated tongue
-// vents to outside through that bottom opening — no sealed inner void,
-// so CGAL outputs the 3-pod assembly as a single connected surface.
+// adjacent pod's tongue has a path to slide in during VHB install,
+// and its top is a tapered point rather than a flat roof (st-nn5)
+// so the slot's close prints support-free. The tongue mirrors the
+// taper at its top, prints from z=0 with no bottom overhang, and
+// mates against the slot in both the straight and tapered regions.
+// At pod_gap == 0 the slot's clearance-air ring around the mated
+// tongue vents to outside through that bottom opening — no sealed
+// inner void, so CGAL outputs the 3-pod assembly as a single
+// connected surface.
 
 // Array X-offset for pod index i in [0, pod_count). Centre-to-centre
 // spacing is pod_w + pod_gap; at pod_gap = 0 this collapses to pods
@@ -194,21 +206,32 @@ PRINT_ANCHOR_BBOX = [363, 103, 123];
 
 // === Dovetail primitive ===
 //
-// A vertical-slide dovetail tongue: trapezoid in the XY plane, wider
-// at +X tip than at the wall face. Anchored so its mating face is at
-// x=0 and its tip extends in +X.  Extruded along Z by `height`,
-// centred on z=0.
+// A vertical-slide dovetail extrusion: trapezoid in the XY plane,
+// wider at +X tip than at the wall face. Anchored so the mating face
+// is at x=0 and the tip extends in +X. Bottom of the extrusion sits
+// at z=0; the bottom (height − taper_h) is constant cross-section,
+// and the top taper_h linearly scales to a point at z=height
+// (`linear_extrude(scale=0)`), producing a self-supporting roof when
+// used as a slot subtraction and a self-supporting tip when used as
+// a tongue. Pass `taper_h = 0` for the legacy flat-top shape.
 
-module dovetail_tongue(w_base, w_tip, depth, height) {
-    poly = [
+module dovetail_polygon(w_base, w_tip, depth) {
+    polygon([
         [0,     -w_base / 2],
         [depth, -w_tip  / 2],
         [depth,  w_tip  / 2],
         [0,      w_base / 2],
-    ];
-    translate([0, 0, -height / 2])
-        linear_extrude(height = height)
-            polygon(poly);
+    ]);
+}
+
+module dovetail_extrude(w_base, w_tip, depth, height, taper_h = 0) {
+    straight_h = max(height - taper_h, 0.01);
+    linear_extrude(height = straight_h)
+        dovetail_polygon(w_base, w_tip, depth);
+    if (taper_h > 0)
+        translate([0, 0, straight_h])
+            linear_extrude(height = taper_h, scale = 0)
+                dovetail_polygon(w_base, w_tip, depth);
 }
 
 // === One pod ===
@@ -230,11 +253,20 @@ module pod(expose_left_slot, expose_right_tongue) {
                    edges    = "Z",
                    anchor   = BOTTOM);
 
-            // Dovetail tongue on +X face.
+            // Dovetail tongue on +X face. Anchored at the pod base
+            // (z=0) so the tongue prints continuously off the build
+            // plate with no bottom overhang (st-nn5). Tongue reaches
+            // up to `slot_top_z` — same elevation as the slot's
+            // closed top — so the drop-and-stop alignment still
+            // engages at full descent. The top `dovetail_top_taper_h`
+            // tapers to a point (scale=0 linear_extrude) so the
+            // tongue's tip is self-supporting in print and mates
+            // with the slot's matching tapered close.
             if (dovetails_active && expose_right_tongue)
-                translate([pod_w / 2, 0, dovetail_cz])
-                    dovetail_tongue(dovetail_w_base, dovetail_w_tip,
-                                    dovetail_depth, dovetail_height);
+                translate([pod_w / 2, 0, 0])
+                    dovetail_extrude(dovetail_w_base, dovetail_w_tip,
+                                     dovetail_depth, dovetail_top_z,
+                                     dovetail_top_taper_h);
         }
 
         // Pocket bore: open top, full pocket_depth + collar_headroom.
@@ -259,9 +291,9 @@ module pod(expose_left_slot, expose_right_tongue) {
             cylinder(h = bottom_ring_thickness + 0.2,
                      d = max(pocket_id - 2 * bottom_lip_w, 1));
 
-        // Dovetail slot on -X face. Cut the same tongue shape into the
-        // wall, oversized by `dovetail_clearance` for slip fit.
-        // `dovetail_tongue` extends in +X from its anchor at x=-pod_w/2,
+        // Dovetail slot on -X face. Cut the same dovetail shape into
+        // the wall, oversized by `dovetail_clearance` for slip fit.
+        // `dovetail_extrude` extends in +X from its anchor at x=-pod_w/2,
         // so the polygon walks inward through the wall — narrow at the
         // face, widening to the dovetail tip. That's the inverse profile
         // of an adjacent pod's +X tongue, so the two mate with slip fit.
@@ -270,22 +302,24 @@ module pod(expose_left_slot, expose_right_tongue) {
         // adjacent pod's tongue has a path in: install pod A on the wall,
         // hold pod B above and to the side, lower pod B straight down,
         // and A's tongue enters B's slot through B's bottom and slides
-        // up as B descends. The top stays closed at the original
-        // `dovetail_cz + dovetail_height/2` position — when B descends
-        // far enough that its bottom aligns with A's, the slot top hits
-        // the tongue top and arrests further descent ("drop and stop",
-        // self-aligning).
+        // up as B descends. The top stays at `dovetail_top_z` — when B
+        // descends far enough that its bottom aligns with A's, the slot
+        // top (a tapered point) meets the tongue top (also a tapered
+        // point) and arrests further descent ("drop and stop").
+        //
+        // The top `dovetail_top_taper_h` of the cut scales to a point
+        // (st-nn5) so the slot's roof is a self-supporting cone rather
+        // than a flat horizontal overhang — prints without supports.
         if (dovetails_active && expose_left_slot) {
-            slot_top_z = dovetail_cz + dovetail_height / 2;
             slot_bot_z = -0.1;  // overshoot the pod base for a clean cut
-            slot_h     = slot_top_z - slot_bot_z;
-            slot_cz    = (slot_top_z + slot_bot_z) / 2;
-            translate([-pod_w / 2, 0, slot_cz])
-                dovetail_tongue(
+            slot_h     = dovetail_top_z - slot_bot_z;
+            translate([-pod_w / 2, 0, slot_bot_z])
+                dovetail_extrude(
                     dovetail_w_base + 2 * dovetail_clearance,
                     dovetail_w_tip  + 2 * dovetail_clearance,
                     dovetail_depth + 0.1,  // slot floor overshoot in X
-                    slot_h);
+                    slot_h,
+                    dovetail_top_taper_h);
         }
     }
 }

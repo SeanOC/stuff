@@ -1,4 +1,4 @@
-"""Invariants for the goBlu RV water filter holder (st-r3t, st-hxk, st-toz, st-yuu, st-6xj).
+"""Invariants for the goBlu RV water filter holder (st-r3t, st-hxk, st-toz, st-yuu, st-6xj, st-nn5).
 
 Beyond the built-in checks (watertight, single-body component count,
 PRINT_ANCHOR_BBOX drift, triangle ceiling), this sidecar pins the
@@ -51,6 +51,17 @@ load-bearing structural claims the bead spelled out:
      again and the connected-components check rejects with 3 instead
      of 1. The slot's bottom-open extent is the *reason* the count
      drops to 1, so the same assertion guards both.
+
+  9. **Tongue + slot tops taper to a point for support-free print
+     (st-nn5).** Param-level guards:
+       • dovetail_top_taper_h ≥ dovetail_w_tip / 2 — keeps the taper
+         shallow enough (≥ 45° from horizontal) that FDM bridging
+         can produce the closed apex without support. The default
+         (9 mm at w_tip = 18 mm) sits exactly at the limit. Set to
+         0 to opt back into a flat top (and supports).
+       • dovetail_top_taper_h ≤ dovetail_height — the taper must
+         fit inside the dovetail's vertical extent; pushing it past
+         dovetail_height leaves no straight mating region.
 """
 
 from __future__ import annotations
@@ -77,6 +88,9 @@ def check(ctx):
     pod_count = p.get("pod_count")
     dovetail_enabled = p.get("dovetail_enabled")
     pod_gap = p.get("pod_gap")
+    dovetail_top_taper_h = p.get("dovetail_top_taper_h")
+    dovetail_height = p.get("dovetail_height")
+    dovetail_w_tip = p.get("dovetail_w_tip")
 
     # 1. Pocket ID = housing OD + 2·clearance — at defaults this is the
     #    bead's "91 mm" anchor. Not directly observable from the STL,
@@ -159,5 +173,29 @@ def check(ctx):
             pod_count if (pod_gap is not None and pod_gap > 0) else 1
         )
         failures.extend(expect_connected_solids(ctx, expected_components))
+
+    # 9. Tapered tops must be ≥ 45° (≥ w_tip/2) and fit within the
+    #    dovetail's vertical extent. Both guards apply only when the
+    #    feature is opted-in (taper > 0 and dovetails enabled).
+    if (dovetail_enabled and dovetail_top_taper_h is not None
+            and dovetail_top_taper_h > 0):
+        if (dovetail_w_tip is not None
+                and dovetail_top_taper_h < dovetail_w_tip / 2):
+            failures.append(Failure(
+                "taper_angle",
+                f"dovetail_top_taper_h={dovetail_top_taper_h}mm < "
+                f"dovetail_w_tip/2={dovetail_w_tip / 2}mm — taper slope "
+                "is shallower than 45° (steeper than horizontal); FDM "
+                "bridging will sag at the closed apex.",
+            ))
+        if (dovetail_height is not None
+                and dovetail_top_taper_h > dovetail_height):
+            failures.append(Failure(
+                "taper_height",
+                f"dovetail_top_taper_h={dovetail_top_taper_h}mm > "
+                f"dovetail_height={dovetail_height}mm — taper exceeds "
+                "the dovetail's vertical extent, leaving no straight "
+                "mating region for the slip-fit slide.",
+            ))
 
     return failures
