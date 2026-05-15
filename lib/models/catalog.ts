@@ -59,4 +59,9 @@ export const CATALOG: Record<string, CatalogEntry> = {
     blurb:
       "Captive bench mount for a Blu Technology digital flow meter (27mm × 80mm pipe). Two split-saddle pairs clamp the bare bands at each end of the meter; the middle 44mm gap leaves the LCD display saddle free. 4× M3 SHCS into heat-set inserts.",
   },
+  blu_black_tank_valve_mount: {
+    categoryId: "household",
+    blurb:
+      "Captive bench mount for a Blu Technology 3-way black-tank flush valve. Asymmetric saddles clamp the two inner fittings (31.5mm left, 29.25mm right) across a 37mm gap; vertical exclusion cylinder carves cap clearance for the T-handle's 90° swing. 4× M3 SHCS into heat-set inserts.",
+  },
 };

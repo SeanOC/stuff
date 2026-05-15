@@ -1,0 +1,364 @@
+// SPDX-License-Identifier: CC-BY-NC-SA-4.0
+// Copyright (c) 2026 Sean O'Connor
+//
+// Captive bench-top mount for a Blu Technology 3-way black-tank flush
+// valve (st-i32). Companion part to the Blu flow meter mount v2
+// (st-246, blu_flow_meter_mount_80mm.scad) — same hardware pattern
+// (bottom-entry M3 SHCS, heat-set inserts in caps), but ASYMMETRIC
+// saddles (the valve's two inner fittings have different OD) and an
+// extra handle-clearance cut so the T-handle's swept volume stays
+// free.
+//
+// === Part being mounted (Blu Technology flush valve) ===
+//
+//   - Inline pair: female QD socket on one end, male QD plug on the
+//     other; both project past the saddles into open air.
+//   - Side outlet (3rd fitting): perpendicular to the inline axis,
+//     exits laterally past one Y edge of the base.
+//   - T-handle: vertical (+Z), rotates ~90° around its own axis to
+//     switch flow paths. This is the ONLY element above the bench
+//     surface — everything else lies in the bench plane.
+//
+//   Operator-confirmed dimensions (2026-05-15):
+//     Inner-face gap between the two inner fittings:  37 mm
+//     Left  inner fitting OD:                         31.5 mm
+//     Right inner fitting OD:                         29.25 mm
+//
+//   The saddles grip the inner fittings themselves (no bare-pipe band
+//   between them, unlike the flow meter). Each saddle is sized to its
+//   specific fitting — don't average the IDs.
+//
+// === Hardware (same pattern as flow meter v2) ===
+//
+//   4× M3×30 mm SHCS — clearance through the BASE (head countersunk
+//        into the base bottom), threaded UP into a heat-set insert
+//        pressed into each CAP.
+//   4× M3 brass heat-set inserts (5 mm OD × 5 mm depth) — installed
+//        into the CAPS from each cap's mating (bottom) face before
+//        assembly, with a soldering iron, while the cap sits inverted
+//        on the bench (its outer top face down — same orientation as
+//        printing).
+//
+//   Per cap: 2 bolts straddling the pipe channel in Y, at the saddle's
+//   X centre. Total 4 bolts = 2 caps × 2 bolts.
+//
+//   ### Bolt length budget (M3×30, recomputed for this part)
+//
+//   Per-saddle saddle_bottom_h is `wall_t + max(pipe_channel_r_left,
+//   pipe_channel_r_right)` — both saddles share `pipe_center_z`, so
+//   the smaller-bore saddle just has more wall under its bore. At
+//   defaults (slop=0.2, wall_t=3, bore_left=31.5):
+//
+//     3.2 mm  head countersunk into base bottom (m3_head_depth)
+//     4.8 mm  base material above the head (base_t − m3_head_depth)
+//    18.95 mm saddle_bottom (wall_t + max_pipe_channel_r)
+//     5.0 mm  insert depth in cap (m3_insert_h)
+//    ─────
+//    31.95 mm total path; under-head bolt length = 28.75 mm, so an
+//             M3×30 SHCS gives ~1.25 mm slack under the insert floor
+//             and full thread engagement in the brass insert.
+//             (Differs from v2's 29.7 mm path because the larger
+//             saddle_bottom_h adds 2.25 mm.)
+//
+// === Install orientation ===
+//
+//   install +X = along the valve's inline axis (the QD pair); pick the
+//                end the plumbing prefers — the saddles are sized
+//                asymmetrically so the part is NOT mirror-symmetric.
+//   install +Y = across the bench, perpendicular to inline; the side
+//                outlet exits along ±Y past the base edge.
+//   install +Z = up (away from the bench top); bench surface at z=0.
+//                The T-handle is the ONLY +Z element above the part.
+//
+//   The flat base bottom (z=0) sits on the bench. The valve fittings
+//   sit captured in the two saddles at pipe_center_z; the T-handle
+//   rises above the valve body in the middle gap between saddles. The
+//   side outlet exits laterally in ±Y at pipe_center_z; it stays well
+//   above the base top (base_t = 8 mm vs pipe_center_z ≈ 27 mm) so it
+//   hangs free past whichever Y edge it points at.
+//
+//   The asymmetric saddles fix the valve's inline orientation: the
+//   31.5 mm fitting goes in the -X saddle (left), the 29.25 mm fitting
+//   goes in the +X saddle (right). Cap-left and cap-right STLs are
+//   distinct (different bore IDs).
+//
+// === Print orientation ===
+//
+//   Default `part = "assembly"` renders all three pieces in their
+//   installed positions for the live preview / catalog thumbnail. For
+//   STL export the operator passes `-D 'part="base"'` (one print),
+//   `-D 'part="cap_left"'` (one print), or `-D 'part="cap_right"'`
+//   (one print). The two caps are NOT interchangeable.
+//
+//     - Base: flat-bottom-down on the build plate (z=0 face on the
+//       bed). The two saddles' inner curves overhang into their pipe
+//       channels; below each bore equator every perimeter layer is
+//       steeper than 45° from horizontal, so no supports are needed.
+//       The base bottom carries the 4× SHCS counterbores (5.8 mm Ø ×
+//       3.2 mm deep) — short bridges over the first 3.2 mm of layers,
+//       fine without supports.
+//
+//     - Cap (left or right): flat-top-down. The cap's outer top face
+//       becomes the bed face; the inner cylindrical roof (the saddle's
+//       upper half) prints as concentric perimeters with no overhang.
+//       The handle-clearance cut on the inboard face is a shallow
+//       cylindrical scoop (≤1.5 mm deep at the centerline at defaults)
+//       and prints as a mild concave perimeter — no overhang issues.
+//       The heat-set insert pockets open from the cap's mating face,
+//       which is the +Z face in the printed orientation — clean blind
+//       holes, no bridging.
+//
+//   Material: PETG (default — water-adjacent like the flow meter) or
+//   ASA. PLA acceptable for a dry indoor bench but note the valve
+//   sees splash from black-tank flushing.
+//
+// === Slop (slip-fit) ===
+//
+//   `slop` is a per-radius pad on each pipe channel diameter:
+//   pipe_channel_d_<side> = bore_<side> + 2·slop. Default 0.2 mm gives
+//   a 31.9 mm bore for the 31.5 mm fitting and a 29.65 mm bore for the
+//   29.25 mm fitting. First-print feedback will tune from here.
+//
+// === Handle clearance ===
+//
+//   The T-handle sits above the valve body in the middle 37 mm gap
+//   between saddles. Its swept volume (~40 mm tall × ~20 mm radial
+//   from the handle pivot) must NOT intersect either cap.
+//
+//   The mount carves a vertical exclusion cylinder centered on the
+//   valve's vertical axis (origin in XY) at z ∈ [pipe_center_z +
+//   handle_pivot_above_pipe, pipe_center_z + handle_pivot_above_pipe
+//   + handle_excl_h] with radius handle_excl_r. At defaults this
+//   removes a thin lens-shaped scoop (~1.5 mm deep at y=0, fading to
+//   zero at y ≈ ±7.6 mm) from the inboard top of each cap. The cut
+//   leaves cap material on every side of the bolt locations, so cap
+//   strength near the inserts is unaffected.
+//
+//   If the operator's actual handle is wider, raise `handle_excl_r` —
+//   the cut deepens but stays well clear of the bolt insert pockets
+//   (which sit at x=±saddle_center_x, y=±bolt_y_offset, well outside
+//   the exclusion radius at defaults). The invariants harness flags
+//   any combination that would sever the cap.
+//
+// === Side-outlet clearance ===
+//
+//   The 3rd valve fitting exits in ±Y at z = pipe_center_z ≈ 27 mm,
+//   well above the base top (z = base_t = 8 mm). With base_d = 50 mm
+//   the +Y / −Y edges of the base sit at y = ±25 mm — past saddle_y_half
+//   (24.5 mm) so the cap sides are fully supported, but only 0.5 mm
+//   past, so the outlet (which extends radially out from y=0 well past
+//   ±25 mm) hangs cleanly into open air past the base edge. No notch
+//   needed — the outlet axis runs above the base top, never through
+//   it.
+
+include <BOSL2/std.scad>
+
+$fn = 64;
+
+// === User-tunable parameters ===
+
+// ----- Which piece to render -----
+part = "assembly";  // @param enum choices=assembly|base|cap_left|cap_right group=part label="Which piece to render"
+
+// ----- Valve dimensions -----
+bore_left   = 31.5;   // @param number min=15 max=60 step=0.25 unit=mm group=valve label="Left inner fitting OD"
+bore_right  = 29.25;  // @param number min=15 max=60 step=0.25 unit=mm group=valve label="Right inner fitting OD"
+fitting_gap = 37;     // @param number min=20 max=120 step=0.5 unit=mm group=valve label="Inner-face gap between fittings"
+
+// ----- Fit -----
+slop     = 0.2;  // @param number min=0 max=1   step=0.05 unit=mm group=fit label="Pipe channel slip clearance (radial pad on diameter)"
+saddle_w = 15;   // @param number min=5 max=30  step=0.5  unit=mm group=fit label="Saddle width along inline axis (X)"
+wall_t   = 3;    // @param number min=2 max=8   step=0.5  unit=mm group=fit label="Saddle wall thickness around pipe"
+
+// ----- Base -----
+base_w       = 70;   // @param number min=40 max=160 step=0.5 unit=mm group=base label="Base width along inline axis (X)"
+base_d       = 50;   // @param number min=30 max=120 step=0.5 unit=mm group=base label="Base depth across inline (Y)"
+base_t       = 8;    // @param number min=3 max=15  step=0.5 unit=mm group=base label="Base plate thickness (Z)"
+edge_round_r = 1.5;  // @param number min=0 max=5   step=0.25 unit=mm group=base label="Outer edge rounding"
+
+// ----- Hardware (M3 SHCS + heat-set insert) -----
+m3_clearance_d = 3.5;  // @param number min=3.0 max=5   step=0.1 unit=mm group=hardware label="M3 clearance hole (base pass-through)"
+m3_head_d      = 5.8;  // @param number min=4.5 max=8   step=0.1 unit=mm group=hardware label="M3 SHCS head diameter (counterbore)"
+m3_head_depth  = 3.2;  // @param number min=2.5 max=6   step=0.1 unit=mm group=hardware label="M3 SHCS head depth (counterbore)"
+m3_insert_d    = 5;    // @param number min=4   max=7   step=0.1 unit=mm group=hardware label="M3 heat-set insert OD (cap pocket)"
+m3_insert_h    = 5;    // @param number min=3   max=10  step=0.5 unit=mm group=hardware label="M3 heat-set insert depth"
+bolt_y_offset  = 20;   // @param number min=15  max=30  step=0.5 unit=mm group=hardware label="Bolt centerline distance from pipe axis (Y)"
+
+// ----- Handle clearance -----
+handle_excl_r            = 20;  // @param number min=0  max=40 step=0.5 unit=mm group=handle label="Handle swept-volume radius (from valve vertical axis)"
+handle_excl_h            = 40;  // @param number min=10 max=80 step=1   unit=mm group=handle label="Handle swept-volume height (above pivot)"
+handle_pivot_above_pipe  = 5;   // @param number min=0  max=30 step=0.5 unit=mm group=handle label="Handle pivot height above pipe centerline"
+
+// @preset id="default" label="Blu black-tank flush valve (default)" part="assembly" bore_left=31.5 bore_right=29.25 fitting_gap=37 slop=0.2 saddle_w=15 wall_t=3 base_w=70 base_d=50 base_t=8 edge_round_r=1.5 m3_clearance_d=3.5 m3_head_d=5.8 m3_head_depth=3.2 m3_insert_d=5 m3_insert_h=5 bolt_y_offset=20 handle_excl_r=20 handle_excl_h=40 handle_pivot_above_pipe=5
+
+// === Derived ===
+
+pipe_channel_r_left  = bore_left  / 2 + slop;  // 15.95 at defaults
+pipe_channel_r_right = bore_right / 2 + slop;  // 14.825 at defaults
+max_r                = max(pipe_channel_r_left, pipe_channel_r_right);
+
+// Both saddles share the same pipe-axis Z so the valve fittings line
+// up coaxially. Use the larger bore to set the height — the smaller-
+// bore saddle ends up with a little extra wall below its channel.
+pipe_center_z = base_t + wall_t + max_r;  // 26.95 at defaults
+
+// Saddle X centres land at half the fitting gap + half a saddle width
+// outboard of origin: the saddle inboard faces are then exactly
+// fitting_gap apart, which is what seats the two valve fittings.
+saddle_center_x = fitting_gap / 2 + saddle_w / 2;  // 26 at defaults
+
+// Saddle bottom (integral to base) and cap heights. Cap is uniform
+// across left/right — the bore difference shows up only as different
+// material above the smaller bore's channel.
+saddle_bottom_h = pipe_center_z - base_t;  // 18.95 at defaults
+cap_h           = wall_t + max_r;          // 18.95 at defaults
+
+// Y extent: cover the pipe plus an insert-radius+margin around each
+// bolt. Same formula as v2.
+saddle_y_half = bolt_y_offset + m3_insert_d / 2 + 2;  // 24.5 at defaults
+saddle_y      = 2 * saddle_y_half;                    // 49 at defaults
+
+// Handle swept-volume cylinder, centered on the valve vertical axis.
+handle_excl_z_start = pipe_center_z + handle_pivot_above_pipe;       // 31.95
+handle_excl_z_end   = handle_excl_z_start + handle_excl_h;           // 71.95
+
+arch_top_z = base_t + saddle_bottom_h + cap_h;  // 45.9 at defaults
+
+// PRINT_ANCHOR_BBOX (assembly view).
+PRINT_ANCHOR_BBOX = [base_w, base_d, arch_top_z];
+
+// sx = +1 → right saddle (29.25 mm bore); sx = -1 → left (31.5 mm bore).
+function pipe_r_for(sx) = (sx > 0) ? pipe_channel_r_right
+                                    : pipe_channel_r_left;
+
+// === Geometry — base + integral saddle bottoms ===
+
+module _base_plate() {
+    translate([0, 0, base_t / 2])
+        cuboid([base_w, base_d, base_t],
+               rounding = edge_round_r,
+               edges    = "ALL",
+               except   = BOTTOM);
+}
+
+module _saddle_bottom(sx) {
+    cx = sx * saddle_center_x;
+    translate([cx, 0, base_t + saddle_bottom_h / 2])
+        cuboid([saddle_w, saddle_y, saddle_bottom_h],
+               rounding = edge_round_r,
+               edges    = "Z");
+}
+
+// Pipe-channel cut for ONE saddle. Each saddle has its own bore radius,
+// so cuts are separate cylinders confined to each saddle's X window.
+module _pipe_channel_cut(sx) {
+    r      = pipe_r_for(sx);
+    cx     = sx * saddle_center_x;
+    eps    = 0.5;
+    length = saddle_w + 2 * eps;
+    translate([cx - length / 2, 0, pipe_center_z])
+        rotate([0, 90, 0])
+            cylinder(h = length, r = r);
+}
+
+module _base_bolt_clearance(sx, sy) {
+    cx  = sx * saddle_center_x;
+    cy  = sy * bolt_y_offset;
+    eps = 0.1;
+    // Counterbore at base bottom for the M3 SHCS head.
+    translate([cx, cy, -eps])
+        cylinder(h = m3_head_depth + eps, d = m3_head_d);
+    // Clearance shaft from just above the counterbore up through the
+    // saddle_bottom to its top face (= cap mating plane).
+    shaft_bot_z = m3_head_depth - eps;
+    shaft_top_z = base_t + saddle_bottom_h + eps;
+    translate([cx, cy, shaft_bot_z])
+        cylinder(h = shaft_top_z - shaft_bot_z, d = m3_clearance_d);
+}
+
+module base_part() {
+    difference() {
+        union() {
+            _base_plate();
+            _saddle_bottom(-1);
+            _saddle_bottom(+1);
+        }
+        _pipe_channel_cut(-1);
+        _pipe_channel_cut(+1);
+        for (sx = [-1, +1])
+            for (sy = [-1, +1])
+                _base_bolt_clearance(sx, sy);
+    }
+}
+
+// === Geometry — cap (×2, asymmetric STLs) ===
+
+module _cap_geom(sx) {
+    cx           = sx * saddle_center_x;
+    cap_bottom_z = base_t + saddle_bottom_h;
+    difference() {
+        translate([cx, 0, cap_bottom_z + cap_h / 2])
+            cuboid([saddle_w, saddle_y, cap_h],
+                   rounding = edge_round_r,
+                   edges    = "Z");
+        _pipe_channel_cut(sx);
+        for (sy = [-1, +1])
+            _cap_insert_pocket(sx, sy);
+        _handle_exclusion_cut();
+    }
+}
+
+module _cap_insert_pocket(sx, sy) {
+    cx           = sx * saddle_center_x;
+    cy           = sy * bolt_y_offset;
+    eps          = 0.2;
+    cap_bottom_z = base_t + saddle_bottom_h;
+    translate([cx, cy, cap_bottom_z - eps])
+        cylinder(h = m3_insert_h + eps, d = m3_insert_d);
+}
+
+// Vertical exclusion cylinder centered on the valve vertical axis at
+// (0,0). Carves any cap material the T-handle's swept volume passes
+// through. The exclusion z-range starts at handle_excl_z_start (above
+// the valve body) and extends handle_excl_h upward. At defaults the
+// cylinder reaches r=20 mm; the cap inboard faces sit at x=±18.5 mm so
+// a thin lens of material is removed from each cap inboard top — the
+// outboard ends (where the insert pockets live) are untouched.
+module _handle_exclusion_cut() {
+    if (handle_excl_r > 0 && handle_excl_h > 0)
+        translate([0, 0, handle_excl_z_start])
+            cylinder(h = handle_excl_h, r = handle_excl_r);
+}
+
+module cap_part_in_place(sx) {
+    _cap_geom(sx);
+}
+
+// Standalone cap for STL export. Translated to the origin and flipped
+// flat-top-down so the smooth outer face sits on the build plate.
+module cap_for_print(sx) {
+    cap_bottom_z = base_t + saddle_bottom_h;
+    cap_top_z    = cap_bottom_z + cap_h;
+    translate([0, 0, cap_top_z])
+        rotate([180, 0, 0])
+            translate([-sx * saddle_center_x, 0, 0])
+                _cap_geom(sx);
+}
+
+// === Assembly + part selection ===
+
+module assembly() {
+    base_part();
+    cap_part_in_place(-1);
+    cap_part_in_place(+1);
+}
+
+if (part == "base") {
+    base_part();
+} else if (part == "cap_left") {
+    cap_for_print(-1);
+} else if (part == "cap_right") {
+    cap_for_print(+1);
+} else {
+    assembly();
+}
