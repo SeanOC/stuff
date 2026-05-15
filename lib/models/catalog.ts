@@ -54,4 +54,9 @@ export const CATALOG: Record<string, CatalogEntry> = {
     blurb:
       "Side-mount holder for the goBlu 3-cylinder RV water filter assembly. Three flush-touching pods cradle 90mm filter housings; flat back face VHB-mounts to the RV wall.",
   },
+  blu_flow_meter_mount_80mm: {
+    categoryId: "household",
+    blurb:
+      "Captive bench mount for a Blu Technology digital flow meter (27mm × 80mm pipe). Two split-saddle pairs clamp the bare bands at each end of the meter; the middle 44mm gap leaves the LCD display saddle free. 4× M3 SHCS into heat-set inserts.",
+  },
 };
