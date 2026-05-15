@@ -21,12 +21,16 @@
 //     stops at the pipe-section ends and leaves the fittings free
 //     so hoses can dangle off the bench.
 //
-// === Hardware ===
+// === Hardware (v2 — inverted from v1, bottom-entry bolts) ===
 //
-//   4× M3×10 mm SHCS (socket-head cap screws) — clearance through
-//        each cap, threaded into a heat-set insert in the base.
+//   4× M3×30 mm SHCS (socket-head cap screws) — clearance through the
+//        BASE (head countersunk into the base bottom), threaded UP into
+//        a heat-set insert pressed into each CAP.
 //   4× M3 brass heat-set inserts (5 mm OD × 5 mm depth) — installed
-//        into the base from the top before assembly.
+//        into the CAPS from the cap's mating (bottom) face before
+//        assembly. Use a soldering iron from the cap's mating side
+//        while the cap sits inverted on the bench (its outer top face
+//        down, mating face up — the same orientation as printing).
 //
 //   Per cap: 2 bolts straddling the pipe channel in Y (one at
 //   +bolt_y_offset, one at -bolt_y_offset) at the saddle's X centre.
@@ -35,6 +39,25 @@
 //   Bolt centerlines sit `bolt_y_offset` (default 20 mm) outboard of
 //   the pipe-channel axis — that's pipe_radius + wall_t + a small
 //   margin so the bolt thread doesn't graze the pipe channel.
+//
+//   ### Bolt length budget (M3×30)
+//
+//   The bolt has to bridge the full plastic stack from the base-bottom
+//   counterbore up to the insert in the cap:
+//     3.2 mm  head countersunk into base bottom (m3_head_depth)
+//     4.8 mm  base material above the head (base_t − m3_head_depth)
+//    16.7 mm  saddle_bottom (wall_t + pipe_channel_r at defaults)
+//     5.0 mm  insert depth in cap (m3_insert_h)
+//    ──────
+//    29.7 mm  total path; M3×30 gives ~0.3 mm under the insert floor
+//             and full thread engagement in the brass insert.
+//
+//   Why this differs from v1's docstring: the v1 (and original st-jtn
+//   bead) spec named M3×10, but the bolt path crossed 16.7 mm of cap
+//   material before reaching the insert at the saddle_bottom top —
+//   M3×10 fell ~3 mm short of even touching the insert. v2 corrects
+//   the recommendation; operators who installed v1 with longer bolts
+//   already have the right hardware.
 //
 // === Install orientation ===
 //
@@ -50,6 +73,21 @@
 //   symmetric, so the operator picks the LCD-up orientation at
 //   install time — the mount doesn't constrain it.
 //
+//   The operator can also rotate the meter around the pipe axis (X)
+//   to tilt the LCD forward toward the viewer; see "Display tilt
+//   relief" below. The chamfered cap tops give clearance for tilts up
+//   to ±`display_relief_angle` from vertical (default 35°).
+//
+//   ### Bolt entry (v2 — inverted vs v1)
+//
+//   M3 SHCS enter from BELOW the base. The 4 bolt heads sit recessed
+//   into counterbores on the base BOTTOM (5.8 × 3.2 mm) so they don't
+//   project past the bench-contact face and rock the part. Bolts
+//   pass UP through the base, through the saddle_bottom material, and
+//   thread into the heat-set inserts pressed into the caps. To remove
+//   a cap, the operator flips the mount on its side and backs the
+//   bolts out from below — the LCD bezel never blocks the driver.
+//
 // === Print orientation ===
 //
 //   Default `part = "assembly"` renders both pieces in their installed
@@ -62,12 +100,22 @@
 //       bed). The saddle bottoms' inner curves overhang into the pipe
 //       channel; below the equator of a 27 mm pipe, every layer's
 //       perimeter is steeper than 45° from horizontal so no supports
-//       are needed.
+//       are needed. The base bottom now also carries the 4× SHCS
+//       counterbores (5.8 mm Ø × 3.2 mm deep) — they print as short
+//       bridges on the very first 3.2 mm of layers, fine without
+//       supports (bridge span = m3_head_d = 5.8 mm).
 //
 //     - Cap: flat-top-down. The cap's outer top face becomes the bed
 //       face, and the inner cylindrical roof (the saddle's upper half)
 //       prints as concentric perimeters with no overhang because every
 //       layer is again ≤45° steep when measured from the build plate.
+//       The cap's inboard-face chamfer (display tilt relief) is at the
+//       bottom of the printed orientation — it shows up as a 35°-from-
+//       vertical inset on the inboard edge that grows inward as layers
+//       progress (a mild overhang well within PETG/ASA tolerance).
+//       The heat-set insert pockets open from the cap's mating face,
+//       which is the +Z face in the printed orientation — clean blind
+//       holes, no bridging.
 //
 //   Material: PETG (default — water-adjacent, UV-tolerant, easy to
 //   print). ASA also fine. PLA acceptable for a dry indoor bench but
@@ -84,21 +132,36 @@
 //
 // === Geometry ===
 //
-//   - Base: 80 × 60 × 8 mm; corners rounded for finger safety. Two
-//     heat-set insert pockets at each saddle X-centre (4 pockets
-//     total) sized for the 5×5 mm brass inserts.
+//   - Base: 80 × 60 × 8 mm; corners rounded for finger safety. Four
+//     M3 bolt through-holes at the saddle X-centres (clearance
+//     m3_clearance_d through the full base + saddle_bottom stack),
+//     each with a 5.8 × 3.2 mm counterbore opening on the base BOTTOM
+//     face for the SHCS head.
 //
 //   - Saddle bottom (×2, integral to base): a 15 mm-wide block sitting
 //     on the base top at the two bare-pipe X positions. Each block
 //     has a half-cylinder cutout for the pipe; the saddle wall
 //     thickness below the pipe is `wall_t`. Block X-centres at
 //     ±saddle_center_x (≈ ±30 mm) so the two 18 mm bare bands of the
-//     meter pipe seat in the saddles.
+//     meter pipe seat in the saddles. The bolt clearance shafts pass
+//     vertically through this block at ±bolt_y_offset.
 //
 //   - Cap (×2, separate STL): the upper half of each saddle plus a
 //     `wall_t` ceiling. Mates flat against the base's saddle top at
-//     z = pipe_center_z. M3 bolt clearance holes + countersink for
-//     the SHCS heads, aligned with the inserts in the base.
+//     z = pipe_center_z. Each cap carries 2 heat-set insert pockets
+//     (5 mm Ø × 5 mm deep) opening from the cap's mating (bottom)
+//     face, aligned with the bolt clearance holes coming up through
+//     the base. The cap's inboard top edge is chamfered (see Display
+//     tilt relief).
+//
+//   - Display tilt relief: each cap's inboard top edge (the edge
+//     facing the display gap) is chamfered at `display_relief_angle`
+//     from vertical (default 35°). The chamfer depth on the inboard
+//     face is capped at `cap_h − m3_insert_h − 1 mm` (≈10.7 mm at
+//     defaults) so the cut never reaches the insert pocket below.
+//     This lets the operator rotate the meter around the pipe axis at
+//     install — tilting the LCD forward toward the viewer by up to
+//     ±display_relief_angle without the display body striking the cap.
 //
 //   - Display gap: 80 mm pipe − 2·(saddle X-centre ± half saddle width)
 //     ≈ 45 mm clear span between the inner faces of the two saddles.
@@ -141,11 +204,14 @@ edge_round_r   = 1.5;  // @param number min=0 max=5   step=0.25 unit=mm group=ba
 m3_clearance_d = 3.5;  // @param number min=3.0 max=5   step=0.1 unit=mm group=hardware label="M3 clearance hole (cap pass-through)"
 m3_head_d      = 5.8;  // @param number min=4.5 max=8   step=0.1 unit=mm group=hardware label="M3 SHCS head diameter (countersink)"
 m3_head_depth  = 3.2;  // @param number min=2.5 max=6   step=0.1 unit=mm group=hardware label="M3 SHCS head depth (countersink)"
-m3_insert_d    = 5;    // @param number min=4   max=7   step=0.1 unit=mm group=hardware label="M3 heat-set insert OD (base pocket)"
+m3_insert_d    = 5;    // @param number min=4   max=7   step=0.1 unit=mm group=hardware label="M3 heat-set insert OD (cap pocket)"
 m3_insert_h    = 5;    // @param number min=3   max=10  step=0.5 unit=mm group=hardware label="M3 heat-set insert depth"
 bolt_y_offset  = 20;   // @param number min=15  max=30  step=0.5 unit=mm group=hardware label="Bolt centerline distance from pipe axis (Y)"
 
-// @preset id="default" label="Blu flow meter 80mm × 27mm dia (default)" part="assembly" pipe_dia=27 pipe_len=80 bare_band_w=18 slop=0.2 saddle_w=15 wall_t=3 base_w=80 base_d=60 base_t=8 edge_round_r=1.5 m3_clearance_d=3.5 m3_head_d=5.8 m3_head_depth=3.2 m3_insert_d=5 m3_insert_h=5 bolt_y_offset=20
+// ----- Display tilt relief -----
+display_relief_angle = 35; // @param number min=0 max=50 step=5 unit=deg group=fit label="Cap inboard-edge chamfer angle from vertical (allows meter tilt around pipe axis)"
+
+// @preset id="default" label="Blu flow meter 80mm × 27mm dia (default)" part="assembly" pipe_dia=27 pipe_len=80 bare_band_w=18 slop=0.2 saddle_w=15 wall_t=3 base_w=80 base_d=60 base_t=8 edge_round_r=1.5 m3_clearance_d=3.5 m3_head_d=5.8 m3_head_depth=3.2 m3_insert_d=5 m3_insert_h=5 bolt_y_offset=20 display_relief_angle=35
 
 // === Derived ===
 
@@ -178,6 +244,14 @@ cap_h           = wall_t + pipe_channel_r;  // 16.7 at defaults
 // Cap top z = base top + saddle_bottom_h + cap_h = base_t + 2·(wall_t
 // + pipe_channel_r) — the "≈33 mm arch above base top" from the bead.
 arch_top_z = base_t + saddle_bottom_h + cap_h;  // 41.4 at defaults
+
+// Display tilt relief chamfer. dz on the inboard face is clamped to
+// leave `chamfer_clearance_t` of wall between the chamfer floor and
+// the insert pocket top above it; dx along the cap top is dz·tan(θ).
+// At defaults (cap_h=16.7, m3_insert_h=5, angle=35°): dz=10.7, dx=7.5.
+chamfer_clearance_t = 1;  // mm wall left between chamfer and insert pocket
+chamfer_dz          = max(0, cap_h - m3_insert_h - chamfer_clearance_t);
+chamfer_dx          = chamfer_dz * tan(display_relief_angle);
 
 // PRINT_ANCHOR_BBOX (assembly view): base footprint × arch_top_z.
 PRINT_ANCHOR_BBOX = [base_w, base_d, arch_top_z];
@@ -215,23 +289,25 @@ module _pipe_channel_cut() {
             cylinder(h = pipe_len + 2 * eps, r = pipe_channel_r);
 }
 
-// Heat-set insert pocket: a cylinder open at the BASE TOP face going
-// downward into the base by m3_insert_h. Pocket sits inside the
-// saddle's footprint (X within saddle, Y at ±bolt_y_offset).
-module _insert_pocket(sx, sy) {
-    // The pocket reaches `m3_insert_h` deep below the saddle's TOP
-    // face (= base_top + saddle_bottom_h), so the insert sits with
-    // its top flush with the saddle's top face — that's the surface
-    // the cap clamps against. A small 0.2 mm overshoot below the
-    // pocket bottom kills coplanar-face jitter.
-    pocket_top_z = base_t + saddle_bottom_h;
-    eps = 0.2;
-    pocket_h = m3_insert_h + eps;
-    translate([sx * saddle_center_x,
-               sy * bolt_y_offset,
-               pocket_top_z - m3_insert_h])
-        translate([0, 0, -eps])
-            cylinder(h = pocket_h, d = m3_insert_d);
+// Bolt clearance through the base + saddle_bottom: a counterbore for
+// the SHCS head opens on the base BOTTOM face (z=0) and a clearance
+// shaft runs from above the counterbore up to the cap mating face
+// (top of saddle_bottom). The bolt enters from below and threads into
+// the insert in the cap above. A small overshoot at both ends kills
+// coplanar-face jitter at the base-bottom and cap-mating planes.
+module _base_bolt_clearance(sx, sy) {
+    cx  = sx * saddle_center_x;
+    cy  = sy * bolt_y_offset;
+    eps = 0.1;
+    // Counterbore at base bottom for the M3 SHCS head.
+    translate([cx, cy, -eps])
+        cylinder(h = m3_head_depth + eps, d = m3_head_d);
+    // Clearance shaft from just above the counterbore up through the
+    // saddle_bottom to its top face (= cap mating plane).
+    shaft_bot_z = m3_head_depth - eps;
+    shaft_top_z = base_t + saddle_bottom_h + eps;
+    translate([cx, cy, shaft_bot_z])
+        cylinder(h = shaft_top_z - shaft_bot_z, d = m3_clearance_d);
 }
 
 module base_part() {
@@ -244,7 +320,7 @@ module base_part() {
         _pipe_channel_cut();
         for (sx = [-1, +1])
             for (sy = [-1, +1])
-                _insert_pocket(sx, sy);
+                _base_bolt_clearance(sx, sy);
     }
 }
 
@@ -253,8 +329,9 @@ module base_part() {
 // One cap module, positioned at its saddle's X centre. The cap sits
 // flat on the saddle's top face (z = base_t + saddle_bottom_h) and
 // has the half-cylinder pipe cutout opening DOWNWARD (mirror of the
-// saddle bottom's upward cut). Plus two M3 clearance + countersink
-// holes for the bolts.
+// saddle bottom's upward cut). Two heat-set insert pockets open from
+// the cap's mating face; the inboard top edge is chamfered for
+// display-tilt clearance.
 module _cap_geom(sx) {
     cx = sx * saddle_center_x;
     cap_bottom_z = base_t + saddle_bottom_h;
@@ -267,27 +344,52 @@ module _cap_geom(sx) {
         // Pipe channel (same as base's, but only the upper half cuts
         // the cap since the cap material lives above pipe_center_z).
         _pipe_channel_cut();
-        // Bolt holes through the cap into the base inserts.
+        // Heat-set insert pockets (×2), opening from the cap mating face.
         for (sy = [-1, +1])
-            _cap_bolt_cut(sx, sy, cap_bottom_z, cap_top_z);
+            _cap_insert_pocket(sx, sy);
+        // Inboard top edge chamfer for meter tilt clearance.
+        _cap_chamfer_cut(sx);
     }
 }
 
-// Cap bolt cut: a clearance shaft running the full cap height,
-// with a countersink for the M3 SHCS head opening at the cap top.
-module _cap_bolt_cut(sx, sy, cap_bottom_z, cap_top_z) {
-    eps_top    = 0.1;
-    eps_bot    = 0.1;
-    shaft_h    = (cap_top_z - cap_bottom_z) + eps_top + eps_bot;
-    head_h     = m3_head_depth + eps_top;
-    cx = sx * saddle_center_x;
-    cy = sy * bolt_y_offset;
-    // Full-height clearance shaft.
-    translate([cx, cy, cap_bottom_z - eps_bot])
-        cylinder(h = shaft_h, d = m3_clearance_d);
-    // Countersink at the cap's top face for the SHCS head.
-    translate([cx, cy, cap_top_z - m3_head_depth])
-        cylinder(h = head_h, d = m3_head_d);
+// Heat-set insert pocket inside the cap. Opens from the cap's mating
+// (bottom) face at z = base_t + saddle_bottom_h and goes UP into the
+// cap body by m3_insert_h. After printing flat-top-down, this pocket
+// is at the top of the printed cap, oriented as a clean blind hole
+// for insertion of the brass insert with a soldering iron.
+module _cap_insert_pocket(sx, sy) {
+    cx  = sx * saddle_center_x;
+    cy  = sy * bolt_y_offset;
+    eps = 0.2;
+    cap_bottom_z = base_t + saddle_bottom_h;
+    translate([cx, cy, cap_bottom_z - eps])
+        cylinder(h = m3_insert_h + eps, d = m3_insert_d);
+}
+
+// Inboard top edge chamfer: removes a triangular prism from the cap's
+// top-inboard wedge so the meter can be rotated forward around the
+// pipe axis at install time. dz is clamped so the chamfer never
+// approaches the heat-set insert pocket below (keeps ≥1 mm of cap
+// wall between the chamfer floor and the insert top).
+module _cap_chamfer_cut(sx) {
+    inboard_x = sx * (saddle_center_x - saddle_w / 2);
+    cap_top_z = base_t + saddle_bottom_h + cap_h;
+    eps       = 0.1;
+    y_min     = -saddle_y / 2 - eps;
+    y_max     =  saddle_y / 2 + eps;
+    // Three points in the XZ cross-section of the wedge. Mirrored
+    // along Y as 6 tiny spheres, hulled into a triangular prism.
+    pts_xz = [
+        [inboard_x - sx * eps,                       cap_top_z + eps],
+        [inboard_x + sx * (chamfer_dx + eps),        cap_top_z + eps],
+        [inboard_x - sx * eps,                       cap_top_z - chamfer_dz],
+    ];
+    hull() {
+        for (y = [y_min, y_max])
+            for (p = pts_xz)
+                translate([p[0], y, p[1]])
+                    sphere(r = 0.01, $fn = 4);
+    }
 }
 
 module cap_part_in_place(sx) {
