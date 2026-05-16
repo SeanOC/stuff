@@ -12,21 +12,26 @@
 // === Part being mounted (Blu Technology flush valve) ===
 //
 //   - Inline pair: female QD socket on one end, male QD plug on the
-//     other; both project past the saddles into open air.
+//     other; both project past the saddles into open air. The portion
+//     the saddle grips is the HEX wrench-nut at each inner end of the
+//     inline pair — flats, not a round body.
 //   - Side outlet (3rd fitting): perpendicular to the inline axis,
 //     exits laterally past one Y edge of the base.
 //   - T-handle: vertical (+Z), rotates ~90° around its own axis to
 //     switch flow paths. This is the ONLY element above the bench
 //     surface — everything else lies in the bench plane.
 //
-//   Operator-confirmed dimensions (2026-05-15):
+//   Operator-confirmed dimensions (2026-05-15) — both measurements are
+//   FLAT-TO-FLAT across the hex nut (NOT circular diameters):
 //     Inner-face gap between the two inner fittings:  37 mm
-//     Left  inner fitting OD:                         31.5 mm
-//     Right inner fitting OD:                         29.25 mm
+//     Left  inner fitting hex flat-to-flat:           31.5 mm
+//     Right inner fitting hex flat-to-flat:           29.25 mm
 //
-//   The saddles grip the inner fittings themselves (no bare-pipe band
-//   between them, unlike the flow meter). Each saddle is sized to its
-//   specific fitting — don't average the IDs.
+//   The saddles grip the inner hex nuts themselves (no bare-pipe band
+//   between them, unlike the flow meter). Each saddle's bore is a
+//   hexagonal prism sized to its specific fitting — don't average the
+//   ftf values and don't use a circular bore (which would grip only
+//   the hex's six vertices and let the fitting rotate under load).
 //
 // === Hardware (same pattern as flow meter v2) ===
 //
@@ -44,21 +49,24 @@
 //
 //   ### Bolt length budget (M3×30, recomputed for this part)
 //
-//   Per-saddle saddle_bottom_h is `wall_t + max(pipe_channel_r_left,
-//   pipe_channel_r_right)` — both saddles share `pipe_center_z`, so
-//   the smaller-bore saddle just has more wall under its bore. At
-//   defaults (slop=0.2, wall_t=3, bore_left=31.5):
+//   Per-saddle saddle_bottom_h is `wall_t + max(hex_apothem_left,
+//   hex_apothem_right)` — both saddles share `pipe_center_z`, so the
+//   smaller-bore saddle just has more wall under its bore. The apothem
+//   (centre-to-flat) is half the flat-to-flat measurement plus slop,
+//   so numerically it matches what the v1 circular bore used. At
+//   defaults (slop=0.2, wall_t=3, hex_ftf_left=31.5):
 //
 //     3.2 mm  head countersunk into base bottom (m3_head_depth)
 //     4.8 mm  base material above the head (base_t − m3_head_depth)
-//    18.95 mm saddle_bottom (wall_t + max_pipe_channel_r)
+//    18.95 mm saddle_bottom (wall_t + max_apothem)
 //     5.0 mm  insert depth in cap (m3_insert_h)
 //    ─────
 //    31.95 mm total path; under-head bolt length = 28.75 mm, so an
 //             M3×30 SHCS gives ~1.25 mm slack under the insert floor
 //             and full thread engagement in the brass insert.
-//             (Differs from v2's 29.7 mm path because the larger
-//             saddle_bottom_h adds 2.25 mm.)
+//             (Same path length as v1's circular bore — apothem and
+//             old radius coincide numerically; only the bore profile
+//             changed.)
 //
 // === Install orientation ===
 //
@@ -78,9 +86,9 @@
 //   hangs free past whichever Y edge it points at.
 //
 //   The asymmetric saddles fix the valve's inline orientation: the
-//   31.5 mm fitting goes in the -X saddle (left), the 29.25 mm fitting
+//   31.5 mm-ftf hex goes in the -X saddle (left), the 29.25 mm-ftf hex
 //   goes in the +X saddle (right). Cap-left and cap-right STLs are
-//   distinct (different bore IDs).
+//   distinct (different bore ftf).
 //
 // === Print orientation ===
 //
@@ -99,25 +107,51 @@
 //       fine without supports.
 //
 //     - Cap (left or right): flat-top-down. The cap's outer top face
-//       becomes the bed face; the inner cylindrical roof (the saddle's
-//       upper half) prints as concentric perimeters with no overhang.
-//       The handle-clearance cut on the inboard face is a shallow
-//       cylindrical scoop (≤1.5 mm deep at the centerline at defaults)
-//       and prints as a mild concave perimeter — no overhang issues.
-//       The heat-set insert pockets open from the cap's mating face,
-//       which is the +Z face in the printed orientation — clean blind
-//       holes, no bridging.
+//       becomes the bed face; the inner hex roof (the saddle's upper
+//       half: top horizontal flat + two slanted flats) prints as
+//       three planar surfaces, with the slanted flats at 30° from
+//       horizontal — well below the 45° overhang threshold, no
+//       supports needed. The handle-clearance cut on the inboard face
+//       is a shallow cylindrical scoop (≤1.5 mm deep at the
+//       centerline at defaults) and prints as a mild concave
+//       perimeter — no overhang issues. The heat-set insert pockets
+//       open from the cap's mating face, which is the +Z face in the
+//       printed orientation — clean blind holes, no bridging.
 //
 //   Material: PETG (default — water-adjacent like the flow meter) or
 //   ASA. PLA acceptable for a dry indoor bench but note the valve
 //   sees splash from black-tank flushing.
 //
+// === Hex bore orientation ===
+//
+//   Each saddle's bore is a hexagonal prism with axis along the
+//   inline (X) direction. The hex is oriented FLATS-HORIZONTAL: one
+//   flat at the top (+Z extreme of the hex) and one flat at the
+//   bottom (−Z extreme). The two equator-level vertices (the points
+//   where the hex is widest along Y) sit exactly on the parting plane
+//   between saddle_bottom and cap (z = pipe_center_z).
+//
+//   - Saddle bottom holds: bottom horizontal flat + the two slanted
+//     flats below the equator + the two equator vertices.
+//   - Cap holds: top horizontal flat + the two slanted flats above
+//     the equator + the same two equator vertices (mirror).
+//
+//   OpenSCAD's `cylinder($fn=6)` puts a vertex at local +X by default,
+//   which (after `rotate([0, 90, 0])` to put the hex axis on global X)
+//   lands a vertex at global −Z — the wrong orientation. We pre-
+//   rotate the hex by 30° around its own axis (a local `rotate([0, 0,
+//   30])` before the cylinder) to spin the vertices to the equator,
+//   giving the flats-top-and-bottom orientation the bead spec
+//   requires. The render harness shows this visually — if the flats
+//   ever go vertical the orientation rotation has been broken.
+//
 // === Slop (slip-fit) ===
 //
-//   `slop` is a per-radius pad on each pipe channel diameter:
-//   pipe_channel_d_<side> = bore_<side> + 2·slop. Default 0.2 mm gives
-//   a 31.9 mm bore for the 31.5 mm fitting and a 29.65 mm bore for the
-//   29.25 mm fitting. First-print feedback will tune from here.
+//   `slop` is a per-flat radial pad on the hex apothem (centre-to-
+//   flat distance). Effective ftf = hex_ftf + 2·slop. Default 0.2 mm
+//   gives a 31.9 mm effective ftf for the 31.5 mm hex and a 29.65 mm
+//   effective ftf for the 29.25 mm hex. First-print feedback will
+//   tune from here.
 //
 // === Handle clearance ===
 //
@@ -143,13 +177,39 @@
 // === Side-outlet clearance ===
 //
 //   The 3rd valve fitting exits in ±Y at z = pipe_center_z ≈ 27 mm,
-//   well above the base top (z = base_t = 8 mm). With base_d = 50 mm
-//   the +Y / −Y edges of the base sit at y = ±25 mm — past saddle_y_half
-//   (24.5 mm) so the cap sides are fully supported, but only 0.5 mm
-//   past, so the outlet (which extends radially out from y=0 well past
-//   ±25 mm) hangs cleanly into open air past the base edge. No notch
-//   needed — the outlet axis runs above the base top, never through
-//   it.
+//   well above the base top (z = base_t = 8 mm). With base_d = 60 mm
+//   the +Y / −Y edges of the base sit at y = ±30 mm — 5.5 mm past
+//   saddle_y_half (24.5 mm). The outlet (which extends radially out
+//   from y=0 well past ±30 mm) hangs cleanly into open air past the
+//   base edge. No notch needed — the outlet axis runs above the base
+//   top, never through it.
+//
+// === Base footprint (v2) ===
+//
+//   v1 shipped with base_w=70, base_d=50 — only ~1.5 mm and ~0.5 mm
+//   past the saddle outer faces, so the base was visually "missing"
+//   in the assembly view. v2 grows to base_w=90, base_d=60 to match
+//   the sibling flow meter mount's footprint, giving ~11 mm overhang
+//   in X past each saddle outer face and ~5.5 mm overhang in Y past
+//   each saddle/cap side. Enough for desk stability without wasting
+//   filament.
+//
+// === Hex-vertex / insert-pocket clearance ===
+//
+//   The hex bore's equator vertices extend further from the pipe
+//   axis than the old circular bore's wall did: for ftf=31.5 mm and
+//   slop=0.2 mm, the apothem stays at 15.95 mm (same as v1's radius)
+//   but the vertex sits at apothem / cos(30°) ≈ 18.42 mm. The
+//   insert pocket's inboard edge is at y = bolt_y_offset − m3_insert_d
+//   /2 = 17.5 mm. The vertex therefore reaches 0.92 mm past the
+//   insert-pocket inboard edge, in a thin triangular wedge confined to
+//   the bottom ~1.6 mm of the 5 mm-deep insert pocket (the bore
+//   slanted flat returns inboard of the pocket above z ≈ equator + 1.6
+//   mm). The upper ~3.4 mm of each insert is fully enclosed by plastic;
+//   first-print review will determine whether the lower wedge is
+//   acceptable or whether bolt_y_offset needs to bump out for v3. The
+//   invariants harness flags this overlap with a soft tolerance — see
+//   `blu_black_tank_valve_mount.invariants.py`.
 
 include <BOSL2/std.scad>
 
@@ -161,18 +221,18 @@ $fn = 64;
 part = "assembly";  // @param enum choices=assembly|base|cap_left|cap_right group=part label="Which piece to render"
 
 // ----- Valve dimensions -----
-bore_left   = 31.5;   // @param number min=15 max=60 step=0.25 unit=mm group=valve label="Left inner fitting OD"
-bore_right  = 29.25;  // @param number min=15 max=60 step=0.25 unit=mm group=valve label="Right inner fitting OD"
-fitting_gap = 37;     // @param number min=20 max=120 step=0.5 unit=mm group=valve label="Inner-face gap between fittings"
+hex_ftf_left  = 31.5;   // @param number min=15 max=60 step=0.25 unit=mm group=valve label="Left inner fitting hex flat-to-flat"
+hex_ftf_right = 29.25;  // @param number min=15 max=60 step=0.25 unit=mm group=valve label="Right inner fitting hex flat-to-flat"
+fitting_gap   = 37;     // @param number min=20 max=120 step=0.5 unit=mm group=valve label="Inner-face gap between fittings"
 
 // ----- Fit -----
-slop     = 0.2;  // @param number min=0 max=1   step=0.05 unit=mm group=fit label="Pipe channel slip clearance (radial pad on diameter)"
+slop     = 0.2;  // @param number min=0 max=1   step=0.05 unit=mm group=fit label="Hex slip clearance (per-flat radial pad on apothem)"
 saddle_w = 15;   // @param number min=5 max=30  step=0.5  unit=mm group=fit label="Saddle width along inline axis (X)"
 wall_t   = 3;    // @param number min=2 max=8   step=0.5  unit=mm group=fit label="Saddle wall thickness around pipe"
 
 // ----- Base -----
-base_w       = 70;   // @param number min=40 max=160 step=0.5 unit=mm group=base label="Base width along inline axis (X)"
-base_d       = 50;   // @param number min=30 max=120 step=0.5 unit=mm group=base label="Base depth across inline (Y)"
+base_w       = 90;   // @param number min=40 max=160 step=0.5 unit=mm group=base label="Base width along inline axis (X)"
+base_d       = 60;   // @param number min=30 max=120 step=0.5 unit=mm group=base label="Base depth across inline (Y)"
 base_t       = 8;    // @param number min=3 max=15  step=0.5 unit=mm group=base label="Base plate thickness (Z)"
 edge_round_r = 1.5;  // @param number min=0 max=5   step=0.25 unit=mm group=base label="Outer edge rounding"
 
@@ -189,18 +249,28 @@ handle_excl_r            = 20;  // @param number min=0  max=40 step=0.5 unit=mm 
 handle_excl_h            = 40;  // @param number min=10 max=80 step=1   unit=mm group=handle label="Handle swept-volume height (above pivot)"
 handle_pivot_above_pipe  = 5;   // @param number min=0  max=30 step=0.5 unit=mm group=handle label="Handle pivot height above pipe centerline"
 
-// @preset id="default" label="Blu black-tank flush valve (default)" part="assembly" bore_left=31.5 bore_right=29.25 fitting_gap=37 slop=0.2 saddle_w=15 wall_t=3 base_w=70 base_d=50 base_t=8 edge_round_r=1.5 m3_clearance_d=3.5 m3_head_d=5.8 m3_head_depth=3.2 m3_insert_d=5 m3_insert_h=5 bolt_y_offset=20 handle_excl_r=20 handle_excl_h=40 handle_pivot_above_pipe=5
+// @preset id="default" label="Blu black-tank flush valve (default)" part="assembly" hex_ftf_left=31.5 hex_ftf_right=29.25 fitting_gap=37 slop=0.2 saddle_w=15 wall_t=3 base_w=90 base_d=60 base_t=8 edge_round_r=1.5 m3_clearance_d=3.5 m3_head_d=5.8 m3_head_depth=3.2 m3_insert_d=5 m3_insert_h=5 bolt_y_offset=20 handle_excl_r=20 handle_excl_h=40 handle_pivot_above_pipe=5
 
 // === Derived ===
 
-pipe_channel_r_left  = bore_left  / 2 + slop;  // 15.95 at defaults
-pipe_channel_r_right = bore_right / 2 + slop;  // 14.825 at defaults
-max_r                = max(pipe_channel_r_left, pipe_channel_r_right);
+// Hex apothem = half flat-to-flat (centre-to-flat distance) + slop.
+// Numerically the apothem coincides with v1's circular radius, so all
+// downstream stack math (pipe_center_z, saddle_bottom_h, bolt path)
+// is unchanged from v1.
+hex_apothem_left  = hex_ftf_left  / 2 + slop;  // 15.95 at defaults
+hex_apothem_right = hex_ftf_right / 2 + slop;  // 14.825 at defaults
+max_apothem       = max(hex_apothem_left, hex_apothem_right);
+
+// Circumradius (centre-to-vertex) = apothem / cos(30°). The equator
+// vertices sit at y = ±circumradius on the saddle/cap parting plane.
+hex_circumradius_left  = hex_apothem_left  / cos(30);  // 18.42 at defaults
+hex_circumradius_right = hex_apothem_right / cos(30);  // 17.12 at defaults
 
 // Both saddles share the same pipe-axis Z so the valve fittings line
-// up coaxially. Use the larger bore to set the height — the smaller-
-// bore saddle ends up with a little extra wall below its channel.
-pipe_center_z = base_t + wall_t + max_r;  // 26.95 at defaults
+// up coaxially. Use the larger apothem to set the height — the
+// smaller-bore saddle ends up with a little extra wall below its
+// channel.
+pipe_center_z = base_t + wall_t + max_apothem;  // 26.95 at defaults
 
 // Saddle X centres land at half the fitting gap + half a saddle width
 // outboard of origin: the saddle inboard faces are then exactly
@@ -211,7 +281,7 @@ saddle_center_x = fitting_gap / 2 + saddle_w / 2;  // 26 at defaults
 // across left/right — the bore difference shows up only as different
 // material above the smaller bore's channel.
 saddle_bottom_h = pipe_center_z - base_t;  // 18.95 at defaults
-cap_h           = wall_t + max_r;          // 18.95 at defaults
+cap_h           = wall_t + max_apothem;    // 18.95 at defaults
 
 // Y extent: cover the pipe plus an insert-radius+margin around each
 // bolt. Same formula as v2.
@@ -227,9 +297,11 @@ arch_top_z = base_t + saddle_bottom_h + cap_h;  // 45.9 at defaults
 // PRINT_ANCHOR_BBOX (assembly view).
 PRINT_ANCHOR_BBOX = [base_w, base_d, arch_top_z];
 
-// sx = +1 → right saddle (29.25 mm bore); sx = -1 → left (31.5 mm bore).
-function pipe_r_for(sx) = (sx > 0) ? pipe_channel_r_right
-                                    : pipe_channel_r_left;
+// sx = +1 → right saddle (29.25 mm ftf hex); sx = −1 → left (31.5 mm
+// ftf hex). Returns the hex apothem; the cylinder($fn=6) call uses
+// apothem / cos(30°) as its circumradius parameter.
+function hex_apothem_for(sx) = (sx > 0) ? hex_apothem_right
+                                        : hex_apothem_left;
 
 // === Geometry — base + integral saddle bottoms ===
 
@@ -249,16 +321,24 @@ module _saddle_bottom(sx) {
                edges    = "Z");
 }
 
-// Pipe-channel cut for ONE saddle. Each saddle has its own bore radius,
-// so cuts are separate cylinders confined to each saddle's X window.
+// Pipe-channel cut for ONE saddle. Each saddle has its own hex bore
+// apothem, so cuts are separate hex prisms confined to each saddle's
+// X window. The 30° pre-rotation around the hex's own (local Z) axis
+// spins the default vertex-at-+X into a vertex-at-equator orientation,
+// which (after the outer rotate([0, 90, 0]) puts the hex axis on
+// global X) lands the flats top + bottom and the vertices at ±Y on
+// the saddle/cap parting plane. cos(30°) maps apothem to the
+// cylinder()-style circumradius.
 module _pipe_channel_cut(sx) {
-    r      = pipe_r_for(sx);
-    cx     = sx * saddle_center_x;
-    eps    = 0.5;
-    length = saddle_w + 2 * eps;
+    apothem      = hex_apothem_for(sx);
+    circumradius = apothem / cos(30);
+    cx           = sx * saddle_center_x;
+    eps          = 0.5;
+    length       = saddle_w + 2 * eps;
     translate([cx - length / 2, 0, pipe_center_z])
         rotate([0, 90, 0])
-            cylinder(h = length, r = r);
+            rotate([0, 0, 30])
+                cylinder(h = length, r = circumradius, $fn = 6);
 }
 
 module _base_bolt_clearance(sx, sy) {
