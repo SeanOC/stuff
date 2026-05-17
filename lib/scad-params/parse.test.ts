@@ -100,6 +100,24 @@ describe("parseScadParams", () => {
     expect(out.warnings[0]).toMatch(/missing choices/);
   });
 
+  it("captures the bare `filename` flag on an enum param (st-sq6)", () => {
+    const out = parseScadParams(
+      wrap('part = "a"; // @param enum choices=a|b group=part label="Piece" filename'),
+    );
+    const p = out.params[0] as EnumParam;
+    expect(p.kind).toBe("enum");
+    expect(p.filename).toBe(true);
+    expect(p.choices).toEqual(["a", "b"]);
+    expect(p.label).toBe("Piece");
+  });
+
+  it("does not pick up `filename` from inside a quoted label", () => {
+    const out = parseScadParams(
+      wrap('m = "a"; // @param enum choices=a|b label="contains filename"'),
+    );
+    expect(out.params[0].filename).toBeUndefined();
+  });
+
   it("parses a string with default", () => {
     const out = parseScadParams(wrap('label = "hello world"; // @param string'));
     expect(out.params).toEqual([

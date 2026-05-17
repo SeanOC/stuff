@@ -228,7 +228,7 @@ $fn = 64;
 // === User-tunable parameters ===
 
 // ----- Which piece to render -----
-part = "assembly";  // @param enum choices=assembly|base|cap_left|cap_right group=part label="Which piece to render"
+part = "assembly";  // @param enum choices=assembly|base|cap_left|cap_right group=part label="Which piece to render" filename
 
 // ----- Valve dimensions -----
 hex_ftf_left  = 31.5;   // @param number min=15 max=60 step=0.25 unit=mm group=valve label="Left inner fitting hex flat-to-flat"

@@ -21,6 +21,13 @@ _PARAM_LINE_RE = re.compile(
 _ANNOTATION_RE = re.compile(r"^@param\s+(\w+)\b\s*(.*)$")
 _ATTR_RE = re.compile(r'(\w+)=("(?:[^"\\]|\\.)*"|\S+)')
 
+# Bare-word flags (no `=value`) recognized on @param lines. The
+# `filename` flag opts the param into the export-all filename grid:
+# scripts/export-all.py expands one STL per enum choice when set.
+_BARE_FLAGS = ("filename",)
+_BARE_FLAG_RES = {flag: re.compile(rf"(?:^|\s){flag}(?:\s|$)") for flag in _BARE_FLAGS}
+_QUOTED_RE = re.compile(r'"(?:[^"\\]|\\.)*"')
+
 
 def parse_params(source: str) -> dict[str, dict[str, Any]]:
     """Return `{name: {kind, default, min?, max?, step?, unit?, group?, label?, choices?}}`.
@@ -50,22 +57,51 @@ def parse_params(source: str) -> dict[str, dict[str, Any]]:
         if not ann:
             continue
         kind = ann.group(1)
-        attrs = _parse_attrs(ann.group(2))
-        spec = _build_param(kind, raw_default, attrs)
+        attr_text = ann.group(2)
+        attrs = _parse_attrs(attr_text)
+        spec = _build_param(kind, raw_default, attrs, attr_text)
         if spec is not None:
             params[name] = spec
     return params
+
+
+def filename_export_params(
+    params: dict[str, dict[str, Any]],
+) -> list[tuple[str, list[str]]]:
+    """Return [(name, choices), ...] for enum params with the `filename` flag.
+
+    Order follows declaration order from `parse_params`. Used by
+    scripts/export-all.py to expand the per-model export grid.
+    """
+    out: list[tuple[str, list[str]]] = []
+    for name, spec in params.items():
+        if not spec.get("filename"):
+            continue
+        if spec.get("kind") != "enum":
+            continue
+        choices = spec.get("choices") or []
+        if choices:
+            out.append((name, list(choices)))
+    return out
 
 
 def _build_param(
     kind: str,
     raw_default: str,
     attrs: dict[str, str],
+    attr_text: str = "",
 ) -> dict[str, Any] | None:
     base: dict[str, Any] = {"kind": kind}
     for key in ("label", "group", "unit"):
         if key in attrs:
             base[key] = attrs[key]
+    # Strip quoted attr values (e.g. label="…") before scanning for
+    # bare flags, so a label containing the word "filename" doesn't
+    # falsely flip the flag.
+    stripped_attr_text = _QUOTED_RE.sub("", attr_text)
+    for flag, flag_re in _BARE_FLAG_RES.items():
+        if flag_re.search(stripped_attr_text):
+            base[flag] = True
 
     if kind in ("number", "integer"):
         try:

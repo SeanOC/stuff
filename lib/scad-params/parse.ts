@@ -24,6 +24,11 @@ export interface ParamBase {
   label?: string;
   group?: string;
   unit?: string;
+  // `filename` is a bare-word flag on the @param line (e.g.
+  // `// @param enum choices=a|b|c filename`). When true, the
+  // export pipeline (scripts/export-all.py) expands one STL per
+  // choice of this param. The webapp ignores the flag.
+  filename?: boolean;
 }
 
 export interface NumberParam extends ParamBase {
@@ -116,6 +121,7 @@ export function parseScadParams(source: string): ParseResult {
       typeKw,
       rawDefault: rawDefault.trim(),
       attrs,
+      attrText,
       lineNo: i + 1,
       warnings,
     });
@@ -139,11 +145,19 @@ function buildParam(args: {
   typeKw: string;
   rawDefault: string;
   attrs: Map<string, string>;
+  attrText: string;
   lineNo: number;
   warnings: string[];
 }): Param | null {
-  const { name, typeKw, rawDefault, attrs, lineNo, warnings } = args;
+  const { name, typeKw, rawDefault, attrs, attrText, lineNo, warnings } = args;
   const base = pickBaseAttrs(name, attrs);
+  // Strip quoted attr values (e.g. label="…") before scanning for
+  // bare flags so a label containing the word "filename" doesn't
+  // falsely flip the flag.
+  const bareAttrText = attrText.replace(/"(?:[^"\\]|\\.)*"/g, "");
+  if (/(?:^|\s)filename(?:\s|$)/.test(bareAttrText)) {
+    base.filename = true;
+  }
   switch (typeKw) {
     case "number":
     case "integer": {

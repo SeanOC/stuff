@@ -40,7 +40,7 @@ from scripts.invariants import (  # noqa: E402
     parse_expected_orphans,
     run_builtins,
 )
-from scripts.invariants.params import parse_params  # noqa: E402
+from scripts.invariants.params import filename_export_params, parse_params  # noqa: E402
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -48,11 +48,14 @@ def main(argv: list[str] | None = None) -> int:
     stem = args.stem
 
     scad = MODELS_DIR / f"{stem}.scad"
-    stl = EXPORTS_DIR / f"{stem}.stl"
 
     if not scad.exists():
         print(f"error: model not found: {scad}", file=sys.stderr)
         return 2
+
+    source = scad.read_text(encoding="utf-8")
+    stl = _resolve_stl(stem, source)
+
     if not stl.exists():
         print(
             f"error: export not found: {stl}\n"
@@ -61,7 +64,6 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
 
-    source = scad.read_text(encoding="utf-8")
     mesh = trimesh.load(stl, force="mesh")
     if not isinstance(mesh, trimesh.Trimesh):
         print(f"error: trimesh could not load {stl} as a single mesh", file=sys.stderr)
@@ -87,6 +89,33 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Check invariants for one model")
     p.add_argument("stem", help="model stem, e.g. spraycan_carrier_6x50mm")
     return p.parse_args(argv)
+
+
+def _resolve_stl(stem: str, source: str) -> Path:
+    """Pick which exports/<…>.stl to invariant-check for this model.
+
+    Default case: exports/<stem>.stl. When the model opts into the
+    filename grid (st-sq6), there is no <stem>.stl; the invariants
+    check the variant produced by the param's default value, which
+    is what the catalog uses to represent the model.
+    """
+    default_path = EXPORTS_DIR / f"{stem}.stl"
+    if default_path.exists():
+        return default_path
+    params = parse_params(source)
+    fn_params = filename_export_params(params)
+    if not fn_params:
+        return default_path
+    defaults = [params[name].get("default") for name, _ in fn_params]
+    if any(d is None for d in defaults):
+        return default_path
+    if len(fn_params) == 1:
+        suffix = str(defaults[0])
+    else:
+        suffix = "-".join(
+            f"{name}={value}" for (name, _), value in zip(fn_params, defaults)
+        )
+    return EXPORTS_DIR / f"{stem}-{suffix}.stl"
 
 
 def _build_context(
