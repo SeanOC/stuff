@@ -359,6 +359,35 @@ module _pipe_channel_cut(sx) {
                 cylinder(h = length, r = circumradius, $fn = 6);
 }
 
+// Debossed "L" / "R" letter on each ±Y face of a saddle or cap,
+// centered horizontally on the saddle's X centre and vertically on
+// `z_center`. Subtracted from the host solid (base or cap) so the
+// printed pair is visually self-labelling no matter which side faces
+// the operator: the left half of the base + cap_left both show "L";
+// the right half + cap_right both show "R". The font is left unset
+// so openscad picks the host's default; 0.5 mm deboss into a 19 mm-
+// thick wall is cosmetic only — no impact on the bolt anchorage or
+// bore geometry.
+//
+// rotate([90, 0, 0]) stands the 2D text up in the XZ plane and
+// extrudes it in −Y; mirror([0, 1, 0]) flips that copy to the -Y face
+// while keeping the letter forward-reading from each viewing side.
+module _lr_marker(sx, z_center) {
+    letter  = (sx > 0) ? "R" : "L";
+    cx      = sx * saddle_center_x;
+    deboss  = 0.5;
+    char_h  = 6;
+    eps     = 0.01;
+    for (sy = [-1, +1]) {
+        mirror([0, (sy < 0) ? 1 : 0, 0])
+            translate([cx, saddle_y_half + eps, z_center])
+                rotate([90, 0, 0])
+                    linear_extrude(height = deboss + eps)
+                        text(letter, size = char_h,
+                             halign = "center", valign = "center");
+    }
+}
+
 module _base_bolt_clearance(sx, sy) {
     cx  = sx * saddle_center_x;
     cy  = sy * bolt_y_offset;
@@ -375,6 +404,7 @@ module _base_bolt_clearance(sx, sy) {
 }
 
 module base_part() {
+    base_marker_z = base_t + saddle_bottom_h / 2;  // mid saddle-bottom
     difference() {
         union() {
             _base_plate();
@@ -386,14 +416,17 @@ module base_part() {
         for (sx = [-1, +1])
             for (sy = [-1, +1])
                 _base_bolt_clearance(sx, sy);
+        for (sx = [-1, +1])
+            _lr_marker(sx, base_marker_z);
     }
 }
 
 // === Geometry — cap (×2, asymmetric STLs) ===
 
 module _cap_geom(sx) {
-    cx           = sx * saddle_center_x;
-    cap_bottom_z = base_t + saddle_bottom_h;
+    cx             = sx * saddle_center_x;
+    cap_bottom_z   = base_t + saddle_bottom_h;
+    cap_marker_z   = cap_bottom_z + cap_h / 2;
     difference() {
         translate([cx, 0, cap_bottom_z + cap_h / 2])
             cuboid([saddle_w, saddle_y, cap_h],
@@ -403,6 +436,7 @@ module _cap_geom(sx) {
         for (sy = [-1, +1])
             _cap_insert_pocket(sx, sy);
         _handle_exclusion_cut();
+        _lr_marker(sx, cap_marker_z);
     }
 }
 
