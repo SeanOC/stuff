@@ -125,25 +125,35 @@
 // === Hex bore orientation ===
 //
 //   Each saddle's bore is a hexagonal prism with axis along the
-//   inline (X) direction. The hex is oriented FLATS-HORIZONTAL: one
-//   flat at the top (+Z extreme of the hex) and one flat at the
-//   bottom (−Z extreme). The two equator-level vertices (the points
-//   where the hex is widest along Y) sit exactly on the parting plane
-//   between saddle_bottom and cap (z = pipe_center_z).
+//   inline (X) direction. The two saddles are oriented DIFFERENTLY
+//   so that — viewed end-on along the pipe axis — the right saddle's
+//   hex POINTS land where the left saddle's hex FLATS are (a 30°
+//   per-saddle clocking offset).
 //
-//   - Saddle bottom holds: bottom horizontal flat + the two slanted
-//     flats below the equator + the two equator vertices.
-//   - Cap holds: top horizontal flat + the two slanted flats above
-//     the equator + the same two equator vertices (mirror).
+//   - LEFT saddle (sx < 0): FLATS-HORIZONTAL. One flat at the top
+//     (+Z extreme), one flat at the bottom (−Z extreme), the two
+//     equator vertices at ±Y on the saddle/cap parting plane
+//     (z = pipe_center_z).
+//   - RIGHT saddle (sx > 0): POINTS-VERTICAL. One vertex at the top
+//     (+Z extreme), one vertex at the bottom (−Z extreme), the two
+//     equator vertices (and the four slanted flats) sit closer to
+//     ±Y but offset 30° from the left saddle's equator vertices.
+//
+//   This asymmetry matches the physical valve, which presents its
+//   two fittings with their hex flats clocked 30° apart. Caps share
+//   the bore module (`_pipe_channel_cut`), so cap-left and cap-right
+//   inherit the matching orientation automatically.
 //
 //   OpenSCAD's `cylinder($fn=6)` puts a vertex at local +X by default,
 //   which (after `rotate([0, 90, 0])` to put the hex axis on global X)
-//   lands a vertex at global −Z — the wrong orientation. We pre-
-//   rotate the hex by 30° around its own axis (a local `rotate([0, 0,
-//   30])` before the cylinder) to spin the vertices to the equator,
-//   giving the flats-top-and-bottom orientation the bead spec
-//   requires. The render harness shows this visually — if the flats
-//   ever go vertical the orientation rotation has been broken.
+//   lands a vertex at global −Z. We pre-rotate the hex by 30° around
+//   its own axis (a local `rotate([0, 0, hex_rot_for(sx)])` before
+//   the cylinder) to spin the vertices onto the equator — that's the
+//   left saddle's flats-top-and-bottom orientation. For the right
+//   saddle we use 60° (= 30° + 30°), which lands the vertices top
+//   and bottom. The render harness shows this visually — if the
+//   left flats ever go vertical, or the two saddles ever match, the
+//   per-saddle rotation has been broken.
 //
 // === Slop (slip-fit) ===
 //
@@ -303,6 +313,12 @@ PRINT_ANCHOR_BBOX = [base_w, base_d, arch_top_z];
 function hex_apothem_for(sx) = (sx > 0) ? hex_apothem_right
                                         : hex_apothem_left;
 
+// Per-saddle local-Z pre-rotation (degrees). Left saddle uses 30°
+// (flats top/bottom); right saddle uses 60° (= 30° + 30°), which
+// clocks its hex by an extra 30° so its POINTS land top/bottom,
+// 30° offset from the left's flats.
+function hex_rot_for(sx) = (sx > 0) ? 60 : 30;
+
 // === Geometry — base + integral saddle bottoms ===
 
 module _base_plate() {
@@ -322,22 +338,24 @@ module _saddle_bottom(sx) {
 }
 
 // Pipe-channel cut for ONE saddle. Each saddle has its own hex bore
-// apothem, so cuts are separate hex prisms confined to each saddle's
-// X window. The 30° pre-rotation around the hex's own (local Z) axis
-// spins the default vertex-at-+X into a vertex-at-equator orientation,
-// which (after the outer rotate([0, 90, 0]) puts the hex axis on
-// global X) lands the flats top + bottom and the vertices at ±Y on
-// the saddle/cap parting plane. cos(30°) maps apothem to the
-// cylinder()-style circumradius.
+// apothem AND its own clocking, so cuts are separate hex prisms
+// confined to each saddle's X window. The per-saddle pre-rotation
+// (30° left, 60° right — see hex_rot_for) around the hex's own
+// (local Z) axis spins the default vertex-at-+X into the desired
+// orientation, which (after the outer rotate([0, 90, 0]) puts the
+// hex axis on global X) lands flats top/bottom for the left saddle
+// and POINTS top/bottom for the right saddle. cos(30°) maps apothem
+// to the cylinder()-style circumradius.
 module _pipe_channel_cut(sx) {
     apothem      = hex_apothem_for(sx);
     circumradius = apothem / cos(30);
+    hex_rot      = hex_rot_for(sx);
     cx           = sx * saddle_center_x;
     eps          = 0.5;
     length       = saddle_w + 2 * eps;
     translate([cx - length / 2, 0, pipe_center_z])
         rotate([0, 90, 0])
-            rotate([0, 0, 30])
+            rotate([0, 0, hex_rot])
                 cylinder(h = length, r = circumradius, $fn = 6);
 }
 
