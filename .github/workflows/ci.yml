@@ -14,6 +14,22 @@ jobs:
   render:
     name: render preview images
     runs-on: ubuntu-latest
+    # Switch to the upstream openscad/openscad Docker image (st-43l).
+    # The AppImage path was a documented bad fit for Ubuntu 24.04
+    # runners (openscad/openscad #5736, #5903) — each fix surfaced
+    # the next missing host dep (apprun-hooks, libEGL, libGL, ...).
+    # The Docker image bundles EGL + Qt + everything else by design;
+    # it's OpenSCAD's recommended CI pattern.
+    #
+    # Tag pin: dev.2025-09-06. We previously pinned the snapshot
+    # 2025.06.12.ai25773 (st-fgp) to get the CGAL/topology fixes that
+    # made the 3 stale STL exports watertight. There is NO Docker tag
+    # dated June 2025 — the published dev tags jump from 2025-05-19
+    # straight to 2025-09-06 (bookworm/trixie families start that
+    # same week). dev.2025-09-06 is the first dated tag AFTER our
+    # AppImage pin and the closest dev-lineage match.
+    container:
+      image: openscad/openscad:dev.2025-09-06
     timeout-minutes: 10
     permissions:
       contents: write
@@ -43,62 +59,28 @@ jobs:
               - 'scripts/vendor-libs.sh'
               - 'libs/README.md'
 
-      - name: Install openscad (pinned snapshot) + xvfb + python deps
+      - name: openscad --version smoke
+        # First thing in the job: surface a container-image mismatch
+        # immediately. Acceptance gate for st-43l — must print the
+        # pinned tag's version cleanly with no source/library errors.
+        run: openscad --version
+
+      - name: Install python deps for measure + invariants
         if: github.event_name == 'push' || steps.filter.outputs.render == 'true'
-        # Ubuntu 24.04's apt openscad is 2021.01, too old for the
-        # gridfinity-rebuilt library (uses 2024+ language features) and
-        # for the CGAL-precision behavior our valve / flow-meter mounts
-        # rely on (older openscad leaves sealed cavities → STLs fail
-        # the watertight check) (st-fgp). Pin the same nightly snapshot
-        # the dev environment uses so CI mirrors local results.
+        # The openscad/openscad image is Debian-based but minimal —
+        # bundle only what openscad itself needs. measure.py +
+        # invariants need numpy, PIL, and trimesh; we also pull
+        # pytest for the invariant core unit test step.
         #
-        # python3-numpy + python3-pil are required by
-        # .claude/skills/_lib/measure.py for hole/feature measurement
-        # in scripts/render-all.py (broken since st-dd1 without these).
-        #
-        # AppImage launcher (st-3e2): the newer snapshot's AppRun
-        # script unconditionally sources its qt apprun-hook from
-        # $(dirname $0)/apprun-hooks/. A bare symlink at
-        # /usr/local/bin/openscad → /opt/openscad/AppRun left $0
-        # pointing at /usr/local/bin/openscad, so AppRun looked for
-        # /usr/local/bin/apprun-hooks/... and died "No such file or
-        # directory" before openscad ever ran. We now install a real
-        # wrapper that exec's AppRun by its actual extracted path
-        # (so $(dirname $0) resolves to /opt/openscad and the hook
-        # lookup hits /opt/openscad/apprun-hooks/), and we drop a
-        # no-op stub at that location in case the newer AppImage
-        # layout has retired the hook altogether — Qt libs still
-        # resolve through the AppDir's standard LD path without it.
-        env:
-          OPENSCAD_VERSION: "2025.06.12.ai25773"
+        # apt-get is preferred (deb-packaged wheels are pre-built);
+        # fall back to pip with --break-system-packages if the apt
+        # package isn't available in this base.
         run: |
-          sudo apt-get update
-          sudo apt-get install -y xvfb python3-numpy python3-pil
-          cd /tmp
-          curl -fsSL -o openscad.AppImage \
-            "https://files.openscad.org/snapshots/OpenSCAD-${OPENSCAD_VERSION}-x86_64.AppImage"
-          chmod +x openscad.AppImage
-          ./openscad.AppImage --appimage-extract > /dev/null
-          sudo mv squashfs-root /opt/openscad
-          # Ensure AppRun's expected qt-hook path exists — stub if missing.
-          HOOK_DIR=/opt/openscad/apprun-hooks
-          HOOK_SCRIPT="$HOOK_DIR/linuxdeploy-plugin-qt-hook.sh"
-          sudo mkdir -p "$HOOK_DIR"
-          if [ ! -e "$HOOK_SCRIPT" ]; then
-            echo "# st-3e2 no-op stub: hook retired in newer AppImage layout" \
-              | sudo tee "$HOOK_SCRIPT" > /dev/null
-            sudo chmod +x "$HOOK_SCRIPT"
-          fi
-          # Install the real wrapper (not a symlink) so AppRun's $0
-          # resolves to /opt/openscad/AppRun. printf rather than a
-          # heredoc here so YAML-indentation whitespace doesn't end
-          # up on the shebang line.
-          printf '%s\n' '#!/bin/sh' 'exec /opt/openscad/AppRun "$@"' \
-            | sudo tee /usr/local/bin/openscad > /dev/null
-          sudo chmod +x /usr/local/bin/openscad
-          # Post-install smoke: --version must print the pinned snapshot
-          # without sourcing-error noise (st-3e2 acceptance).
-          openscad --version
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            python3-numpy python3-pil python3-trimesh python3-pytest \
+            || python3 -m pip install --break-system-packages \
+                 numpy pillow trimesh pytest
 
       - name: Vendor SCAD libraries
         if: github.event_name == 'push' || steps.filter.outputs.render == 'true'
@@ -107,16 +89,6 @@ jobs:
       - name: Render all models
         if: github.event_name == 'push' || steps.filter.outputs.render == 'true'
         run: python3 scripts/render-all.py
-
-      - name: Install trimesh (for export + invariants)
-        if: github.event_name == 'push' || steps.filter.outputs.render == 'true'
-        # trimesh is pulled in here so we don't inflate the render-only
-        # path with it. export.py loads the STL via trimesh to assert
-        # watertightness; check-invariants.py extends that with
-        # connected-component + per-model sidecar checks (st-cjn).
-        run: |
-          sudo apt-get install -y python3-trimesh python3-pytest || \
-            python3 -m pip install --break-system-packages trimesh pytest
 
       - name: Export STLs + invariants
         if: github.event_name == 'push' || steps.filter.outputs.render == 'true'
@@ -137,9 +109,17 @@ jobs:
         # attacker-controllable (fork branch names). Keep it in env and only
         # pass through `git push "$PR_HEAD_REF"` — never interpolate directly
         # into a shell line.
+        #
+        # Container note (st-43l): the openscad/openscad image runs the
+        # step as root while actions/checkout populated the workspace as
+        # the runner user, so git refuses operations with "dubious
+        # ownership" until we mark the workspace safe. The image's base
+        # apt set may not include git; install it if missing.
         env:
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
+          command -v git >/dev/null 2>&1 || { apt-get update && apt-get install -y --no-install-recommends git; }
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git config user.name  'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add renders/
@@ -155,6 +135,8 @@ jobs:
         env:
           BRANCH: ${{ github.ref_name }}
         run: |
+          command -v git >/dev/null 2>&1 || { apt-get update && apt-get install -y --no-install-recommends git; }
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git config user.name  'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add renders/
