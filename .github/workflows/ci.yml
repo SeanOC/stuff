@@ -55,6 +55,20 @@ jobs:
         # python3-numpy + python3-pil are required by
         # .claude/skills/_lib/measure.py for hole/feature measurement
         # in scripts/render-all.py (broken since st-dd1 without these).
+        #
+        # AppImage launcher (st-3e2): the newer snapshot's AppRun
+        # script unconditionally sources its qt apprun-hook from
+        # $(dirname $0)/apprun-hooks/. A bare symlink at
+        # /usr/local/bin/openscad → /opt/openscad/AppRun left $0
+        # pointing at /usr/local/bin/openscad, so AppRun looked for
+        # /usr/local/bin/apprun-hooks/... and died "No such file or
+        # directory" before openscad ever ran. We now install a real
+        # wrapper that exec's AppRun by its actual extracted path
+        # (so $(dirname $0) resolves to /opt/openscad and the hook
+        # lookup hits /opt/openscad/apprun-hooks/), and we drop a
+        # no-op stub at that location in case the newer AppImage
+        # layout has retired the hook altogether — Qt libs still
+        # resolve through the AppDir's standard LD path without it.
         env:
           OPENSCAD_VERSION: "2025.06.12.ai25773"
         run: |
@@ -66,7 +80,24 @@ jobs:
           chmod +x openscad.AppImage
           ./openscad.AppImage --appimage-extract > /dev/null
           sudo mv squashfs-root /opt/openscad
-          sudo ln -sf /opt/openscad/AppRun /usr/local/bin/openscad
+          # Ensure AppRun's expected qt-hook path exists — stub if missing.
+          HOOK_DIR=/opt/openscad/apprun-hooks
+          HOOK_SCRIPT="$HOOK_DIR/linuxdeploy-plugin-qt-hook.sh"
+          sudo mkdir -p "$HOOK_DIR"
+          if [ ! -e "$HOOK_SCRIPT" ]; then
+            echo "# st-3e2 no-op stub: hook retired in newer AppImage layout" \
+              | sudo tee "$HOOK_SCRIPT" > /dev/null
+            sudo chmod +x "$HOOK_SCRIPT"
+          fi
+          # Install the real wrapper (not a symlink) so AppRun's $0
+          # resolves to /opt/openscad/AppRun. printf rather than a
+          # heredoc here so YAML-indentation whitespace doesn't end
+          # up on the shebang line.
+          printf '%s\n' '#!/bin/sh' 'exec /opt/openscad/AppRun "$@"' \
+            | sudo tee /usr/local/bin/openscad > /dev/null
+          sudo chmod +x /usr/local/bin/openscad
+          # Post-install smoke: --version must print the pinned snapshot
+          # without sourcing-error noise (st-3e2 acceptance).
           openscad --version
 
       - name: Vendor SCAD libraries
