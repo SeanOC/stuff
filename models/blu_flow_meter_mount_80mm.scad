@@ -23,16 +23,24 @@
 //
 // === Version history ===
 //
-//   v1 (st-jtn): top-entry bolts through caps into base inserts.
-//   v2 (st-246): inverted to bottom-entry bolts through the base into
+//   v1   (st-jtn): top-entry bolts through caps into base inserts.
+//   v2   (st-246): inverted to bottom-entry bolts through the base into
 //     cap inserts; added inboard-top-edge chamfer for ±35° meter tilt.
-//   v3 (st-lwz): LCD-FORWARD install orientation — the meter's LCD
+//   v3   (st-lwz): LCD-FORWARD install orientation — the meter's LCD
 //     now points +Y (toward the operator at the bench) instead of +Z.
 //     Cap chamfer relief moves from the +Z inboard edge to the +Y
 //     inboard edge so the tilt margin sits on the side the LCD now
-//     points. A keying feature in the display gap physically
-//     constrains the meter to seat only in the LCD-forward rotation
-//     — the v2 "operator picks at install time" choice is gone.
+//     points. Added a half-ring keying shroud in the display gap to
+//     physically lock the rotation.
+//   v3.1 (st-89c): DROPS the v3 keying shroud — its arc geometry
+//     can't bridge cleanly when the base prints flat-bottom-down. The
+//     mount returns to rotation-agnostic at the geometry level, but
+//     LCD-forward (+Y) stays the documented intended install. Adds
+//     parametric LCD-saddle dimensions and a phantom-meter
+//     visualization so the operator can see the LCD-forward clearance
+//     directly in the assembly render. Adds v3.1 clearance invariants
+//     (body-vs-base, body-vs-cap, body-vs-saddle-X) so a future tweak
+//     that breaks the seating envelope fails loudly.
 //
 // === Hardware (v2 — inverted from v1, bottom-entry bolts) ===
 //
@@ -93,18 +101,55 @@
 //   tilt relief" below. Tilts up to ±`display_relief_angle` from
 //   square (default 35°) clear the cap chamfer.
 //
-// === Keying (v3) ===
+//   v3.1 NOTE: the v3 half-ring keying shroud is dropped. The mount
+//   is now rotation-agnostic at the geometry level (any rotation
+//   around the pipe axis seats fine in the saddles), but LCD-forward
+//   stays the documented intended install. See "Clearance check
+//   (LCD-forward)" below for the geometric proof that the LCD saddle
+//   fits.
 //
-//   The bare-pipe sections at each end of the meter are rotationally
-//   symmetric, so the mount saddles alone cannot constrain the meter
-//   to a specific rotation. The middle ~44 mm of the meter is NOT
-//   rotationally symmetric — the LCD-saddle body protrudes from one
-//   side of the pipe and the LCD bulges further out on top of that.
+// === Clearance check (LCD-forward) ===
 //
-//   v3 adds a keying feature in the display gap that contacts the LCD
-//   saddle when (and only when) the meter is rotated off LCD-forward.
-//   See `_keying_feature()` for the shape; the bead's design call is
-//   documented in the .scad below where the feature is built.
+//   With the LCD pointing +Y the LCD-saddle body occupies a roughly
+//   rectangular envelope around the pipe in the middle of the
+//   display gap. Default LCD-saddle dimensions (parametric below;
+//   estimated from `models/refs/blu_mount_v1_desired_tilt.jpeg` until
+//   calipered values land) are:
+//
+//     meter_body_l           = 44 mm  (along pipe X)
+//     meter_body_h_lcd       = 35 mm  (along LCD axis — Y in forward)
+//     meter_body_h_perp      = 25 mm  (perpendicular to LCD axis — Z
+//                                       in forward; body half-height
+//                                       12.5 mm above/below pipe ctr)
+//     meter_lcd_bulge_d      = 12 mm  (LCD's extra radial depth past
+//                                       the body face on the LCD axis)
+//
+//   In the LCD-forward (+Y) orientation, body extent vs the mount:
+//
+//     X: body length 44 mm, display gap 47 mm → 1.5 mm side
+//        clearance to each saddle inboard face (saddle inboard at
+//        x=±23.5; body at x=±22.0). MARGINAL — first-print review
+//        may want to bump bare_band_w to widen the gap.
+//     Z: body extends pipe_center_z ± 12.5 mm = z ∈ [12.2, 37.2].
+//        Base top at z=8 → 4.2 mm clearance below body.
+//        Cap top at z=arch_top_z=41.4 → 4.2 mm clearance above.
+//     -Y (back of body): body face at y ≈ -17.5 mm. Saddle/base
+//        material at -Y in the display gap is just the open base
+//        plate edge at y=-30 → 12.5 mm clearance. Open air.
+//     +Y (LCD bulge): body face at y ≈ +17.5, LCD bulge tip at
+//        y ≈ +29.5. Base +Y edge at y=+30 → the bulge sits just
+//        inside the base footprint, floating at z >> 0 so no
+//        bench contact.
+//
+//   These margins are computed numerically from the parameters below
+//   and pinned by `_check(...)` invariants in the sidecar — a change
+//   that breaks any clearance fails the model check.
+//
+//   The clearance assumes the photo-derived defaults are within ±2 mm
+//   of the real meter. The `_phantom_meter()` module renders the LCD
+//   saddle as a transparent block in the assembly view so the
+//   operator can visually confirm fit before printing — toggle via
+//   `part = "assembly_with_meter"`.
 //
 //   ### Bolt entry (v2 — inverted vs v1)
 //
@@ -221,7 +266,7 @@ $fn = 64;
 // === User-tunable parameters ===
 
 // ----- Which piece(s) to render -----
-part = "assembly";  // @param enum choices=assembly|base|cap group=part label="Which piece to render"
+part = "assembly";  // @param enum choices=assembly|assembly_with_meter|base|cap group=part label="Which piece to render"
 
 // ----- Meter dimensions -----
 pipe_dia       = 27;   // @param number min=15 max=60  step=0.5 unit=mm group=meter label="Meter pipe diameter"
@@ -250,17 +295,18 @@ bolt_y_offset  = 20;   // @param number min=15  max=30  step=0.5 unit=mm group=h
 // ----- Display tilt relief -----
 display_relief_angle = 35; // @param number min=0 max=50 step=5 unit=deg group=fit label="Cap inboard-edge chamfer angle from vertical (allows meter tilt around pipe axis)"
 
-// ----- Keying lug (v3) — half-ring shroud in display gap -----
-// Half-ring centred on the pipe axis at x=0, opening 2×key_open_half_angle
-// degrees at +Y so the LCD bulge passes through in LCD-forward orientation
-// only. In any rotated orientation the bulge contacts the arc wall and the
-// meter can't seat. See "Keying" header section and `_keying_feature` below.
-key_inner_r          = 24.5; // @param number min=15 max=35  step=0.5 unit=mm  group=keying label="Keying ring inner radius (pipe-axis to inner wall — must clear LCD-saddle body)"
-key_outer_r          = 27.5; // @param number min=18 max=40  step=0.5 unit=mm  group=keying label="Keying ring outer radius"
-key_open_half_angle  = 45;   // @param number min=15 max=75  step=1   unit=deg group=keying label="Half-angle of +Y opening (total opening = 2× this)"
-key_w                = 5;    // @param number min=2  max=20  step=0.5 unit=mm  group=keying label="Keying ring thickness along pipe X-axis"
+// ----- LCD-saddle envelope (v3.1) — for clearance check / phantom -----
+// Photo-derived estimates of the meter's middle-section "display saddle"
+// (the chunky body that wraps the pipe and carries the LCD). Until a
+// calipered measurement lands, treat these as approximate ±2 mm. The
+// clearance invariants pin minimum gaps against the mount geometry, so
+// future param tuning will surface conflicts immediately.
+meter_body_l           = 44;  // @param number min=20 max=80 step=0.5 unit=mm group=meter label="LCD-saddle body length along pipe X-axis"
+meter_body_h_lcd       = 35;  // @param number min=20 max=60 step=0.5 unit=mm group=meter label="LCD-saddle body extent in the LCD axis (Y when LCD-forward; body only, no LCD bulge)"
+meter_body_h_perp      = 25;  // @param number min=20 max=50 step=0.5 unit=mm group=meter label="LCD-saddle body extent perpendicular to LCD axis (Z when LCD-forward)"
+meter_lcd_bulge_d      = 12;  // @param number min=0  max=30 step=0.5 unit=mm group=meter label="LCD's extra radial depth past the body face (only on LCD side)"
 
-// @preset id="default" label="Blu flow meter 80mm × 27mm dia (default)" part="assembly" pipe_dia=27 pipe_len=80 bare_band_w=18 slop=0.2 saddle_w=15 wall_t=3 base_w=80 base_d=60 base_t=8 edge_round_r=1.5 m3_clearance_d=3.5 m3_head_d=5.8 m3_head_depth=3.2 m3_insert_d=5 m3_insert_h=5 bolt_y_offset=20 display_relief_angle=35 key_inner_r=24.5 key_outer_r=27.5 key_open_half_angle=45 key_w=5
+// @preset id="default" label="Blu flow meter 80mm × 27mm dia (default)" part="assembly" pipe_dia=27 pipe_len=80 bare_band_w=18 slop=0.2 saddle_w=15 wall_t=3 base_w=80 base_d=60 base_t=8 edge_round_r=1.5 m3_clearance_d=3.5 m3_head_d=5.8 m3_head_depth=3.2 m3_insert_d=5 m3_insert_h=5 bolt_y_offset=20 display_relief_angle=35 meter_body_l=44 meter_body_h_lcd=35 meter_body_h_perp=25 meter_lcd_bulge_d=12
 
 // === Derived ===
 
@@ -359,67 +405,12 @@ module _base_bolt_clearance(sx, sy) {
         cylinder(h = shaft_top_z - shaft_bot_z, d = m3_clearance_d);
 }
 
-// === Keying lug (v3) — half-ring shroud ===
-//
-// A 360° − 2·key_open_half_angle arc, centered on the pipe axis at the
-// middle of the display gap, opens at +Y so the LCD bulge slides
-// through during vertical descent in LCD-forward orientation only.
-// In LCD-up / LCD-back rotations the bulge intersects the closed
-// portion of the arc and the meter cannot seat. LCD-down is blocked
-// by the base. Clipped to z ≥ 0 so the lower lobes of the arc merge
-// into the base plate (or just disappear if they would dip below the
-// bench).
-//
-// Default dimensions assume an LCD-saddle body wrapping the 27 mm
-// pipe with ~10 mm radial padding (body envelope ~24 mm radial from
-// pipe axis) and an LCD bulge that extends > 27 mm radial. First-
-// print review may tune key_inner_r outward if the body binds.
-//
-// Bead st-lwz design call: option (A) half-ring shroud chosen after
-// mayor reply did not arrive within the polecat's wait window; option
-// (B) single -Y rib was rejected because it doesn't block LCD-up.
-module _keying_feature() {
-    if (key_inner_r > 0 && key_outer_r > key_inner_r && key_w > 0) {
-        intersection() {
-            translate([0, 0, pipe_center_z])
-                rotate([0, 90, 0])
-                    linear_extrude(height = key_w, center = true)
-                        _keying_arc_2d();
-            // Clip below z = 0 so the arc's bottom lobe doesn't
-            // poke through the bench-contact face. Bottom of clip
-            // cube at z = 0; cube is huge in X and Y to cover the
-            // arc footprint.
-            translate([0, 0, 500])
-                cube(1000, center = true);
-        }
-    }
-}
-
-// 2D ring with a wedge subtracted at +Y. Centred on origin.
-module _keying_arc_2d() {
-    big = key_outer_r * 4;
-    difference() {
-        circle(r = key_outer_r);
-        circle(r = key_inner_r);
-        // Opening wedge: triangle from origin out through the
-        // ±key_open_half_angle range about the +Y axis.
-        polygon(points = [
-            [0, 0],
-            [ big * cos(90 - key_open_half_angle),
-              big * sin(90 - key_open_half_angle)],
-            [ big * cos(90 + key_open_half_angle),
-              big * sin(90 + key_open_half_angle)],
-        ]);
-    }
-}
-
 module base_part() {
     difference() {
         union() {
             _base_plate();
             _saddle_bottom(+1);
             _saddle_bottom(-1);
-            _keying_feature();
         }
         _pipe_channel_cut();
         for (sx = [-1, +1])
@@ -525,6 +516,36 @@ module cap_for_print() {
                 _cap_geom(+1);
 }
 
+// === Phantom meter (v3.1) — clearance visualisation ===
+//
+// Renders the LCD-saddle body (the chunky middle ~44 mm of the
+// meter) and the LCD bulge in LCD-forward orientation, as a
+// transparent (% modifier) block centred on the pipe at x=0. This is
+// NOT a printed part — it exists only so the assembly_with_meter
+// view shows whether the LCD-forward install actually fits. Toggle
+// via `part = "assembly_with_meter"`.
+module _phantom_meter() {
+    %union() {
+        // LCD-saddle body: rectangular block wrapping the pipe.
+        // Centred on pipe at (x=0, y=0, z=pipe_center_z); extent
+        // meter_body_l × meter_body_h_lcd × meter_body_h_perp.
+        // In LCD-forward orientation, h_lcd runs along Y and h_perp
+        // runs along Z.
+        translate([0, 0, pipe_center_z])
+            cube([meter_body_l, meter_body_h_lcd, meter_body_h_perp],
+                 center = true);
+        // LCD bulge: thin block on the +Y face of the body, extending
+        // outward by meter_lcd_bulge_d. Slightly smaller than the
+        // body face so its outline is visible.
+        translate([0, meter_body_h_lcd / 2 + meter_lcd_bulge_d / 2,
+                   pipe_center_z])
+            cube([meter_body_l * 0.7,
+                  meter_lcd_bulge_d,
+                  meter_body_h_perp * 0.7],
+                 center = true);
+    }
+}
+
 // === Assembly + part selection ===
 
 module assembly() {
@@ -533,10 +554,17 @@ module assembly() {
     cap_part_in_place(-1);
 }
 
+module assembly_with_meter() {
+    assembly();
+    _phantom_meter();
+}
+
 if (part == "base") {
     base_part();
 } else if (part == "cap") {
     cap_for_print();
+} else if (part == "assembly_with_meter") {
+    assembly_with_meter();
 } else {
     assembly();
 }

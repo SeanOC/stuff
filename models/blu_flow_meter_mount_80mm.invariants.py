@@ -1,21 +1,27 @@
 """Invariants for the Blu Technology flow meter bench mount.
 
-v1 (st-jtn): bolts entered through caps into base inserts.
-v2 (st-246): bolts inverted — enter from base bottom, thread into cap
-inserts; cap inboard top edges chamfered for meter tilt clearance.
-v3 (st-lwz): LCD-forward install orientation; cap chamfer moved from
-+X-inboard +Z-top edge to +Y-top edge; keying half-ring shroud in the
-display gap constrains the meter to LCD-forward seating.
+v1   (st-jtn): bolts entered through caps into base inserts.
+v2   (st-246): bolts inverted — enter from base bottom, thread into
+  cap inserts; cap inboard top edges chamfered for meter tilt.
+v3   (st-lwz): LCD-forward install orientation; cap chamfer moved
+  from +X-inboard +Z-top edge to +Y-top edge; added half-ring keying
+  shroud in the display gap.
+v3.1 (st-89c): drops the keying shroud (unprintable bridge geometry);
+  adds parametric LCD-saddle dimensions and clearance invariants for
+  the LCD-forward seating envelope (body-vs-base, body-vs-cap,
+  body-vs-saddle-X).
 
 Default `part="assembly"` exports the base + two caps in their
 installed positions: three connected solids that share a pipe channel
 but don't merge (the saddle/cap interface is a flat parting plane).
-The v3 keying ring is part of the base via union (lower lobes merge
-with the base plate), so the connected-solid count stays at 3.
 
 Per-part STL exports (the operator-facing outputs) are produced via
 `-D 'part="base"'` and `-D 'part="cap"'`; those don't go through this
-sidecar because the catalog uses the assembly view.
+sidecar because the catalog uses the assembly view. The `part=
+"assembly_with_meter"` view embeds a transparent phantom of the LCD
+saddle for visual clearance confirmation — also not analyzed here
+because the phantom is rendered with the % modifier (excluded from
+the STL).
 """
 
 from __future__ import annotations
@@ -87,41 +93,78 @@ def check(ctx):
         # without affecting the insert because they live at different
         # Z bands.
 
-    # v3 keying ring sanity: doesn't intersect the pipe channel, fits
-    # within the base footprint in Y, and fits inside the display gap
-    # in X with clearance to the saddle inboard faces.
-    key_inner_r = p.get("key_inner_r")
-    key_outer_r = p.get("key_outer_r")
-    key_w       = p.get("key_w")
-    base_d_p    = p.get("base_d")
-    if all(v is not None for v in (key_inner_r, key_outer_r, key_w,
-                                    saddle_w, pipe_len, bare_band_w,
-                                    pipe_dia, slop, base_d_p)):
-        pipe_channel_r = pipe_dia / 2 + slop
-        if key_inner_r <= pipe_channel_r + 0.5:
-            failures.append(Failure(
-                "keying_intersects_pipe",
-                f"key_inner_r={key_inner_r}mm ≤ pipe_channel_r+0.5="
-                f"{pipe_channel_r + 0.5:.2f}mm — the keying ring's "
-                f"inner wall would touch the pipe bore",
-            ))
-        if key_outer_r >= base_d_p / 2:
-            failures.append(Failure(
-                "keying_overhangs_base",
-                f"key_outer_r={key_outer_r}mm ≥ base_d/2="
-                f"{base_d_p / 2:.2f}mm — the keying ring's -Y arc "
-                f"would stick past the base edge in plan view",
-            ))
-        # Display gap (clear span between saddles) must comfortably
-        # fit the keying ring's X-thickness.
+    # v3.1 LCD-forward clearance: the LCD-saddle body must fit in
+    # the display gap with measurable margins. Photo-derived defaults
+    # for the body envelope live in the .scad as @param so future
+    # measurements can be wired in without touching the invariants.
+    meter_body_l      = p.get("meter_body_l")
+    meter_body_h_lcd  = p.get("meter_body_h_lcd")
+    meter_body_h_perp = p.get("meter_body_h_perp")
+    meter_bulge_d     = p.get("meter_lcd_bulge_d")
+    base_d_p          = p.get("base_d")
+    if all(v is not None for v in (meter_body_l, meter_body_h_lcd,
+                                    meter_body_h_perp, meter_bulge_d,
+                                    pipe_dia, slop, wall_t,
+                                    pipe_len, bare_band_w, saddle_w,
+                                    base_d_p)):
+        pipe_channel_r  = pipe_dia / 2 + slop
+        pipe_center_z   = (p.get("base_t") or 0) + wall_t + pipe_channel_r
+        saddle_bottom_h = wall_t + pipe_channel_r
+        cap_h           = wall_t + pipe_channel_r
+        arch_top_z      = (p.get("base_t") or 0) + saddle_bottom_h + cap_h
+        # Body extends ±meter_body_h_perp/2 in Z around pipe centre.
+        body_top_z    = pipe_center_z + meter_body_h_perp / 2
+        body_bottom_z = pipe_center_z - meter_body_h_perp / 2
+        base_top_z    = p.get("base_t") or 0
+        # Body extends ±meter_body_h_lcd/2 in Y around pipe centre.
+        body_face_y_back = -meter_body_h_lcd / 2
+        body_face_y_lcd  = +meter_body_h_lcd / 2
+        bulge_tip_y      = body_face_y_lcd + meter_bulge_d
+        # Body length along pipe X; display_gap is clear span between
+        # saddle inboard faces.
         display_gap = (pipe_len / 2 - bare_band_w / 2) * 2 - saddle_w
-        if key_w >= display_gap - 4:
+        body_x_clearance_per_side = (display_gap - meter_body_l) / 2
+        # Z clearances
+        if body_bottom_z - base_top_z < 2:
             failures.append(Failure(
-                "keying_crowds_saddles",
-                f"key_w={key_w}mm leaves < 2 mm clearance on each "
-                f"side of the {display_gap:.1f}mm display gap — "
-                f"the keying ring would crowd the saddle inboard "
-                f"faces. Reduce key_w or widen the display gap.",
+                "lcd_body_vs_base",
+                f"LCD body bottom at z={body_bottom_z:.2f}mm sits "
+                f"only {body_bottom_z - base_top_z:.2f}mm above the "
+                f"base top at z={base_top_z:.2f}mm (want ≥2mm). Raise "
+                f"pipe_center_z (bump wall_t) or shrink meter_body_h_"
+                f"perp.",
+            ))
+        if arch_top_z - body_top_z < 2:
+            failures.append(Failure(
+                "lcd_body_vs_cap",
+                f"LCD body top at z={body_top_z:.2f}mm sits only "
+                f"{arch_top_z - body_top_z:.2f}mm below the cap top "
+                f"at z={arch_top_z:.2f}mm (want ≥2mm). Bump cap_h "
+                f"or shrink meter_body_h_perp.",
+            ))
+        # X clearance to saddle inboard faces
+        if body_x_clearance_per_side < 1.0:
+            failures.append(Failure(
+                "lcd_body_vs_saddle_x",
+                f"LCD body length {meter_body_l}mm leaves only "
+                f"{body_x_clearance_per_side:.2f}mm clearance on "
+                f"each side of the {display_gap:.1f}mm display gap "
+                f"(want ≥1mm). Widen bare_band_w or narrow saddle_w "
+                f"if a calipered meter measurement confirms the body "
+                f"is longer than the default 44mm.",
+            ))
+        # +Y bulge tip vs base footprint edge — informational; the
+        # bulge is allowed to overhang the base edge (it floats high
+        # above the bench), so this is a SOFT warning at >20mm
+        # overhang where the bulge would extend past the bench's
+        # support footprint by a noticeable amount.
+        if bulge_tip_y - base_d_p / 2 > 20:
+            failures.append(Failure(
+                "lcd_bulge_overhang",
+                f"LCD bulge tip at y=+{bulge_tip_y:.1f}mm overhangs "
+                f"the base +Y edge at y=+{base_d_p / 2:.1f}mm by "
+                f">{bulge_tip_y - base_d_p / 2:.1f}mm — the meter "
+                f"may rock forward off the bench. Widen base_d.",
             ))
 
     return failures
