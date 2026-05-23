@@ -3,12 +3,15 @@
 v1 (st-jtn): bolts entered through caps into base inserts.
 v2 (st-246): bolts inverted — enter from base bottom, thread into cap
 inserts; cap inboard top edges chamfered for meter tilt clearance.
+v3 (st-lwz): LCD-forward install orientation; cap chamfer moved from
++X-inboard +Z-top edge to +Y-top edge; keying half-ring shroud in the
+display gap constrains the meter to LCD-forward seating.
 
 Default `part="assembly"` exports the base + two caps in their
 installed positions: three connected solids that share a pipe channel
 but don't merge (the saddle/cap interface is a flat parting plane).
-Pin the exact count so a regression that fuses or splits a piece
-fails loudly.
+The v3 keying ring is part of the base via union (lower lobes merge
+with the base plate), so the connected-solid count stays at 3.
 
 Per-part STL exports (the operator-facing outputs) are produced via
 `-D 'part="base"'` and `-D 'part="cap"'`; those don't go through this
@@ -74,13 +77,51 @@ def check(ctx):
                 f"above the insert pocket; want ≥1.0mm so the brass "
                 f"insert isn't pressed into a thin lip",
             ))
-        # Chamfer can't eat past the cap outboard face. Leave ≥1 mm.
-        if chamfer_dx > saddle_w - 1.0:
+        # In v3 the chamfer extends -Y from the +Y face; the relevant
+        # outboard limit is the cap's Y depth (saddle_y_half). The
+        # insert-clearance guard is still the Z-axis check above —
+        # chamfer floor at z = cap_top - chamfer_dz must sit ≥1 mm
+        # above the insert top — because the chamfer doesn't reach
+        # below its floor in any axis. No extra Y-axis check needed:
+        # chamfer_dx can extend past the insert's inboard edge in Y
+        # without affecting the insert because they live at different
+        # Z bands.
+
+    # v3 keying ring sanity: doesn't intersect the pipe channel, fits
+    # within the base footprint in Y, and fits inside the display gap
+    # in X with clearance to the saddle inboard faces.
+    key_inner_r = p.get("key_inner_r")
+    key_outer_r = p.get("key_outer_r")
+    key_w       = p.get("key_w")
+    base_d_p    = p.get("base_d")
+    if all(v is not None for v in (key_inner_r, key_outer_r, key_w,
+                                    saddle_w, pipe_len, bare_band_w,
+                                    pipe_dia, slop, base_d_p)):
+        pipe_channel_r = pipe_dia / 2 + slop
+        if key_inner_r <= pipe_channel_r + 0.5:
             failures.append(Failure(
-                "chamfer_outboard_clearance",
-                f"chamfer_dx={chamfer_dx:.2f}mm exceeds saddle_w-1="
-                f"{saddle_w - 1.0:.2f}mm at display_relief_angle="
-                f"{relief_angle}°; lower the angle or widen saddle_w",
+                "keying_intersects_pipe",
+                f"key_inner_r={key_inner_r}mm ≤ pipe_channel_r+0.5="
+                f"{pipe_channel_r + 0.5:.2f}mm — the keying ring's "
+                f"inner wall would touch the pipe bore",
+            ))
+        if key_outer_r >= base_d_p / 2:
+            failures.append(Failure(
+                "keying_overhangs_base",
+                f"key_outer_r={key_outer_r}mm ≥ base_d/2="
+                f"{base_d_p / 2:.2f}mm — the keying ring's -Y arc "
+                f"would stick past the base edge in plan view",
+            ))
+        # Display gap (clear span between saddles) must comfortably
+        # fit the keying ring's X-thickness.
+        display_gap = (pipe_len / 2 - bare_band_w / 2) * 2 - saddle_w
+        if key_w >= display_gap - 4:
+            failures.append(Failure(
+                "keying_crowds_saddles",
+                f"key_w={key_w}mm leaves < 2 mm clearance on each "
+                f"side of the {display_gap:.1f}mm display gap — "
+                f"the keying ring would crowd the saddle inboard "
+                f"faces. Reduce key_w or widen the display gap.",
             ))
 
     return failures

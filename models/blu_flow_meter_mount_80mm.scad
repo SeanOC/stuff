@@ -21,6 +21,19 @@
 //     stops at the pipe-section ends and leaves the fittings free
 //     so hoses can dangle off the bench.
 //
+// === Version history ===
+//
+//   v1 (st-jtn): top-entry bolts through caps into base inserts.
+//   v2 (st-246): inverted to bottom-entry bolts through the base into
+//     cap inserts; added inboard-top-edge chamfer for ±35° meter tilt.
+//   v3 (st-lwz): LCD-FORWARD install orientation — the meter's LCD
+//     now points +Y (toward the operator at the bench) instead of +Z.
+//     Cap chamfer relief moves from the +Z inboard edge to the +Y
+//     inboard edge so the tilt margin sits on the side the LCD now
+//     points. A keying feature in the display gap physically
+//     constrains the meter to seat only in the LCD-forward rotation
+//     — the v2 "operator picks at install time" choice is gone.
+//
 // === Hardware (v2 — inverted from v1, bottom-entry bolts) ===
 //
 //   4× M3×30 mm SHCS (socket-head cap screws) — clearance through the
@@ -59,24 +72,39 @@
 //   the recommendation; operators who installed v1 with longer bolts
 //   already have the right hardware.
 //
-// === Install orientation ===
+// === Install orientation (v3) ===
 //
 //   install +X = along the pipe axis (flow direction; pick the end
 //                the meter prefers — symmetric mount, either way)
-//   install +Y = lateral (across the bench, perpendicular to flow)
-//   install +Z = up (away from the bench top); bench surface at z=0
+//   install +Y = OPERATOR-FACING (forward, toward the viewer at the
+//                bench). The meter's LCD points this way.
+//   install +Z = up (away from the bench top); bench surface at z=0.
 //
 //   The flat 80×60 base bottom (z=0) sits on the bench. The pipe
 //   sits captured in the saddles at pipe_center_z; the LCD display
-//   faces +Z (up) when the operator aligns the meter so the display-
-//   saddle's tall side is in +Z. The bare pipe is rotationally
-//   symmetric, so the operator picks the LCD-up orientation at
-//   install time — the mount doesn't constrain it.
+//   faces +Y (forward toward the operator). The keying lug in the
+//   display gap (see "Keying" below) physically blocks every rotation
+//   of the meter around the pipe axis except LCD-forward — the
+//   operator does not pick an orientation at install time.
 //
-//   The operator can also rotate the meter around the pipe axis (X)
-//   to tilt the LCD forward toward the viewer; see "Display tilt
-//   relief" below. The chamfered cap tops give clearance for tilts up
-//   to ±`display_relief_angle` from vertical (default 35°).
+//   The cap inboard top edges are chamfered on the +Y side so the
+//   operator can still tilt the meter slightly toward themselves at
+//   install (e.g. to inspect the lens before clamping); see "Display
+//   tilt relief" below. Tilts up to ±`display_relief_angle` from
+//   square (default 35°) clear the cap chamfer.
+//
+// === Keying (v3) ===
+//
+//   The bare-pipe sections at each end of the meter are rotationally
+//   symmetric, so the mount saddles alone cannot constrain the meter
+//   to a specific rotation. The middle ~44 mm of the meter is NOT
+//   rotationally symmetric — the LCD-saddle body protrudes from one
+//   side of the pipe and the LCD bulges further out on top of that.
+//
+//   v3 adds a keying feature in the display gap that contacts the LCD
+//   saddle when (and only when) the meter is rotated off LCD-forward.
+//   See `_keying_feature()` for the shape; the bead's design call is
+//   documented in the .scad below where the feature is built.
 //
 //   ### Bolt entry (v2 — inverted vs v1)
 //
@@ -151,17 +179,28 @@
 //     z = pipe_center_z. Each cap carries 2 heat-set insert pockets
 //     (5 mm Ø × 5 mm deep) opening from the cap's mating (bottom)
 //     face, aligned with the bolt clearance holes coming up through
-//     the base. The cap's inboard top edge is chamfered (see Display
+//     the base. The cap's +Y top edge is chamfered (v3 — see Display
 //     tilt relief).
 //
-//   - Display tilt relief: each cap's inboard top edge (the edge
-//     facing the display gap) is chamfered at `display_relief_angle`
-//     from vertical (default 35°). The chamfer depth on the inboard
-//     face is capped at `cap_h − m3_insert_h − 1 mm` (≈10.7 mm at
-//     defaults) so the cut never reaches the insert pocket below.
-//     This lets the operator rotate the meter around the pipe axis at
-//     install — tilting the LCD forward toward the viewer by up to
-//     ±display_relief_angle without the display body striking the cap.
+//   - Display tilt relief (v3): each cap's +Y top edge is chamfered
+//     at `display_relief_angle` from vertical (default 35°). The
+//     chamfer depth on the +Y face is capped at `cap_h − m3_insert_h
+//     − 1 mm` (≈10.7 mm at defaults) so the cut never reaches the
+//     insert pockets below. This lets the operator tilt the meter
+//     slightly toward themselves around the pipe X-axis at install
+//     (e.g. to clear the LCD bezel briefly) without the LCD body
+//     striking the cap.
+//
+//   - Footprint vs LCD bulge (v3): with the LCD now bulging in +Y,
+//     the meter's display body extends approximately 25-30 mm past
+//     the pipe axis in +Y at z ≈ pipe_center_z. base_d = 60 mm puts
+//     the base's +Y edge at y = +30 mm, so the LCD body sits roughly
+//     at the base edge in plan view. The bulge floats at z >> 0 (no
+//     contact with the bench surface), so no stability penalty —
+//     bolt_y_offset stays at 20 mm and base_d stays at 60 mm. If a
+//     future meter variant has a deeper LCD bulge, bump base_d or
+//     accept the visible overhang; the keying lug below depends only
+//     on the display-gap interior, not on the base outer footprint.
 //
 //   - Display gap: 80 mm pipe − 2·(saddle X-centre ± half saddle width)
 //     ≈ 45 mm clear span between the inner faces of the two saddles.
@@ -211,7 +250,17 @@ bolt_y_offset  = 20;   // @param number min=15  max=30  step=0.5 unit=mm group=h
 // ----- Display tilt relief -----
 display_relief_angle = 35; // @param number min=0 max=50 step=5 unit=deg group=fit label="Cap inboard-edge chamfer angle from vertical (allows meter tilt around pipe axis)"
 
-// @preset id="default" label="Blu flow meter 80mm × 27mm dia (default)" part="assembly" pipe_dia=27 pipe_len=80 bare_band_w=18 slop=0.2 saddle_w=15 wall_t=3 base_w=80 base_d=60 base_t=8 edge_round_r=1.5 m3_clearance_d=3.5 m3_head_d=5.8 m3_head_depth=3.2 m3_insert_d=5 m3_insert_h=5 bolt_y_offset=20 display_relief_angle=35
+// ----- Keying lug (v3) — half-ring shroud in display gap -----
+// Half-ring centred on the pipe axis at x=0, opening 2×key_open_half_angle
+// degrees at +Y so the LCD bulge passes through in LCD-forward orientation
+// only. In any rotated orientation the bulge contacts the arc wall and the
+// meter can't seat. See "Keying" header section and `_keying_feature` below.
+key_inner_r          = 24.5; // @param number min=15 max=35  step=0.5 unit=mm  group=keying label="Keying ring inner radius (pipe-axis to inner wall — must clear LCD-saddle body)"
+key_outer_r          = 27.5; // @param number min=18 max=40  step=0.5 unit=mm  group=keying label="Keying ring outer radius"
+key_open_half_angle  = 45;   // @param number min=15 max=75  step=1   unit=deg group=keying label="Half-angle of +Y opening (total opening = 2× this)"
+key_w                = 5;    // @param number min=2  max=20  step=0.5 unit=mm  group=keying label="Keying ring thickness along pipe X-axis"
+
+// @preset id="default" label="Blu flow meter 80mm × 27mm dia (default)" part="assembly" pipe_dia=27 pipe_len=80 bare_band_w=18 slop=0.2 saddle_w=15 wall_t=3 base_w=80 base_d=60 base_t=8 edge_round_r=1.5 m3_clearance_d=3.5 m3_head_d=5.8 m3_head_depth=3.2 m3_insert_d=5 m3_insert_h=5 bolt_y_offset=20 display_relief_angle=35 key_inner_r=24.5 key_outer_r=27.5 key_open_half_angle=45 key_w=5
 
 // === Derived ===
 
@@ -310,12 +359,67 @@ module _base_bolt_clearance(sx, sy) {
         cylinder(h = shaft_top_z - shaft_bot_z, d = m3_clearance_d);
 }
 
+// === Keying lug (v3) — half-ring shroud ===
+//
+// A 360° − 2·key_open_half_angle arc, centered on the pipe axis at the
+// middle of the display gap, opens at +Y so the LCD bulge slides
+// through during vertical descent in LCD-forward orientation only.
+// In LCD-up / LCD-back rotations the bulge intersects the closed
+// portion of the arc and the meter cannot seat. LCD-down is blocked
+// by the base. Clipped to z ≥ 0 so the lower lobes of the arc merge
+// into the base plate (or just disappear if they would dip below the
+// bench).
+//
+// Default dimensions assume an LCD-saddle body wrapping the 27 mm
+// pipe with ~10 mm radial padding (body envelope ~24 mm radial from
+// pipe axis) and an LCD bulge that extends > 27 mm radial. First-
+// print review may tune key_inner_r outward if the body binds.
+//
+// Bead st-lwz design call: option (A) half-ring shroud chosen after
+// mayor reply did not arrive within the polecat's wait window; option
+// (B) single -Y rib was rejected because it doesn't block LCD-up.
+module _keying_feature() {
+    if (key_inner_r > 0 && key_outer_r > key_inner_r && key_w > 0) {
+        intersection() {
+            translate([0, 0, pipe_center_z])
+                rotate([0, 90, 0])
+                    linear_extrude(height = key_w, center = true)
+                        _keying_arc_2d();
+            // Clip below z = 0 so the arc's bottom lobe doesn't
+            // poke through the bench-contact face. Bottom of clip
+            // cube at z = 0; cube is huge in X and Y to cover the
+            // arc footprint.
+            translate([0, 0, 500])
+                cube(1000, center = true);
+        }
+    }
+}
+
+// 2D ring with a wedge subtracted at +Y. Centred on origin.
+module _keying_arc_2d() {
+    big = key_outer_r * 4;
+    difference() {
+        circle(r = key_outer_r);
+        circle(r = key_inner_r);
+        // Opening wedge: triangle from origin out through the
+        // ±key_open_half_angle range about the +Y axis.
+        polygon(points = [
+            [0, 0],
+            [ big * cos(90 - key_open_half_angle),
+              big * sin(90 - key_open_half_angle)],
+            [ big * cos(90 + key_open_half_angle),
+              big * sin(90 + key_open_half_angle)],
+        ]);
+    }
+}
+
 module base_part() {
     difference() {
         union() {
             _base_plate();
             _saddle_bottom(+1);
             _saddle_bottom(-1);
+            _keying_feature();
         }
         _pipe_channel_cut();
         for (sx = [-1, +1])
@@ -366,28 +470,37 @@ module _cap_insert_pocket(sx, sy) {
         cylinder(h = m3_insert_h + eps, d = m3_insert_d);
 }
 
-// Inboard top edge chamfer: removes a triangular prism from the cap's
-// top-inboard wedge so the meter can be rotated forward around the
-// pipe axis at install time. dz is clamped so the chamfer never
-// approaches the heat-set insert pocket below (keeps ≥1 mm of cap
-// wall between the chamfer floor and the insert top).
+// +Y top edge chamfer (v3): removes a triangular prism from the
+// cap's top-+Y wedge so the meter can be tilted slightly toward the
+// operator (around the pipe X-axis) at install time. dz is clamped
+// so the chamfer never approaches the heat-set insert pockets below
+// (keeps ≥1 mm of cap wall between the chamfer floor and the insert
+// top). The chamfer runs along the cap's full X-extent (saddle_w
+// wide) and is identical for both caps — both face +Y and both need
+// the same tilt clearance now that the LCD bulges +Y.
+//
+// v2 placed this chamfer on the +X-inboard edge for LCD-up tilt; v3
+// rotates it 90° around the pipe X-axis to sit on the +Y face for
+// LCD-forward tilt.
 module _cap_chamfer_cut(sx) {
-    inboard_x = sx * (saddle_center_x - saddle_w / 2);
+    cx        = sx * saddle_center_x;
     cap_top_z = base_t + saddle_bottom_h + cap_h;
     eps       = 0.1;
-    y_min     = -saddle_y / 2 - eps;
-    y_max     =  saddle_y / 2 + eps;
-    // Three points in the XZ cross-section of the wedge. Mirrored
-    // along Y as 6 tiny spheres, hulled into a triangular prism.
-    pts_xz = [
-        [inboard_x - sx * eps,                       cap_top_z + eps],
-        [inboard_x + sx * (chamfer_dx + eps),        cap_top_z + eps],
-        [inboard_x - sx * eps,                       cap_top_z - chamfer_dz],
+    x_min     = cx - saddle_w / 2 - eps;
+    x_max     = cx + saddle_w / 2 + eps;
+    y_face    = saddle_y / 2;
+    // Three points in the YZ cross-section of the wedge. Repeated
+    // at the two X extents and hulled into a triangular prism whose
+    // long axis runs along the pipe (X).
+    pts_yz = [
+        [y_face + eps,                   cap_top_z + eps],
+        [y_face - chamfer_dx - eps,      cap_top_z + eps],
+        [y_face + eps,                   cap_top_z - chamfer_dz],
     ];
     hull() {
-        for (y = [y_min, y_max])
-            for (p = pts_xz)
-                translate([p[0], y, p[1]])
+        for (x = [x_min, x_max])
+            for (p = pts_yz)
+                translate([x, p[0], p[1]])
                     sphere(r = 0.01, $fn = 4);
     }
 }
