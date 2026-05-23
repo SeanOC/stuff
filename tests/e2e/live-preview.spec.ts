@@ -7,7 +7,16 @@ import { expect, test, type Page } from "@playwright/test";
 // overrides stop applying, this test fails with a clear diff.
 
 async function readTopLogKb(page: Page): Promise<number> {
-  const line = page.getByText(/\d+ms · [\d.]+kb/).first();
+  // `DetailLeftRailContent` is rendered twice — once inside the
+  // mobile disclosure (hidden by `min-[1200px]:hidden` at the
+  // Playwright Desktop Chrome 1280px viewport) and once inside the
+  // desktop ≥1200px rail (visible after "Expand left rail" is
+  // clicked). Both share the same data-testid; the desktop instance
+  // is the second/last one in DOM order. Scope to it so
+  // `toBeVisible()` doesn't trip over the hidden mobile copy
+  // (st-fgp).
+  const rail = page.locator('[data-testid="detail-left-rail-content"]').last();
+  const line = rail.getByText(/\d+ms · [\d.]+kb/).first();
   await expect(line).toBeVisible({ timeout: 60_000 });
   const txt = (await line.textContent()) ?? "";
   const m = txt.match(/·\s*([\d.]+)kb/);
@@ -35,8 +44,12 @@ test("changing a param re-renders with a different STL", async ({ page }) => {
   await page.waitForTimeout(400);
 
   // Log cycles through "rendering…" → a new top entry. Wait for the
-  // entry to re-appear, then re-read.
-  await expect(page.getByText(/\d+ms · [\d.]+kb/).first()).toBeVisible({ timeout: 60_000 });
+  // entry to re-appear, then re-read. Scope to the desktop rail
+  // instance (see readTopLogKb).
+  const desktopRail = page.locator('[data-testid="detail-left-rail-content"]').last();
+  await expect(
+    desktopRail.getByText(/\d+ms · [\d.]+kb/).first(),
+  ).toBeVisible({ timeout: 60_000 });
 
   // Poll a few times because the render log updates asynchronously
   // after the re-render completes.
