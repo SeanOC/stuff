@@ -136,6 +136,11 @@
 //                -Y/VHB face or the dovetail mating geometry; +Y front
 //                face's top + bottom horizontal edges added to the
 //                rounding set; new invariant pins -Y face flatness.
+// v2.1 (st-5a4): drop the two vertical seam edges (BACK+LEFT,
+//                BACK+RIGHT) from the +Y rounding set so adjacent
+//                pods butt together with a clean square continuous
+//                front-face seam. Top + bottom horizontals stay
+//                rounded; everything else unchanged from v2.
 
 include <BOSL2/std.scad>
 include <BOSL2/rounding.scad>
@@ -270,17 +275,18 @@ module dovetail_extrude(w_base, w_tip, depth, height, taper_h = 0) {
 // End pods get those flags flipped, capping the outer face.
 
 module pod(expose_left_slot, expose_right_tongue) {
-    // Outer-edge rounding (st-e6q): scope to the four edges of the
-    // +Y front face (top, bottom, and the two vertical corners
-    // bordering ±X). Everything else stays sharp.
+    // Outer-edge rounding (st-e6q v2 → v2.1, st-5a4): scope to the
+    // two horizontal edges of the +Y front face only. v2 also
+    // rounded the two vertical seam edges (BACK+LEFT, BACK+RIGHT)
+    // but those produced a visible groove where adjacent pods butt
+    // together at pod_gap = 0 — the front face needs to read as one
+    // continuous square-cornered surface across all pods.
     //
     //   • BACK+TOP, BACK+BOTTOM — the "top/bottom perimeter
-    //     horizontal edges" the bead asks for (#3).
-    //   • BACK+LEFT, BACK+RIGHT — vertical edges between +Y and
-    //     ±X. The rounding sits within `edge_round_r` mm (1.5 mm at
-    //     default) of the +Y face and stays > 40 mm clear of the
-    //     dovetail base at y = ±dovetail_w_base/2, so it does not
-    //     bleed into the dovetail tongue/slot geometry (#2).
+    //     horizontal edges" the bead asks for. Pod-to-pod they form
+    //     one continuous rounded edge across the whole array (all
+    //     pods share this same edge set, so the rounding profile is
+    //     identical at every interface).
     //
     // Never rounded:
     //   • Any edge touching FRONT (= -Y/VHB) — preserves the
@@ -310,7 +316,7 @@ module pod(expose_left_slot, expose_right_tongue) {
             // Pod block.
             cuboid([pod_w + pod_overlap_eps, pod_d, pod_h],
                    rounding = edge_round_r,
-                   edges    = [BACK],
+                   edges    = [BACK+TOP, BACK+BOTTOM],
                    anchor   = BOTTOM);
 
             // Dovetail tongue on +X face. Anchored at the pod base
