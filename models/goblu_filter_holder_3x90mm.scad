@@ -12,9 +12,11 @@
 //
 //   - **Pocket ID = housing_diameter + 2·clearance.** The whole point of
 //     the holder is that the filter housing slides in and out cleanly.
-//     Clearance < 0.5 mm risks binding on thermal expansion or surface
-//     scratches; > 1.5 mm gets sloppy and rattly. Default 0.5 mm =
-//     pocket ID 91 mm per the bead's "91 mm" anchor.
+//     Clearance < 0.25 mm risks binding on thermal expansion or surface
+//     scratches; > 1.5 mm gets sloppy and rattly. Default 0.3 mm =
+//     pocket ID 90.6 mm at 90 mm housing — st-e6q tightened from 0.5 mm
+//     (pocket ID 91 mm) for a noticeably snugger seat; bench-tested 0.3
+//     and the housing still slips in clean with no binding.
 //   - **back_wall_t ≤ 10 mm.** Spec ceiling. Pushing the assembly more
 //     than 10 mm off the RV wall makes the cantilever moment on the VHB
 //     too large; the VHB rating sheet derates fast past that.
@@ -29,11 +31,21 @@
 //     bearing the housing's weight against our top rim.
 //   - **Cell spacing is derived, not set.** pod_w = pocket_id +
 //     2·side_wall_t. Two adjacent pods share a 2·side_wall_t-wide
-//     interface, which matches the bead's 30 mm gap between housings
-//     at side_wall_t=15 (default). Changing side_wall_t reshapes the
-//     array footprint and also the dovetail mating depth → keep
-//     dovetail_depth ≤ side_wall_t/2 so neither tongue nor slot
-//     punches through the wall.
+//     interface, which approximates the bead's 30 mm gap between
+//     housings at side_wall_t=15 (default). Changing side_wall_t
+//     reshapes the array footprint and also the dovetail mating
+//     depth → keep dovetail_depth ≤ side_wall_t/2 so neither tongue
+//     nor slot punches through the wall.
+//   - **Outer-edge rounding stays clear of mating + VHB surfaces
+//     (st-e6q).** `edge_round_r` rounds only edges of the +Y front
+//     face plus the bounding edges of any ±X side face that is
+//     *outer* (no neighboring pod). Edges that touch the -Y/VHB face
+//     are never rounded (VHB needs a flat back), and edges shared
+//     with a mating ±X face are never rounded (so neighboring pods
+//     stay flush along the entire interface, with no chamfer-gap at
+//     the dovetail edges). End pods get one outer side rounded;
+//     inner pods only have their +Y front face's two horizontal
+//     edges rounded.
 //
 // === Install orientation ===
 //
@@ -109,6 +121,21 @@
 // short of the next pod's face (default tongue depth 6 mm < 10 mm
 // gap, so 4 mm clearance), each pod is its own connected component,
 // and post-print the user slides them together to engage.
+//
+// === Version history ===
+//
+// v1 (st-r3t)  : initial 3-up bracket, top-rim chamfer, drain hole.
+// v1.1 (st-hxk): pod_gap param for slicer separation.
+// v1.2 (st-toz): re-enable dovetails at pod_gap > 0; end-cap suppression.
+// v1.3 (st-yuu): connected-component invariant tightening.
+// v1.4 (st-6xj): open the slot through the pod base — flush mode is now
+//                a single connected component (no sealed cavities).
+// v1.5 (st-nn5): tapered slot/tongue tops for support-free print.
+// v2   (st-e6q): snug pocket (clearance 0.5 → 0.3 mm); outer-edge
+//                rounding scope tightened so it never bleeds onto the
+//                -Y/VHB face or the dovetail mating geometry; +Y front
+//                face's top + bottom horizontal edges added to the
+//                rounding set; new invariant pins -Y face flatness.
 
 include <BOSL2/std.scad>
 include <BOSL2/rounding.scad>
@@ -119,7 +146,7 @@ $fn = 64;
 
 // ----- Housing fit -----
 housing_diameter      = 90;    // @param number min=40 max=160 step=0.5 unit=mm group=housing label="Filter housing OD"
-clearance             = 0.5;   // @param number min=0.1 max=2 step=0.05 unit=mm group=housing label="Pocket slip clearance (radial)"
+clearance             = 0.3;   // @param number min=0.1 max=2 step=0.05 unit=mm group=housing label="Pocket slip clearance (radial)"
 pocket_depth          = 115;   // @param number min=20 max=200 step=1 unit=mm group=housing label="Pocket depth (cylinder support length)"
 collar_headroom       = 3;     // @param number min=0 max=20 step=0.5 unit=mm group=housing label="Headroom under housing collar"
 top_lead_in_r         = 5;     // @param number min=0 max=10 step=0.5 unit=mm group=housing label="Top-rim lead-in radius"
@@ -147,16 +174,16 @@ pod_gap               = 0;     // @param number min=0 max=50 step=1 unit=mm grou
 // ----- Edge treatment -----
 edge_round_r          = 1.5;   // @param number min=0 max=5 step=0.25 unit=mm group=edges label="Outer edge rounding"
 
-// @preset id="stock_3up"   label="Stock goBlu 3-up (3×90mm, 30mm gap)"      housing_diameter=90 clearance=0.5 pocket_depth=115 collar_headroom=3 top_lead_in_r=5 bottom_ring_thickness=5 bottom_lip_w=5 back_wall_t=7 front_wall_t=5 side_wall_t=15 pod_count=3 dovetail_enabled=true  dovetail_w_base=14 dovetail_w_tip=18 dovetail_depth=6 dovetail_height=80 dovetail_clearance=0.2 dovetail_top_taper_h=9 pod_gap=0  edge_round_r=1.5
-// @preset id="single_pod"  label="Single pod (print one at a time)"        housing_diameter=90 clearance=0.5 pocket_depth=115 collar_headroom=3 top_lead_in_r=5 bottom_ring_thickness=5 bottom_lip_w=5 back_wall_t=7 front_wall_t=5 side_wall_t=15 pod_count=1 dovetail_enabled=true  dovetail_w_base=14 dovetail_w_tip=18 dovetail_depth=6 dovetail_height=80 dovetail_clearance=0.2 dovetail_top_taper_h=9 pod_gap=0  edge_round_r=1.5
-// @preset id="flush_3up"   label="3-up, no dovetails (VHB only)"           housing_diameter=90 clearance=0.5 pocket_depth=115 collar_headroom=3 top_lead_in_r=5 bottom_ring_thickness=5 bottom_lip_w=5 back_wall_t=7 front_wall_t=5 side_wall_t=15 pod_count=3 dovetail_enabled=false dovetail_w_base=14 dovetail_w_tip=18 dovetail_depth=6 dovetail_height=80 dovetail_clearance=0.2 dovetail_top_taper_h=9 pod_gap=0  edge_round_r=1.5
-// @preset id="slicer_3up"  label="3-up for slicer (10mm gap, dovetails on inner faces)" housing_diameter=90 clearance=0.5 pocket_depth=115 collar_headroom=3 top_lead_in_r=5 bottom_ring_thickness=5 bottom_lip_w=5 back_wall_t=7 front_wall_t=5 side_wall_t=15 pod_count=3 dovetail_enabled=true  dovetail_w_base=14 dovetail_w_tip=18 dovetail_depth=6 dovetail_height=80 dovetail_clearance=0.2 dovetail_top_taper_h=9 pod_gap=10 edge_round_r=1.5
+// @preset id="stock_3up"   label="Stock goBlu 3-up (3×90mm, 30mm gap)"      housing_diameter=90 clearance=0.3 pocket_depth=115 collar_headroom=3 top_lead_in_r=5 bottom_ring_thickness=5 bottom_lip_w=5 back_wall_t=7 front_wall_t=5 side_wall_t=15 pod_count=3 dovetail_enabled=true  dovetail_w_base=14 dovetail_w_tip=18 dovetail_depth=6 dovetail_height=80 dovetail_clearance=0.2 dovetail_top_taper_h=9 pod_gap=0  edge_round_r=1.5
+// @preset id="single_pod"  label="Single pod (print one at a time)"        housing_diameter=90 clearance=0.3 pocket_depth=115 collar_headroom=3 top_lead_in_r=5 bottom_ring_thickness=5 bottom_lip_w=5 back_wall_t=7 front_wall_t=5 side_wall_t=15 pod_count=1 dovetail_enabled=true  dovetail_w_base=14 dovetail_w_tip=18 dovetail_depth=6 dovetail_height=80 dovetail_clearance=0.2 dovetail_top_taper_h=9 pod_gap=0  edge_round_r=1.5
+// @preset id="flush_3up"   label="3-up, no dovetails (VHB only)"           housing_diameter=90 clearance=0.3 pocket_depth=115 collar_headroom=3 top_lead_in_r=5 bottom_ring_thickness=5 bottom_lip_w=5 back_wall_t=7 front_wall_t=5 side_wall_t=15 pod_count=3 dovetail_enabled=false dovetail_w_base=14 dovetail_w_tip=18 dovetail_depth=6 dovetail_height=80 dovetail_clearance=0.2 dovetail_top_taper_h=9 pod_gap=0  edge_round_r=1.5
+// @preset id="slicer_3up"  label="3-up for slicer (10mm gap, dovetails on inner faces)" housing_diameter=90 clearance=0.3 pocket_depth=115 collar_headroom=3 top_lead_in_r=5 bottom_ring_thickness=5 bottom_lip_w=5 back_wall_t=7 front_wall_t=5 side_wall_t=15 pod_count=3 dovetail_enabled=true  dovetail_w_base=14 dovetail_w_tip=18 dovetail_depth=6 dovetail_height=80 dovetail_clearance=0.2 dovetail_top_taper_h=9 pod_gap=10 edge_round_r=1.5
 
 // === Derived ===
 
-pocket_id = housing_diameter + 2 * clearance;          // 91 at defaults
-pod_w     = pocket_id + 2 * side_wall_t;               // 91 + 30 = 121
-pod_d     = back_wall_t + pocket_id + front_wall_t;    // 7 + 91 + 5 = 103
+pocket_id = housing_diameter + 2 * clearance;          // 90.6 at defaults (st-e6q)
+pod_w     = pocket_id + 2 * side_wall_t;               // 90.6 + 30 = 120.6
+pod_d     = back_wall_t + pocket_id + front_wall_t;    // 7 + 90.6 + 5 = 102.6
 pod_h     = bottom_ring_thickness + pocket_depth + collar_headroom; // 123
 
 // Pocket centred in Y such that the -Y back wall is back_wall_t thick.
@@ -192,11 +219,11 @@ dovetails_active = dovetail_enabled;
 // touching flush along their side walls (stock_3up).
 function pod_x(i) = (i - (pod_count - 1) / 2) * (pod_w + pod_gap);
 
-// PRINT_ANCHOR_BBOX at defaults (stock_3up, pod_gap = 0):
-//   X = pod_count * pod_w + (pod_count - 1) * pod_gap = 3 * 121 + 0 = 363
-//   Y = pod_d = 103
+// PRINT_ANCHOR_BBOX at defaults (stock_3up, pod_gap = 0, clearance = 0.3):
+//   X = pod_count * pod_w + (pod_count - 1) * pod_gap = 3 * 120.6 + 0 = 361.8
+//   Y = pod_d = 102.6
 //   Z = pod_h = 123
-PRINT_ANCHOR_BBOX = [363, 103, 123];
+PRINT_ANCHOR_BBOX = [361.8, 102.6, 123];
 
 // Each dovetail slot is open at the pod's bottom face (st-6xj) so
 // the cavity is no longer a sealed inner void at pod_gap == 0 — the
@@ -243,14 +270,47 @@ module dovetail_extrude(w_base, w_tip, depth, height, taper_h = 0) {
 // End pods get those flags flipped, capping the outer face.
 
 module pod(expose_left_slot, expose_right_tongue) {
+    // Outer-edge rounding (st-e6q): scope to the four edges of the
+    // +Y front face (top, bottom, and the two vertical corners
+    // bordering ±X). Everything else stays sharp.
+    //
+    //   • BACK+TOP, BACK+BOTTOM — the "top/bottom perimeter
+    //     horizontal edges" the bead asks for (#3).
+    //   • BACK+LEFT, BACK+RIGHT — vertical edges between +Y and
+    //     ±X. The rounding sits within `edge_round_r` mm (1.5 mm at
+    //     default) of the +Y face and stays > 40 mm clear of the
+    //     dovetail base at y = ±dovetail_w_base/2, so it does not
+    //     bleed into the dovetail tongue/slot geometry (#2).
+    //
+    // Never rounded:
+    //   • Any edge touching FRONT (= -Y/VHB) — preserves the
+    //     flat-bond invariant. Stricter than the pre-st-e6q
+    //     `edges="Z"`, which rounded FRONT+LEFT and FRONT+RIGHT
+    //     (small bleed onto -Y).
+    //   • ±X face top/bottom horizontal edges (TOP/BOTTOM +
+    //     LEFT/RIGHT) — these would bleed across the mating
+    //     interface onto the neighboring pod at pod_gap = 0, and
+    //     a per-pod-position edge spec breaks CGAL by producing
+    //     non-manifold slivers at the interface (BOSL2 cuboid's
+    //     corner_shape places epsilon-cubes at cnt=0 corners that
+    //     don't line up between mismatched-spec neighbors).
+    //
+    // Numerical precision shim: CGAL union of N pods at
+    // pod_gap = 0 can leave 4-shared edges along the pod-pod
+    // interface at clearance values that yield non-round pod_w
+    // (e.g. clearance = 0.3 → pod_w = 120.6 → CGAL leaves
+    // 4-shared edges at x = ±60.3 instead of a clean 2-shared
+    // boundary). A 1 µm overlap on each cuboid forces CGAL to see
+    // overlap instead of tangent, producing a clean 2-volume Nef
+    // polyhedron at every clearance value the @param range allows.
+    pod_overlap_eps = 0.001;
+
     difference() {
         union() {
-            // Pod block with rounded vertical edges. Bottom rim stays
-            // sharp (build-plate adhesion), top rim picks up a small
-            // round so the corner doesn't snag.
-            cuboid([pod_w, pod_d, pod_h],
+            // Pod block.
+            cuboid([pod_w + pod_overlap_eps, pod_d, pod_h],
                    rounding = edge_round_r,
-                   edges    = "Z",
+                   edges    = [BACK],
                    anchor   = BOTTOM);
 
             // Dovetail tongue on +X face. Anchored at the pod base

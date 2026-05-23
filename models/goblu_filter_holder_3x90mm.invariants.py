@@ -1,4 +1,4 @@
-"""Invariants for the goBlu RV water filter holder (st-r3t, st-hxk, st-toz, st-yuu, st-6xj, st-nn5).
+"""Invariants for the goBlu RV water filter holder (st-r3t, st-hxk, st-toz, st-yuu, st-6xj, st-nn5, st-e6q).
 
 Beyond the built-in checks (watertight, single-body component count,
 PRINT_ANCHOR_BBOX drift, triangle ceiling), this sidecar pins the
@@ -62,9 +62,21 @@ load-bearing structural claims the bead spelled out:
        • dovetail_top_taper_h ≤ dovetail_height — the taper must
          fit inside the dovetail's vertical extent; pushing it past
          dovetail_height leaves no straight mating region.
+
+  10. **-Y/VHB face stays a flat rectangle (st-e6q).** The outer-edge
+     rounding scope was tightened in st-e6q to not bleed onto the
+     -Y face. Measure the surface area of the y_min plane and
+     require it to equal the expected `pod_count · pod_w · pod_h`
+     (within a few mm² tolerance for triangle-edge noise). If any
+     corner rounding spilled onto -Y, the rounded corner pulls
+     vertices off the y_min plane and the area shrinks. Same check
+     pins the related claim that no debossing, slot, or hole ever
+     gets cut into the back face.
 """
 
 from __future__ import annotations
+
+import numpy as np
 
 from scripts.invariants import Failure, as_default_params, expect_connected_solids
 
@@ -174,6 +186,35 @@ def check(ctx):
         )
         failures.extend(expect_connected_solids(ctx, expected_components))
 
+    # 10. -Y/VHB face stays a flat rectangle. Sum the surface area of
+    #     triangles that lie entirely in the y_min plane and compare
+    #     to the expected rectangle area. A corner rounding that
+    #     spilled onto -Y would pull the corner vertices off-plane
+    #     and shrink the measured area.
+    if (housing_diameter is not None and clearance is not None
+            and side_wall_t is not None and pod_count is not None
+            and pod_gap is not None and back_wall_t is not None
+            and pocket_depth is not None and collar_headroom is not None):
+        bottom_ring_thickness = p.get("bottom_ring_thickness")
+        if bottom_ring_thickness is not None:
+            pod_w = housing_diameter + 2 * clearance + 2 * side_wall_t
+            pod_h = bottom_ring_thickness + pocket_depth + collar_headroom
+            expected_area = pod_count * pod_w * pod_h
+            actual_area = _y_min_face_area(ctx["stl"])
+            # 5 mm² tolerance: triangle-edge noise on a ~44 000 mm² face
+            # is well under 1 mm²; loosen to 5 to absorb the BOSL2 corner
+            # mesh discretization at the dovetail base where the rounded
+            # +Y front corner meets a sharp ±X mating face.
+            if abs(actual_area - expected_area) > 5.0:
+                failures.append(Failure(
+                    "vhb_face_flat",
+                    f"-Y face area {actual_area:.1f}mm² ≠ expected "
+                    f"{expected_area:.1f}mm² (pod_count·pod_w·pod_h). "
+                    "Either edge rounding bled onto the back face "
+                    "(breaks VHB flat-bond invariant) or a debossing/"
+                    "hole was cut into -Y.",
+                ))
+
     # 9. Tapered tops must be ≥ 45° (≥ w_tip/2) and fit within the
     #    dovetail's vertical extent. Both guards apply only when the
     #    feature is opted-in (taper > 0 and dovetails enabled).
@@ -199,3 +240,19 @@ def check(ctx):
             ))
 
     return failures
+
+
+def _y_min_face_area(mesh, plane_tol_mm: float = 0.01) -> float:
+    """Sum the area of triangles that lie entirely in the y_min plane.
+
+    The -Y face must be a flat rectangle (VHB invariant). A triangle
+    counts only if all three of its vertices sit on the y_min plane
+    within `plane_tol_mm`; rounded chamfer triangles whose vertices
+    drift off-plane are correctly excluded.
+    """
+    y_min = float(mesh.bounds[0, 1])
+    verts = mesh.vertices
+    faces = mesh.faces
+    ys = verts[faces][:, :, 1]  # (n_faces, 3)
+    on_plane = np.all(np.abs(ys - y_min) < plane_tol_mm, axis=1)
+    return float(mesh.area_faces[on_plane].sum())
