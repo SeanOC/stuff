@@ -141,6 +141,13 @@
 //                pods butt together with a clean square continuous
 //                front-face seam. Top + bottom horizontals stay
 //                rounded; everything else unchanged from v2.
+// v2.2 (st-h56): restore +Y vertical rounding on the truly-outer
+//                front corners only — the leftmost pod's -X +Y
+//                vertical edge and the rightmost pod's +X +Y
+//                vertical edge round; interior pod-to-pod +Y
+//                seams stay square. A pod_count = 1 render rounds
+//                both. New `is_leftmost` / `is_rightmost` pod()
+//                args carry the array-position information.
 
 include <BOSL2/std.scad>
 include <BOSL2/rounding.scad>
@@ -272,21 +279,30 @@ module dovetail_extrude(w_base, w_tip, depth, height, taper_h = 0) {
 //                       for any pod that has a neighbor on its left).
 // `expose_right_tongue` — keep the +X face's tongue (true for any pod
 //                       with a neighbor on its right).
-// End pods get those flags flipped, capping the outer face.
+// `is_leftmost`, `is_rightmost` — array-position flags; control which
+//                       +Y vertical seam edges round (st-h56). The
+//                       leftmost pod's -X +Y edge and the rightmost
+//                       pod's +X +Y edge are "truly outer" front
+//                       corners and stay rounded; interior pod-to-pod
+//                       +Y seams stay square.
+// End pods get the expose flags flipped, capping the outer ±X face.
 
-module pod(expose_left_slot, expose_right_tongue) {
-    // Outer-edge rounding (st-e6q v2 → v2.1, st-5a4): scope to the
-    // two horizontal edges of the +Y front face only. v2 also
-    // rounded the two vertical seam edges (BACK+LEFT, BACK+RIGHT)
-    // but those produced a visible groove where adjacent pods butt
-    // together at pod_gap = 0 — the front face needs to read as one
-    // continuous square-cornered surface across all pods.
+module pod(expose_left_slot, expose_right_tongue, is_leftmost, is_rightmost) {
+    // Outer-edge rounding (st-e6q v2 → v2.1, st-5a4 → v2.2, st-h56):
+    // round the two horizontal edges of the +Y front face always,
+    // plus the truly-outer +Y vertical edges (the leftmost pod's
+    // -X +Y corner and the rightmost pod's +X +Y corner). Interior
+    // pod-to-pod +Y seams stay square so adjacent pods present a
+    // continuous front face. A pod_count = 1 render is both
+    // leftmost AND rightmost so it gets both +Y verticals rounded.
     //
-    //   • BACK+TOP, BACK+BOTTOM — the "top/bottom perimeter
-    //     horizontal edges" the bead asks for. Pod-to-pod they form
-    //     one continuous rounded edge across the whole array (all
-    //     pods share this same edge set, so the rounding profile is
-    //     identical at every interface).
+    //   • BACK+TOP, BACK+BOTTOM (always) — the "top/bottom perimeter
+    //     horizontal edges" the bead asks for. All pods share these,
+    //     so they form one continuous rounded edge across the array.
+    //   • BACK+LEFT (is_leftmost only) — round the truly-outer
+    //     -X +Y corner of the leftmost pod.
+    //   • BACK+RIGHT (is_rightmost only) — round the truly-outer
+    //     +X +Y corner of the rightmost pod.
     //
     // Never rounded:
     //   • Any edge touching FRONT (= -Y/VHB) — preserves the
@@ -316,7 +332,9 @@ module pod(expose_left_slot, expose_right_tongue) {
             // Pod block.
             cuboid([pod_w + pod_overlap_eps, pod_d, pod_h],
                    rounding = edge_round_r,
-                   edges    = [BACK+TOP, BACK+BOTTOM],
+                   edges    = concat([BACK+TOP, BACK+BOTTOM],
+                                     is_leftmost  ? [BACK+LEFT]  : [],
+                                     is_rightmost ? [BACK+RIGHT] : []),
                    anchor   = BOTTOM);
 
             // Dovetail tongue on +X face. Anchored at the pod base
@@ -406,12 +424,15 @@ module pod(expose_left_slot, expose_right_tongue) {
 
 module array() {
     if (pod_count == 1) {
-        pod(expose_left_slot = true, expose_right_tongue = true);
+        pod(expose_left_slot = true, expose_right_tongue = true,
+            is_leftmost = true, is_rightmost = true);
     } else {
         for (i = [0 : pod_count - 1])
             translate([pod_x(i), 0, 0])
-                pod(expose_left_slot   = (i > 0),
-                    expose_right_tongue = (i < pod_count - 1));
+                pod(expose_left_slot    = (i > 0),
+                    expose_right_tongue = (i < pod_count - 1),
+                    is_leftmost         = (i == 0),
+                    is_rightmost        = (i == pod_count - 1));
     }
 }
 
