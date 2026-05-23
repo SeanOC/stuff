@@ -64,4 +64,9 @@ export const CATALOG: Record<string, CatalogEntry> = {
     blurb:
       "Captive bench mount for a Blu Technology 3-way black-tank flush valve. Asymmetric saddles clamp the two inner fittings (31.5mm left, 29.25mm right) across a 37mm gap; vertical exclusion cylinder carves cap clearance for the T-handle's 90° swing. 4× M3 SHCS into heat-set inserts.",
   },
+  blutech_water_softener_foot: {
+    categoryId: "household",
+    blurb:
+      "Floor foot for an 8\" × 17\" BluTech RV water softener (~20 lbs full). Open-bottom ring cradle grips the cylinder bottom laterally at 85mm — cylinder drops through and rests on the RV floor, lifts straight up for maintenance. Six radial gussets transfer load into a continuous flat VHB-bearing annular flange; scupper notches at the base drain water laterally without breaching the bond face.",
+  },
 };
