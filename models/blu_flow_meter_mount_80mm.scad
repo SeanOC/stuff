@@ -541,7 +541,13 @@ module _cap_chamfer_cut(sx) {
 }
 
 module cap_part_in_place(sx) {
-    _cap_geom(sx);
+    // Tiny lift off the saddle parting plane (st-8k6) — see the
+    // matching comment in models/blu_black_tank_valve_mount.scad.
+    // 0.005 mm gap so the assembly STL keeps 3 connected components
+    // (1 base + 2 caps) under openscad ≥2025.09.06.
+    assembly_gap = 0.005;
+    translate([0, 0, assembly_gap])
+        _cap_geom(sx);
 }
 
 // Standalone cap (for STL export). Translated to z=0 with cap top

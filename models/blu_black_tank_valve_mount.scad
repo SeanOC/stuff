@@ -470,7 +470,16 @@ module _handle_exclusion_cut() {
 }
 
 module cap_part_in_place(sx) {
-    _cap_geom(sx);
+    // Tiny lift off the saddle parting plane (st-8k6): the saddle and
+    // cap both report z=base_t+saddle_bottom_h as their interface, and
+    // openscad ≥2025.09.06 merges the coincident face in the assembly
+    // STL — trimesh then counts base+caps as 1 connected component
+    // instead of 3 (the invariant expects 3 loose-fittable parts).
+    // 0.005 mm gap separates them in the assembly render without
+    // visibly affecting the picture or per-part STLs.
+    assembly_gap = 0.005;
+    translate([0, 0, assembly_gap])
+        _cap_geom(sx);
 }
 
 // Standalone cap for STL export. Translated to the origin and flipped
