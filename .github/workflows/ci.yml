@@ -121,10 +121,15 @@ jobs:
         # the runner user, so git refuses operations with "dubious
         # ownership" until we mark the workspace safe. The image's base
         # apt set may not include git; install it if missing.
+        #
+        # CWD note (st-dlw): step's default CWD inside the container is
+        # not $GITHUB_WORKSPACE (the repo mount), so unprefixed git
+        # commands fail with "fatal: not in a git directory". cd first.
         env:
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           command -v git >/dev/null 2>&1 || { apt-get update && apt-get install -y --no-install-recommends git; }
+          cd "$GITHUB_WORKSPACE"
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git config user.name  'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
@@ -142,6 +147,7 @@ jobs:
           BRANCH: ${{ github.ref_name }}
         run: |
           command -v git >/dev/null 2>&1 || { apt-get update && apt-get install -y --no-install-recommends git; }
+          cd "$GITHUB_WORKSPACE"
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git config user.name  'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
