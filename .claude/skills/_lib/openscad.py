@@ -20,6 +20,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -103,6 +104,16 @@ def render(
 
     warnings = _UNRESOLVED_USE_RE.findall(stderr)
     if proc.returncode != 0:
+        # Surface the full captured stream to our own stderr so callers
+        # (render-all.py pipes child stdout to /dev/null) and CI logs see
+        # openscad's actual diagnostic, not just `_first_line` truncated
+        # into an exception message.
+        sys.stderr.write(
+            f"--- openscad rc={proc.returncode} rendering {view} of {model} ---\n"
+            f"cmd: {' '.join(cmd)}\n"
+            f"{stderr}"
+            f"--- end openscad output ---\n"
+        )
         raise OpenscadError(
             f"openscad exited {proc.returncode} rendering {view}: "
             f"{_first_line(stderr) or '(no stderr)'}"
