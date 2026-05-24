@@ -79,7 +79,7 @@ jobs:
         # package isn't available in this base.
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends git
+          apt-get install -y --no-install-recommends ca-certificates git
           apt-get install -y --no-install-recommends \
             python3-numpy python3-pil python3-trimesh python3-pytest \
             || python3 -m pip install --break-system-packages \
