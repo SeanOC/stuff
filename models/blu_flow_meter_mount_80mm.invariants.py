@@ -93,10 +93,29 @@ def check(ctx):
         # without affecting the insert because they live at different
         # Z bands.
 
-    # v3.1 LCD-forward clearance: the LCD-saddle body must fit in
-    # the display gap with measurable margins. Photo-derived defaults
-    # for the body envelope live in the .scad as @param so future
-    # measurements can be wired in without touching the invariants.
+    # v3.2 LCD-forward clearance (st-9o4): the v3.1 checks here
+    # false-greened because the phantom dimensions were smaller than
+    # the real meter. v3.2 keeps the same shape of check but ALSO
+    # asserts the phantom is at least the v3.2 defensive baseline —
+    # if a future polecat shrinks the phantom back to the v3.1 guess
+    # without calipered backing, this fires.
+    LCD_PHANTOM_BASELINE_V32 = {
+        "meter_body_l":      50.0,
+        "meter_body_h_lcd":  42.0,
+        "meter_body_h_perp": 32.0,
+        "meter_lcd_bulge_d": 15.0,
+    }
+    for k, baseline in LCD_PHANTOM_BASELINE_V32.items():
+        actual = p.get(k)
+        if actual is not None and actual < baseline - 1e-6:
+            failures.append(Failure(
+                "phantom_below_v32_baseline",
+                f"{k}={actual} < v3.2 defensive baseline {baseline}. "
+                f"v3.1 shrank the phantom and false-greened against "
+                f"the real meter (st-9o4 print test). Don't shrink "
+                f"the phantom without a calipered measurement to "
+                f"back the new value.",
+            ))
     meter_body_l      = p.get("meter_body_l")
     meter_body_h_lcd  = p.get("meter_body_h_lcd")
     meter_body_h_perp = p.get("meter_body_h_perp")
@@ -142,17 +161,50 @@ def check(ctx):
                 f"at z={arch_top_z:.2f}mm (want ≥2mm). Bump cap_h "
                 f"or shrink meter_body_h_perp.",
             ))
-        # X clearance to saddle inboard faces
+        # X clearance to saddle inboard faces.
         if body_x_clearance_per_side < 1.0:
             failures.append(Failure(
                 "lcd_body_vs_saddle_x",
                 f"LCD body length {meter_body_l}mm leaves only "
                 f"{body_x_clearance_per_side:.2f}mm clearance on "
                 f"each side of the {display_gap:.1f}mm display gap "
-                f"(want ≥1mm). Widen bare_band_w or narrow saddle_w "
-                f"if a calipered meter measurement confirms the body "
-                f"is longer than the default 44mm.",
+                f"(want ≥1mm). v3.2 already trimmed saddle_w to 10 "
+                f"to open this up; if the calipered meter is wider "
+                f"still, drop saddle_w further or accept a re-spec.",
             ))
+        # +Y bulge tip vs cap chamfer: at the cap-bottom-most z where
+        # the body actually exists, the chamfer doesn't reach inboard
+        # at all (chamfer floor sits above pipe_center_z + chamfer
+        # offset). The body's +Y face must clear the cap inboard
+        # face there, OR the body's X-extent must stay inside the
+        # display gap (handled above). With the v3.2 trimmed
+        # saddle_w, the X clearance carries the body past the cap
+        # entirely — so this is a redundant secondary check, but it
+        # surfaces a regression that re-introduces an X-overlap
+        # without bumping the chamfer to compensate.
+        relief_angle  = p.get("display_relief_angle")
+        m3_insert_h_p = p.get("m3_insert_h")
+        if all(v is not None for v in (relief_angle, m3_insert_h_p)):
+            from math import tan, radians
+            chamfer_dz_p = max(0.0, cap_h - m3_insert_h_p - 1.0)
+            chamfer_dx_p = chamfer_dz_p * tan(radians(relief_angle))
+            saddle_y_half_p = (p.get("bolt_y_offset") or 0) + \
+                              (p.get("m3_insert_d") or 0) / 2 + 2
+            # If the body in any X-overlap region would also collide
+            # in Y at z=cap_bottom (no chamfer there), require the
+            # chamfer-inset y > body_face_y_lcd as a safety.
+            chamfer_inset_y = saddle_y_half_p - chamfer_dx_p
+            if body_x_clearance_per_side < 0 and \
+                    body_face_y_lcd > chamfer_inset_y:
+                failures.append(Failure(
+                    "lcd_body_vs_cap_chamfer",
+                    f"X-overlap with cap AND body +Y face at "
+                    f"y={body_face_y_lcd:.1f} extends past chamfer "
+                    f"inset at y={chamfer_inset_y:.1f} — cap would "
+                    f"wedge on the body. Either narrow saddle_w "
+                    f"further (restore X clearance) or bump "
+                    f"display_relief_angle.",
+                ))
         # +Y bulge tip vs base footprint edge — informational; the
         # bulge is allowed to overhang the base edge (it floats high
         # above the bench), so this is a SOFT warning at >20mm

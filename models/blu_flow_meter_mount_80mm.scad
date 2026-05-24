@@ -137,48 +137,59 @@
 //   (LCD-forward)" below for the geometric proof that the LCD saddle
 //   fits.
 //
-// === Clearance check (LCD-forward) ===
+// === Clearance check (LCD-forward, v3.2 defensive) ===
 //
 //   With the LCD pointing +Y the LCD-saddle body occupies a roughly
 //   rectangular envelope around the pipe in the middle of the
-//   display gap. Default LCD-saddle dimensions (parametric below;
-//   estimated from `models/refs/blu_mount_v1_desired_tilt.jpeg` until
-//   calipered values land) are:
+//   display gap. v3.2 defensive defaults (still parametric):
 //
-//     meter_body_l           = 44 mm  (along pipe X)
-//     meter_body_h_lcd       = 35 mm  (along LCD axis — Y in forward)
-//     meter_body_h_perp      = 25 mm  (perpendicular to LCD axis — Z
+//     meter_body_l           = 50 mm  (along pipe X)
+//     meter_body_h_lcd       = 42 mm  (along LCD axis — Y in forward)
+//     meter_body_h_perp      = 32 mm  (perpendicular to LCD axis — Z
 //                                       in forward; body half-height
-//                                       12.5 mm above/below pipe ctr)
-//     meter_lcd_bulge_d      = 12 mm  (LCD's extra radial depth past
+//                                       16 mm above/below pipe ctr)
+//     meter_lcd_bulge_d      = 15 mm  (LCD's extra radial depth past
 //                                       the body face on the LCD axis)
 //
-//   In the LCD-forward (+Y) orientation, body extent vs the mount:
+//   In the LCD-forward (+Y) orientation, body extent vs the v3.2
+//   mount (wall_t=6, saddle_w=10):
 //
-//     X: body length 44 mm, display gap 47 mm → 1.5 mm side
-//        clearance to each saddle inboard face (saddle inboard at
-//        x=±23.5; body at x=±22.0). MARGINAL — first-print review
-//        may want to bump bare_band_w to widen the gap.
-//     Z: body extends pipe_center_z ± 12.5 mm = z ∈ [12.2, 37.2].
-//        Base top at z=8 → 4.2 mm clearance below body.
-//        Cap top at z=arch_top_z=41.4 → 4.2 mm clearance above.
-//     -Y (back of body): body face at y ≈ -17.5 mm. Saddle/base
+//     X: body length 50 mm, display gap 52 mm → 1 mm side clearance
+//        to each saddle inboard face (saddle inboard at x=±26.0;
+//        body at x=±25.0). v3.1 had 1.5 mm here with the smaller
+//        phantom but the real meter overran — v3.2 widens display
+//        gap by trimming saddle_w 15→10. Tighter still: if the real
+//        body is > 50 mm, the lcd_body_vs_saddle_x invariant in the
+//        sidecar fails — surface that and bump saddle_w further.
+//     Z: body extends pipe_center_z ± 16 mm = z ∈ [11.7, 43.7] (with
+//        pipe_center_z now 27.7 = base_t 8 + wall_t 6 + 13.7).
+//        Base top at z=8 → 3.7 mm clearance below body. v3.1 had
+//        4.2 mm here but the real body was too tall for it — v3.2
+//        raises pipe_center_z by 3 mm (wall_t 3→6) to compensate.
+//        Cap top at z=arch_top_z=47.4 → 3.7 mm clearance above.
+//     -Y (back of body): body face at y ≈ -21 mm. Saddle/base
 //        material at -Y in the display gap is just the open base
-//        plate edge at y=-30 → 12.5 mm clearance. Open air.
-//     +Y (LCD bulge): body face at y ≈ +17.5, LCD bulge tip at
-//        y ≈ +29.5. Base +Y edge at y=+30 → the bulge sits just
-//        inside the base footprint, floating at z >> 0 so no
-//        bench contact.
+//        plate edge at y=-30 → 9 mm clearance. Open air.
+//     +Y (LCD bulge): body face at y ≈ +21, LCD bulge tip at
+//        y ≈ +36. Base +Y edge at y=+30 → the LCD itself overhangs
+//        the base by 6 mm in plan view, floating at z >> 0 so no
+//        bench contact. The cap +Y chamfer (now display_relief_angle
+//        = 45°, chamfer_dx ≈ 13.7 mm) carries the cap clear of the
+//        bulge along the upper Z band.
 //
-//   These margins are computed numerically from the parameters below
-//   and pinned by `_check(...)` invariants in the sidecar — a change
-//   that breaks any clearance fails the model check.
+//   v3.1 → v3.2 lesson: the v3.1 invariants checked clearance MARGINS
+//   AROUND an assumed phantom envelope and passed. They didn't catch
+//   the print-test failure because the phantom itself was wrong. v3.2
+//   keeps the phantom but adds invariants that assert the phantom is
+//   AT LEAST as large as the v3.1 baseline ([[feedback_eval_stubs_
+//   can_false_green]] — synthetic checks can confirm what reality
+//   doesn't). If the calipered meter is smaller, the invariants
+//   still pass; if larger, they fail loudly.
 //
-//   The clearance assumes the photo-derived defaults are within ±2 mm
-//   of the real meter. The `_phantom_meter()` module renders the LCD
-//   saddle as a transparent block in the assembly view so the
-//   operator can visually confirm fit before printing — toggle via
-//   `part = "assembly_with_meter"`.
+//   The `_phantom_meter()` module renders the LCD saddle as a
+//   transparent block in the assembly view so the operator can
+//   visually confirm fit before printing — toggle via `part =
+//   "assembly_with_meter"`.
 //
 //   ### Bolt entry (v2 — inverted vs v1)
 //
