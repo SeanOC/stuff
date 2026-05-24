@@ -12,6 +12,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -72,6 +73,16 @@ def export(
     warnings = _WARNING_RE.findall(combined)
 
     if proc.returncode != 0:
+        # Mirror of openscad.render's stderr surfacing (st-tre): export-all.py
+        # pipes child stdout to /dev/null and the JSON _emit blob carries the
+        # ExportError text only on stdout, so CI logs see "FAIL(rc=3)" with no
+        # cause. Write the full captured stream to our stderr so it survives.
+        sys.stderr.write(
+            f"--- openscad rc={proc.returncode} exporting {model} ---\n"
+            f"cmd: {' '.join(cmd)}\n"
+            f"{combined}"
+            f"--- end openscad output ---\n"
+        )
         raise ExportError(
             f"openscad exited {proc.returncode}: {_first_line(combined) or '(no output)'}"
         )

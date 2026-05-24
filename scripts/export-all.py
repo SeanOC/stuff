@@ -107,7 +107,19 @@ def _export_one(model: Path, name: str, defines: dict[str, str]) -> int:
     cmd = [sys.executable, str(EXPORT_PY), "--model", str(model), "--name", name]
     for k, v in defines.items():
         cmd += ["-D", f'{k}="{v}"']
-    proc = subprocess.run(cmd, stdout=subprocess.DEVNULL)
+    # Capture child stdout (the JSON verdict blob) so we can surface the
+    # ExportError text on failure — including non-watertight cases that
+    # never produce openscad stderr. Throwaway-debug shape (st-p7r): drop
+    # the captured success-path JSON, dump it to stderr on failure.
+    proc = subprocess.run(cmd, capture_output=True, text=True)
+    if proc.returncode != 0:
+        sys.stderr.write(
+            f"--- export.py rc={proc.returncode} for {model.name} [{name}] ---\n"
+            f"{proc.stdout}"
+            f"--- end export.py output ---\n"
+        )
+        if proc.stderr:
+            sys.stderr.write(proc.stderr)
     return proc.returncode
 
 
