@@ -48,7 +48,13 @@ divisions_x      = 1;     // @param integer min=1 max=6 group=compartments label
 divisions_y      = 1;     // @param integer min=1 max=6 group=compartments label="Divisions Y"
 
 enable_scoop     = true;  // @param boolean group=compartments label="Front scoop"
-enable_label_tab = true;  // @param boolean group=compartments label="Label tab"
+// Default OFF until st-aq2 / upstream gridfinity-rebuilt fix lands.
+// The Auto tab's polygon shape (TAB_POLYGON in standard.scad) produces
+// 3 non-manifold edges per tab under openscad ≥2025.09.06 — the CI
+// container fails the watertight invariant when this is on. Toggle on
+// if you accept the printability risk; the label tab still slices
+// fine in PrusaSlicer's manifold-tolerant mode.
+enable_label_tab = false; // @param boolean group=compartments label="Label tab (off — st-aq2 leak)"
 
 magnet_holes     = false; // @param boolean group=base label="6mm magnet sockets"
 screw_holes      = false; // @param boolean group=base label="M3 screw holes (needs magnets)"

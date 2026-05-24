@@ -386,14 +386,23 @@ module _crossbar_cyl(post_r, crossbar_axis_z, half_len) {
 // arc into the X-Z plane (where the post and crossbar already
 // live).
 module _handle_corner_sweep(sx, post_r, crossbar_axis_z) {
-    if (corner_sweep_r > 0)
+    // Extend the quarter-torus sweep 2° past tangent at each end (st-7o3):
+    // openscad ≥2025.09.06 leaves non-manifold edges at the sweep↔post
+    // and sweep↔crossbar tangent junctions when the torus stops exactly
+    // at 0°/90°. Sweeping a couple of degrees INTO the cylinder volumes
+    // forces a clean CSG union — the swept-arc geometry overlaps the
+    // post/crossbar instead of merely kissing their surfaces.
+    if (corner_sweep_r > 0) {
+        sweep_eps = 2;  // degrees of overlap at each end
         scale([sx, 1, 1])
             translate([post_center_x - corner_sweep_r, 0,
                        crossbar_axis_z - corner_sweep_r])
-                rotate([90, 0, 0])
-                    rotate_extrude(angle = 90, convexity = 4)
+                rotate([90, 0, -sweep_eps])
+                    rotate_extrude(angle = 90 + 2 * sweep_eps,
+                                   convexity = 4)
                         translate([corner_sweep_r, 0])
                             circle(r = post_r);
+    }
 }
 
 // ================= Assembly =================
