@@ -41,6 +41,35 @@
 //     directly in the assembly render. Adds v3.1 clearance invariants
 //     (body-vs-base, body-vs-cap, body-vs-saddle-X) so a future tweak
 //     that breaks the seating envelope fails loudly.
+//   v3.2 (st-9o4): REAL-WORLD PRINT TEST OF v3.1 FAILED. The phantom
+//     dimensions were photo-estimated and too small; the printed mount
+//     could not seat the meter LCD-forward (cap wedged forward by the
+//     shroud's +Y face; pipe rode high because the shroud bottomed on
+//     the saddle inboard X face before the bare pipe reached the
+//     channel). User asked for caliper measurements; none landed in
+//     the polecat's wait window. v3.2 takes a DEFENSIVE rebuild path:
+//       - meter_body_l   44 → 50  (+6 mm Estimated_safety past
+//                                   v3.1's photo guess)
+//       - meter_body_h_lcd  35 → 42  (+7 mm)
+//       - meter_body_h_perp 25 → 32  (+7 mm — the axis that caused
+//                                       the bottoming failure)
+//       - meter_lcd_bulge_d 12 → 15  (+3 mm)
+//       - wall_t         3 → 6   (raises pipe_center_z 3 mm so the
+//                                  taller shroud body has bench
+//                                  clearance below it)
+//       - saddle_w       15 → 10 (display gap 47 → 52 mm so the wider
+//                                  shroud body fits between the
+//                                  saddle inboard faces)
+//       - display_relief_angle 35 → 45 (deeper +Y chamfer for the
+//                                       larger LCD bulge envelope)
+//     Bolt-length budget bumps to 29.5 mm under-head (was 26.5);
+//     M3×30 still fits but is tighter. Invariants rewritten to assert
+//     absolute body-fits-in-cradle geometry, not just clearance
+//     margins — the lesson from v3.1 is that "phantom + clearance
+//     check" can false-green if the phantom is wrong (see
+//     [[feedback_eval_stubs_can_false_green]]). When calipered
+//     measurements eventually land, the polecat owning v3.3 can
+//     tighten these back down without re-running the print test.
 //
 // === Hardware (v2 — inverted from v1, bottom-entry bolts) ===
 //
@@ -275,8 +304,8 @@ bare_band_w    = 18;   // @param number min=10 max=40  step=0.5 unit=mm group=me
 
 // ----- Fit -----
 slop           = 0.2;  // @param number min=0 max=1   step=0.05 unit=mm group=fit label="Pipe channel slip clearance (radial pad on diameter)"
-saddle_w       = 15;   // @param number min=5 max=30  step=0.5 unit=mm group=fit label="Saddle width along pipe (X)"
-wall_t         = 3;    // @param number min=2 max=8   step=0.5 unit=mm group=fit label="Saddle wall thickness around pipe"
+saddle_w       = 10;   // @param number min=5 max=30  step=0.5 unit=mm group=fit label="Saddle width along pipe (X) — v3.2 trimmed from 15 to widen display gap for the LCD-shroud body"
+wall_t         = 6;    // @param number min=2 max=8   step=0.5 unit=mm group=fit label="Saddle wall thickness around pipe — v3.2 bumped from 3 to raise pipe_center_z for shroud bench clearance"
 
 // ----- Base -----
 base_w         = 80;   // @param number min=40 max=160 step=0.5 unit=mm group=base label="Base width along pipe (X)"
@@ -293,20 +322,20 @@ m3_insert_h    = 5;    // @param number min=3   max=10  step=0.5 unit=mm group=h
 bolt_y_offset  = 20;   // @param number min=15  max=30  step=0.5 unit=mm group=hardware label="Bolt centerline distance from pipe axis (Y)"
 
 // ----- Display tilt relief -----
-display_relief_angle = 35; // @param number min=0 max=50 step=5 unit=deg group=fit label="Cap inboard-edge chamfer angle from vertical (allows meter tilt around pipe axis)"
+display_relief_angle = 45; // @param number min=0 max=60 step=5 unit=deg group=fit label="Cap inboard-edge chamfer angle from vertical — v3.2 bumped 35→45 for the larger LCD bulge"
 
-// ----- LCD-saddle envelope (v3.1) — for clearance check / phantom -----
-// Photo-derived estimates of the meter's middle-section "display saddle"
-// (the chunky body that wraps the pipe and carries the LCD). Until a
-// calipered measurement lands, treat these as approximate ±2 mm. The
-// clearance invariants pin minimum gaps against the mount geometry, so
-// future param tuning will surface conflicts immediately.
-meter_body_l           = 44;  // @param number min=20 max=80 step=0.5 unit=mm group=meter label="LCD-saddle body length along pipe X-axis"
-meter_body_h_lcd       = 35;  // @param number min=20 max=60 step=0.5 unit=mm group=meter label="LCD-saddle body extent in the LCD axis (Y when LCD-forward; body only, no LCD bulge)"
-meter_body_h_perp      = 25;  // @param number min=20 max=50 step=0.5 unit=mm group=meter label="LCD-saddle body extent perpendicular to LCD axis (Z when LCD-forward)"
-meter_lcd_bulge_d      = 12;  // @param number min=0  max=30 step=0.5 unit=mm group=meter label="LCD's extra radial depth past the body face (only on LCD side)"
+// ----- LCD-saddle envelope (v3.2 defensive) — for clearance check / phantom -----
+// v3.1's photo-derived estimates print-tested too small (st-9o4). Until
+// calipers land, the v3.2 defaults add ~+6-7 mm of safety past v3.1 on
+// each axis. The invariants pin absolute body-fits-in-cradle geometry —
+// if the real meter is wider/taller than these defaults, the invariants
+// fail loudly instead of false-greening.
+meter_body_l           = 50;  // @param number min=20 max=80 step=0.5 unit=mm group=meter label="LCD-saddle body length along pipe X-axis (v3.2: was 44, bumped to 50)"
+meter_body_h_lcd       = 42;  // @param number min=20 max=60 step=0.5 unit=mm group=meter label="LCD-saddle body extent in the LCD axis (Y when LCD-forward; v3.2: was 35, bumped to 42)"
+meter_body_h_perp      = 32;  // @param number min=20 max=50 step=0.5 unit=mm group=meter label="LCD-saddle body extent perpendicular to LCD axis (Z when LCD-forward; v3.2: was 25, bumped to 32)"
+meter_lcd_bulge_d      = 15;  // @param number min=0  max=30 step=0.5 unit=mm group=meter label="LCD's extra radial depth past the body face (v3.2: was 12, bumped to 15)"
 
-// @preset id="default" label="Blu flow meter 80mm × 27mm dia (default)" part="assembly" pipe_dia=27 pipe_len=80 bare_band_w=18 slop=0.2 saddle_w=15 wall_t=3 base_w=80 base_d=60 base_t=8 edge_round_r=1.5 m3_clearance_d=3.5 m3_head_d=5.8 m3_head_depth=3.2 m3_insert_d=5 m3_insert_h=5 bolt_y_offset=20 display_relief_angle=35 meter_body_l=44 meter_body_h_lcd=35 meter_body_h_perp=25 meter_lcd_bulge_d=12
+// @preset id="default" label="Blu flow meter 80mm × 27mm dia (default)" part="assembly" pipe_dia=27 pipe_len=80 bare_band_w=18 slop=0.2 saddle_w=10 wall_t=6 base_w=80 base_d=60 base_t=8 edge_round_r=1.5 m3_clearance_d=3.5 m3_head_d=5.8 m3_head_depth=3.2 m3_insert_d=5 m3_insert_h=5 bolt_y_offset=20 display_relief_angle=45 meter_body_l=50 meter_body_h_lcd=42 meter_body_h_perp=32 meter_lcd_bulge_d=15
 
 // === Derived ===
 
