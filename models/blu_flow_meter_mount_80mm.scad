@@ -405,11 +405,15 @@ module _base_plate() {
 }
 
 // One saddle bottom block (integral to base, half-cylinder pipe cutout
-// in the top half). sx = ±1 selects which end of the pipe.
+// in the top half). sx = ±1 selects which end of the pipe. Epsilon-
+// overlap with the base plate (st-7o3) so openscad ≥2025.09.06 merges
+// the touching faces cleanly — without it the z=base_t parting plane
+// produces a non-manifold edge ring and the STL exports non-watertight.
 module _saddle_bottom(sx) {
-    cx = sx * saddle_center_x;
-    translate([cx, 0, base_t + saddle_bottom_h / 2])
-        cuboid([saddle_w, saddle_y, saddle_bottom_h],
+    cx  = sx * saddle_center_x;
+    eps = 0.01;
+    translate([cx, 0, base_t + saddle_bottom_h / 2 - eps / 2])
+        cuboid([saddle_w, saddle_y, saddle_bottom_h + eps],
                rounding = edge_round_r,
                edges    = "Z");
 }

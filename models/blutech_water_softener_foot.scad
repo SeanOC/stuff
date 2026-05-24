@@ -153,40 +153,51 @@ total_h   = flange_t + cradle_h;
 // PRINT_ANCHOR_BBOX: outermost footprint × full height.
 PRINT_ANCHOR_BBOX = [2 * flange_or, 2 * flange_or, total_h];
 
-// === Geometry — flange (the VHB-bearing annular disk) ===
+// === Geometry — flange + cradle ring (one solid, one inner hole) ===
+//
+// v1 built the flange and the cradle ring as two separate
+// linear_extrude(difference) annuli union'd at z=flange_t. openscad
+// ≥2025.09.06 (the Docker image we now use in CI) left non-manifold
+// edges at the shared inner cylinder r=cradle_ir, z=flange_t±eps
+// (st-7o3). The fix: build the OUTER profile (wide flange + narrower
+// ring stack) as one union of solid cylinders, then subtract a
+// SINGLE through-hole cylinder at r=cradle_ir. The inner cylinder
+// becomes one continuous boundary, no overlap, no T-junctions.
 
-module _flange() {
-    // Annular disk from r=cradle_ir to r=flange_or, thickness flange_t.
-    // The hole in the middle (radius cradle_ir) is what lets the
-    // cylinder drop through to rest on the RV floor — no pocket.
-    linear_extrude(height = flange_t)
-        difference() {
-            circle(r = flange_or);
-            circle(r = cradle_ir);
+module _flange_and_ring() {
+    eps = 0.01;
+    difference() {
+        union() {
+            // Wide flange disk: r=flange_or, z=0..flange_t.
+            cylinder(r = flange_or, h = flange_t);
+            // Narrower ring above, overlapping the flange by eps so
+            // the union step at z=flange_t merges cleanly.
+            translate([0, 0, flange_t - eps])
+                cylinder(r = cradle_or, h = cradle_h + eps);
         }
-}
-
-// === Geometry — cradle ring (vertical hollow cylinder above flange) ===
-
-module _cradle_ring() {
-    translate([0, 0, flange_t])
-        linear_extrude(height = cradle_h)
-            difference() {
-                circle(r = cradle_or);
-                circle(r = cradle_ir);
-            }
+        // ONE through-hole at r=cradle_ir spanning from below the
+        // VHB face to above the cradle top — produces a single
+        // continuous inner cylinder boundary in the resulting solid.
+        translate([0, 0, -eps])
+            cylinder(r = cradle_ir,
+                     h = flange_t + cradle_h + 2 * eps);
+    }
 }
 
 // Inside top edge chamfer — a thin tapered ring subtracted from the
 // cradle top so the cylinder slides in without catching the lip.
+// Both ends of the chamfer cone overshoot the cradle by eps so the
+// CGAL subtraction in openscad ≥2025.09.06 doesn't leave T-junctions
+// at the chamfer's bottom (z=cradle_top-top_chamfer) or top (z=
+// cradle_top) plane (st-7o3).
 module _top_chamfer_cut() {
     if (top_chamfer > 0) {
         z_top = flange_t + cradle_h;
-        eps   = 0.01;
-        translate([0, 0, z_top - top_chamfer])
-            cylinder(h = top_chamfer + eps,
-                     r1 = cradle_ir,
-                     r2 = cradle_ir + top_chamfer);
+        eps   = 0.1;
+        translate([0, 0, z_top - top_chamfer - eps])
+            cylinder(h = top_chamfer + 2 * eps,
+                     r1 = cradle_ir - eps,
+                     r2 = cradle_ir + top_chamfer + eps);
     }
 }
 
@@ -200,14 +211,21 @@ module _top_chamfer_cut() {
 // Thickness gusset_w along the tangential direction (Y after the
 // initial rotate).
 module _gusset(theta) {
+    // Epsilon-overlap into the flange top (st-7o3): drop the gusset
+    // 0.1 mm below z=flange_t (the same overlap as _cradle_ring) so
+    // the gusset's bottom face merges INTO the flange rather than
+    // sitting coincident with the flange top. Grow the vertical leg
+    // by the same amount so the triangle profile above z=flange_t
+    // is unchanged.
+    eps = 0.1;
     rotate([0, 0, theta])
-        translate([0, -gusset_w / 2, flange_t])
+        translate([0, -gusset_w / 2, flange_t - eps])
             rotate([90, 0, 0])
                 linear_extrude(height = gusset_w)
                     polygon(points = [
                         [cradle_or, 0],
                         [flange_or, 0],
-                        [cradle_or, gusset_h],
+                        [cradle_or, gusset_h + eps],
                     ]);
 }
 
@@ -225,10 +243,20 @@ module _gussets() {
 // (just above the VHB face — never INTO the VHB face) up to
 // z = flange_t + scupper_h.
 module _scupper_cut(theta) {
+    // Cut deep enough into both sides of the ring wall (cradle_ir
+    // and cradle_or) that no CSG boundary face is coincident with
+    // the ring's surfaces. The top face of the scupper at z=flange_t
+    // + scupper_h + eps overshoots the ring material above so the
+    // subtraction doesn't leave a T-junction (st-7o3).
     eps = 0.5;
+    z_overshoot = 0.1;
     rotate([0, 0, theta])
-        translate([cradle_ir - eps, -scupper_w / 2, flange_t + 0.01])
-            cube([ring_wall_t + 2 * eps, scupper_w, scupper_h]);
+        translate([cradle_ir - eps,
+                   -scupper_w / 2,
+                   flange_t + 0.01])
+            cube([ring_wall_t + 2 * eps,
+                  scupper_w,
+                  scupper_h + z_overshoot]);
 }
 
 module _scupper_cuts() {
@@ -248,8 +276,7 @@ module _scupper_cuts() {
 module foot() {
     difference() {
         union() {
-            _flange();
-            _cradle_ring();
+            _flange_and_ring();
             _gussets();
         }
         _top_chamfer_cut();

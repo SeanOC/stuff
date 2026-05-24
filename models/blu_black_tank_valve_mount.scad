@@ -330,9 +330,16 @@ module _base_plate() {
 }
 
 module _saddle_bottom(sx) {
-    cx = sx * saddle_center_x;
-    translate([cx, 0, base_t + saddle_bottom_h / 2])
-        cuboid([saddle_w, saddle_y, saddle_bottom_h],
+    // Epsilon-overlap into the base plate (st-7o3): without this the
+    // saddle's z=base_t bottom face is exactly coincident with the
+    // base's z=base_t top face, and openscad ≥2025.09.06 leaves the
+    // resulting CSG union with a non-manifold edge ring at z=8 — the
+    // STL exports genus 6 and trimesh rejects it as non-watertight.
+    // Older snapshots (≤2025.06.12) merged the touching faces.
+    cx  = sx * saddle_center_x;
+    eps = 0.01;
+    translate([cx, 0, base_t + saddle_bottom_h / 2 - eps / 2])
+        cuboid([saddle_w, saddle_y, saddle_bottom_h + eps],
                rounding = edge_round_r,
                edges    = "Z");
 }
