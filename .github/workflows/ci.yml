@@ -125,12 +125,19 @@ jobs:
         # CWD note (st-dlw): step's default CWD inside the container is
         # not $GITHUB_WORKSPACE (the repo mount), so unprefixed git
         # commands fail with "fatal: not in a git directory". cd first.
+        #
+        # safe.directory note (st-ugc): the path-specific
+        # safe.directory the previous attempt added didn't take effect
+        # for the container's git invocations (likely a path-
+        # canonicalization mismatch between the actions/checkout host
+        # write path and the container mount path). Use the '*'
+        # wildcard form to bypass that entirely.
         env:
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           command -v git >/dev/null 2>&1 || { apt-get update && apt-get install -y --no-install-recommends git; }
           cd "$GITHUB_WORKSPACE"
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git config --global --add safe.directory '*'
           git config user.name  'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add renders/
@@ -146,9 +153,17 @@ jobs:
         env:
           BRANCH: ${{ github.ref_name }}
         run: |
+          # Diagnostics (st-ugc) — keep permanent; cost is two
+          # echos, saves a round trip the next time something in
+          # this step misbehaves inside the container.
+          echo "PWD=$PWD"
+          echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
+          echo "HOME=$HOME"
+          ls -la "$GITHUB_WORKSPACE/.git" 2>&1 | head -5 || echo ".git dir missing"
           command -v git >/dev/null 2>&1 || { apt-get update && apt-get install -y --no-install-recommends git; }
           cd "$GITHUB_WORKSPACE"
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git config --global --add safe.directory '*'
+          git config --global --get-all safe.directory || echo "no safe.directory config"
           git config user.name  'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add renders/
