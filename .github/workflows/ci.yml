@@ -59,6 +59,15 @@ jobs:
 
       - name: Filter paths
         id: filter
+        # st-a50: smart-render is an OPTIMIZATION, not a hard
+        # dependency. paths-filter shells out to git operations that
+        # still hit container/.git incompatibility (after st-yzo
+        # installed git itself), so let the step fail soft — the
+        # downstream gates fall back to "render everything" when
+        # steps.filter.outcome == 'failure'. Proper redesign (run
+        # paths-filter in a separate non-container job) is filed as
+        # the st-mrt-v2 follow-up.
+        continue-on-error: true
         uses: dorny/paths-filter@v3
         with:
           # st-mrt: also surface the specific changed models/libs
@@ -85,8 +94,23 @@ jobs:
         # pinned tag's version cleanly with no source/library errors.
         run: openscad --version
 
+      - name: Smart-render mode summary
+        # st-a50: surface in the workflow summary which path the run
+        # is taking so future "why did everything re-render?" goes to
+        # one place instead of the per-step logs.
+        run: |
+          if [ "${{ steps.filter.outcome }}" = "failure" ]; then
+            echo "smart-render: **fallback render-all** (paths-filter failed)" >> "$GITHUB_STEP_SUMMARY"
+          elif [ "${{ steps.filter.outputs.render }}" = "true" ]; then
+            echo "smart-render: **filtered** — touched files = \`${{ steps.filter.outputs.models_and_libs_files }}\`" >> "$GITHUB_STEP_SUMMARY"
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            echo "smart-render: **push render-all** (push event always renders)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "smart-render: **skipped** (no render-relevant paths changed)" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Install python deps for measure + invariants
-        if: github.event_name == 'push' || steps.filter.outputs.render == 'true'
+        if: github.event_name == 'push' || steps.filter.outputs.render == 'true' || steps.filter.outcome == 'failure'
         # The openscad/openscad image is Debian-based but minimal —
         # bundle only what openscad itself needs. measure.py +
         # invariants need numpy, PIL, and trimesh; we also pull
@@ -108,11 +132,11 @@ jobs:
                  numpy pillow trimesh pytest
 
       - name: Vendor SCAD libraries
-        if: github.event_name == 'push' || steps.filter.outputs.render == 'true'
+        if: github.event_name == 'push' || steps.filter.outputs.render == 'true' || steps.filter.outcome == 'failure'
         run: bash scripts/vendor-libs.sh
 
       - name: Render all models
-        if: github.event_name == 'push' || steps.filter.outputs.render == 'true'
+        if: github.event_name == 'push' || steps.filter.outputs.render == 'true' || steps.filter.outcome == 'failure'
         # st-mrt: pass the diff-derived models+libs file list so
         # render-all.py renders only the touched subset (a libs/
         # change still forces a full re-render). Empty string ⇒
@@ -122,7 +146,7 @@ jobs:
         run: python3 scripts/render-all.py --changed-paths "$CHANGED_PATHS"
 
       - name: Export STLs + invariants
-        if: github.event_name == 'push' || steps.filter.outputs.render == 'true'
+        if: github.event_name == 'push' || steps.filter.outputs.render == 'true' || steps.filter.outcome == 'failure'
         # The export job produces exports/<stem>.stl which the invariant
         # driver then analyzes. Either step failing is a CI failure —
         # don't keep building on a broken geometry.
@@ -137,11 +161,11 @@ jobs:
           python3 scripts/check-invariants-all.py
 
       - name: Invariant core unit tests
-        if: github.event_name == 'push' || steps.filter.outputs.render == 'true'
+        if: github.event_name == 'push' || steps.filter.outputs.render == 'true' || steps.filter.outcome == 'failure'
         run: python3 -m pytest scripts/invariants/ -v
 
       - name: Commit regenerated renders (PRs)
-        if: github.event_name == 'pull_request' && steps.filter.outputs.render == 'true'
+        if: github.event_name == 'pull_request' && (steps.filter.outputs.render == 'true' || steps.filter.outcome == 'failure')
         # Best-effort auto-commit (st-491). openscad nightly renders
         # are non-deterministic and main is protected; the proper
         # redesign of this auto-commit-renders pipeline is filed as
