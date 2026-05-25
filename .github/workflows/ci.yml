@@ -45,11 +45,16 @@ jobs:
           ref: ${{ github.event.pull_request.head.ref || github.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Filter paths (PRs only)
+      - name: Filter paths
         id: filter
-        if: github.event_name == 'pull_request'
         uses: dorny/paths-filter@v3
         with:
+          # st-mrt: also surface the specific changed models/libs
+          # files so render-all + export-all can short-circuit to
+          # the touched subset. `list-files: shell` makes
+          # ${{ steps.filter.outputs.models_and_libs_files }} a
+          # whitespace-separated path list.
+          list-files: shell
           filters: |
             render:
               - 'models/**'
@@ -58,6 +63,9 @@ jobs:
               - 'scripts/render-all.py'
               - 'scripts/vendor-libs.sh'
               - 'libs/README.md'
+            models_and_libs:
+              - 'models/*.scad'
+              - 'libs/**'
 
       - name: openscad --version smoke
         # First thing in the job: surface a container-image mismatch
@@ -94,15 +102,27 @@ jobs:
 
       - name: Render all models
         if: github.event_name == 'push' || steps.filter.outputs.render == 'true'
-        run: python3 scripts/render-all.py
+        # st-mrt: pass the diff-derived models+libs file list so
+        # render-all.py renders only the touched subset (a libs/
+        # change still forces a full re-render). Empty string ⇒
+        # render-all defaults to ALL models.
+        env:
+          CHANGED_PATHS: ${{ steps.filter.outputs.models_and_libs_files }}
+        run: python3 scripts/render-all.py --changed-paths "$CHANGED_PATHS"
 
       - name: Export STLs + invariants
         if: github.event_name == 'push' || steps.filter.outputs.render == 'true'
         # The export job produces exports/<stem>.stl which the invariant
         # driver then analyzes. Either step failing is a CI failure —
         # don't keep building on a broken geometry.
+        #
+        # st-mrt: same --changed-paths short-circuit as the render
+        # step — export-all skips unchanged models, but always runs
+        # check-invariants-all on whatever exports/ already contains.
+        env:
+          CHANGED_PATHS: ${{ steps.filter.outputs.models_and_libs_files }}
         run: |
-          python3 scripts/export-all.py
+          python3 scripts/export-all.py --changed-paths "$CHANGED_PATHS"
           python3 scripts/check-invariants-all.py
 
       - name: Invariant core unit tests

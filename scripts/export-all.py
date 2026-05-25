@@ -17,6 +17,12 @@ choice of the flagged param, this script writes
 `exports/<stem>.stl`. Multi-param expansion uses the cartesian product
 of choices joined as `<param1>=<value1>-<param2>=<value2>` so the
 filename remains parseable. Models without the flag are unaffected.
+
+Selective re-export (st-mrt): pass `--changed-paths "<paths>"` to
+restrict the export set to models actually touched by the current
+push/PR. Mirrors scripts/render-all.py's selection logic via the
+shared `render_all.select_models` helper. See render-all.py docstring
+for the path-rules table.
 """
 
 from __future__ import annotations
@@ -34,18 +40,36 @@ EXPORT_PY = REPO_ROOT / ".claude" / "skills" / "scad-export" / "scripts" / "expo
 sys.path.insert(0, str(REPO_ROOT))
 from scripts.invariants.params import filename_export_params, parse_params  # noqa: E402
 
+# Share the selective-re-process logic with the renderer so a CI
+# invocation with --changed-paths "models/foo.scad" trims both
+# batches to the same single model.
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
+import importlib  # noqa: E402
+_render_all = importlib.import_module("render-all")  # filename has a dash
+select_models = _render_all.select_models
+
 
 def main(argv: list[str] | None = None) -> int:
-    _parse_args(argv)
+    args = _parse_args(argv)
 
     if not EXPORT_PY.exists():
         print(f"error: export.py not found at {EXPORT_PY}", file=sys.stderr)
         return 2
 
     models = sorted(MODELS_DIR.glob("*.scad"))
+    selected = select_models(models, args.changed_paths)
+    if selected is None:
+        print("no models/*.scad or libs/ changes — skipping exports")
+        return 0
+    if len(selected) < len(models):
+        print(
+            f"selective re-export: {len(selected)}/{len(models)} models "
+            f"({', '.join(m.stem for m in selected)})"
+        )
+
     failures: list[str] = []
     total_variants = 0
-    for model in models:
+    for model in selected:
         variants = plan_variants(model)
         total_variants += len(variants)
         for name, defines in variants:
@@ -57,7 +81,7 @@ def main(argv: list[str] | None = None) -> int:
                 failures.append(f"{model.name}:{name}")
 
     print(f"\nexported {total_variants - len(failures)}/{total_variants} variants "
-          f"across {len(models)} models")
+          f"across {len(selected)} models")
     if failures:
         print("failed: " + ", ".join(failures), file=sys.stderr)
         return 1
@@ -100,6 +124,15 @@ def plan_variants(model: Path) -> list[tuple[str, dict[str, str]]]:
 
 def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Export all models/*.scad")
+    p.add_argument(
+        "--changed-paths",
+        default="",
+        help=(
+            "whitespace-separated paths from `git diff --name-only`; "
+            "restricts the export set to models actually touched. "
+            "Empty/absent → export all. See render-all.py docstring."
+        ),
+    )
     return p.parse_args(argv)
 
 
