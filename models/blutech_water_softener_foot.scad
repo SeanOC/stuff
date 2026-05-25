@@ -259,15 +259,29 @@ module _scupper_cut(theta) {
                   scupper_h + z_overshoot]);
 }
 
+// Public helper: angular position of the i-th scupper (in degrees).
+// Lifted out of the cut module so the invariants sidecar can call
+// the same function to assert no notch lands on a gusset.
+//
+// Geometry (st-4t8): each scupper sits at a MIDPOINT between two
+// adjacent gussets, never on a gusset. With gusset_count gussets at
+// angles {i · 360/gusset_count}, the available midpoints are at
+// {i · 360/gusset_count + 180/gusset_count}. For scupper_count ≤
+// gusset_count, distribute the scupper count across the midpoints
+// via floor(i · gusset_count / scupper_count) — picks evenly-spread
+// midpoints when scupper_count divides gusset_count, biased-but-
+// never-overlapping otherwise (e.g. 4 scuppers / 6 gussets lands
+// scuppers at the 0,1,3,4-th midpoints = 30°, 90°, 210°, 270°).
+function scupper_angle_deg(i) =
+    (gusset_count > 0)
+        ? let(midpoint_idx = floor(i * gusset_count / scupper_count))
+          midpoint_idx * (360 / gusset_count) + (180 / gusset_count)
+        : i * (360 / scupper_count);
+
 module _scupper_cuts() {
-    // Place scuppers OFFSET from the gussets so the gusset feet
-    // aren't notched.
     if (scupper_count > 0) {
-        offset_deg = (gusset_count > 0)
-                      ? (360 / gusset_count) / 2
-                      : 0;
         for (i = [0 : scupper_count - 1])
-            _scupper_cut(i * 360 / scupper_count + offset_deg);
+            _scupper_cut(scupper_angle_deg(i));
     }
 }
 

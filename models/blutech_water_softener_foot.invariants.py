@@ -63,6 +63,8 @@ def check(ctx):
     flange_overhang = p.get("flange_overhang")
     gusset_count    = p.get("gusset_count")
     gusset_h        = p.get("gusset_h")
+    gusset_w        = p.get("gusset_w")
+    scupper_count   = p.get("scupper_count")
     scupper_h       = p.get("scupper_h")
 
     # 2. Cylinder fit class.
@@ -122,6 +124,75 @@ def check(ctx):
             f"the cradle ring's base anchorage. Lower scupper_h or "
             f"bump ring_wall_t.",
         ))
+
+    # 7. Scupper notches must NOT land on a gusset (st-4t8). Each
+    #    scupper sits at a midpoint between adjacent gussets; check
+    #    that the minimum angular distance between any (scupper,
+    #    gusset) pair is larger than the gusset's own angular
+    #    footprint at the cradle outer radius. Catches future param
+    #    drifts (e.g. someone bumps scupper_count past gusset_count
+    #    or skews the midpoint formula) where a notch starts cutting
+    #    into a gusset foot and blocking drainage.
+    if all(v is not None for v in (gusset_count, scupper_count,
+                                    cyl_d, clearance, ring_wall_t,
+                                    gusset_w)) \
+            and gusset_count > 0 and scupper_count > 0:
+        from math import degrees
+        cradle_ir = cyl_d / 2 + clearance
+        cradle_or = cradle_ir + ring_wall_t
+        # Half-angle subtended by the gusset's tangential thickness
+        # at the cradle outer radius — small-angle: gusset_w/2 over
+        # cradle_or radians, converted to degrees. The notch must
+        # stay AT LEAST this far from a gusset centre to avoid
+        # cutting into the gusset foot.
+        gusset_half_angle_deg = degrees(
+            (gusset_w / 2) / cradle_or
+        )
+        # Reproduce scupper_angle_deg(i) from the .scad — keep in
+        # lockstep with the geometry by mirroring the floor() math.
+        # as_default_params returns numeric params as float; coerce
+        # back to int for range() and the floor-div index.
+        gusset_count_i = int(gusset_count)
+        scupper_count_i = int(scupper_count)
+        scupper_angles = [
+            (i * gusset_count_i // scupper_count_i)
+            * (360.0 / gusset_count_i)
+            + (180.0 / gusset_count_i)
+            for i in range(scupper_count_i)
+        ]
+        gusset_angles = [
+            i * (360.0 / gusset_count_i) for i in range(gusset_count_i)
+        ]
+        # Find the worst-case (smallest) angular gap between any
+        # scupper and any gusset, accounting for the 360° wrap.
+        def angular_gap(a, b):
+            d = abs(a - b) % 360
+            return min(d, 360 - d)
+        min_gap = min(
+            angular_gap(s, g)
+            for s in scupper_angles
+            for g in gusset_angles
+        )
+        if min_gap <= gusset_half_angle_deg:
+            failures.append(Failure(
+                "scupper_on_gusset",
+                f"scupper notch sits {min_gap:.2f}° from a gusset "
+                f"centre, within the gusset's half-angle footprint "
+                f"{gusset_half_angle_deg:.2f}° at r={cradle_or:.1f}mm "
+                f"— the notch would cut into a gusset foot and block "
+                f"drainage. Reduce scupper_count to ≤ gusset_count "
+                f"or audit scupper_angle_deg() in the .scad.",
+            ))
+        # Sanity: more scuppers than gussets means at least two
+        # scuppers must share a midpoint or land on a gusset. Flag.
+        if scupper_count > gusset_count:
+            failures.append(Failure(
+                "scupper_count_exceeds_gussets",
+                f"scupper_count={scupper_count} > gusset_count="
+                f"{gusset_count} — there are only {gusset_count} "
+                f"midpoints between gussets; can't place more "
+                f"non-overlapping scuppers than midpoints.",
+            ))
 
     # 1. VHB face continuity. Sum the surface area of triangles that
     #    lie entirely in the z_min (=0) plane and compare to the
