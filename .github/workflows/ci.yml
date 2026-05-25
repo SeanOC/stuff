@@ -45,6 +45,18 @@ jobs:
           ref: ${{ github.event.pull_request.head.ref || github.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Install git for paths-filter
+        # st-yzo: dorny/paths-filter@v3 shells out to `git`, but the
+        # openscad/openscad container is minimal and git only gets
+        # apt-installed later in the python-deps step — so the next
+        # step fails with "Unable to locate executable file: git".
+        # ca-certificates is needed for any HTTPS git op downstream;
+        # bundle both here so paths-filter and any subsequent git
+        # work both succeed.
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates git
+
       - name: Filter paths
         id: filter
         uses: dorny/paths-filter@v3
@@ -78,19 +90,18 @@ jobs:
         # The openscad/openscad image is Debian-based but minimal —
         # bundle only what openscad itself needs. measure.py +
         # invariants need numpy, PIL, and trimesh; we also pull
-        # pytest for the invariant core unit test step. `git` +
-        # `ca-certificates` are required by scripts/vendor-libs.sh
-        # (next step) for HTTPS clones; `xvfb` provides the
-        # `xvfb-run` wrapper that .claude/skills/_lib/openscad.py
-        # invokes to drive openscad headless. The minimal
-        # openscad/openscad image ships none of these.
+        # pytest for the invariant core unit test step. `xvfb`
+        # provides the `xvfb-run` wrapper that
+        # .claude/skills/_lib/openscad.py invokes to drive openscad
+        # headless; `xauth` is required by `xvfb-run -a` for the
+        # auth-cookie dance. (git + ca-certificates are installed
+        # earlier for paths-filter; st-yzo.)
         #
         # apt-get is preferred (deb-packaged wheels are pre-built);
         # fall back to pip with --break-system-packages if the apt
         # package isn't available in this base.
         run: |
-          apt-get update
-          apt-get install -y --no-install-recommends ca-certificates git xauth xvfb
+          apt-get install -y --no-install-recommends xauth xvfb
           apt-get install -y --no-install-recommends \
             python3-numpy python3-pil python3-trimesh python3-pytest \
             || python3 -m pip install --break-system-packages \
