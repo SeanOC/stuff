@@ -3,6 +3,7 @@
 .dolt/
 *.db
 .beads-credential-key
+.beads/
 
 # OpenSCAD workflow artifacts
 # renders/*/ is tracked — regenerated in CI (.github/workflows/ci.yml `render` job)
