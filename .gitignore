@@ -46,3 +46,11 @@ playwright-report/
 test-results/
 playwright/.cache/
 .vercel
+
+# Gas Town (added by gt)
+.claude/
+.opencode/
+.logs/
+state.json
+CLAUDE.md
+GEMINI.md
