@@ -34,6 +34,11 @@ export const CATALOG: Record<string, CatalogEntry> = {
     blurb:
       "Cartoonish popcorn kernel. Smoke-testable glyph with a handful of dial-your-shape parameters.",
   },
+  lcd_stylus_75mm: {
+    categoryId: "toys",
+    blurb:
+      "Rounded bullet stylus for kids' pressure-sensitive LCD drawing pads. ~2 mm dome tip, no hard edges, prints tip-up with no supports.",
+  },
   spraycan_carrier_6x50mm: {
     categoryId: "storage",
     blurb:
