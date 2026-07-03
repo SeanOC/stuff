@@ -1,0 +1,157 @@
+#!/bin/sh
+# Pre-commit gotcha gate for the model pipeline.
+#
+# Catches, at commit time, the mistakes that otherwise surface late
+# (vitest red in CI, or a model silently missing from prod):
+#
+#   1. models/<stem>.scad with no CATALOG key in lib/models/catalog.ts
+#   2. CATALOG key with no models/<stem>.scad (dangling entry)
+#   3. models/<stem>.scad with no models/<stem>.invariants.py sidecar
+#   4. staged .scad missing the PRINT_ANCHOR_BBOX assignment  (warn only)
+#   5. openscad parse smoke on staged .scad files              (skipped
+#      with a notice when the openscad binary isn't installed)
+#
+# All checks read the INDEX (what you're about to commit), not the
+# worktree — a fix you made but didn't `git add` doesn't count.
+#
+# Fast path: exits immediately unless the staged diff touches
+# models/ or lib/models/catalog.ts. Typical commits pay ~10ms.
+#
+# Enable in a clone with `./scripts/setup-git-hooks.sh` (one-time).
+# Bypass with `git commit --no-verify` — discouraged: CI runs the
+# same checks via vitest (lib/models/catalog.test.ts), so a bypassed
+# violation just fails ~5 minutes later with a worse feedback loop.
+
+set -u
+
+if git rev-parse -q --verify HEAD >/dev/null 2>&1; then
+    against=HEAD
+else
+    against=$(git hash-object -t tree /dev/null)  # initial commit
+fi
+
+# Deletions matter too: removing a .scad can orphan a catalog key.
+staged=$(git diff --cached --name-only "$against" --)
+
+printf '%s\n' "$staged" | grep -qE '^(models/|lib/models/catalog\.ts$)' || exit 0
+
+status=0
+say()  { printf '%s\n' "$*"; }
+fail() { status=1; printf '\n✗ %s\n' "$*"; }
+warn() { printf '\n⚠ %s\n' "$*"; }
+
+# ---- index state ----------------------------------------------------
+
+index_scads=$(git ls-files --cached -- 'models/*.scad')
+stems=$(printf '%s\n' "$index_scads" | sed -e 's|^models/||' -e 's|\.scad$||')
+
+catalog_src=$(git show :lib/models/catalog.ts 2>/dev/null || true)
+
+# CATALOG entries are flat, two-space-indented `stem: {` lines between
+# `export const CATALOG` and its closing `};`. The vitest twin
+# (lib/models/catalog.test.ts) imports the real module, so if this
+# regex ever drifts from the file's shape, CI still has the exact
+# check — keep the regex simple rather than clever.
+catalog_keys=$(printf '%s\n' "$catalog_src" \
+    | awk '/^export const CATALOG/{on=1; next} on && /^\};/{on=0} on' \
+    | sed -nE 's/^  "?([A-Za-z0-9_]+)"?: \{.*/\1/p')
+
+category_ids=$(printf '%s\n' "$catalog_src" \
+    | sed -nE 's/.*\{ id: "([a-z_]+)".*/\1/p' | paste -sd '|' -)
+
+# ---- 1. every .scad has a catalog entry ------------------------------
+
+for stem in $stems; do
+    printf '%s\n' "$catalog_keys" | grep -qx "$stem" && continue
+    fail "models/$stem.scad has no entry in lib/models/catalog.ts.
+  Why: listModels() throws on a missing key — vitest goes red AND the
+       model silently never appears on the deployed site.
+  Fix: add this inside CATALOG (key must equal the filename stem):
+
+  $stem: {
+    categoryId: \"household\",  // one of: ${category_ids:-see MODEL_CATEGORIES}
+    blurb: \"One-to-two line card blurb for the gallery tile.\",
+  },"
+done
+
+# ---- 2. no dangling catalog keys -------------------------------------
+
+for key in $catalog_keys; do
+    printf '%s\n' "$stems" | grep -qx "$key" && continue
+    fail "CATALOG key \"$key\" has no models/$key.scad (dangling entry).
+  Why: dead entries mislead the next author and mask real parity bugs.
+  Fix: delete the \"$key\" block from lib/models/catalog.ts, or
+       restore/rename models/$key.scad to match."
+done
+
+# ---- 3. every .scad has an invariants sidecar ------------------------
+
+for stem in $stems; do
+    git ls-files --cached --error-unmatch "models/$stem.invariants.py" \
+        >/dev/null 2>&1 && continue
+    fail "models/$stem.scad has no models/$stem.invariants.py sidecar.
+  Why: every model ships one — CI's invariants gate imports it, and
+       without it the model's structural claims go unchecked.
+  Fix: create models/$stem.invariants.py (skeleton in AGENTS.md,
+       'Per-model invariants'):
+
+  from scripts.invariants import Failure, as_default_params
+
+  def check(ctx):
+      return []  # replace with the claims your model actually makes"
+done
+
+# ---- staged .scad files (changed in THIS commit) ---------------------
+
+changed_scads=$(git diff --cached --name-only --diff-filter=ACMR "$against" -- 'models/*.scad')
+
+# ---- 4. PRINT_ANCHOR_BBOX present (warn only) ------------------------
+# Vendored third-party models (e.g. disney_ear_hanger) legitimately
+# lack it, so this can't hard-fail.
+
+for f in $changed_scads; do
+    git show ":$f" | grep -q 'PRINT_ANCHOR_BBOX' && continue
+    warn "$f has no PRINT_ANCHOR_BBOX assignment.
+  Why: the invariants driver checks exported STL bbox against it;
+       without one, bbox drift goes undetected.
+  Expected shape (near the top of the file, values at default params):
+
+  // PRINT_ANCHOR_BBOX — outermost printed bbox in mm (X, Y, Z) at defaults.
+  PRINT_ANCHOR_BBOX = [width, depth, height];
+
+  (Warning only — vendored third-party models may omit it.)"
+done
+
+# ---- 5. openscad parse smoke ------------------------------------------
+
+if [ -n "$changed_scads" ]; then
+    if command -v openscad >/dev/null 2>&1; then
+        tmpdir=$(mktemp -d) || exit 1
+        trap 'rm -rf "$tmpdir"' EXIT
+        for f in $changed_scads; do
+            base=$(basename "$f")
+            git show ":$f" > "$tmpdir/$base"
+            # AST export parses without evaluating: catches syntax
+            # errors in ~0.1s and only WARNs (rc 0) on unresolvable
+            # includes, so it works even when libs/ isn't vendored.
+            if ! out=$(openscad -o "$tmpdir/${base%.scad}.ast" "$tmpdir/$base" 2>&1); then
+                fail "$f fails to parse (openscad AST export):
+$(printf '%s\n' "$out" | grep -v '^$' | sed 's/^/  /')
+  Why: a .scad that doesn't parse breaks CI's render + export jobs.
+  Fix: correct the syntax error above and re-stage the file."
+            fi
+        done
+    else
+        say "ℹ openscad not installed — skipping .scad parse smoke (CI still runs it)."
+    fi
+fi
+
+# ---- verdict ----------------------------------------------------------
+
+if [ "$status" -ne 0 ]; then
+    printf '\n%s\n' "pre-commit: commit blocked by the failures above.
+Bypass with 'git commit --no-verify' only if you must — CI runs the
+same checks (lib/models/catalog.test.ts + invariants gate) and will
+fail there instead."
+fi
+exit "$status"

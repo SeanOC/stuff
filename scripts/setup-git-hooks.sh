@@ -9,5 +9,8 @@ cd "$(dirname "$0")/.."
 git config core.hooksPath .githooks
 
 echo "✓ core.hooksPath set to .githooks"
-echo "  The prepare-commit-msg hook will now append the Claude Code"
-echo "  attribution trailer to every authored commit in this clone."
+echo "  prepare-commit-msg: appends the Claude Code attribution trailer"
+echo "  to every authored commit in this clone."
+echo "  pre-commit: catches model-pipeline gotchas (scad<->catalog"
+echo "  parity, invariants sidecar, PRINT_ANCHOR_BBOX, scad syntax)"
+echo "  with actionable feedback — see docs/dx-precommit.md."

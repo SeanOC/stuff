@@ -49,7 +49,8 @@ web-app architecture.
 After cloning:
 
 ```bash
-./scripts/setup-git-hooks.sh   # one-time — attaches the commit-trailer hook
+./scripts/setup-git-hooks.sh   # one-time — commit-trailer + pre-commit gotcha
+                               # gate (see docs/dx-precommit.md)
 npm install
 npm run dev                    # http://localhost:3000
 ```

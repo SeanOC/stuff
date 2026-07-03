@@ -25,6 +25,21 @@ pushing, run `python3 scripts/render-all.py` (needs `openscad` +
 `xvfb-run` on PATH and `scripts/vendor-libs.sh` already run).
 Otherwise, just open the PR and let CI do it.
 
+## Pre-commit gotcha gate
+
+`./scripts/setup-git-hooks.sh` (one-time per clone) installs a
+pre-commit hook that blocks the classic model-pipeline mistakes with
+feedback naming the exact fix: `.scad` without a catalog entry,
+dangling catalog key, missing `.invariants.py` sidecar, and `.scad`
+syntax errors (via a fast `openscad` AST parse — skipped with a
+notice when the binary isn't installed). Missing `PRINT_ANCHOR_BBOX`
+warns but doesn't block. Details + demo transcript:
+[docs/dx-precommit.md](docs/dx-precommit.md).
+
+The same hard rules are asserted server-side by
+`lib/models/catalog.test.ts`, so `--no-verify` just trades a 1-second
+local failure for a CI failure minutes later.
+
 ## Per-model invariants (auto-checked in CI)
 
 Every model in `models/` ships with a sidecar
