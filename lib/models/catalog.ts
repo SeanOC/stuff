@@ -39,6 +39,11 @@ export const CATALOG: Record<string, CatalogEntry> = {
     blurb:
       "Rounded bullet stylus for kids' pressure-sensitive LCD drawing pads. ~2 mm dome tip, no hard edges, prints tip-up with no supports.",
   },
+  lcd_stylus_hex_8mm: {
+    categoryId: "toys",
+    blurb:
+      "Hex-profile stylus for kids' pressure-sensitive LCD drawing pads. Pencil-style anti-roll hexagon body with every edge filleted, ~2 mm dome tip, prints lying flat on a hex face with a built-in breakaway support fin under the tip.",
+  },
   spraycan_carrier_6x50mm: {
     categoryId: "storage",
     blurb:
