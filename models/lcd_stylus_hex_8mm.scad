@@ -76,21 +76,38 @@ fin_x1  = sup_px + sqrt(sup_d^2 - tip_radius^2) * cos(sup_theta); // tangent tou
 
 function underside_z(x) = (x - sup_px) * sup_m;
 
-module corner_ring(x) {
+// Every hull sphere gets a distinct mesh phase (a small z-rotation,
+// per-sphere). A sphere is rotation-invariant, so the SHAPE is
+// untouched — but without this, all twelve corner spheres are exact
+// translated copies of one tessellated mesh, and the hull faces that
+// bridge corresponding vertices of two copies are exactly-coplanar
+// quads by construction. CGAL's convex_hull_3 in the site's
+// openscad-wasm build (2025.01.19, the newest published) has a
+// robustness bug on such degenerate inputs: at some widths
+// (hex_width 9/10/12) it fails its border walk ("it != border.end()"
+// assertion), applyHull() emits nothing, and the preview showed only
+// the fin + ribs (st-7x7). Distinct phases (all distinct modulo the
+// 360/$fn fragment angle) put the hull's input points in generic
+// position, which renders intact across the whole param range —
+// verified by the wasm param-sweep test (tests/sweep/). Desktop
+// OpenSCAD renders identically either way (within tessellation).
+module corner_ring(x, phase) {
     // Six fillet spheres at the corners of the core hexagon, oriented so
     // the hull's flats land top/bottom (corners at 0/60/.../300 put edge
     // normals at 90 and 270 — a flat face down on the bed).
     for (k = [0:5])
         translate([x, hex_rc * cos(60 * k), axis_z + hex_rc * sin(60 * k)])
-            sphere(r = edge_fillet);
+            rotate([0, 0, phase + 1.3 * k])
+                sphere(r = edge_fillet);
 }
 
 module stylus_body() {
     hull() {
-        corner_ring(edge_fillet);                  // base ring; face plane at x=0
-        corner_ring(total_length - taper_length);  // ring where the taper starts
+        corner_ring(edge_fillet, 0.4);                  // base ring; face plane at x=0
+        corner_ring(total_length - taper_length, 8.1);  // ring where the taper starts
         translate([total_length - tip_radius, 0, axis_z])
-            sphere(r = tip_radius);                // tip dome
+            rotate([0, 0, 16.7])
+                sphere(r = tip_radius);                 // tip dome
     }
 }
 
