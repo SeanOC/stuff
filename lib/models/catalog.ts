@@ -29,6 +29,16 @@ export const CATALOG: Record<string, CatalogEntry> = {
     blurb:
       "Open-front C-ring cradle with a Multiboard snap-slot backer. Takes any cylinder; the ring, wall, and slot region all flex on sliders.",
   },
+  led_remote_holder_51x84mm: {
+    categoryId: "multiboard",
+    blurb:
+      "OpenGrid wall cradle for a 51×84×7mm LED-strip remote. Open-front pocket with 45°-chamfered retaining lips, thumb scoop, and a 2×3 grid of openGrid snaps on 28mm pitch. Prints snaps-down, support-free.",
+  },
+  led_remote_holder_55x124mm: {
+    categoryId: "multiboard",
+    blurb:
+      "OpenGrid wall cradle for a 55×124×7.7mm LED-strip remote. Same design as the 51×84 twin with a 2×4 snap grid; the plate is capped at 116mm so the remote stands ~10mm proud for easy grabbing.",
+  },
   popcorn_kernel: {
     categoryId: "toys",
     blurb:
