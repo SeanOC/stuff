@@ -29,6 +29,11 @@ export const CATALOG: Record<string, CatalogEntry> = {
     blurb:
       "Open-front C-ring cradle with a Multiboard snap-slot backer. Takes any cylinder; the ring, wall, and slot region all flex on sliders.",
   },
+  ego_lb6500_blower_mount: {
+    categoryId: "multiboard",
+    blurb:
+      "Ego LB6500 leaf-blower wall bracket converted from screw-mount to Multiconnect: imports the original STL, fills its six countersunk screw holes, and fuses a 5-slot Multiconnect backer onto the back face. Slides down onto wall connectors, saddle hooks up.",
+  },
   led_remote_holder_51x84mm: {
     categoryId: "multiboard",
     blurb:
