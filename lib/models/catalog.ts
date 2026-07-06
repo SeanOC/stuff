@@ -32,7 +32,7 @@ export const CATALOG: Record<string, CatalogEntry> = {
   ego_lb6500_blower_mount: {
     categoryId: "multiboard",
     blurb:
-      "Ego LB6500 leaf-blower wall bracket converted from screw-mount to Multiconnect: imports the original STL, fills its six countersunk screw holes, and fuses a 5-slot Multiconnect backer onto the back face. Slides down onto wall connectors, saddle hooks up.",
+      "Ego LB6500 leaf-blower wall bracket converted from screw-mount to a wall grid: imports the original STL, fills its six countersunk screw holes, and fuses the selected back mount — a 5-slot Multiconnect backer (slides down onto wall connectors, load seats into the slot domes) or 8 directional openGrid snaps with the strong nub up. Exports one STL per mount_type.",
   },
   led_remote_holder_51x84mm: {
     categoryId: "multiboard",
