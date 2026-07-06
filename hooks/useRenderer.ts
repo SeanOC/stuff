@@ -101,6 +101,7 @@ export function useRenderer(input: RenderInput): UseRendererReturn {
     void renderToStl({
       source: sourceWithOverrides,
       fetchLibFile: fetchLibFromApi,
+      fetchAssetFile: fetchAssetFromApi,
     }).then((raw) => {
       if (myToken !== cancelToken.current) return; // stale — a newer render already fired
       if (raw.ok && raw.stl && raw.stl.length > 0) {
@@ -152,6 +153,17 @@ async function fetchLibFromApi(relPath: string): Promise<string | null> {
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`fetch ${relPath}: ${res.status}`);
   return res.text();
+}
+
+// Binary import() assets (STL meshes) live next to their model under
+// models/ — a model's relative import path resolves against that dir.
+async function fetchAssetFromApi(relPath: string): Promise<Uint8Array | null> {
+  const url = new URL("/api/source", window.location.origin);
+  url.searchParams.set("path", `models/${relPath}`);
+  const res = await fetch(url.toString());
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`fetch ${relPath}: ${res.status}`);
+  return new Uint8Array(await res.arrayBuffer());
 }
 
 // Exported for the smoke test — otherwise the token-cancel contract is

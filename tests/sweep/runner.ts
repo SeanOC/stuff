@@ -53,6 +53,16 @@ async function fetchLibFromDisk(relPath: string): Promise<string | null> {
   }
 }
 
+// Binary import() assets (STL meshes) resolve against models/, same as
+// the browser's /api/source-backed fetcher.
+async function fetchAssetFromDisk(relPath: string): Promise<Uint8Array | null> {
+  try {
+    return new Uint8Array(await readFile(path.join(ROOT, "models", relPath)));
+  } catch {
+    return null;
+  }
+}
+
 export interface SweepCase {
   label: string;
   values: Record<string, ParamValue>;
@@ -123,6 +133,7 @@ export function sweepModel(stem: string): void {
           const res = await renderToStl({
             source: applyParamOverrides(source, params, c.values),
             fetchLibFile: fetchLibFromDisk,
+            fetchAssetFile: fetchAssetFromDisk,
           });
           const errTail = res.stderr.filter((l) => /error/i.test(l)).slice(0, 4).join(" | ");
           expect(res.ok, `render failed: ${res.errorMessage ?? "?"} ${errTail}`).toBe(true);

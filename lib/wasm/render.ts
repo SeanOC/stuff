@@ -10,13 +10,24 @@
 // renderToStl returns the binary STL plus diagnostic counts so the UI
 // can show "rendered N facets in Tms".
 
-import { buildIncludeClosure, type FileFetcher } from "./closure";
+import {
+  buildIncludeClosure,
+  type AssetFetcher,
+  type FileFetcher,
+} from "./closure";
 
 export interface RenderInput {
   /** SCAD source for the entry model. */
   source: string;
   /** Resolves a lib-relative path like "BOSL2/std.scad" to source. */
   fetchLibFile: FileFetcher;
+  /**
+   * Resolves a models/-relative binary path (entry-level import()
+   * target, e.g. an STL mesh) to bytes. Only needed for models that
+   * import() — omitting it makes those renders fail with the import
+   * reported in `missing`.
+   */
+  fetchAssetFile?: AssetFetcher;
   /** Optional `-D name=value` flags to pass to openscad. */
   defines?: string[];
 }
@@ -78,6 +89,7 @@ export async function renderToStl(input: RenderInput): Promise<RenderResult> {
     closure = await buildIncludeClosure({
       entrySource: input.source,
       fetchLibFile: input.fetchLibFile,
+      fetchAssetFile: input.fetchAssetFile,
     });
   } catch (e) {
     return {
@@ -123,6 +135,12 @@ export async function renderToStl(input: RenderInput): Promise<RenderResult> {
     for (const file of closure.files) {
       ensureParentDirs(instance, file.fsPath);
       instance.FS.writeFile(file.fsPath, file.source);
+    }
+    // Binary import() assets mount at the FS root, siblings of the
+    // entry, so relative import paths resolve.
+    for (const asset of closure.assets) {
+      ensureParentDirs(instance, asset.fsPath);
+      instance.FS.writeFile(asset.fsPath, asset.data);
     }
 
     // Write the entry model and run.

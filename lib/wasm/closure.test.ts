@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildIncludeClosure, extractIncludes } from "./closure";
+import { buildIncludeClosure, extractImports, extractIncludes } from "./closure";
 
 describe("extractIncludes", () => {
   it("pulls include and use directives", () => {
@@ -132,5 +132,78 @@ describe("buildIncludeClosure", () => {
       "/libraries/BOSL2/std.scad",
       "/libraries/QuackWorks/Modules/slot.scad",
     ]);
+  });
+});
+
+describe("extractImports", () => {
+  it("pulls literal-string import targets, deduped", () => {
+    const src = `
+      import("mesh_a.stl", convexity = 10);
+      translate([0, 0, 5]) import("mesh_a.stl");
+      import(file = "mesh_b.stl");
+    `;
+    expect(extractImports(src)).toEqual(["mesh_a.stl", "mesh_b.stl"]);
+  });
+
+  it("skips commented-out imports", () => {
+    const src = `
+      // import("ghost.stl") — mentioned in a comment only
+      import("real.stl");
+    `;
+    expect(extractImports(src)).toEqual(["real.stl"]);
+  });
+
+  it("returns nothing for import-free sources", () => {
+    expect(extractImports("include <BOSL2/std.scad>\ncube(1);")).toEqual([]);
+  });
+});
+
+describe("buildIncludeClosure import() assets", () => {
+  it("fetches entry-level import targets and mounts them at the FS root", async () => {
+    const bytes = new Uint8Array([0x53, 0x54, 0x4c, 0x00]);
+    const result = await buildIncludeClosure({
+      entrySource: 'import("mesh.stl", convexity = 10);',
+      fetchLibFile: async () => null,
+      fetchAssetFile: async (p) => (p === "mesh.stl" ? bytes : null),
+    });
+    expect(result.missing).toEqual([]);
+    expect(result.assets).toEqual([{ fsPath: "/mesh.stl", data: bytes }]);
+  });
+
+  it("reports unresolvable import targets as missing", async () => {
+    const result = await buildIncludeClosure({
+      entrySource: 'import("gone.stl");',
+      fetchLibFile: async () => null,
+      fetchAssetFile: async () => null,
+    });
+    expect(result.assets).toEqual([]);
+    expect(result.missing).toEqual(["gone.stl"]);
+  });
+
+  it("reports import targets as missing when no asset fetcher is supplied", async () => {
+    const result = await buildIncludeClosure({
+      entrySource: 'import("mesh.stl");',
+      fetchLibFile: async () => null,
+    });
+    expect(result.assets).toEqual([]);
+    expect(result.missing).toEqual(["mesh.stl"]);
+  });
+
+  it("does not scan lib files for imports", async () => {
+    const lib: Record<string, string> = {
+      "demo.scad": 'import("lib_side_demo.stl");',
+    };
+    const fetched: string[] = [];
+    const result = await buildIncludeClosure({
+      entrySource: "use <demo.scad>",
+      fetchLibFile: async (p) => lib[p] ?? null,
+      fetchAssetFile: async (p) => {
+        fetched.push(p);
+        return null;
+      },
+    });
+    expect(fetched).toEqual([]);
+    expect(result.assets).toEqual([]);
+    expect(result.missing).toEqual([]);
   });
 });

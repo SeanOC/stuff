@@ -32,6 +32,10 @@ VIEWS: dict[str, dict[str, object]] = {
     "front": {"camera": "0,-300,0,0,0,0",     "projection": "orthogonal"},
     "side":  {"camera": "300,0,0,0,0,0",      "projection": "orthogonal"},
     "iso":   {"camera": "200,-200,150,0,0,0", "projection": "perspective"},
+    # Underside/build-plate face — for models whose mounting interface
+    # (e.g. Multiconnect slots) faces the plate. Not in the render-all
+    # default set; opt in per model with --angles.
+    "back":  {"camera": "0,0,-300,0,0,0",     "projection": "orthogonal"},
 }
 
 _UNRESOLVED_USE_RE = re.compile(
@@ -65,8 +69,16 @@ def render(
     openscad_bin: str = "openscad",
     xvfb: bool = True,
     libs_dir: Path | str | None = None,
+    full_render: bool = False,
 ) -> RenderResult:
-    """Render one view. Raises OpenscadError on any failure."""
+    """Render one view. Raises OpenscadError on any failure.
+
+    full_render forces `--render` (full geometry evaluation) instead of
+    the default OpenCSG preview. Needed for import()-based models: the
+    preview's CSG normalization explodes past its element limit on an
+    imported mesh combined with BOSL2 trees and silently produces a
+    blank PNG (st-f43).
+    """
     if view not in VIEWS:
         raise OpenscadError(f"unknown view {view!r}; expected one of {list(VIEWS)}")
     model = Path(model).resolve()
@@ -85,6 +97,7 @@ def render(
         out_png=out_png,
         model=model,
         defines=defines or {},
+        full_render=full_render,
     )
 
     env = os.environ.copy()
@@ -140,14 +153,19 @@ def _build_cmd(
     out_png: Path,
     model: Path,
     defines: dict[str, str | int | float],
+    full_render: bool = False,
 ) -> list[str]:
     cmd: list[str] = []
     if xvfb:
         if shutil.which("xvfb-run") is None:
             raise OpenscadError("xvfb-run not on PATH; pass xvfb=False if on a display")
         cmd += ["xvfb-run", "-a"]
+    cmd += [openscad_bin]
+    if full_render:
+        # Must precede the positional model path: --render takes an
+        # optional value and would otherwise swallow the path.
+        cmd += ["--render"]
     cmd += [
-        openscad_bin,
         "--colorscheme=Tomorrow",
         f"--imgsize={imgsize},{imgsize}",
         f"--camera={camera}",

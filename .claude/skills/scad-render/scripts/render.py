@@ -25,6 +25,10 @@ ANGLES_DEFAULT = ["top", "front", "side", "iso"]
 _ANCHOR_RE = re.compile(
     r"PRINT_ANCHOR_BBOX\s*=\s*\[\s*([-\d.]+)\s*,\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\]",
 )
+# Models that import() a mesh need --render: the OpenCSG preview's CSG
+# normalization aborts past its element limit on imported-mesh + BOSL2
+# trees and silently writes a blank PNG (st-f43).
+_MESH_IMPORT_RE = re.compile(r"^\s*[^/]*\bimport\s*\(", re.MULTILINE)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -44,12 +48,16 @@ def main(argv: list[str] | None = None) -> int:
 
     known_bbox_mm = _resolve_known_bbox(model, args.known_bbox_mm, defines)
 
+    full_render = bool(_MESH_IMPORT_RE.search(model.read_text(encoding="utf-8")))
+
     renders: dict[str, str] = {}
     warnings: list[str] = []
     try:
         for view in angles:
             out_png = out_dir / f"{view}.png"
-            result = _osc.render(model, out_png, view=view, defines=defines)
+            result = _osc.render(
+                model, out_png, view=view, defines=defines, full_render=full_render
+            )
             renders[view] = str(out_png.relative_to(REPO_ROOT))
             warnings.extend(result.warnings)
     except _osc.OpenscadError as e:

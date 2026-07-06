@@ -12,7 +12,9 @@ import path from "node:path";
 import { type NextRequest } from "next/server";
 
 const REPO_ROOT = process.cwd();
-const ALLOWED_RE = /^(libs|models)\/[A-Za-z0-9._/-]+\.scad$/;
+// .scad sources plus .stl meshes referenced by entry-level import()
+// (served as binary; the WASM driver mounts them into the FS).
+const ALLOWED_RE = /^(libs|models)\/[A-Za-z0-9._/-]+\.(scad|stl)$/;
 
 export async function GET(req: NextRequest) {
   const reqPath = req.nextUrl.searchParams.get("path");
@@ -30,18 +32,23 @@ export async function GET(req: NextRequest) {
     return new Response("path escapes root", { status: 403 });
   }
 
-  let source: string;
+  const isBinary = reqPath.endsWith(".stl");
+  let body: string | Uint8Array;
   try {
-    source = await fs.readFile(abs, "utf8");
+    body = isBinary
+      ? new Uint8Array(await fs.readFile(abs))
+      : await fs.readFile(abs, "utf8");
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code === "ENOENT") {
       return new Response("not found", { status: 404 });
     }
     throw e;
   }
-  return new Response(source, {
+  return new Response(body as BodyInit, {
     headers: {
-      "content-type": "text/plain; charset=utf-8",
+      "content-type": isBinary
+        ? "application/octet-stream"
+        : "text/plain; charset=utf-8",
       "cache-control": "public, max-age=60",
     },
   });

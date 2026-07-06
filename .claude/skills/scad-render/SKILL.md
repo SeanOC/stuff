@@ -27,7 +27,7 @@ The script accepts:
 | `--model PATH`       | Path to the `.scad` file (required).                 |
 | `--name NAME`        | Subdir under `renders/`. Default: model stem.        |
 | `-D key=value`       | Parametric override, repeatable. Passed to openscad. |
-| `--angles a,b,c`     | Subset of {top,front,side,iso}. Default: all four.   |
+| `--angles a,b,c`     | Subset of {top,front,side,iso,back}. Default: top,front,side,iso. `back` (underside) is opt-in — for plate-facing mount interfaces. |
 | `--known-bbox-mm X,Y`| Override the plate bbox used for scale calibration.  |
 
 ## Output contract
