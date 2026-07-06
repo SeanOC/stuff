@@ -107,6 +107,26 @@ og_weld    = 0.02;  // embed of snap tops into the plate face (st-vmn).
                     // and y 56.9..60.1 open to air), so the shallow
                     // weld cannot create enclosed voids.
 
+// The plate build face is NOT a full 138.5 x 89 rectangle: its bottom
+// and top edges are notched between x=35..103.5 (y 0..15 and y 74..89
+// are open through the edges), leaving two horizontal stringers
+// (y 15..30 and 59..74, bounded by the central obround) plus
+// full-height side columns. The snap rows sit half on the stringers
+// and half over the notches, so without extra material ~11 mm of each
+// snap's footprint hangs in air (st-ocs). A backing band per snap row
+// fills the notch behind the snaps: bottom face flush with the plate
+// build face (same 0.02 snap-top weld as the plate), overlapping
+// og_overlap into the stringer and side columns for weld, extending
+// og_lip past the snap edge so no snap edge overhangs. Prints
+// snaps-down support-free: the band sits on the snap tops (3.2 mm
+// bridges across the inter-snap gaps, a 0.4 mm lip at the free edge).
+notch_x0    = 35;    // notch x extent (measured off the mesh)
+notch_x1    = 103.5;
+notch_d     = 15;    // notch depth in y from each plate edge
+og_backer_t = 6;     // backing band thickness behind the snaps
+og_overlap  = 2;     // band weld overlap into stringer/columns
+og_lip      = 0.4;   // band margin past the snap edge (free edge)
+
 // Snap grid auto-fit over the flat plate face (138.5 x 89): as many
 // snaps as fit at 28 mm pitch keeping >= 1 mm rim, always centered —
 // minus any snap whose footprint intersects the central 68.5 x 29
@@ -131,6 +151,16 @@ snap_centers = [
 ];
 assert(mount_type != "opengrid" || len(snap_centers) >= 2,
        "fewer than 2 openGrid snaps fit the plate face");
+
+// Row centers that actually carry snaps (the middle row is skipped by
+// the obround filter above) — each gets a backing band where its snap
+// footprints reach into an edge notch.
+snap_row_ys = [
+    for (ry = [0 : snap_rows - 1])
+        let (py = plate_face_d / 2 + (ry - (snap_rows - 1) / 2) * snap_pitch)
+        if (len([for (c = snap_centers) if (abs(c.y - py) < 0.01) 1]) > 0)
+            py
+];
 
 // Lift of the imported mesh above the bed = thickness of whichever
 // back-mount is selected (its top welds into the plate build face).
@@ -272,6 +302,29 @@ module grid_snaps() {
             zrot(90) welded_directional_snap();
 }
 
+// Backing bands filling the edge notches behind the snap rows so every
+// snap is fully backed (st-ocs — see the notch constants above). One
+// cuboid per row/notch pair: x spans the notch plus og_overlap into
+// the side columns; y from og_lip past the snap's free edge to
+// og_overlap past the notch's inner wall (into the stringer); z from
+// the plate build face plane up og_backer_t (snap tops keep their
+// 0.02 weld embed, now into band as well as plate).
+module snap_backer_bands() {
+    bx = notch_x0 - og_overlap;
+    bw = notch_x1 - notch_x0 + 2 * og_overlap;
+    for (py = snap_row_ys) {
+        y_lo = py - snap_w / 2;  // snap footprint edges at this row
+        y_hi = py + snap_w / 2;
+        if (y_lo < notch_d)      // row reaches into the bottom-edge notch
+            translate([bx, y_lo - og_lip, body_lift])
+                cube([bw, notch_d + og_overlap - y_lo + og_lip, og_backer_t]);
+        if (y_hi > plate_face_d - notch_d)  // ... the top-edge notch
+            translate([bx, plate_face_d - notch_d - og_overlap, body_lift])
+                cube([bw, y_hi + og_lip - (plate_face_d - notch_d - og_overlap),
+                      og_backer_t]);
+    }
+}
+
 blower_body();
 if (fill_screw_holes) screw_plugs();
 if (mount_type == "multiconnect") {
@@ -279,4 +332,5 @@ if (mount_type == "multiconnect") {
     dome_band();
 } else {
     grid_snaps();
+    snap_backer_bands();
 }

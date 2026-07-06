@@ -44,6 +44,16 @@ claims the conversion actually makes:
      stops at 12.8), so a solid probe at +13.0/void at -13.0 pins
      the orientation.
 
+  5. **Every snap is FULLY BACKED (st-ocs).** The imported plate face
+     is notched between x=35..103.5 at both y edges (y 0..15 and
+     74..89 are open), so the snap rows hang ~11 mm over air unless
+     the backing bands fill the notches behind them. A 3x3 probe
+     lattice per snap (center + edges inset 0.5 mm), 1 mm behind the
+     plate-face plane, must be entirely solid — catches a dropped or
+     mis-sized band the moment any snap edge loses its backing. The
+     notches must stay OPEN outside the bands (no full-depth fill /
+     no enclosed voids).
+
 Uses mesh.contains() (trimesh's numpy ray engine) — CI has no
 shapely/scipy, so no cross-section polygon analysis (and no
 trimesh.split, hence the local union-find for the variant mesh).
@@ -191,6 +201,48 @@ def _check_opengrid_variant(stem: str) -> list[Failure]:
             Failure(
                 "opengrid-snaps",
                 f"snap core probe(s) void — snaps missing: {misses[:4]}",
+            )
+        )
+
+    # Full-footprint backing (st-ocs): 3x3 lattice per snap (edges
+    # inset 0.5 mm from the 24.8 footprint), 1 mm behind the
+    # plate-face plane — solid everywhere means no snap edge
+    # overhangs the stringers/backing bands.
+    back_pts = [
+        [x + dx, y + dy, OG_LIFT + 1.0]
+        for y in SNAP_ROWS_Y
+        for x in SNAP_COLS_X
+        for dx in (-11.9, 0.0, 11.9)
+        for dy in (-11.9, 0.0, 11.9)
+    ]
+    backed = mesh.contains(np.array(back_pts))
+    if not bool(backed.all()):
+        misses = [back_pts[i] for i in np.where(~backed)[0]]
+        failures.append(
+            Failure(
+                "opengrid-snaps-backed",
+                f"{len(misses)} probe(s) behind snap footprints are void — "
+                f"snap edges overhang the stringers/backing bands: "
+                f"{misses[:4]}",
+            )
+        )
+    # Bands must fill the notches only behind the snaps — the notch
+    # interior beyond the bands stays open (printability + no
+    # enclosed voids).
+    open_pts = np.array(
+        [[69.25, 1.5, OG_LIFT + 1.0],   # bottom notch below the snap edge
+         [69.25, 88.0, OG_LIFT + 1.0],  # top notch above the snap edge
+         [69.25, 8.0, 15.0]]            # bottom notch behind the band
+    )
+    still_solid = mesh.contains(open_pts)
+    if bool(still_solid.any()):
+        failures.append(
+            Failure(
+                "opengrid-notch-open",
+                f"notch probe(s) unexpectedly solid at "
+                f"{[open_pts[i].tolist() for i in np.where(still_solid)[0]]} — "
+                "backing bands should not fill the edge notches beyond "
+                "the snap rows",
             )
         )
     # Middle row must stay clear of the central obround.
