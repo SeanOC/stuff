@@ -33,9 +33,13 @@ the mesh basics. The extras here pin the claims this model exists for:
      hub is solid, so the dead-center hole defaults OFF (center of the
      plate is solid) and the cable routes through arc slots offset
      from center: each slot centerline must be open through the plate,
-     the slots must stay >= ~2 mm clear of the insert holes, and (when
-     the geometry leaves a gap) the boss must remain solid between
-     slots.
+     the slots must stay >= ~2 mm clear of the insert holes, and the
+     boss must remain solid between adjacent slots. The .scad trims
+     every slot to a pie-wedge budget of 360/count - 15 deg (round end
+     caps included), so a >= 15 deg material bridge between slots is
+     GUARANTEED at any count/arc/width combo — the count=6 sweep case
+     used to ring-cut the center island free (2 shells). The bridge
+     probe here is therefore unconditional for count >= 2.
 """
 
 from __future__ import annotations
@@ -161,8 +165,10 @@ def check(ctx):
 
     # --- offset cable slots (st-so4): each slot open through the full
     # plate height, outer edge >= ~2mm clear of the insert holes, and
-    # the boss solid between slots when the spacing leaves a gap. The
-    # clamp math mirrors slot_r in the .scad. ---
+    # the boss solid between adjacent slots (the .scad trims every slot
+    # to a 360/count - 15deg pie-wedge budget, caps included, so the
+    # bridge is guaranteed at any param combo). The clamp math mirrors
+    # slot_r / slot_span_max in the .scad. ---
     if slot_count > 0:
         rib_in_r = boss_r - 5
         slot_out_max_r = min(
@@ -171,6 +177,8 @@ def check(ctx):
         )
         slot_r = max(slot_w / 2 + 0.5,
                      min(slot_bc_dia / 2, slot_out_max_r - slot_w / 2))
+        bridge_deg = 15.0
+        span_budget = 360.0 / slot_count - bridge_deg
 
         outer_edge = slot_r + slot_w / 2
         insert_clear = (bc_r - insert_hole_dia / 2) - outer_edge
@@ -182,11 +190,15 @@ def check(ctx):
                 f"{bc_dia}mm bolt circle — need >= 2mm of meat",
             ))
 
+        # Openness probes stay 3deg inside the wedge budget so a
+        # trimmed slot (e.g. count=6 x 60deg nominal -> 45deg wedge)
+        # isn't probed in the flat-cut region beyond its ends.
+        probe_half = min(slot_arc / 2, max(0.0, span_budget / 2 - 3.0))
         probe_zs = (0.5, total_h / 2, total_h - 0.5)
         for i in range(slot_count):
             center = slot_rot + i * 360.0 / slot_count
             pts = [_polar(slot_r, center + off, z)
-                   for off in (-slot_arc / 2, 0, slot_arc / 2)
+                   for off in (-probe_half, 0, probe_half)
                    for z in probe_zs]
             if mesh.contains(pts).any():
                 failures.append(Failure(
@@ -197,24 +209,38 @@ def check(ctx):
                 ))
 
         if slot_count >= 2:
-            # full angular half-span of a slot = half the arc between
-            # end-cap centers + the end cap itself
+            # True angular half-span of a slot = half the arc between
+            # end-cap centers + the end cap itself, hard-capped by the
+            # wedge budget. The budget leaves >= bridge_deg between
+            # adjacent slots, so the midpoint bridge probe is
+            # unconditional: the boss must be solid there at ANY
+            # count/arc/width combo (this is the sweep-safe single-
+            # shell guarantee — count=6 used to sever the center).
             cap_half = np.degrees(np.arcsin(min(1.0, (slot_w / 2) / slot_r)))
-            gap = 180.0 / slot_count - (slot_arc / 2 + cap_half)
-            if gap > 3.0:
-                mid_pts = [
-                    _polar(slot_r,
-                           slot_rot + (i + 0.5) * 360.0 / slot_count,
-                           total_h / 2)
-                    for i in range(slot_count)
-                ]
-                if not mesh.contains(mid_pts).all():
-                    failures.append(Failure(
-                        "cable_slots",
-                        f"boss is open between cable slots at "
-                        f"r={slot_r:.2f}mm — slots must stay discrete "
-                        f"cutouts, not merge into a moat",
-                    ))
+            half_span = min(slot_arc / 2 + cap_half, span_budget / 2)
+            gap = 180.0 / slot_count - half_span
+            if gap < bridge_deg / 2 - 0.05:
+                failures.append(Failure(
+                    "cable_slots",
+                    f"slot half-span {half_span:.1f}deg leaves only "
+                    f"{gap:.1f}deg to the midpoint between slots — the "
+                    f"wedge budget must guarantee >= {bridge_deg}deg "
+                    f"bridges (clamp math drifted from the .scad)",
+                ))
+            mid_pts = [
+                _polar(slot_r,
+                       slot_rot + (i + 0.5) * 360.0 / slot_count,
+                       total_h / 2)
+                for i in range(slot_count)
+            ]
+            if not mesh.contains(mid_pts).all():
+                failures.append(Failure(
+                    "cable_slots",
+                    f"boss is open between cable slots at "
+                    f"r={slot_r:.2f}mm — slots must stay discrete "
+                    f"cutouts with a material bridge, not merge into "
+                    f"a moat",
+                ))
 
     # --- zero-support orientation: coplanar room face on the bed ---
     contact = verts[verts[:, 2] < _CONTACT_EPS_MM]

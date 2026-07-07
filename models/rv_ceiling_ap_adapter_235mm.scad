@@ -32,10 +32,13 @@
 //    arc length, width, rotation all tunable) — the arc shape gives a
 //    wide angular pass zone so the cable finds a path without exact
 //    rotational alignment with the bracket. The slot radius is
-//    clamped clear of the insert holes and the rib roots. The old
-//    dead-center hole (cable_hole_dia) is kept as a parameter but
-//    defaults to 0 (off) since it lines up with the bracket's solid
-//    hub.
+//    clamped clear of the insert holes and the rib roots, and each
+//    slot is trimmed to a per-slot angular budget that guarantees a
+//    >= 15 deg material bridge between adjacent slots (so no
+//    count/arc combo can ring-cut the center island free — the
+//    count=6 sweep case). The old dead-center hole (cable_hole_dia)
+//    is kept as a parameter but defaults to 0 (off) since it lines
+//    up with the bracket's solid hub.
 //  - Heat-set inserts default to M3 (4.0 mm hole x 5.5 mm deep) per
 //    the bead; operator to confirm the AP bracket's actual screws.
 //
@@ -161,6 +164,23 @@ slot_out_max_r = min(ap_bolt_circle_dia / 2 - insert_hole_dia / 2 - 2,
                      rib_count > 0 ? rib_in_r - 1 : boss_r - 1.5);
 slot_r = max(cable_slot_w / 2 + 0.5,
              min(cable_slot_bc_dia / 2, slot_out_max_r - cable_slot_w / 2));
+
+// Guaranteed inter-slot bridge (st-so4 sweep fix). A slot's true
+// angular span is cable_slot_arc_deg PLUS the round end caps (each
+// extends asin((w/2)/slot_r) beyond the end-cap center — ~15 deg at
+// the defaults), so 6 slots x 60 deg nominal = ~90 deg true span at
+// 60 deg spacing: the slots merged into a full ring and cut the center
+// island free (2 shells). Fix: each slot is trimmed to a pie-wedge
+// angular budget of (360/count - slot_bridge_deg), which caps the TRUE
+// span — caps included — and guarantees >= slot_bridge_deg of
+// connecting web between adjacent slots for any count/arc/width/radius
+// combo. At the defaults (2 slots, ~90 deg true span, 165 deg budget)
+// the trim is inactive. Tight budgets flat-cut the slot ends; the
+// pass-through width is unaffected.
+slot_bridge_deg = 15;
+slot_span_max = cable_slot_count > 0
+    ? 360 / cable_slot_count - slot_bridge_deg
+    : 360;
 
 // Countersink cone: 45deg from screw_head_dia down to the hole.
 cs_h = (screw_head_dia - screw_hole_dia) / 2;
@@ -296,14 +316,20 @@ module arc_slot_2d(r, w, arc_deg) {
 // Offset cable pass-through slots (st-so4): full-height vertical cuts
 // through the AP boss on the (clamped) slot_r circle, equally spaced,
 // rotated as a pattern by cable_slot_rot_deg. Default pair at 45/225
-// deg sits between the 0/90/180/270 insert axes.
+// deg sits between the 0/90/180/270 insert axes. Each slot is trimmed
+// to its slot_span_max pie-wedge budget so adjacent slots always leave
+// a material bridge (see slot_bridge_deg above).
 module cable_slots() {
     if (cable_slot_count > 0)
         for (i = [0 : cable_slot_count - 1])
             rotate([0, 0, cable_slot_rot_deg + i * 360 / cable_slot_count])
                 translate([0, 0, -1])
                     linear_extrude(total_h + 2)
-                        arc_slot_2d(slot_r, cable_slot_w, cable_slot_arc_deg);
+                        intersection() {
+                            arc_slot_2d(slot_r, cable_slot_w,
+                                        cable_slot_arc_deg);
+                            pie_2d(slot_r + cable_slot_w, slot_span_max);
+                        }
 }
 
 // === Assembly ===
