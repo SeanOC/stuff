@@ -97,7 +97,7 @@ export const CATALOG: Record<string, CatalogEntry> = {
   rv_ceiling_ap_adapter_235mm: {
     categoryId: "household",
     blurb:
-      "Adapter plate that covers a 235mm (9.25\") RV ceiling speaker cutout and mounts a WiFi access point in its place. Self-centering recessed cup nests up into the hole, 252mm one-piece flange screws to the ceiling with 6 countersunk #6 screws, and a 100mm boss carries 4× M3 heat-set inserts on an 82.55mm bolt circle for the AP bracket, plus a central Ethernet pass-through. Prints room-face-down with zero supports.",
+      "Adapter plate that covers a 235mm (9.25\") RV ceiling speaker cutout and mounts a WiFi access point in its place. Self-centering recessed cup nests up into the hole, 252mm one-piece flange screws to the ceiling with 6 countersunk #6 screws, and a 100mm boss carries 4× M3 heat-set inserts on an 82.55mm bolt circle for the AP bracket, plus off-center arc-slot cable pass-throughs that line up with the bracket's offset wiring openings (its center hub is solid). Prints room-face-down with zero supports.",
   },
   blutech_water_softener_foot: {
     categoryId: "household",
