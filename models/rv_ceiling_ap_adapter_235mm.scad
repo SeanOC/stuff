@@ -24,10 +24,18 @@
 //    inside the plate edge and >= 0.5 mm clear of the perimeter lip.
 //  - The AP mating face is FLUSH with the flange's room face and is
 //    defined by a relief groove ring (see print orientation below).
-//  - ADDED (not in the operator spec): a central cable pass-through
-//    (cable_hole_dia, default 25 mm) — a ceiling AP needs its
-//    Ethernet/PoE run to reach it from the ceiling void, and a solid
-//    plate would seal the hole. Set 0 for a blank plate.
+//  - REVISED (st-so4): the AP bracket has a RAISED SOLID CENTER HUB
+//    with only a pinhole — no cable pass-through at the exact center.
+//    Its wiring openings are large cutouts OFFSET from center, inside
+//    the bolt circle. So the cable pass-through is now a parametric
+//    ring of ARC (kidney) SLOTS offset from center (count, radius,
+//    arc length, width, rotation all tunable) — the arc shape gives a
+//    wide angular pass zone so the cable finds a path without exact
+//    rotational alignment with the bracket. The slot radius is
+//    clamped clear of the insert holes and the rib roots. The old
+//    dead-center hole (cable_hole_dia) is kept as a parameter but
+//    defaults to 0 (off) since it lines up with the bracket's solid
+//    hub.
 //  - Heat-set inserts default to M3 (4.0 mm hole x 5.5 mm deep) per
 //    the bead; operator to confirm the AP bracket's actual screws.
 //
@@ -53,6 +61,8 @@
 //    bridges; both trivially self-bridging;
 //  - countersinks + insert entry chamfers: 45 deg cones opening at
 //    the bed — standard self-supporting countersink-down practice;
+//  - cable slots: full-height vertical-walled cuts through the boss
+//    column (open at both faces — no new bridges, no support impact);
 //  - wall lead-in chamfer + lip: up-facing.
 //
 // === Structure / warp mitigation ===
@@ -99,9 +109,18 @@ ap_mount_dia       = 100;   // @param number min=60 max=140 step=1 unit=mm group
 ap_bolt_circle_dia = 82.55; // @param number min=40 max=120 step=0.05 unit=mm group=ap label="Insert bolt-circle diameter (3.25in = 82.55)"
 insert_hole_dia    = 4.0;   // @param number min=3 max=6.5 step=0.1 unit=mm group=ap label="Heat-set insert hole (M3 = 4.0)"
 insert_depth       = 5.5;   // @param number min=4 max=10 step=0.5 unit=mm group=ap label="Heat-set insert depth"
-cable_hole_dia     = 25;    // @param number min=0 max=60 step=1 unit=mm group=ap label="Central cable pass-through (0 = none)"
+cable_hole_dia     = 0;     // @param number min=0 max=60 step=1 unit=mm group=ap label="Dead-center cable hole (0 = off; AP bracket hub is solid)"
 
-// @preset id="default" label="Default (235mm hole, one-piece, M3 inserts)" ceiling_hole_dia=235 hole_clearance=1.25 flange_outer_dia=252 flange_t=4 lip_h=1 screw_count=6 screw_hole_dia=4 screw_head_dia=7 screw_bc_dia=243 recess_depth=9 recess_wall_t=4 rib_count=6 ap_mount_dia=100 ap_bolt_circle_dia=82.55 insert_hole_dia=4 insert_depth=5.5 cable_hole_dia=25
+// ----- Offset cable pass-through (st-so4) -----
+// Arc (kidney) slots on a circle between the center and the insert
+// bolt circle, matching the AP bracket's off-center wiring openings.
+cable_slot_count   = 2;   // @param number min=0 max=6 step=1 group=cable label="Cable slot count (0 = none)"
+cable_slot_bc_dia  = 54;  // @param number min=20 max=80 step=1 unit=mm group=cable label="Slot centerline circle diameter"
+cable_slot_arc_deg = 60;  // @param number min=10 max=120 step=5 unit=deg group=cable label="Slot arc length (between end-cap centers)"
+cable_slot_w       = 14;  // @param number min=6 max=24 step=0.5 unit=mm group=cable label="Slot radial width"
+cable_slot_rot_deg = 45;  // @param number min=0 max=180 step=5 unit=deg group=cable label="Slot pattern rotation"
+
+// @preset id="default" label="Default (235mm hole, one-piece, M3 inserts)" ceiling_hole_dia=235 hole_clearance=1.25 flange_outer_dia=252 flange_t=4 lip_h=1 screw_count=6 screw_hole_dia=4 screw_head_dia=7 screw_bc_dia=243 recess_depth=9 recess_wall_t=4 rib_count=6 ap_mount_dia=100 ap_bolt_circle_dia=82.55 insert_hole_dia=4 insert_depth=5.5 cable_hole_dia=0 cable_slot_count=2 cable_slot_bc_dia=54 cable_slot_arc_deg=60 cable_slot_w=14 cable_slot_rot_deg=45
 
 // Debug: cut the +Y half away to expose the cross-section (used by
 // the committed section render; never on for printing/export).
@@ -131,6 +150,17 @@ bury          = 0.6;   // volumetric overlap for welded unions (st-v7k)
 rib_w    = 2.4;
 rib_in_r = boss_r - 5;
 rib_out_r = wall_in_r + 0.75;
+
+// Cable slot centerline radius, clamped so the slot's outer edge
+// always stays >= 2 mm clear of the insert holes and >= 1 mm clear of
+// the rib roots (never cut a rib or an insert boss), and its inner
+// edge stays >= 0.5 mm off the axis (valid annulus even at extreme
+// slider combos — the inner-edge clamp wins if they conflict). At the
+// defaults every clamp is inactive: slot_r = 54/2 = 27, max 30.275.
+slot_out_max_r = min(ap_bolt_circle_dia / 2 - insert_hole_dia / 2 - 2,
+                     rib_count > 0 ? rib_in_r - 1 : boss_r - 1.5);
+slot_r = max(cable_slot_w / 2 + 0.5,
+             min(cable_slot_bc_dia / 2, slot_out_max_r - cable_slot_w / 2));
 
 // Countersink cone: 45deg from screw_head_dia down to the hole.
 cs_h = (screw_head_dia - screw_hole_dia) / 2;
@@ -228,10 +258,52 @@ module insert_holes() {
             }
 }
 
+// Optional dead-center hole (default off — the AP bracket's center
+// hub is solid, so nothing lines up behind it; see st-so4 note).
 module cable_hole() {
     if (cable_hole_dia > 0)
         translate([0, 0, -1])
             cylinder(d = cable_hole_dia, h = total_h + 2);
+}
+
+// 2D pie wedge spanning [-a/2, +a/2] out to radius r, for masking an
+// annulus down to an arc. Fan-triangulated from the origin.
+module pie_2d(r, a) {
+    n = max(4, ceil($fn * a / 360));
+    polygon(concat([[0, 0]],
+        [for (i = [0 : n]) let (t = -a / 2 + a * i / n)
+            [r * cos(t), r * sin(t)]]));
+}
+
+// 2D arc (kidney) slot: an annular band of radial width w on
+// centerline radius r, spanning arc_deg between the end-cap centers,
+// closed with semicircular ends (so the full angular span is a bit
+// more than arc_deg).
+module arc_slot_2d(r, w, arc_deg) {
+    intersection() {
+        difference() {
+            circle(r = r + w / 2);
+            circle(r = r - w / 2);
+        }
+        pie_2d(r + w, arc_deg);
+    }
+    for (a = [-arc_deg / 2, arc_deg / 2])
+        rotate([0, 0, a])
+            translate([r, 0])
+                circle(d = w);
+}
+
+// Offset cable pass-through slots (st-so4): full-height vertical cuts
+// through the AP boss on the (clamped) slot_r circle, equally spaced,
+// rotated as a pattern by cable_slot_rot_deg. Default pair at 45/225
+// deg sits between the 0/90/180/270 insert axes.
+module cable_slots() {
+    if (cable_slot_count > 0)
+        for (i = [0 : cable_slot_count - 1])
+            rotate([0, 0, cable_slot_rot_deg + i * 360 / cable_slot_count])
+                translate([0, 0, -1])
+                    linear_extrude(total_h + 2)
+                        arc_slot_2d(slot_r, cable_slot_w, cable_slot_arc_deg);
 }
 
 // === Assembly ===
@@ -245,6 +317,7 @@ module adapter_plate() {
         screw_holes();
         insert_holes();
         cable_hole();
+        cable_slots();
     }
 }
 
