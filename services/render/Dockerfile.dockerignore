@@ -1,0 +1,22 @@
+# Build-context excludes for services/render/Dockerfile (BuildKit reads
+# <dockerfile>.dockerignore). The build only COPYs lib/scad-params,
+# services/render, scripts/vendor-libs.sh, libs/README.md and models/ —
+# everything else is dead weight in the context.
+**/node_modules
+**/.next
+**/dist
+.git
+exports
+renders
+test-results
+libs/BOSL2
+libs/QuackWorks
+libs/gridfinity-rebuilt-openscad
+experiments
+spike
+tests
+.pytest_cache
+*.stl
+!models/**/*.stl
+# keep the one baked failure-path fixture (tests/ is excluded above)
+!tests/fixtures/render_service_bad.scad

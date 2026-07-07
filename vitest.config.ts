@@ -9,6 +9,7 @@ export default defineConfig({
       "hooks/**/*.test.tsx",
       "components/**/*.test.tsx",
       "app/**/*.test.ts",
+      "services/**/*.test.ts",
     ],
     environment: "node",
   },

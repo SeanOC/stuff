@@ -54,3 +54,6 @@ playwright/.cache/
 state.json
 CLAUDE.md
 GEMINI.md
+
+# render service build artifact (st-065)
+services/render/dist/
