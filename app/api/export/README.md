@@ -27,11 +27,61 @@ content-type: application/json
 200 OK
 content-type: application/sla
 content-disposition: attachment; filename="cylindrical_holder_slot.stl"
+x-cache: MISS
 x-render-ms: 4321
 x-libs-mounted: 18
 ```
 
 Errors return JSON `{ "error": "...", ...detail }` with a 4xx/5xx code.
+
+## STL cache (st-uqk)
+
+Hull-heavy models (the Ego blower mount) take ~22s to render even warm,
+risking cold-start 504s. To avoid re-rendering identical requests, the
+route caches successful renders in a durable **Vercel Blob** store keyed
+by content:
+
+```
+key = sha256( closureHash + normalizedParams + rendererVersion )
+```
+
+- **`closureHash`** — sha256 of the entry `.scad` plus every file in its
+  `include`/`use` closure (walked by `lib/wasm/closure.ts`) and every
+  `import()`ed binary asset. Content, never mtime/version strings, so any
+  edit to the model **or a shared lib it pulls in** busts the cache. Files
+  are sorted by path before hashing, so include-walk order can't shift it.
+- **`normalizedParams`** — every declared param with defaults resolved,
+  keys sorted, values formatted stably. An omitted param and its explicit
+  default collide to the same key; param order never matters; any value
+  change differs. (`-0` collapses to `0`.)
+- **`rendererVersion`** — the `openscad-wasm-prebuilt` pin. A renderer
+  upgrade can change output, so it must bust the cache.
+
+Flow: compute key → `store.get`. **HIT** → stream the stored STL with
+`cache-control: public, max-age=31536000, immutable` and `x-cache: HIT`
+(sub-second; also rides Vercel's edge/browser cache). **MISS** → run the
+existing render path → **only on `result.ok`** store the bytes → serve
+with `x-cache: MISS` and `cache-control: no-store`. A failed/partial
+render is never cached (the st-zph/st-7x7 class).
+
+Configuration & fallbacks:
+
+- Requires `BLOB_READ_WRITE_TOKEN` (set automatically when a Vercel Blob
+  store is linked to the project). **Without it, caching is disabled** and
+  the route live-renders every request exactly as before — no `x-cache`
+  header. Local dev and CI need no Blob credentials.
+- Cache faults are swallowed: a `get`/`put` error logs a warning and falls
+  through to a live render rather than failing the export.
+- The store has no auto-eviction — the `export-cache/` namespace grows
+  unbounded. Acceptable short-term for a content-addressed cache (dead keys
+  are simply never read again); a TTL/LRU sweep can come later.
+- Concurrent misses for the same key both render (thundering herd) and
+  re-`put` byte-identical bytes (`allowOverwrite`). Not deduped; a
+  single-flight lock is a possible later refinement.
+
+Key composition and hit/miss/invalidation are covered by
+`lib/wasm/export-cache.test.ts` (unit) and `app/api/export/route.test.ts`
+(end-to-end with an in-memory blob mock).
 
 ## OpenSCAD packaging
 

@@ -30,6 +30,13 @@ import {
   type ParamValue,
 } from "@/lib/scad-params/parse";
 import { renderToStl } from "@/lib/wasm/render";
+import {
+  computeCacheKey,
+  computeClosureHash,
+  getExportCacheStore,
+  normalizeParams,
+  rendererVersion,
+} from "@/lib/wasm/export-cache";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -90,6 +97,37 @@ export async function POST(req: NextRequest) {
     return jsonError(400, validated.error);
   }
 
+  const filename = path.basename(body.model, ".scad") + ".stl";
+  const fetchLibFile = fsLibFetcher;
+  const fetchAssetFile = assetFetcherFor(path.dirname(abs));
+
+  // Content-addressed cache lookup. The key hashes the model's full render
+  // closure (original source + libs + import()ed assets), the fully-resolved
+  // params, and the renderer version — so a hit is guaranteed byte-identical
+  // to what a fresh render would produce. A HIT skips the ~22s render.
+  const store = getExportCacheStore();
+  let cacheKey: string | null = null;
+  if (store) {
+    try {
+      cacheKey = computeCacheKey({
+        closureHash: await computeClosureHash({
+          entrySource: source,
+          fetchLibFile,
+          fetchAssetFile,
+        }),
+        normalizedParams: normalizeParams(validated.values),
+        rendererVersion: rendererVersion(),
+      });
+      const hit = await store.get(cacheKey);
+      if (hit) return stlResponse(hit, filename, { cache: "HIT" });
+    } catch (e) {
+      // A cache fault must never break exports — fall through to a live
+      // render. cacheKey may be set (store.get failed) or null (hashing
+      // failed); either way we skip the store.put below when it's null.
+      console.warn("export cache lookup failed:", e);
+    }
+  }
+
   // Rewrite each @param's own assignment line in-source. We cannot use
   // `-D` because openscad-wasm-prebuilt silently ignores command-line
   // defines; and we cannot prepend a prelude because OpenSCAD's last-
@@ -100,8 +138,8 @@ export async function POST(req: NextRequest) {
 
   const result = await renderToStl({
     source: sourceWithOverrides,
-    fetchLibFile: fsLibFetcher,
-    fetchAssetFile: assetFetcherFor(path.dirname(abs)),
+    fetchLibFile,
+    fetchAssetFile,
   });
   if (!result.ok || !result.stl) {
     return jsonError(500, "render failed", {
@@ -111,22 +149,58 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const filename = path.basename(body.model, ".scad") + ".stl";
   // STL is binary; copy into a tight ArrayBuffer so the Response body
   // doesn't drag along any unrelated WASM heap.
   const out = new Uint8Array(result.stl.byteLength);
   out.set(result.stl);
-  return new Response(out, {
-    status: 200,
-    headers: {
-      "content-type": "application/sla",
-      "content-length": String(out.byteLength),
-      "content-disposition": `attachment; filename="${filename}"`,
-      "x-render-ms": result.wallMs.toFixed(0),
-      "x-libs-mounted": String(result.filesMounted),
-      "cache-control": "no-store",
-    },
+
+  // Cache ONLY this verified-good render. store/cacheKey are both set only
+  // when caching is configured AND the key was computed cleanly above. A put
+  // failure is best-effort — never fail the export because the cache write
+  // stumbled.
+  if (store && cacheKey) {
+    try {
+      await store.put(cacheKey, out);
+    } catch (e) {
+      console.warn("export cache write failed:", e);
+    }
+  }
+
+  return stlResponse(out, filename, {
+    // Only label a MISS when caching is actually in play; with no store the
+    // response carries no x-cache signal at all (today's behavior).
+    cache: store ? "MISS" : null,
+    renderMs: result.wallMs,
+    libsMounted: result.filesMounted,
   });
+}
+
+// A HIT is content-addressed, so it's safe to mark immutable — the URL's
+// bytes can never change for that (model, params, renderer) triple. A MISS
+// keeps no-store: the same request will HIT next time and the fresh render
+// carries the diagnostic timing headers.
+function stlResponse(
+  bytes: Uint8Array,
+  filename: string,
+  meta: { cache: "HIT" | "MISS" | null; renderMs?: number; libsMounted?: number },
+): Response {
+  // Copy into a fresh ArrayBuffer-backed view so the body is a plain
+  // BodyInit (not SharedArrayBuffer-backed) and carries no unrelated heap.
+  const body = new Uint8Array(bytes.byteLength);
+  body.set(bytes);
+  const headers: Record<string, string> = {
+    "content-type": "application/sla",
+    "content-length": String(body.byteLength),
+    "content-disposition": `attachment; filename="${filename}"`,
+    "cache-control":
+      meta.cache === "HIT"
+        ? "public, max-age=31536000, immutable"
+        : "no-store",
+  };
+  if (meta.cache) headers["x-cache"] = meta.cache;
+  if (meta.renderMs !== undefined) headers["x-render-ms"] = meta.renderMs.toFixed(0);
+  if (meta.libsMounted !== undefined) headers["x-libs-mounted"] = String(meta.libsMounted);
+  return new Response(body, { status: 200, headers });
 }
 
 interface ValidatedParams { values: Record<string, ParamValue> }
