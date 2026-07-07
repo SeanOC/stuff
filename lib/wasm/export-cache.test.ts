@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   computeCacheKey,
   computeClosureHash,
+  nativeRendererVersion,
   normalizeParams,
   rendererVersion,
   type ExportCacheStore,
@@ -115,6 +116,34 @@ describe("computeCacheKey", () => {
 describe("rendererVersion", () => {
   it("returns the pinned openscad-wasm-prebuilt version", () => {
     expect(rendererVersion()).toBe("1.2.0");
+  });
+});
+
+describe("nativeRendererVersion", () => {
+  it("defaults to native:1 and follows RENDER_SERVICE_RENDERER_VERSION", () => {
+    delete process.env.RENDER_SERVICE_RENDERER_VERSION;
+    expect(nativeRendererVersion()).toBe("native:1");
+    process.env.RENDER_SERVICE_RENDERER_VERSION = "dev.2025-09-06";
+    expect(nativeRendererVersion()).toBe("native:dev.2025-09-06");
+    delete process.env.RENDER_SERVICE_RENDERER_VERSION;
+  });
+
+  it("can never collide with the WASM rendererVersion", () => {
+    // WASM's version is a bare semver from package.json; native is always
+    // "native:"-prefixed, so the two cache-key spaces are disjoint.
+    expect(nativeRendererVersion()).not.toBe(rendererVersion());
+    expect(nativeRendererVersion().startsWith("native:")).toBe(true);
+    const k1 = computeCacheKey({
+      closureHash: "h",
+      normalizedParams: "{}",
+      rendererVersion: rendererVersion(),
+    });
+    const k2 = computeCacheKey({
+      closureHash: "h",
+      normalizedParams: "{}",
+      rendererVersion: nativeRendererVersion(),
+    });
+    expect(k1).not.toBe(k2);
   });
 });
 

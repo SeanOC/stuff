@@ -83,6 +83,61 @@ Key composition and hit/miss/invalidation are covered by
 `lib/wasm/export-cache.test.ts` (unit) and `app/api/export/route.test.ts`
 (end-to-end with an in-memory blob mock).
 
+## Native render service path (st-d32)
+
+When `RENDER_SERVICE_URL` is set, a cache **MISS** renders via the native
+OpenSCAD Cloud Run service (`services/render/`, ~3–4× faster than WASM)
+instead of in-process WASM:
+
+```
+key(native) → store.get → HIT? serve
+  → MISS → POST <service>/render (keyless WIF auth)
+      → ok    → store.put(key(native)) → serve  (x-renderer: native)
+      → error → key(wasm) → store.get → HIT? serve
+                  → WASM render → store.put(key(wasm))  (x-renderer: wasm)
+```
+
+- **Flag-gated, ships dark**: `RENDER_SERVICE_URL` unset (or the WIF vars
+  missing/malformed — warned once) means this section doesn't exist; the
+  route behaves exactly as documented above, WASM-only, no `x-renderer`
+  header.
+- **Graceful degradation**: any service failure — missing OIDC token,
+  token exchange, network, timeout (45s), non-200, empty body — logs a
+  warning and falls back to the WASM render. `renderViaService` never
+  throws (`lib/render-service/client.ts`).
+- **Distinct cache keys**: native and WASM tessellate differently, so the
+  native path keys with `rendererVersion = "native:" +
+  RENDER_SERVICE_RENDERER_VERSION` (default `"1"`; bump in lockstep with
+  the service image's openscad pin) while WASM keeps the
+  `openscad-wasm-prebuilt` semver. The two output spaces can never share
+  an entry; WASM fallback bytes are stored under the WASM key only.
+- **Keyless auth (operator-locked)**: no stored secrets. Each miss
+  exchanges the request's Vercel OIDC token (`x-vercel-oidc-token` header;
+  `VERCEL_OIDC_TOKEN` env for `vercel env pull` local dev) for a
+  Google-signed ID token via Workload Identity Federation
+  (`lib/render-service/auth.ts`), impersonating the render-invoker SA.
+  Cloud Run is deployed auth-required, so only that SA can invoke it.
+
+Vercel env:
+
+| var | meaning |
+|-----|---------|
+| `RENDER_SERVICE_URL` | Cloud Run service URL; unset = feature off |
+| `GCP_WORKLOAD_IDENTITY_PROVIDER` | WIF provider resource name (`projects/…/providers/…`) |
+| `GCP_RENDER_INVOKER_SA` | render-invoker SA email (`roles/run.invoker`) |
+| `RENDER_SERVICE_RENDERER_VERSION` | cache-busting suffix tracking the service's openscad pin |
+
+Deploys of the service are keyless too: `.github/workflows/
+deploy-render-service.yml` (GitHub OIDC → WIF), gated on the
+`GCP_WIF_PROVIDER` repo variable so it no-ops until the operator's WIF
+infra exists.
+
+Known limitation: the closure hash comes from the **app deployment's**
+model/lib files, while the service renders its **image's baked copies**.
+Deploy both from the same commit (the deploy workflow's paths filter
+covers models/libs changes) or a skewed window can cache bytes rendered
+from older sources.
+
 ## OpenSCAD packaging
 
 We **don't** ship a native `openscad` binary. The route reuses the

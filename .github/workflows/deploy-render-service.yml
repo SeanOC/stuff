@@ -1,0 +1,127 @@
+# Deploy the native render service (services/render/) to Cloud Run — st-d32.
+#
+# KEYLESS by design (operator-locked): GitHub's OIDC token is exchanged for
+# GCP credentials via Workload Identity Federation. No service-account JSON
+# key exists anywhere in this repo or its secrets.
+#
+# SHIPS DARK: the deploy job is gated on the GCP_WIF_PROVIDER repository
+# VARIABLE being set. Until the operator finishes the WIF setup (see
+# st-d32's checklist) and sets the vars below, every run of this workflow
+# is a no-op skip — merging this file changes nothing.
+#
+# Required repository variables (Settings -> Secrets and variables ->
+# Actions -> Variables):
+#   GCP_WIF_PROVIDER   WIF provider resource for the GitHub-CI pool:
+#                      projects/<num>/locations/global/workloadIdentityPools/<pool>/providers/<provider>
+#   GCP_DEPLOYER_SA    deployer SA email (roles: Cloud Run deploy +
+#                      Artifact Registry writer)
+#   GCP_PROJECT_ID     GCP project id
+# Optional (defaults in env below):
+#   GCP_REGION, GAR_REPOSITORY, RENDER_SERVICE_NAME
+#
+# The image bakes models/ + vendored libs (services/render/Dockerfile), so
+# any change to models or libs pins needs a redeploy for the service to
+# track the app — hence the broad paths filter.
+
+name: deploy-render-service
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "services/render/**"
+      - "lib/scad-params/**"
+      - "models/**"
+      - "libs/README.md"
+      - "scripts/vendor-libs.sh"
+      - ".github/workflows/deploy-render-service.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-render-service
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  # Mint the GitHub OIDC token that WIF exchanges for GCP credentials.
+  id-token: write
+
+jobs:
+  deploy:
+    name: build + deploy to Cloud Run
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Ships dark: skip cleanly until the operator's WIF infra exists.
+    if: vars.GCP_WIF_PROVIDER != ''
+    env:
+      REGION: ${{ vars.GCP_REGION || 'us-central1' }}
+      REPOSITORY: ${{ vars.GAR_REPOSITORY || 'stuff' }}
+      SERVICE: ${{ vars.RENDER_SERVICE_NAME || 'stuff-render' }}
+      PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to GCP (keyless, GitHub OIDC -> WIF)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure docker for Artifact Registry
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - name: Build image
+        # Build context is the repo root: the Dockerfile bakes models/,
+        # lib/scad-params/ (param->define parity), and vendors libs at the
+        # pins in libs/README.md.
+        run: |
+          IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${SERVICE}"
+          echo "IMAGE=${IMAGE}" >> "$GITHUB_ENV"
+          docker build -f services/render/Dockerfile \
+            -t "${IMAGE}:${GITHUB_SHA}" -t "${IMAGE}:latest" .
+
+      - name: Push image
+        run: |
+          docker push "${IMAGE}:${GITHUB_SHA}"
+          docker push "${IMAGE}:latest"
+
+      - name: Deploy to Cloud Run
+        # Auth REQUIRED (no --allow-unauthenticated): only identities with
+        # roles/run.invoker — the render-invoker SA the Vercel app
+        # impersonates via WIF — can call the service.
+        # min-instances=1 kills cold starts on the export miss path.
+        # 2 CPU / 2Gi sized to the heaviest corpus model (hull-heavy ego
+        # mount, ~6.5s native); timeout matches the app's 45s client cap
+        # plus headroom.
+        run: |
+          gcloud run deploy "${SERVICE}" \
+            --image "${IMAGE}:${GITHUB_SHA}" \
+            --project "${PROJECT_ID}" \
+            --region "${REGION}" \
+            --platform managed \
+            --no-allow-unauthenticated \
+            --min-instances 1 \
+            --max-instances 3 \
+            --cpu 2 \
+            --memory 2Gi \
+            --timeout 90 \
+            --port 8080 \
+            --quiet
+
+      - name: Verify service is serving
+        # `gcloud run services describe` only proves the revision exists;
+        # hit /health to prove it answers. print-identity-token needs the
+        # deployer SA to hold run.invoker on the service — best-effort so
+        # a stricter IAM split doesn't fail an otherwise-good deploy.
+        continue-on-error: true
+        run: |
+          URL=$(gcloud run services describe "${SERVICE}" \
+            --project "${PROJECT_ID}" --region "${REGION}" \
+            --format 'value(status.url)')
+          echo "service URL: ${URL}"
+          TOKEN=$(gcloud auth print-identity-token \
+            --impersonate-service-account "${{ vars.GCP_DEPLOYER_SA }}" \
+            --audiences "${URL}")
+          curl -fsS -H "Authorization: Bearer ${TOKEN}" "${URL}/health"
