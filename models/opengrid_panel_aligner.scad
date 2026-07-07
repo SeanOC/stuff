@@ -175,10 +175,16 @@ module plate_body() {
 }
 
 // 45deg chamfer cuts along all four bottom edges of the plate. Four
-// explicit triangular prisms (bounded below at the plate bottom plane
-// so they cannot clip the snaps) rather than edge_profile(): the
-// prisms overshoot the ends and overlap each other at the corners, so
-// the cuts stay transversal through the rounded plate corners.
+// explicit triangular prisms rather than edge_profile(): the prisms
+// overshoot the ends and overlap each other at the corners, so the
+// cuts stay transversal through the rounded plate corners. The prisms
+// also overshoot 2mm BELOW the plate bottom plane — a cut bottom
+// coplanar with the plate bottom face is a degenerate boolean that
+// renders as a scalloped z-fighting artifact (st-n4v). Overshooting
+// down cannot clip the snaps: this is differenced from plate_body()
+// only; grid_snaps() is a sibling union at top level. The hypotenuse
+// still passes through (edge - plate_chamfer, plate_z0), so the
+// visible chamfer is unchanged.
 module plate_rim_chamfers() {
     c = plate_chamfer;
     // ±X edges: profile in XZ, extruded along Y.
@@ -187,8 +193,8 @@ module plate_rim_chamfers() {
             translate([0, (plate_d + 4) / 2, 0])
                 rotate([90, 0, 0])
                     linear_extrude(height = plate_d + 4)
-                        polygon([[plate_w / 2 - c, plate_z0],
-                                 [plate_w / 2 + 2, plate_z0],
+                        polygon([[plate_w / 2 - c - 2, plate_z0 - 2],
+                                 [plate_w / 2 + 2, plate_z0 - 2],
                                  [plate_w / 2 + 2, plate_z0 + c + 2]]);
     // ±Y edges: profile in YZ, extruded along X.
     for (sy = [-1, 1])
@@ -196,8 +202,8 @@ module plate_rim_chamfers() {
             translate([-(plate_w + 4) / 2, -plate_d / 2, 0])
                 rotate([90, 0, 90])
                     linear_extrude(height = plate_w + 4)
-                        polygon([[c, plate_z0],
-                                 [-2, plate_z0],
+                        polygon([[c + 2, plate_z0 - 2],
+                                 [-2, plate_z0 - 2],
                                  [-2, plate_z0 + c + 2]]);
 }
 
