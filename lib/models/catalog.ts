@@ -94,6 +94,11 @@ export const CATALOG: Record<string, CatalogEntry> = {
     blurb:
       "Captive bench mount for a Blu Technology 3-way black-tank flush valve. Asymmetric saddles clamp the two inner fittings (31.5mm left, 29.25mm right) across a 37mm gap; vertical exclusion cylinder carves cap clearance for the T-handle's 90° swing. 4× M3 SHCS into heat-set inserts.",
   },
+  rv_ceiling_ap_adapter_235mm: {
+    categoryId: "household",
+    blurb:
+      "Adapter plate that covers a 235mm (9.25\") RV ceiling speaker cutout and mounts a WiFi access point in its place. Self-centering recessed cup nests up into the hole, 252mm one-piece flange screws to the ceiling with 6 countersunk #6 screws, and a 100mm boss carries 4× M3 heat-set inserts on an 82.55mm bolt circle for the AP bracket, plus a central Ethernet pass-through. Prints room-face-down with zero supports.",
+  },
   blutech_water_softener_foot: {
     categoryId: "household",
     blurb:
