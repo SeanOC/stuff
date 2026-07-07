@@ -128,7 +128,21 @@ RENDER_REPO_ROOT="$PWD" OPENSCADPATH="$PWD/libs" RENDER_XVFB=0 \
 | `OPENSCADPATH` | `<root>/libs` | vendored-library search path |
 | `RENDER_XVFB` | on (`!=0`) | wrap openscad in `xvfb-run`; set `0` where headless export works |
 
-## Not in scope (Phase 2+)
+## Phase 2 (st-d32): deploy + app wiring
 
-Cloud Run deploy, CI build/push, `/api/export` proxy + `RENDER_SERVICE_URL`
-flag, auth hardening. See st-rtb for the full phasing.
+Built and flag-gated; goes live once the operator's WIF infra exists.
+
+- **CI deploy**: `.github/workflows/deploy-render-service.yml` builds this
+  image and deploys to Cloud Run (auth-required, `--min-instances 1`)
+  keylessly via GitHub OIDC → Workload Identity Federation. The job skips
+  until the `GCP_WIF_PROVIDER` repo variable is set.
+- **App wiring**: `/api/export` calls `POST /render` on a cache miss when
+  `RENDER_SERVICE_URL` is set, authenticating with a Vercel-OIDC → WIF ID
+  token (`lib/render-service/`). Any service failure falls back to the
+  in-process WASM render. Native output is cached under a distinct
+  `rendererVersion` (`native:<RENDER_SERVICE_RENDERER_VERSION>`) so it
+  never shares an entry with WASM bytes — bump that env in lockstep with
+  this image's openscad base pin. Details in `app/api/export/README.md`.
+
+Runtime end-to-end verification (live WIF + Cloud Run) is a follow-up
+once the operator setup in st-d32 lands. See st-rtb for the full phasing.

@@ -34,9 +34,14 @@ import {
   computeCacheKey,
   computeClosureHash,
   getExportCacheStore,
+  nativeRendererVersion,
   normalizeParams,
   rendererVersion,
 } from "@/lib/wasm/export-cache";
+import {
+  getRenderServiceConfig,
+  renderViaService,
+} from "@/lib/render-service/client";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -104,27 +109,95 @@ export async function POST(req: NextRequest) {
   // Content-addressed cache lookup. The key hashes the model's full render
   // closure (original source + libs + import()ed assets), the fully-resolved
   // params, and the renderer version — so a hit is guaranteed byte-identical
-  // to what a fresh render would produce. A HIT skips the ~22s render.
+  // to what a fresh render would produce. A HIT skips the render entirely.
+  //
+  // Native vs WASM (st-d32): the two renderers tessellate differently, so
+  // they key under DISTINCT rendererVersion values and never share an
+  // entry. The hash parts are computed once; only the version component
+  // differs between the two keys.
   const store = getExportCacheStore();
-  let cacheKey: string | null = null;
+  const nativeConfig = getRenderServiceConfig();
+  let wasmKey: string | null = null;
+  let nativeKey: string | null = null;
   if (store) {
     try {
-      cacheKey = computeCacheKey({
+      const hashParts = {
         closureHash: await computeClosureHash({
           entrySource: source,
           fetchLibFile,
           fetchAssetFile,
         }),
         normalizedParams: normalizeParams(validated.values),
-        rendererVersion: rendererVersion(),
-      });
-      const hit = await store.get(cacheKey);
-      if (hit) return stlResponse(hit, filename, { cache: "HIT" });
+      };
+      wasmKey = computeCacheKey({ ...hashParts, rendererVersion: rendererVersion() });
+      if (nativeConfig) {
+        nativeKey = computeCacheKey({
+          ...hashParts,
+          rendererVersion: nativeRendererVersion(),
+        });
+      }
+      // Look up under the renderer we intend to use for a miss.
+      const hit = await store.get(nativeKey ?? wasmKey);
+      if (hit) {
+        return stlResponse(hit, filename, {
+          cache: "HIT",
+          // x-renderer only appears when the native feature is enabled;
+          // flag unset keeps today's header set byte-for-byte.
+          renderer: nativeConfig ? "native" : undefined,
+        });
+      }
     } catch (e) {
       // A cache fault must never break exports — fall through to a live
-      // render. cacheKey may be set (store.get failed) or null (hashing
-      // failed); either way we skip the store.put below when it's null.
+      // render. The keys may be set (store.get failed) or null (hashing
+      // failed); the store.put calls below skip when null.
       console.warn("export cache lookup failed:", e);
+    }
+  }
+
+  // Native render service path (st-d32): flag-gated on RENDER_SERVICE_URL.
+  // A verified-good service render is cached under the NATIVE key and
+  // served; ANY service failure (auth, network, timeout, render error)
+  // degrades gracefully to the WASM path below.
+  if (nativeConfig) {
+    const serviceResult = await renderViaService({
+      config: nativeConfig,
+      model: body.model,
+      params: validated.values,
+      // Vercel delivers the OIDC token as a request header on each
+      // invocation; VERCEL_OIDC_TOKEN covers `vercel env pull` local dev.
+      vercelOidcToken:
+        req.headers.get("x-vercel-oidc-token") ??
+        process.env.VERCEL_OIDC_TOKEN ??
+        null,
+    });
+    if (serviceResult.ok && serviceResult.stl) {
+      const out = new Uint8Array(serviceResult.stl.byteLength);
+      out.set(serviceResult.stl);
+      if (store && nativeKey) {
+        try {
+          await store.put(nativeKey, out);
+        } catch (e) {
+          console.warn("export cache write failed:", e);
+        }
+      }
+      return stlResponse(out, filename, {
+        cache: store ? "MISS" : null,
+        renderMs: serviceResult.renderMs,
+        renderer: "native",
+      });
+    }
+    console.warn(
+      `native render service failed (${serviceResult.errorMessage}); falling back to WASM`,
+    );
+    // Second-chance lookup: a prior WASM render of this exact content may
+    // already be cached under the WASM key — cheaper than a ~22s render.
+    if (store && wasmKey) {
+      try {
+        const hit = await store.get(wasmKey);
+        if (hit) return stlResponse(hit, filename, { cache: "HIT", renderer: "wasm" });
+      } catch (e) {
+        console.warn("export cache lookup failed:", e);
+      }
     }
   }
 
@@ -154,13 +227,15 @@ export async function POST(req: NextRequest) {
   const out = new Uint8Array(result.stl.byteLength);
   out.set(result.stl);
 
-  // Cache ONLY this verified-good render. store/cacheKey are both set only
-  // when caching is configured AND the key was computed cleanly above. A put
+  // Cache ONLY this verified-good render, under the WASM key — even when
+  // the native path was attempted and fell back, WASM bytes must never
+  // land under the native key. store/wasmKey are both set only when
+  // caching is configured AND the key was computed cleanly above. A put
   // failure is best-effort — never fail the export because the cache write
   // stumbled.
-  if (store && cacheKey) {
+  if (store && wasmKey) {
     try {
-      await store.put(cacheKey, out);
+      await store.put(wasmKey, out);
     } catch (e) {
       console.warn("export cache write failed:", e);
     }
@@ -172,6 +247,7 @@ export async function POST(req: NextRequest) {
     cache: store ? "MISS" : null,
     renderMs: result.wallMs,
     libsMounted: result.filesMounted,
+    renderer: nativeConfig ? "wasm" : undefined,
   });
 }
 
@@ -182,7 +258,14 @@ export async function POST(req: NextRequest) {
 function stlResponse(
   bytes: Uint8Array,
   filename: string,
-  meta: { cache: "HIT" | "MISS" | null; renderMs?: number; libsMounted?: number },
+  meta: {
+    cache: "HIT" | "MISS" | null;
+    renderMs?: number;
+    libsMounted?: number;
+    // Which renderer produced (or, for a HIT, whose key stored) the bytes.
+    // Only set when the native render service feature is enabled.
+    renderer?: "native" | "wasm";
+  },
 ): Response {
   // Copy into a fresh ArrayBuffer-backed view so the body is a plain
   // BodyInit (not SharedArrayBuffer-backed) and carries no unrelated heap.
@@ -200,6 +283,7 @@ function stlResponse(
   if (meta.cache) headers["x-cache"] = meta.cache;
   if (meta.renderMs !== undefined) headers["x-render-ms"] = meta.renderMs.toFixed(0);
   if (meta.libsMounted !== undefined) headers["x-libs-mounted"] = String(meta.libsMounted);
+  if (meta.renderer) headers["x-renderer"] = meta.renderer;
   return new Response(body, { status: 200, headers });
 }
 

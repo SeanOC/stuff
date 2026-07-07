@@ -148,6 +148,21 @@ export function rendererVersion(): string {
 }
 
 /**
+ * Renderer-version component for the NATIVE render service path (st-d32).
+ * Native OpenSCAD and openscad-wasm tessellate differently, so their
+ * outputs must never share a cache entry: the "native:" prefix guarantees
+ * this can never collide with rendererVersion() above (a bare semver).
+ *
+ * The suffix comes from RENDER_SERVICE_RENDERER_VERSION — the operator
+ * bumps it in lockstep with the service image's openscad pin
+ * (services/render/Dockerfile base tag) so a renderer upgrade busts the
+ * cache, exactly like the WASM pin does.
+ */
+export function nativeRendererVersion(): string {
+  return "native:" + (process.env.RENDER_SERVICE_RENDERER_VERSION ?? "1");
+}
+
+/**
  * Durable, cross-invocation store for rendered STL bytes. Kept behind an
  * interface so the route logic is testable with an in-memory fake — the
  * production impl is Vercel Blob (below).
