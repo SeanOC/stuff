@@ -28,6 +28,14 @@ the mesh basics. The extras here pin the claims this model exists for:
      (coplanarity is the entire print strategy); no downward-facing
      surface exists above the small self-bridging features (insert
      hole tops / groove ceiling) — nothing needs support.
+
+  6. **Offset cable pass-through (st-so4).** The AP bracket's center
+     hub is solid, so the dead-center hole defaults OFF (center of the
+     plate is solid) and the cable routes through arc slots offset
+     from center: each slot centerline must be open through the plate,
+     the slots must stay >= ~2 mm clear of the insert holes, and (when
+     the geometry leaves a gap) the boss must remain solid between
+     slots.
 """
 
 from __future__ import annotations
@@ -58,7 +66,15 @@ def check(ctx):
     recess_depth = p.get("recess_depth", 9)
     bc_dia = p.get("ap_bolt_circle_dia", 82.55)
     insert_depth = p.get("insert_depth", 5.5)
-    cable_dia = p.get("cable_hole_dia", 25)
+    insert_hole_dia = p.get("insert_hole_dia", 4.0)
+    cable_dia = p.get("cable_hole_dia", 0)
+    rib_count = p.get("rib_count", 6)
+    boss_r = p.get("ap_mount_dia", 100) / 2
+    slot_count = int(p.get("cable_slot_count", 2))
+    slot_bc_dia = p.get("cable_slot_bc_dia", 54)
+    slot_arc = p.get("cable_slot_arc_deg", 60)
+    slot_w = p.get("cable_slot_w", 14)
+    slot_rot = p.get("cable_slot_rot_deg", 45)
 
     recess_r = (hole_dia - 2 * clearance) / 2
     total_h = flange_t + recess_depth
