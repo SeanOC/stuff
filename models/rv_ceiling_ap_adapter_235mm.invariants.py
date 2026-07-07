@@ -159,6 +159,63 @@ def check(ctx):
                 "Ethernet pass-through is missing",
             ))
 
+    # --- offset cable slots (st-so4): each slot open through the full
+    # plate height, outer edge >= ~2mm clear of the insert holes, and
+    # the boss solid between slots when the spacing leaves a gap. The
+    # clamp math mirrors slot_r in the .scad. ---
+    if slot_count > 0:
+        rib_in_r = boss_r - 5
+        slot_out_max_r = min(
+            bc_r - insert_hole_dia / 2 - 2,
+            (rib_in_r - 1) if rib_count > 0 else boss_r - 1.5,
+        )
+        slot_r = max(slot_w / 2 + 0.5,
+                     min(slot_bc_dia / 2, slot_out_max_r - slot_w / 2))
+
+        outer_edge = slot_r + slot_w / 2
+        insert_clear = (bc_r - insert_hole_dia / 2) - outer_edge
+        if insert_clear < 2.0 - 0.05:
+            failures.append(Failure(
+                "cable_slots",
+                f"slot outer edge at r={outer_edge:.2f}mm leaves only "
+                f"{insert_clear:.2f}mm to the insert holes on the "
+                f"{bc_dia}mm bolt circle — need >= 2mm of meat",
+            ))
+
+        probe_zs = (0.5, total_h / 2, total_h - 0.5)
+        for i in range(slot_count):
+            center = slot_rot + i * 360.0 / slot_count
+            pts = [_polar(slot_r, center + off, z)
+                   for off in (-slot_arc / 2, 0, slot_arc / 2)
+                   for z in probe_zs]
+            if mesh.contains(pts).any():
+                failures.append(Failure(
+                    "cable_slots",
+                    f"cable slot {i} (center {center:.0f}deg, "
+                    f"r={slot_r:.2f}mm) is not open through the plate — "
+                    f"the offset cable pass-through is blocked",
+                ))
+
+        if slot_count >= 2:
+            # full angular half-span of a slot = half the arc between
+            # end-cap centers + the end cap itself
+            cap_half = np.degrees(np.arcsin(min(1.0, (slot_w / 2) / slot_r)))
+            gap = 180.0 / slot_count - (slot_arc / 2 + cap_half)
+            if gap > 3.0:
+                mid_pts = [
+                    _polar(slot_r,
+                           slot_rot + (i + 0.5) * 360.0 / slot_count,
+                           total_h / 2)
+                    for i in range(slot_count)
+                ]
+                if not mesh.contains(mid_pts).all():
+                    failures.append(Failure(
+                        "cable_slots",
+                        f"boss is open between cable slots at "
+                        f"r={slot_r:.2f}mm — slots must stay discrete "
+                        f"cutouts, not merge into a moat",
+                    ))
+
     # --- zero-support orientation: coplanar room face on the bed ---
     contact = verts[verts[:, 2] < _CONTACT_EPS_MM]
     if len(contact) == 0:
