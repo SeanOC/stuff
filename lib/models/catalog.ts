@@ -47,7 +47,7 @@ export const CATALOG: Record<string, CatalogEntry> = {
   opengrid_panel_aligner: {
     categoryId: "multiboard",
     blurb:
-      "Handheld alignment tool for installing openGrid panels: a stiff plate with a 2×2 array of openGrid snaps on 28mm pitch on one face and a toolbox-style loop handle on the other. Prints snaps-down with the snap side support-free; an optional built-in breakaway fin (on by default) backs up the handle crossbar and snaps off by hand.",
+      "Handheld alignment tool for installing openGrid panels: a stiff plate with a 2×2 array of openGrid snaps on 28mm pitch on one face and a domed grip knob on the other. Prints snaps-down with zero supports — the knob's cylinder-plus-dome profile has no overhang anywhere.",
   },
   popcorn_kernel: {
     categoryId: "toys",

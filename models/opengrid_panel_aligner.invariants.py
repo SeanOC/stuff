@@ -1,35 +1,39 @@
-"""Invariants for the openGrid panel alignment tool (st-72j).
+"""Invariants for the openGrid panel alignment tool (st-72j, knob rev st-7lc).
 
 Built-ins (watertight, orphan fragments, PRINT_ANCHOR_BBOX drift)
 cover the mesh basics. The extras here pin the claims this model
 exists for:
 
-  1. **One welded solid — supports included.** The snap root-fillet
-     shims (st-v7k class) must keep the click nubs fused, AND the
-     default-on breakaway fin must stay connected through its neck
-     line into the plate. If the QuackWorks/BOSL2 pin moves or the
-     neck stops overlapping, the component count breaks first.
+  1. **One welded solid.** The snap root-fillet shims (st-v7k class)
+     must keep the click nubs fused, and the knob must stay buried in
+     the plate. If the QuackWorks/BOSL2 pin moves or an overlap
+     degrades to face-kissing, the component count breaks first.
 
   2. **Native print orientation is snaps-down** with bed contact
      spanning exactly the grid_x x grid_y snap array: 24.8 mm
      footprints on the 28 mm openGrid pitch. Also asserts the
      between-snap channels are OPEN at the bed (no geometry may ever
-     creep into the trapped-support zone between snaps — the whole
-     point of this model's support strategy).
+     creep into the trapped-support zone between snaps).
 
   3. **Snaps fully backed** (st-ocs): the plate must overhang the
      snap array on every side, and the rim chamfer is clamped in the
      .scad so it never crosses a snap footprint — checked here at the
-     param level (margin >= 1 mm, chamfer <= margin - 0.2).
+     param level (margin >= 1 mm).
 
-  4. **The support fin exists at defaults** (include_supports=true is
-     the shipped default) and stays clear of the snap face: fin
-     geometry lives above the plate top, never below it.
+  4. **The knob is support-free** (the whole point of st-7lc, which
+     replaced the arched loop handle and its breakaway fin): the grip
+     is a revolved cylinder+dome with NO flare/undercut/mushroom lip,
+     so nothing above the plate ever overhangs past the knob wall.
+     With the snap side support-free by design, the model slices and
+     prints with ZERO supports — none built in, none from the slicer.
 
-  5. **Handle stays on the plate** and leaves real finger room.
+  5. **The knob is actually there and grippable**: solid at its core,
+     comfortable diameter, on the plate with margin.
 """
 
 from __future__ import annotations
+
+import numpy as np
 
 from scripts.invariants import Failure, as_default_params, expect_connected_solids
 
@@ -48,11 +52,8 @@ def check(ctx):
     snap_lite = bool(p.get("snap_lite", False))
     plate_margin = p.get("plate_margin", 4)
     plate_t = p.get("plate_t", 4)
-    handle_span = p.get("handle_span", 40)
-    handle_clear = p.get("handle_clear", 30)
-    handle_bar_d = p.get("handle_bar_d", 14)
-    include_supports = bool(p.get("include_supports", True))
-    support_gap = p.get("support_gap", 0.25)
+    knob_d = p.get("knob_d", 25)
+    knob_h = p.get("knob_h", 34)
 
     snap_h = 3.4 if snap_lite else 6.8
     plate_top = snap_h - 0.02 + plate_t
@@ -76,28 +77,25 @@ def check(ctx):
     # footprint; the mesh-level backing evidence is the below-plate
     # envelope check further down.
 
-    # --- handle fits the plate + finger room ---
+    # --- knob is grippable and fits the plate ---
     span_x = (grid_x - 1) * _SNAP_PITCH + _SNAP_W
+    span_y = (grid_y - 1) * _SNAP_PITCH + _SNAP_W
     plate_w = span_x + 2 * plate_margin
-    if handle_span / 2 + handle_bar_d / 2 > plate_w / 2 - 1:
+    plate_d = span_y + 2 * plate_margin
+    # The .scad clamps the actual knob radius to keep it >= 1mm inside
+    # the plate edge; mirror that clamp here so the mesh checks below
+    # test the radius that was actually built.
+    knob_r = min(knob_d, min(plate_w, plate_d) - 2) / 2
+    if knob_d < 18:
         failures.append(Failure(
-            "handle",
-            f"handle posts (span {handle_span} + bar {handle_bar_d}) "
-            f"overhang the {plate_w:.1f}mm plate",
+            "knob",
+            f"knob_d={knob_d}mm < 18mm; too thin to grip comfortably",
         ))
-    if handle_clear < 20:
+    if knob_h < 24:
         failures.append(Failure(
-            "handle",
-            f"handle_clear={handle_clear}mm < 20mm; no room for fingers "
-            f"under the crossbar",
-        ))
-
-    # --- support interface stays in the snap-off-by-hand band ---
-    if not (0.15 <= support_gap <= 0.4):
-        failures.append(Failure(
-            "supports",
-            f"support_gap={support_gap}mm outside the 0.15-0.4mm breakaway "
-            f"band the bead specifies",
+            "knob",
+            f"knob_h={knob_h}mm < 24mm; not enough height for a full-hand "
+            f"grip on the knob",
         ))
 
     verts = ctx["stl"].vertices
@@ -112,8 +110,8 @@ def check(ctx):
         ))
         return failures
 
-    want_x = (grid_x - 1) * _SNAP_PITCH + _SNAP_W
-    want_y = (grid_y - 1) * _SNAP_PITCH + _SNAP_W
+    want_x = span_x
+    want_y = span_y
     got_x = contact[:, 0].max() - contact[:, 0].min()
     got_y = contact[:, 1].max() - contact[:, 1].min()
     if abs(got_x - want_x) > 0.5 or abs(got_y - want_y) > 0.5:
@@ -138,9 +136,8 @@ def check(ctx):
                     f"occupy the gaps between snaps (trapped-support zone)",
                 ))
 
-    # --- nothing but snaps below the plate except the plate itself:
-    # support material must never hang below the plate bottom outside
-    # the snap array envelope ---
+    # --- nothing but snaps below the plate: no geometry may hang below
+    # the plate bottom outside the snap array envelope ---
     # (+0.6 allowance: the snap click nubs protrude 0.4mm past the
     # 24.8mm footprint by design.)
     below_plate = verts[verts[:, 2] < snap_h - 0.1]
@@ -149,23 +146,47 @@ def check(ctx):
         off_y = abs(below_plate[:, 1]).max() - (want_y / 2 + 0.6)
         if off_x > 0 or off_y > 0:
             failures.append(Failure(
-                "supports",
+                "backing",
                 "geometry below the plate extends beyond the snap array "
-                "envelope — snap-side support material is forbidden by "
-                "design",
+                "envelope — nothing but the snaps may live down there",
             ))
 
-    # --- the breakaway fin ships by default, on the handle side ---
-    # Vertex probes can't see a plain cuboid's interior (vertices only
-    # exist at its corners), so ask the watertight mesh directly whether
-    # a point in the middle of where the fin must stand is solid.
-    if include_supports:
-        fin_mid = [0.0, 0.0, plate_top + handle_clear / 2]
-        if not bool(ctx["stl"].contains([fin_mid])[0]):
-            failures.append(Failure(
-                "supports",
-                f"include_supports=true but the point {fin_mid} under the "
-                f"crossbar is empty space — the breakaway fin is missing",
-            ))
+    # --- support-free knob: everything above the plate top must stay
+    # inside the knob's cylinder wall. A flare/undercut/mushroom lip
+    # would poke past knob_r and reintroduce the overhang the knob
+    # exists to remove (st-7lc). 0.3mm slack covers facet chords. ---
+    above_plate = verts[verts[:, 2] > plate_top + 0.05]
+    if len(above_plate) == 0:
+        failures.append(Failure(
+            "knob",
+            "no geometry above the plate top — the knob is missing",
+        ))
+        return failures
+    radial = np.hypot(above_plate[:, 0], above_plate[:, 1])
+    worst = radial.max()
+    if worst > knob_r + 0.3:
+        failures.append(Failure(
+            "knob",
+            f"geometry above the plate reaches {worst:.2f}mm from the knob "
+            f"axis but the knob wall is at {knob_r:.2f}mm — a flare or "
+            f"undercut would need supports, which this model forbids",
+        ))
+
+    # --- the knob is solid, centered, and full height ---
+    knob_mid = [0.0, 0.0, plate_top + knob_h / 2]
+    if not bool(ctx["stl"].contains([knob_mid])[0]):
+        failures.append(Failure(
+            "knob",
+            f"the point {knob_mid} at the knob core is empty space — the "
+            f"knob is missing or off-center",
+        ))
+    got_apex = verts[:, 2].max()
+    want_apex = plate_top + knob_h
+    if abs(got_apex - want_apex) > 0.5:
+        failures.append(Failure(
+            "knob",
+            f"model apex at z={got_apex:.2f}mm; expected the knob top at "
+            f"{want_apex:.2f}mm",
+        ))
 
     return failures
