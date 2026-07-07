@@ -1,18 +1,25 @@
 // SPDX-License-Identifier: CC-BY-NC-SA-4.0
 // Copyright (c) 2026 Sean O'Connor
 //
-// Ego LB6500 leaf-blower wall mount, converted from screw-mount to a
-// wall-grid system. Imports an operator-supplied STL (two triangular
-// bracket arms on a 138.5 x 93.5 mm base plate), fills its six
-// countersunk screw holes with plugs, and fuses wall-mount geometry
-// onto the original build-plate face: a Multiconnect slot backer
-// (default) or a grid of openGrid snaps, selected by mount_type.
+// Ego LB6500 leaf-blower wall mount — NATIVE parametric remodel of the
+// operator-supplied bracket (st-82o). The original import()-based
+// version unioned a 13,596-triangle mesh through Manifold on every
+// render (~23s in the wasm export path — enough to blow the serverless
+// gateway timeout on cold starts) and was the sole consumer of the
+// binary-asset pipeline. This file rebuilds the bracket from
+// primitives measured off that mesh; the mesh itself stays in-repo
+// (models/ego_lb6500_blower_mount.stl) purely as the fidelity
+// reference for the invariants sidecar — it is never import()ed.
 //
-// First import()-based model in this repo. The mesh is referenced
-// relative to this file (models/ego_lb6500_blower_mount.stl, committed
-// alongside); the browser pipeline mounts it at the FS root next to
-// the entry file, so the bare filename resolves in both native and
-// WASM renders.
+// What is preserved EXACTLY (operator constraint, 2026-07-06): the
+// BEARING SURFACES — every +Y-facing face the blower can touch from
+// above. The sidecar raycasts both models on a 1.5mm grid and fails
+// if any bearing height deviates >1mm from the reference. What is
+// approximated: the organic bulk (the arms' triangular windows are
+// filled solid, fillets and logo recesses dropped, stair-stepped rib
+// edges straightened). The six countersunk screw holes of the
+// original are simply not modeled — the plate is solid, which retires
+// the old fill_screw_holes plug machinery.
 //
 // LICENSING: both back-mount systems come from QuackWorks — the
 // Multiconnect backer (Modules/multiconnectSlotDesignBOSL.scad) and
@@ -23,19 +30,17 @@
 //
 // === Coordinate frame / print orientation ===
 //
-// The imported mesh's back plate was its build-plate face (Z=0); the
-// whole mesh is lifted by the back-mount thickness so the finished
-// part still prints flat: first layers are the slot face (or the
-// openGrid snap faces — the orientation the snap was designed to
-// print in), then the filled plate, then the arms.
+// Bracket frame (matches the reference mesh): z=0 is the wall/back
+// face, x spans the 138.5mm width, y is height on the wall. The whole
+// bracket is lifted by the back-mount thickness so the finished part
+// prints flat: first layers are the slot face (or the openGrid snap
+// faces), then the plate, then the arms rising 160mm.
 //
 // === Wall-hang orientation / load direction (st-0of) ===
 //
 // Operator-verified physics: the Y+ face is the BEARING face — the
 // blower rests on the arm surfaces facing +Y — so the live load
-// points -Y and the y=0 edge points DOWN on the wall. (The original
-// st-f43 backer inferred the opposite from the saddle-hook shape and
-// was 180 deg off.) Consequences:
+// points -Y and the y=0 edge points DOWN on the wall. Consequences:
 //
 //  - Multiconnect: the slots' closed dome ends (where connectors rest
 //    under load) point toward high y (UP on the wall), a 5 mm solid
@@ -48,18 +53,31 @@
 //    snap row bears on the rigid hook; the flexy click-in side faces
 //    DOWN where the moment presses the plate into the wall.
 //
-// === Screw-hole fill (measured from the mesh) ===
+// === Bracket anatomy (all coords: left arm; right arm mirrors
+//     about x=69.25) ===
 //
-// Six countersunk holes, mirror-symmetric about X=69.25, in the
-// 15 mm-thick back plate (mesh frame): bore d=5.10 tilted 12° outward
-// in X, entries at Z=0 (11.19,12) (11.19,77) (19.19,44.5) + mirrored;
-// countersink cone from Z≈11.3 into a d=9.52 counterbore exiting the
-// plate top flush at Z=15.0. Each hole is filled by two oversized
-// plugs (union, not re-cut): a tilted bore plug that also welds the
-// backer to the plate through the hole, and a vertical countersink
-// plug capped exactly flush with the plate top so no rim or bump
-// remains. The big 68.5 x 29 mm central obround is a functional
-// cutout, not a screw hole — it stays.
+// Plate: 138.5 x 89 x 15, edge-notched top and bottom between
+// x=35..103.5 (15 deep) with the original's central 68.5 x 29 obround
+// pass-through — both kept because the blower shell may nest into
+// them and the openGrid snap layout logic depends on them.
+//
+// Each arm, measured off the reference mesh:
+//  - WEB: solid gusset x=24..35. Top beam edge at y=89.0 runs the
+//    full z=15..160 depth — the primary bearing line. The original's
+//    triangular lightening window is filled (bulk, not bearing).
+//  - HORN: retention bump at the far end, plateau z=110..160. Ridge
+//    peaks at y=93.50, x=25.36 (exact mesh vertices), tapering
+//    linearly to a thin blade at x~15.2 (y=81.2, slope 1.437/mm —
+//    matches the mesh raycast within 0.1mm) and to y=89.0 at x=35.
+//    Built as pairwise hull()s of thin convex Y-Z profile plates at
+//    measured x stations; interp error vs the mesh is <=0.6mm.
+//  - SHELF: second bearing rib, top at y=64.80, y-extent 56.4..64.8,
+//    from x=10.9 to the web. Far edge is a straight chord standing in
+//    for the mesh's 8mm stair-stepped edge (z = 5.61x - 46.6).
+//  - LOWER BAR: guide rib, top at y=30.8, y-extent 23.2..30.8. Only
+//    x<11 is exposed (the rest sits under the shelf).
+//  - FLARE: small beam-root wedge where the web front face blends
+//    into the plate (x 19.4..24 at z<20.4, top at y=89).
 
 include <BOSL2/std.scad>
 // `use` not `include`: keeps the libraries' top-level demo/customizer
@@ -72,28 +90,25 @@ $fn = 64;
 // === User-tunable parameters ===
 
 mount_type = "multiconnect"; // @param enum choices=multiconnect|opengrid group=mount label="Wall mount type" filename
-fill_screw_holes = true; // @param boolean group=plate label="Fill original screw holes"
 backer_thickness = 6.5;  // @param number min=5.5 max=8 step=0.5 unit=mm group=mount label="Multiconnect backer thickness"
 slot_dimples     = true; // @param boolean group=mount label="Multiconnect slot dimples (click retention)"
 snap_lite        = false; // @param boolean group=mount label="Lite openGrid snaps (3.4mm instead of 6.8mm)"
 
-// === Fixed geometry (matches the imported mesh — not tunable) ===
+// === Fixed geometry (matches the reference mesh — not tunable) ===
 
-plate_w      = 138.5; // mesh X extent
+plate_w      = 138.5; // bracket X extent
 plate_face_d = 89;    // Y extent of the flat build face — the arm
-                      // saddle hooks overhang to y=93.5 higher up, but
-                      // the plate itself (and so the backer) ends at 89
-mesh_h       = 160;   // mesh Z extent
-plate_t      = 15;    // back plate thickness in the mesh
+                      // horns overhang to y=93.5 higher up, but the
+                      // plate itself (and so the backer) ends at 89
+mesh_h       = 160;   // bracket Z extent (depth out from the wall)
+plate_t      = 15;    // back plate thickness
 
 // Multiconnect
 slot_spacing    = 25;   // Multiconnect standard pitch
 top_band        = 5;    // solid band capping the slot dome ends (y=84..89)
-weld            = 0.45; // backer sink into the plate. 0.45 (not a hair)
-                        // because the build face has two ~0.4 mm-deep
-                        // logo recesses at (14..19, 53..61) + mirror; a
-                        // shallower weld seals them into enclosed voids
-                        // that break the single-solid topology claim
+weld            = 0.45; // backer sink into the plate (proven-manifold
+                        // overlap; the plate face is flat now, but a
+                        // real overlap keeps the union robust)
 
 // openGrid (mount_type = "opengrid")
 snap_pitch = 28;    // openGrid tile pitch
@@ -101,11 +116,7 @@ snap_w     = 24.8;  // snap footprint
 snap_h     = snap_lite ? 3.4 : 6.8;
 og_weld    = 0.02;  // embed of snap tops into the plate face (st-vmn).
                     // Deliberately shallow — sinking deeper would offset
-                    // the click nubs from the grid's groove plane. The
-                    // logo recesses stay VENTED here (snap pads only
-                    // partially cover them; recess slivers at x<14.85
-                    // and y 56.9..60.1 open to air), so the shallow
-                    // weld cannot create enclosed voids.
+                    // the click nubs from the grid's groove plane.
 
 // The plate build face is NOT a full 138.5 x 89 rectangle: its bottom
 // and top edges are notched between x=35..103.5 (y 0..15 and y 74..89
@@ -131,12 +142,10 @@ og_lip      = 0.4;   // band margin past the snap edge (free edge)
 // snaps as fit at 28 mm pitch keeping >= 1 mm rim, always centered —
 // minus any snap whose footprint intersects the central 68.5 x 29
 // obround (the original bracket's functional pass-through): the two
-// middle snaps float entirely inside the cutout with nothing to weld
-// to, and the flanking pair would seal two ~0.5 mm-deep recesses in
-// the build face at (19.3..21.8, 42..47) + mirror into enclosed void
-// shells. Net: a 4 x 3 grid minus the middle row = 8 full-depth snaps
-// at defaults, on the top and bottom rows where the load actually
-// goes (pull-out up top, compression at the bottom).
+// middle snaps would float entirely inside the cutout with nothing to
+// weld to. Net: a 4 x 3 grid minus the middle row = 8 full-depth
+// snaps at defaults, on the top and bottom rows where the load
+// actually goes (pull-out up top, compression at the bottom).
 snap_cols = max(1, floor((plate_w - 2 - snap_w) / snap_pitch) + 1);
 snap_rows = max(1, floor((plate_face_d - 2 - snap_w) / snap_pitch) + 1);
 obround_w = 68.5;  // central obround cutout, centered on the plate face
@@ -162,33 +171,114 @@ snap_row_ys = [
             py
 ];
 
-// Lift of the imported mesh above the bed = thickness of whichever
+// Lift of the bracket above the bed = thickness of whichever
 // back-mount is selected (its top welds into the plate build face).
 body_lift = mount_type == "opengrid" ? snap_h - og_weld
                                      : backer_thickness;
 
-// Screw holes (mesh frame, Z from the plate's original build face)
-hole_tilt       = 12;     // bore lean, degrees outward in X
-bore_d          = 5.1;    // measured bore diameter
-cbore_d         = 9.52;   // measured counterbore diameter
-cs_top_z        = 15.0;   // counterbore exits flush at the plate top
-cs_bottom_z     = 11.0;   // vertical plug starts below the cone start (11.3)
-plug_margin     = 0.75;   // radial oversize so plugs swallow the hole rims
-// Bore entries at Z=0 and measured counterbore centers; x mirrors as
-// plate_w - x for the right-hand trio.
-bore_entries    = [[11.19, 12], [11.19, 77], [19.19, 44.5]];
-cbore_centers   = [[7.95, 12], [7.95, 77], [15.95, 44.5]];
-
 // PRINT_ANCHOR_BBOX — outermost printed bbox in mm (X, Y, Z) at defaults
 // (mount_type = "multiconnect").
 // X: plate_w = 138.5 (backer matches the plate footprint)
-// Y: plate_d = 93.5
+// Y: horn ridge = 93.5
 // Z: backer_thickness (6.5) + mesh_h (160) = 166.5
 // (opengrid variant: Z = snap_h - og_weld + 160 = 166.78 at full depth)
 PRINT_ANCHOR_BBOX = [138.5, 93.5, 166.5];
 
-// === Geometry ===
+// === Native bracket geometry (st-82o) ===
 
+// Prism from a Y-Z profile polygon (points as [y, z]) extruded across
+// x0..x1. rotate([90,0,90]) maps the polygon's local x to model y,
+// local y to model z, and the extrusion to model +x.
+module yz_prism(x0, x1, pts) {
+    translate([x0, 0, 0])
+        rotate([90, 0, 90])
+            linear_extrude(x1 - x0)
+                polygon(pts);
+}
+
+// Prism from a plan-view polygon (points as [x, z]) extruded across
+// y0..y1 — a vertical-in-y slab. rotate([90,0,0]) maps local y to
+// model z and the extrusion to model -y (hence the y1 translate).
+module xz_prism(y0, y1, pts) {
+    translate([0, y1, 0])
+        rotate([90, 0, 0])
+            linear_extrude(y1 - y0)
+                polygon(pts);
+}
+
+// Back plate: 138.5 x 89 x 15 with the original's edge notches and
+// central obround pass-through. Solid otherwise — no screw holes.
+module bracket_plate() {
+    linear_extrude(plate_t)
+        difference() {
+            square([plate_w, plate_face_d]);
+            translate([notch_x0, -0.1])
+                square([notch_x1 - notch_x0, notch_d + 0.1]);
+            translate([notch_x0, plate_face_d - notch_d])
+                square([notch_x1 - notch_x0, notch_d + 0.1]);
+            // obround: rectangle + end semicircles, centered on the face
+            translate([plate_w / 2, plate_face_d / 2])
+                hull() {
+                    translate([-(obround_w - obround_h) / 2, 0]) circle(d = obround_h);
+                    translate([(obround_w - obround_h) / 2, 0]) circle(d = obround_h);
+                }
+        }
+}
+
+// Horn stations: [x, convex Y-Z profile] measured off the reference
+// mesh (see header). Adjacent stations are hull()ed pairwise, giving
+// a linear loft; profiles must stay CONVEX or hull() would bridge
+// their concavities.
+horn_stations = [
+    [15.2,  [[80.9, 109],   [81.2, 160],   [79.4, 160], [79.4, 111]]],
+    [17.5,  [[82.9, 102],   [84.8, 112],   [84.8, 160], [78.2, 160]]],
+    [19.5,  [[84.5, 98],    [87.7, 112],   [87.7, 160], [77.2, 160]]],
+    [21.5,  [[86.4, 93],    [90.6, 112],   [90.6, 160], [76.2, 160]]],
+    [23.5,  [[88.6, 91.5],  [93.0, 110],   [93.0, 160], [74.8, 160]]],
+    [25.36, [[87.5, 92],    [93.13, 106.11], [93.5, 110], [93.5, 160], [74.0, 160]]],
+    [29.5,  [[87.8, 92.5],  [91.15, 112],  [91.15, 160], [74.0, 160]]],
+    [35.0,  [[87.9, 92.5],  [89.0, 110],   [89.0, 160],  [74.0, 160]]],
+];
+
+module horn() {
+    for (i = [0 : len(horn_stations) - 2])
+        hull() {
+            yz_prism(horn_stations[i][0], horn_stations[i][0] + 0.1,
+                     horn_stations[i][1]);
+            yz_prism(horn_stations[i + 1][0], horn_stations[i + 1][0] + 0.1,
+                     horn_stations[i + 1][1]);
+        }
+}
+
+// One arm (left-side coordinates). All members start at z=14.5 —
+// 0.5mm inside the plate — so every union overlap is a real volume.
+module arm() {
+    // Web: solid gusset, beam top at y=89 the full depth, underside
+    // diagonal from the plate root to the beam bottom at the tip.
+    yz_prism(24, 35, [[9, 14.5], [89, 14.5], [89, 160], [75, 160]]);
+    horn();
+    // Shelf rib, bearing top at y=64.8. Plan: tip, front edge, flare
+    // clip, then the far-edge chord back to the tip.
+    xz_prism(56.4, 64.8,
+             [[10.9, 14.5], [21.4, 14.5], [22.4, 24.5],
+              [24.6, 26.5], [24.6, 91.4]]);
+    // Lower guide rib, top at y=30.8.
+    xz_prism(23.2, 30.8,
+             [[6.8, 14.5], [18, 14.5], [24.6, 31.5], [24.6, 39.9]]);
+    // Beam-root flare wedge (web front face blending into the plate).
+    xz_prism(56.4, 89, [[19.4, 14.5], [24.5, 14.5], [24.5, 20.4]]);
+}
+
+module blower_body() {
+    translate([0, 0, body_lift]) {
+        bracket_plate();
+        arm();
+        translate([plate_w, 0, 0]) mirror([1, 0, 0]) arm();
+    }
+}
+
+// === Back-mount geometry ===
+//
 // Everything below is a root-level sibling: multiconnectGenerator uses
 // BOSL2 diff() tags internally and is known to break inside an outer
 // explicit union() (see models/cylindrical_holder_slot.scad). Root
@@ -196,43 +286,6 @@ PRINT_ANCHOR_BBOX = [138.5, 93.5, 166.5];
 // mount_type if() blocks are plain group nodes, not explicit union()
 // calls — the generator's slot cuts survive them (verified by the
 // slot-channel probes in the invariants sidecar).
-
-// The import path must stay a literal string: the browser pipeline's
-// closure walker regex-scans the entry source for import("...") to
-// know which binary assets to mount (lib/wasm/closure.ts).
-module blower_body() {
-    translate([0, 0, body_lift])
-        import("ego_lb6500_blower_mount.stl", convexity = 10);
-}
-
-// One screw-hole fill: a tilted bore plug reaching from the plate's
-// back face up through the bore, plus a vertical plug swallowing the
-// countersink cone + counterbore, its top exactly flush with the
-// plate top so the filled surface is clean.
-// For multiconnect the bore plug starts 2 mm inside the backer,
-// welding backer to plate through the hole; for opengrid there is no
-// panel behind the holes, so it starts flush with the back face (the
-// same proven-manifold coplanar-cap trick as the plug tops).
-plug_sink = mount_type == "multiconnect" ? 2 : 0;
-
-module screw_plug(entry, cbore, lean) {
-    translate([entry.x, entry.y, body_lift])
-        rotate([0, lean, 0])
-            translate([0, 0, -plug_sink])
-                cylinder(d = bore_d + 2 * plug_margin, h = 12.5 + plug_sink);
-    // Countersink + counterbore: vertical, flush top.
-    translate([cbore.x, cbore.y, body_lift + cs_bottom_z])
-        cylinder(d = cbore_d + 2 * plug_margin, h = cs_top_z - cs_bottom_z);
-}
-
-module screw_plugs() {
-    for (i = [0 : len(bore_entries) - 1]) {
-        e = bore_entries[i];
-        c = cbore_centers[i];
-        screw_plug(e, c, -hole_tilt);                                // left trio leans -X
-        screw_plug([plate_w - e.x, e.y], [plate_w - c.x, c.y], hole_tilt); // right trio mirrored
-    }
-}
 
 // Multiconnect backer under the plate face. Generator native frame:
 // width along X, height along Z (dome ends at +Z), slot channels
@@ -326,7 +379,6 @@ module snap_backer_bands() {
 }
 
 blower_body();
-if (fill_screw_holes) screw_plugs();
 if (mount_type == "multiconnect") {
     backer_panel();
     dome_band();

@@ -115,6 +115,18 @@ def render(
     # stderr. Scan both streams so future packaging changes don't break us.
     stderr = (proc.stderr or "") + (proc.stdout or "")
 
+    # The OpenCSG preview's CSG normalization can abort past its element
+    # limit (big BOSL2 trees; historically import()-based models, st-f43,
+    # but native models can trip it too, st-82o). openscad still exits 0
+    # and writes a valid-but-blank PNG. The abort is announced in the
+    # output, so detect it and redo this view with full --render.
+    if not full_render and "CSG normalization resulted in an empty tree" in stderr:
+        return render(
+            model, out_png, view,
+            defines=defines, imgsize=imgsize, openscad_bin=openscad_bin,
+            xvfb=xvfb, libs_dir=libs_dir, full_render=True,
+        )
+
     warnings = _UNRESOLVED_USE_RE.findall(stderr)
     if proc.returncode != 0:
         # Surface the full captured stream to our own stderr so callers

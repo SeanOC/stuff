@@ -1,19 +1,27 @@
-"""Invariants for the Ego LB6500 blower mount conversion (st-f43, st-0of).
+"""Invariants for the Ego LB6500 blower mount (st-f43, st-0of, st-82o).
 
-First import()-based model in the repo: an operator-supplied mesh
-(models/ego_lb6500_blower_mount.stl) with its six countersunk screw
-holes filled and a selectable back mount fused onto the original
-build-plate face — a Multiconnect slot backer (default) or a grid of
-directional openGrid snaps (`mount_type`, exported as separate STLs
-via the filename grid). Beyond the built-ins (watertight,
-PRINT_ANCHOR_BBOX drift, triangle ceiling), this sidecar pins the
-claims the conversion actually makes:
+st-82o replaced the import()-based conversion with a NATIVE parametric
+remodel: the operator-supplied mesh stays in the repo
+(models/ego_lb6500_blower_mount.stl) purely as the FIDELITY REFERENCE
+for this sidecar — it is never import()ed or rendered. The model keeps
+the selectable back mount fused onto the plate's wall face — a
+Multiconnect slot backer (default) or a grid of directional openGrid
+snaps (`mount_type`, exported as separate STLs via the filename grid).
 
-  1. **Screw holes are FILLED.** Probe points inside the original
-     bore voids (axis tilted 12 deg in X, entries measured off the
-     mesh) and inside the countersink/counterbore region must all be
-     solid. If a plug is dropped or drifts off the hole axis, these
-     points fall in air.
+Beyond the built-ins (watertight, PRINT_ANCHOR_BBOX drift, triangle
+ceiling), this sidecar pins the claims the remodel actually makes:
+
+  1. **Bearing surfaces match the reference mesh (<1mm).** The whole
+     point of st-82o's operator constraint: everything the blower can
+     touch from above must sit where the original bracket put it.
+     Both meshes are raycast from +Y on a jittered ~1.5mm (x, z) grid
+     (native lifted by body_lift back into the reference frame) and
+     every smooth bearing point — reference height present, 3x3
+     neighborhood present within a 3mm range, i.e. not a faceted
+     edge — must deviate <= 1mm. Where the reference has NO material
+     across the whole neighborhood, the native model must have none
+     either (new material could obstruct the blower shell). Catches
+     any future edit that moves the beam, shelf, or horn geometry.
 
   2. **Multiconnect slots exist, are open, and face the LOAD the
      right way (st-0of).** The Y+ face is the bearing face, so the
@@ -24,39 +32,34 @@ claims the conversion actually makes:
      ends must be solid at the TOP edge (y=84..89). Catches both the
      BOSL2-diff-inside-union failure mode where the generator's slot
      cuts silently vanish AND a 180-deg-flipped backer (the st-f43
-     regression this bead fixed: dome band solid near y=0 means the
-     mount ejects under load instead of seating).
+     regression: dome band solid near y=0 means the mount ejects
+     under load instead of seating).
 
-  3. **Single connected solid.** The imported mesh, the plugs, and
-     the backer must weld into one body. The backer sinks 0.45 mm
-     into the plate specifically to swallow two ~0.4 mm logo recesses
-     in the original build face that would otherwise become enclosed
-     void shells (separate components).
+  3. **Single connected solid.** The plate, arms, and back mount must
+     weld into one body.
 
   4. **openGrid variant** (exports/<stem>-opengrid.stl, built by the
      export grid alongside the default): watertight, one connected
      solid, snaps present on the top and bottom rows only (the middle
      row is skipped — its two center snaps would float inside the
-     central 68.5 x 29 obround cutout and its flankers would seal
-     ~0.5 mm build-face recesses into enclosed voids), and each
-     snap's strong DIRECTIONAL front nub points +Y (up on the wall):
-     only the front nub reaches 13.0 mm from the snap center (rear
-     stops at 12.8), so a solid probe at +13.0/void at -13.0 pins
-     the orientation.
+     central 68.5 x 29 obround cutout), and each snap's strong
+     DIRECTIONAL front nub points +Y (up on the wall): only the front
+     nub reaches 13.0 mm from the snap center (rear stops at 12.8),
+     so a solid probe at +13.0/void at -13.0 pins the orientation.
 
-  5. **Every snap is FULLY BACKED (st-ocs).** The imported plate face
-     is notched between x=35..103.5 at both y edges (y 0..15 and
-     74..89 are open), so the snap rows hang ~11 mm over air unless
-     the backing bands fill the notches behind them. A 3x3 probe
-     lattice per snap (center + edges inset 0.5 mm), 1 mm behind the
-     plate-face plane, must be entirely solid — catches a dropped or
-     mis-sized band the moment any snap edge loses its backing. The
-     notches must stay OPEN outside the bands (no full-depth fill /
-     no enclosed voids).
+  5. **Every snap is FULLY BACKED (st-ocs).** The plate keeps the
+     original's edge notches (x=35..103.5 at both y edges), so the
+     snap rows hang ~11 mm over air unless the backing bands fill the
+     notches behind them. A 3x3 probe lattice per snap (center +
+     edges inset 0.5 mm), 1 mm behind the plate-face plane, must be
+     entirely solid. The notches must stay OPEN outside the bands
+     (printability + no enclosed voids).
 
-Uses mesh.contains() (trimesh's numpy ray engine) — CI has no
-shapely/scipy, so no cross-section polygon analysis (and no
-trimesh.split, hence the local union-find for the variant mesh).
+Uses mesh.contains() and trimesh's numpy ray engine — CI has no
+shapely/scipy (hence the local union-find for the variant mesh). The
+ray engine drops hits that land exactly on triangle edges, so the
+fidelity grid is jittered off round coordinates and each ray keeps
+its HIGHEST hit from multiple_hits=True.
 """
 
 from __future__ import annotations
@@ -68,20 +71,25 @@ import trimesh
 
 from scripts.invariants import Failure, as_default_params, expect_connected_solids
 
-# Measured off the imported mesh (mesh frame: plate build face at z=0).
-# Left-trio bore entries; the right trio mirrors as plate_w - x.
-BORE_ENTRIES = [(11.19, 12.0), (11.19, 77.0), (19.19, 44.5)]
-CBORE_CENTERS = [(7.95, 12.0), (7.95, 77.0), (15.95, 44.5)]
-PLATE_W = 138.5
-TILT_SLOPE = 0.2124  # bore lean in X per mm of Z (12 deg), outward
+MODELS_DIR = Path(__file__).resolve().parent
+EXPORTS_DIR = MODELS_DIR.parent / "exports"
+REFERENCE_STL = MODELS_DIR / "ego_lb6500_blower_mount.stl"
+
 SLOT_XS = [19.25, 44.25, 69.25, 94.25, 119.25]  # 25 mm pitch
 
-EXPORTS_DIR = Path(__file__).resolve().parent.parent / "exports"
+# Bearing-fidelity sampling (st-82o). Grid is jittered off round
+# coordinates so rays don't run along native triangle edges (station
+# plates sit at half-integer x); z starts past the back-mount weld
+# zone (bands reach 6 mm off the plate face).
+FID_XS = np.arange(0.5137, 138.5, 1.5)
+FID_ZS = np.arange(8.0731, 160.0, 1.5)
+FID_TOL = 1.0    # max |deviation| on smooth bearing points, mm
+FID_SMOOTH = 3.0  # neighborhood height range above this = faceted edge
 
 # openGrid variant geometry (mount_type="opengrid", snap_lite=false):
 # 4 cols x 3 rows on 28 mm pitch centered on the 138.5 x 89 plate face,
 # middle row skipped over the central obround -> 8 snaps.
-OG_LIFT = 6.78  # snap_h (6.8) - og_weld (0.02); mesh z=0 sits here
+OG_LIFT = 6.78  # snap_h (6.8) - og_weld (0.02); bracket z=0 sits here
 SNAP_COLS_X = [27.25, 55.25, 83.25, 111.25]
 SNAP_ROWS_Y = [16.5, 72.5]  # kept rows; skipped middle row at 44.5
 
@@ -90,38 +98,84 @@ def check(ctx):
     failures: list[Failure] = []
     p = as_default_params(ctx["params"])
     mesh = ctx["stl"]
-    lift = float(p["backer_thickness"])  # mesh z=0 sits at global z=lift
+    lift = float(p["backer_thickness"])  # bracket z=0 sits at global z=lift
 
     failures += expect_connected_solids(ctx, 1)
-    failures += _check_screw_fill(mesh, lift)
+    failures += _check_bearing_fidelity(mesh, lift)
     failures += _check_multiconnect(mesh)
     failures += _check_opengrid_variant(ctx["stem"])
     return failures
 
 
-def _check_screw_fill(mesh, lift: float) -> list[Failure]:
-    # Probe two depths along each tilted bore and the
-    # countersink/counterbore region of each hole.
-    fill_pts = []
-    for x0, y in BORE_ENTRIES:
-        for zm in (2.0, 8.0):  # mesh-frame depths inside the old bore
-            x = x0 - TILT_SLOPE * zm
-            fill_pts.append([x, y, zm + lift])
-            fill_pts.append([PLATE_W - x, y, zm + lift])
-    for x, y in CBORE_CENTERS:
-        fill_pts.append([x, y, 13.0 + lift])  # countersink/counterbore zone
-        fill_pts.append([PLATE_W - x, y, 13.0 + lift])
-    solid = mesh.contains(np.array(fill_pts))
-    if not bool(solid.all()):
-        misses = [fill_pts[i] for i in np.where(~solid)[0]]
+def _heightmap(mesh, zoff: float) -> np.ndarray:
+    """Top-surface height h(x, z): highest +Y raycast hit per column."""
+    org = np.array([[x, 200.0, z + zoff] for x in FID_XS for z in FID_ZS])
+    dirs = np.tile([0.0, -1.0, 0.0], (len(org), 1))
+    loc, ray_idx, _ = mesh.ray.intersects_location(org, dirs, multiple_hits=True)
+    hit = np.zeros(len(org), dtype=bool)
+    hit[ray_idx] = True
+    top = np.full(len(org), -np.inf)
+    np.maximum.at(top, ray_idx, loc[:, 1])
+    h = np.where(hit, top, np.nan)
+    return h.reshape(len(FID_XS), len(FID_ZS))
+
+
+def _check_bearing_fidelity(mesh, lift: float) -> list[Failure]:
+    if not REFERENCE_STL.exists():
         return [
             Failure(
-                "screw-holes-filled",
-                f"{len(misses)} probe point(s) inside original screw holes "
-                f"are void — plugs missing or off-axis: {misses[:4]}",
+                "bearing-reference",
+                f"{REFERENCE_STL.name} missing — it is the bearing-surface "
+                "fidelity reference for the native remodel (st-82o); "
+                "restore it, do not delete it",
             )
         ]
-    return []
+    ref = trimesh.load(str(REFERENCE_STL))
+    href = _heightmap(ref, 0.0)
+    hnat = _heightmap(mesh, lift)
+
+    bad_solid: list[tuple[float, float, float, float]] = []
+    bad_void: list[tuple[float, float, float]] = []
+    for i in range(1, len(FID_XS) - 1):
+        for j in range(1, len(FID_ZS) - 1):
+            nb = href[i - 1 : i + 2, j - 1 : j + 2]
+            if np.isfinite(href[i, j]):
+                if not np.isfinite(nb).all() or nb.max() - nb.min() > FID_SMOOTH:
+                    continue  # faceted edge / feature boundary — unstable
+                dev = hnat[i, j] - href[i, j]
+                if not np.isfinite(dev) or abs(dev) > FID_TOL:
+                    bad_solid.append((FID_XS[i], FID_ZS[j], href[i, j], hnat[i, j]))
+            elif not np.isfinite(nb).any() and np.isfinite(hnat[i, j]):
+                bad_void.append(
+                    (round(float(FID_XS[i]), 1), round(float(FID_ZS[j]), 1),
+                     round(float(hnat[i, j]), 2))
+                )
+
+    failures: list[Failure] = []
+    if bad_solid:
+        worst = sorted(
+            bad_solid,
+            key=lambda t: -(abs(t[3] - t[2]) if np.isfinite(t[3]) else np.inf),
+        )[:4]
+        failures.append(
+            Failure(
+                "bearing-fidelity",
+                f"{len(bad_solid)} bearing point(s) deviate >{FID_TOL}mm from "
+                f"the reference mesh (worst (x, z, ref_y, native_y): "
+                f"{[(round(float(a), 1), round(float(b), 1), round(float(c), 2), round(float(d), 2) if np.isfinite(d) else None) for a, b, c, d in worst]}) "
+                "— the blower will not seat as the original bracket does",
+            )
+        )
+    if bad_void:
+        failures.append(
+            Failure(
+                "bearing-clearance",
+                f"{len(bad_void)} point(s) have native material where the "
+                f"reference bracket has none (first: {bad_void[:4]}) — new "
+                "material may obstruct the blower shell",
+            )
+        )
+    return failures
 
 
 def _check_multiconnect(mesh) -> list[Failure]:
@@ -189,7 +243,7 @@ def _check_opengrid_variant(stem: str) -> list[Failure]:
             Failure(
                 "opengrid-topology",
                 f"{path.name} has {n} connected components, expected 1 — "
-                "detached snaps (obround overlap?) or enclosed recess voids",
+                "detached snaps (obround overlap?) or enclosed voids",
             )
         )
 
@@ -268,15 +322,21 @@ def _check_opengrid_variant(stem: str) -> list[Failure]:
                 "the strong hook must take the top-row lever-out load",
             )
         )
-    # Screw plugs must also be filled at the opengrid lift.
-    x = BORE_ENTRIES[0][0] - TILT_SLOPE * 2.0
-    plug = mesh.contains(np.array([[x, BORE_ENTRIES[0][1], 2.0 + OG_LIFT]]))
-    if not bool(plug.all()):
+    # Bearing members must track body_lift in the opengrid variant too:
+    # beam top, shelf, and horn ridge probed just under their surfaces.
+    bear_pts = np.array(
+        [[29.0, 88.0, 100.0 + OG_LIFT],   # web beam, 1mm under y=89
+         [17.0, 63.8, 40.0 + OG_LIFT],    # shelf rib, 1mm under y=64.8
+         [25.4, 92.5, 130.0 + OG_LIFT]]   # horn ridge, 1mm under y=93.5
+    )
+    bearing = mesh.contains(bear_pts)
+    if not bool(bearing.all()):
         failures.append(
             Failure(
-                "opengrid-screw-fill",
-                "screw-hole plug probe void in the opengrid variant — "
-                "plugs not tracking body_lift",
+                "opengrid-bearing",
+                f"bearing member probe(s) void in the opengrid variant "
+                f"(beam/shelf/horn = {bearing.tolist()}) — arms not "
+                "tracking body_lift",
             )
         )
     return failures

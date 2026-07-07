@@ -107,6 +107,44 @@ def test_T5_empty_png_raises(tmp_path: Path) -> None:
         mp.undo()
 
 
+def test_T6_normalization_abort_retries_with_full_render(tmp_path: Path) -> None:
+    """A preview whose CSG normalization collapses to an empty tree must be
+    redone with --render instead of shipping a blank PNG (st-82o). Simulated
+    by injecting the abort marker into the first (preview) run's output."""
+    model = _write(tmp_path, "cube.scad", "cube([5,5,5]);")
+    out = tmp_path / "top.png"
+
+    import subprocess as _sp
+
+    real_run = _sp.run
+    seen_cmds: list[list[str]] = []
+
+    def fake_run(cmd, *a, **kw):
+        seen_cmds.append(list(cmd))
+        result = real_run(cmd, *a, **kw)
+        if "--render" not in cmd:
+            result.stdout = (result.stdout or "") + (
+                "WARNING: Normalized tree is growing past 100000 elements. "
+                "Aborting normalization.\n"
+                "WARNING: CSG normalization resulted in an empty tree\n"
+            )
+        return result
+
+    import _pytest.monkeypatch
+
+    mp = _pytest.monkeypatch.MonkeyPatch()
+    try:
+        mp.setattr(osc.subprocess, "run", fake_run)
+        res = osc.render(model, out, view="top")
+    finally:
+        mp.undo()
+
+    assert len(seen_cmds) == 2
+    assert "--render" not in seen_cmds[0]
+    assert "--render" in seen_cmds[1]
+    assert res.png_bytes > 0
+
+
 def test_unknown_view_raises(tmp_path: Path) -> None:
     model = _write(tmp_path, "cube.scad", "cube([5,5,5]);")
     with pytest.raises(osc.OpenscadError):

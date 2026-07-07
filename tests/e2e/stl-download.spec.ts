@@ -41,16 +41,17 @@ test("Download STL produces a non-empty STL file", async ({ page }) => {
   expect(head.startsWith("solid")).toBe(true);
 });
 
-// st-zph regression: /api/export rendered import()-based models WITHOUT
-// mounting their mesh assets — OpenSCAD only warns on the unreadable
-// import, so the route returned a "successful" STL that was just the
-// backer + screw plugs (watertight, even) with no blower body. The
-// invariants sidecar checks the NATIVE export, so CI stayed green while
-// every web download of an import() model was unprintable. This pins
-// the ACTUAL download path: the exported mesh must be a single
-// watertight solid with the imported body's full extent present.
-test("export route includes import()ed mesh assets (ego blower mount)", async ({ baseURL }) => {
-  test.setTimeout(240_000);
+// st-zph pinned this route against the import()-asset silent-drop bug;
+// st-82o then remodeled the blower mount as native CSG, which is also
+// the perf fix: the import()+Manifold union took ~23s per export and
+// pushed cold serverless starts past the gateway timeout (HTTP 504).
+// The test stays as the end-to-end guard on the heaviest model's
+// download path: 200, one watertight solid, full bracket extent —
+// and the tightened timeout keeps the render from creeping back
+// toward gateway-timeout territory (native CSG renders sub-second;
+// the budget is wasm init + CI slack).
+test("export route serves the ego blower mount fast and complete", async ({ baseURL }) => {
+  test.setTimeout(120_000);
   if (!baseURL) throw new Error("baseURL missing");
 
   const res = await fetch(`${baseURL}/api/export`, {
@@ -64,8 +65,9 @@ test("export route includes import()ed mesh assets (ego blower mount)", async ({
   expect(isWatertight(tris)).toBe(true);
   expect(connectedComponentCount(tris)).toBe(1);
 
-  // PRINT_ANCHOR_BBOX = [138.5, 93.5, 166.5]. Without the imported
-  // mesh the export was 138.5 × 89 × 21.5 — the Z extent is the tell.
+  // PRINT_ANCHOR_BBOX = [138.5, 93.5, 166.5]. A dropped bracket body
+  // (the st-zph failure shape) leaves only the backer — the Z extent
+  // is the tell.
   let maxZ = -Infinity, minZ = Infinity;
   for (const t of tris) {
     for (const v of t.vertices) {
