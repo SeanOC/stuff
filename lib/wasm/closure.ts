@@ -40,7 +40,17 @@ export interface ClosureResult {
   files: ClosureFile[];
   /** Binary files (STL meshes) referenced by entry-level import(). */
   assets: ClosureAsset[];
+  /** include/use paths the walker couldn't resolve. */
   missing: string[];
+  /**
+   * Entry-level import() targets that couldn't be fetched. Kept apart
+   * from `missing` because the failure modes differ: a missing include
+   * makes OpenSCAD error out, but a missing import() is only a WARNING
+   * — the render "succeeds" with the mesh silently absent (st-zph
+   * shipped an armless blower mount exactly that way). Callers must
+   * treat a non-empty list as fatal.
+   */
+  missingAssets: string[];
   /** Number of unique includes resolved (excluding the entry file). */
   resolvedCount: number;
 }
@@ -92,6 +102,7 @@ export async function buildIncludeClosure(
   const files: ClosureFile[] = [];
   const assets: ClosureAsset[] = [];
   const missing: string[] = [];
+  const missingAssets: string[] = [];
 
   // Binary assets referenced by entry-level import(). The entry lands
   // at the FS root, so each asset mounts at /<rel> for OpenSCAD's
@@ -99,7 +110,7 @@ export async function buildIncludeClosure(
   for (const rel of extractImports(entrySource)) {
     const data = fetchAssetFile ? await fetchAssetFile(rel) : null;
     if (data === null) {
-      missing.push(rel);
+      missingAssets.push(rel);
     } else {
       assets.push({ fsPath: `/${rel}`, data });
     }
@@ -147,7 +158,7 @@ export async function buildIncludeClosure(
     }
   }
 
-  return { files, assets, missing, resolvedCount: files.length };
+  return { files, assets, missing, missingAssets, resolvedCount: files.length };
 }
 
 /** Pull include/use targets out of one SCAD source. */

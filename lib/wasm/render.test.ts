@@ -61,6 +61,30 @@ describe("isRetryableError", () => {
 });
 
 describe("renderToStl (wasm integration)", () => {
+  // st-zph: OpenSCAD only WARNs on an unreadable import() and renders
+  // the rest of the tree — the export route shipped a blower mount
+  // whose imported body was silently absent. A missing import() asset
+  // must fail the render, not annotate it.
+  it("fails when an import() asset cannot be fetched", async () => {
+    const res = await renderToStl({
+      source: 'import("gone.stl");\ncube(1);\n',
+      fetchLibFile: async () => null,
+      fetchAssetFile: async () => null,
+    });
+    expect(res.ok).toBe(false);
+    expect(res.errorMessage).toMatch(/import\(\) asset not found: gone\.stl/);
+    expect(res.missing).toContain("gone.stl");
+  });
+
+  it("fails when a model import()s but no asset fetcher is supplied", async () => {
+    const res = await renderToStl({
+      source: 'import("gone.stl");\n',
+      fetchLibFile: async () => null,
+    });
+    expect(res.ok).toBe(false);
+    expect(res.errorMessage).toMatch(/no fetchAssetFile supplied/);
+  });
+
   it("fails rather than succeeding with partial geometry on a hard error", async () => {
     // Syntax error -> ERROR with nonzero exit; pins the error path
     // end-to-end without depending on a nondeterministic CGAL trip.

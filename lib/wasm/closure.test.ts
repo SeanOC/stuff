@@ -167,26 +167,29 @@ describe("buildIncludeClosure import() assets", () => {
       fetchAssetFile: async (p) => (p === "mesh.stl" ? bytes : null),
     });
     expect(result.missing).toEqual([]);
+    expect(result.missingAssets).toEqual([]);
     expect(result.assets).toEqual([{ fsPath: "/mesh.stl", data: bytes }]);
   });
 
-  it("reports unresolvable import targets as missing", async () => {
+  it("reports unresolvable import targets as missingAssets", async () => {
     const result = await buildIncludeClosure({
       entrySource: 'import("gone.stl");',
       fetchLibFile: async () => null,
       fetchAssetFile: async () => null,
     });
     expect(result.assets).toEqual([]);
-    expect(result.missing).toEqual(["gone.stl"]);
+    expect(result.missingAssets).toEqual(["gone.stl"]);
+    expect(result.missing).toEqual([]);
   });
 
-  it("reports import targets as missing when no asset fetcher is supplied", async () => {
+  it("reports import targets as missingAssets when no asset fetcher is supplied", async () => {
     const result = await buildIncludeClosure({
       entrySource: 'import("mesh.stl");',
       fetchLibFile: async () => null,
     });
     expect(result.assets).toEqual([]);
-    expect(result.missing).toEqual(["mesh.stl"]);
+    expect(result.missingAssets).toEqual(["mesh.stl"]);
+    expect(result.missing).toEqual([]);
   });
 
   it("does not scan lib files for imports", async () => {

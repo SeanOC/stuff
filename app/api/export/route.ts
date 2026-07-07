@@ -101,6 +101,7 @@ export async function POST(req: NextRequest) {
   const result = await renderToStl({
     source: sourceWithOverrides,
     fetchLibFile: fsLibFetcher,
+    fetchAssetFile: assetFetcherFor(path.dirname(abs)),
   });
   if (!result.ok || !result.stl) {
     return jsonError(500, "render failed", {
@@ -172,6 +173,32 @@ function coerce(param: Param, raw: unknown): ParamValue | null {
     case "string":
       return typeof raw === "string" ? raw : String(raw);
   }
+}
+
+// Binary import() assets (STL meshes) resolve relative to the model
+// file's own directory — the same rule OpenSCAD applies to import()
+// paths. Confined to the two allowed model roots. st-zph: this fetcher
+// was missing entirely, so import()-based models exported without
+// their mesh — renderToStl now fails hard on that, and this supplies
+// the asset so it doesn't.
+function assetFetcherFor(modelDir: string) {
+  return async (relPath: string): Promise<Uint8Array | null> => {
+    const normalized = path.normalize(relPath);
+    if (normalized.startsWith("..") || path.isAbsolute(normalized)) return null;
+    const abs = path.resolve(modelDir, normalized);
+    if (
+      !abs.startsWith(MODELS_ROOT + path.sep) &&
+      !abs.startsWith(FIXTURES_ROOT + path.sep)
+    ) {
+      return null;
+    }
+    try {
+      return new Uint8Array(await fs.readFile(abs));
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code === "ENOENT") return null;
+      throw e;
+    }
+  };
 }
 
 async function fsLibFetcher(relPath: string): Promise<string | null> {

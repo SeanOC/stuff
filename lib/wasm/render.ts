@@ -24,8 +24,8 @@ export interface RenderInput {
   /**
    * Resolves a models/-relative binary path (entry-level import()
    * target, e.g. an STL mesh) to bytes. Only needed for models that
-   * import() — omitting it makes those renders fail with the import
-   * reported in `missing`.
+   * import() — omitting it makes those renders fail before openscad
+   * runs, with the imports reported in `missing`.
    */
   fetchAssetFile?: AssetFetcher;
   /** Optional `-D name=value` flags to pass to openscad. */
@@ -98,6 +98,25 @@ export async function renderToStl(input: RenderInput): Promise<RenderResult> {
       wallMs: performance.now() - t0,
       filesMounted: 0,
       missing: [],
+      stderr,
+      attempts: 0,
+    };
+  }
+
+  // A missing import() asset is fatal, not a diagnostic: OpenSCAD only
+  // WARNs on an unreadable import and happily renders everything else,
+  // so the output would be a "successful" STL with the imported mesh
+  // silently absent (st-zph: the export route shipped a blower mount
+  // with no blower body that way). Fail before running the engine.
+  if (closure.missingAssets.length > 0) {
+    return {
+      ok: false,
+      errorMessage: `import() asset not found: ${closure.missingAssets.join(", ")}${
+        input.fetchAssetFile ? "" : " (no fetchAssetFile supplied)"
+      }`,
+      wallMs: performance.now() - t0,
+      filesMounted: 0,
+      missing: [...closure.missing, ...closure.missingAssets],
       stderr,
       attempts: 0,
     };
