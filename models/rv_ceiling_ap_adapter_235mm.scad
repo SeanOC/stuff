@@ -5,19 +5,24 @@
 // Covers a 235 mm (9.25 in) ceiling speaker cutout, screws to the
 // ceiling through a flange ring, self-centers via a recessed cup that
 // nests up into the hole, and presents a 100 mm mating platform with
-// 4x M3 heat-set inserts on an 82.55 mm (3.25 in) bolt circle for the
+// 4x M3 heat-set inserts on an 82.16 mm (measured) bolt circle for the
 // AP's mounting bracket. Installs overhead: recess goes UP into the
 // ceiling, AP hangs DOWN into the room.
 //
 // === Recorded interpretations / decisions (st-nhd) ===
 //
-//  - 3.25 in is read as the bolt-circle DIAMETER (distance across
-//    opposite holes). The adjacent-spacing reading would put opposite
-//    holes at 4.6 in — outside the 100 mm mount — so it's wrong.
-//  - ONE-PIECE print at flange_outer_dia = 252 on a 256 mm bed
-//    (~1 mm margin, ~8.75 mm flange overlap past the hole edge). No
-//    split-segment variant is built; add one only if a wider flange
-//    is ever requested.
+//  - The bolt circle is the DIAMETER (center-to-center of OPPOSING
+//    holes). The adjacent-spacing reading would put opposite holes
+//    at ~116 mm — outside the 100 mm mount — so it's wrong. REVISED
+//    (st-035): refined measurement 82.16 mm (was the nominal
+//    3.25 in = 82.55 read).
+//  - ONE-PIECE print at flange_outer_dia = 270 on the Bambu H2S bed
+//    (340 x 320 mm — the round plate is limited by the 320 mm axis,
+//    ~25 mm margin per side; ~17.5 mm flange overlap past the hole
+//    edge). REVISED (st-035): grown from 252 (X1C-constrained) after
+//    the operator moved to an H2S. No split-segment variant is
+//    built; add one only if a wider-than-bed flange is ever
+//    requested.
 //  - Ceiling screws default to 6x #6 (3.5 mm) with flush countersunk
 //    heads on the room face. The bolt circle defaults to 243 mm
 //    (bead said "~244"): 243 keeps the 7 mm countersink rim >= 1 mm
@@ -39,14 +44,21 @@
 //    count=6 sweep case). The old dead-center hole (cable_hole_dia)
 //    is kept as a parameter but defaults to 0 (off) since it lines
 //    up with the bracket's solid hub.
-//  - Heat-set inserts default to M3 (4.0 mm hole x 5.5 mm deep) per
-//    the bead; operator to confirm the AP bracket's actual screws.
+//  - Heat-set inserts default to M3 (4.2 mm hole x 8.0 mm deep).
+//    REVISED (st-035) from 4.0 x 5.5 per operator measurement of the
+//    actual inserts.
+//  - REVISED (st-035): cable slots default to rotation 0 so the pair
+//    lands ON the 0/180 insert axes — the AP bracket's cable
+//    pass-throughs sit at its screw positions, so registering the
+//    slots with the insert axes lines them up with the bracket's
+//    openings. (Slots at r=27, inserts at r=41.08 — different radii,
+//    no collision; slot_out_max_r keeps them radially clear.)
 //
 // === Print orientation (native): ZERO supports ===
 //
 // Prints room-face-down. The whole room face — flange ring, pocket
 // floor, AP boss mating face — is ONE coplanar plane on the bed
-// (maximum adhesion area for a 252 mm disk, the best warp insurance
+// (maximum adhesion area for a 270 mm disk, the best warp insurance
 // there is). This is why the boss face is flush rather than proud: a
 // boss protruding past the flange plane would float the entire flange
 // on supports in every orientation (both faces of this plate have
@@ -77,7 +89,7 @@
 // are volumetric unions/cuts into that solid (never face-kissing;
 // everything overlaps by >= 0.6 mm, st-v7k).
 //
-// Stiffness against warp/flex on a thin 252 mm disk comes from the
+// Stiffness against warp/flex on a thin 270 mm disk comes from the
 // recess cup wall (a 13 mm-tall ring at r~114), rib_count radial ribs
 // tying the AP boss to that wall, and the perimeter lip. The lip
 // rises lip_h above the flange's ceiling face at the outer rim, so
@@ -92,7 +104,7 @@ $fn = 96;
 // ----- Ceiling hole + flange -----
 ceiling_hole_dia = 235;  // @param number min=200 max=245 step=0.5 unit=mm group=ceiling label="Ceiling cutout diameter"
 hole_clearance   = 1.25; // @param number min=0.5 max=3 step=0.25 unit=mm group=ceiling label="Recess clearance per side"
-flange_outer_dia = 252;  // @param number min=240 max=254 step=1 unit=mm group=ceiling label="Flange outer diameter (max 254 = X1C bed)"
+flange_outer_dia = 270;  // @param number min=240 max=318 step=1 unit=mm group=ceiling label="Flange outer diameter (max 318 = H2S bed)"
 flange_t         = 4;    // @param number min=3 max=6 step=0.5 unit=mm group=ceiling label="Flange / floor thickness"
 lip_h            = 1.0;  // @param number min=0 max=2 step=0.25 unit=mm group=ceiling label="Perimeter seating-lip height (0 = flat)"
 
@@ -109,9 +121,9 @@ rib_count     = 6;  // @param number min=0 max=12 step=1 group=recess label="Sti
 
 // ----- AP mount -----
 ap_mount_dia       = 100;   // @param number min=60 max=140 step=1 unit=mm group=ap label="AP mating boss diameter"
-ap_bolt_circle_dia = 82.55; // @param number min=40 max=120 step=0.05 unit=mm group=ap label="Insert bolt-circle diameter (3.25in = 82.55)"
-insert_hole_dia    = 4.0;   // @param number min=3 max=6.5 step=0.1 unit=mm group=ap label="Heat-set insert hole (M3 = 4.0)"
-insert_depth       = 5.5;   // @param number min=4 max=10 step=0.5 unit=mm group=ap label="Heat-set insert depth"
+ap_bolt_circle_dia = 82.16; // @param number min=40 max=120 step=0.05 unit=mm group=ap label="Insert bolt-circle diameter (measured 82.16)"
+insert_hole_dia    = 4.2;   // @param number min=3 max=6.5 step=0.1 unit=mm group=ap label="Heat-set insert hole (M3 = 4.2)"
+insert_depth       = 8.0;   // @param number min=4 max=10 step=0.5 unit=mm group=ap label="Heat-set insert depth"
 cable_hole_dia     = 0;     // @param number min=0 max=60 step=1 unit=mm group=ap label="Dead-center cable hole (0 = off; AP bracket hub is solid)"
 
 // ----- Offset cable pass-through (st-so4) -----
@@ -121,9 +133,9 @@ cable_slot_count   = 2;   // @param number min=0 max=6 step=1 group=cable label=
 cable_slot_bc_dia  = 54;  // @param number min=20 max=80 step=1 unit=mm group=cable label="Slot centerline circle diameter"
 cable_slot_arc_deg = 60;  // @param number min=10 max=120 step=5 unit=deg group=cable label="Slot arc length (between end-cap centers)"
 cable_slot_w       = 14;  // @param number min=6 max=24 step=0.5 unit=mm group=cable label="Slot radial width"
-cable_slot_rot_deg = 45;  // @param number min=0 max=180 step=5 unit=deg group=cable label="Slot pattern rotation"
+cable_slot_rot_deg = 0;   // @param number min=0 max=180 step=5 unit=deg group=cable label="Slot pattern rotation (0 = on insert axes)"
 
-// @preset id="default" label="Default (235mm hole, one-piece, M3 inserts)" ceiling_hole_dia=235 hole_clearance=1.25 flange_outer_dia=252 flange_t=4 lip_h=1 screw_count=6 screw_hole_dia=4 screw_head_dia=7 screw_bc_dia=243 recess_depth=9 recess_wall_t=4 rib_count=6 ap_mount_dia=100 ap_bolt_circle_dia=82.55 insert_hole_dia=4 insert_depth=5.5 cable_hole_dia=0 cable_slot_count=2 cable_slot_bc_dia=54 cable_slot_arc_deg=60 cable_slot_w=14 cable_slot_rot_deg=45
+// @preset id="default" label="Default (235mm hole, one-piece, M3 inserts)" ceiling_hole_dia=235 hole_clearance=1.25 flange_outer_dia=270 flange_t=4 lip_h=1 screw_count=6 screw_hole_dia=4 screw_head_dia=7 screw_bc_dia=243 recess_depth=9 recess_wall_t=4 rib_count=6 ap_mount_dia=100 ap_bolt_circle_dia=82.16 insert_hole_dia=4.2 insert_depth=8 cable_hole_dia=0 cable_slot_count=2 cable_slot_bc_dia=54 cable_slot_arc_deg=60 cable_slot_w=14 cable_slot_rot_deg=0
 
 // Debug: cut the +Y half away to expose the cross-section (used by
 // the committed section render; never on for printing/export).
@@ -134,7 +146,7 @@ section_view = false;
 recess_dia = ceiling_hole_dia - 2 * hole_clearance;  // 232.5 @ defaults
 recess_r   = recess_dia / 2;                         // 116.25
 wall_in_r  = recess_r - recess_wall_t;               // 112.25
-flange_r   = flange_outer_dia / 2;                   // 126
+flange_r   = flange_outer_dia / 2;                   // 135
 boss_r     = ap_mount_dia / 2;                       // 50
 total_h    = flange_t + recess_depth;                // 13: room face -> wall top
 
@@ -159,7 +171,7 @@ rib_out_r = wall_in_r + 0.75;
 // the rib roots (never cut a rib or an insert boss), and its inner
 // edge stays >= 0.5 mm off the axis (valid annulus even at extreme
 // slider combos — the inner-edge clamp wins if they conflict). At the
-// defaults every clamp is inactive: slot_r = 54/2 = 27, max 30.275.
+// defaults every clamp is inactive: slot_r = 54/2 = 27, max 29.98.
 slot_out_max_r = min(ap_bolt_circle_dia / 2 - insert_hole_dia / 2 - 2,
                      rib_count > 0 ? rib_in_r - 1 : boss_r - 1.5);
 slot_r = max(cable_slot_w / 2 + 0.5,
@@ -187,13 +199,13 @@ cs_h = (screw_head_dia - screw_hole_dia) / 2;
 // Screw bolt circle clamped so the countersink rim always stays
 // >= 1 mm inside the plate edge (a slider combo like a small flange
 // with a big head must never break through the outer wall). At the
-// defaults the clamp is exactly inactive: min(121.5, 126-3.5-1) = 121.5.
+// defaults the clamp is inactive: min(121.5, 135-3.5-1) = 121.5.
 screw_bc_r = min(screw_bc_dia / 2, flange_r - screw_head_dia / 2 - 1);
 
 // PRINT_ANCHOR_BBOX at defaults:
-//   X = Y = flange_outer_dia          = 252
+//   X = Y = flange_outer_dia          = 270
 //   Z = flange_t + recess_depth = 4+9 = 13
-PRINT_ANCHOR_BBOX = [252, 252, 13];
+PRINT_ANCHOR_BBOX = [270, 270, 13];
 
 // === Axisymmetric body ===
 // One closed profile in the (r, z) half-plane, room face at z = 0
@@ -235,7 +247,7 @@ module body_revolve() {
 // 0.75 mm into the cup wall, and `bury` into the floor. Tops are flush
 // with the cup wall / boss tops. The 15 deg offset keeps every rib
 // off the 0/90/180/270 insert axes for any rib_count up to 12
-// (cosmetic only — inserts end at r = 43.3, ribs start at r = 45, so
+// (cosmetic only — inserts end at r = 43.2, ribs start at r = 45, so
 // they can't collide radially at defaults anyway).
 module ribs() {
     if (rib_count > 0)
@@ -315,8 +327,9 @@ module arc_slot_2d(r, w, arc_deg) {
 
 // Offset cable pass-through slots (st-so4): full-height vertical cuts
 // through the AP boss on the (clamped) slot_r circle, equally spaced,
-// rotated as a pattern by cable_slot_rot_deg. Default pair at 45/225
-// deg sits between the 0/90/180/270 insert axes. Each slot is trimmed
+// rotated as a pattern by cable_slot_rot_deg. Default pair at 0/180
+// deg registers with the insert axes, lining up with the AP bracket's
+// pass-throughs at its screw positions (st-035). Each slot is trimmed
 // to its slot_span_max pie-wedge budget so adjacent slots always leave
 // a material bridge (see slot_bridge_deg above).
 module cable_slots() {
