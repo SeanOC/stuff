@@ -13,13 +13,16 @@ the mesh basics. The extras here pin the claims this model exists for:
      past that radius — any stray geometry up there would jam against
      the ceiling cutout instead of self-centering in it.
 
-  3. **One-piece bed fit.** flange_outer_dia <= 254 (256 mm X1C bed
-     minus ~1 mm margin per side) — the bead's explicit constraint for
-     the no-split default.
+  3. **One-piece bed fit.** flange_outer_dia <= 318 (Bambu H2S bed,
+     340 x 320 mm — the round plate is limited by the 320 mm axis,
+     minus ~1 mm margin per side). REVISED (st-035) from the X1C's
+     254 mm after the operator moved to an H2S; the one-piece
+     no-split default still holds.
 
   4. **AP interface is right.** 4 insert holes at exactly 90 deg on
-     the 82.55 mm bolt circle (bolt-circle-DIAMETER reading of
-     "3.25 in across"), each open to insert_depth and closed past it,
+     the 82.16 mm bolt circle (bolt-circle-DIAMETER = center-to-center
+     of opposing holes; measured, st-035 — was the nominal 3.25 in =
+     82.55), each open to insert_depth and closed past it,
      with solid boss between them; the mating face + surrounds sit on
      the room plane.
 
@@ -49,7 +52,7 @@ import numpy as np
 from scripts.invariants import Failure, as_default_params, expect_connected_solids
 
 _CONTACT_EPS_MM = 0.05
-_BED_LIMIT_MM = 254.0
+_BED_LIMIT_MM = 318.0
 
 
 def _polar(r, ang_deg, z):
@@ -64,13 +67,13 @@ def check(ctx):
 
     hole_dia = p.get("ceiling_hole_dia", 235)
     clearance = p.get("hole_clearance", 1.25)
-    flange_outer = p.get("flange_outer_dia", 252)
+    flange_outer = p.get("flange_outer_dia", 270)
     flange_t = p.get("flange_t", 4)
     lip_h = p.get("lip_h", 1.0)
     recess_depth = p.get("recess_depth", 9)
-    bc_dia = p.get("ap_bolt_circle_dia", 82.55)
-    insert_depth = p.get("insert_depth", 5.5)
-    insert_hole_dia = p.get("insert_hole_dia", 4.0)
+    bc_dia = p.get("ap_bolt_circle_dia", 82.16)
+    insert_depth = p.get("insert_depth", 8.0)
+    insert_hole_dia = p.get("insert_hole_dia", 4.2)
     cable_dia = p.get("cable_hole_dia", 0)
     rib_count = p.get("rib_count", 6)
     boss_r = p.get("ap_mount_dia", 100) / 2
@@ -78,17 +81,18 @@ def check(ctx):
     slot_bc_dia = p.get("cable_slot_bc_dia", 54)
     slot_arc = p.get("cable_slot_arc_deg", 60)
     slot_w = p.get("cable_slot_w", 14)
-    slot_rot = p.get("cable_slot_rot_deg", 45)
+    slot_rot = p.get("cable_slot_rot_deg", 0)
 
     recess_r = (hole_dia - 2 * clearance) / 2
     total_h = flange_t + recess_depth
 
-    # --- one-piece bed fit (bead: 256 mm bed, <= ~254 flange) ---
+    # --- one-piece bed fit (st-035: H2S bed 340x320, round plate
+    # limited by the 320 mm axis, <= ~318 flange) ---
     if flange_outer > _BED_LIMIT_MM:
         failures.append(Failure(
             "envelope",
             f"flange_outer_dia={flange_outer}mm > {_BED_LIMIT_MM}mm; won't "
-            f"print one-piece on the X1C bed (bead requires one-piece default)",
+            f"print one-piece on the H2S bed (bead requires one-piece default)",
         ))
 
     mesh = ctx["stl"]
