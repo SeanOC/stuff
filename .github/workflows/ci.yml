@@ -14,20 +14,22 @@ jobs:
   render:
     name: render preview images
     runs-on: ubuntu-latest
-    # Switch to the upstream openscad/openscad Docker image (st-43l).
-    # The AppImage path was a documented bad fit for Ubuntu 24.04
-    # runners (openscad/openscad #5736, #5903) — each fix surfaced
-    # the next missing host dep (apprun-hooks, libEGL, libGL, ...).
-    # The Docker image bundles EGL + Qt + everything else by design;
-    # it's OpenSCAD's recommended CI pattern.
+    # Engine architecture (st-mb1): the container image supplies the
+    # runtime environment (EGL + Qt + GL libs — the deps that made bare
+    # AppImage-on-runner a bad fit, openscad/openscad #5736, #5903; see
+    # st-43l), but its bundled openscad is NOT the engine we render
+    # with. The "Install pinned OpenSCAD engine" step below downloads
+    # the 2025.06.12.ai25773 AppImage (the st-fgp local pin), extracts
+    # it (no FUSE in containers), and shadows the container binary.
     #
-    # Tag pin: dev.2025-09-06. We previously pinned the snapshot
-    # 2025.06.12.ai25773 (st-fgp) to get the CGAL/topology fixes that
-    # made the 3 stale STL exports watertight. There is NO Docker tag
-    # dated June 2025 — the published dev tags jump from 2025-05-19
-    # straight to 2025-09-06 (bookworm/trixie families start that
-    # same week). dev.2025-09-06 is the first dated tag AFTER our
-    # AppImage pin and the closest dev-lineage match.
+    # Why: dev.2025-09-06 was the closest available Docker tag to the
+    # June 2025 pin (published dev tags jump 2025-05-19 → 2025-09-06),
+    # but its engine exports non-watertight geometry for all 5
+    # openGrid-snap models that 2025.06.12.ai25773 exports watertight
+    # from identical sources (st-mb1). Same-engine-everywhere beats
+    # closest-tag roulette, so the tag now only needs to provide a
+    # compatible library environment — do NOT expect this image's own
+    # `openscad` to be what renders below.
     container:
       image: openscad/openscad:dev.2025-09-06
     timeout-minutes: 10
@@ -88,11 +90,41 @@ jobs:
               - 'models/*.scad'
               - 'libs/**'
 
+      - name: Install pinned OpenSCAD engine
+        # st-mb1: replace the container's openscad with the exact
+        # engine pinned locally (st-fgp): snapshot 2025.06.12.ai25773.
+        # The container's dev.2025-09-06 build exports non-watertight
+        # STLs for all 5 openGrid-snap models; this snapshot exports
+        # them watertight from identical sources (verified in this
+        # exact image, 2026-07-10).
+        #
+        # Hosting: files.openscad.org/snapshots/ retention already
+        # dropped this build, so the AppImage is preserved as a release
+        # asset on THIS repo (tag openscad-2025.06.12.ai25773) and
+        # sha256-pinned here. Containers have no FUSE, so extract the
+        # AppImage instead of running it directly; libgpg-error0 is the
+        # one shared lib the AppImage needs that the image lacks. The
+        # wrapper overwrites /usr/local/bin/openscad (the container
+        # binary), so every later `openscad` resolves to the pin.
+        env:
+          APPIMAGE_URL: https://github.com/SeanOC/stuff/releases/download/openscad-2025.06.12.ai25773/OpenSCAD-2025.06.12.ai25773-x86_64.AppImage
+          APPIMAGE_SHA256: cfebdf98c8545ebfcee889b75626d7c0aa5235e3e3a09aea028ee26b3c7de1fc
+        run: |
+          apt-get install -y --no-install-recommends curl libgpg-error0
+          curl -fsSL --retry 3 -o /opt/openscad.AppImage "$APPIMAGE_URL"
+          echo "$APPIMAGE_SHA256  /opt/openscad.AppImage" | sha256sum -c -
+          chmod +x /opt/openscad.AppImage
+          (cd /opt && ./openscad.AppImage --appimage-extract >/dev/null)
+          printf '#!/bin/sh\nexec /opt/squashfs-root/AppRun "$@"\n' > /usr/local/bin/openscad
+          chmod +x /usr/local/bin/openscad
+
       - name: openscad --version smoke
-        # First thing in the job: surface a container-image mismatch
-        # immediately. Acceptance gate for st-43l — must print the
-        # pinned tag's version cleanly with no source/library errors.
-        run: openscad --version
+        # First thing after engine install: surface an engine mismatch
+        # immediately (st-43l, st-mb1) — must print the pinned snapshot
+        # version cleanly, proving the AppImage shadow took effect.
+        run: |
+          openscad --version
+          openscad --version 2>&1 | grep -F "2025.06.12.ai25773"
 
       - name: Smart-render mode summary
         # st-a50: surface in the workflow summary which path the run
