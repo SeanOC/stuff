@@ -34,17 +34,6 @@ export const KNOWN_FAILURES: Record<string, Record<string, string>> = {
   cylindrical_holder_slot: {
     "cup_depth=0": "st-1us: BOSL2 assertion (transforms.scad:1440) at zero depth",
   },
-  // Not pre-existing debt like the entries above: registered at model
-  // introduction (st-3mk) because the failure lives in the vendored
-  // snap lib + wasm engine, not the model. Deterministic per scene;
-  // desktop OpenSCAD renders both cases clean. st-fcp tracks the
-  // broken CGAL retry that would otherwise paper over this class.
-  opengrid_bin: {
-    "height_units=1":
-      "st-79a: wasm CGAL applyHull assert from openGridSnap's hull-rounded click holes",
-    "snap_lite=true":
-      "st-79a: wasm CGAL applyHull assert from openGridSnap's hull-rounded click holes",
-  },
   goblu_filter_holder_3x90mm: {
     "housing_diameter=100": "st-344: openscad exit=1 (BOSL2 assertion)",
     "housing_diameter=160": "st-344: openscad exit=1 (BOSL2 assertion)",

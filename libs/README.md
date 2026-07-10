@@ -27,6 +27,21 @@ forward bump on QuackWorks is not available. The `456fcd8` pin is the newest
 BOSL2 that accepts the syntax every pinned QuackWorks backer (snap + slot)
 depends on. Verified renders without local patches: snap backer, slot backer.
 
+**Local patches (st-79a, 2026-07-10):** `scripts/vendor-libs.sh` applies
+`scripts/patches/<lib>/*.patch` after checkout; the `.vendor-sha` marker
+embeds a fingerprint of the patch set so editing a patch re-vendors.
+Current patches:
+
+- `QuackWorks/0001-opengrid-snap-linear-extrude-click-holes.patch` —
+  `openGrid/opengrid-snap.scad` cut its click holes with
+  `cuboid(rounding=0.3, edges="Z", $fn=100)`. BOSL2 builds partial-edge
+  cuboid rounding as `hull()` of 8 corner pieces; in the wasm engine
+  `hull()` routes through CGAL and the micro-segmented pieces trip the
+  `convex_hull_3.h:684` assert (st-7x7 class), and the same geometry
+  exports non-watertight STLs for every openGrid-snap model. The patch
+  cuts the identical stadium prism with `linear_extrude` of a rounded
+  `rect()` — no hull. Drop the patch if upstream fixes the click holes.
+
 ## NopSCADlib — `use <NopSCADlib/...>`
 
 Large mechanical library with "vitamins" (off-the-shelf hardware models) plus
