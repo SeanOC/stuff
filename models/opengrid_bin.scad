@@ -232,16 +232,27 @@ module plate() {
 
 // Cavity profile in (Y, Z), extruded along X across the interior
 // width. Overshoots (ov) past every face it opens: +Y past the top,
-// +Z past the front.
+// +Z past the front, and BELOW the body's bottom plane at the back —
+// the cut punches clear through the body web so the bin's interior
+// back face is the plate's own top face. Stopping the cut exactly at
+// plate_top would instead leave the web's top face coincident with
+// the plate top (two coplanar boundary faces in the union, st-v7k
+// class); overshooting past the body bottom is safe because the cut
+// is differenced from the body only and the plate is a sibling.
 module cavity() {
-    // At rear_fillet = 0 the two fillet vertices coincide; emit the
-    // corner once — a duplicate vertex would make a degenerate
-    // polygon edge (same guard as opengrid_panel_aligner's axis_top).
+    zc = plate_top - bury - ov;  // below everything the body owns
+    // At rear_fillet = 0 the fillet diagonal vanishes; emit the bare
+    // corner drop instead — duplicate vertices would make a
+    // degenerate polygon edge (opengrid_panel_aligner's axis_top
+    // guard). The material left under the fillet toe (z between the
+    // body bottom and plate_top) sits wholly inside the plate solid,
+    // so it merges invisibly.
     fillet_pts = rf < 0.01
-        ? [[floor_t, plate_top]]
-        : [[floor_t, plate_top + rf], [floor_t + rf, plate_top]];
+        ? [[floor_t, zc]]
+        : [[floor_t, plate_top + rf], [floor_t + rf, plate_top],
+           [floor_t + rf, zc]];
     pts = concat([
-        [H + ov, plate_top],                // up the plate face
+        [H + ov, zc],                       // up the plate face
         [H + ov, z_front + ov],             // over the top, out the front
         [floor_t + lip_e, z_front + ov],    // down the open front...
         [floor_t + lip_e, z_front],         // ...to the lip crest
