@@ -30,6 +30,10 @@ Model-level checks (OpenSCAD renders + per-model invariants) — see
 [AGENTS.md](AGENTS.md) for the render pipeline and invariants sidecar
 convention.
 
+Adding a new model? Use the `new-model` skill
+([.claude/skills/new-model/SKILL.md](.claude/skills/new-model/SKILL.md))
+— scaffold plus the full conventions checklist.
+
 ## Architecture overview
 
 - `app/` — Next.js App Router frontend. Gallery at `/`, dynamic detail

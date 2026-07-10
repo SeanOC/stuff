@@ -53,6 +53,11 @@ drift), and then calls the sidecar's `check(ctx)`.
 
 ### Adding a model
 
+Start with the `new-model` skill
+([.claude/skills/new-model/SKILL.md](.claude/skills/new-model/SKILL.md)):
+`python3 scripts/new-model.py <stem> --category <id>` scaffolds the
+`.scad`, this sidecar, the sweep test, and the catalog entry in one shot.
+
 Always create a sidecar. Minimum skeleton:
 
 ```python

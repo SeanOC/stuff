@@ -10,6 +10,7 @@ export default defineConfig({
       "components/**/*.test.tsx",
       "app/**/*.test.ts",
       "services/**/*.test.ts",
+      "scripts/**/*.test.ts",
     ],
     environment: "node",
   },
