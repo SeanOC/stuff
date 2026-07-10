@@ -1,0 +1,27 @@
+st-79a: cut openGridSnap click holes with linear_extrude of a rounded
+rect instead of cuboid(rounding=..., edges="Z").
+
+BOSL2 implements partial-edge cuboid rounding as hull() of 8 corner
+pieces. In the wasm engine hull() routes through CGAL applyHull even on
+the Manifold backend, and the 0.3mm/$fn=100 micro-segmented corner
+pieces trip the convex_hull_3.h:684 assertion (st-7x7/st-560 class) in
+scene-dependent compositions. The same geometry also yields
+non-watertight STL exports for every openGrid-snap model. A
+linear_extrude of a BOSL2 rounded rect() is the identical stadium
+prism, built as a plain polygon extrusion — no hull involved.
+
+--- a/openGrid/opengrid-snap.scad
++++ b/openGrid/opengrid-snap.scad
+@@ -104,10 +104,10 @@
+ 			zrot_copies(n=4)
+ 				move([w/2-1, 0, 0])
+ 				if (!directional || $idx==1 || $idx==3)
+-					cuboid([0.6,12.4,2.8 + (lite ? 0 : fulldiff)], rounding=0.3, $fn=100, edges="Z", anchor=BOTTOM);
++					linear_extrude(height=2.8 + (lite ? 0 : fulldiff)) rect([0.6,12.4], rounding=0.3, $fn=100);
+ 			//bottom click holes for rear directional
+ 			if (directional) {
+-				zrot(180) move([w/2-1, 0, 0.599]) cuboid([0.6, 12.4, 2.2 + (lite ? 0 : fulldiff) ], rounding=0.3, $fn=100, edges="Z", anchor=BOTTOM);
++				zrot(180) move([w/2-1, 0, 0.599]) linear_extrude(height=2.2 + (lite ? 0 : fulldiff)) rect([0.6, 12.4], rounding=0.3, $fn=100);
+ 				zrot(180) move([w/2-1.2, 0, 0]) prismoid(size1=[0.6, 12.4], size2=[0.6, 12.4], h=0.6, shift=[0.2,0], rounding=0.3, $fn=100);
+ 				zrot(180) move([w/2-0.1, 0, 0]) rotate([0,0,0]) prismoid(size1=[0.2, 20], size2=[0, 20], shift=[0.1,0], h=0.6, anchor=BOTTOM);
+ 			};

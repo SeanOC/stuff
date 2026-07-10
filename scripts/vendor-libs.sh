@@ -10,17 +10,31 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+# Local patches under scripts/patches/<name>/*.patch are applied after
+# checkout (see libs/README.md for why each exists). The vendor marker
+# includes a fingerprint of the patch set so editing a patch re-vendors.
+marker() {
+  local name="$1" sha="$2"
+  local pdir="scripts/patches/$name"
+  if compgen -G "$pdir/*.patch" > /dev/null; then
+    echo "$sha+patches-$(cat "$pdir"/*.patch | sha256sum | cut -c1-12)"
+  else
+    echo "$sha"
+  fi
+}
+
 vendor() {
   local name="$1" url="$2" sha="$3"
   local dir="libs/$name"
+  local want; want="$(marker "$name" "$sha")"
 
   if [ -L "$dir" ]; then
     echo "libs/$name is a symlink; skipping (dev setup)"
     return
   fi
 
-  if [ -f "$dir/.vendor-sha" ] && [ "$(cat "$dir/.vendor-sha")" = "$sha" ]; then
-    echo "libs/$name already at $sha"
+  if [ -f "$dir/.vendor-sha" ] && [ "$(cat "$dir/.vendor-sha")" = "$want" ]; then
+    echo "libs/$name already at $want"
     return
   fi
 
@@ -36,7 +50,13 @@ vendor() {
   mkdir -p libs
   git clone "$url" "$dir"
   ( cd "$dir" && git checkout "$sha" && rm -rf .git )
-  echo "$sha" > "$dir/.vendor-sha"
+  if compgen -G "scripts/patches/$name/*.patch" > /dev/null; then
+    for p in "scripts/patches/$name"/*.patch; do
+      echo "applying $p"
+      patch -p1 -d "$dir" < "$p"
+    done
+  fi
+  echo "$want" > "$dir/.vendor-sha"
 }
 
 vendor BOSL2                       https://github.com/BelfrySCAD/BOSL2.git                     456fcd8
