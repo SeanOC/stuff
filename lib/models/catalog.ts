@@ -44,6 +44,11 @@ export const CATALOG: Record<string, CatalogEntry> = {
     blurb:
       "OpenGrid wall cradle for a 55×124×7.7mm LED-strip remote. Same design as the 51×84 twin with a 2×4 snap grid; the plate is capped at 116mm so the remote stands ~10mm proud for easy grabbing.",
   },
+  opengrid_bin: {
+    categoryId: "multiboard",
+    blurb:
+      "Open-topped wall bin for vertically-mounted openGrid panels, sized in 28mm grid units so it aligns with the tiles. One directional snap per tile (strong nub up for the cantilever load), full-height sides, 45° scoop front lip, and a rear floor fillet. Prints snaps-down, support-free.",
+  },
   opengrid_panel_aligner: {
     categoryId: "multiboard",
     blurb:
