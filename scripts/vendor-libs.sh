@@ -53,7 +53,8 @@ vendor() {
   if compgen -G "scripts/patches/$name/*.patch" > /dev/null; then
     for p in "scripts/patches/$name"/*.patch; do
       echo "applying $p"
-      patch -p1 -d "$dir" < "$p"
+      # git apply, not patch(1): the CI image ships git but not patch.
+      git apply --whitespace=nowarn --directory="$dir" -p1 "$p"
     done
   fi
   echo "$want" > "$dir/.vendor-sha"

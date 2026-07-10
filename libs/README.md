@@ -30,6 +30,8 @@ depends on. Verified renders without local patches: snap backer, slot backer.
 **Local patches (st-79a, 2026-07-10):** `scripts/vendor-libs.sh` applies
 `scripts/patches/<lib>/*.patch` after checkout; the `.vendor-sha` marker
 embeds a fingerprint of the patch set so editing a patch re-vendors.
+Patches are applied with `git apply -p1` (the CI image has git but not
+`patch(1)`, st-1uw), so they must be git-apply-compatible unified diffs.
 Current patches:
 
 - `QuackWorks/0001-opengrid-snap-linear-extrude-click-holes.patch` —
