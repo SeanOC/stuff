@@ -32,7 +32,15 @@ jobs:
     # `openscad` to be what renders below.
     container:
       image: openscad/openscad:dev.2025-09-06
-    timeout-minutes: 10
+    # 40 min: the pinned 2025.06 engine evaluates geometry via CGAL
+    # (the dev.2025-09-06 container build that fit in 10 min appears
+    # to default to the much faster Manifold backend — but that's the
+    # same build that exports non-watertight geometry, st-mb1). Real
+    # timings @56ded18: setup+engine install ~2.5 min, render-all
+    # 18/18 models ~7 min, exports were cut off at the old 10-min
+    # mark ~38s in; local container timings put the full export set
+    # around 15 min. Correct-but-slower wins over fast-but-broken.
+    timeout-minutes: 40
     permissions:
       contents: write
       # dorny/paths-filter calls listFiles on the PR to decide whether
