@@ -153,7 +153,9 @@ jobs:
         if: github.event_name == 'push' || steps.filter.outputs.render == 'true' || steps.filter.outcome == 'failure'
         # The openscad/openscad image is Debian-based but minimal —
         # bundle only what openscad itself needs. measure.py +
-        # invariants need numpy, PIL, and trimesh; we also pull
+        # invariants need numpy, PIL, and trimesh; rtree is trimesh's
+        # optional ray-query backend required by mesh.contains() in
+        # the invariants sidecars (st-3r5). We also pull
         # pytest for the invariant core unit test step. `xvfb`
         # provides the `xvfb-run` wrapper that
         # .claude/skills/_lib/openscad.py invokes to drive openscad
@@ -167,9 +169,9 @@ jobs:
         run: |
           apt-get install -y --no-install-recommends xauth xvfb
           apt-get install -y --no-install-recommends \
-            python3-numpy python3-pil python3-trimesh python3-pytest \
+            python3-numpy python3-pil python3-trimesh python3-rtree python3-pytest \
             || python3 -m pip install --break-system-packages \
-                 numpy pillow trimesh pytest
+                 numpy pillow trimesh rtree pytest
 
       - name: Vendor SCAD libraries
         if: github.event_name == 'push' || steps.filter.outputs.render == 'true' || steps.filter.outcome == 'failure'
