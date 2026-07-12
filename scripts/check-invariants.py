@@ -9,7 +9,10 @@ imports models/<stem>.invariants.py, and runs both the built-in
 invariants (topology, watertight, triangle ceiling, PRINT_ANCHOR_BBOX)
 and anything the sidecar's `check(ctx)` returns.
 
-Exits 0 on all green; non-zero with a report on any failure.
+Exits 0 on all green; 1 on invariant failures; 2 on setup problems
+(missing model, unloadable mesh); 3 when the export .stl simply isn't
+present (check-invariants-all.py treats that as "not exported this
+run" and skips the stem in CI's scoped-render mode).
 
 Per st-cjn: the sidecar is "stop-the-bleeding" infra for three known
 defect classes (st-v7k topology, st-8ac clearance, st-3ta footprint).
@@ -57,12 +60,17 @@ def main(argv: list[str] | None = None) -> int:
     stl = _resolve_stl(stem, source)
 
     if not stl.exists():
+        # Dedicated exit code: check-invariants-all.py skips this case
+        # in CI's scoped-render mode, where export-all only regenerates
+        # the models a PR touched (st-mrt; exports/*.stl is gitignored,
+        # so untouched models have no STL in a fresh workspace). Any
+        # other setup problem stays rc=2 and fails the batch.
         print(
             f"error: export not found: {stl}\n"
             f"  run the export skill or scripts/export-all.py first",
             file=sys.stderr,
         )
-        return 2
+        return 3
 
     mesh = trimesh.load(stl, force="mesh")
     if not isinstance(mesh, trimesh.Trimesh):
