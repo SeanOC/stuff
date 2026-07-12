@@ -18,7 +18,7 @@ The interesting part isn't the models — it's the authoring loop.
    Y range, mounts to Z."*
 2. Claude writes the `.scad`, annotates each `@param`, seeds a
    `<stem>.invariants.py` sidecar (watertight / bbox / single-body
-   claims), and adds a catalog entry.
+   claims), a param-sweep test, and a catalog entry.
 3. Push. CI regenerates thumbnails and runs the invariants gate.
 4. Vercel deploys on merge to `main`.
 5. Open the model's page at
@@ -38,11 +38,12 @@ web-app architecture.
 
 ## Models
 
-| File | Description |
-| --- | --- |
-| `cylindrical_holder_slot.scad` | Multiboard-mounted holder for any cylindrical item (42–77 mm tested), Multiconnect slot backer. |
-| `popcorn_kernel.scad` | Cartoonish popped popcorn kernel — replacement piece for a Disney toddler-toy popcorn stand. |
-| `spraycan_carrier_6x50mm.scad` | 2×3 spray-can tote carrier for 50 mm cans: six open-front C-ring cradles, drainage base plate, semicircular-arched handle. Kid-safe, wet-safe, tall-can (195 mm) clearance. |
+Every `.scad` under [`models/`](models/) ships with a gallery card at
+[stuff.seanoc.com](https://stuff.seanoc.com). The catalog —
+category and blurb per model — lives in
+[`lib/models/catalog.ts`](lib/models/catalog.ts), which is the single
+source of truth (CI fails on a model without an entry, so the site
+listing is always complete).
 
 ## Development
 
@@ -55,24 +56,32 @@ npm install
 npm run dev                    # http://localhost:3000
 ```
 
-Render a model directly via OpenSCAD (Manifold backend required —
-CGAL OOMs on BOSL2):
+Render a model directly via OpenSCAD (the project pins engine snapshot
+`2025.06.12.ai25773` — downloadable from this repo's
+`openscad-2025.06.12.ai25773` release tag; other builds can disagree
+about watertightness, see [`docs/ci.md`](docs/ci.md)):
 
 ```bash
-openscad --backend Manifold -o out.stl models/cylindrical_holder_slot.scad
+openscad -o out.stl models/cylindrical_holder_slot.scad
 ```
 
-`libs/` vendors BOSL2 and QuackWorks pinned to compatible commits —
-newer BOSL2 breaks QuackWorks' vector-spin syntax. See
-[`libs/README.md`](libs/README.md) for the pins.
+`libs/` vendors BOSL2, QuackWorks, and gridfinity-rebuilt-openscad
+pinned to compatible commits — newer BOSL2 breaks QuackWorks'
+vector-spin syntax. See [`libs/README.md`](libs/README.md) for the
+pins and [`docs/deps-review-2026-07.md`](docs/deps-review-2026-07.md)
+for the July 2026 dependency review.
 
 ## Continuous integration
 
-Every push and PR runs render-thumbnail regeneration, per-model
-invariants (watertight, single-body, triangle ceiling,
-`PRINT_ANCHOR_BBOX` drift), Playwright end-to-end tests, and vitest
-unit tests. Thumbnails and invariants are mandatory gates. See
-[`docs/ci.md`](docs/ci.md) for the full pipeline.
+Every push and PR runs vitest unit tests and Playwright end-to-end
+tests. Model-touching changes additionally run render-thumbnail
+regeneration, STL export with per-model invariants (watertight,
+single-body, triangle ceiling, `PRINT_ANCHOR_BBOX` drift), and a wasm
+param sweep that renders every model at each parameter's extremes
+through the site's real browser pipeline. Renders happen on a pinned
+OpenSCAD engine (`2025.06.12.ai25773`) for watertightness parity. See
+[`docs/ci.md`](docs/ci.md) for the full pipeline and the job/trigger
+matrix.
 
 ## License
 

@@ -4,14 +4,23 @@ These are exposed to OpenSCAD via `OPENSCADPATH=libs/` (set by the skill
 helpers). When authoring a model, prefer a library primitive over hand-rolling
 geometry.
 
-| Library                     | Purpose                                          | Pinned SHA |
-|-----------------------------|--------------------------------------------------|------------|
-| NopSCADlib                  | Mechanical + project utilities, vitamins         | `c9baa0e`  |
-| threads-scad                | ISO metric threads, bolts, nuts, washers         | `4ae9aeb`  |
-| MCAD                        | General-purpose shape / fastener helpers         | `bd0a7ba`  |
-| BOSL2                       | Attachment / transform system; broad toolkit     | `456fcd8`  |
-| gridfinity-rebuilt-openscad | Gridfinity bins, baseplates, lite variants (MIT) | `910e22d`  |
-| QuackWorks                  | Multiboard / Multiconnect accessory generators   | `6123129`  |
+| Library                     | Purpose                                          | Pinned SHA | Vendored? |
+|-----------------------------|--------------------------------------------------|------------|-----------|
+| NopSCADlib                  | Mechanical + project utilities, vitamins         | `c9baa0e`  | menu only |
+| threads-scad                | ISO metric threads, bolts, nuts, washers         | `4ae9aeb`  | menu only |
+| MCAD                        | General-purpose shape / fastener helpers         | `bd0a7ba`  | menu only |
+| BOSL2                       | Attachment / transform system; broad toolkit     | `456fcd8`  | ✅        |
+| gridfinity-rebuilt-openscad | Gridfinity bins, baseplates, lite variants (MIT) | `910e22d`  | ✅        |
+| QuackWorks                  | Multiboard / Multiconnect accessory generators   | `6123129`  | ✅        |
+
+**Vendored** means `scripts/vendor-libs.sh` clones it at the pinned SHA
+(it runs as the npm `prebuild` hook and in CI) — only those three are
+present in a fresh clone, and they are the only ones shipped models use.
+The **menu only** rows are an available-libraries menu for `/scad-new`:
+documented pins, not cloned by the script. To actually use one in a
+model, add it to `scripts/vendor-libs.sh` (or vendor via the `scad-lib`
+skill) first. See `docs/deps-review-2026-07.md` for the July 2026
+upstream review of every row.
 
 BOSL2 is opt-in (R6 permits); added as a dependency for Multiboard work.
 QuackWorks is **CC BY-NC-SA 4.0** — fine for personal use, derived parts
@@ -43,6 +52,11 @@ Current patches:
   exports non-watertight STLs for every openGrid-snap model. The patch
   cuts the identical stadium prism with `linear_extrude` of a rounded
   `rect()` — no hull. Drop the patch if upstream fixes the click holes.
+
+Licensing note: the QuackWorks patch contains modified QuackWorks source
+lines, so the patch file itself is a **CC BY-NC-SA 4.0** derivative — it is
+not covered by the repo's MIT code license, despite living under
+`scripts/`.
 
 ## NopSCADlib — `use <NopSCADlib/...>`
 

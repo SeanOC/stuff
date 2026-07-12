@@ -1,75 +1,109 @@
 # Continuous integration
 
-This repo's CI lives in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml)
-and runs on every push to `main` and every pull request.
+CI lives in two workflows, both triggered by pushes to `main` and by
+pull requests:
 
-## Pipeline overview
+- [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) — the
+  `render`, `unit`, and `e2e` jobs.
+- [`.github/workflows/param-sweep.yml`](../.github/workflows/param-sweep.yml)
+  — the wasm param-sweep connectivity guard.
 
-Three independent jobs on `ubuntu-latest`:
+## Job / trigger matrix
 
-1. **render** — regenerates `renders/<stem>/*.png` thumbnails,
-   exports each model to `exports/<stem>.stl`, runs the per-model
-   invariants, and executes the invariants-core pytest suite.
-2. **unit** — `npm test` (vitest). Parser, discover, hook smoke
-   tests, React component tests.
-3. **e2e** — `npm run test:e2e` (Playwright against the production
-   Next.js build). Requires `unit` to pass first.
+| Job | Runs on PR | Runs on push to `main` | Where |
+| --- | --- | --- | --- |
+| `render` (thumbnails + STL export + invariants) | Only when render-relevant paths changed (see below); full fallback if the filter fails | Always | `ci.yml`, containerized |
+| `unit` (vitest) | Always | Always | `ci.yml` |
+| `e2e` (Playwright, needs `unit`) | Always | Always | `ci.yml` |
+| `sweep` (wasm param sweep) | Only when sweep-relevant paths changed | Only when sweep-relevant paths changed | `param-sweep.yml` |
 
-The render job is the heaviest — it installs OpenSCAD, xvfb,
-trimesh, and a couple of Python stdlib-adjacent packages. The unit
-and e2e jobs stay pure Node / npm.
+The `unit` and `e2e` jobs run on every PR regardless; both are cheap
+enough that paths-filtering isn't worth the complexity.
 
-## File-change triggers
+## The render job
 
-The render job is gated by [`dorny/paths-filter`](https://github.com/dorny/paths-filter)
-on pull requests (it always runs on pushes to `main`). It only runs
-when one of these changes:
+### Engine: pinned OpenSCAD 2025.06.12.ai25773 AppImage (st-mb1)
+
+The job runs in the `openscad/openscad:dev.2025-09-06` container, but
+**the container's bundled `openscad` is not the engine that renders**.
+The container only supplies the runtime environment (EGL + Qt + GL
+libs). An install step downloads the `2025.06.12.ai25773` AppImage —
+preserved as a release asset on this repo (tag
+`openscad-2025.06.12.ai25773`, sha256-pinned in the workflow) because
+files.openscad.org's snapshot retention already dropped it — extracts
+it (containers have no FUSE), and shadows `/usr/local/bin/openscad`
+with it. A version smoke-check right after fails the job if the shadow
+didn't take effect.
+
+Why this exact build: the container's own `dev.2025-09-06` engine
+exports non-watertight STLs for all five openGrid-snap models that
+`2025.06.12.ai25773` (also the local dev pin, st-fgp) exports
+watertight from identical sources. Same-engine-everywhere beats
+closest-tag roulette.
+
+**Timeout is 40 minutes** — the pinned engine evaluates geometry via
+CGAL, much slower than the Manifold default in newer builds. A full
+render+export pass over all models takes ~25 min; the old 10-minute
+timeout truncated exports mid-run.
+
+### Vendored libraries and local patches
+
+`scripts/vendor-libs.sh` clones BOSL2, QuackWorks, and
+gridfinity-rebuilt-openscad at the SHAs pinned in
+[`libs/README.md`](../libs/README.md), then applies local patches from
+`scripts/patches/<lib>/*.patch` with **`git apply`** (not `patch(1)` —
+the CI image ships git but not patch, st-1uw), so patches must be
+git-apply-compatible unified diffs. The `.vendor-sha` marker embeds a
+fingerprint of the patch set, so editing a patch re-vendors.
+
+### Python deps
+
+Installed via apt (fallback: pip): numpy, pillow, trimesh, **rtree**
+(trimesh's ray-query backend, required by `mesh.contains()` in
+invariants sidecars — st-3r5), pytest, plus xvfb/xauth for headless
+openscad.
+
+### Smart-render: scoped vs full runs (st-mrt / st-a50)
+
+A `dorny/paths-filter` step decides whether the render steps run at
+all on PRs, and which models they process. It is
+`continue-on-error` — paths-filter's git operations are flaky inside
+the container, so a filter **failure falls back to rendering
+everything** rather than failing CI (redesign to a non-container
+filter job is filed as st-2nv). Render-relevant paths:
 
 - `models/**` — any `.scad` source or invariant sidecar
 - `.claude/skills/scad-render/**` — the render skill itself
 - `.claude/skills/_lib/**` — shared measurement / export helpers
 - `scripts/render-all.py` — the batch render driver
-- `scripts/vendor-libs.sh` — the BOSL2 / QuackWorks pin script
+- `scripts/vendor-libs.sh` — the library pin script
 - `libs/README.md` — library pins
 
-The `unit` and `e2e` jobs run on every PR regardless; both are cheap
-enough that paths-filtering isn't worth the complexity.
+The filter also emits the changed `models/*.scad` + `libs/**` file
+list, passed to `render-all.py` / `export-all.py` as
+`--changed-paths` (`CHANGED_PATHS` env var). Three modes result:
 
-## Rendering in detail
+1. **Scoped** — filter succeeded and the list is non-empty: only the
+   touched models re-render/re-export (a `libs/**` change forces the
+   full set).
+2. **Full** — `CHANGED_PATHS` is empty: every model renders and
+   exports. This happens when the filter step failed (fallback) and on
+   pushes to `main` that touched no model/lib paths (the render steps
+   run unconditionally on push).
+3. **Skipped** — PR touching no render-relevant paths: the render
+   steps don't run at all.
 
-`scripts/render-all.py` iterates every `models/*.scad` and delegates
-each one to `.claude/skills/scad-render/scripts/render.py` as a
-separate subprocess — a single bad file doesn't abort the batch.
-Each model produces four PNGs under `renders/<stem>/`:
+**Know which mode you're in** (a "Smart-render mode summary" step
+writes it to the workflow summary). The failure class this hides:
+`check-invariants-all` only analyzes what `exports/` contains, and in
+a fresh CI workspace that's just the models exported *this run*
+(`exports/*.stl` is gitignored). In scoped mode, an engine- or
+lib-caused watertight regression in *untouched* models is invisible;
+it only surfaces on the next full run. That's exactly how the
+dev.2025-09-06 engine's non-watertight exports were masked for days
+before st-mb1 pinned the engine.
 
-```
-renders/<stem>/top.png
-renders/<stem>/front.png
-renders/<stem>/side.png
-renders/<stem>/iso.png
-```
-
-A stale-prune step removes `renders/<stem>/` directories whose
-`.scad` source no longer exists, so the committed PNG set mirrors
-the current model set exactly.
-
-### Commit-back flow
-
-The PNGs are tracked in git — Vercel's build pulls them directly for
-the gallery tiles, so they need to be up to date on `main` at all
-times. The render job handles this with a commit-back step:
-
-- On **push to main**: regenerate, commit any diff back to `main`
-  as `github-actions[bot]`.
-- On **pull requests**: regenerate on the PR branch, commit any
-  diff back to the PR's head ref. The next CI run on that PR sees
-  the updated thumbnails and re-runs the downstream jobs.
-
-The PR flow uses the head-ref env var carefully (forks can pick
-attacker-controllable branch names — keep them out of shell
-interpolation; pass through `git push "$PR_HEAD_REF"` only).
-
-## Invariants in detail
+### Invariants
 
 Each model carries a `<stem>.invariants.py` sidecar next to its
 `.scad` source. The driver `scripts/check-invariants.py <stem>`:
@@ -86,56 +120,93 @@ Each model carries a `<stem>.invariants.py` sidecar next to its
 5. Exits non-zero with a per-invariant failure report if any
    invariant fails.
 
-### Built-in invariants
-
-Apply to every model, no opt-in:
+Built-in invariants (every model, no opt-in):
 
 - **watertight** — the STL must be a closed manifold
   (`trimesh.is_watertight`). A non-watertight mesh breaks slicer
   compatibility in silent, nasty ways, so this is a hard gate.
 - **orphan fragments** — any connected component ≤ 50 triangles is
-  flagged. A legitimate multi-body design (tray + cups, baseplate +
-  cradles) ships as N sizable watertight components and passes; a
-  zero-thickness boolean bug typically leaves a tiny scrap next to
-  the main body, and that's what this catches.
+  flagged. A legitimate multi-body design ships as N sizable
+  watertight components and passes; a zero-thickness boolean bug
+  typically leaves a tiny scrap next to the main body.
 - **triangle ceiling** — ≥ 1,000,000 triangles fails the build.
   Usually means `$fn` crept up or a sweep stepped too finely.
 - **anchor bbox drift** — if the `.scad` declares
-  `PRINT_ANCHOR_BBOX = [x, y, z]` as a comment-level constant, the
-  exported STL's bbox extents must match within ±1 mm per axis.
-  Catches silent size regressions.
+  `PRINT_ANCHOR_BBOX = [x, y, z]`, the exported STL's bbox extents
+  must match within ±1 mm per axis. Catches silent size regressions.
 
-### Per-model sidecars
+Sidecar conventions, the minimum skeleton, and the scaffold that
+generates them live in the `new-model` skill
+([.claude/skills/new-model/SKILL.md](../.claude/skills/new-model/SKILL.md))
+and [AGENTS.md](../AGENTS.md).
 
-Each sidecar asserts claims the model makes beyond the built-ins —
-the stuff you'd otherwise only notice when a print fails. Typical
-claims include footprint aspect (X ≥ Y when the handle spans X),
-clearance margins (apex ≥ can_height + grip-band), and strict
-single-body topology for designs that should truly be one solid.
+### Commit-back flow
 
-Minimum skeleton for a new model:
+The render PNGs are tracked in git — Vercel's build serves them
+directly — so the render job commits regenerated thumbnails back:
 
-```python
-# models/<stem>.invariants.py
-from scripts.invariants import Failure, as_default_params, expect_connected_solids
+- On **push to main**: commit any diff back to `main` as
+  `github-actions[bot]`.
+- On **pull requests**: commit back to the PR's head branch.
 
-def check(ctx):
-    failures = []
-    p = as_default_params(ctx["params"])
-    # if ctx["bbox_mm"][2] > 250:
-    #     failures.append(Failure("envelope", "Z > 250mm; won't fit on X1C bed"))
-    # failures.extend(expect_connected_solids(ctx, 1))
-    return failures
-```
+Implementation notes that have each bitten before:
 
-`ctx` also gives you `ctx["stl"]` (a `trimesh.Trimesh`) if you need
-mesh-level queries — face areas, volume, specific vertex positions.
+- Both steps are **`continue-on-error`** (st-491): engine renders are
+  not bit-deterministic and `main` is protected, so a commit-back
+  failure must not take down an otherwise-green run. A proper
+  redesign is filed as st-fqc.
+- The steps push from a **fresh shallow clone in `/tmp`** (st-qfv):
+  the container's workspace mount has no usable `.git`.
+- A **tree-hash comparison** (st-tiu) skips the commit when renders
+  are byte-identical — `git diff --cached --quiet` false-positives on
+  mode/mtime-only changes from `cp -r`.
+- `PR_HEAD_REF` is attacker-controllable on forks; it stays in an env
+  var and is only ever passed as an argument to `git push` / `git
+  clone`, never interpolated into shell text.
+
+## The param-sweep workflow (st-7x7)
+
+`param-sweep.yml` renders every catalog model through the site's real
+wasm pipeline at the min/mid/max of every `@param` (plus both booleans
+and every enum choice) and asserts each result is a watertight mesh
+with the expected number of connected components. It catches param
+values that shatter a model in the browser preview — wasm engine CSG
+failures that desktop OpenSCAD doesn't reproduce.
+
+It's a separate workflow because it's minutes of wasm rendering,
+path-gated to inputs that can change render outcomes: `models/**`,
+`libs/README.md`, `lib/wasm/**`, `lib/scad-params/**`,
+`tests/sweep/**`, `vitest.sweep.config.ts`, `scripts/vendor-libs.sh`,
+and `package-lock.json`.
+
+### known-failures.ts
+
+[`tests/sweep/known-failures.ts`](../tests/sweep/known-failures.ts)
+registers sweep cases that are allowed to fail, each tagged with a
+tracking bead. Two classes have used it:
+
+- **Pre-existing param-extreme model bugs** discovered when the guard
+  first ran (2026-07-03). These are still registered — currently ~28
+  cases across six models, tracked by open beads st-dlu, st-ti3,
+  st-38y, st-1us, st-344, st-9hn. The guard gates *new* regressions
+  without blocking on this old debt.
+- **wasm-CGAL library edge cases** (st-79a class). The opengrid_bin
+  entries of this class were removed on 2026-07-10 when the QuackWorks
+  click-hole patch fixed the underlying geometry — removing an entry
+  **re-arms the case**, so a regression now fails the sweep again.
+
+The contract: don't paper over failures in the *model* — fix those.
+Register a case only with a filed bead, and remove the entry when the
+bead closes.
 
 ## Local reproduction
 
 The exact sequence a contributor runs to match CI:
 
 ```bash
+# One-time per clone: vendor libraries (also runs as npm prebuild)
+bash scripts/vendor-libs.sh
+
 # Render thumbnails (needs openscad + xvfb-run on PATH)
 python3 scripts/render-all.py
 
@@ -144,12 +215,19 @@ python3 scripts/export-all.py
 python3 scripts/check-invariants-all.py
 python3 -m pytest scripts/invariants/
 
-# Unit + e2e
+# Unit + sweep + e2e
 npm install
 npm test                  # vitest
+npm run test:sweep        # wasm param sweep (what param-sweep.yml runs)
 npm run build             # prod build (Vercel does the same)
 npm run test:e2e          # Playwright
 ```
+
+For engine parity with CI, use the same pinned snapshot
+(`2025.06.12.ai25773`) locally — it's downloadable from this repo's
+`openscad-2025.06.12.ai25773` release tag. A different engine build
+can disagree with CI about watertightness (that's the whole reason
+the pin exists).
 
 `render-all.py` will error early if `openscad` or `xvfb-run` aren't
 on `PATH`. On a headless dev host you need both; on macOS with
@@ -165,25 +243,29 @@ Vercel preview URL, useful for eyeballing UI changes before merge.
 Vercel builds pull the committed `renders/<stem>/*.png` directly;
 there's no Python in the Vercel build environment, so all
 OpenSCAD-touching work happens in GitHub Actions and the outputs
-ship as tracked files.
+ship as tracked files. `scripts/vendor-libs.sh` runs as the npm
+`prebuild` hook so the Vercel build has `libs/` for file tracing and
+`/api/source`.
 
 ## Troubleshooting
 
 - **`xvfb-run: command not found`** — install `xvfb` (`sudo apt-get
   install xvfb` on Debian/Ubuntu). Required because OpenSCAD needs a
   virtual display even in `-o out.stl` mode.
-- **`openscad` not on PATH** — install from
-  [openscad.org](https://openscad.org/). Needs v2021.01 or newer for
-  the Manifold backend.
-- **CGAL out-of-memory errors** — BOSL2's library is CGAL-hostile on
-  large models. Pass `--backend Manifold` to `openscad` (the
-  `_lib/export.py` wrapper does this by default).
+- **`openscad` not on PATH** — install the pinned snapshot (see Local
+  reproduction above) rather than whatever openscad.org currently
+  ships; engine drift is a real failure mode here.
+- **A model is watertight locally but not in CI (or vice versa)** —
+  almost always an engine-version mismatch. Check `openscad
+  --version` against the pin before debugging the model.
 - **Invariants fail on a model you think is fine** — run the driver
   locally with the single stem:
   `python3 scripts/check-invariants.py <stem>`. The output names the
   specific invariant(s) that failed and the values that failed them.
-- **Thumbnails committed back but look the same** — the render
-  pipeline is deterministic per OpenSCAD version; a no-op diff
-  sometimes slips in when a library update re-meshes identically.
-  The commit-back step already skips when `git diff --cached`
-  reports nothing, so you won't see spurious commits in practice.
+- **"Why did everything re-render?"** — read the "Smart-render mode
+  summary" in the workflow run summary: the paths-filter step failed
+  (fallback = full render) or the push touched no model paths
+  (`CHANGED_PATHS` empty = full render).
+- **Sweep failure on a case listed in known-failures.ts** — the entry
+  was removed or the label changed; re-check the tracking bead before
+  re-registering.

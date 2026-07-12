@@ -16,9 +16,12 @@ The `render` job in `.github/workflows/ci.yml` regenerates them:
 
 - On **push to main**: always runs; commits any diff back via
   `github-actions[bot]`.
-- On **pull requests**: runs only when `models/**`, the `scad-render`
-  skill, `scripts/render-all.{py,sh}`, or `libs/README.md` changed;
-  commits back to the PR branch.
+- On **pull requests**: runs only when render-relevant paths changed
+  (`models/**`, the `scad-render` skill, `.claude/skills/_lib/**`,
+  `scripts/render-all.py`, `scripts/vendor-libs.sh`, or
+  `libs/README.md`); commits back to the PR branch. The exact filter
+  set, the scoped-vs-full render modes, and the engine pin are
+  documented in [docs/ci.md](docs/ci.md).
 
 If you edit a model locally and want thumbnails for preview before
 pushing, run `python3 scripts/render-all.py` (needs `openscad` +

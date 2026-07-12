@@ -22,6 +22,8 @@ Use `bd` for task tracking; don't maintain parallel markdown TODO lists.
 npm install           # Install web-app deps
 npm run dev           # Local dev server on http://localhost:3000
 npm test              # Vitest unit tests
+npm run test:sweep    # Wasm param-sweep guard (vendor libs first:
+                      #   bash scripts/vendor-libs.sh)
 npm run test:e2e      # Playwright end-to-end tests
 npm run build         # Production Next.js build
 ```
@@ -52,8 +54,8 @@ Adding a new model? Use the `new-model` skill
   in `libs/README.md`; cloned by `scripts/vendor-libs.sh`.
 - `scripts/` — Python tooling: render-all, export-all, invariants,
   artifact server.
-- `.claude/skills/` — project-local Claude Code skills (`scad-new`,
-  `scad-render`, `scad-export`, `scad-lib`, `scad-send`).
+- `.claude/skills/` — project-local Claude Code skills (`new-model`,
+  `scad-new`, `scad-render`, `scad-export`, `scad-lib`, `scad-send`).
 
 ## Remote artifact browser
 

@@ -76,7 +76,7 @@ jobs:
         # downstream gates fall back to "render everything" when
         # steps.filter.outcome == 'failure'. Proper redesign (run
         # paths-filter in a separate non-container job) is filed as
-        # the st-mrt-v2 follow-up.
+        # the st-2nv follow-up.
         continue-on-error: true
         uses: dorny/paths-filter@v3
         with:
@@ -211,7 +211,7 @@ jobs:
         # Best-effort auto-commit (st-491). openscad nightly renders
         # are non-deterministic and main is protected; the proper
         # redesign of this auto-commit-renders pipeline is filed as
-        # st-9fs (P3 follow-up). For now, don't let a failure here
+        # st-fqc (P3 follow-up). For now, don't let a failure here
         # take down the rest of CI — the substance (renders, exports,
         # invariants, tests) is already green by this point. Keeps
         # st-tre/st-p7r/st-ugc diagnostic + the st-qfv fresh-clone +
@@ -268,7 +268,7 @@ jobs:
         if: github.event_name == 'push'
         # Best-effort auto-commit (st-491) — see matching comment on
         # the PR-flavour step above. Failure here should not gate
-        # prod deploy; redesign tracked in st-9fs.
+        # prod deploy; redesign tracked in st-fqc.
         continue-on-error: true
         # Workspace-clone pivot (st-qfv) — see matching comment on the
         # PR-flavour step above. Same fresh-clone pattern, branch =
