@@ -31,9 +31,6 @@ export const KNOWN_FAILURES: Record<string, Record<string, string>> = {
     "pipe_len=120": "st-38y: assembly splits to 5 components (expected 3)",
     "pipe_len=200": "st-38y: assembly splits to 5 components (expected 3)",
   },
-  cylindrical_holder_slot: {
-    "cup_depth=0": "st-1us: BOSL2 assertion (transforms.scad:1440) at zero depth",
-  },
   goblu_filter_holder_3x90mm: {
     "housing_diameter=100": "st-344: openscad exit=1 (BOSL2 assertion)",
     "housing_diameter=160": "st-344: openscad exit=1 (BOSL2 assertion)",
