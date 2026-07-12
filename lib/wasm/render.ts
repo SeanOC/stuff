@@ -166,7 +166,10 @@ export async function renderToStl(input: RenderInput): Promise<RenderResult> {
     instance.FS.writeFile("/probe_input.scad", input.source);
 
     try {
-      const rc = instance.callMain(args);
+      // Fresh copy per attempt: emscripten's callMain unshifts argv[0]
+      // onto the array it's given, so reusing one array corrupts the
+      // retry's command line (usage + exit 1 instead of a re-render).
+      const rc = instance.callMain([...args]);
       const hardError = hardErrorFrom(stderr);
       if (rc !== 0) {
         errorMessage = hardError ?? `openscad exit=${rc}`;
