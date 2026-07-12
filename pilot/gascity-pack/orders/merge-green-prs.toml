@@ -1,0 +1,11 @@
+[order]
+description = "Pilot merge step (st-qr2): merge gc-pilot/* PRs into the stuff repo only when every CI check is green. Runs on the controller — no agent, no LLM. PR + existing CI gates are the only path to main."
+trigger = "cooldown"
+interval = "3m"
+exec = "assets/scripts/merge-green-prs.sh"
+scope = "city"
+timeout = "120s"
+
+[order.env]
+GH_REPO = "SeanOC/stuff"
+PILOT_BRANCH_PREFIX = "gc-pilot/"
