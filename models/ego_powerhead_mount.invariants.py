@@ -34,11 +34,17 @@ mesh's actual presence and fidelity, not just the added geometry:
 
   5. **Directional snaps point their strong nub -Y (usage-up).** In
      real usage 'up' on the wall is the model's -Y vector (operator
-     correction, pst-ozs). Only the front nub reaches 13.0mm from a
-     snap center (rear click nub stops at 12.8), so a solid probe at
-     -13.0/void at +13.0 on the y=27 snap row pins the orientation
-     (the cantilevered powerhead's lever-out moment must bear on the
-     rigid hook, not the flexy click side).
+     correction, pst-ozs). In the snap-only z band the only geometry
+     reaching past the 24.8mm core is the nubs: the strong front nub
+     tips out 13.2mm from a snap center, the rear click nub 12.8mm.
+     Vertex extents therefore pin the orientation: the -Y edge of the
+     bottom row must reach 13.2, the +Y edge of the top row must stop
+     at 12.8. (mesh.contains() probes 0.2mm inside the nub tips were
+     raycast-parity-flaky across environments — CI read both sides
+     void while the same points passed locally — so this check is
+     vertex-based, not contains()-based.) The cantilevered powerhead's
+     lever-out moment must bear on the rigid hook, not the flexy
+     click side.
 
   6. **The holder still holds.** The ~27mm central shaft slot at the
      outer end stays open through both levels, and the fork-prong and
@@ -101,7 +107,7 @@ def check(ctx):
     failures += _check_fidelity(mesh, lift)
     failures += _check_plugs(mesh, lift)
     failures += _check_snap_grid(mesh)
-    failures += _check_snap_orientation(mesh)
+    failures += _check_snap_orientation(mesh, lift)
     failures += _check_holder_function(mesh, lift)
     return failures
 
@@ -220,22 +226,37 @@ def _check_snap_grid(mesh) -> list[Failure]:
     return []
 
 
-def _check_snap_orientation(mesh) -> list[Failure]:
-    # y=27 snap row: only the strong front nub reaches 13.0mm from the
-    # snap center (tip at 13.2; the rear click nub stops at 12.8).
-    # z=4.1 sits in the full-depth snap's nub band. Usage-up is -Y
-    # (operator correction, pst-ozs), so the strong nub points -Y.
-    y = SNAP_ROWS_Y[0]
-    front = mesh.contains(np.array([[x, y - 13.0, 4.1] for x in SNAP_COLS_X]))
-    rear = mesh.contains(np.array([[x, y + 13.0, 4.1] for x in SNAP_COLS_X]))
-    if bool(front.all()) and not bool(rear.any()):
+def _check_snap_orientation(mesh, lift: float) -> list[Failure]:
+    # Vertex extents in the snap-only z band (below the lifted bracket
+    # body): only the nubs reach past the 24.8mm snap core, the strong
+    # front nub to 13.2mm from a snap center, the rear click nub to
+    # 12.8. Usage-up is -Y (operator correction, pst-ozs), so the 13.2
+    # reach must sit on the -Y side of the bottom row and the +Y side
+    # of the top row must stop at 12.8. Deliberately NOT
+    # mesh.contains(): raycast parity 0.2mm inside the nub tips flips
+    # across environments (the welded nub shims leave tangent faces).
+    v = mesh.vertices
+    band = v[(v[:, 2] > 0.05) & (v[:, 2] < lift - 0.05)]
+    if len(band) == 0:
+        return [
+            Failure(
+                "snap-load-orientation",
+                "no vertices in the snap-only z band below the bracket "
+                "body — snaps missing or body not lifted",
+            )
+        ]
+    front_reach = SNAP_ROWS_Y[0] - float(band[:, 1].min())  # -Y side
+    rear_reach = float(band[:, 1].max()) - SNAP_ROWS_Y[-1]  # +Y side
+    if abs(front_reach - 13.2) <= 0.15 and abs(rear_reach - 12.8) <= 0.15:
         return []
     return [
         Failure(
             "snap-load-orientation",
-            "directional snap front nub not pointing -Y (usage-up) — probe "
-            f"front(-13.0)={front.tolist()} rear(+13.0)={rear.tolist()}; "
-            "the strong hook must take the top-row lever-out load",
+            f"directional snap front nub not pointing -Y (usage-up): "
+            f"-Y reach {front_reach:.2f}mm from the bottom snap row "
+            f"(want 13.2, the strong nub) and +Y reach "
+            f"{rear_reach:.2f}mm from the top row (want 12.8, the "
+            "click nub); the strong hook must take the lever-out load",
         )
     ]
 
