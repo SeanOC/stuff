@@ -6,13 +6,39 @@ Everything below was measured on a live Gas City 1.3.4 city standing in
 `~/gc-pilot` (outside `~/gt`), driving the real `SeanOC/stuff` GitHub
 repo through PRs and its existing CI gates.
 
-**Status: PILOT IN PROGRESS — this revision carries setup + partial
-probe results. Sections marked ⏳ are pending.**
+**Status: PILOT COMPLETE (2026-07-13). All probes concluded; final
+go/no-go below (authored by the GT mayor from the complete evidence).**
 
 ## TL;DR / recommendation
 
-⏳ (final go/no-go written after both seeded beads land through the merge
-step — see Probe results.)
+**GO — migrate stuff now; ia_next and coauthor after a multi-day soak.**
+
+Every probe favored Gas City. Both seeded beads plus a bonus root-cause
+fix (st-fcp) and an operator-requested new model merged through the
+PR-only flow with zero bypasses; the only direct-push incident in the
+whole pilot came from Gas Town itself (its checkpoint machinery pushed
+the draft of this report to main — hq-5yp occurrence #10). Lifecycle
+isolation held under deliberate kills (86 s reconciler recovery, work
+byte-identical, siblings untouched). Priming is ~14x smaller and the
+standing-agent census drops from four always-on LLM sessions to zero
+(see preconditions — the template's optional mayor should be dropped).
+
+**Preconditions before scale-out (all cheap):**
+1. Policy-ban the `mol-polecat-commit` direct-push formula (lint check
+   in the pack); it is the gt-pvx class, opt-in and unused, keep it that
+   way. Disable the `jsonl-export` order.
+2. Drop the always-on mayor from the pack (or wake-on-demand only, with
+   a hardened prompt). It burned ~327k output tokens/day of pure
+   overhead and freelanced (duplicate beads, typed into a worker
+   session). The controller + orders covered everything it did.
+3. Patch `worktree-setup.sh` with a `git worktree prune` guard; patch
+   per-agent `--effort` configurability before scale-out.
+4. Never the file beads provider (ID double-allocation observed);
+   managed Dolt only. Treat rig clones as disposable (`gc rig add`
+   commits to local main).
+5. For ia_next/coauthor: run stuff for several more days first (soak —
+   the slow failure classes in Gas Town took days to surface), then
+   migrate one rig at a time on the same pack pattern.
 
 Interim shape: Gas City's primitive-first model maps cleanly onto what
 this repo needs (one on-demand worker pool, PR-only merge step, human
@@ -99,8 +125,12 @@ beyond the above (grepped `internal/` + `cmd/` for push/autosave/
 checkpoint; the "checkpoint" hits are formula-recovery DB rows, and the
 PreCompact handoff hook writes a bead, not a git object).
 
-**End-to-end result**: ⏳ (both beads through the PR merge step; final
-`ls-remote` diff vs PR-merge SHAs.)
+**End-to-end result — PASS**: both seeded beads (PR #11 after a
+GC-side rebase, PR #12) plus the operator's ego_powerhead_mount
+(PR #13) and a CI fix (PR #14) merged exclusively via the exec merge
+order on green checks; every main movement in `monitor-main.log`
+matches a merged-PR SHA except the single Gas Town pvx incident
+documented above.
 
 ## Probe (b): lifecycle — PASS
 
