@@ -109,4 +109,9 @@ export const CATALOG: Record<string, CatalogEntry> = {
     blurb:
       "Floor foot for an 8\" × 17\" BluTech RV water softener (~20 lbs full). Open-bottom ring cradle grips the cylinder bottom laterally at 85mm — cylinder drops through and rests on the RV floor, lifts straight up for maintenance. Six radial gussets transfer load into a continuous flat VHB-bearing annular flange; scupper notches at the base drain water laterally without breaching the bond face.",
   },
+  ego_powerhead_mount: {
+    categoryId: "multiboard",
+    blurb:
+      "Ego Power+ powerhead wall holder converted from screw-mount to openGrid: the operator's holder mesh import()ed as-is, its four countersunk screw holes plugged solid, and six directional openGrid snaps (strong nub up) fused to the wall face. Hangs the powerhead by its shaft on the original fork and shelf bearing surfaces.",
+  },
 };
