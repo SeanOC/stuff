@@ -31,9 +31,6 @@ export const KNOWN_FAILURES: Record<string, Record<string, string>> = {
     "pipe_len=120": "st-38y: assembly splits to 5 components (expected 3)",
     "pipe_len=200": "st-38y: assembly splits to 5 components (expected 3)",
   },
-  cylindrical_holder_slot: {
-    "cup_depth=0": "st-1us: BOSL2 assertion (transforms.scad:1440) at zero depth",
-  },
   spraycan_carrier_6x50mm: {
     "base_thickness=1.5": "st-9hn: BOSL2 rounding-too-large assertion",
     "fillet_r=5": "st-9hn: BOSL2 rounding-too-large assertion",
