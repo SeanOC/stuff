@@ -32,12 +32,13 @@ mesh's actual presence and fidelity, not just the added geometry:
      pitch (52.8 x 80.8mm): proves the snaps-down print orientation
      and pins snap count and pitch.
 
-  5. **Directional snaps point their strong nub +Y (up the wall).**
-     Only the front nub reaches 13.0mm from a snap center (rear click
-     nub stops at 12.8), so a solid probe at +13.0/void at -13.0 on
-     the bottom snap row pins the orientation (st-0of rationale: the
-     cantilevered powerhead's lever-out moment must bear on the rigid
-     hook, not the flexy click side).
+  5. **Directional snaps point their strong nub -Y (usage-up).** In
+     real usage 'up' on the wall is the model's -Y vector (operator
+     correction, pst-ozs). Only the front nub reaches 13.0mm from a
+     snap center (rear click nub stops at 12.8), so a solid probe at
+     -13.0/void at +13.0 on the y=27 snap row pins the orientation
+     (the cantilevered powerhead's lever-out moment must bear on the
+     rigid hook, not the flexy click side).
 
   6. **The holder still holds.** The ~27mm central shaft slot at the
      outer end stays open through both levels, and the fork-prong and
@@ -220,19 +221,20 @@ def _check_snap_grid(mesh) -> list[Failure]:
 
 
 def _check_snap_orientation(mesh) -> list[Failure]:
-    # Bottom snap row (y=27): only the strong front nub reaches 13.0mm
-    # from the snap center (tip at 13.2; the rear click nub stops at
-    # 12.8). z=4.1 sits in the full-depth snap's nub band.
+    # y=27 snap row: only the strong front nub reaches 13.0mm from the
+    # snap center (tip at 13.2; the rear click nub stops at 12.8).
+    # z=4.1 sits in the full-depth snap's nub band. Usage-up is -Y
+    # (operator correction, pst-ozs), so the strong nub points -Y.
     y = SNAP_ROWS_Y[0]
-    front = mesh.contains(np.array([[x, y + 13.0, 4.1] for x in SNAP_COLS_X]))
-    rear = mesh.contains(np.array([[x, y - 13.0, 4.1] for x in SNAP_COLS_X]))
+    front = mesh.contains(np.array([[x, y - 13.0, 4.1] for x in SNAP_COLS_X]))
+    rear = mesh.contains(np.array([[x, y + 13.0, 4.1] for x in SNAP_COLS_X]))
     if bool(front.all()) and not bool(rear.any()):
         return []
     return [
         Failure(
             "snap-load-orientation",
-            "directional snap front nub not pointing +Y (up) — probe "
-            f"front(+13.0)={front.tolist()} rear(-13.0)={rear.tolist()}; "
+            "directional snap front nub not pointing -Y (usage-up) — probe "
+            f"front(-13.0)={front.tolist()} rear(+13.0)={rear.tolist()}; "
             "the strong hook must take the top-row lever-out load",
         )
     ]

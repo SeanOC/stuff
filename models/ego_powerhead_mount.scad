@@ -42,17 +42,14 @@
 //
 // === Wall-hang orientation / load direction ===
 //
-// The bracket's bearing surfaces — the shelf top at y=22 and the fork
-// rail tops at y=68, the only large +Y-facing faces — carry the
-// powerhead, so the live load points -Y and the y=0 edge points DOWN
-// on the wall. Unambiguous from the geometry: flipped 180° the "fork"
-// would face the floor and nothing could rest on it. Directional
-// snaps therefore hang zrot(90): the strong front nub (non-flexing,
-// 0.8mm deep vs 0.4) points +Y — up the wall — so the lever-out
-// moment the cantilevered powerhead puts on the top snap row bears on
-// the rigid hook, and the flexy click-in side faces down where the
-// moment presses the plate into the wall (st-0of rationale, same as
-// ego_lb6500_blower_mount).
+// OPERATOR CORRECTION (pst-ozs): in real usage 'up' on the wall is
+// this model's -Y vector — the earlier +Y-up inference from the
+// bearing faces (pst-3m2) was inverted. Directional snaps therefore
+// hang zrot(-90): the strong front nub (non-flexing, 0.8mm deep vs
+// 0.4, indicator-marked) points -Y — up the wall in usage — so the
+// lever-out moment the cantilevered powerhead puts on the top snap
+// row bears on the rigid hook, and the flexy click-in side faces +Y
+// (down in usage) where the moment presses the plate into the wall.
 
 include <BOSL2/std.scad>
 // `use` not `include`: opengrid-snap.scad ends with a top-level demo
@@ -151,15 +148,15 @@ module welded_directional_snap() {
         cuboid([0.3, 11.6, 0.62], anchor = BOT);
 }
 
-// Snap grid centered on the wall face, zrot(90) turning each snap's
-// strong front nub toward +Y (up on the wall — load direction
-// rationale in the header).
+// Snap grid centered on the wall face, zrot(-90) turning each snap's
+// strong front nub toward -Y (up on the wall in usage — load
+// direction rationale in the header).
 module grid_snaps() {
     for (cx = [0 : snap_cols - 1], ry = [0 : snap_rows - 1])
         translate([plate_w / 2 + (cx - (snap_cols - 1) / 2) * snap_pitch,
                    plate_d / 2 + (ry - (snap_rows - 1) / 2) * snap_pitch,
                    0])
-            zrot(90) welded_directional_snap();
+            zrot(-90) welded_directional_snap();
 }
 
 translate([0, 0, body_lift]) holder_body();
