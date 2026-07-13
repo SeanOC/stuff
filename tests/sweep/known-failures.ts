@@ -31,15 +31,6 @@ export const KNOWN_FAILURES: Record<string, Record<string, string>> = {
     "pipe_len=120": "st-38y: assembly splits to 5 components (expected 3)",
     "pipe_len=200": "st-38y: assembly splits to 5 components (expected 3)",
   },
-  goblu_filter_holder_3x90mm: {
-    "housing_diameter=100": "st-344: openscad exit=1 (BOSL2 assertion)",
-    "housing_diameter=160": "st-344: openscad exit=1 (BOSL2 assertion)",
-    "pocket_depth=200": "st-344: openscad exit=1 (BOSL2 assertion)",
-    "collar_headroom=0": "st-344: openscad exit=1 (BOSL2 assertion)",
-    "bottom_ring_thickness=2": "st-344: openscad exit=1 (BOSL2 assertion)",
-    "side_wall_t=25": "st-344: openscad exit=1 (BOSL2 assertion)",
-    "edge_round_r=2.5": "st-344: openscad exit=1 (BOSL2 assertion)",
-  },
   spraycan_carrier_6x50mm: {
     "base_thickness=1.5": "st-9hn: BOSL2 rounding-too-large assertion",
     "fillet_r=5": "st-9hn: BOSL2 rounding-too-large assertion",

@@ -311,11 +311,24 @@ module pod(expose_left_slot, expose_right_tongue, is_leftmost, is_rightmost) {
     //     (small bleed onto -Y).
     //   • ±X face top/bottom horizontal edges (TOP/BOTTOM +
     //     LEFT/RIGHT) — these would bleed across the mating
-    //     interface onto the neighboring pod at pod_gap = 0, and
-    //     a per-pod-position edge spec breaks CGAL by producing
-    //     non-manifold slivers at the interface (BOSL2 cuboid's
-    //     corner_shape places epsilon-cubes at cnt=0 corners that
-    //     don't line up between mismatched-spec neighbors).
+    //     interface onto the neighboring pod at pod_gap = 0.
+    //
+    // Construction (pst-ip8): the block is an intersection of two
+    // rounded-rect extrusions, NOT a BOSL2 cuboid with a partial
+    // `edges=` rounding spec. cuboid builds that case as a hull() of
+    // eight epsilon-thin corner slivers, and CGAL's convex_hull_3 in
+    // the wasm build hits its known `it != border.end()` assertion on
+    // several of this model's param extremes (housing_diameter=100/160,
+    // pocket_depth=200, collar_headroom=0, bottom_ring_thickness=2,
+    // side_wall_t=25, edge_round_r=2.5 — deterministic, retries don't
+    // help). Every rounded edge here lies on the +Y face, so the same
+    // shape falls out of intersecting a Z-extrusion of the XY footprint
+    // (rounding the truly-outer +Y verticals) with an X-extrusion of
+    // the YZ profile (rounding BACK+TOP / BACK+BOTTOM). rect() emits a
+    // plain 2D path — no hull() node anywhere in the tree. Where a
+    // rounded vertical meets a rounded horizontal the corner is the
+    // intersection of the two cylinder surfaces rather than cuboid's
+    // trimmed sphere — visually equivalent at r ≤ 5 mm.
     //
     // Numerical precision shim: CGAL union of N pods at
     // pod_gap = 0 can leave 4-shared edges along the pod-pod
@@ -329,13 +342,41 @@ module pod(expose_left_slot, expose_right_tongue, is_leftmost, is_rightmost) {
 
     difference() {
         union() {
-            // Pod block.
-            cuboid([pod_w + pod_overlap_eps, pod_d, pod_h],
-                   rounding = edge_round_r,
-                   edges    = concat([BACK+TOP, BACK+BOTTOM],
-                                     is_leftmost  ? [BACK+LEFT]  : [],
-                                     is_rightmost ? [BACK+RIGHT] : []),
-                   anchor   = BOTTOM);
+            // Pod block: hull-free rounded cuboid (see construction
+            // note above). Both extrusions span the full block; the
+            // intersection keeps each profile's rounding where its
+            // extrusion runs parallel to the rounded edge.
+            //
+            // rect() quirk: an all-zero rounding LIST still routes
+            // through BOSL2's rounded-path branch, which errors
+            // ("Unable to convert points[0] ... to a vec2") — so
+            // collapse to scalar 0 whenever no corner actually rounds
+            // (interior pods, or edge_round_r = 0).
+            foot_rounding = [is_rightmost ? edge_round_r : 0,
+                             is_leftmost  ? edge_round_r : 0,
+                             0, 0];
+            intersection() {
+                // Z-extrusion of the XY footprint: truly-outer +Y
+                // vertical corners rounded (BACK+LEFT on the leftmost
+                // pod, BACK+RIGHT on the rightmost).
+                linear_extrude(height = pod_h)
+                    rect([pod_w + pod_overlap_eps, pod_d],
+                         rounding = all_zero(foot_rounding)
+                                        ? 0 : foot_rounding);
+                // X-extrusion of the YZ profile: BACK+TOP and
+                // BACK+BOTTOM horizontal edges rounded. rotate(-90°
+                // about Y) maps the profile's +X axis onto +Z and the
+                // extrusion direction onto -X.
+                translate([(pod_w + pod_overlap_eps) / 2, 0, 0])
+                    rotate([0, -90, 0])
+                        linear_extrude(height = pod_w + pod_overlap_eps)
+                            translate([pod_h / 2, 0])
+                                rect([pod_h, pod_d],
+                                     rounding = edge_round_r == 0
+                                         ? 0
+                                         : [edge_round_r, edge_round_r,
+                                            0, 0]);
+            }
 
             // Dovetail tongue on +X face. Anchored at the pod base
             // (z=0) so the tongue prints continuously off the build

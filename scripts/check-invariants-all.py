@@ -5,21 +5,17 @@ One subprocess per stem so a failure in one model doesn't cut the
 batch short. Exits non-zero if any model failed; prints a final
 summary with counts.
 
-Selective checking (st-qdz): pass `--changed-paths "<paths>"` to
-restrict the check set to models actually touched by the current
-push/PR. Mirrors render-all.py/export-all.py via the shared
-`render_all.select_models` helper (see render-all.py docstring for
-the path-rules table) so the invariants pass covers exactly the set
-export-all.py just exported — exports/*.stl is gitignored, so on a
-fresh CI runner the untouched models have no STL to analyze. The
-flag defaults to $CHANGED_PATHS because CI sets that variable on the
-step that runs export-all and this script back to back.
+Stems whose export .stl doesn't exist (check-invariants.py exit code
+3) are skipped, not failed: in CI's scoped-render mode (st-mrt),
+export-all only regenerates the models a PR touched, and
+exports/*.stl is gitignored — so a fresh workspace only contains this
+run's exports. The batch analyzes what exports/ contains, per
+docs/ci.md. Full coverage still happens on every push to main, where
+export-all runs unscoped.
 """
 
 from __future__ import annotations
 
-import argparse
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -28,55 +24,31 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 MODELS_DIR = REPO_ROOT / "models"
 CHECK_PY = REPO_ROOT / "scripts" / "check-invariants.py"
 
-# Share the selective-re-process logic with the renderer/exporter so
-# all three batches make the same selection from the same input.
-sys.path.insert(0, str(REPO_ROOT / "scripts"))
-import importlib  # noqa: E402
-_render_all = importlib.import_module("render-all")  # filename has a dash
-select_models = _render_all.select_models
+EXIT_NO_EXPORT = 3
 
 
-def main(argv: list[str] | None = None) -> int:
-    args = _parse_args(argv)
-
-    models = sorted(MODELS_DIR.glob("*.scad"))
-    selected = select_models(models, args.changed_paths)
-    if selected is None:
-        print("no models/*.scad or libs/ changes — skipping invariants")
-        return 0
-    if len(selected) < len(models):
-        print(
-            f"selective check: {len(selected)}/{len(models)} models "
-            f"({', '.join(m.stem for m in selected)})"
-        )
-
+def main() -> int:
+    stems = sorted(p.stem for p in MODELS_DIR.glob("*.scad"))
     failures: list[str] = []
-    for model in selected:
-        rc = subprocess.run([sys.executable, str(CHECK_PY), model.stem]).returncode
-        if rc != 0:
-            failures.append(model.stem)
+    skipped: list[str] = []
+    for stem in stems:
+        rc = subprocess.run([sys.executable, str(CHECK_PY), stem]).returncode
+        if rc == EXIT_NO_EXPORT:
+            skipped.append(stem)
+        elif rc != 0:
+            failures.append(stem)
 
-    total = len(selected)
-    print(f"\nchecked {total} models, {len(failures)} failed")
+    total = len(stems)
+    print(
+        f"\nchecked {total - len(skipped)}/{total} models, "
+        f"{len(failures)} failed, {len(skipped)} skipped (no export)"
+    )
+    if skipped:
+        print("skipped (not exported this run): " + ", ".join(skipped))
     if failures:
         print("failed: " + ", ".join(failures), file=sys.stderr)
         return 1
     return 0
-
-
-def _parse_args(argv: list[str] | None) -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Check invariants for all models/*.scad")
-    p.add_argument(
-        "--changed-paths",
-        default=os.environ.get("CHANGED_PATHS", ""),
-        help=(
-            "whitespace-separated paths from `git diff --name-only`; "
-            "restricts the check set to the models actually touched. "
-            "Defaults to $CHANGED_PATHS (set by CI), else empty → check "
-            "all. See render-all.py docstring."
-        ),
-    )
-    return p.parse_args(argv)
 
 
 if __name__ == "__main__":

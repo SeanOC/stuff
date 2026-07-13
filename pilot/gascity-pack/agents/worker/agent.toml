@@ -1,0 +1,12 @@
+# Pilot worker pool (st-qr2): scalable on-demand workers for the stuff rig.
+# min 0 / max 2 per the pilot spec. Each session gets an isolated git
+# worktree of the rig repo. Merge is PR-only — see prompt.template.md.
+scope = "rig"
+dir = "stuff"
+provider = "claude"
+min_active_sessions = 0
+max_active_sessions = 2
+idle_timeout = "30m"
+work_dir = ".gc/worktrees/stuff/worker/{{.Agent}}"
+pre_start = ["{{.CityRoot}}/assets/scripts/worktree-setup.sh {{.RigRoot}} {{.WorkDir}} {{.AgentBase}} --sync"]
+nudge = "Check your hook (gc hook --claim --json), then work the claimed bead per your prompt. PR-only merges."
