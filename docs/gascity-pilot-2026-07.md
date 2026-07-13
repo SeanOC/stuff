@@ -69,8 +69,21 @@ optional (the minimal template ships one always-on mayor session).
 `SeanOC/stuff` every 60 s for the whole pilot, cross-checking any main
 movement against merged PRs (`monitor-main.sh`). Baseline `bc7c051`.
 
-**Result so far**: ⏳ origin main has not moved except via the pilot's
-own PR merges (final tally at pilot end).
+**Result — one bypass detected, and it came from Gas Town, not Gas
+City.** At 14:00:10 (2026-07-12) the monitor caught `refs/heads/main`
+moving `bc7c051 → beb4d77`: commit **"WIP: checkpoint (auto)"**, no
+associated PR (`commits/…/pulls` = `[]`). The commit's contents were
+this polecat's *uncommitted worktree* (the in-progress draft of this
+very report plus the pack files), auto-committed onto the polecat
+branch and pushed straight to production main by Gas Town's checkpoint
+machinery — a live occurrence of the exact gt-pvx P0 class the probe
+was built to catch, landing draft/WIP content on main with no review
+and no CI gate. Two older `WIP: checkpoint (auto)` commits exist on
+other branches in the repo, so the mechanism is recurring. **No Gas
+City process wrote to main outside the PR merge step at any point in
+the pilot** (full `ls-remote` diff log: `monitor-main.log`; the only
+other ref changes were the workers' `gc-pilot/*` branch pushes and PR
+merges).
 
 **Source/config audit — every git-push-capable path in GC v1.3.4:**
 
@@ -109,17 +122,52 @@ stale `git worktree` registrations left by a torn-down city
 (`worktree-setup.sh` lacks a `git worktree prune` guard); health patrol
 retried with backoff and recovered once registrations were pruned.
 
-## Probe (c): tokens / census ⏳
+## Probe (c): tokens / census
 
-Observed so far: worker sessions launch as
-`claude --dangerously-skip-permissions --effort max` — effort is pinned
-at max for pool workers by the claude provider template, which materially
-affects tokens per bead. Standing LLM sessions in the minimal template:
-**1** (mayor; `mode = "always"`) vs Gas Town's 4 per rig
-(mayor/deacon/witness/refinery). Everything else is the Go controller,
-a `gc` control-dispatcher process, and GC's own dolt server.
+Measured from the claude session JSONL transcripts (`message.usage`
+sums; output tokens are the dominant cost driver at max effort):
 
-Numbers: ⏳ (per-bead transcript tokens + priming sizes at pilot end.)
+| What | Sessions | Output tokens | Cache-creation input |
+| --- | --- | --- | --- |
+| pst-4tv (cylindrical_holder_slot fix → PR #11), incl. the kill/resume | 2 | **~38.7k** | ~440k |
+| pst-ip8 (goblu 7-extremes fix → PR #12) | 1 | **~147k** | ~544k |
+| Mayor (standing, no workload output) | 14 over ~24 h | **~327k** | ~3.5M |
+
+- Per-bead worker cost tracks task size: the one-parameter guard cost
+  ~39k output tokens end-to-end; the 7-extremes CGAL fix (which also
+  found and fixed a wasm retry bug) cost ~147k.
+- **The standing mayor is the token story**: the minimal template's
+  `mode = "always"` mayor cycled through 14 sessions in a day — woken
+  repeatedly by mail sweeps/nudges, re-priming ~250k cache-creation
+  tokens per cycle and emitting ~7–74k output tokens per session of
+  self-directed coordination (including the unrequested bead
+  "cleanup" noted below) — ~327k output tokens of pure overhead. A
+  migration should either drop the always-on mayor or pin it behind
+  wake-on-demand.
+- Worker sessions launch as `claude --dangerously-skip-permissions
+  --effort max`; effort is not currently configurable per agent in the
+  claude provider template we used — worth patching before scale-out.
+- Priming size (first-turn behavioral prompt via `gc prime`): worker
+  **2.4 KB**, mayor **2.0 KB** — versus ~34 KB for a Gas Town polecat
+  prime. GC leans on the repo's own CLAUDE.md/AGENTS.md instead of a
+  role tree dump.
+- Standing-agent census, minimal template: **1 always-on LLM session**
+  (mayor — and it is optional config, not SDK law) + Go controller +
+  `gc` control-dispatcher (no LLM) + GC-managed dolt server (no LLM).
+  On-demand: worker pool scaled 0→2→0, bd.dog pool stayed at 0.
+  Gas Town baseline for this rig: mayor + deacon + witness + refinery
+  LLM sessions, always on.
+
+## Escalation-path test — PASS
+
+Operator-initiated drill (`pst-wut`): a task deliberately blocked on a
+credential the worker cannot provision. The pool scaled 0→1, the worker
+claimed it, sent mail from `stuff/worker-1` to the reserved `human`
+mailbox (`ESCALATION: pst-wut`, clear what-I-need / what-I-tried body),
+closed the bead `escalated per drill`, and stopped — no files, branches,
+or PRs touched. Mail retrieved with `gc mail inbox human` /
+`gc mail read` (message `ci-wisp-7m51rg`, 2026-07-13 18:24). The
+worker→human escalation lane works end-to-end.
 
 ## Probe (d): ops feel — running log
 
