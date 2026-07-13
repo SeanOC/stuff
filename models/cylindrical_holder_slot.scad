@@ -114,14 +114,22 @@ module cradle() {
             translate([0, ring_cy, ring_z0])
                 cyl(h = ring_height, d = ring_od,
                     chamfer2 = outer_chamfer, anchor = BOTTOM);
-            translate([0, ring_cy, cup_z0])
-                cyl(h = cup_depth, d = ring_od,
-                    chamfer1 = outer_chamfer, anchor = BOTTOM);
+            // cup_depth=0 means "no drip cup" — skip the disk entirely
+            // (BOSL2 cyl asserts on zero height). Chamfer is clamped to
+            // half the depth so shallow cups can't out-chamfer their height.
+            if (cup_depth > 0)
+                translate([0, ring_cy, cup_z0])
+                    cyl(h = cup_depth, d = ring_od,
+                        chamfer1 = min(outer_chamfer, cup_depth / 2),
+                        anchor = BOTTOM);
         }
         translate([0, ring_cy, ring_z0 - 0.1])
             cylinder(h = ring_height + 0.2, d = ring_id);
-        translate([0, ring_cy, cup_z0 + cup_floor])
-            cylinder(h = cup_depth - cup_floor + 0.1, d = ring_id);
+        // Cups no deeper than their floor are solid — subtracting here
+        // would pass a negative height to cylinder().
+        if (cup_depth > cup_floor)
+            translate([0, ring_cy, cup_z0 + cup_floor])
+                cylinder(h = cup_depth - cup_floor + 0.1, d = ring_id);
         // Lead-in chamfer at top of bore.
         translate([0, ring_cy, ring_z0 + ring_height - inner_chamfer])
             cylinder(h = inner_chamfer + 0.01,
