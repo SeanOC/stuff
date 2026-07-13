@@ -160,6 +160,27 @@ Implementation notes that have each bitten before:
 - A **tree-hash comparison** (st-tiu) skips the commit when renders
   are byte-identical — `git diff --cached --quiet` false-positives on
   mode/mtime-only changes from `cp -r`.
+- On PRs, a **merge-base prune** (pst-dm9,
+  [`scripts/prune-canonical-renders.sh`](../scripts/prune-canonical-renders.sh))
+  runs before that tree check: any regenerated PNG that byte-matches
+  the PR base (`pull_request.base.sha` — main's canonical copy) is
+  dropped from the commit. Renders are engine-deterministic but not
+  cross-machine-deterministic, so an author's locally rendered PNG for
+  an *unchanged* model always differs byte-wise from CI's; without the
+  prune, every model PR got a semantically empty bot push that
+  cancelled the in-flight param sweep (shared concurrency group) and
+  re-triggered `pull_request` runs into `action_required`. Post-merge,
+  the push-to-main flavour canonicalizes the bytes anyway. If fetching
+  the base SHA fails, the step keeps everything (old behavior). The
+  script has a pytest (`scripts/test_prune_canonical_renders.py`; run
+  locally — the CI pytest step only covers `scripts/invariants/`).
+- When a PR push *is* warranted, it authenticates with the
+  **`THUMBNAIL_PUSH_TOKEN`** repo secret (a PAT with `contents:write`)
+  so the re-triggered `pull_request` runs execute normally instead of
+  stranding in `action_required` (pushes made with `GITHUB_TOKEN`
+  don't start normal runs). If the secret is absent the step falls
+  back to `GITHUB_TOKEN` and logs a warning — behavior then matches
+  the pre-pst-dm9 state.
 - `PR_HEAD_REF` is attacker-controllable on forks; it stays in an env
   var and is only ever passed as an argument to `git push` / `git
   clone`, never interpolated into shell text.
