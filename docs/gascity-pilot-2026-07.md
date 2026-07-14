@@ -258,3 +258,84 @@ K8s runtime exists if ia_next wants cluster isolation.
   `monitor-baseline.txt`
 - Merge-order log: `~/gc-pilot/city/.gc/runtime/merge-green-prs.log`
 - GC source at v1.3.4: `~/gc-pilot/src`
+
+# Coauthor rig migration (co-8h7b, 2026-07-14)
+
+Operator-approved follow-on to the pilot above: apply the pilot's
+preconditions city-wide, add the coauthor rig (`SeanOC/co-author`), and
+prove end-to-end before any GT-side cutover. Executed on the same city
+(`~/gc-pilot/city`, GC v1.3.4). Updated pack mirrored under
+`pilot/gascity-pack/`.
+
+## Phase 1 — pilot preconditions, applied city-wide
+
+| Precondition | Implementation | Evidence |
+| --- | --- | --- |
+| Ban `mol-polecat-commit` | City-local `formulas/mol-polecat-commit.toml` shadows the core-pack copy (city formulas layer > pack layer) and carries an unsatisfiable `[requires] formula_compiler = ">=999.0.0"` — cook/show fail closed with `formula.compiler_requirement_unsatisfied`. No `default_sling_formula` references it anywhere (core per-rig pools point at `mol-do-work`). A city `[[doctor.check]]` (`local:polecat-commit-ban`) asserts shadow + requirement + no-refs. | `gc formula cook mol-polecat-commit` fails; other formulas unaffected. Known-red: the builtin `formula-requirements` doctor check reports exactly 1 error — that is the ban working (documented inline in `city.toml`). |
+| Disable `jsonl-export` order | `[orders] skip = ["jsonl-export"]` in `city.toml` | absent from `gc order list` |
+| No always-on mayor | `pack.toml` named_session mayor `mode = "always"` → `"on_demand"` | `gc status`: `mayor awake (on_demand)`; hot-reloaded, no restart needed |
+| `worktree-setup.sh` prune guard | `git worktree prune` before `worktree add` | in `assets/scripts/worktree-setup.sh` |
+| Per-agent claude effort | v1.3.4 already supports it via `option_defaults = { effort = "…" }` on the agent (the pilot missed `Agent.OptionDefaults`). Set explicitly on both worker pools. | live worker cmdlines: `claude --dangerously-skip-permissions --effort max …` from the agent-level option |
+| Managed-Dolt only | No `GC_BEADS=file` anywhere; city dolt on 127.0.0.1:26092. Production Dolt (3307) never touched. | doctor `dolt-server` green |
+
+## Phase 2 — rig-coauthor
+
+- Fresh SSH clone → `~/gc-pilot/rig-coauthor`; `gc rig add --name coauthor
+  --prefix co --start-suspended`, resumed after config. **Delta from the
+  pilot:** `gc rig add` left its `.gitignore`/`.beads` changes
+  *uncommitted* this time — local main did not diverge from origin.
+- `agents/coauthor-worker/` — rig-scoped pool (min 0 / max 2), isolated
+  worktrees, `pre_start` = worktree-setup + `coauthor-env-setup.sh`
+  (writes the Vercel project link, `vercel env pull
+  --environment=development` into the worktree's gitignored `.env.local`,
+  asserts `DATABASE_URL` **and** `DATABASE_URL_UNPOOLED` — the pooled
+  Neon endpoint kills LISTEN/NOTIFY). Secrets live only in the worktree
+  env file, never in city config or git. Verified: 47 vars provisioned
+  per worktree.
+- Worker prompt: AGENTS.md-first (**this repo gitignores CLAUDE.md**),
+  `pnpm gates` quality bar, branch prefix `gc-co/<bead>`, PR-only hard
+  rule, explicit "verifier-preview is advisory — do not block on it"
+  guidance, escalation to the reserved `human` mailbox.
+- `orders/merge-green-prs-coauthor.toml` +
+  `assets/scripts/merge-green-required-prs.sh` — exec order every 3 min:
+  merges `gc-co/*` PRs into main **iff `gh pr checks --required` passes**
+  (repo required checks verified = `build` + `e2e`, strict mode;
+  advisory checks are logged, never gated on). Strict-mode BEHIND is
+  handled with `gh pr update-branch` + retry next cycle. Squash merge,
+  delete branch, never `--admin`.
+- Store hygiene: `co` dolt backup registered
+  (`DOLT_BACKUP('add'/'sync')`, city dolt 26092).
+- **Trap for GT-colocated hosts:** plain `bd` in the rig dir inherits
+  GT's `BEADS_DOLT_PORT=3307` and targets the *production* server (it
+  failed only because no `co` database exists there) — always go through
+  `gc bd`, which pins the city endpoint.
+
+## Phase 3 — end-to-end proof (PASS)
+
+Two real open coauthor bugs cloned into the GC store, slung to the pool,
+and run bead → worker → branch → PR → required checks → merge order:
+
+| Bead | Fix | PR | Result |
+| --- | --- | --- | --- |
+| co-5g8 (clone of GT co-eybg) | 3 raw `.slice(0,200)` sites routed through word-safe `truncate()` + regression tests | #674 | merged `6b97820` at 06:56:51 MDT with **required green while advisory `eval` was FAILURE** (illustration-eval-growth guard) and verifier-preview still pending — the required-only gating doing exactly its job. Guard debt filed as GC bead co-dx4. |
+| co-20s (clone of GT co-l7vw) | literal NUL delimiter in `proseRevisionKey` → space | #673 | merged `2a29836` at 06:56:55 MDT, all checks green |
+
+`origin/main` history after: `2a29836 → 6b97820 → 95d6402` (prior tip) —
+both new commits are PR squash merges from the exec order; no bypass
+writes to main at any point.
+
+**Escalation drill (PASS):** drill bead co-55z (task blocked on a
+billing-scoped credential). Worker recognized the block, mailed `human`
+(`ci-wisp-b3urlw`, `ESCALATION: co-55z`, clear what-I-need /
+why / what-I-tried body), closed the bead `escalated per drill`, touched
+no files/branches/PRs.
+
+## Verdict
+
+End-to-end proof passed on the first run: 2/2 seeded beads through
+PR + required-green + exec-order merge (including one merge that
+correctly ignored a red advisory check and a pending flaky one), and the
+worker→human escalation lane works from the coauthor rig. Phase 4
+(GT-side cutover: stop GT slinging for coauthor, park witness/refinery,
+export remaining open co beads) is the GT mayor's call on the
+PHASE3-PASS evidence — the GT coauthor rig keeps running until then.
