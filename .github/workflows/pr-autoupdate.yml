@@ -54,13 +54,33 @@ jobs:
             echo "::warning::THUMBNAIL_PUSH_TOKEN not set — branch updates pushed with GITHUB_TOKEN strand PR checks in action_required (pst-dm9)."
           fi
           # update-branch 422s when the branch is already up to date,
-          # conflicted, or otherwise not updatable; all fine to skip.
-          # Serialized loop on purpose — parallel updates would just
-          # race each other and the next push's run.
+          # conflicted, or otherwise not updatable. It ALSO 422s
+          # transiently right after main moves, while GitHub is still
+          # recomputing PR mergeability (mergeStateStatus UNKNOWN) —
+          # observed on the very first run of this workflow, which
+          # "skipped" two genuinely-BEHIND PRs ~40s after the merge.
+          # So: retry each PR a few times, treat only the explicit
+          # "no new commits" answer as terminal, and surface the API
+          # message instead of swallowing it. Serialized loop on
+          # purpose — parallel updates would just race each other and
+          # the next push's run.
           for pr in $(gh pr list -R "$GITHUB_REPOSITORY" --base main --state open --json number --jq '.[].number'); do
-            if gh api -X PUT "repos/$GITHUB_REPOSITORY/pulls/$pr/update-branch" >/dev/null 2>&1; then
-              echo "PR #$pr: branch update queued"
-            else
-              echo "PR #$pr: skipped (up to date, conflict, or fork)"
-            fi
+            for attempt in 1 2 3; do
+              if resp=$(gh api -X PUT "repos/$GITHUB_REPOSITORY/pulls/$pr/update-branch" 2>&1); then
+                echo "PR #$pr: branch update queued"
+                break
+              fi
+              case "$resp" in
+                *"no new commits on the base branch"*)
+                  echo "PR #$pr: already up to date"
+                  break ;;
+                *)
+                  echo "PR #$pr: attempt $attempt failed: $resp"
+                  if [ "$attempt" = 3 ]; then
+                    echo "::warning::PR #$pr not updated after 3 attempts — if it stays BEHIND, rerun this workflow via workflow_dispatch"
+                  else
+                    sleep 20
+                  fi ;;
+              esac
+            done
           done
