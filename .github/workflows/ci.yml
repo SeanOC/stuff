@@ -1,5 +1,12 @@
 name: ci
 
+# pst-2sb: "render preview images", "unit tests (vitest)", and
+# "e2e tests (playwright)" are required status checks on main, and
+# PRs merge via auto-merge — a required check that never reports
+# hangs the merge forever. So this workflow must run on EVERY PR: do
+# not add a workflow-level `paths:` filter here. Cheap skipping is
+# handled inside the render job (paths-filter step), which still
+# reports a conclusion when it skips the heavy steps.
 on:
   push:
     branches: [main]

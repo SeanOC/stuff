@@ -1,0 +1,50 @@
+# pst-2sb: arm squash auto-merge on every PR targeting main the
+# moment it opens. With branch protection requiring all four CI
+# checks (unit, e2e, render, sweep gate) in strict up-to-date mode,
+# "armed" means the PR merges itself when CI goes green — no human
+# or agent merge step.
+#
+# Token choice matters: the merge that auto-merge eventually performs
+# is attributed to the actor who ENABLED it. If that actor is
+# github-actions[bot] (GITHUB_TOKEN), the resulting push to main does
+# not trigger workflows — no full-sweep coverage run, no render
+# canonicalization, and no pr-autoupdate cascade. So prefer the
+# THUMBNAIL_PUSH_TOKEN PAT and warn loudly on fallback.
+#
+# Fork PRs: secrets (including THUMBNAIL_PUSH_TOKEN) are not exposed
+# to pull_request runs from forks and GITHUB_TOKEN there is
+# read-only, so this job fails soft — fork PRs keep the manual merge
+# path. Everything in this pilot works from same-repo branches.
+name: pr-automerge
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  arm:
+    name: enable auto-merge
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Enable squash auto-merge
+        if: ${{ !github.event.pull_request.draft }}
+        env:
+          GH_TOKEN: ${{ secrets.THUMBNAIL_PUSH_TOKEN || secrets.GITHUB_TOKEN }}
+          HAS_PAT: ${{ secrets.THUMBNAIL_PUSH_TOKEN != '' }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if [ "$HAS_PAT" != "true" ]; then
+            echo "::warning::THUMBNAIL_PUSH_TOKEN not set — arming auto-merge with GITHUB_TOKEN; the eventual merge push to main will NOT trigger main's workflows (full sweep, render canonicalization, pr-autoupdate)."
+          fi
+          # If every required check is somehow already green at open
+          # time, --auto errors with "clean status"; fall through to
+          # an immediate merge, which branch protection still gates
+          # server-side.
+          gh pr merge --auto --squash "$PR_NUMBER" -R "$GITHUB_REPOSITORY" \
+            || gh pr merge --squash "$PR_NUMBER" -R "$GITHUB_REPOSITORY"
