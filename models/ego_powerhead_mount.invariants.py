@@ -25,9 +25,11 @@ actual presence and fidelity, not just the added geometry:
      the snaps sit below the sampled z range, and the breakaway ribs
      hide under the rail tops, so this holds EXACTLY despite the
      added geometry — with one carve-out: across the plate band
-     (source z < 15) the +Y silhouette is now owned by the square
-     plate extension, so the expected top there is a flat y=112
-     (PLATE_EXT_Y) instead of the source's chamfered 108.6-110 edge.
+     (source z < 15) the +Y silhouette is now owned by the blended
+     plate extension (pst-efb, rounded pst-5kz), so the expected top
+     there is a flat y=112 (PLATE_EXT_Y) below the edge rounding
+     (z < EXT_ROUND_Z), and the rounded band plus the plan-rounded
+     corner columns are skipped.
 
   3. **Screw holes are plugged.** Probes inside each hole's measured
      shaft (z=8 slice center) and countersink (z=13.5 slice center)
@@ -93,6 +95,10 @@ SNAP_COLS_X = [14.0, 42.0]              # 2 cols centered on the 56mm width
 SNAP_ROWS_Y = [14.0, 42.0, 70.0, 98.0]  # 4 rows centered on the extended
                                         # 112mm back plate (pst-efb)
 PLATE_EXT_Y = 112.0  # back plate extended +Y to the 4-cell grid line
+EXT_ROUND_Z = 12.0   # above this source-frame z the extension's outer
+                     # face is rounded/blended (pst-5kz: r2 top-edge
+                     # roundover from z=13; strut-landing tangent arc
+                     # from z=12.2), so the flat-face pin stops here
 MAX_RIM_LIP = 1.8    # worst allowed floating plate-rim reach beyond the
                      # outermost snap footprints, mm (pst-efb)
 
@@ -170,11 +176,19 @@ def _check_fidelity(mesh, lift: float) -> list[Failure]:
     href = _heightmap(ref, 0.0)
     hexp = _heightmap(mesh, lift)
 
-    # pst-efb: across the plate band the +Y silhouette is now the
-    # square back-plate extension (flat y=112), not the source's
-    # chamfered 108.6-110 edge — pin the extension itself there. The
-    # bracket body beyond z=15 still tracks the source mesh exactly.
-    href[:, FID_ZS < 15.0] = PLATE_EXT_Y
+    # pst-efb/pst-5kz: across the plate band the +Y silhouette is now
+    # owned by the blended back-plate extension — a flat y=112 face
+    # below the edge rounding. Pin the flat face; skip the rounded
+    # band (z >= EXT_ROUND_Z, where the r2 top-edge roundover and the
+    # strut-landing arc pull the silhouette in by up to 2mm) and the
+    # corner columns (x < 3 / x > 53, plan-corner rounding). The
+    # bracket body beyond z=15 still tracks the source mesh exactly:
+    # the strut-band edge cut lives below z=15.03 and only trims
+    # extension material.
+    plate = FID_ZS < 15.0
+    href[:, plate & (FID_ZS < EXT_ROUND_Z)] = PLATE_EXT_Y
+    href[:, plate & (FID_ZS >= EXT_ROUND_Z)] = np.nan
+    href[np.ix_((FID_XS < 3.0) | (FID_XS > 53.0), plate)] = np.nan
 
     bad_solid: list[tuple[float, float, float, float]] = []
     bad_void: list[tuple[float, float, float]] = []

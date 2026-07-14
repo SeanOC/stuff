@@ -50,6 +50,11 @@
 //     snap auto-fit places a 2x4 grid and the worst rim shrinks to
 //     the same 1.6mm lip the X sides always had (X is already exactly
 //     2 cells: 56 = 2*28). Side benefit: 8 snaps instead of 6.
+//     Blended into the molded shape (pst-5kz): the extension's edges
+//     carry the source's measured r2 roundover and the diagonal strut
+//     flows over the new edge through a tangent arc — see
+//     plate_extension(). No blending face exceeds the 45 deg the
+//     strut's own outer face already prints at.
 //
 //  2. SHELF-LIP NOTCH CEILINGS: each shelf rail's outer end carries a
 //     retention lip whose notch (print z≈98.2 floor / 111.2 shoulder
@@ -91,6 +96,11 @@ $fn = 64;
 
 snap_lite = false; // @param boolean group=mount label="Lite openGrid snaps (3.4mm instead of 6.8mm)"
 
+// Every convex edge on the source bracket measures r=2.0 (plate
+// front-face side edges: (0,13)->(2,15) arc; plan corners:
+// (0,108)->(2,110) arc) — the extension's edges default to the same.
+ext_fillet = 2; // @param number min=1 max=3 step=0.25 unit=mm group=mount label="Extension edge roundover radius (source edges measure 2.0)"
+
 // @preset id="default" label="Default (full-depth snaps)" snap_lite=false
 
 // === Fixed geometry (matches the source mesh — not tunable) ===
@@ -124,6 +134,26 @@ og_weld    = 0.02;  // embed of snap tops into the wall face (st-vmn).
 // fits with >=1mm rim and the plate underside never overhangs more
 // than a 1.6mm lip (print-orientation rationale in the header).
 back_d = 4 * snap_pitch;  // 112
+
+// Blended extension (pst-5kz): the pst-efb slab read as bolted-on in
+// the operator's render review — square edges vs the source's rounded
+// ones, a hard notch at the outer corner, and the diagonal strut
+// terminating onto a flat step at its foot. The slab now starts at
+// ext_y0 = 108, exactly where the source's own r2 edge roundovers end
+// (front-face edge arc (108,15)->(110,13); plan corner arcs
+// (0,108)->(2,110)), so old and new rounded surfaces continue
+// tangentially, and carries ext_fillet roundovers on every new convex
+// edge. In the strut-landing band the slab edge is cut back to the
+// strut's own 45 deg outer face plane, flowing through a tangent
+// ext_fillet arc into the y=112 outer face — the brace lands over the
+// new edge exactly like it landed over the old one (measured off the
+// mesh: the face is y+z=125 across x 20..36 at the foot).
+ext_y0       = 108;     // slab inner edge: end of the source's own roundovers
+land_x0      = 20;      // strut 45 deg face x-band at the landing...
+land_x1      = 36;      // ...measured off the mesh at z 15.5..22
+land_plane   = 125.03;  // y+z of the strut's outer face; +0.03 keeps the
+                        // cut face just outside the mesh face so the
+                        // union never sees exactly-coplanar boundaries
 
 // Snap grid auto-fit over the plugged 56 x 112 wall face: as many
 // snaps as fit at 28mm pitch keeping >= 1mm rim, always centered.
@@ -171,6 +201,75 @@ module breakaway_ribs() {
     }
 }
 
+// === Blended back-plate extension (pst-5kz) ===
+
+// Region above the strut's 45 deg landing plane near the outer edge,
+// restricted to the strut band: subtracted from the extension slab it
+// lets the brace flow over the new edge through a roundover tangent to
+// both the face plane and the y=112 outer face. Max trim off the
+// slab's stock rounded edge is <0.8mm, so the band's end walls at
+// land_x0/land_x1 are sub-mm and sit exactly where the strut's own
+// side walls rise. yz profile extruded along +x (rotate([90,0,90])
+// maps extrusion (u,v,w) -> model (w,u,v)).
+module strut_land_cut() {
+    yc = back_d - ext_fillet;                  // arc center: tangent to the
+    zc = land_plane - yc - ext_fillet * sqrt(2); // y=112 face and the plane
+    translate([land_x0, 0, 0])
+        rotate([90, 0, 90])
+            linear_extrude(height = land_x1 - land_x0)
+                polygon(concat(
+                    [[land_plane - 25, 25]],   // inner end, on the plane
+                    [for (a = [45 : -5 : 0])   // tangent arc, plane -> face
+                        [yc + ext_fillet * cos(a), zc + ext_fillet * sin(a)]],
+                    [[back_d + 2, zc], [back_d + 2, 25]]
+                ));
+}
+
+// +Y back-plate extension to the 4-cell grid line (pst-efb), blended
+// (pst-5kz): y ext_y0..112, welded 2mm volumetrically into the mesh
+// plate (y 108..110 is solid plate across the full width below z=13),
+// with the source's edge roundover on every new convex edge — outer
+// top edge, top side edges, vertical outer corners — and the
+// strut-landing cut. The FRONT/BOT edges stay sharp: they are buried
+// in the weld or on the z=0 wall plane, which must remain flat for
+// grid seating.
+//
+// Built as the intersection of three rounded-rect extrusions rather
+// than BOSL2 cuboid(rounding=, edges=): the subset-edges rounding
+// path in cuboid() hulls eight corner shapes, and at ext_fillet ==
+// half the slab depth the corner pieces degenerate onto the slab
+// mid-plane — the wasm build's CGAL convex_hull_3 fails its
+// assertion on that input deterministically (same robustness-bug
+// class as lib/wasm/render.ts documents). rect() emits plain
+// polygons, no hull anywhere. Where three rounded edges meet, the
+// intersected corner bulges <=0.23*r (~0.45mm) proud of a true
+// sphere — invisible at r=2.
+module plate_extension() {
+    difference() {
+        intersection() {
+            // plan: vertical outer-corner roundings (along z)
+            linear_extrude(plate_t)
+                translate([plate_w / 2, (ext_y0 + back_d) / 2])
+                    rect([plate_w, back_d - ext_y0],
+                         rounding = [ext_fillet, ext_fillet, 0, 0]);
+            // yz: outer top-edge roundover (along x)
+            rotate([90, 0, 90])
+                linear_extrude(plate_w)
+                    translate([(ext_y0 + back_d) / 2, plate_t / 2])
+                        rect([back_d - ext_y0, plate_t],
+                             rounding = [ext_fillet, 0, 0, 0]);
+            // xz: top side-edge roundovers (along y)
+            translate([0, back_d, 0])
+                rotate([90, 0, 0])
+                    linear_extrude(back_d - ext_y0)
+                        translate([plate_w / 2, plate_t / 2])
+                            rect([plate_w, plate_t],
+                                 rounding = [ext_fillet, ext_fillet, 0, 0]);
+        }
+        strut_land_cut();
+    }
+}
+
 // === Bracket body: imported mesh + screw-hole plugs ===
 
 module holder_body() {
@@ -181,10 +280,7 @@ module holder_body() {
     for (c = plug_centers)
         translate([c.x, c.y, 0])
             cylinder(d = plug_d, h = plate_t);
-    // +Y back-plate extension to the 4-cell grid line (pst-efb):
-    // y 109..112, 1mm volumetric weld overlap into the mesh plate.
-    translate([0, plate_d - 1, 0])
-        cube([plate_w, back_d - plate_d + 1, plate_t]);
+    plate_extension();
     breakaway_ribs();
 }
 
