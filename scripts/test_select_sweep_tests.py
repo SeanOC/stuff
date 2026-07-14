@@ -96,6 +96,22 @@ def test_hostile_filename_degrades_to_full_not_injection() -> None:
     assert sel.files == []
 
 
+def test_measured_table_stems_exist() -> None:
+    # A table entry whose model is gone is dead weight; a renamed
+    # model silently falls back to the @param estimate. Keep the
+    # table in sync with models/.
+    for stem in mod.MEASURED_SECONDS:
+        assert (REPO_ROOT / "models" / f"{stem}.scad").is_file(), (
+            f"MEASURED_SECONDS entry '{stem}' has no models/{stem}.scad — "
+            "remove or rename the entry"
+        )
+
+
+def test_unknown_model_falls_back_to_param_estimate() -> None:
+    cost = mod.estimated_cost("tests/sweep/no_such_model_xyz.test.ts")
+    assert cost == mod.FALLBACK_SECONDS_PER_CASE  # 1 case × fallback rate
+
+
 def test_shards_cover_all_files_exactly_once() -> None:
     files = mod.all_sweep_files()
     shards = mod.build_shards(files)
