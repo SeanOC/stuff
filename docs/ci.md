@@ -50,6 +50,14 @@ Consequences worth knowing:
   `main`'s full sweep, render canonicalization, or the next
   auto-update round, and branch updates would strand PR runs in
   `action_required` (pst-dm9).
+- **update-branch 422s can be transient.** Right after `main` moves,
+  GitHub briefly reports PR mergeability as unknown and the
+  update-branch API 422s even for genuinely-behind PRs (seen on the
+  workflow's first live run, which silently skipped two BEHIND PRs).
+  `pr-autoupdate.yml` retries each PR up to 3 times (20s apart),
+  treats only the explicit "no new commits on the base branch" answer
+  as terminal, and warns if a PR is still not updated — rerun via
+  `workflow_dispatch` if one stays BEHIND.
 - **Residual gap:** pushes to `main` made *with* `GITHUB_TOKEN` —
   notably the render job's thumbnail canonicalization commit — don't
   fire `pr-autoupdate.yml`. PRs stranded by such a bot-only main
