@@ -43,9 +43,14 @@ ceiling), this sidecar pins the claims the remodel actually makes:
      solid, snaps present on the top and bottom rows only (the middle
      row is skipped — its two center snaps would float inside the
      central 68.5 x 29 obround cutout), and each snap's strong
-     DIRECTIONAL front nub points +Y (up on the wall): only the front
-     nub reaches 13.0 mm from the snap center (rear stops at 12.8),
-     so a solid probe at +13.0/void at -13.0 pins the orientation.
+     DIRECTIONAL front nub points +Y (up on the wall). Vertex extents
+     in the snap-only z band pin the orientation: only the nubs reach
+     past the 24.8 mm snap core — the strong front nub tips out
+     13.2 mm from a snap center, the rear click nub 12.8 — so the +Y
+     edge of the top row must reach 13.2 and the -Y edge of the
+     bottom row must stop at 12.8. (mesh.contains() probes 0.2 mm
+     inside the nub tips were raycast-parity-flaky across
+     environments — pst-lfk, same rework as ego_powerhead_mount.)
 
   5. **Every snap is FULLY BACKED (st-ocs).** The plate keeps the
      original's edge notches (x=35..103.5 at both y edges), so the
@@ -309,19 +314,41 @@ def _check_opengrid_variant(stem: str) -> list[Failure]:
                 "snaps must be skipped (they float in the cutout)",
             )
         )
-    # Directional orientation: only the strong front nub reaches 13.0mm
-    # from the snap center; it must point +Y (up on the wall).
-    front = mesh.contains(np.array([[x, 16.5 + 13.0, 4.1] for x in SNAP_COLS_X]))
-    rear = mesh.contains(np.array([[x, 16.5 - 13.0, 4.1] for x in SNAP_COLS_X]))
-    if not bool(front.all()) or bool(rear.any()):
+    # Directional orientation: vertex extents in the snap-only z band
+    # (below the plate face at z=OG_LIFT), NOT mesh.contains() —
+    # raycast parity 0.2mm inside the nub tips flips across
+    # environments (welded nub shims leave tangent faces; pst-lfk,
+    # same rework as ego_powerhead_mount). In the band only the nubs
+    # reach past the 24.8mm snap core: the strong front nub tips out
+    # 13.2mm from a snap center, the rear click nub 12.8. Up on the
+    # wall is +Y here, so the +Y edge of the top row must reach 13.2
+    # and the -Y edge of the bottom row must stop at 12.8.
+    v = mesh.vertices
+    band = v[(v[:, 2] > 0.05) & (v[:, 2] < OG_LIFT - 0.05)]
+    if len(band) == 0:
         failures.append(
             Failure(
                 "opengrid-load-orientation",
-                "directional snap front nub not pointing +Y (up) — probe "
-                f"front(+13.0)={front.tolist()} rear(-13.0)={rear.tolist()}; "
-                "the strong hook must take the top-row lever-out load",
+                "no vertices in the snap-only z band below the plate "
+                "face — snaps missing or plate not lifted",
             )
         )
+    else:
+        front_reach = float(band[:, 1].max()) - SNAP_ROWS_Y[-1]  # +Y side
+        rear_reach = SNAP_ROWS_Y[0] - float(band[:, 1].min())    # -Y side
+        if not (abs(front_reach - 13.2) <= 0.15
+                and abs(rear_reach - 12.8) <= 0.15):
+            failures.append(
+                Failure(
+                    "opengrid-load-orientation",
+                    f"directional snap front nub not pointing +Y (up): "
+                    f"+Y reach {front_reach:.2f}mm from the top snap row "
+                    f"(want 13.2, the strong nub) and -Y reach "
+                    f"{rear_reach:.2f}mm from the bottom row (want 12.8, "
+                    "the click nub); the strong hook must take the "
+                    "top-row lever-out load",
+                )
+            )
     # Bearing members must track body_lift in the opengrid variant too:
     # beam top, shelf, and horn ridge probed just under their surfaces.
     bear_pts = np.array(
