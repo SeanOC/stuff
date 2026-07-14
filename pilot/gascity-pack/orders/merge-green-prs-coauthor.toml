@@ -1,0 +1,11 @@
+[order]
+description = "Coauthor merge step (co-8h7b): merge gc-co/* PRs into SeanOC/co-author main when all REQUIRED checks (build+e2e) are green. verifier-preview is advisory and never gates. Controller-side exec — no agent, no LLM. PR + required CI gates are the only path to main."
+trigger = "cooldown"
+interval = "3m"
+exec = "assets/scripts/merge-green-required-prs.sh"
+scope = "city"
+timeout = "120s"
+
+[order.env]
+GH_REPO = "SeanOC/co-author"
+BRANCH_PREFIX = "gc-co/"

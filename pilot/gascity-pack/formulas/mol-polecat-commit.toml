@@ -1,0 +1,32 @@
+description = """
+POLICY BAN (co-8h7b migration precondition, 2026-07-14).
+
+The core pack's mol-polecat-commit formula ends in `git push origin
+HEAD:{{base_branch}}` — a direct commit to the default branch with no PR and
+no CI gate. That is the gt-pvx bypass class the Gas City pilot was built to
+catch. This city is PR-only: every change to a rig's default branch goes
+through a pull request and its required checks, merged by the exec merge
+order.
+
+This city-local formula shadows the core pack's copy (city formulas/ is a
+higher-priority layer than imported packs) and fails closed at cook time via
+an unsatisfiable formula_compiler requirement below. Nobody — agent or human —
+can instantiate it in this city.
+
+If you hit this ban: use the PR workflow (branch + PR + green required
+checks). If you believe a direct push is genuinely needed, escalate to the
+human mailbox instead: gc mail send human -s "direct-push request" ...
+"""
+formula = "mol-polecat-commit"
+
+[requires]
+# Deliberately unsatisfiable — cook fails with
+# formula.compiler_requirement_unsatisfied. This is the ban mechanism.
+formula_compiler = ">=999.0.0"
+
+[[steps]]
+id = "banned"
+title = "BANNED: direct-commit-to-main formula is policy-disabled in this city"
+description = """
+Unreachable — the [requires] block above fails closed before instantiation.
+"""

@@ -6,6 +6,21 @@ provider = "claude"
 base = "builtin:claude"
 ready_delay_ms = 0
 
+# Migration precondition (co-8h7b, 2026-07-14): the core pack's jsonl-export
+# order does a `git push origin main` against its bead-archive repo. Disabled
+# outright city-wide — no order-driven git pushes.
+[orders]
+skip = ["jsonl-export"]
+
+# Positive lint for the mol-polecat-commit policy ban (co-8h7b). NOTE: the
+# builtin formula-requirements doctor check reports 1 error for the banned
+# formula — that red is the ban working as designed (unsatisfiable
+# formula_compiler), not a misconfiguration.
+[[doctor.check]]
+name = "polecat-commit-ban"
+script = "doctor/polecat-commit-ban.sh"
+description = "direct-push formula mol-polecat-commit must be policy-banned (cook fails closed)"
+
 # [mail]
 # retention_ttl controls how long read messages are retained before purge.
 # 0 disables retention; use "168h" for 7 days.
@@ -16,3 +31,9 @@ ready_delay_ms = 0
 name = "stuff"
 prefix = "pst"
 default_branch = "main"
+
+[[rigs]]
+name = "coauthor"
+prefix = "co"
+default_branch = "main"
+suspended_on_start = true
