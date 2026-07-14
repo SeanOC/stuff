@@ -1,21 +1,85 @@
 # Continuous integration
 
-CI lives in two workflows, both triggered by pushes to `main` and by
-pull requests:
+CI lives in four workflows:
 
 - [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) — the
-  `render`, `unit`, and `e2e` jobs.
+  `render`, `unit`, and `e2e` jobs (pushes to `main` + PRs).
 - [`.github/workflows/param-sweep.yml`](../.github/workflows/param-sweep.yml)
-  — the wasm param-sweep connectivity guard.
+  — the wasm param-sweep connectivity guard (pushes to `main` + PRs).
+- [`.github/workflows/pr-automerge.yml`](../.github/workflows/pr-automerge.yml)
+  — arms squash auto-merge on every PR the moment it opens.
+- [`.github/workflows/pr-autoupdate.yml`](../.github/workflows/pr-autoupdate.yml)
+  — on every push to `main`, updates all open PR branches so strict
+  up-to-date mode can't strand them.
+
+## The PR lifecycle: merges are fully autonomous (pst-2sb)
+
+PRs against `main` run CI and merge entirely on their own — there is
+no human or agent merge step:
+
+1. **PR opened** (or reopened / marked ready) → `pr-automerge.yml`
+   enables squash auto-merge on it.
+2. **Checks run.** All four required contexts report a conclusion on
+   *every* PR — that's what makes auto-merge safe to arm blindly:
+   - `unit tests (vitest)` and `e2e tests (playwright)` always run.
+   - `render preview images` always runs; a paths-filter step inside
+     the job skips the heavy render/export work when nothing
+     render-relevant changed, but the job still reports success.
+   - `wasm param sweep` is a gate job in `param-sweep.yml` that
+     reduces the sharded sweep matrix to one stable-named
+     conclusion; on sweep-irrelevant PRs the select job's **skip**
+     mode makes it pass in seconds.
+3. **`main` moves** (another PR merged first) → strict up-to-date
+   mode marks the PR out of date → `pr-autoupdate.yml` updates every
+   open PR branch via the update-branch API, re-running their checks
+   against the new base.
+4. **All four checks green + branch up to date** → GitHub merges the
+   PR itself (squash).
+
+Consequences worth knowing:
+
+- **The merge cascade is intentional.** With N armed PRs open, each
+  merge re-updates the other N−1 and re-runs their CI, so merges
+  serialize at roughly one per CI wall-clock. Accepted cost of
+  strict mode + autonomy.
+- **Token attribution matters.** Auto-merge's eventual merge is
+  attributed to whoever *enabled* it, and pushes/merges made with
+  `GITHUB_TOKEN` don't trigger workflows. Both new workflows
+  therefore authenticate with the `THUMBNAIL_PUSH_TOKEN` PAT (and
+  warn on fallback): with `GITHUB_TOKEN` the merge wouldn't fire
+  `main`'s full sweep, render canonicalization, or the next
+  auto-update round, and branch updates would strand PR runs in
+  `action_required` (pst-dm9).
+- **Residual gap:** pushes to `main` made *with* `GITHUB_TOKEN` —
+  notably the render job's thumbnail canonicalization commit — don't
+  fire `pr-autoupdate.yml`. PRs stranded by such a bot-only main
+  move get picked up on the next real push, or run the workflow
+  manually (`workflow_dispatch`).
+- **Fork PRs are excluded**: fork `pull_request` runs get no secrets
+  and a read-only `GITHUB_TOKEN`, so arming fails soft and those PRs
+  keep the manual merge path.
+- **Never make a check required unless it reports on every PR.** A
+  required context that sometimes doesn't run (e.g. behind a
+  workflow-level `paths:` filter) hangs auto-merge forever. That's
+  why neither `ci.yml` nor `param-sweep.yml` path-filters its
+  `pull_request` trigger — cheap skipping happens *inside* jobs that
+  still report.
+
+Required status checks on `main` (strict mode, set via the branch
+protection API): `unit tests (vitest)`, `e2e tests (playwright)`,
+`render preview images`, `wasm param sweep`.
 
 ## Job / trigger matrix
 
 | Job | Runs on PR | Runs on push to `main` | Where |
 | --- | --- | --- | --- |
-| `render` (thumbnails + STL export + invariants) | Only when render-relevant paths changed (see below); full fallback if the filter fails | Always | `ci.yml`, containerized |
+| `render` (thumbnails + STL export + invariants) | Always reports; heavy steps run only when render-relevant paths changed (see below), full fallback if the filter fails | Always | `ci.yml`, containerized |
 | `unit` (vitest) | Always | Always | `ci.yml` |
 | `e2e` (Playwright, needs `unit`) | Always | Always | `ci.yml` |
-| `sweep` (wasm param sweep) | Selective — only the models the PR touched, sharded across parallel jobs (see below) | Full sweep whenever sweep-relevant paths changed (the coverage guard) | `param-sweep.yml` |
+| `sweep` shards (wasm param sweep) | Selective — only the models the PR touched, sharded across parallel jobs (see below); skipped entirely on sweep-irrelevant PRs | Full sweep whenever sweep-relevant paths changed (the coverage guard) | `param-sweep.yml` |
+| `gate` (`wasm param sweep`, the required context) | Always reports — reduces shard results to one conclusion, passes immediately in skip mode | Same | `param-sweep.yml` |
+| `arm` (enable auto-merge) | On open / reopen / ready-for-review | — | `pr-automerge.yml` |
+| `update` (update open PR branches) | — | Always (+ manual dispatch) | `pr-autoupdate.yml` |
 
 The `unit` and `e2e` jobs run on every PR regardless; both are cheap
 enough that paths-filtering isn't worth the complexity.
@@ -194,12 +258,18 @@ with the expected number of connected components. It catches param
 values that shatter a model in the browser preview — wasm engine CSG
 failures that desktop OpenSCAD doesn't reproduce.
 
-It's a separate workflow because it's minutes of wasm rendering,
-path-gated to inputs that can change render outcomes: `models/**`,
-`libs/README.md`, `lib/wasm/**`, `lib/scad-params/**`,
-`tests/sweep/**`, `vitest.sweep.config.ts`, `scripts/vendor-libs.sh`,
-`scripts/select-sweep-tests.py`, `package-lock.json`, and the
-workflow file itself.
+It's a separate workflow because it's minutes of wasm rendering. On
+pushes to `main` it's path-gated to inputs that can change render
+outcomes: `models/**`, `libs/README.md`, `lib/wasm/**`,
+`lib/scad-params/**`, `tests/sweep/**`, `vitest.sweep.config.ts`,
+`scripts/vendor-libs.sh`, `scripts/select-sweep-tests.py`,
+`package-lock.json`, and the workflow file itself. The
+`pull_request` trigger deliberately has **no** paths filter
+(pst-2sb): `wasm param sweep` is a required status check, and a
+required check that never reports hangs auto-merge — so every PR
+runs the ~20-second `select` job, and the script's skip mode makes
+sweep-irrelevant PRs pass in seconds via the `gate` job instead of
+not reporting at all.
 
 ### Selective scope + sharding on PRs (pst-776)
 
