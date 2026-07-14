@@ -1,0 +1,19 @@
+# Coauthor worker pool (co-8h7b): on-demand workers for the coauthor rig
+# (SeanOC/co-author — Next.js/pnpm app). Ported from the stuff pilot worker.
+# Each session gets an isolated git worktree; merge is PR-only via the
+# merge-green-required-prs-coauthor exec order (REQUIRED checks only —
+# verifier-preview is advisory/flaky and must not gate).
+scope = "rig"
+dir = "coauthor"
+provider = "claude"
+min_active_sessions = 0
+max_active_sessions = 2
+idle_timeout = "30m"
+# Per-agent reasoning effort (co-8h7b precondition): explicit, not inherited.
+option_defaults = { effort = "max" }
+work_dir = ".gc/worktrees/coauthor/coauthor-worker/{{.Agent}}"
+pre_start = [
+  "{{.CityRoot}}/assets/scripts/worktree-setup.sh {{.RigRoot}} {{.WorkDir}} {{.AgentBase}} --sync",
+  "{{.CityRoot}}/assets/scripts/coauthor-env-setup.sh {{.WorkDir}}",
+]
+nudge = "Check your hook (gc hook --claim --json), then work the claimed bead per your prompt. PR-only merges; branch prefix gc-co/."

@@ -1,0 +1,18 @@
+[pack]
+name = "city"
+schema = 2
+
+[imports]
+[imports.bd]
+source = "https://github.com/gastownhall/gascity.git//examples/bd"
+version = "sha:f895c0ff47d6ee9334ed282a416387eb5b084d24"
+[imports.core]
+source = "https://github.com/gastownhall/gascity.git//internal/bootstrap/packs/core"
+version = "sha:f895c0ff47d6ee9334ed282a416387eb5b084d24"
+
+# Migration precondition (co-8h7b, 2026-07-14): the pilot's always-on mayor
+# burned ~327k output tokens/day of pure coordination overhead and freelanced
+# (unrequested bead edits, typed into worker sessions). Wake-on-demand only.
+[[named_session]]
+template = "mayor"
+mode = "on_demand"
