@@ -74,6 +74,27 @@ jobs:
           apt-get update
           apt-get install -y --no-install-recommends ca-certificates git
 
+      - name: Install pytest
+        # pst-9mi: the scripts/ pytest step below runs unconditionally,
+        # so its one dependency installs outside the render gate. The
+        # suite imports nothing beyond pytest + stdlib; the heavy render
+        # deps (numpy, trimesh, xvfb, …) stay in the gated install.
+        run: |
+          apt-get install -y --no-install-recommends python3-pytest \
+            || python3 -m pip install --break-system-packages pytest
+
+      - name: Scripts + invariant core unit tests
+        # pst-u6t: scripts/ collects the top-level scripts/test_*.py
+        # suites (prune-canonical-renders, export-all planning,
+        # select-sweep-tests) in addition to scripts/invariants/.
+        # pst-9mi: unconditional and early — the suite runs in <1s and
+        # covers prune/export/sweep-selection logic that used to slip
+        # through on scripts-only PRs when this step was gated on the
+        # render paths filter (which doesn't watch most of scripts/).
+        # Running before the engine install also fails fast on render
+        # PRs.
+        run: python3 -m pytest scripts/ -v
+
       - name: Filter paths
         id: filter
         # st-a50: smart-render is an OPTIMIZATION, not a hard
@@ -162,13 +183,13 @@ jobs:
         # bundle only what openscad itself needs. measure.py +
         # invariants need numpy, PIL, and trimesh; rtree is trimesh's
         # optional ray-query backend required by mesh.contains() in
-        # the invariants sidecars (st-3r5). We also pull
-        # pytest for the invariant core unit test step. `xvfb`
+        # the invariants sidecars (st-3r5). `xvfb`
         # provides the `xvfb-run` wrapper that
         # .claude/skills/_lib/openscad.py invokes to drive openscad
         # headless; `xauth` is required by `xvfb-run -a` for the
         # auth-cookie dance. (git + ca-certificates are installed
-        # earlier for paths-filter; st-yzo.)
+        # earlier for paths-filter, st-yzo; pytest earlier for the
+        # unconditional scripts test step, pst-9mi.)
         #
         # apt-get is preferred (deb-packaged wheels are pre-built);
         # fall back to pip with --break-system-packages if the apt
@@ -176,9 +197,9 @@ jobs:
         run: |
           apt-get install -y --no-install-recommends xauth xvfb
           apt-get install -y --no-install-recommends \
-            python3-numpy python3-pil python3-trimesh python3-rtree python3-pytest \
+            python3-numpy python3-pil python3-trimesh python3-rtree \
             || python3 -m pip install --break-system-packages \
-                 numpy pillow trimesh rtree pytest
+                 numpy pillow trimesh rtree
 
       - name: Vendor SCAD libraries
         if: github.event_name == 'push' || steps.filter.outputs.render == 'true' || steps.filter.outcome == 'failure'
@@ -208,13 +229,6 @@ jobs:
         run: |
           python3 scripts/export-all.py --changed-paths "$CHANGED_PATHS"
           python3 scripts/check-invariants-all.py
-
-      - name: Scripts + invariant core unit tests
-        if: github.event_name == 'push' || steps.filter.outputs.render == 'true' || steps.filter.outcome == 'failure'
-        # pst-u6t: scripts/ collects the top-level scripts/test_*.py
-        # suites (prune-canonical-renders, export-all planning,
-        # select-sweep-tests) in addition to scripts/invariants/.
-        run: python3 -m pytest scripts/ -v
 
       - name: Commit regenerated renders (PRs)
         if: github.event_name == 'pull_request' && (steps.filter.outputs.render == 'true' || steps.filter.outcome == 'failure')
