@@ -15,7 +15,7 @@ pull requests:
 | `render` (thumbnails + STL export + invariants) | Only when render-relevant paths changed (see below); full fallback if the filter fails | Always | `ci.yml`, containerized |
 | `unit` (vitest) | Always | Always | `ci.yml` |
 | `e2e` (Playwright, needs `unit`) | Always | Always | `ci.yml` |
-| `sweep` (wasm param sweep) | Only when sweep-relevant paths changed | Only when sweep-relevant paths changed | `param-sweep.yml` |
+| `sweep` (wasm param sweep) | Selective — only the models the PR touched, sharded across parallel jobs (see below) | Full sweep whenever sweep-relevant paths changed (the coverage guard) | `param-sweep.yml` |
 
 The `unit` and `e2e` jobs run on every PR regardless; both are cheap
 enough that paths-filtering isn't worth the complexity.
@@ -198,7 +198,58 @@ It's a separate workflow because it's minutes of wasm rendering,
 path-gated to inputs that can change render outcomes: `models/**`,
 `libs/README.md`, `lib/wasm/**`, `lib/scad-params/**`,
 `tests/sweep/**`, `vitest.sweep.config.ts`, `scripts/vendor-libs.sh`,
-and `package-lock.json`.
+`scripts/select-sweep-tests.py`, `package-lock.json`, and the
+workflow file itself.
+
+### Selective scope + sharding on PRs (pst-776)
+
+A full sweep is ~587 renders and took **~42 minutes** as a single
+job — paid on every model PR, for every model in the catalog. Two
+changes cut that (before/after timings measured on the pst-776 PR):
+
+1. **Selective scope.** A cheap `select` job feeds the PR's changed
+   file list (dorny/paths-filter, fail-soft like ci.yml's) to
+   [`scripts/select-sweep-tests.py`](../scripts/select-sweep-tests.py),
+   which picks one of three modes:
+   - **full** — a sweep-global input changed (`lib/wasm/`,
+     `lib/scad-params/`, `libs/`, sweep infra under `tests/sweep/`,
+     `vitest.sweep.config.ts`, `scripts/vendor-libs.sh`, the selection
+     script, `package-lock.json`, the workflow file), the change list
+     is unavailable (push, dispatch, filter failure), **or** a
+     non-`.scad` file under `models/` changed (assets like `import()`ed
+     STLs can affect any model — widen, don't guess).
+   - **selective** — only `models/<stem>.scad` and/or
+     `tests/sweep/<stem>.test.ts` files changed: run exactly those
+     models' sweeps, plus the coverage meta-guard (which is also what
+     fails a PR adding a model without a sweep file).
+     Invariants-sidecar-only changes don't count — they're a render-job
+     input, not a sweep input.
+   - **skip** — nothing sweep-relevant changed: no sweep jobs at all
+     (docs-only PRs pay ~20 seconds of `select`, not 40 minutes of
+     sweep).
+2. **Sharding.** The selected files are split into ≤ 4 cost-balanced
+   shards (weight ≈ the model's `@param` count, which drives its
+   sweep-case count; greedy LPT binning) and run as parallel matrix
+   jobs with `fail-fast: false`. Hosted runners are 4-vCPU, so extra
+   runners beat extra vitest workers (`maxWorkers` stays capped at 4
+   per job for wasm-heap memory).
+
+**Coverage guard:** pushes to `main` and `workflow_dispatch` always
+run the FULL sweep (empty change list ⇒ full). A selective PR can
+therefore never *permanently* mask a param-extreme regression in an
+untouched model: it surfaces on the merge commit's full run on
+`main`. That mirrors the smart-render trade-off documented above —
+scoped PR runs, full canonical runs on `main`. `workflow_dispatch`
+doubles as a re-fuzz button: wasm-CGAL failures are randomized, so a
+manual full pass has value even on an unchanged tree.
+
+**Injection note:** shard file lists are interpolated into a `run:`
+line, so the selection script regex-sanitizes every stem and drops
+paths that don't exist in the tree; an unsanitizable path (hostile
+filename on a fork PR) degrades to a full sweep, never into the
+shell line. The script has a pytest
+(`scripts/test_select_sweep_tests.py`; run locally — the CI pytest
+step only covers `scripts/invariants/`, widening it is pst-u6t).
 
 ### known-failures.ts
 
@@ -239,7 +290,8 @@ python3 -m pytest scripts/invariants/
 # Unit + sweep + e2e
 npm install
 npm test                  # vitest
-npm run test:sweep        # wasm param sweep (what param-sweep.yml runs)
+npm run test:sweep        # wasm param sweep (full; ~40 min)
+npm run test:sweep -- tests/sweep/<stem>.test.ts   # sweep one model
 npm run build             # prod build (Vercel does the same)
 npm run test:e2e          # Playwright
 ```
