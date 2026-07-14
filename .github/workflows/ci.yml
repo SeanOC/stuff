@@ -209,9 +209,12 @@ jobs:
           python3 scripts/export-all.py --changed-paths "$CHANGED_PATHS"
           python3 scripts/check-invariants-all.py
 
-      - name: Invariant core unit tests
+      - name: Scripts + invariant core unit tests
         if: github.event_name == 'push' || steps.filter.outputs.render == 'true' || steps.filter.outcome == 'failure'
-        run: python3 -m pytest scripts/invariants/ -v
+        # pst-u6t: scripts/ collects the top-level scripts/test_*.py
+        # suites (prune-canonical-renders, export-all planning,
+        # select-sweep-tests) in addition to scripts/invariants/.
+        run: python3 -m pytest scripts/ -v
 
       - name: Commit regenerated renders (PRs)
         if: github.event_name == 'pull_request' && (steps.filter.outputs.render == 'true' || steps.filter.outcome == 'failure')

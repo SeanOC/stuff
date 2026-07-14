@@ -5,9 +5,8 @@ base commit (main) with canonical renders, a PR branch whose renders
 carry local byte-noise, and a staged CI regeneration. The script must
 drop staged changes that byte-match the base commit and keep the rest.
 
-Not wired into the CI pytest step (that step's scope is
-scripts/invariants/ and widening it was outside the pst-dm9 workflow
-exception); run locally with `python3 -m pytest scripts/`.
+Runs in CI via the scripts/ pytest step (wired in pst-u6t); run
+locally with `python3 -m pytest scripts/`.
 """
 
 from __future__ import annotations

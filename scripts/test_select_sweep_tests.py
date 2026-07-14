@@ -4,9 +4,8 @@ Exercises the mode decision (full / selective / skip), the
 conservative widenings (assets, hostile filenames, sweep infra), and
 the shard binning against the real repo tree.
 
-Not wired into the CI pytest step (that step's scope is
-scripts/invariants/; widening it is filed as pst-u6t); run locally
-with `python3 -m pytest scripts/`.
+Runs in CI via the scripts/ pytest step (wired in pst-u6t); run
+locally with `python3 -m pytest scripts/`.
 """
 
 from __future__ import annotations
