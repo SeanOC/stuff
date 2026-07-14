@@ -228,11 +228,18 @@ changes cut that (before/after timings measured on the pst-776 PR):
      (docs-only PRs pay ~20 seconds of `select`, not 40 minutes of
      sweep).
 2. **Sharding.** The selected files are split into ≤ 4 cost-balanced
-   shards (weight ≈ the model's `@param` count, which drives its
-   sweep-case count; greedy LPT binning) and run as parallel matrix
-   jobs with `fail-fast: false`. Hosted runners are 4-vCPU, so extra
-   runners beat extra vitest workers (`maxWorkers` stays capped at 4
-   per job for wasm-heap memory).
+   shards (greedy LPT binning on the measured per-file durations
+   hardcoded in the script — case count is a poor time proxy: 25
+   `opengrid_bin` cases take ~1000s while 61 `rv_ceiling` cases take
+   61s; models without a measurement fall back to an `@param`-count
+   estimate) and run as parallel matrix jobs with `fail-fast: false`.
+   Hosted runners are 4-vCPU, so extra runners beat extra vitest
+   workers (`maxWorkers` stays capped at 4 per job for wasm-heap
+   memory). The full-sweep wall clock is floor-bound by the single
+   slowest test file (~17 min for `opengrid_bin`) — going lower means
+   splitting cases within a file, not more shards. Refresh the
+   duration table from a full run's per-file times when balance
+   drifts; staleness skews balance, never correctness.
 
 **Coverage guard:** pushes to `main` and `workflow_dispatch` always
 run the FULL sweep (empty change list ⇒ full). A selective PR can

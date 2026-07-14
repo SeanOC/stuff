@@ -71,6 +71,39 @@ FULL_TRIGGER_FILES = frozenset(
 
 COVERAGE_TEST = "tests/sweep/coverage.test.ts"
 
+# Measured per-file sweep durations in seconds (CI run 29300566841,
+# 2026-07-14, ubuntu-latest). Case count is a poor time proxy — 25
+# opengrid_bin cases take 999s while 61 rv_ceiling cases take 61s —
+# so shard balance uses these where available. Advisory only: a stale
+# or missing entry skews balance, never correctness (new models fall
+# back to the @param estimate below). Refresh from a full-sweep run's
+# per-file times when balance drifts.
+MEASURED_SECONDS = {
+    "opengrid_bin": 999,
+    "led_remote_holder_55x124mm": 908,
+    "led_remote_holder_51x84mm": 645,
+    "spraycan_carrier_6x50mm": 587,
+    "cylindrical_holder_slot": 447,
+    "blu_flow_meter_mount_80mm": 376,
+    "blu_black_tank_valve_mount": 349,
+    "opengrid_panel_aligner": 322,
+    "ego_lb6500_blower_mount": 251,
+    "ego_powerhead_mount": 168,
+    "lcd_stylus_hex_8mm": 92,
+    "goblu_filter_holder_3x90mm": 73,
+    "blutech_water_softener_foot": 61,
+    "rv_ceiling_ap_adapter_235mm": 61,
+    "aquor_bib_drip_deflector": 31,
+    "gridfinity_bin": 30,
+    "lcd_stylus_75mm": 12,
+    "popcorn_kernel": 7,
+    "disney_ear_hanger": 1,
+}
+
+# Full-sweep seconds per sweep case, for models not in the table
+# (5420s / 587 cases in the run above).
+FALLBACK_SECONDS_PER_CASE = 9
+
 # Stems become shell-interpolated file paths in the workflow; reject
 # anything outside this alphabet (fall back to a full sweep instead).
 SAFE_STEM = re.compile(r"[A-Za-z0-9._-]+\Z")
@@ -138,21 +171,25 @@ def all_sweep_files() -> list[str]:
 
 
 def estimated_cost(test_file: str) -> int:
-    """Relative sweep cost of one per-model test file.
+    """Estimated sweep seconds for one per-model test file.
 
-    Case count scales with the model's @param count (numerics
-    contribute up to 3 variants each), so the annotation count is a
-    good-enough balance weight. The coverage meta-guard renders
-    nothing and costs ~0.
+    Prefers the measured table; falls back to an estimate from the
+    model's @param count (case count scales with it — numerics
+    contribute up to 3 variants each). The coverage meta-guard
+    renders nothing and costs ~0.
     """
     if test_file == COVERAGE_TEST:
         return 0
     stem = Path(test_file).name[: -len(".test.ts")]
+    measured = MEASURED_SECONDS.get(stem)
+    if measured is not None:
+        return measured
     scad = REPO_ROOT / "models" / f"{stem}.scad"
     try:
-        return 1 + 2 * scad.read_text().count("@param")
+        cases = 1 + 2 * scad.read_text().count("@param")
     except OSError:
-        return 1
+        cases = 1
+    return cases * FALLBACK_SECONDS_PER_CASE
 
 
 def build_shards(files: list[str], max_shards: int = MAX_SHARDS) -> list[list[str]]:
