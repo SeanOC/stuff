@@ -1,0 +1,66 @@
+# pst-2sb: strict up-to-date branch protection strands every open PR
+# whenever main advances (seen on PRs #11, #13, #21) — armed
+# auto-merge then waits forever on an "out of date" branch. On each
+# push to main, update every open PR branch via the update-branch
+# API so their checks re-run against the new base and auto-merge can
+# complete.
+#
+# Cascade (intentional, accepted): with N armed PRs open, each merge
+# to main re-updates the remaining N-1 and re-runs their CI, so
+# merges serialize at roughly one per CI wall-clock. That's the cost
+# of strict mode + full autonomy; fine at this repo's PR volume.
+#
+# Residual gap: pushes to main made with GITHUB_TOKEN — notably the
+# render job's "ci: regenerate model thumbnails" canonicalization
+# commit — do not trigger workflows, so they advance main without
+# firing this updater. Open PRs stranded by such a bot-only move get
+# picked up on the next real push, or kick this workflow manually
+# via workflow_dispatch. (Switching that commit-back to the PAT
+# would close the gap but risks a render→push→render loop if CI
+# renders are ever not byte-stable; not worth it.)
+#
+# Token: branch updates made with GITHUB_TOKEN leave the re-triggered
+# pull_request runs stranded in action_required (pst-dm9), which
+# defeats the whole point — use THUMBNAIL_PUSH_TOKEN.
+name: pr-autoupdate
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One updater at a time; queue rather than cancel so a merge burst
+# still ends with a final full pass over the open-PR list.
+concurrency:
+  group: pr-autoupdate
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    name: update open PR branches
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Update every open PR branch behind main
+        env:
+          GH_TOKEN: ${{ secrets.THUMBNAIL_PUSH_TOKEN || secrets.GITHUB_TOKEN }}
+          HAS_PAT: ${{ secrets.THUMBNAIL_PUSH_TOKEN != '' }}
+        run: |
+          if [ "$HAS_PAT" != "true" ]; then
+            echo "::warning::THUMBNAIL_PUSH_TOKEN not set — branch updates pushed with GITHUB_TOKEN strand PR checks in action_required (pst-dm9)."
+          fi
+          # update-branch 422s when the branch is already up to date,
+          # conflicted, or otherwise not updatable; all fine to skip.
+          # Serialized loop on purpose — parallel updates would just
+          # race each other and the next push's run.
+          for pr in $(gh pr list -R "$GITHUB_REPOSITORY" --base main --state open --json number --jq '.[].number'); do
+            if gh api -X PUT "repos/$GITHUB_REPOSITORY/pulls/$pr/update-branch" >/dev/null 2>&1; then
+              echo "PR #$pr: branch update queued"
+            else
+              echo "PR #$pr: skipped (up to date, conflict, or fork)"
+            fi
+          done

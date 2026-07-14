@@ -114,4 +114,9 @@ export const CATALOG: Record<string, CatalogEntry> = {
     blurb:
       "Ego Power+ powerhead wall holder converted from screw-mount to openGrid: the operator's holder mesh import()ed as-is, its four countersunk screw holes plugged solid, and eight directional openGrid snaps (strong nub up) fused to a grid-aligned back plate. Prints supportless snaps-down — snap the four breakaway ribs out of the shelf notches before first use. Hangs the powerhead by its shaft on the original fork and shelf bearing surfaces.",
   },
+  ryobi_p2860_strap_saddle: {
+    categoryId: "multiboard",
+    blurb:
+      "Shoulder saddle pair for hanging a Ryobi ONE+ P2860 backpack sprayer by its padded straps on an openGrid wall — print one left and one right. Crowned 42mm prong with a 55mm saddle dip and 12mm retention lip seats an 80mm strap exactly as it drapes on a shoulder; directional snaps put the strong nub up. Empty-sprayer duty (~7kg total), snaps-down zero-support print.",
+  },
 };
