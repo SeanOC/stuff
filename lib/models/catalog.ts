@@ -112,7 +112,7 @@ export const CATALOG: Record<string, CatalogEntry> = {
   ego_powerhead_mount: {
     categoryId: "multiboard",
     blurb:
-      "Ego Power+ powerhead wall holder converted from screw-mount to openGrid: the operator's holder mesh import()ed as-is, its four countersunk screw holes plugged solid, and six directional openGrid snaps (strong nub up) fused to the wall face. Hangs the powerhead by its shaft on the original fork and shelf bearing surfaces.",
+      "Ego Power+ powerhead wall holder converted from screw-mount to openGrid: the operator's holder mesh import()ed as-is, its four countersunk screw holes plugged solid, and eight directional openGrid snaps (strong nub up) fused to a grid-aligned back plate. Prints supportless snaps-down — snap the four breakaway ribs out of the shelf notches before first use. Hangs the powerhead by its shaft on the original fork and shelf bearing surfaces.",
   },
   ryobi_p2860_strap_saddle: {
     categoryId: "multiboard",

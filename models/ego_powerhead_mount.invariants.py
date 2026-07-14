@@ -1,15 +1,18 @@
-"""Invariants for the Ego Power+ powerhead mount (pst-3m2).
+"""Invariants for the Ego Power+ powerhead mount (pst-3m2, pst-efb).
 
 The model import()s the operator-supplied mesh
 (models/ego_powerhead_mount_source.stl) directly, plugs its four
-countersunk screw holes, and fuses a 2x3 directional openGrid snap
-grid onto the wall face. Because import() renders that silently drop
-the mesh are a known failure mode (st-zph), this sidecar pins the
-mesh's actual presence and fidelity, not just the added geometry:
+countersunk screw holes, extends the back plate +Y to the 4-cell
+openGrid line (y=112), fuses a 2x4 directional openGrid snap grid
+onto the wall face, and grows four breakaway support ribs inside the
+shelf-rail retention notches (pst-efb printability fix — rationale in
+the .scad header). Because import() renders that silently drop the
+mesh are a known failure mode (st-zph), this sidecar pins the mesh's
+actual presence and fidelity, not just the added geometry:
 
-  1. **Single connected solid.** Mesh, plugs, and snaps must weld into
-     one body. A dropped import leaves ~10 floating plugs/snaps and
-     breaks this first.
+  1. **Single connected solid.** Mesh, plugs, plate extension, ribs,
+     and snaps must weld into one body. A dropped import leaves ~10
+     floating plugs/snaps and breaks this first.
 
   2. **Top surfaces match the source mesh (<=0.5mm).** Both meshes are
      raycast from +Y on a jittered ~1.5mm (x, z) grid (the export
@@ -18,18 +21,21 @@ mesh's actual presence and fidelity, not just the added geometry:
      range, i.e. not a faceted edge — must deviate <=0.5mm. Where the
      reference has NO material across the whole neighborhood the
      export must have none either. The screw holes are invisible to a
-     +Y raycast (they run in z through the y-interior of the plate)
-     and the snaps sit below the sampled z range, so this holds
-     EXACTLY despite the added geometry — any drift means the import
-     or its frame broke.
+     +Y raycast (they run in z through the y-interior of the plate),
+     the snaps sit below the sampled z range, and the breakaway ribs
+     hide under the rail tops, so this holds EXACTLY despite the
+     added geometry — with one carve-out: across the plate band
+     (source z < 15) the +Y silhouette is now owned by the square
+     plate extension, so the expected top there is a flat y=112
+     (PLATE_EXT_Y) instead of the source's chamfered 108.6-110 edge.
 
   3. **Screw holes are plugged.** Probes inside each hole's measured
      shaft (z=8 slice center) and countersink (z=13.5 slice center)
      must be solid — the part no longer screw-mounts and the wall face
      must present a full flat plane to the grid.
 
-  4. **Bed contact spans exactly the 2x3 snap grid** on the 28mm
-     pitch (52.8 x 80.8mm): proves the snaps-down print orientation
+  4. **Bed contact spans exactly the 2x4 snap grid** on the 28mm
+     pitch (52.8 x 108.8mm): proves the snaps-down print orientation
      and pins snap count and pitch.
 
   5. **Directional snaps point their strong nub -Y (usage-up).** In
@@ -50,6 +56,16 @@ mesh's actual presence and fidelity, not just the added geometry:
      outer end stays open through both levels, and the fork-prong and
      shelf-rail bearing bodies are present at the outer end, tracking
      body_lift.
+
+  7. **Supportless print (pst-efb).** The four breakaway ribs are
+     present inside the retention notches (solid probes mid-rib), the
+     0.2mm breakaway gap under each notch ceiling is open (a fused
+     rib can't be snapped out and would scar the tool-bearing lip),
+     and the plate underside's floating rim beyond the outermost snap
+     footprints stays a <=1.8mm lip on every side — the geometric
+     guarantee behind the "prints supportless" claim (everything else
+     >50 deg from vertical is on the bed, a 3.2mm channel bridge, or
+     the vendored snap's own sub-mm nub relief).
 
 Uses mesh.contains() and trimesh's numpy ray engine — CI has no
 shapely/scipy. The ray engine drops hits that land exactly on
@@ -73,8 +89,22 @@ SOURCE_STL = MODELS_DIR / "ego_powerhead_mount_source.stl"
 _CONTACT_EPS_MM = 0.05
 _SNAP_PITCH = 28.0
 _SNAP_W = 24.8
-SNAP_COLS_X = [14.0, 42.0]         # 2 cols centered on the 56mm width
-SNAP_ROWS_Y = [27.0, 55.0, 83.0]   # 3 rows centered on the 110mm height
+SNAP_COLS_X = [14.0, 42.0]              # 2 cols centered on the 56mm width
+SNAP_ROWS_Y = [14.0, 42.0, 70.0, 98.0]  # 4 rows centered on the extended
+                                        # 112mm back plate (pst-efb)
+PLATE_EXT_Y = 112.0  # back plate extended +Y to the 4-cell grid line
+MAX_RIM_LIP = 1.8    # worst allowed floating plate-rim reach beyond the
+                     # outermost snap footprints, mm (pst-efb)
+
+# Breakaway notch-support ribs (pst-efb): probe points in the SOURCE
+# frame (global z = source z + lift). Solid probes sit mid-rib; the
+# gap probe z sits inside the 0.2mm breakaway gap between the rib
+# tops (131.2) and the notch ceiling (131.4).
+RIB_PROBES = [
+    (11.9, 4.5, 120.0), (7.4, 4.5, 120.0),
+    (44.1, 4.5, 120.0), (48.6, 4.5, 120.0),
+]
+RIB_GAP_Z = 131.3
 
 # Fidelity sampling (source frame; global z = source z + lift). Grid
 # is jittered off round coordinates so rays don't run along mesh
@@ -109,6 +139,7 @@ def check(ctx):
     failures += _check_snap_grid(mesh)
     failures += _check_snap_orientation(mesh, lift)
     failures += _check_holder_function(mesh, lift)
+    failures += _check_printability(mesh, lift)
     return failures
 
 
@@ -138,6 +169,12 @@ def _check_fidelity(mesh, lift: float) -> list[Failure]:
     ref = trimesh.load(str(SOURCE_STL))
     href = _heightmap(ref, 0.0)
     hexp = _heightmap(mesh, lift)
+
+    # pst-efb: across the plate band the +Y silhouette is now the
+    # square back-plate extension (flat y=112), not the source's
+    # chamfered 108.6-110 edge — pin the extension itself there. The
+    # bracket body beyond z=15 still tracks the source mesh exactly.
+    href[:, FID_ZS < 15.0] = PLATE_EXT_Y
 
     bad_solid: list[tuple[float, float, float, float]] = []
     bad_void: list[tuple[float, float, float]] = []
@@ -218,9 +255,9 @@ def _check_snap_grid(mesh) -> list[Failure]:
             Failure(
                 "snapgrid",
                 f"bed contact spans {span_x:.1f} x {span_y:.1f}mm but the "
-                f"2x3 snap grid on the 28mm pitch should span "
-                f"{want_x:.1f} x {want_y:.1f}mm — snap count or pitch "
-                "drifted",
+                f"{len(SNAP_COLS_X)}x{len(SNAP_ROWS_Y)} snap grid on the "
+                f"28mm pitch should span {want_x:.1f} x {want_y:.1f}mm — "
+                "snap count or pitch drifted",
             )
         ]
     return []
@@ -292,6 +329,58 @@ def _check_holder_function(mesh, lift: float) -> list[Failure]:
                 f"fork/shelf probe(s) void at the outer end "
                 f"({bearing.tolist()}) — bearing members missing or not "
                 "tracking body_lift",
+            )
+        )
+    return failures
+
+
+def _check_printability(mesh, lift: float) -> list[Failure]:
+    """pst-efb: pin the supportless-print fix (rationale in the .scad
+    header) — breakaway ribs present, their top gap open, and the
+    plate-underside rim never floating more than a small lip."""
+    failures: list[Failure] = []
+
+    ribs = np.array([[x, y, z + lift] for x, y, z in RIB_PROBES])
+    solid = mesh.contains(ribs)
+    if not bool(solid.all()):
+        misses = [RIB_PROBES[i] for i in np.where(~solid)[0]]
+        failures.append(
+            Failure(
+                "breakaway-ribs",
+                f"notch support rib probe(s) void: {misses} — the "
+                "retention-lip ceilings print mid-air without them",
+            )
+        )
+
+    gaps = np.array([[x, y, RIB_GAP_Z + lift] for x, y, _ in RIB_PROBES])
+    fused = mesh.contains(gaps)
+    if bool(fused.any()):
+        hits = [RIB_PROBES[i][:2] for i in np.where(fused)[0]]
+        failures.append(
+            Failure(
+                "breakaway-gap",
+                f"rib(s) fused to the notch ceiling at (x, y) {hits} — "
+                "the 0.2mm breakaway gap is gone; the rib can't be "
+                "snapped out and would scar the tool-bearing lip",
+            )
+        )
+
+    v = mesh.vertices
+    lips = {
+        "-X": (SNAP_COLS_X[0] - _SNAP_W / 2) - float(v[:, 0].min()),
+        "+X": float(v[:, 0].max()) - (SNAP_COLS_X[-1] + _SNAP_W / 2),
+        "-Y": (SNAP_ROWS_Y[0] - _SNAP_W / 2) - float(v[:, 1].min()),
+        "+Y": float(v[:, 1].max()) - (SNAP_ROWS_Y[-1] + _SNAP_W / 2),
+    }
+    bad = {k: round(d, 2) for k, d in lips.items() if d > MAX_RIM_LIP}
+    if bad:
+        failures.append(
+            Failure(
+                "plate-rim-overhang",
+                f"plate underside floats past the outermost snap "
+                f"footprints by {bad} (max {MAX_RIM_LIP}mm) — the wall "
+                "face starts mid-air again in the snaps-down print "
+                "orientation",
             )
         )
     return failures

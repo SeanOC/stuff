@@ -141,7 +141,7 @@ test("export route serves the import()-based powerhead mount complete", async ({
   expect(isWatertight(tris)).toBe(true);
   expect(connectedComponentCount(tris)).toBe(1);
 
-  // PRINT_ANCHOR_BBOX = [56, 110, 141.78].
+  // PRINT_ANCHOR_BBOX = [56, 112, 141.78].
   let maxZ = -Infinity, minZ = Infinity;
   for (const t of tris) {
     for (const v of t.vertices) {
