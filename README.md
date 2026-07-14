@@ -45,6 +45,12 @@ category and blurb per model — lives in
 source of truth (CI fails on a model without an entry, so the site
 listing is always complete).
 
+Adapting an externally-authored STL for openGrid wall mounting? Follow
+[`docs/imported-model-opengrid-playbook.md`](docs/imported-model-opengrid-playbook.md)
+— the step-by-step recipe (import, snap orientation, supportless
+printability, blending, verification) distilled from the
+`ego_powerhead_mount` series.
+
 ## Development
 
 After cloning:
