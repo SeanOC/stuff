@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { waitForRenderReady } from "./support/render";
 
 // Scope guard for the Phase 1/2 silent-override bug: when the form
 // reports new values but the render doesn't actually see them, the
@@ -35,6 +36,9 @@ test("changing a param re-renders with a different STL", async ({ page }) => {
   await page.locator('section[aria-label="3D preview"]').focus();
   await page.keyboard.press("Enter");
 
+  // Deterministically wait out the cold render before reading the log —
+  // readTopLogKb's own wait then resolves instantly. (pst-r5k)
+  await waitForRenderReady(page);
   const initial = await readTopLogKb(page);
 
   // Bump base_cut down so the chop removes less of the kernel, growing
@@ -71,8 +75,8 @@ test("stat strip shows W × D × H mm dimensions after render", async ({ page })
   await page.locator('section[aria-label="3D preview"]').focus();
   await page.keyboard.press("Enter");
 
+  await waitForRenderReady(page);
   const dims = page.getByTestId("stat-strip-dimensions");
-  await expect(dims).toBeVisible({ timeout: 60_000 });
   const txt = (await dims.textContent()) ?? "";
   expect(txt).toMatch(/\d+(\.\d+)?\s*×\s*\d+(\.\d+)?\s*×\s*\d+(\.\d+)?\s*mm/);
 });

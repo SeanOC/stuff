@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { waitForRenderReady } from "./support/render";
 
 // Smoke test for STL preview OrbitControls (st-90j). Dispatches a wheel
 // event on the canvas and verifies the three.js camera moved — proving
@@ -12,9 +13,7 @@ test("STL preview responds to wheel (camera moves)", async ({ page }) => {
   // Phase 2b (st-psn): Enter triggers the first render from idle.
   await page.locator('section[aria-label="3D preview"]').focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByTestId("stat-strip-dimensions")).toBeVisible({
-    timeout: 60_000,
-  });
+  await waitForRenderReady(page);
 
   const canvas = page.locator("canvas").first();
   await expect(canvas).toBeVisible();
@@ -61,9 +60,7 @@ test("clicking the 'top' view preset reorients the camera to +Z", async ({ page 
   // Phase 2b (st-psn): Enter triggers the first render from idle.
   await page.locator('section[aria-label="3D preview"]').focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByTestId("stat-strip-dimensions")).toBeVisible({
-    timeout: 60_000,
-  });
+  await waitForRenderReady(page);
 
   const canvas = page.locator("canvas").first();
   await expect(canvas).toBeVisible();

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { waitForRenderReady } from "./support/render";
 
 // st-7x7 operator repro, pinned end-to-end: the hex stylus at
 // hex_width=9 must render intact in the real site preview. Before the
@@ -24,8 +25,8 @@ test("hex stylus renders intact at hex_width=9 in the live preview", async ({ pa
   // Z is the hex across flats — exactly the 9mm we dialed in; X is the
   // 90mm default length. A shattered fin-only mesh (the st-7x7 failure
   // mode: ~6.3 × 1 × 3.6 mm) can't satisfy this.
+  await waitForRenderReady(page);
   const dims = page.getByTestId("stat-strip-dimensions");
-  await expect(dims).toBeVisible({ timeout: 60_000 });
   await expect(dims).toContainText(/90\.\d × 10\.\d × 9\.0 mm/);
 
   // And the render must not have taken the error path.
