@@ -151,3 +151,34 @@ test("export route serves the import()-based powerhead mount complete", async ({
   }
   expect(maxZ - minZ).toBeCloseTo(141.78, 1);
 });
+
+// Same guard for the second import()-based model (pst-bly):
+// ego_ea0820_edger_mount unions the operator's 9,160-triangle mesh
+// with screw-hole plugs, a plate extension, breakaway ribs, and ten
+// openGrid snaps. A dropped import leaves only the snaps+plugs+
+// extension stack (~22.8mm tall) — the Z extent is the tell.
+test("export route serves the import()-based edger mount complete", async ({ baseURL }) => {
+  test.setTimeout(240_000);
+  if (!baseURL) throw new Error("baseURL missing");
+
+  const res = await fetch(`${baseURL}/api/export`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ model: "models/ego_ea0820_edger_mount.scad", params: {} }),
+  });
+  expect(res.status, await res.clone().text().catch(() => "")).toBe(200);
+
+  const tris = parseStlTriangles(new Uint8Array(await res.arrayBuffer()));
+  expect(isWatertight(tris)).toBe(true);
+  expect(connectedComponentCount(tris)).toBe(1);
+
+  // PRINT_ANCHOR_BBOX = [56, 140, 159.18].
+  let maxZ = -Infinity, minZ = Infinity;
+  for (const t of tris) {
+    for (const v of t.vertices) {
+      if (v[2] > maxZ) maxZ = v[2];
+      if (v[2] < minZ) minZ = v[2];
+    }
+  }
+  expect(maxZ - minZ).toBeCloseTo(159.18, 1);
+});
