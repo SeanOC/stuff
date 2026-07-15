@@ -119,4 +119,9 @@ export const CATALOG: Record<string, CatalogEntry> = {
     blurb:
       "Shoulder saddle pair for hanging a Ryobi ONE+ P2860 backpack sprayer by its padded straps on an openGrid wall — print one left and one right. Crowned 42mm prong with a 55mm saddle dip and 12mm retention lip seats an 80mm strap exactly as it drapes on a shoulder; directional snaps put the strong nub up. Empty-sprayer duty (~7kg total), snaps-down zero-support print.",
   },
+  ego_ea0820_edger_mount: {
+    categoryId: "multiboard",
+    blurb:
+      "Ego MultiHead EA0820 edger attachment wall mount converted from screw-mount to openGrid: the operator's bracket mesh import()ed as-is, its four countersunk screw holes plugged solid, and ten directional openGrid snaps (strong nub up) fused to a grid-aligned extended back plate. Prints supportless snaps-down — snap the two breakaway ribs out of the tool slots before first use. Hangs the EA0820 edger head by its original slot bearing surfaces.",
+  },
 };
