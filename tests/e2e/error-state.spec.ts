@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { waitForRenderReady, waitForRenderState } from "./support/render";
 
 // Exercises the Caliper error-state UI (st-bg4) end-to-end against a
 // deliberately malformed .scad fixture (tests/fixtures/models/
@@ -18,15 +19,15 @@ test.describe("error state", () => {
     await page.locator('section[aria-label="3D preview"]').focus();
     await page.keyboard.press("Enter");
 
-    // The strip stays mounted to play its transition — check
-    // aria-hidden flipping to "false" as the "error state entered"
-    // signal rather than toBeVisible (which passes on the empty
-    // off-screen placeholder too).
+    // Wait on the render-state signal reaching `error` (deterministic,
+    // no fixed cold-render timeout), then assert the strip has slid into
+    // its shown state — aria-hidden="false" rather than toBeVisible,
+    // which would also pass on the empty off-screen placeholder.
+    await waitForRenderState(page, "error");
     const strip = page.getByTestId("error-strip");
     await expect(strip, "error strip enters shown state").toHaveAttribute(
       "aria-hidden",
       "false",
-      { timeout: 60_000 },
     );
 
     // Broken fixture is an unterminated expression; OpenSCAD reports
@@ -62,9 +63,8 @@ test.describe("error state", () => {
     await page.goto(BROKEN);
     await page.locator('section[aria-label="3D preview"]').focus();
     await page.keyboard.press("Enter");
-    await expect(page.getByTestId("error-strip")).toBeVisible({
-      timeout: 60_000,
-    });
+    await waitForRenderState(page, "error");
+    await expect(page.getByTestId("error-strip")).toBeVisible();
 
     // Cross-route navigation remounts DetailPage — the render log +
     // history reset, and the new page returns to idle until Enter.
@@ -83,11 +83,10 @@ test.describe("error state", () => {
 
     await page.locator('section[aria-label="3D preview"]').focus();
     await page.keyboard.press("Enter");
-    // Stat-strip dimensions appear once the hook has transitioned
-    // back to `ready` on this route. (Swapped from the render-log
-    // entry which st-j98 now hides behind the collapsed left rail.)
-    await expect(
-      page.getByTestId("stat-strip-dimensions"),
-    ).toBeVisible({ timeout: 60_000 });
+    // The hook transitions back to `ready` on this route. Wait on the
+    // render-state signal rather than the stat-strip dimensions child.
+    // (Swapped from the render-log entry which st-j98 now hides behind
+    // the collapsed left rail.)
+    await waitForRenderReady(page);
   });
 });

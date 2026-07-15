@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { waitForRenderReady } from "./support/render";
 
 // Uses popcorn-kernel because it's the cheapest annotated model
 // (no BOSL2 includes → sub-second WASM render) so the "wait for first
@@ -26,10 +27,10 @@ test.describe("model page", () => {
     await page.locator('section[aria-label="3D preview"]').focus();
     await page.keyboard.press("Enter");
 
-    // Render completion signal — the stat-strip dimensions line
-    // lives in the viewer chrome, independent of the left rail
-    // (which is collapsed by default per st-j98).
-    await expect(page.getByTestId("stat-strip-dimensions")).toBeVisible({ timeout: 60_000 });
+    // Render completion signal — the viewer chrome's render-state
+    // attribute, independent of the left rail (collapsed by default
+    // per st-j98).
+    await waitForRenderReady(page);
   });
 
   test("unannotated model shows the placeholder note", async ({ page }) => {

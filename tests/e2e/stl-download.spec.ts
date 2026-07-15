@@ -4,6 +4,7 @@ import {
   isWatertight,
   parseStlTriangles,
 } from "../../lib/wasm/stl-analysis";
+import { waitForRenderReady } from "./support/render";
 
 // Exercises the full export path. The download → file-read round-trip
 // is what catches "button click does nothing" and "blob empty" regressions
@@ -21,7 +22,7 @@ test("Download STL produces a non-empty STL file", async ({ page }) => {
 
   await page.locator('section[aria-label="3D preview"]').focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByTestId("stat-strip-dimensions")).toBeVisible({ timeout: 60_000 });
+  await waitForRenderReady(page);
   await expect(button).toBeEnabled();
 
   const [download] = await Promise.all([

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { waitForRenderReady } from "./support/render";
 
 // st-fl4: at ≥1200px the detail page pins to the viewport (top bar +
 // viewer + rails all fit inside 100vh - 38px), and the param rail
@@ -15,12 +16,10 @@ test.describe("detail page layout", () => {
     // Phase 2b (st-psn): first render is user-triggered via Enter.
     await page.locator('section[aria-label="3D preview"]').focus();
     await page.keyboard.press("Enter");
-    // Wait for render completion via the stat strip (not the render-log
-    // `<li>` in the left rail — that's hidden by st-j98's collapsed
-    // default).
-    await expect(page.getByTestId("stat-strip-dimensions")).toBeVisible({
-      timeout: 60_000,
-    });
+    // Wait for render completion via the render-state signal (not the
+    // render-log `<li>` in the left rail — that's hidden by st-j98's
+    // collapsed default).
+    await waitForRenderReady(page);
 
     const metrics = await page.evaluate(() => {
       const doc = document.documentElement;
@@ -81,9 +80,7 @@ test.describe("detail page layout — stacked (< xl)", () => {
     // Phase 2b (st-psn): first render is user-triggered via Enter.
     await page.locator('section[aria-label="3D preview"]').focus();
     await page.keyboard.press("Enter");
-    await expect(page.getByTestId("stat-strip-dimensions")).toBeVisible({
-      timeout: 60_000,
-    });
+    await waitForRenderReady(page);
 
     const metrics = await page.evaluate(() => ({
       docScroll: document.documentElement.scrollHeight - document.documentElement.clientHeight,

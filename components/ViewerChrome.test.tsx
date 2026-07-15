@@ -233,6 +233,27 @@ describe("ViewerChrome states (st-psn)", () => {
     expect(getByTestId("loading-progress")).toBeTruthy();
     expect(getByTestId("stat-strip-status").textContent).toMatch(/compil/i);
   });
+
+  // The e2e suite's waitForRenderReady helper (tests/e2e/support/render.ts)
+  // keys on this attribute to await the loading→ready transition
+  // deterministically, so pin that it mirrors state.kind. (pst-r5k)
+  it("mirrors state.kind onto data-render-state on the viewer section", () => {
+    const states: RenderState[] = [
+      IDLE,
+      { kind: "loading", since: 0 },
+      READY,
+      { kind: "error", error: { line: null, message: "boom", log: "boom" } },
+    ];
+    for (const state of states) {
+      const { getByLabelText, unmount } = render(
+        <ViewerChrome state={state} showGrid={false} {...commonProps} />,
+      );
+      expect(getByLabelText("3D preview").getAttribute("data-render-state")).toBe(
+        state.kind,
+      );
+      unmount();
+    }
+  });
 });
 
 describe("ViewerChrome axes indicator (st-oc3)", () => {

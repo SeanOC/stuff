@@ -133,6 +133,14 @@ export function ViewerChrome({
         }
       }}
       aria-label="3D preview"
+      // Explicit render-state signal for the state machine's single
+      // always-present root. Mirrors `state.kind` (idle/loading/ready/
+      // error) so consumers — the e2e suite's waitForRenderReady helper
+      // in particular — can key on the loading→ready transition
+      // deterministically instead of racing the appearance of a
+      // ready-only child like the stat strip's dimensions. Production-
+      // safe and inert: nothing styles or branches on it. (pst-r5k)
+      data-render-state={state.kind}
       className="relative flex h-full flex-col bg-panel2 focus:outline-none"
     >
       <div className="relative flex-1 min-h-[480px] min-[1200px]:min-h-0">

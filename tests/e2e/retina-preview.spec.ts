@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { waitForRenderReady } from "./support/render";
 
 // Guard for the retina STL-preview bug: renderer.setSize(w, h, false)
 // leaves the canvas without a CSS size, so on devicePixelRatio > 1 it
@@ -13,9 +14,7 @@ test("STL preview canvas fits the container on retina (DPR=2)", async ({ page })
   // Phase 2b (st-psn): Enter kicks off the first render from idle.
   await page.locator('section[aria-label="3D preview"]').focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByTestId("stat-strip-dimensions")).toBeVisible({
-    timeout: 60_000,
-  });
+  await waitForRenderReady(page);
 
   const canvas = page.locator("canvas").first();
   await expect(canvas).toBeVisible();
