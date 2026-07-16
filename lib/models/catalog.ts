@@ -124,4 +124,9 @@ export const CATALOG: Record<string, CatalogEntry> = {
     blurb:
       "Ego MultiHead EA0820 edger attachment wall mount converted from screw-mount to openGrid: the operator's bracket mesh import()ed as-is, its four countersunk screw holes plugged solid, and ten directional openGrid snaps (strong nub up) fused to a grid-aligned extended back plate. Prints supportless snaps-down — snap the two breakaway ribs out of the tool slots before first use. Hangs the EA0820 edger head by its original slot bearing surfaces.",
   },
+  littletikes_dream_machine_cartridge_holder: {
+    categoryId: "toys",
+    blurb:
+      "Wall-mounted holder for Little Tikes Dream Machine cartridges and figures — an openGrid tray sized in whole 28mm cells that auto-fills with 51x14 cartridge slots (top) and rounded figure pockets (front). Lite snaps on the back seat it on any openGrid panel.",
+  },
 };
