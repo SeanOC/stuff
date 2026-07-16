@@ -21,7 +21,13 @@
 //     any grid size. Default footprint packs 4 x 9 = 36.
 //   * FIGURE HOLDERS open on the +Y front face: a rectangle capped by a
 //     half-circle dome (43mm wide, 21.5mm radius), 10mm deep, on a
-//     ~49mm pitch. Default footprint packs 5.
+//     ~49mm pitch. Default footprint packs 5. Each is a closed BLIND
+//     pocket: the packer keeps a fig_floor (2mm) solid floor behind it,
+//     so it never breaks through into the cartridge slot behind.
+//
+// All +Z (top) face edges — the outer perimeter and every cartridge slot
+// mouth rim — get a top_round round-over (a hull-free stepped chamfer;
+// up-facing so no overhang). See top_outer_roundover / slot_mouth_roundover.
 //
 // This model replaces an earlier import()-of-STL attempt (pst-rll): the
 // operator-supplied mesh was 158k triangles of sliver geometry that hung
@@ -99,6 +105,7 @@ slot_col_pitch = 60;  // @param number min=54 max=90 step=0.5 unit=mm group=cart
 slot_row_pitch = 22;  // @param number min=18 max=40 step=0.5 unit=mm group=cartridge label="Slot row pitch (Y)"
 slot_corner_r  = 2;   // @param number min=0.5 max=6 step=0.5 unit=mm group=cartridge label="Slot corner radius"
 slot_mouth     = 2;   // @param number min=0 max=5 step=0.5 unit=mm group=cartridge label="Drop-in mouth widening (each dim)"
+top_round      = 1.2; // @param number min=0 max=3 step=0.2 unit=mm group=cartridge label="Top-edge round-over (outer rim + slot mouths; 0=off)"
 
 // ----- Figure holders (open on +Y front; count auto-fills) -----
 fig_w      = 43;    // @param number min=24 max=46 step=0.5 unit=mm group=figures label="Figure pocket width (dome dia.)"
@@ -126,12 +133,15 @@ body_d = grid_rows * snap_pitch;
 
 // Cartridge slots auto-fill: as many 51x14 pockets as fit at the column/
 // row pitch, then centred with even edge margins. The +Y front figure
-// strip (fig_depth deep) plus a wall clearance is RESERVED FIRST, so
-// rows pack only into the remaining depth cart_depth and never overlap
-// the figure pockets at any grid size (pst-93r). Counts follow the
-// footprint (default 4 x 9 = 36).
-fig_strip_wall = 3;   // min wall (mm) kept between the front row and strip
-cart_depth = body_d - fig_depth - fig_strip_wall;
+// strip (fig_depth deep) plus a solid floor behind each figure pocket is
+// RESERVED FIRST, so rows pack only into the remaining depth cart_depth
+// and never break through into the figure pockets at any grid/param
+// (pst-93r items 1+3). The reservation also subtracts the drop-in
+// mouth's extra half-width, so even the WIDEST cartridge cut stays
+// >= fig_floor clear of the figure pockets. Counts follow the footprint
+// (default 4 x 9 = 36).
+fig_floor = 2;   // solid floor (mm) kept behind each figure pocket
+cart_depth = body_d - fig_depth - fig_floor - slot_mouth / 2;
 n_slot_cols = max(0, floor((body_w - slot_w) / slot_col_pitch) + 1);
 n_slot_rows = max(0, floor((cart_depth - slot_l) / slot_row_pitch) + 1);
 slot_x0 = (body_w - (n_slot_cols - 1) * slot_col_pitch) / 2;  // first col centre
@@ -258,6 +268,46 @@ module figure_profiles_2d() {
         figure_profile(fig_x0 + k * fig_pitch);
 }
 
+// Top-face (+Z) edge round-over — a hull-free STEPPED chamfer (the
+// batchable stand-in; a true fillet needs hull, and a per-slot tapered
+// frustum can't be batched — same reason the drop-in mouth is a step).
+// It's the up-facing surface so there is no overhang. Both families are
+// stacks of 2D-`offset` layers, added to body()'s single cut union so
+// they stay ONE CGAL difference (pst-93r item 4). n_top_steps keeps the
+// step ~0.4mm so a 1.2mm round-over is 3 barely-visible facets.
+n_top_steps = max(1, round(top_round / 0.4));
+
+// Outer top perimeter: remove a margin that widens toward the top face,
+// so the sharp top-outer edge becomes a ~45deg bevel all round (rounded
+// body corners included — `offset` insets them uniformly).
+module top_outer_roundover() {
+    if (top_round > 0)
+        for (k = [0 : n_top_steps - 1]) {
+            off = top_round * (k + 1) / n_top_steps;   // widest at the top
+            translate([0, 0, body_h - top_round + k * top_round / n_top_steps])
+                linear_extrude(top_round / n_top_steps + 0.02)
+                    difference() {
+                        translate([body_w / 2, body_d / 2])
+                            square([body_w + 2, body_d + 2], center = true);
+                        translate([body_w / 2, body_d / 2])
+                            offset(-off) rect([body_w, body_d],
+                                              rounding = body_corner_r);
+                    }
+        }
+}
+
+// Cartridge slot mouths: widen each opening toward the top face, so the
+// slot rim gets the same bevel (offset of the batched 2D mouth union).
+module slot_mouth_roundover() {
+    if (top_round > 0)
+        for (k = [0 : n_top_steps - 1]) {
+            off = top_round * (k + 1) / n_top_steps;   // widest at the top
+            translate([0, 0, body_h - top_round + k * top_round / n_top_steps])
+                linear_extrude(top_round / n_top_steps + 0.02)
+                    offset(off) cartridge_mouths_2d();
+        }
+}
+
 module body() {
     eps = 0.1;
     difference() {
@@ -276,6 +326,8 @@ module body() {
                 rotate([90, 0, 0])
                     linear_extrude(fig_depth + eps)
                         figure_profiles_2d();
+            top_outer_roundover();
+            slot_mouth_roundover();
         }
     }
 }
