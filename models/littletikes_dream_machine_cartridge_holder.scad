@@ -7,15 +7,18 @@
 // body is sized in whole 28mm openGrid cells (grid_cols x grid_rows); its
 // mm footprint is derived from the cell count so the flat back face is
 // always an exact integer cell grid and every snap lands dead-centre in
-// a cell. Snaps default to a sparse cell-aligned subset (CGAL-export
-// limit — see snap_every_cell); the whole-grid one-per-cell layout is a
-// preview-only opt-in. Two families of pockets AUTO-FILL the derived
+// a cell. Snaps default to ONE PER CELL (grid_cols x grid_rows, the
+// original spec's max-hold layout); a sparse cell-aligned subset stays
+// selectable via snap_every_cell=false for a much faster CGAL export.
+// Two families of pockets AUTO-FILL the derived
 // footprint — their counts are computed from the available space and the
 // feature pitch, never hard-coded, so they follow the grid size:
 //
 //   * CARTRIDGE SLOTS open on the +Z top face: rounded rectangular
 //     pockets (51 x 14mm interior) on a 60mm column / 22mm row pitch,
-//     with a widened drop-in mouth. Default footprint packs 4 x 10 = 40.
+//     with a widened drop-in mouth. Rows pack into the depth left AFTER
+//     the front figure strip is reserved, so they never overlap it at
+//     any grid size. Default footprint packs 4 x 9 = 36.
 //   * FIGURE HOLDERS open on the +Y front face: a rectangle capped by a
 //     half-circle dome (43mm wide, 21.5mm radius), 10mm deep, on a
 //     ~49mm pitch. Default footprint packs 5.
@@ -77,15 +80,15 @@ grid_rows = 8;      // @param integer min=3 max=9 step=1 group=grid label="Heigh
 snap_lite = true;   // @param boolean group=grid label="Lite snaps (3.4mm instead of 6.8mm)"
 body_h    = 41;     // @param number min=38 max=55 step=1 unit=mm group=grid label="Body depth out from the wall (Z)"
 body_corner_r = 3;  // @param number min=0.5 max=8 step=0.5 unit=mm group=grid label="Body vertical-corner radius"
-// Snaps land one-per-cell when true (max hold, but the CGAL export/
-// invariants pipeline can't process a full grid — a 9x8 = 72-snap union
-// times out CGAL at >5min while Manifold does it in ~12s, so the browser
-// preview / download path is fine but desktop `export-all` is not; see
-// header + bead pst-rll). Default false uses a sparse, still-cell-
-// aligned subset (snap_sparse_cols x snap_sparse_rows, evenly spread and
-// corner-inclusive) that holds a tray firmly AND keeps the whole-model
-// CGAL export in the peer envelope (~45s with the batched pocket cuts).
-snap_every_cell = false; // @param boolean group=grid label="Snap in every cell (dense; browser/preview only)"
+// Default TRUE: one lite snap per cell (grid_cols x grid_rows), the
+// original spec's max-hold layout. This makes the wasm/browser preview
+// heavier and the desktop CGAL export slower (a 9x8 = 72-snap union),
+// but preview perf is not a blocker (the wasm path is preview-only, not
+// export) and the CGAL export still lands inside CI's budget (pst-93r).
+// Set FALSE for a sparse, still-cell-aligned subset (snap_sparse_cols x
+// snap_sparse_rows, evenly spread and corner-inclusive) that holds a
+// tray firmly and exports far faster (~45s with the batched pocket cuts).
+snap_every_cell = true; // @param boolean group=grid label="Snap in every cell (one per cell; default)"
 
 // ----- Cartridge slots (open on +Z top; counts auto-fill) -----
 slot_w         = 51;  // @param number min=30 max=56 step=0.5 unit=mm group=cartridge label="Cartridge slot width (X)"
@@ -103,8 +106,8 @@ fig_rect_h = 9;     // @param number min=3 max=13 step=0.5 unit=mm group=figures
 fig_depth  = 10;    // @param number min=5 max=18 step=0.5 unit=mm group=figures label="Figure pocket depth into front"
 fig_pitch  = 49.25; // @param number min=47 max=90 step=0.25 unit=mm group=figures label="Figure pocket pitch (X)"
 
-// @preset id="default" label="Default (9x8 cells, lite sparse snaps)" grid_cols=9 grid_rows=8 snap_lite=true snap_every_cell=false
-// @preset id="dense_snaps" label="Snap every cell (preview only)" snap_every_cell=true
+// @preset id="default" label="Default (9x8 cells, one snap per cell)" grid_cols=9 grid_rows=8 snap_lite=true snap_every_cell=true
+// @preset id="sparse_snaps" label="Sparse snaps (faster CGAL export)" snap_every_cell=false
 
 // === Derived ===
 
@@ -122,12 +125,17 @@ body_w = grid_cols * snap_pitch;
 body_d = grid_rows * snap_pitch;
 
 // Cartridge slots auto-fill: as many 51x14 pockets as fit at the column/
-// row pitch, then centred with even edge margins. Counts follow the
-// footprint (default 4 x 10 = 40).
+// row pitch, then centred with even edge margins. The +Y front figure
+// strip (fig_depth deep) plus a wall clearance is RESERVED FIRST, so
+// rows pack only into the remaining depth cart_depth and never overlap
+// the figure pockets at any grid size (pst-93r). Counts follow the
+// footprint (default 4 x 9 = 36).
+fig_strip_wall = 3;   // min wall (mm) kept between the front row and strip
+cart_depth = body_d - fig_depth - fig_strip_wall;
 n_slot_cols = max(0, floor((body_w - slot_w) / slot_col_pitch) + 1);
-n_slot_rows = max(0, floor((body_d - slot_l) / slot_row_pitch) + 1);
+n_slot_rows = max(0, floor((cart_depth - slot_l) / slot_row_pitch) + 1);
 slot_x0 = (body_w - (n_slot_cols - 1) * slot_col_pitch) / 2;  // first col centre
-slot_y0 = (body_d - (n_slot_rows - 1) * slot_row_pitch) / 2;  // first row centre
+slot_y0 = (cart_depth - (n_slot_rows - 1) * slot_row_pitch) / 2;  // first row centre
 // Slot floor clamps up if the body is too shallow for the full depth, so
 // the pocket never punches through the back (keeps param sweeps valid).
 slot_bottom = max(floor_z, body_h - slot_depth);
@@ -198,7 +206,7 @@ module grid_snaps() {
 //
 // Each pocket FAMILY is cut as ONE solid — a single 2D union of all its
 // footprints, extruded once and subtracted once — not one CSG operation
-// per pocket. As ~85 sequential 3D differences the 40 slots + 5 figures
+// per pocket. As ~77 sequential 3D differences the 36 slots + 5 figures
 // push the CGAL export (the invariants/CI engine) past 5 min; batched
 // into three 2D-union tools it lands in the peer-model envelope (the
 // Manifold preview/download path is fast either way). No hull-backed

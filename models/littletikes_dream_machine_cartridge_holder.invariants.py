@@ -21,21 +21,27 @@ a broken floor, or a shattered snap weld:
      snap cell has bed-contact material at z=0 within its 24.8mm
      footprint, the contact count equals the derived snap count, and the
      contact span matches the outermost snap cells — pins the snaps-down
-     print orientation, the count, and the 28mm pitch. (Default is the
-     sparse 4x3 corner-inclusive subset; snap_every_cell fills all
-     cells but is a browser/preview-only mode — see the .scad header.)
+     print orientation, the count, and the 28mm pitch. (Default is one
+     lite snap per cell = grid_cols x grid_rows; set snap_every_cell=false
+     for a sparse corner-inclusive subset that exports faster — see the
+     .scad header.)
 
   4. **Cartridge slots auto-fill the top face.** Every packed slot centre
      is an open pocket (void above the floor) sitting on solid floor
      material (a cartridge can't drop through the back), and the packed
-     count matches the pitch formula (4 x 10 = 40 at the default grid).
+     count matches the pitch formula (4 x 9 = 36 at the default grid,
+     with the front figure strip reserved before packing).
 
   5. **Figure holders auto-fill the front face.** Every packed figure
      centre is an open domed pocket bored into the +Y face (void just
      inside the front mouth), and the packed count matches the pitch
-     formula (5 at the default grid). The front cartridge row sits only
-     ~fig_depth behind the +Y edge, so this pins presence + count, not
-     a "solid behind" wall.
+     formula (5 at the default grid). This pins presence + count, not a
+     "solid behind" wall.
+
+  6. **Figure strip reserved before cartridge packing.** The front-most
+     cartridge row never overlaps the +Y figure strip (fig_depth deep) —
+     asserted arithmetically for the default and off-default grids, since
+     the packer reserves the strip + wall clearance first (pst-93r).
 
 Uses mesh.contains() and vertex extents only (no shapely/scipy — CI has
 neither). Probe frame is world coordinates: the body is lifted body_lift
@@ -54,6 +60,23 @@ from scripts.invariants import Failure, as_default_params, expect_connected_soli
 _CONTACT_EPS_MM = 0.05
 _SNAP_PITCH = 28.0
 _SNAP_W = 24.8
+_CONTAINS_VOTES = 5
+
+
+def _contains(mesh, pts) -> np.ndarray:
+    """Majority vote over _CONTAINS_VOTES independent mesh.contains() calls.
+
+    trimesh casts one random-direction ray per point; with one lite snap
+    per cell (the default) a slot floor probe sits directly above the
+    welded snap geometry, and a single ray occasionally miscounts the
+    surface crossings — a lone contains() flaked ~1/8 runs there (pst-93r).
+    Each call re-randomizes, so majority-of-5 collapses that to negligible
+    while keeping the exact probe points and pass/fail semantics."""
+    pts = np.asarray(pts, dtype=float)
+    votes = np.zeros(len(pts), dtype=int)
+    for _ in range(_CONTAINS_VOTES):
+        votes += mesh.contains(pts).astype(int)
+    return votes * 2 > _CONTAINS_VOTES
 
 
 def _spread(c: int, n: int) -> list[int]:
@@ -72,7 +95,7 @@ def _derive(p):
     d["grid_cols"] = int(p.get("grid_cols", 9))
     d["grid_rows"] = int(p.get("grid_rows", 8))
     d["snap_lite"] = bool(p.get("snap_lite", True))
-    d["dense"] = bool(p.get("snap_every_cell", False))
+    d["dense"] = bool(p.get("snap_every_cell", True))
     d["body_h"] = float(p.get("body_h", 41))
     d["slot_w"] = float(p.get("slot_w", 51))
     d["slot_l"] = float(p.get("slot_l", 14))
@@ -80,19 +103,23 @@ def _derive(p):
     d["floor_z"] = float(p.get("floor_z", 5))
     d["slot_col_pitch"] = float(p.get("slot_col_pitch", 60))
     d["slot_row_pitch"] = float(p.get("slot_row_pitch", 22))
+    d["slot_mouth"] = float(p.get("slot_mouth", 2))
     d["fig_w"] = float(p.get("fig_w", 43))
     d["fig_depth"] = float(p.get("fig_depth", 10))
     d["fig_pitch"] = float(p.get("fig_pitch", 49.25))
+    d["fig_strip_wall"] = 3.0   # mirror of the .scad constant (pst-93r)
 
     d["snap_h"] = 3.4 if d["snap_lite"] else 6.8
     d["body_lift"] = d["snap_h"] - 0.02
     d["body_w"] = d["grid_cols"] * _SNAP_PITCH
     d["body_d"] = d["grid_rows"] * _SNAP_PITCH
 
+    # Front figure strip (fig_depth) + wall is reserved before packing.
+    d["cart_depth"] = d["body_d"] - d["fig_depth"] - d["fig_strip_wall"]
     d["n_slot_cols"] = max(0, floor((d["body_w"] - d["slot_w"]) / d["slot_col_pitch"]) + 1)
-    d["n_slot_rows"] = max(0, floor((d["body_d"] - d["slot_l"]) / d["slot_row_pitch"]) + 1)
+    d["n_slot_rows"] = max(0, floor((d["cart_depth"] - d["slot_l"]) / d["slot_row_pitch"]) + 1)
     d["slot_x0"] = (d["body_w"] - (d["n_slot_cols"] - 1) * d["slot_col_pitch"]) / 2
-    d["slot_y0"] = (d["body_d"] - (d["n_slot_rows"] - 1) * d["slot_row_pitch"]) / 2
+    d["slot_y0"] = (d["cart_depth"] - (d["n_slot_rows"] - 1) * d["slot_row_pitch"]) / 2
     d["slot_bottom"] = max(d["floor_z"], d["body_h"] - d["slot_depth"])
 
     d["n_figs"] = max(0, floor((d["body_w"] - d["fig_w"]) / d["fig_pitch"]) + 1)
@@ -120,6 +147,38 @@ def check(ctx):
     failures += _check_snaps(mesh, d)
     failures += _check_slots(mesh, d, lift)
     failures += _check_figures(mesh, d, lift)
+    failures += _check_figure_strip_clearance(d)
+    return failures
+
+
+def _check_figure_strip_clearance(d) -> list[Failure]:
+    """Zero overlap between the reserved +Y figure strip and the front-
+    most cartridge row — for the exported (default) grid AND a couple of
+    off-default grid sizes. Pure packing arithmetic mirroring the .scad,
+    so it holds independently of the exported mesh: the packer reserves
+    fig_depth + fig_strip_wall at the front before laying rows (pst-93r).
+    """
+    failures: list[Failure] = []
+    grids = [
+        (d["grid_cols"], d["grid_rows"]),   # the exported/default grid
+        (3, 3), (9, 9), (5, 6),             # off-default corners
+    ]
+    for gc, gr in grids:
+        dd = _derive({"grid_cols": gc, "grid_rows": gr})
+        if dd["n_slot_rows"] == 0:
+            continue
+        strip_start = dd["body_d"] - dd["fig_depth"]
+        front_cy = dd["slot_y0"] + (dd["n_slot_rows"] - 1) * dd["slot_row_pitch"]
+        # Widest cut at that row is the drop-in mouth (slot_l + slot_mouth).
+        front_edge = front_cy + (dd["slot_l"] + dd["slot_mouth"]) / 2
+        if front_edge > strip_start + 1e-6:
+            failures.append(Failure(
+                "figure-strip-overlap",
+                f"grid {gc}x{gr}: front cartridge row reaches "
+                f"y={front_edge:.2f}mm but the figure strip starts at "
+                f"y={strip_start:.2f}mm — {front_edge - strip_start:.2f}mm "
+                "overlap; the packer must reserve the strip first",
+            ))
     return failures
 
 
@@ -137,6 +196,14 @@ def _check_footprint(mesh, d) -> list[Failure]:
 
 
 def _check_snaps(mesh, d) -> list[Failure]:
+    # The default (dense) layout is exactly one lite snap per cell.
+    if d["dense"] and d["snap_count"] != d["grid_cols"] * d["grid_rows"]:
+        return [Failure(
+            "snap-count-default",
+            f"dense snap count {d['snap_count']} != grid_cols*grid_rows = "
+            f"{d['grid_cols'] * d['grid_rows']} — one-per-cell layout "
+            "regressed",
+        )]
     verts = mesh.vertices
     contact = verts[verts[:, 2] < _CONTACT_EPS_MM]
     if len(contact) == 0:
@@ -194,7 +261,7 @@ def _check_slots(mesh, d, lift) -> list[Failure]:
             void_probes.append([cx, cy, lift + d["slot_bottom"] + 3.0])
             floor_probes.append([cx, cy, lift + max(0.5, d["floor_z"] - 2.5)])
     failures = []
-    solid_in_void = mesh.contains(np.array(void_probes))
+    solid_in_void = _contains(mesh, void_probes)
     if bool(solid_in_void.any()):
         bad = [void_probes[k][:2] for k in np.where(solid_in_void)[0]]
         failures.append(Failure(
@@ -203,7 +270,7 @@ def _check_slots(mesh, d, lift) -> list[Failure]:
             f"centres are solid, not open pockets (first {bad[:4]}) — "
             "auto-fill count/placement regressed",
         ))
-    void_floor = ~mesh.contains(np.array(floor_probes))
+    void_floor = ~_contains(mesh, floor_probes)
     if bool(void_floor.any()):
         bad = [floor_probes[k][:2] for k in np.where(void_floor)[0]]
         failures.append(Failure(
@@ -218,10 +285,10 @@ def _check_slots(mesh, d, lift) -> list[Failure]:
 def _check_figures(mesh, d, lift) -> list[Failure]:
     # Each packed figure centre must be an open pocket in the +Y face:
     # probe just inside the front mouth, up in the dome. (No "solid
-    # behind" probe — the front cartridge row is only ~fig_depth from the
-    # +Y edge so material behind a figure can legitimately be an adjacent
-    # slot cavity; and with fig_depth << body_d a figure cannot bore
-    # through the tray. Presence + count is what this pins.)
+    # behind" probe — with the figure strip now reserved, the front
+    # cartridge row sits fig_depth + wall clearance behind the +Y edge;
+    # and with fig_depth << body_d a figure cannot bore through the tray.
+    # Presence + count is what this pins.)
     if d["n_figs"] == 0:
         return []
     z = lift + d["floor_z"] + max(2.0, d["fig_w"] / 4)  # up inside the dome
@@ -229,7 +296,7 @@ def _check_figures(mesh, d, lift) -> list[Failure]:
         [d["fig_x0"] + k * d["fig_pitch"], d["body_d"] - 3.0, z]
         for k in range(d["n_figs"])
     ]
-    solid = mesh.contains(np.array(void_probes))
+    solid = _contains(mesh, void_probes)
     if bool(solid.any()):
         bad = [round(void_probes[k][0], 1) for k in np.where(solid)[0]]
         return [Failure(
