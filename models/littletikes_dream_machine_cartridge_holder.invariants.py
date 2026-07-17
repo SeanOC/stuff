@@ -108,7 +108,7 @@ def _derive(p):
     d["slot_l"] = float(p.get("slot_l", 14))
     d["slot_depth"] = float(p.get("slot_depth", 36))
     d["floor_z"] = float(p.get("floor_z", 5))
-    d["slot_col_pitch"] = float(p.get("slot_col_pitch", 60))
+    d["slot_col_pitch"] = float(p.get("slot_col_pitch", 56))
     d["slot_row_pitch"] = float(p.get("slot_row_pitch", 22))
     d["slot_mouth"] = float(p.get("slot_mouth", 2))
     d["fig_w"] = float(p.get("fig_w", 43))
@@ -128,7 +128,14 @@ def _derive(p):
     d["cart_depth"] = d["body_d"] - d["fig_depth"] - d["fig_floor"] - d["slot_mouth"] / 2
     d["n_slot_cols"] = max(0, floor((d["body_w"] - d["slot_w"]) / d["slot_col_pitch"]) + 1)
     d["n_slot_rows"] = max(0, floor((d["cart_depth"] - d["slot_l"]) / d["slot_row_pitch"]) + 1)
-    d["slot_x0"] = (d["body_w"] - (d["n_slot_cols"] - 1) * d["slot_col_pitch"]) / 2
+    # Phase-lock the column array's first column onto the nearest 2-cell
+    # openGrid module centre (snap_pitch*(2k+1) = 28, 84, 140...) — mirror
+    # of the .scad slot_x0 (pst-62f). round() matches OpenSCAD's round
+    # (ties away from zero); the argument is non-negative here.
+    d["slot_module"] = 2 * _SNAP_PITCH
+    _sx_centered = (d["body_w"] - (d["n_slot_cols"] - 1) * d["slot_col_pitch"]) / 2
+    d["slot_x0"] = _SNAP_PITCH + d["slot_module"] * floor(
+        (_sx_centered - _SNAP_PITCH) / d["slot_module"] + 0.5)
     d["slot_y0"] = (d["cart_depth"] - (d["n_slot_rows"] - 1) * d["slot_row_pitch"]) / 2
     d["slot_bottom"] = max(d["floor_z"], d["body_h"] - d["slot_depth"])
 
@@ -156,9 +163,64 @@ def check(ctx):
     failures += _check_footprint(mesh, d)
     failures += _check_snaps(mesh, d)
     failures += _check_slots(mesh, d, lift)
+    failures += _check_slot_phase_lock(d)
     failures += _check_figures(mesh, d, lift)
     failures += _check_figure_floor(mesh, d, lift)
     failures += _check_top_roundover(mesh, d, lift)
+    return failures
+
+
+def _check_slot_phase_lock(d) -> list[Failure]:
+    """Cartridge columns are PHASE-LOCKED to the openGrid, not just pitched
+    (pst-62f). Two arithmetic claims, for the exported grid AND off-default
+    corners (all at the default 56mm = 2-cell pitch):
+
+      (a) Every cartridge column centre lands on a 2-cell openGrid module
+          centre (snap_pitch*(2k+1) = 28, 84, 140... over the same grid
+          origin the snaps use) — so each 51mm slot sits centred over a
+          2x(depth) block of cells, consistent with the back-face snaps.
+      (b) The columns clear the reserved front figure strip: the front-most
+          cartridge cut stays >= fig_floor clear of the figure-pocket back
+          wall (re-asserts non-collision under the new column placement).
+    """
+    failures: list[Failure] = []
+    module = 2 * _SNAP_PITCH
+    tol = 1e-6
+    grids = [
+        (d["grid_cols"], d["grid_rows"]),   # the exported/default grid
+        (3, 3), (9, 8), (5, 6),             # off-default corners
+    ]
+    for gc, gr in grids:
+        dd = _derive({"grid_cols": gc, "grid_rows": gr})
+        if dd["n_slot_cols"] == 0:
+            continue
+        # (a) module alignment: |centre - nearest module centre| ~ 0.
+        for i in range(dd["n_slot_cols"]):
+            cx = dd["slot_x0"] + i * dd["slot_col_pitch"]
+            k = round((cx - _SNAP_PITCH) / module)
+            nearest = _SNAP_PITCH + module * k
+            off = abs(cx - nearest)
+            if off > tol:
+                failures.append(Failure(
+                    "slot-phase-lock",
+                    f"grid {gc}x{gr}: cartridge column {i} centre x={cx:.3f} "
+                    f"is {off:.3f}mm off the nearest 2-cell module centre "
+                    f"{nearest:.1f} (snap_pitch*(2k+1)) — columns are no "
+                    "longer phase-locked to the openGrid",
+                ))
+        # (b) columns clear the reserved figure strip.
+        if dd["n_slot_rows"] > 0:
+            wall_start = dd["body_d"] - dd["fig_depth"]
+            front_cy = dd["slot_y0"] + (dd["n_slot_rows"] - 1) * dd["slot_row_pitch"]
+            front_edge = front_cy + (dd["slot_l"] + dd["slot_mouth"]) / 2
+            gap = wall_start - front_edge
+            if gap < dd["fig_floor"] - 1e-6:
+                failures.append(Failure(
+                    "slot-figure-strip-collision",
+                    f"grid {gc}x{gr}: front cartridge cut is only {gap:.2f}mm "
+                    f"from the figure strip (< {dd['fig_floor']:.1f}mm) — a "
+                    "column collides with the reserved figure strip",
+                ))
     return failures
 
 
