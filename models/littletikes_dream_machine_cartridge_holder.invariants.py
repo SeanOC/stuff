@@ -29,14 +29,15 @@ a broken floor, or a shattered snap weld:
   4. **Cartridge slots auto-fill the top face.** Every packed slot centre
      is an open pocket (void above the floor) sitting on solid floor
      material (a cartridge can't drop through the back), and the packed
-     count matches the pitch formula (4 x 9 = 36 at the default grid,
-     with the front figure strip reserved before packing).
+     count matches the pitch formula (1 x 3 = 3 at the default 3x3 tile,
+     4 x 9 = 36 at a full 9x8, with the front figure strip reserved
+     before packing).
 
   5. **Figure holders auto-fill the front face.** Every packed figure
      centre is an open domed pocket bored into the +Y face (void just
      inside the front mouth), and the packed count matches the pitch
-     formula (5 at the default grid). This pins presence + count, not a
-     "solid behind" wall.
+     formula (1 at the default 3x3 tile, 5 at a full 9x8). This pins
+     presence + count, not a "solid behind" wall.
 
   6. **Figure pockets are closed blind pockets.** A fig_floor (2mm) solid
      floor separates each figure pocket from the cartridge slot behind —
@@ -98,8 +99,8 @@ def _spread(c: int, n: int) -> list[int]:
 def _derive(p):
     """Reproduce the .scad's derived layout from the params."""
     d = {}
-    d["grid_cols"] = int(p.get("grid_cols", 9))
-    d["grid_rows"] = int(p.get("grid_rows", 8))
+    d["grid_cols"] = int(p.get("grid_cols", 3))
+    d["grid_rows"] = int(p.get("grid_rows", 3))
     d["snap_lite"] = bool(p.get("snap_lite", True))
     d["dense"] = bool(p.get("snap_every_cell", True))
     d["body_h"] = float(p.get("body_h", 41))
