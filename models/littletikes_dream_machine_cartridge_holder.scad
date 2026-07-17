@@ -23,8 +23,13 @@
 // feature pitch, never hard-coded, so they follow the grid size:
 //
 //   * CARTRIDGE SLOTS open on the +Z top face: rounded rectangular
-//     pockets (51 x 14mm interior) on a 60mm column / 22mm row pitch,
-//     with a widened drop-in mouth. Rows pack into the depth left AFTER
+//     pockets (51 x 14mm interior) on a 56mm column / 22mm row pitch,
+//     with a widened drop-in mouth. Each column is PHASE-LOCKED to a
+//     2-cell openGrid module (56mm = 2 x 28mm): its centre sits over the
+//     centre of a 2x(depth) block of cells (module centres at
+//     snap_pitch*(2k+1) = 28, 84, 140... over the snap grid), so the 51mm
+//     slot stays consistent relative to the back-face snaps (pst-62f).
+//     Rows pack into the depth left AFTER
 //     the front figure strip is reserved, so they never overlap it at
 //     any grid size. Default 3x3 footprint packs 1 x 3 = 3 (a full 9x8
 //     packs 4 x 9 = 36).
@@ -113,7 +118,7 @@ slot_w         = 51;  // @param number min=30 max=56 step=0.5 unit=mm group=cart
 slot_l         = 14;  // @param number min=8 max=19 step=0.5 unit=mm group=cartridge label="Cartridge slot length (Y)"
 slot_depth     = 36;  // @param number min=10 max=40 step=1 unit=mm group=cartridge label="Cartridge slot depth"
 floor_z        = 5;   // @param number min=2 max=8 step=0.5 unit=mm group=cartridge label="Pocket floor height above the back"
-slot_col_pitch = 60;  // @param number min=54 max=90 step=0.5 unit=mm group=cartridge label="Slot column pitch (X)"
+slot_col_pitch = 56;  // @param number min=54 max=90 step=0.5 unit=mm group=cartridge label="Slot column pitch (X; default 56 = 2 openGrid cells)"
 slot_row_pitch = 22;  // @param number min=18 max=40 step=0.5 unit=mm group=cartridge label="Slot row pitch (Y)"
 slot_corner_r  = 2;   // @param number min=0.5 max=6 step=0.5 unit=mm group=cartridge label="Slot corner radius"
 slot_mouth     = 2;   // @param number min=0 max=5 step=0.5 unit=mm group=cartridge label="Drop-in mouth widening (each dim)"
@@ -158,7 +163,17 @@ fig_floor = 2;   // solid floor (mm) kept behind each figure pocket
 cart_depth = body_d - fig_depth - fig_floor - slot_mouth / 2;
 n_slot_cols = max(0, floor((body_w - slot_w) / slot_col_pitch) + 1);
 n_slot_rows = max(0, floor((cart_depth - slot_l) / slot_row_pitch) + 1);
-slot_x0 = (body_w - (n_slot_cols - 1) * slot_col_pitch) / 2;  // first col centre
+// Column X is PHASE-LOCKED, not just pitched: centre the array, then snap
+// its first column onto the nearest 2-cell openGrid module centre. Module
+// centres sit at snap_pitch*(2k+1) = 28, 84, 140... (the mid-line between
+// each pair of cells, over the same grid origin the snaps use), so every
+// 51mm slot lands centred over a 2x(depth) block of cells and stays fixed
+// relative to the back-face snaps regardless of how the packing margin
+// shifts. With the default 56mm pitch every column then lands on a module
+// centre; a user-tuned pitch keeps only the first column locked (pst-62f).
+slot_module = 2 * snap_pitch;   // 56mm = one 2-cell openGrid module
+slot_x_centered = (body_w - (n_slot_cols - 1) * slot_col_pitch) / 2;
+slot_x0 = snap_pitch + slot_module * round((slot_x_centered - snap_pitch) / slot_module);  // first col centre (module-locked)
 slot_y0 = (cart_depth - (n_slot_rows - 1) * slot_row_pitch) / 2;  // first row centre
 // Slot floor clamps up if the body is too shallow for the full depth, so
 // the pocket never punches through the back (keeps param sweeps valid).
