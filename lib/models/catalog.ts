@@ -127,6 +127,6 @@ export const CATALOG: Record<string, CatalogEntry> = {
   littletikes_dream_machine_cartridge_holder: {
     categoryId: "toys",
     blurb:
-      "Wall-mounted holder for Little Tikes Dream Machine cartridges and figures — an openGrid tray sized in whole 28mm cells that auto-fills with 51x14 cartridge slots (top) and rounded figure pockets (front). Lite snaps on the back seat it on any openGrid panel.",
+      "Wall-mounted holder for Little Tikes Dream Machine cartridges and figures — an openGrid tray sized in whole 28mm cells that auto-fills with 51x14 cartridge slots (top) and rounded figure pockets (front). Lite snaps on the back seat it on any openGrid panel. The preview shows a compact 3x3-cell tile; scale the cell count up to 9x8 for the full-size holder.",
   },
 };

@@ -21,21 +21,34 @@ a broken floor, or a shattered snap weld:
      snap cell has bed-contact material at z=0 within its 24.8mm
      footprint, the contact count equals the derived snap count, and the
      contact span matches the outermost snap cells — pins the snaps-down
-     print orientation, the count, and the 28mm pitch. (Default is the
-     sparse 4x3 corner-inclusive subset; snap_every_cell fills all
-     cells but is a browser/preview-only mode — see the .scad header.)
+     print orientation, the count, and the 28mm pitch. (Default is one
+     lite snap per cell = grid_cols x grid_rows; set snap_every_cell=false
+     for a sparse corner-inclusive subset that exports faster — see the
+     .scad header.)
 
   4. **Cartridge slots auto-fill the top face.** Every packed slot centre
      is an open pocket (void above the floor) sitting on solid floor
      material (a cartridge can't drop through the back), and the packed
-     count matches the pitch formula (4 x 10 = 40 at the default grid).
+     count matches the pitch formula (1 x 3 = 3 at the default 3x3 tile,
+     4 x 9 = 36 at a full 9x8, with the front figure strip reserved
+     before packing).
 
   5. **Figure holders auto-fill the front face.** Every packed figure
      centre is an open domed pocket bored into the +Y face (void just
      inside the front mouth), and the packed count matches the pitch
-     formula (5 at the default grid). The front cartridge row sits only
-     ~fig_depth behind the +Y edge, so this pins presence + count, not
-     a "solid behind" wall.
+     formula (1 at the default 3x3 tile, 5 at a full 9x8). This pins
+     presence + count, not a "solid behind" wall.
+
+  6. **Figure pockets are closed blind pockets.** A fig_floor (2mm) solid
+     floor separates each figure pocket from the cartridge slot behind —
+     asserted arithmetically (the widest cartridge cut stays >= fig_floor
+     clear of the pocket back for the default AND off-default grids) and
+     on the mesh (the floor behind each exported pocket is solid, no
+     break-through). (pst-93r items 1+3.)
+
+  7. **Top-face edges are rounded over.** The +Z outer perimeter edge is
+     relieved by the top_round chamfer — the sharp top-outer corner probes
+     void while the wall below it stays solid. (pst-93r item 4.)
 
 Uses mesh.contains() and vertex extents only (no shapely/scipy — CI has
 neither). Probe frame is world coordinates: the body is lifted body_lift
@@ -54,6 +67,23 @@ from scripts.invariants import Failure, as_default_params, expect_connected_soli
 _CONTACT_EPS_MM = 0.05
 _SNAP_PITCH = 28.0
 _SNAP_W = 24.8
+_CONTAINS_VOTES = 5
+
+
+def _contains(mesh, pts) -> np.ndarray:
+    """Majority vote over _CONTAINS_VOTES independent mesh.contains() calls.
+
+    trimesh casts one random-direction ray per point; with one lite snap
+    per cell (the default) a slot floor probe sits directly above the
+    welded snap geometry, and a single ray occasionally miscounts the
+    surface crossings — a lone contains() flaked ~1/8 runs there (pst-93r).
+    Each call re-randomizes, so majority-of-5 collapses that to negligible
+    while keeping the exact probe points and pass/fail semantics."""
+    pts = np.asarray(pts, dtype=float)
+    votes = np.zeros(len(pts), dtype=int)
+    for _ in range(_CONTAINS_VOTES):
+        votes += mesh.contains(pts).astype(int)
+    return votes * 2 > _CONTAINS_VOTES
 
 
 def _spread(c: int, n: int) -> list[int]:
@@ -69,10 +99,10 @@ def _spread(c: int, n: int) -> list[int]:
 def _derive(p):
     """Reproduce the .scad's derived layout from the params."""
     d = {}
-    d["grid_cols"] = int(p.get("grid_cols", 9))
-    d["grid_rows"] = int(p.get("grid_rows", 8))
+    d["grid_cols"] = int(p.get("grid_cols", 3))
+    d["grid_rows"] = int(p.get("grid_rows", 3))
     d["snap_lite"] = bool(p.get("snap_lite", True))
-    d["dense"] = bool(p.get("snap_every_cell", False))
+    d["dense"] = bool(p.get("snap_every_cell", True))
     d["body_h"] = float(p.get("body_h", 41))
     d["slot_w"] = float(p.get("slot_w", 51))
     d["slot_l"] = float(p.get("slot_l", 14))
@@ -80,19 +110,26 @@ def _derive(p):
     d["floor_z"] = float(p.get("floor_z", 5))
     d["slot_col_pitch"] = float(p.get("slot_col_pitch", 60))
     d["slot_row_pitch"] = float(p.get("slot_row_pitch", 22))
+    d["slot_mouth"] = float(p.get("slot_mouth", 2))
     d["fig_w"] = float(p.get("fig_w", 43))
+    d["fig_rect_h"] = float(p.get("fig_rect_h", 9))
     d["fig_depth"] = float(p.get("fig_depth", 10))
     d["fig_pitch"] = float(p.get("fig_pitch", 49.25))
+    d["top_round"] = float(p.get("top_round", 1.2))
+    d["fig_floor"] = 2.0   # mirror of the .scad constant (pst-93r item 3)
 
     d["snap_h"] = 3.4 if d["snap_lite"] else 6.8
     d["body_lift"] = d["snap_h"] - 0.02
     d["body_w"] = d["grid_cols"] * _SNAP_PITCH
     d["body_d"] = d["grid_rows"] * _SNAP_PITCH
 
+    # Front figure strip (fig_depth) + a fig_floor solid floor + the drop-
+    # in mouth's extra half-width are reserved before packing (items 1+3).
+    d["cart_depth"] = d["body_d"] - d["fig_depth"] - d["fig_floor"] - d["slot_mouth"] / 2
     d["n_slot_cols"] = max(0, floor((d["body_w"] - d["slot_w"]) / d["slot_col_pitch"]) + 1)
-    d["n_slot_rows"] = max(0, floor((d["body_d"] - d["slot_l"]) / d["slot_row_pitch"]) + 1)
+    d["n_slot_rows"] = max(0, floor((d["cart_depth"] - d["slot_l"]) / d["slot_row_pitch"]) + 1)
     d["slot_x0"] = (d["body_w"] - (d["n_slot_cols"] - 1) * d["slot_col_pitch"]) / 2
-    d["slot_y0"] = (d["body_d"] - (d["n_slot_rows"] - 1) * d["slot_row_pitch"]) / 2
+    d["slot_y0"] = (d["cart_depth"] - (d["n_slot_rows"] - 1) * d["slot_row_pitch"]) / 2
     d["slot_bottom"] = max(d["floor_z"], d["body_h"] - d["slot_depth"])
 
     d["n_figs"] = max(0, floor((d["body_w"] - d["fig_w"]) / d["fig_pitch"]) + 1)
@@ -120,6 +157,91 @@ def check(ctx):
     failures += _check_snaps(mesh, d)
     failures += _check_slots(mesh, d, lift)
     failures += _check_figures(mesh, d, lift)
+    failures += _check_figure_floor(mesh, d, lift)
+    failures += _check_top_roundover(mesh, d, lift)
+    return failures
+
+
+def _check_figure_floor(mesh, d, lift) -> list[Failure]:
+    """Each figure pocket is a closed BLIND pocket: a solid floor at least
+    fig_floor thick separates it from the cartridge slot behind, at every
+    grid/param (pst-93r items 1+3). Two claims:
+
+      (a) Arithmetic — the WIDEST cartridge cut (the drop-in mouth) at the
+          front-most row stays >= fig_floor clear of the figure-strip back
+          wall, for the default grid AND off-default corners.
+      (b) Mesh — the reserved floor directly behind each exported figure
+          pocket is solid (no break-through into a slot).
+    """
+    failures: list[Failure] = []
+
+    # (a) packing arithmetic across grid sizes.
+    grids = [
+        (d["grid_cols"], d["grid_rows"]),   # the exported/default grid
+        (3, 3), (9, 9), (5, 6),             # off-default corners
+    ]
+    for gc, gr in grids:
+        dd = _derive({"grid_cols": gc, "grid_rows": gr})
+        if dd["n_slot_rows"] == 0:
+            continue
+        wall_start = dd["body_d"] - dd["fig_depth"]      # figure-pocket back
+        front_cy = dd["slot_y0"] + (dd["n_slot_rows"] - 1) * dd["slot_row_pitch"]
+        front_edge = front_cy + (dd["slot_l"] + dd["slot_mouth"]) / 2
+        gap = wall_start - front_edge
+        if gap < dd["fig_floor"] - 1e-6:
+            failures.append(Failure(
+                "figure-floor-thin",
+                f"grid {gc}x{gr}: only {gap:.2f}mm between the front "
+                f"cartridge cut and the figure-pocket back wall — less than "
+                f"the {dd['fig_floor']:.1f}mm solid floor the pocket needs",
+            ))
+
+    # (b) the floor behind each exported figure pocket is solid material.
+    if d["n_figs"] > 0:
+        y = d["body_d"] - d["fig_depth"] - d["fig_floor"] / 2   # mid-floor
+        z = lift + d["floor_z"] + d["fig_rect_h"] / 2           # in the pocket
+        probes = [[d["fig_x0"] + k * d["fig_pitch"], y, z]
+                  for k in range(d["n_figs"])]
+        void = ~_contains(mesh, probes)
+        if bool(void.any()):
+            bad = [round(probes[k][0], 1) for k in np.where(void)[0]]
+            failures.append(Failure(
+                "figure-floor-breakthrough",
+                f"{int(void.sum())}/{d['n_figs']} figure pockets have a VOID "
+                f"floor behind them (x {bad[:4]}) — the pocket opens through "
+                "into a cartridge slot",
+            ))
+    return failures
+
+
+def _check_top_roundover(mesh, d, lift) -> list[Failure]:
+    """The +Z top face's outer perimeter edge is rounded/chamfered over
+    (pst-93r item 4): the sharp top-outer corner is relieved. Probes the
+    -X mid-edge — a point in the removed wedge just under the top face is
+    VOID, while the same column well below the round-over is SOLID.
+    """
+    r = d["top_round"]
+    if r <= 0:
+        return []
+    top = lift + d["body_h"]
+    ymid = d["body_d"] / 2
+    x = min(0.4, r / 2)                       # just inside the -X wall
+    removed = [x, ymid, top - r * 0.15]       # in the beveled wedge
+    kept = [x, ymid, top - r - 1.5]           # full wall, below the bevel
+    res = _contains(mesh, [removed, kept])
+    failures: list[Failure] = []
+    if bool(res[0]):
+        failures.append(Failure(
+            "top-roundover-missing",
+            f"top-outer edge at z={removed[2]:.2f} is still solid — the "
+            f"{r}mm top round-over is missing",
+        ))
+    if not bool(res[1]):
+        failures.append(Failure(
+            "top-roundover-overcut",
+            f"the wall below the round-over (z={kept[2]:.2f}) is void — the "
+            "top round-over cut too deep",
+        ))
     return failures
 
 
@@ -137,6 +259,14 @@ def _check_footprint(mesh, d) -> list[Failure]:
 
 
 def _check_snaps(mesh, d) -> list[Failure]:
+    # The default (dense) layout is exactly one lite snap per cell.
+    if d["dense"] and d["snap_count"] != d["grid_cols"] * d["grid_rows"]:
+        return [Failure(
+            "snap-count-default",
+            f"dense snap count {d['snap_count']} != grid_cols*grid_rows = "
+            f"{d['grid_cols'] * d['grid_rows']} — one-per-cell layout "
+            "regressed",
+        )]
     verts = mesh.vertices
     contact = verts[verts[:, 2] < _CONTACT_EPS_MM]
     if len(contact) == 0:
@@ -186,15 +316,25 @@ def _check_snaps(mesh, d) -> list[Failure]:
 def _check_slots(mesh, d, lift) -> list[Failure]:
     if d["n_slot_cols"] == 0 or d["n_slot_rows"] == 0:
         return []
+    # Floor solidity is sampled at FIVE points spread across each pocket
+    # footprint, not one at the centre: a single floor probe can sit
+    # directly above a snap where the random-ray contains() is *biased*
+    # (majority-of-votes can't rescue a biased point), but the five points
+    # sit over different snap/non-snap regions, so a genuinely floorless
+    # pocket reads all-void while a lone biased point cannot flip the
+    # verdict. A pocket "has floor" if >= 3 of its 5 points are solid.
+    fz = lift + max(0.5, d["floor_z"] - 2.5)
+    ox, oy = d["slot_w"] / 4, d["slot_l"] / 4
+    floor_offsets = [(0, 0), (ox, oy), (-ox, oy), (ox, -oy), (-ox, -oy)]
     void_probes, floor_probes = [], []
     for i in range(d["n_slot_cols"]):
         cx = d["slot_x0"] + i * d["slot_col_pitch"]
         for j in range(d["n_slot_rows"]):
             cy = d["slot_y0"] + j * d["slot_row_pitch"]
             void_probes.append([cx, cy, lift + d["slot_bottom"] + 3.0])
-            floor_probes.append([cx, cy, lift + max(0.5, d["floor_z"] - 2.5)])
+            floor_probes.append([[cx + dx, cy + dy, fz] for dx, dy in floor_offsets])
     failures = []
-    solid_in_void = mesh.contains(np.array(void_probes))
+    solid_in_void = _contains(mesh, void_probes)
     if bool(solid_in_void.any()):
         bad = [void_probes[k][:2] for k in np.where(solid_in_void)[0]]
         failures.append(Failure(
@@ -203,12 +343,14 @@ def _check_slots(mesh, d, lift) -> list[Failure]:
             f"centres are solid, not open pockets (first {bad[:4]}) — "
             "auto-fill count/placement regressed",
         ))
-    void_floor = ~mesh.contains(np.array(floor_probes))
-    if bool(void_floor.any()):
-        bad = [floor_probes[k][:2] for k in np.where(void_floor)[0]]
+    flat = np.array(floor_probes).reshape(-1, 3)
+    solid = _contains(mesh, flat).reshape(len(floor_probes), len(floor_offsets))
+    floorless = solid.sum(axis=1) < 3
+    if bool(floorless.any()):
+        bad = [void_probes[k][:2] for k in np.where(floorless)[0]]
         failures.append(Failure(
             "slot-floor",
-            f"{int(void_floor.sum())} cartridge pocket(s) have no floor "
+            f"{int(floorless.sum())} cartridge pocket(s) have no floor "
             f"beneath them (first {bad[:4]}) — a cartridge would drop "
             "through to the wall face",
         ))
@@ -218,10 +360,10 @@ def _check_slots(mesh, d, lift) -> list[Failure]:
 def _check_figures(mesh, d, lift) -> list[Failure]:
     # Each packed figure centre must be an open pocket in the +Y face:
     # probe just inside the front mouth, up in the dome. (No "solid
-    # behind" probe — the front cartridge row is only ~fig_depth from the
-    # +Y edge so material behind a figure can legitimately be an adjacent
-    # slot cavity; and with fig_depth << body_d a figure cannot bore
-    # through the tray. Presence + count is what this pins.)
+    # behind" probe — with the figure strip now reserved, the front
+    # cartridge row sits fig_depth + wall clearance behind the +Y edge;
+    # and with fig_depth << body_d a figure cannot bore through the tray.
+    # Presence + count is what this pins.)
     if d["n_figs"] == 0:
         return []
     z = lift + d["floor_z"] + max(2.0, d["fig_w"] / 4)  # up inside the dome
@@ -229,7 +371,7 @@ def _check_figures(mesh, d, lift) -> list[Failure]:
         [d["fig_x0"] + k * d["fig_pitch"], d["body_d"] - 3.0, z]
         for k in range(d["n_figs"])
     ]
-    solid = mesh.contains(np.array(void_probes))
+    solid = _contains(mesh, void_probes)
     if bool(solid.any()):
         bad = [round(void_probes[k][0], 1) for k in np.where(solid)[0]]
         return [Failure(
