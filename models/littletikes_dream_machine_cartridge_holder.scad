@@ -11,38 +11,40 @@
 // original spec's max-hold layout); a sparse cell-aligned subset stays
 // selectable via snap_every_cell=false for a much faster CGAL export.
 //
-// The DEFAULT/preview footprint is a compact 3x3-cell tile (84 x 84mm) —
+// The DEFAULT/preview footprint is a compact 2x4-cell tile (56 x 112mm) —
 // intentionally small so the wasm param-sweep stays inside CI's per-shard
 // budget (every sweep case renders from these defaults; a dense one-per-
 // cell default at the full 9x8 size blew a 45min shard, pst-93r). It is a
-// real, printable tile that still exercises every feature (packs 3
-// cartridge slots + 1 figure holder + 9 snaps). Scale grid_cols/grid_rows
+// real, printable tile that still exercises every feature (packs 4
+// cartridge slots + 1 figure holder + 8 snaps). Scale grid_cols/grid_rows
 // up to 9x8 for the full ~250 x 235mm reference holder.
 // Two families of pockets AUTO-FILL the derived
 // footprint — their counts are computed from the available space and the
 // feature pitch, never hard-coded, so they follow the grid size:
 //
 //   * CARTRIDGE SLOTS open on the +Z top face: rounded rectangular
-//     pockets (51 x 14mm interior) on a 56mm column / 22mm row pitch,
+//     pockets (52 x 14mm interior) on a 56mm column / 22mm row pitch,
 //     with a widened drop-in mouth. Each column is PHASE-LOCKED to a
 //     2-cell openGrid module (56mm = 2 x 28mm): its centre sits over the
 //     centre of a 2x(depth) block of cells (module centres at
-//     snap_pitch*(2k+1) = 28, 84, 140... over the snap grid), so the 51mm
+//     snap_pitch*(2k+1) = 28, 84, 140... over the snap grid), so the 52mm
 //     slot stays consistent relative to the back-face snaps (pst-62f).
 //     Rows pack into the depth left AFTER
 //     the front figure strip is reserved, so they never overlap it at
-//     any grid size. Default 3x3 footprint packs 1 x 3 = 3 (a full 9x8
+//     any grid size. Default 2x4 footprint packs 1 x 4 = 4 (a full 9x8
 //     packs 4 x 9 = 36).
 //   * FIGURE HOLDERS open on the +Y front face: a rectangle capped by a
-//     half-circle dome (43mm wide, 21.5mm radius), 10mm deep, on a
-//     ~49mm pitch. Default 3x3 footprint packs 1 (a full 9x8 packs 5).
+//     half-circle dome (43.5mm wide, 21.75mm radius), 10mm deep, on a
+//     ~49mm pitch. Default 2x4 footprint packs 1 (a full 9x8 packs 5).
 //     Each is a closed BLIND
 //     pocket: the packer keeps a fig_floor (2mm) solid floor behind it,
 //     so it never breaks through into the cartridge slot behind.
 //
 // All +Z (top) face edges — the outer perimeter and every cartridge slot
-// mouth rim — get a top_round round-over (a hull-free stepped chamfer;
-// up-facing so no overhang). See top_outer_roundover / slot_mouth_roundover.
+// mouth rim — get a top_round round-over: a hull-free quarter-round FILLET
+// approximated by a fine stack of 2D-offset layers whose inset follows a
+// circular arc (up-facing so no overhang). See top_outer_roundover /
+// slot_mouth_roundover.
 //
 // This model replaces an earlier import()-of-STL attempt (pst-rll): the
 // operator-supplied mesh was 158k triangles of sliver geometry that hung
@@ -96,8 +98,8 @@ $fn = 64;
 // === User-tunable parameters ===
 
 // ----- openGrid size (primary: whole 28mm cells) -----
-grid_cols = 3;      // @param integer min=3 max=9 step=1 group=grid label="Width (28mm openGrid cells)"
-grid_rows = 3;      // @param integer min=3 max=9 step=1 group=grid label="Height (28mm openGrid cells)"
+grid_cols = 2;      // @param integer min=2 max=9 step=1 group=grid label="Width (28mm openGrid cells)"
+grid_rows = 4;      // @param integer min=3 max=9 step=1 group=grid label="Height (28mm openGrid cells)"
 snap_lite = true;   // @param boolean group=grid label="Lite snaps (3.4mm instead of 6.8mm)"
 body_h    = 41;     // @param number min=38 max=55 step=1 unit=mm group=grid label="Body depth out from the wall (Z)"
 body_corner_r = 3;  // @param number min=0.5 max=8 step=0.5 unit=mm group=grid label="Body vertical-corner radius"
@@ -106,7 +108,7 @@ body_corner_r = 3;  // @param number min=0.5 max=8 step=0.5 unit=mm group=grid l
 // heavier and the desktop CGAL export slower the larger the grid gets
 // (a full 9x8 is a 72-snap union), but preview perf is not a blocker
 // (the wasm path is preview-only, not export) and the CGAL export still
-// lands inside CI's budget (pst-93r). The default 3x3 tile is only 9
+// lands inside CI's budget (pst-93r). The default 2x4 tile is only 8
 // snaps, so the preview and the whole param-sweep stay light.
 // Set FALSE for a sparse, still-cell-aligned subset (snap_sparse_cols x
 // snap_sparse_rows, evenly spread and corner-inclusive) that holds a
@@ -114,7 +116,7 @@ body_corner_r = 3;  // @param number min=0.5 max=8 step=0.5 unit=mm group=grid l
 snap_every_cell = true; // @param boolean group=grid label="Snap in every cell (one per cell; default)"
 
 // ----- Cartridge slots (open on +Z top; counts auto-fill) -----
-slot_w         = 51;  // @param number min=30 max=56 step=0.5 unit=mm group=cartridge label="Cartridge slot width (X)"
+slot_w         = 52;  // @param number min=30 max=56 step=0.5 unit=mm group=cartridge label="Cartridge slot width (X)"
 slot_l         = 14;  // @param number min=8 max=19 step=0.5 unit=mm group=cartridge label="Cartridge slot length (Y)"
 slot_depth     = 36;  // @param number min=10 max=40 step=1 unit=mm group=cartridge label="Cartridge slot depth"
 floor_z        = 5;   // @param number min=2 max=8 step=0.5 unit=mm group=cartridge label="Pocket floor height above the back"
@@ -125,12 +127,12 @@ slot_mouth     = 2;   // @param number min=0 max=5 step=0.5 unit=mm group=cartri
 top_round      = 1.2; // @param number min=0 max=3 step=0.2 unit=mm group=cartridge label="Top-edge round-over (outer rim + slot mouths; 0=off)"
 
 // ----- Figure holders (open on +Y front; count auto-fills) -----
-fig_w      = 43;    // @param number min=24 max=46 step=0.5 unit=mm group=figures label="Figure pocket width (dome dia.)"
+fig_w      = 43.5;  // @param number min=24 max=46 step=0.5 unit=mm group=figures label="Figure pocket width (dome dia.)"
 fig_rect_h = 9;     // @param number min=3 max=13 step=0.5 unit=mm group=figures label="Figure straight-wall height"
 fig_depth  = 10;    // @param number min=5 max=18 step=0.5 unit=mm group=figures label="Figure pocket depth into front"
 fig_pitch  = 49.25; // @param number min=47 max=90 step=0.25 unit=mm group=figures label="Figure pocket pitch (X)"
 
-// @preset id="default" label="Default (3x3 tile, one snap per cell)" grid_cols=3 grid_rows=3 snap_lite=true snap_every_cell=true
+// @preset id="default" label="Default (2x4 tile, one snap per cell)" grid_cols=2 grid_rows=4 snap_lite=true snap_every_cell=true
 // @preset id="full_holder" label="Full holder (9x8 cells)" grid_cols=9 grid_rows=8 snap_lite=true snap_every_cell=true
 // @preset id="sparse_snaps" label="Sparse snaps (faster CGAL export)" snap_every_cell=false
 
@@ -144,21 +146,21 @@ body_lift  = snap_h - weld;
 
 // Footprint derives from the cell count: an exact integer openGrid grid,
 // so snaps land on cell centres and the back face is a clean N x M grid.
-//   default 3x3: 3 * 28 = 84 (X) by 3 * 28 = 84 (Y) — a compact preview
+//   default 2x4: 2 * 28 = 56 (X) by 4 * 28 = 112 (Y) — a compact preview
 //   tile. The full holder (9x8) is 252 x 224mm, the closest whole-cell
 //   match to the measured ~250 x 235mm reference part.
 body_w = grid_cols * snap_pitch;
 body_d = grid_rows * snap_pitch;
 
-// Cartridge slots auto-fill: as many 51x14 pockets as fit at the column/
-// row pitch, then centred with even edge margins. The +Y front figure
-// strip (fig_depth deep) plus a solid floor behind each figure pocket is
-// RESERVED FIRST, so rows pack only into the remaining depth cart_depth
-// and never break through into the figure pockets at any grid/param
-// (pst-93r items 1+3). The reservation also subtracts the drop-in
-// mouth's extra half-width, so even the WIDEST cartridge cut stays
+// Cartridge slots auto-fill: as many slot_w x 14 pockets as fit at the
+// column/ row pitch, then centred with even edge margins. The +Y front
+// figure strip (fig_depth deep) plus a solid floor behind each figure
+// pocket is RESERVED FIRST, so rows pack only into the remaining depth
+// cart_depth and never break through into the figure pockets at any
+// grid/param (pst-93r items 1+3). The reservation also subtracts the
+// drop-in mouth's extra half-width, so even the WIDEST cartridge cut stays
 // >= fig_floor clear of the figure pockets. Counts follow the footprint
-// (default 3x3 = 1 x 3 = 3; a full 9x8 = 4 x 9 = 36).
+// (default 2x4 = 1 x 4 = 4; a full 9x8 = 4 x 9 = 36).
 fig_floor = 2;   // solid floor (mm) kept behind each figure pocket
 cart_depth = body_d - fig_depth - fig_floor - slot_mouth / 2;
 n_slot_cols = max(0, floor((body_w - slot_w) / slot_col_pitch) + 1);
@@ -167,7 +169,7 @@ n_slot_rows = max(0, floor((cart_depth - slot_l) / slot_row_pitch) + 1);
 // its first column onto the nearest 2-cell openGrid module centre. Module
 // centres sit at snap_pitch*(2k+1) = 28, 84, 140... (the mid-line between
 // each pair of cells, over the same grid origin the snaps use), so every
-// 51mm slot lands centred over a 2x(depth) block of cells and stays fixed
+// 52mm slot lands centred over a 2x(depth) block of cells and stays fixed
 // relative to the back-face snaps regardless of how the packing margin
 // shifts. With the default 56mm pitch every column then lands on a module
 // centre; a user-tuned pitch keeps only the first column locked (pst-62f).
@@ -205,11 +207,11 @@ snap_row_idx = snap_every_cell ? [for (j = [0 : grid_rows - 1]) j]
 snap_count = len(snap_col_idx) * len(snap_row_idx);
 
 // PRINT_ANCHOR_BBOX at defaults (literal numbers — the invariants gate
-// fails on >1mm drift from the exported STL). Default is the 3x3 tile:
-//   X = body_w    = 3 * 28              = 84
-//   Y = body_d    = 3 * 28              = 84
+// fails on >1mm drift from the exported STL). Default is the 2x4 tile:
+//   X = body_w    = 2 * 28              = 56
+//   Y = body_d    = 4 * 28              = 112
 //   Z = body_lift + body_h = 3.4 - 0.02 + 41 = 44.38
-PRINT_ANCHOR_BBOX = [84, 84, 44.38];
+PRINT_ANCHOR_BBOX = [56, 112, 44.38];
 
 // === Snaps ===
 
@@ -297,22 +299,31 @@ module figure_profiles_2d() {
         figure_profile(fig_x0 + k * fig_pitch);
 }
 
-// Top-face (+Z) edge round-over — a hull-free STEPPED chamfer (the
-// batchable stand-in; a true fillet needs hull, and a per-slot tapered
-// frustum can't be batched — same reason the drop-in mouth is a step).
-// It's the up-facing surface so there is no overhang. Both families are
-// stacks of 2D-`offset` layers, added to body()'s single cut union so
-// they stay ONE CGAL difference (pst-93r item 4). n_top_steps keeps the
-// step ~0.4mm so a 1.2mm round-over is 3 barely-visible facets.
-n_top_steps = max(1, round(top_round / 0.4));
+// Top-face (+Z) edge round-over — a hull-free quarter-round FILLET. A true
+// BOSL2 rounding=/edges= fillet needs hull, which trips the wasm CGAL
+// applyHull() assertion (st-7x7/st-560), and a per-slot tapered frustum
+// can't be batched — so we approximate the arc with a fine stack of
+// 2D-`offset` layers whose inset follows a quarter circle instead of a
+// straight ramp, giving a smooth curved profile rather than a coarse
+// chamfer. It's the up-facing surface so there is no overhang. Both
+// families are stacks of 2D-offset layers, added to body()'s single cut
+// union so they stay ONE CGAL difference (pst-93r item 4). The small
+// default footprint keeps the finer step count cheap in the wasm sweep.
+n_top_steps = max(6, ceil(top_round / 0.15));   // ~0.15mm steps, >=6 facets
+// Circular-arc inset of layer k (0-based): a quarter-round from ~0 at the
+// fillet foot to the full top_round at the top face, so the stacked layers
+// trace a curve, not a 45deg bevel.
+function _round_off(k) =
+    top_round * (1 - sqrt(1 - pow((k + 1) / n_top_steps, 2)));
 
-// Outer top perimeter: remove a margin that widens toward the top face,
-// so the sharp top-outer edge becomes a ~45deg bevel all round (rounded
-// body corners included — `offset` insets them uniformly).
+// Outer top perimeter: remove a margin that widens toward the top face
+// along the quarter-round arc, so the sharp top-outer edge becomes a
+// smooth rounded fillet all round (rounded body corners included —
+// `offset` insets them uniformly).
 module top_outer_roundover() {
     if (top_round > 0)
         for (k = [0 : n_top_steps - 1]) {
-            off = top_round * (k + 1) / n_top_steps;   // widest at the top
+            off = _round_off(k);   // arc inset, widest at the top
             translate([0, 0, body_h - top_round + k * top_round / n_top_steps])
                 linear_extrude(top_round / n_top_steps + 0.02)
                     difference() {
@@ -325,12 +336,13 @@ module top_outer_roundover() {
         }
 }
 
-// Cartridge slot mouths: widen each opening toward the top face, so the
-// slot rim gets the same bevel (offset of the batched 2D mouth union).
+// Cartridge slot mouths: widen each opening toward the top face along the
+// same quarter-round arc, so the slot rim gets the matching rounded fillet
+// (offset of the batched 2D mouth union).
 module slot_mouth_roundover() {
     if (top_round > 0)
         for (k = [0 : n_top_steps - 1]) {
-            off = top_round * (k + 1) / n_top_steps;   // widest at the top
+            off = _round_off(k);   // arc inset, widest at the top
             translate([0, 0, body_h - top_round + k * top_round / n_top_steps])
                 linear_extrude(top_round / n_top_steps + 0.02)
                     offset(off) cartridge_mouths_2d();
