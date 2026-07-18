@@ -26,7 +26,15 @@ import { expect, type Page } from "@playwright/test";
 // The budget is generous on purpose: sized for the two-worker
 // cold-render worst case, and kept under the per-test `timeout` in
 // playwright.config.ts (which was widened to leave headroom above it).
-export const RENDER_READY_TIMEOUT_MS = 90_000;
+//
+// Raised 90s → 120s (pst-vfp): the stale-render specs added four more
+// cold in-browser renders to the suite, so more of them now overlap on
+// the two CI workers and the slowest straggler crept past the old 90s.
+// This costs nothing on a green run — waitForRenderState resolves on the
+// loading→ready transition, not after a fixed wait — it only widens how
+// long we'll wait out a contended cold render before calling it a
+// failure.
+export const RENDER_READY_TIMEOUT_MS = 120_000;
 
 // The two terminal render states a cold render lands on. `ready` is the
 // happy path; `error` is the broken-fixture path (error-state.spec.ts).

@@ -20,10 +20,11 @@ export default defineConfig({
   // CI runner — and with two workers running in parallel, two cold
   // renders compete for CPU and each roughly doubles. The detail-page
   // specs wait on that via support/render.ts (RENDER_READY_TIMEOUT_MS =
-  // 90s); this cap leaves headroom above it for goto + follow-up
+  // 120s); this cap leaves headroom above it for goto + follow-up
   // assertions so the render-ready wait, not the test cap, is what
-  // bounds a slow cold render. (pst-r5k)
-  timeout: 120_000,
+  // bounds a slow cold render. (pst-r5k; budget raised in pst-vfp as the
+  // suite grew more cold-render specs.)
+  timeout: 160_000,
   expect: { timeout: 15_000 },
   use: {
     baseURL: BASE_URL,
