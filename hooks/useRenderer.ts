@@ -1,17 +1,24 @@
 "use client";
 
-// Debounced WASM render driver, extracted from the monolithic
-// ModelStudio. Owns the render state machine (idle / loading / ready /
-// error), a token-cancelled effect so stale renders can't clobber a
-// newer in-flight one, and a small ring buffer of recent successes the
+// Manual WASM render driver, extracted from the monolithic ModelStudio.
+// Owns the render state machine (idle / loading / ready / error), a
+// token-cancelled effect so stale renders can't clobber a newer
+// in-flight one, and a small ring buffer of recent successes the
 // detail-page left rail can show as a render log.
 //
-// Phase-2 change (st-psn): renders no longer fire automatically on
-// mount. Initial state is `idle` and stays there until `refresh()` is
-// called (ViewerChrome wires Enter). After the first explicit render,
-// subsequent value changes debounce-render as before.
+// Phase-2 change (st-psn): renders don't fire automatically on mount.
+// Initial state is `idle` and stays there until `refresh()` is called
+// (ViewerChrome wires Enter).
+//
+// pst-vfp: renders are fully manual — they fire ONLY on `refresh()`, not
+// on every param change. Param editing stays instant and unblocked; the
+// viewer flags the on-screen render as stale when the live values drift
+// from `renderedValues` (the snapshot the displayed render was built
+// from). Each `refresh()` snapshots the current values, supersedes any
+// in-flight render via the cancel token, and — on success — records that
+// snapshot as `renderedValues` so the staleness check has a baseline.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   applyParamOverrides,
   type Param,
@@ -20,7 +27,6 @@ import {
 import { renderToStl } from "@/lib/wasm/render";
 import { parseRenderError } from "@/lib/wasm/render-error";
 
-const RENDER_DEBOUNCE_MS = 250;
 const HISTORY_MAX = 5;
 // Binary STL layout: 80-byte header + uint32 triangle count + 50 bytes
 // per triangle. Recover the count from byte length when the header's
@@ -63,39 +69,53 @@ export type RenderState =
 export interface UseRendererReturn {
   state: RenderState;
   history: RenderResult[];
+  /**
+   * The param values the currently displayed render was built from, or
+   * null before the first successful render. The viewer compares this
+   * against the live control values to decide whether the on-screen
+   * render is stale. (pst-vfp)
+   */
+  renderedValues: Record<string, ParamValue> | null;
   refresh: () => void;
 }
 
 export function useRenderer(input: RenderInput): UseRendererReturn {
   const { source, params, values } = input;
 
-  // Debounce the raw values map so rapid slider drags don't fire a
-  // render per tick — matches the 250ms pause the monolithic version
-  // used. (modelPath isn't debounced: route changes are rare and the
-  // user expects immediate re-render.)
-  const [debouncedValues, setDebouncedValues] = useState(values);
-  useEffect(() => {
-    const id = setTimeout(() => setDebouncedValues(values), RENDER_DEBOUNCE_MS);
-    return () => clearTimeout(id);
-  }, [values]);
-
-  const sourceWithOverrides = useMemo(
-    () => applyParamOverrides(source, params, debouncedValues),
-    [source, params, debouncedValues],
-  );
+  // Live refs to the latest inputs. refresh() reads these at click time
+  // so a render always reflects whatever is on screen, without listing
+  // them in the render effect's deps — which would re-introduce the
+  // old auto-render-on-change behavior pst-vfp deliberately removes.
+  const sourceRef = useRef(source);
+  sourceRef.current = source;
+  const paramsRef = useRef(params);
+  paramsRef.current = params;
+  const valuesRef = useRef(values);
+  valuesRef.current = values;
 
   const [state, setState] = useState<RenderState>({ kind: "idle" });
   const [history, setHistory] = useState<RenderResult[]>([]);
+  const [renderedValues, setRenderedValues] = useState<
+    Record<string, ParamValue> | null
+  >(null);
   const [refreshToken, setRefreshToken] = useState(0);
   const cancelToken = useRef(0);
-  // Gates the auto-debounce path: param changes are ignored until the
-  // user has kicked off the first render (via refresh()). Phase 2's
-  // "press ⏎ to render" idle state depends on this — otherwise the
-  // mount-time effect races past idle before the UI paints.
+  // Gates the mount effect: the render only runs once refresh() has
+  // fired (bumping refreshToken past its initial 0). Phase 2's "press ⏎
+  // to render" idle state depends on this — otherwise the mount-time
+  // effect renders before the user asks for it.
   const hasStarted = useRef(false);
 
   useEffect(() => {
     if (!hasStarted.current) return;
+    // Snapshot the live values so the completed render can record
+    // exactly what it was built from (the staleness baseline).
+    const snapshot = { ...valuesRef.current };
+    const sourceWithOverrides = applyParamOverrides(
+      sourceRef.current,
+      paramsRef.current,
+      snapshot,
+    );
     const myToken = ++cancelToken.current;
     setState({ kind: "loading", since: performance.now() });
     void renderToStl({
@@ -113,6 +133,9 @@ export function useRenderer(input: RenderInput): UseRendererReturn {
         };
         setState({ kind: "ready", result });
         setHistory((prev) => [result, ...prev].slice(0, HISTORY_MAX));
+        // The displayed render now matches this snapshot — clears the
+        // stale flag whenever the live values still equal it.
+        setRenderedValues(snapshot);
       } else {
         const log = raw.stderr.join("\n");
         // parseRenderError looks for the first ERROR: line in stderr
@@ -129,13 +152,16 @@ export function useRenderer(input: RenderInput): UseRendererReturn {
             log,
           },
         });
+        // Leave renderedValues untouched: on error the viewer keeps the
+        // last good render on screen, so its snapshot stays the baseline.
       }
     });
-  }, [sourceWithOverrides, refreshToken]);
+  }, [refreshToken]);
 
   return {
     state,
     history,
+    renderedValues,
     refresh: () => {
       hasStarted.current = true;
       setRefreshToken((n) => n + 1);

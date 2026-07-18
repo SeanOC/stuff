@@ -47,6 +47,12 @@ export interface UseDetailStateReturn {
   allPresets: Array<Preset & { isUser: boolean }>;
   userPresets: UserPreset[];
   setParam: (name: string, value: ParamValue) => void;
+  /**
+   * Replace every param value at once. Used by the viewer's stale-render
+   * "revert" control to snap the live controls back to the params the
+   * displayed render was built from. (pst-vfp)
+   */
+  setAllParams: (values: Record<string, ParamValue>) => void;
   setCamera: (camera: CameraPreset) => void;
   toggleGrid: () => void;
   toggleDims: () => void;
@@ -116,6 +122,22 @@ export function useDetailState({
       return next;
     });
   }, [findPreset]);
+
+  const setAllParams = useCallback(
+    (next: Record<string, ParamValue>) => {
+      const snapshot = { ...next };
+      // Mirror setParam's modified-tracking so reverting a preset-derived
+      // render clears the "modified" dot when it lands back on the preset.
+      const active = activeRef.current
+        ? findPreset(activeRef.current)
+        : undefined;
+      setModified(
+        active ? !paramsEqual(snapshot, active.values, paramsRef.current) : true,
+      );
+      setValues(snapshot);
+    },
+    [findPreset],
+  );
 
   const toggleGrid = useCallback(() => setShowGrid((g) => !g), []);
   const toggleDims = useCallback(() => setShowDims((d) => !d), []);
@@ -195,6 +217,7 @@ export function useDetailState({
     allPresets,
     userPresets,
     setParam,
+    setAllParams,
     setCamera,
     toggleGrid,
     toggleDims,

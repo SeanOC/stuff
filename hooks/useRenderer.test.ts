@@ -99,8 +99,17 @@ describe("useRenderer — stale token cancellation", () => {
     });
     expect(pending.length).toBe(1);
 
-    // Change values → debounce restarts, new render fires after 250ms.
+    // pst-vfp: rendering is manual — changing values does NOT auto-fire.
+    // A second refresh() supersedes the first via the cancel token.
     rerender({ values: { x: 2 } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+    expect(pending.length).toBe(1);
+
+    act(() => {
+      result.current.refresh();
+    });
     await act(async () => {
       await vi.advanceTimersByTimeAsync(300);
     });
@@ -156,16 +165,14 @@ describe("useRenderer — stale token cancellation", () => {
       }),
     );
 
-    // Even after the debounce window closes, no render fires — the
-    // idle state is the real initial state.
+    // Nothing fires on mount — the idle state is the real initial state.
     await act(async () => {
       await vi.advanceTimersByTimeAsync(500);
     });
     expect(pending.length).toBe(0);
     expect(result.current.state.kind).toBe("idle");
 
-    // refresh() kicks the first render. Post-debounce, the call reaches
-    // the mocked renderer.
+    // refresh() kicks the first render.
     act(() => {
       result.current.refresh();
     });
@@ -173,6 +180,108 @@ describe("useRenderer — stale token cancellation", () => {
       await vi.advanceTimersByTimeAsync(300);
     });
     expect(pending.length).toBe(1);
+  });
+});
+
+describe("useRenderer — manual render + renderedValues snapshot (pst-vfp)", () => {
+  it("does not render on value change alone, and records the rendered snapshot", async () => {
+    const { useRenderer } = await import("./useRenderer");
+    const params: Param[] = [{ kind: "number", name: "x", default: 1 }];
+
+    const { result, rerender } = renderHook(
+      ({ values }: { values: Record<string, number> }) =>
+        useRenderer({
+          modelPath: "models/test.scad",
+          source: "x = 1; // @param number\n",
+          params,
+          values,
+        }),
+      { initialProps: { values: { x: 1 } } },
+    );
+
+    // Before any render there is no snapshot to compare against.
+    expect(result.current.renderedValues).toBeNull();
+
+    // Changing values without refresh() must NOT fire a render — manual
+    // rendering is the whole point of the stale-callout flow.
+    rerender({ values: { x: 5 } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500);
+    });
+    expect(pending.length).toBe(0);
+    expect(result.current.state.kind).toBe("idle");
+
+    // refresh() renders whatever is live at click time (x=5) and, on
+    // success, records that as the displayed render's snapshot.
+    act(() => {
+      result.current.refresh();
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(50);
+    });
+    expect(pending.length).toBe(1);
+    await act(async () => {
+      pending[0].resolve({
+        ok: true, stl: makeStl(0xcc), wallMs: 7,
+        filesMounted: 0, missing: [], stderr: [],
+      });
+    });
+    await waitFor(() => {
+      expect(result.current.state.kind).toBe("ready");
+    });
+    expect(result.current.renderedValues).toEqual({ x: 5 });
+  });
+
+  it("keeps the last-good snapshot when a subsequent render errors", async () => {
+    const { useRenderer } = await import("./useRenderer");
+    const params: Param[] = [{ kind: "number", name: "x", default: 1 }];
+
+    const { result, rerender } = renderHook(
+      ({ values }: { values: Record<string, number> }) =>
+        useRenderer({
+          modelPath: "models/test.scad",
+          source: "x = 1; // @param number\n",
+          params,
+          values,
+        }),
+      { initialProps: { values: { x: 1 } } },
+    );
+
+    act(() => {
+      result.current.refresh();
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(50);
+    });
+    await act(async () => {
+      pending[0].resolve({
+        ok: true, stl: makeStl(0xaa), wallMs: 3,
+        filesMounted: 0, missing: [], stderr: [],
+      });
+    });
+    await waitFor(() => {
+      expect(result.current.renderedValues).toEqual({ x: 1 });
+    });
+
+    // Edit + re-render into an error. The snapshot stays at the last
+    // good render so the viewer's stale check keeps a valid baseline.
+    rerender({ values: { x: 2 } });
+    act(() => {
+      result.current.refresh();
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(50);
+    });
+    await act(async () => {
+      pending[1].resolve({
+        ok: false, wallMs: 4, filesMounted: 0, missing: [],
+        errorMessage: "boom", stderr: ["ERROR: boom"],
+      });
+    });
+    await waitFor(() => {
+      expect(result.current.state.kind).toBe("error");
+    });
+    expect(result.current.renderedValues).toEqual({ x: 1 });
   });
 });
 

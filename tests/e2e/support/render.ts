@@ -51,3 +51,16 @@ export async function waitForRenderState(
 export function waitForRenderReady(page: Page): Promise<void> {
   return waitForRenderState(page, "ready");
 }
+
+// Wait until the viewer's stale-render signal matches. The same
+// ViewerChrome section carries `data-render-stale` ("true"/"false")
+// alongside `data-render-state`, flipped when the live params drift
+// from (or snap back to) the displayed render. Keying on it keeps the
+// stale-callout specs deterministic. (pst-vfp)
+export async function waitForStale(page: Page, stale: boolean): Promise<void> {
+  await expect(
+    page.locator('section[aria-label="3D preview"]'),
+  ).toHaveAttribute("data-render-stale", stale ? "true" : "false", {
+    timeout: RENDER_READY_TIMEOUT_MS,
+  });
+}
