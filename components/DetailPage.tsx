@@ -14,7 +14,7 @@ import {
 } from "./AccessoriesSection";
 import { ParamRail } from "./ParamRail";
 import { ViewerChrome } from "./ViewerChrome";
-import { useDetailState } from "@/hooks/useDetailState";
+import { useDetailState, paramsEqual } from "@/hooks/useDetailState";
 import {
   useRenderer,
   type RenderState,
@@ -60,6 +60,19 @@ export default function DetailPage({ model, accessories = [] }: Props) {
     values: detail.state.params,
   });
   const { modal, setDetail } = useUI();
+
+  // The on-screen render is stale once the live controls drift from the
+  // params it was built from. `renderedValues` is null until the first
+  // successful render, so this is false through the initial load. (pst-vfp)
+  const stale =
+    render.renderedValues !== null &&
+    !paramsEqual(detail.state.params, render.renderedValues, model.params);
+
+  // Revert = snap the live controls back to the displayed render's
+  // params. No render needed; the drift clears and the callout hides.
+  const revert = useCallback(() => {
+    if (render.renderedValues) detail.setAllParams(render.renderedValues);
+  }, [render.renderedValues, detail.setAllParams]);
 
   const downloadRef = useRef<() => void>(() => {});
   const [saveRowOpen, setSaveRowOpen] = useState(false);
@@ -220,6 +233,8 @@ export default function DetailPage({ model, accessories = [] }: Props) {
             toggleGrid={detail.toggleGrid}
             toggleDims={detail.toggleDims}
             onRefresh={render.refresh}
+            stale={stale}
+            onRevert={revert}
             downloadSlot={downloadButton}
             history={render.history}
           />

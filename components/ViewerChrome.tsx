@@ -29,6 +29,14 @@ interface Props {
   toggleGrid: () => void;
   toggleDims: () => void;
   onRefresh: () => void;
+  /**
+   * True when the live param controls have drifted from the params the
+   * on-screen render was built from. Drives the stale-render callout.
+   * (pst-vfp)
+   */
+  stale?: boolean;
+  /** Snap the live controls back to the displayed render's params. */
+  onRevert?: () => void;
   downloadSlot?: React.ReactNode;
   /**
    * Ring buffer of recent successful renders, most-recent first. When
@@ -49,9 +57,16 @@ export function ViewerChrome({
   toggleGrid,
   toggleDims,
   onRefresh,
+  stale = false,
+  onRevert,
   downloadSlot,
   history = [],
 }: Props) {
+  // The callout only makes sense once a render is on screen to be stale
+  // against, so suppress it mid-render: while loading, the live values
+  // are the ones being rendered, and on completion the flag clears
+  // itself. This keeps "out of date" from flashing during a re-render.
+  const showStaleCallout = stale && state.kind !== "loading";
   const sectionRef = useRef<HTMLElement>(null);
   const viewerRef = useRef<StlViewerHandle>(null);
   const [focusInViewer, setFocusInViewer] = useState(false);
@@ -141,6 +156,11 @@ export function ViewerChrome({
       // ready-only child like the stat strip's dimensions. Production-
       // safe and inert: nothing styles or branches on it. (pst-r5k)
       data-render-state={state.kind}
+      // Deterministic staleness signal, sibling to data-render-state:
+      // "true" while the on-screen render no longer matches the live
+      // params (and the callout is shown), "false" otherwise. Lets the
+      // e2e suite key on the stale→fresh transitions directly. (pst-vfp)
+      data-render-stale={showStaleCallout ? "true" : "false"}
       className="relative flex h-full flex-col bg-panel2 focus:outline-none"
     >
       <div className="relative flex-1 min-h-[480px] min-[1200px]:min-h-0">
@@ -209,6 +229,9 @@ export function ViewerChrome({
           }}
         />
       </div>
+      {showStaleCallout && (
+        <StaleStrip onRerender={onRefresh} onRevert={onRevert} />
+      )}
       <StatStrip state={state} downloadSlot={downloadSlot} />
       <ErrorLogModal />
     </section>
@@ -720,6 +743,56 @@ function ErrorStrip({
           </button>
         </>
       )}
+    </div>
+  );
+}
+
+// Stale-render callout (pst-vfp). Sits in the flow between the preview
+// and the stat strip — "beneath the preview" per the operator spec —
+// rather than as an overlay, so it never covers the model or collides
+// with the bottom-anchored ErrorStrip. `role="status"` + aria-live
+// announces the drift to assistive tech; both buttons are ordinary,
+// keyboard-reachable <button>s. Copy and warn-tinted severity are a
+// deliberate default (noted on the bead): informational, not an error.
+function StaleStrip({
+  onRerender,
+  onRevert,
+}: {
+  onRerender: () => void;
+  onRevert?: () => void;
+}) {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      data-testid="stale-strip"
+      className={clsx(
+        "flex items-center gap-12 border-t border-warn bg-warn-tint px-12 py-8",
+        "font-mono text-11",
+      )}
+    >
+      <span className="shrink-0 font-semibold text-warn">out of date</span>
+      <span className="flex-1 truncate text-text-dim">
+        parameters changed since this render
+      </span>
+      {onRevert && (
+        <button
+          type="button"
+          onClick={onRevert}
+          data-testid="stale-revert"
+          className="shrink-0 text-text-dim hover:text-text hover:underline"
+        >
+          revert
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={onRerender}
+        data-testid="stale-rerender"
+        className="shrink-0 font-semibold text-accent hover:underline"
+      >
+        re-render
+      </button>
     </div>
   );
 }

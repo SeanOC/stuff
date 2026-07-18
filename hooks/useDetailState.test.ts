@@ -97,6 +97,31 @@ describe("useDetailState — preset binding", () => {
     expect(result.current.state.modified).toBe(false);
   });
 
+  it("setAllParams replaces every value at once (revert path)", () => {
+    const { result } = renderHook(() =>
+      useDetailState({ params: PARAMS, stockPresets: STOCK, slug: "m" }),
+    );
+    act(() => result.current.setParam("d", 99));
+    act(() => result.current.setParam("open", false));
+    expect(result.current.state.params).toEqual({ d: 99, c: 0.5, open: false });
+    // Snap back to the displayed render's snapshot in one shot.
+    act(() => result.current.setAllParams({ d: 70, c: 0.5, open: true }));
+    expect(result.current.state.params).toEqual({ d: 70, c: 0.5, open: true });
+  });
+
+  it("setAllParams clears modified when it lands back on the active preset", () => {
+    const { result } = renderHook(() =>
+      useDetailState({ params: PARAMS, stockPresets: STOCK, slug: "m" }),
+    );
+    act(() => result.current.loadPreset("a"));
+    act(() => result.current.setParam("d", 48));
+    expect(result.current.state.modified).toBe(true);
+    // Reverting to preset A's exact values re-clears the modified dot.
+    act(() => result.current.setAllParams({ d: 46, c: 0.25, open: true }));
+    expect(result.current.state.modified).toBe(false);
+    expect(result.current.state.activePresetId).toBe("a");
+  });
+
   it("deleteUserPreset removes and detaches the active binding", () => {
     const { result } = renderHook(() =>
       useDetailState({ params: PARAMS, stockPresets: STOCK, slug: "m" }),

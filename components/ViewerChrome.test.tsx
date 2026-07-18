@@ -256,6 +256,72 @@ describe("ViewerChrome states (st-psn)", () => {
   });
 });
 
+describe("ViewerChrome stale-render callout (pst-vfp)", () => {
+  it("hides the callout when not stale and marks the section fresh", () => {
+    const { queryByTestId, getByLabelText } = render(
+      <ViewerChrome state={READY} showGrid={false} {...commonProps} />,
+    );
+    expect(queryByTestId("stale-strip")).toBeNull();
+    expect(
+      getByLabelText("3D preview").getAttribute("data-render-stale"),
+    ).toBe("false");
+  });
+
+  it("shows the callout on a ready render when stale", () => {
+    const { getByTestId, getByLabelText } = render(
+      <ViewerChrome
+        state={READY}
+        showGrid={false}
+        {...commonProps}
+        stale
+        onRevert={() => {}}
+      />,
+    );
+    const strip = getByTestId("stale-strip");
+    expect(strip.getAttribute("role")).toBe("status");
+    expect(strip.textContent).toMatch(/out of date/i);
+    expect(
+      getByLabelText("3D preview").getAttribute("data-render-stale"),
+    ).toBe("true");
+  });
+
+  it("suppresses the callout while a render is in flight", () => {
+    const { queryByTestId, getByLabelText } = render(
+      <ViewerChrome
+        state={{ kind: "loading", since: 0 }}
+        showGrid={false}
+        {...commonProps}
+        stale
+        onRevert={() => {}}
+      />,
+    );
+    // Even though params drifted, we don't flash "out of date" mid-render.
+    expect(queryByTestId("stale-strip")).toBeNull();
+    expect(
+      getByLabelText("3D preview").getAttribute("data-render-stale"),
+    ).toBe("false");
+  });
+
+  it("wires the re-render and revert buttons", () => {
+    const onRefresh = vi.fn();
+    const onRevert = vi.fn();
+    const { getByTestId } = render(
+      <ViewerChrome
+        state={READY}
+        showGrid={false}
+        {...commonProps}
+        stale
+        onRefresh={onRefresh}
+        onRevert={onRevert}
+      />,
+    );
+    fireEvent.click(getByTestId("stale-rerender"));
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+    fireEvent.click(getByTestId("stale-revert"));
+    expect(onRevert).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("ViewerChrome axes indicator (st-oc3)", () => {
   // The X line endpoint x2 for (1,0,0) at the static "iso" fallback is
   // (cx + 0.81*R) ≈ 26 + 17.82 = 43.82. Reading the attribute gives an

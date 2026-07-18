@@ -26,6 +26,10 @@
   --color-green: #8ee29d;
   --color-blue: #7ab6ff;
   --color-warn: #f0c06a;
+  /* ~10% warn over the viewer's panel2 — the stale-render callout fill,
+     mirroring --color-red-tint's baked-alpha trick so Tailwind v4's
+     static scanner keeps the utility. (pst-vfp) */
+  --color-warn-tint: #f0c06a1a;
 
   /* Spacing base = 1px so numeric utilities match the Caliper px scale directly.
      Caliper's scale is 2/3/4/6/8/10/12/14/18/24/28/40 — reach those with p-2, p-6, p-40, etc. */

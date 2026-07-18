@@ -42,10 +42,13 @@ test("changing a param re-renders with a different STL", async ({ page }) => {
   const initial = await readTopLogKb(page);
 
   // Bump base_cut down so the chop removes less of the kernel, growing
-  // the resulting STL noticeably. Wait past the 250ms render debounce.
+  // the resulting STL noticeably. pst-vfp: rendering is manual now, so
+  // editing a param only marks the preview stale — click Re-render to
+  // apply it.
   const input = page.locator("#param-base_cut");
   await input.fill("2");
-  await page.waitForTimeout(400);
+  await page.getByTestId("stale-rerender").click();
+  await waitForRenderReady(page);
 
   // Log cycles through "rendering…" → a new top entry. Wait for the
   // entry to re-appear, then re-read. Scope to the desktop rail
