@@ -110,7 +110,6 @@ def _derive(p):
     d["floor_z"] = float(p.get("floor_z", 5))
     d["slot_col_pitch"] = float(p.get("slot_col_pitch", 56))
     d["slot_row_pitch"] = float(p.get("slot_row_pitch", 22))
-    d["slot_mouth"] = float(p.get("slot_mouth", 2))
     d["fig_w"] = float(p.get("fig_w", 43.5))
     d["fig_rect_h"] = float(p.get("fig_rect_h", 9))
     d["fig_depth"] = float(p.get("fig_depth", 10))
@@ -123,9 +122,10 @@ def _derive(p):
     d["body_w"] = d["grid_cols"] * _SNAP_PITCH
     d["body_d"] = d["grid_rows"] * _SNAP_PITCH
 
-    # Front figure strip (fig_depth) + a fig_floor solid floor + the drop-
-    # in mouth's extra half-width are reserved before packing (items 1+3).
-    d["cart_depth"] = d["body_d"] - d["fig_depth"] - d["fig_floor"] - d["slot_mouth"] / 2
+    # Front figure strip (fig_depth) + a fig_floor solid floor are reserved
+    # before packing (items 1+3). Slots are straight-walled (pst-d3x), so
+    # the widest cartridge cut is just slot_l deep in Y — no mouth reserve.
+    d["cart_depth"] = d["body_d"] - d["fig_depth"] - d["fig_floor"]
     d["n_slot_cols"] = max(0, floor((d["body_w"] - d["slot_w"]) / d["slot_col_pitch"]) + 1)
     d["n_slot_rows"] = max(0, floor((d["cart_depth"] - d["slot_l"]) / d["slot_row_pitch"]) + 1)
     # Phase-lock the column array's first column onto the nearest 2-cell
@@ -212,7 +212,7 @@ def _check_slot_phase_lock(d) -> list[Failure]:
         if dd["n_slot_rows"] > 0:
             wall_start = dd["body_d"] - dd["fig_depth"]
             front_cy = dd["slot_y0"] + (dd["n_slot_rows"] - 1) * dd["slot_row_pitch"]
-            front_edge = front_cy + (dd["slot_l"] + dd["slot_mouth"]) / 2
+            front_edge = front_cy + dd["slot_l"] / 2
             gap = wall_start - front_edge
             if gap < dd["fig_floor"] - 1e-6:
                 failures.append(Failure(
@@ -229,9 +229,9 @@ def _check_figure_floor(mesh, d, lift) -> list[Failure]:
     fig_floor thick separates it from the cartridge slot behind, at every
     grid/param (pst-93r items 1+3). Two claims:
 
-      (a) Arithmetic — the WIDEST cartridge cut (the drop-in mouth) at the
-          front-most row stays >= fig_floor clear of the figure-strip back
-          wall, for the default grid AND off-default corners.
+      (a) Arithmetic — the front-most straight-walled cartridge cut stays
+          >= fig_floor clear of the figure-strip back wall, for the default
+          grid AND off-default corners.
       (b) Mesh — the reserved floor directly behind each exported figure
           pocket is solid (no break-through into a slot).
     """
@@ -248,7 +248,7 @@ def _check_figure_floor(mesh, d, lift) -> list[Failure]:
             continue
         wall_start = dd["body_d"] - dd["fig_depth"]      # figure-pocket back
         front_cy = dd["slot_y0"] + (dd["n_slot_rows"] - 1) * dd["slot_row_pitch"]
-        front_edge = front_cy + (dd["slot_l"] + dd["slot_mouth"]) / 2
+        front_edge = front_cy + dd["slot_l"] / 2
         gap = wall_start - front_edge
         if gap < dd["fig_floor"] - 1e-6:
             failures.append(Failure(
