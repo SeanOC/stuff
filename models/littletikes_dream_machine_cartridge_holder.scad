@@ -23,8 +23,9 @@
 // feature pitch, never hard-coded, so they follow the grid size:
 //
 //   * CARTRIDGE SLOTS open on the +Z top face: rounded rectangular
-//     pockets (52 x 14mm interior) on a 56mm column / 22mm row pitch,
-//     with a widened drop-in mouth. Each column is PHASE-LOCKED to a
+//     pockets (52 x 14mm interior) on a 56mm column / 22mm row pitch.
+//     Straight-walled to the top rim (only the top edge is rounded over;
+//     no widened drop-in mouth). Each column is PHASE-LOCKED to a
 //     2-cell openGrid module (56mm = 2 x 28mm): its centre sits over the
 //     centre of a 2x(depth) block of cells (module centres at
 //     snap_pitch*(2k+1) = 28, 84, 140... over the snap grid), so the 52mm
@@ -41,10 +42,11 @@
 //     so it never breaks through into the cartridge slot behind.
 //
 // All +Z (top) face edges — the outer perimeter and every cartridge slot
-// mouth rim — get a top_round round-over: a hull-free quarter-round FILLET
-// approximated by a fine stack of 2D-offset layers whose inset follows a
-// circular arc (up-facing so no overhang). See top_outer_roundover /
-// slot_mouth_roundover.
+// rim — get a top_round round-over: a hull-free quarter-round FILLET
+// approximated by a stack of 2D-offset layers sampled at even ANGULAR
+// steps around the arc (thin near the top face, where the curve turns
+// horizontal), so the profile reads as a smooth curve, not a staircase
+// (up-facing so no overhang). See top_outer_roundover / slot_rim_roundover.
 //
 // This model replaces an earlier import()-of-STL attempt (pst-rll): the
 // operator-supplied mesh was 158k triangles of sliver geometry that hung
@@ -123,8 +125,7 @@ floor_z        = 5;   // @param number min=2 max=8 step=0.5 unit=mm group=cartri
 slot_col_pitch = 56;  // @param number min=54 max=90 step=0.5 unit=mm group=cartridge label="Slot column pitch (X; default 56 = 2 openGrid cells)"
 slot_row_pitch = 22;  // @param number min=18 max=40 step=0.5 unit=mm group=cartridge label="Slot row pitch (Y)"
 slot_corner_r  = 2;   // @param number min=0.5 max=6 step=0.5 unit=mm group=cartridge label="Slot corner radius"
-slot_mouth     = 2;   // @param number min=0 max=5 step=0.5 unit=mm group=cartridge label="Drop-in mouth widening (each dim)"
-top_round      = 1.2; // @param number min=0 max=3 step=0.2 unit=mm group=cartridge label="Top-edge round-over (outer rim + slot mouths; 0=off)"
+top_round      = 1.2; // @param number min=0 max=3 step=0.2 unit=mm group=cartridge label="Top-edge round-over (outer rim + slot rims; 0=off)"
 
 // ----- Figure holders (open on +Y front; count auto-fills) -----
 fig_w      = 43.5;  // @param number min=24 max=46 step=0.5 unit=mm group=figures label="Figure pocket width (dome dia.)"
@@ -157,12 +158,12 @@ body_d = grid_rows * snap_pitch;
 // figure strip (fig_depth deep) plus a solid floor behind each figure
 // pocket is RESERVED FIRST, so rows pack only into the remaining depth
 // cart_depth and never break through into the figure pockets at any
-// grid/param (pst-93r items 1+3). The reservation also subtracts the
-// drop-in mouth's extra half-width, so even the WIDEST cartridge cut stays
-// >= fig_floor clear of the figure pockets. Counts follow the footprint
+// grid/param (pst-93r items 1+3). The straight-walled slot cut is at most
+// slot_l deep in Y, so this reserve keeps even the front row >= fig_floor
+// clear of the figure pockets. Counts follow the footprint
 // (default 2x4 = 1 x 4 = 4; a full 9x8 = 4 x 9 = 36).
 fig_floor = 2;   // solid floor (mm) kept behind each figure pocket
-cart_depth = body_d - fig_depth - fig_floor - slot_mouth / 2;
+cart_depth = body_d - fig_depth - fig_floor;
 n_slot_cols = max(0, floor((body_w - slot_w) / slot_col_pitch) + 1);
 n_slot_rows = max(0, floor((cart_depth - slot_l) / slot_row_pitch) + 1);
 // Column X is PHASE-LOCKED, not just pitched: centre the array, then snap
@@ -180,7 +181,6 @@ slot_y0 = (cart_depth - (n_slot_rows - 1) * slot_row_pitch) / 2;  // first row c
 // Slot floor clamps up if the body is too shallow for the full depth, so
 // the pocket never punches through the back (keeps param sweeps valid).
 slot_bottom = max(floor_z, body_h - slot_depth);
-slot_mouth_h = 3;   // flared mouth spans the top 3mm
 
 // Figure holders auto-fill along the width; the dome radius is half the
 // pocket width so the arch always caps the straight walls cleanly.
@@ -263,19 +263,6 @@ module cartridge_pockets_2d() {
             rect([slot_w, slot_l], rounding = slot_corner_r);
 }
 
-// 2D union of the widened mouths, cut over the top slot_mouth_h only:
-// each slot gets a recessed drop-in lip (slot_mouth wider all round). A
-// step, not a taper — a per-slot tapered frustum can't be batched into
-// one 2D tool (linear_extrude scale pulls every footprint toward the
-// origin), and 40 separate frusta are exactly what made CGAL choke.
-module cartridge_mouths_2d() {
-    for (i = [0 : n_slot_cols - 1], j = [0 : n_slot_rows - 1])
-        translate([slot_x0 + i * slot_col_pitch,
-                   slot_y0 + j * slot_row_pitch])
-            rect([slot_w + slot_mouth, slot_l + slot_mouth],
-                 rounding = slot_corner_r);
-}
-
 // One figure silhouette in the (x, z) plane at column xc: a straight-
 // walled rectangle capped by a half-circle dome, flat side down at
 // floor_z, clipped at floor_z so the dome's lower half never eats the
@@ -302,19 +289,30 @@ module figure_profiles_2d() {
 // Top-face (+Z) edge round-over — a hull-free quarter-round FILLET. A true
 // BOSL2 rounding=/edges= fillet needs hull, which trips the wasm CGAL
 // applyHull() assertion (st-7x7/st-560), and a per-slot tapered frustum
-// can't be batched — so we approximate the arc with a fine stack of
-// 2D-`offset` layers whose inset follows a quarter circle instead of a
-// straight ramp, giving a smooth curved profile rather than a coarse
-// chamfer. It's the up-facing surface so there is no overhang. Both
-// families are stacks of 2D-offset layers, added to body()'s single cut
-// union so they stay ONE CGAL difference (pst-93r item 4). The small
-// default footprint keeps the finer step count cheap in the wasm sweep.
-n_top_steps = max(6, ceil(top_round / 0.15));   // ~0.15mm steps, >=6 facets
-// Circular-arc inset of layer k (0-based): a quarter-round from ~0 at the
-// fillet foot to the full top_round at the top face, so the stacked layers
-// trace a curve, not a 45deg bevel.
-function _round_off(k) =
-    top_round * (1 - sqrt(1 - pow((k + 1) / n_top_steps, 2)));
+// can't be batched — so we approximate the arc with a stack of 2D-`offset`
+// layers whose inset follows a quarter circle. It's the up-facing surface
+// so there is no overhang. Both families are stacks of 2D-offset layers,
+// added to body()'s single cut union so they stay ONE CGAL difference
+// (pst-93r item 4). The small default footprint keeps the step count cheap
+// in the wasm sweep.
+//
+// The layers are sampled at even ANGULAR steps around the arc, NOT at even
+// heights (pst-d3x). Equal-height slabs of a fillet that meets the top face
+// tangentially leave a wide flat SHELF at the very top — where the curve is
+// near-horizontal a tiny height change is a large inset change — which
+// reads as a stepped/chamfered top. Equal-angle steps stay thin in height
+// near the top (where the inset moves fast) and thin in inset near the foot
+// (where the height moves fast), so the polygonal error is spread evenly
+// and the profile reads as a genuine smooth curve at preview + in renders.
+n_top_steps = max(24, ceil(top_round / 0.05));   // even-angle layers; >=24
+// Layer boundary k (0-based) maps to arc angle theta in [0, 90]:
+//   theta = 90 * k / n         (0 at the fillet foot, 90 at the top face)
+//   z(k)  = body_h - R + R*sin(theta)     boundary height on the arc
+//   off(k)= R * (1 - cos(theta_of_layer_top))   inset at the slab's top
+// Using the inset at the slab TOP keeps every layer inside the ideal arc.
+function _round_theta(k) = 90 * k / n_top_steps;
+function _round_z(k)     = body_h - top_round + top_round * sin(_round_theta(k));
+function _round_off(k)    = top_round * (1 - cos(_round_theta(k + 1)));
 
 // Outer top perimeter: remove a margin that widens toward the top face
 // along the quarter-round arc, so the sharp top-outer edge becomes a
@@ -323,9 +321,11 @@ function _round_off(k) =
 module top_outer_roundover() {
     if (top_round > 0)
         for (k = [0 : n_top_steps - 1]) {
-            off = _round_off(k);   // arc inset, widest at the top
-            translate([0, 0, body_h - top_round + k * top_round / n_top_steps])
-                linear_extrude(top_round / n_top_steps + 0.02)
+            off = _round_off(k);            // arc inset, widest at the top
+            z0  = _round_z(k);
+            th  = _round_z(k + 1) - z0 + 0.02;
+            translate([0, 0, z0])
+                linear_extrude(th)
                     difference() {
                         translate([body_w / 2, body_d / 2])
                             square([body_w + 2, body_d + 2], center = true);
@@ -336,16 +336,18 @@ module top_outer_roundover() {
         }
 }
 
-// Cartridge slot mouths: widen each opening toward the top face along the
-// same quarter-round arc, so the slot rim gets the matching rounded fillet
-// (offset of the batched 2D mouth union).
-module slot_mouth_roundover() {
+// Cartridge slot rims: widen each straight-walled opening toward the top
+// face along the same quarter-round arc, so the slot rim gets the matching
+// rounded fillet (outward `offset` of the batched 2D slot union).
+module slot_rim_roundover() {
     if (top_round > 0)
         for (k = [0 : n_top_steps - 1]) {
-            off = _round_off(k);   // arc inset, widest at the top
-            translate([0, 0, body_h - top_round + k * top_round / n_top_steps])
-                linear_extrude(top_round / n_top_steps + 0.02)
-                    offset(off) cartridge_mouths_2d();
+            off = _round_off(k);            // arc inset, widest at the top
+            z0  = _round_z(k);
+            th  = _round_z(k + 1) - z0 + 0.02;
+            translate([0, 0, z0])
+                linear_extrude(th)
+                    offset(off) cartridge_pockets_2d();
         }
 }
 
@@ -359,16 +361,12 @@ module body() {
             translate([0, 0, slot_bottom - eps])
                 linear_extrude(body_h - slot_bottom + 2 * eps)
                     cartridge_pockets_2d();
-            if (slot_mouth > 0)
-                translate([0, 0, body_h - slot_mouth_h])
-                    linear_extrude(slot_mouth_h + eps)
-                        cartridge_mouths_2d();
             translate([0, body_d + eps, 0])
                 rotate([90, 0, 0])
                     linear_extrude(fig_depth + eps)
                         figure_profiles_2d();
             top_outer_roundover();
-            slot_mouth_roundover();
+            slot_rim_roundover();
         }
     }
 }
