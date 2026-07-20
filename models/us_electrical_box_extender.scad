@@ -32,6 +32,30 @@
 // bridging span anywhere — the frame is open front-to-back (it is a
 // spacer ring, not a closed box), so nothing needs to bridge across
 // the opening.
+//
+// === Standard US device-box conformance (pst-c6l) ===
+//
+// The defaults ARE the NEMA/industry device-box spec — this is a
+// dimensionally faithful extender, not an approximation:
+//   - single-gang face:   2.25 x 3.75 in
+//   - width by gang:      2.25 / 3.75 / 5.75 / 7.6 in for 1..4 gang
+//   - yoke lateral pitch (per gang):  1.8125 in (1-13/16)  -> screw_col_spacing_in
+//   - device-screw vertical spacing:  3.28125 in (3-9/32)  -> screw_row_spacing_in
+//   - device mounting screws:         6-32 UNC (3.505 mm major dia)
+// (The sidecar pins these defaults so a silent drift fails CI.)
+//
+// Screw-hole sizing (screw_hole_size, default 3.25 mm): the posts take
+// the device's own 6-32 mounting screws. 3.25 mm is BELOW the 3.505 mm
+// major diameter on purpose, so the screw thread-forms (self-taps) into
+// the plastic post — the extender itself becomes the new mount point.
+// This is the proven default from the source design and a deliberate
+// middle ground; pick per your assembly method (both ends are inside
+// the param's 2-5 mm range):
+//   - screws thread INTO the posts (default): 3.25 mm, or 2.85-3.0 mm
+//     for a firmer self-tap bite in softer plastic.
+//   - screws PASS THROUGH to the box ears behind: open to ~3.6 mm for
+//     a 6-32 clearance hole.
+// Kept at the source's 3.25 mm here (faithful port).
 
 include <BOSL2/std.scad>
 include <BOSL2/rounding.scad>
@@ -44,7 +68,7 @@ gang_count       = 2;    // @param integer min=1 max=4 step=1 group=box label="G
 box_depth        = 25;   // @param number min=10 max=60 step=1 unit=mm group=box label="Box depth"
 wall_thickness   = 3;    // @param number min=1.5 max=6 step=0.5 unit=mm group=box label="Wall thickness"
 mount_post_width = 12;   // @param number min=8 max=14 step=1 unit=mm group=screws label="Screw post width"
-screw_hole_size  = 3.25; // @param number min=2 max=5 step=0.05 unit=mm group=screws label="Screw hole diameter"
+screw_hole_size  = 3.25; // @param number min=2 max=5 step=0.05 unit=mm group=screws label="Screw hole diameter (6-32 self-tap; see header)"
 
 // Advanced overrides — match these to your specific box's dimensions.
 // Left without min/max on purpose: they are a matched spec for a given

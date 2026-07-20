@@ -93,4 +93,24 @@ def check(ctx):
             "wall is missing.",
         ))
 
+    # 5. Defaults conform to the standard US device-box spec (pst-c6l).
+    #    The defaults ARE the NEMA/industry numbers (documented in the
+    #    .scad header); this guard fails loudly on a silent drift so the
+    #    "spec-faithful" claim can't rot. 6-32 device screws (3.505mm
+    #    major) self-tap the 3.25mm posts — see the header for the
+    #    assembly-method reasoning; not asserted here (it's a tunable).
+    for key, want in (
+        ("box_height_in", 3.75),        # single-gang box face height
+        ("screw_row_spacing_in", 3.28125),  # device-screw vertical pitch (3-9/32)
+        ("screw_col_spacing_in", 1.8125),   # yoke lateral pitch (1-13/16)
+    ):
+        got = float(p[key])
+        if abs(got - want) > 1e-6:
+            failures.append(Failure(
+                "standards",
+                f"default {key}={got} drifted from the US device-box standard "
+                f"{want} in. This model is spec-faithful — if the change is "
+                "intentional, update the conformance note in the .scad header.",
+            ))
+
     return failures
