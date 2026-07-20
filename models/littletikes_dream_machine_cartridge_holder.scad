@@ -22,8 +22,12 @@
 // footprint — their counts are computed from the available space and the
 // feature pitch, never hard-coded, so they follow the grid size:
 //
-//   * CARTRIDGE SLOTS open on the +Z top face: rounded rectangular
-//     pockets (52 x 14mm interior) on a 56mm column / 22mm row pitch.
+//   * CARTRIDGE SLOTS open on the +Z top face: rectangular pockets with
+//     SQUARE interior vertical corners (52 x 14mm interior) on a 56mm
+//     column / 22mm row pitch. The interior corners are sharp
+//     (slot_corner_r defaults 0) so a rectangular cartridge seats
+//     without the corners pinching (pst-ge6); only the +Z slot-mouth rim
+//     is rounded over (slot_rim_roundover, below).
 //     Straight-walled to the top rim (only the top edge is rounded over;
 //     no widened drop-in mouth). Each column is PHASE-LOCKED to a
 //     2-cell openGrid module (56mm = 2 x 28mm): its centre sits over the
@@ -164,7 +168,7 @@ slot_depth     = 36;  // @param number min=10 max=40 step=1 unit=mm group=cartri
 floor_z        = 5;   // @param number min=2 max=8 step=0.5 unit=mm group=cartridge label="Pocket floor height above the back"
 slot_col_pitch = 56;  // @param number min=54 max=90 step=0.5 unit=mm group=cartridge label="Slot column pitch (X; default 56 = 2 openGrid cells)"
 slot_row_pitch = 22;  // @param number min=18 max=40 step=0.5 unit=mm group=cartridge label="Slot row pitch (Y)"
-slot_corner_r  = 2;   // @param number min=0.5 max=6 step=0.5 unit=mm group=cartridge label="Slot corner radius"
+slot_corner_r  = 0;   // @param number min=0 max=6 step=0.5 unit=mm group=cartridge label="Slot interior corner radius (0 = square)"
 top_round      = 1.2; // @param number min=0 max=3 step=0.2 unit=mm group=cartridge label="Top-edge round-over (outer rim + slot rims; 0=off)"
 
 // ----- Figure holders (open on +Y front; count auto-fills) -----
