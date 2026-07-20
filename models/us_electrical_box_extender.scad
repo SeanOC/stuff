@@ -38,7 +38,9 @@
 // The defaults ARE the NEMA/industry device-box spec — this is a
 // dimensionally faithful extender, not an approximation:
 //   - single-gang face:   2.25 x 3.75 in
-//   - width by gang:      2.25 / 3.75 / 5.75 / 7.6 in for 1..4 gang
+//   - width by gang:      2.25 / 102mm / 5.75 / 7.6 in for 1..4 gang
+//     (2-gang = 102mm operator-measured, pst-4vp; the source's 3.75in
+//      printed ~6.75mm narrow. Others are the source US-box lookup.)
 //   - yoke lateral pitch (per gang):  1.8125 in (1-13/16)  -> screw_col_spacing_in
 //   - device-screw vertical spacing:  3.28125 in (3-9/32)  -> screw_row_spacing_in
 //   - device mounting screws:         6-32 UNC (3.505 mm major dia)
@@ -89,12 +91,16 @@ screw_lateral_offset  = 0;       // @param number unit=mm group=overrides label=
 
 function inches_to_mm(inches) = inches * 25.4;
 
-// Outer box width follows the gang count via the standard US box width
-// lookup, unless overridden. (2.25 / 3.75 / 5.75 / 7.6 inches.)
+// Outer box width follows the gang count, unless overridden. The
+// extender OUTER matches the box OUTER (flush).
+//   1/3/4-gang: the source's US-box lookup (2.25 / 5.75 / 7.6 in).
+//   2-gang:     102 mm (= 4.0157 in), OPERATOR-MEASURED (pst-4vp). The
+//               source's 3.75 in (95.25 mm) printed ~6.75 mm narrower
+//               than the real box; 102 mm anchors the true 2-gang width.
 box_width_in =
     box_width_override_in != 0 ? box_width_override_in
     : gang_count == 1 ? 2.25
-    : gang_count == 2 ? 3.75
+    : gang_count == 2 ? 102 / 25.4
     : gang_count == 3 ? 5.75
     : gang_count == 4 ? 7.6
     : 0;
@@ -109,12 +115,12 @@ screw_mount_inset = inches_to_mm(box_height_in - screw_row_spacing_in) / 2;
 // defaults (gang_count = 2, override off). Keep the arithmetic below
 // current; the invariants gate fails on >1mm drift from the exported
 // STL.
-//   X = box width  = 3.75 in x 25.4 = 95.25
+//   X = box width  = 102 (operator-measured 2-gang, pst-4vp)
 //   Y = box height = 3.75 in x 25.4 = 95.25, but the round screw-post
 //       tops sit flush with the box edge and their radius reaches
 //       ~47.67 each side -> 95.34 governs
 //   Z = box depth  = 25
-PRINT_ANCHOR_BBOX = [95.25, 95.34, 25];
+PRINT_ANCHOR_BBOX = [102, 95.34, 25];
 
 // === Body (faithful port of the source union) ===
 
