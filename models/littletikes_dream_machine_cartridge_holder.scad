@@ -60,7 +60,40 @@
 // (libs/QuackWorks/openGrid/opengrid-snap.scad, openGrid by David D,
 // OpenSCAD port by metasyntactic), licensed CC BY-NC-SA 4.0 —
 // NON-COMMERCIAL. This derived model is for personal use only; do not
-// sell prints or files.
+// sell prints or files. The openConnect receiver geometry (mount_type=
+// "openconnect") is modelled NATIVELY from the openConnect spec by
+// mitufy (github.com/mitufy/opengrid-projects, openConnect connector
+// system, CC-BY 4.0) — dimensions only, no source vendored; openConnect
+// is designed for openGrid by David D.
+//
+// === Back-face MOUNTING OPTIONS (mount_type) ===
+//
+// The back face carries one of three selectable mounts (mount_type),
+// all laid out on the SAME 28mm openGrid cell grid so the footprint
+// stays an exact integer cell count whichever is chosen:
+//
+//   * "opengrid" (DEFAULT, unchanged): the openGrid snaps below. This
+//     preserves the original behaviour exactly. snap_lite /
+//     snap_every_cell only apply here.
+//   * "blank": a flat solid z=0 back with NO connector features — mount
+//     it however you like (screws, tape, your own bracket).
+//   * "openconnect": one openConnect connector receiver per cell, cut
+//     into the back. openConnect is openGrid's own 28mm-compatible
+//     connector (17 x 10.6mm, so a slot fits inside a single tile) —
+//     kept over Multiconnect, whose 25mm pitch clashes with the 28mm
+//     cell sizing. The receiver is a native dovetail slot: a narrow
+//     14.4mm mouth at the back face widening to a 17.2mm-wide pocket at
+//     2.7mm depth (the openConnect undercut that captures a connector
+//     head against straight pull-out), with a full-depth drop-in onramp
+//     at one end so a connector can be dropped in and slid to seat.
+//     Dimensions are the authoritative openConnect spec (see LICENSING).
+//     Simplifications vs the reference generator (operator may request
+//     more on review): no side nub click-detent and no 45-degree eased
+//     onramp ramp — the dovetail alone gives pull-out capture, and a
+//     straight drop-in pocket gives entry. Print NOTE: unlike the snap
+//     variant (snaps-down), an openConnect back prints cleanest with the
+//     back face UP (receivers opening upward) so the ~17mm pocket roofs
+//     don't have to bridge; flip in the slicer.
 //
 // === Print orientation (native): ZERO supports on the snap side ===
 //
@@ -99,10 +132,17 @@ $fn = 64;
 
 // === User-tunable parameters ===
 
+// ----- Back-face mount (see the MOUNTING OPTIONS header) -----
+// DEFAULT "opengrid" preserves the original behaviour exactly. `filename`
+// expands one export STL per choice (opengrid / blank / openconnect).
+mount_type = "opengrid"; // @param enum choices=opengrid|blank|openconnect group=mount label="Back-face mount" filename
+
 // ----- openGrid size (primary: whole 28mm cells) -----
 grid_cols = 2;      // @param integer min=2 max=9 step=1 group=grid label="Width (28mm openGrid cells)"
 grid_rows = 4;      // @param integer min=3 max=9 step=1 group=grid label="Height (28mm openGrid cells)"
-snap_lite = true;   // @param boolean group=grid label="Lite snaps (3.4mm instead of 6.8mm)"
+// snap_lite / snap_every_cell apply to the openGrid mount only (no-ops for
+// blank / openconnect).
+snap_lite = true;   // @param boolean group=grid label="Lite snaps (3.4mm not 6.8mm; openGrid mount)"
 body_h    = 41;     // @param number min=38 max=55 step=1 unit=mm group=grid label="Body depth out from the wall (Z)"
 body_corner_r = 3;  // @param number min=0.5 max=8 step=0.5 unit=mm group=grid label="Body vertical-corner radius"
 // Default TRUE: one lite snap per cell (grid_cols x grid_rows), the
@@ -115,7 +155,7 @@ body_corner_r = 3;  // @param number min=0.5 max=8 step=0.5 unit=mm group=grid l
 // Set FALSE for a sparse, still-cell-aligned subset (snap_sparse_cols x
 // snap_sparse_rows, evenly spread and corner-inclusive) that holds a
 // tray firmly and exports far faster (~45s with the batched pocket cuts).
-snap_every_cell = true; // @param boolean group=grid label="Snap in every cell (one per cell; default)"
+snap_every_cell = true; // @param boolean group=grid label="Snap in every cell (one per cell; openGrid mount)"
 
 // ----- Cartridge slots (open on +Z top; counts auto-fill) -----
 slot_w         = 52;  // @param number min=30 max=56 step=0.5 unit=mm group=cartridge label="Cartridge slot width (X)"
@@ -133,9 +173,11 @@ fig_rect_h = 9;     // @param number min=3 max=13 step=0.5 unit=mm group=figures
 fig_depth  = 10;    // @param number min=5 max=18 step=0.5 unit=mm group=figures label="Figure pocket depth into front"
 fig_pitch  = 49.25; // @param number min=47 max=90 step=0.25 unit=mm group=figures label="Figure pocket pitch (X)"
 
-// @preset id="default" label="Default (2x4 tile, one snap per cell)" grid_cols=2 grid_rows=4 snap_lite=true snap_every_cell=true
-// @preset id="full_holder" label="Full holder (9x8 cells)" grid_cols=9 grid_rows=8 snap_lite=true snap_every_cell=true
+// @preset id="default" label="Default (2x4 tile, openGrid snaps)" mount_type=opengrid grid_cols=2 grid_rows=4 snap_lite=true snap_every_cell=true
+// @preset id="full_holder" label="Full holder (9x8 cells)" mount_type=opengrid grid_cols=9 grid_rows=8 snap_lite=true snap_every_cell=true
 // @preset id="sparse_snaps" label="Sparse snaps (faster CGAL export)" snap_every_cell=false
+// @preset id="blank_back" label="Blank back (no connector features)" mount_type=blank
+// @preset id="openconnect" label="openConnect receivers (2x4 tile)" mount_type=openconnect grid_cols=2 grid_rows=4
 
 // === Derived ===
 
@@ -143,7 +185,9 @@ snap_pitch = 28;    // openGrid tile pitch
 snap_w     = 24.8;  // snap footprint
 snap_h     = snap_lite ? 3.4 : 6.8;
 weld       = 0.02;  // embed of snap tops into the back face (st-v7k)
-body_lift  = snap_h - weld;
+// Lift the body onto the snap tops for the openGrid mount; the blank and
+// openConnect mounts have no snaps, so the back face sits flat on the bed.
+body_lift  = mount_type == "opengrid" ? snap_h - weld : 0;
 
 // Footprint derives from the cell count: an exact integer openGrid grid,
 // so snaps land on cell centres and the back face is a clean N x M grid.
@@ -239,6 +283,62 @@ module grid_snaps() {
     for (i = snap_col_idx, j = snap_row_idx)
         translate([(i + 0.5) * snap_pitch, (j + 0.5) * snap_pitch, 0])
             welded_snap();
+}
+
+// === openConnect receivers (mount_type = "openconnect") ===
+//
+// A native openConnect connector receiver, one per cell, cut into the
+// back (z=0) face. Dimensions are the authoritative openConnect spec
+// (mitufy, CC-BY 4.0 — see LICENSING); modelled NATIVELY rather than
+// vendoring the reference generator, which needs BOSL2 struct/newer-trig
+// features our pinned BOSL2 lacks and leans on hull()/diff() that trip
+// the wasm CGAL path this model is built to avoid (st-7x7/st-560).
+//
+// Geometry: a dovetail T-slot running along Y. Its X-Z cross-section is a
+// narrow mouth (oc_mouth_w) at the back face widening at 45 degrees to a
+// wide pocket (oc_deep_w) at oc_depth — the openConnect undercut that
+// captures a connector head against straight (-Z) pull-out. A full-depth
+// rectangular drop-in onramp at the +Y end breaches the face so a
+// connector can be dropped in and slid to seat. Built from a single
+// polygon linear_extrude plus one cube — no hull, wasm-safe — so all
+// per-cell receivers batch into body()'s one cut union (one CGAL diff).
+oc_side_cl  = 0.10;   // openConnect slot side clearance (spec)
+oc_depth_cl = 0.10;   // openConnect slot depth clearance (spec)
+oc_ang      = tan(22.5);           // chamfer-plane trig adjust (spec)
+oc_neck_h   = 1.4;                 // OCHEAD middle (neck) height
+oc_mouth_h  = 0.6 - oc_ang * oc_side_cl;                // flat at the mouth
+oc_deep_h   = 0.6 + oc_ang * oc_side_cl + oc_depth_cl;  // flat at the pocket
+oc_depth    = oc_mouth_h + oc_neck_h + oc_deep_h;       // total = 2.70mm
+oc_mouth_w  = 14.2 + 2 * oc_side_cl;   // narrow mouth width (X) = 14.4
+oc_deep_w   = 17.0 + 2 * oc_side_cl;   // wide pocket width (X)  = 17.2
+oc_foot_y   = 10.6 + 2 * oc_side_cl;   // connector footprint depth (Y) = 10.8
+oc_move     = 10.6;                    // slide distance to seat (spec)
+oc_slot_len = oc_foot_y + oc_move;     // dovetail slot length (Y) = 21.4
+oc_ramp_len = oc_foot_y;               // drop-in onramp length (Y)
+oc_breach   = 0.6;                     // extend below z=0 for a clean cut
+
+// One receiver at the origin: mouth centred on z=0, cavity into +Z.
+module openconnect_receiver() {
+    m2 = oc_mouth_w / 2;
+    d2 = oc_deep_w / 2;
+    z1 = oc_mouth_h;                 // end of the vertical mouth flat
+    z2 = oc_mouth_h + oc_neck_h;     // end of the 45-degree neck
+    z3 = oc_depth;                   // pocket roof
+    // X-Z dovetail cross-section, extruded along Y.
+    pts = [[-m2, -oc_breach], [-m2, z1], [-d2, z2], [-d2, z3],
+           [ d2, z3], [ d2, z2], [ m2, z1], [ m2, -oc_breach]];
+    translate([0, -oc_slot_len / 2, 0])
+        rotate([-90, 0, 0]) linear_extrude(oc_slot_len) polygon(pts);
+    // Full-depth drop-in onramp at the +Y end.
+    translate([-d2, oc_slot_len / 2 - oc_ramp_len, -oc_breach])
+        cube([oc_deep_w, oc_ramp_len, z3 + oc_breach]);
+}
+
+// One receiver in every cell centre (mirrors the dense snap layout).
+module openconnect_receivers() {
+    for (i = [0 : grid_cols - 1], j = [0 : grid_rows - 1])
+        translate([(i + 0.5) * snap_pitch, (j + 0.5) * snap_pitch, 0])
+            openconnect_receiver();
 }
 
 // === Body ===
@@ -367,9 +467,13 @@ module body() {
                         figure_profiles_2d();
             top_outer_roundover();
             slot_rim_roundover();
+            // openConnect receivers cut into the back (z=0..2.7), well
+            // clear of the cartridge floors (z>=floor_z=5). Batched into
+            // this same cut union so they stay one CGAL difference.
+            if (mount_type == "openconnect") openconnect_receivers();
         }
     }
 }
 
 translate([0, 0, body_lift]) body();
-grid_snaps();
+if (mount_type == "opengrid") grid_snaps();

@@ -50,6 +50,19 @@ a broken floor, or a shattered snap weld:
      relieved by the top_round chamfer — the sharp top-outer corner probes
      void while the wall below it stays solid. (pst-93r item 4.)
 
+  8. **Blank mount is a flat solid back.** The mount_type="blank" export is
+     a watertight single body with a flat z=0 back and ZERO connector
+     features — nothing below the back face, every cell centre solid.
+
+  9. **openConnect mount has one receiver per cell.** The
+     mount_type="openconnect" export is a watertight single body whose back
+     carries exactly grid_cols x grid_rows openConnect receiver cavities on
+     the 28mm cell grid, with solid ribs between adjacent cells. (pst-dg3.)
+
+Claims 8-9 load the mount_type filename-grid siblings
+(exports/<stem>-blank.stl / -openconnect.stl) directly, since the
+built-in driver only hands the sidecar the default (openGrid) variant.
+
 Uses mesh.contains() and vertex extents only (no shapely/scipy — CI has
 neither). Probe frame is world coordinates: the body is lifted body_lift
 = snap_h - 0.02 onto the snap tops, so a body-frame height h sits at
@@ -59,8 +72,10 @@ world z = body_lift + h.
 from __future__ import annotations
 
 from math import floor
+from pathlib import Path
 
 import numpy as np
+import trimesh
 
 from scripts.invariants import Failure, as_default_params, expect_connected_solids
 
@@ -68,6 +83,33 @@ _CONTACT_EPS_MM = 0.05
 _SNAP_PITCH = 28.0
 _SNAP_W = 24.8
 _CONTAINS_VOTES = 5
+
+MODELS_DIR = Path(__file__).resolve().parent
+EXPORTS_DIR = MODELS_DIR.parent / "exports"
+# openConnect receiver cavity depth (mount_type="openconnect"): the native
+# dovetail is 2.70mm deep, so a probe at z=1.2 sits inside every receiver.
+_OC_PROBE_Z = 1.2
+
+
+def _component_count(mesh) -> int:
+    """Connected components via union-find over face adjacency (CI has no
+    scipy/networkx for trimesh.split) — mirrors the blower-mount sidecar."""
+    n = len(mesh.faces)
+    if n == 0:
+        return 0
+    parent = list(range(n))
+
+    def find(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    for a, b in mesh.face_adjacency:
+        ra, rb = find(int(a)), find(int(b))
+        if ra != rb:
+            parent[ra] = rb
+    return len({find(i) for i in range(n)})
 
 
 def _contains(mesh, pts) -> np.ndarray:
@@ -159,6 +201,11 @@ def check(ctx):
     mesh = ctx["stl"]
     lift = d["body_lift"]
 
+    # ctx["stl"] is the DEFAULT (mount_type="opengrid") variant — the
+    # filename grid produces no bare <stem>.stl, so check-invariants
+    # resolves the default enum value. The claims below are the openGrid
+    # back; the blank / openConnect backs are checked on their own
+    # exports/<stem>-<value>.stl siblings (mirrors the blower mount).
     failures += expect_connected_solids(ctx, 1)
     failures += _check_footprint(mesh, d)
     failures += _check_snaps(mesh, d)
@@ -167,6 +214,109 @@ def check(ctx):
     failures += _check_figures(mesh, d, lift)
     failures += _check_figure_floor(mesh, d, lift)
     failures += _check_top_roundover(mesh, d, lift)
+    failures += _check_blank_variant(ctx["stem"], d)
+    failures += _check_openconnect_variant(ctx["stem"], d)
+    return failures
+
+
+def _load_variant(stem: str, value: str, tag: str) -> tuple[object, list[Failure]]:
+    """Load exports/<stem>-<value>.stl (a mount_type filename-grid sibling),
+    asserting it exists, is watertight, and is a single body."""
+    path = EXPORTS_DIR / f"{stem}-{value}.stl"
+    if not path.exists():
+        return None, [Failure(
+            f"{tag}-export",
+            f"{path.name} missing — run scripts/export-all.py (the "
+            "mount_type filename grid should produce it)",
+        )]
+    mesh = trimesh.load(str(path))
+    failures: list[Failure] = []
+    if not bool(mesh.is_watertight):
+        failures.append(Failure(f"{tag}-watertight", f"{path.name} is not watertight"))
+    n = _component_count(mesh)
+    if n != 1:
+        failures.append(Failure(
+            f"{tag}-topology",
+            f"{path.name} has {n} connected components, expected 1",
+        ))
+    return mesh, failures
+
+
+def _cell_centres(d) -> list[tuple[float, float]]:
+    return [((i + 0.5) * _SNAP_PITCH, (j + 0.5) * _SNAP_PITCH)
+            for i in range(d["grid_cols"]) for j in range(d["grid_rows"])]
+
+
+def _check_blank_variant(stem: str, d) -> list[Failure]:
+    """mount_type="blank": a flat solid z=0 back with ZERO connector
+    features. The back face sits flat on the bed (no lift, no snaps hanging
+    below z=0) and every cell centre is SOLID just inside the back (no
+    openConnect cavity, no snap void)."""
+    mesh, failures = _load_variant(stem, "blank", "blank")
+    if mesh is None:
+        return failures
+    # No connector geometry protrudes below the flat back face.
+    if float(mesh.bounds[0, 2]) < -0.05:
+        failures.append(Failure(
+            "blank-flat-back",
+            f"blank back has material at z={float(mesh.bounds[0, 2]):.2f} "
+            "below the flat z=0 face — a connector feature leaked in",
+        ))
+    # The base is a solid slab: cell centres (and a mid-cell lattice) are
+    # solid just above the back face — no receiver cavities were cut.
+    centres = _cell_centres(d)
+    probes = [[cx, cy, z] for cx, cy in centres for z in (0.4, _OC_PROBE_Z)]
+    void = ~_contains(mesh, probes)
+    if bool(void.any()):
+        bad = [[round(probes[k][0], 1), round(probes[k][1], 1)]
+               for k in np.where(void)[0]]
+        failures.append(Failure(
+            "blank-connector-features",
+            f"{int(void.sum())} probe(s) in the blank back are VOID "
+            f"(first {bad[:4]}) — the back is not a flat solid slab",
+        ))
+    return failures
+
+
+def _check_openconnect_variant(stem: str, d) -> list[Failure]:
+    """mount_type="openconnect": one openConnect receiver per cell, on the
+    28mm grid. Every cell centre is an open receiver cavity (VOID just
+    inside the back face), the cavity count equals grid_cols*grid_rows, and
+    the ribs between cells stay solid (receivers don't merge across cells)."""
+    mesh, failures = _load_variant(stem, "openconnect", "openconnect")
+    if mesh is None:
+        return failures
+    centres = _cell_centres(d)
+    n_expected = d["grid_cols"] * d["grid_rows"]
+    # Each cell centre must be an open cavity at the mouth AND deeper in.
+    cav = [[cx, cy, z] for cx, cy in centres for z in (0.1, _OC_PROBE_Z)]
+    solid = _contains(mesh, cav)
+    # Count cells whose BOTH probes read void (a real through-mouth cavity).
+    per_cell = (~solid).reshape(len(centres), 2).all(axis=1)
+    n_recv = int(per_cell.sum())
+    if n_recv != n_expected:
+        missing = [[round(centres[k][0], 1), round(centres[k][1], 1)]
+                   for k in np.where(~per_cell)[0]]
+        failures.append(Failure(
+            "openconnect-count",
+            f"{n_recv}/{n_expected} openConnect receivers present on the "
+            f"cell grid (missing cells {missing[:4]}) — receiver "
+            "count/placement drifted",
+        ))
+    # Ribs at the cell boundaries stay solid (17.2mm-wide receivers centred
+    # in 28mm cells leave >=5mm walls; a merge would read void here).
+    ribs = []
+    for i in range(d["grid_cols"] - 1):
+        for cy in {c[1] for c in centres}:
+            ribs.append([(i + 1) * _SNAP_PITCH, cy, _OC_PROBE_Z])
+    if ribs:
+        rib_void = ~_contains(mesh, ribs)
+        if bool(rib_void.any()):
+            failures.append(Failure(
+                "openconnect-rib",
+                f"{int(rib_void.sum())} cell-boundary rib probe(s) are VOID "
+                "— adjacent openConnect receivers merged across a cell wall",
+            ))
     return failures
 
 
