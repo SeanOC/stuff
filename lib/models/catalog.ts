@@ -129,4 +129,9 @@ export const CATALOG: Record<string, CatalogEntry> = {
     blurb:
       "Wall-mounted holder for Little Tikes Dream Machine cartridges and figures — an openGrid tray sized in whole 28mm cells that auto-fills with 51x14 cartridge slots (top) and rounded figure pockets (front). Pick a back-face mount: openGrid lite snaps (default), a blank flat back, or openConnect receivers — all on the same 28mm cell grid. The preview shows a compact 2x4-cell tile; scale the cell count up to 9x8 for the full-size holder.",
   },
+  us_electrical_box_extender: {
+    categoryId: "household",
+    blurb:
+      "US electrical box extension ring that builds out a 1-4 gang box flush with a thick wall. Ports a proven MakerWorld design: rounded rect_tube shell with per-gang screw posts on the standard US box hole spacing.",
+  },
 };
