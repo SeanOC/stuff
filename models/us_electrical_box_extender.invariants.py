@@ -12,8 +12,9 @@ PRINT_ANCHOR_BBOX drift):
    surface as an orphan component; this nails topology explicitly.
 
 2. **Outer width scales with gang count.** The box width follows the
-   standard US device-box lookup (2.25 / 3.75 / 5.75 / 7.6 in). At the
-   default gang count the X bbox must equal that inch value x 25.4.
+   gang lookup (2.25 in / 102 mm / 5.75 in / 7.6 in for 1..4 gang; the
+   2-gang value is operator-measured, pst-4vp). At the default gang
+   count the X bbox must equal the mapped width.
 
 3. **Screw-hole count is gang-dependent.** Each gang contributes one
    column of 2 posts, each a through-hole; the shell itself is one
@@ -30,9 +31,11 @@ from __future__ import annotations
 
 from scripts.invariants import Failure, as_default_params, expect_connected_solids
 
-# Standard US device-box outer width by gang count, inches.
-_BOX_WIDTH_IN = {1: 2.25, 2: 3.75, 3: 5.75, 4: 7.6}
+# US device-box outer width by gang count, inches. 1/3/4-gang are the
+# source's US-box lookup; 2-gang = 102mm operator-measured (pst-4vp),
+# expressed in inches (102 / 25.4) so this stays a single source of truth.
 _IN_TO_MM = 25.4
+_BOX_WIDTH_IN = {1: 2.25, 2: 102 / _IN_TO_MM, 3: 5.75, 4: 7.6}
 
 
 def check(ctx):
