@@ -20,10 +20,21 @@
 //   77mm spraycan: can_diameter=77, clearance=0.75, ring_height=35,
 //                  gusset_back_w=32, gusset_front_w=10, gusset_depth=6,
 //                  gusset_bottom_chamfer=true
+//
+// REPRINT NOTE (pst-9sw, 2026-07-21): the backer moved from QuackWorks'
+// BOSL2 Multiconnect module to its BOSL2-free master copy, which changes
+// slot retention from the v1 cone dimple to the v2 triangular snap — the
+// current official Multiconnect mechanism. FIT IS UNCHANGED: shoulder
+// (10.15), entry ramp and 25mm pitch are byte-identical, only the
+// non-engaging back pocket deepens 4.15 -> 5mm. Retention *feel* differs
+// (click into the rail rather than seat into a dimple), so a reprint will
+// not match an already-printed part's action. Slot z-span, entry on-ramps
+// and bbox are unchanged (measured against the pre-migration export, not
+// merely assumed).
 
 include <BOSL2/std.scad>
 include <BOSL2/rounding.scad>
-use <QuackWorks/Modules/multiconnectSlotDesignBOSL.scad>
+use <QuackWorks/Modules/multiconnectSlotDesign.scad>
 
 $fn = 64;
 
@@ -88,19 +99,27 @@ PRINT_ANCHOR_BBOX = [77, 83.5, 80];
 
 // === Geometry ===
 
+// multiconnectBack() anchors at a corner — X 0..W, Y -t..0, Z 0..H, with the
+// slots recessed into the -Y (wall) face — so it needs re-centering on the
+// origin to sit in the frame the rest of this file assumes. slotVerticalOffset
+// lifts the slot ladder 2.85mm to the standard Multiconnect height (upstream's
+// backHeight-13 placement is that much low).
 module multiconnect_backer() {
-    multiconnectGenerator(
-        width = backer_w,
-        height = slot_region_height,
-        multiconnectPartType = "Backer",
-        distanceBetweenSlots = slot_spacing_mm,
-        slotOrientation = "Vertical"
-    );
+    translate([-backer_w / 2, backer_thickness / 2, -slot_region_height / 2])
+        multiconnectBack(
+            backWidth = backer_w,
+            backHeight = slot_region_height,
+            distanceBetweenSlots = slot_spacing_mm,
+            backThickness = backer_thickness,
+            slotVerticalOffset = 2.85,
+            connectVersion = "v2",
+            quickRelease = false
+        );
 }
 
-// Solid cap above the multiconnect slot mouths. multiconnectGenerator anchors
-// each slot's rounded-end opening to the top of its cuboid with shiftout=0.01,
-// so without this band the slot domes break the panel's top edge.
+// Solid cap above the multiconnect slot mouths. The backer places each slot's
+// rounded dome end just under the top of its panel, so without this band the
+// domes break the panel's top edge.
 module top_band() {
     translate([0, 0, slot_region_height / 2 - 0.01])
         linear_extrude(top_band_height + 0.01)
@@ -173,8 +192,10 @@ module gusset() {
     }
 }
 
-// Sibling expressions at root: multiconnectGenerator uses BOSL2 diff()
-// tags internally and breaks when nested inside an outer union().
+// Sibling expressions at root. The backer no longer requires this (the
+// non-BOSL multiconnectBack() is a plain difference(), not a BOSL2 tagged
+// diff() that broke when nested inside an outer union()) — kept because
+// root siblings implicitly union and the layout reads the same either way.
 multiconnect_backer();
 top_band();
 cradle();

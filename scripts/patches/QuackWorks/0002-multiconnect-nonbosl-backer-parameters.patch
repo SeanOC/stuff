@@ -1,0 +1,113 @@
+pst-9sw: give QuackWorks Modules/multiconnectSlotDesign.scad (the non-BOSL
+Multiconnect backer) real module parameters, so a use<>-ing model can set
+what upstream only exposes as file-scope Customizer variables.
+
+Context: pst-7bs showed the BOSL2-based sibling backer
+(Modules/multiconnectSlotDesignBOSL.scad) cannot survive the BOSL2 bump to
+v2.0.747 — on the wasm engine it aborts or hangs in EVERY configuration,
+including with both slot dimples and on-ramps disabled. This file is the
+BOSL2-free master copy of the same Multiconnect backer (plain cube /
+difference / linear_extrude / rotate_extrude / cylinder, zero BOSL2
+references), so it is immune to that break and to any future BOSL2
+attachment-API drift. cylindrical_holder_slot and ego_lb6500_blower_mount
+now use it instead.
+
+The blocker was purely API surface. multiconnectBack() took only
+(backWidth, backHeight, distanceBetweenSlots); everything else — backer
+thickness, slot ladder position, v1-dimple vs v2-snap retention — lived in
+file-scope Customizer variables that `use <>` does not import and a model
+cannot set. Three of those we genuinely need per call site:
+
+1. backThickness — was hardcoded 6.5 in the module's let(). ego welds its
+   backer into the plate face and needs 6.95 (backer_thickness + weld), and
+   the thickness is @param-tunable 5.5..8 there. Promoted to a parameter,
+   default 6.5, so upstream behaviour is unchanged.
+
+   Upstream anchors the slot cut 2.35 mm in from the panel's y=0 (body-side)
+   face, so merely widening the panel would deepen the slot along with it.
+   The slot must stay a fixed 4.15 mm recess measured from the y=-t WALL
+   face, with the extra meat added behind it — hence the matching
+   `-(backThickness-6.5)` term on the slot translate. It is zero at the
+   default thickness, so upstream geometry is untouched, and it keeps the
+   engaging profile identical at every other thickness.
+
+2. slotVerticalOffset — the slot ladder is placed at `backHeight-13`, which
+   sits 2.85mm lower than the BOSL backer put it (that one defaults
+   slotVerticalOffset=2.85, and 13-10.15-2.85 == 0). Measured on a 50x75
+   backer: slot void top z=34.63 here vs 37.49 there. Both models pass 2.85
+   to keep their shipped slot z-span. Default 0 preserves upstream placement.
+
+3. connectVersion / quickRelease — retention style, threaded explicitly into
+   slotTool() instead of being read from file scope, so the choice is
+   per-call rather than global. Named distinctly from the file-scope
+   multiConnectVersion / slotQuickRelease so neither shadows the other;
+   slotTool still defaults to the globals, so the file's own top-level
+   Customizer call behaves exactly as upstream. Both models pass
+   "v2" / false, which is also what the file's defaults say.
+
+No geometry changes at default arguments. Unlike the BOSL2-compat shim this
+replaces, nothing here tracks a moving BOSL2 API — this file does not
+reference BOSL2 at all — so it should not rot across BOSL2 bumps. Drop it if
+upstream promotes these to module parameters.
+
+diff --git a/Modules/multiconnectSlotDesign.scad b/Modules/multiconnectSlotDesign.scad
+index fdc30a7..6769086 100644
+--- a/Modules/multiconnectSlotDesign.scad
++++ b/Modules/multiconnectSlotDesign.scad
+@@ -29,24 +29,24 @@ multiconnectBack(backWidth = totalWidth, backHeight = totalHeight, distanceBetwe
+ 
+ //BEGIN MODULES
+ //Slotted back Module
+-module multiconnectBack(backWidth, backHeight, distanceBetweenSlots)
++module multiconnectBack(backWidth, backHeight, distanceBetweenSlots, backThickness = 6.5, slotVerticalOffset = 0, connectVersion = "v2", quickRelease = false)
+ {
+     //slot count calculates how many slots can fit on the back. Based on internal width for buffer. 
+     //slot width needs to be at least the distance between slot for at least 1 slot to generate
+-    let (backWidth = max(backWidth,distanceBetweenSlots), backHeight = max(backHeight, 25),slotCount = floor(backWidth/distanceBetweenSlots), backThickness = 6.5){
++    let (backWidth = max(backWidth,distanceBetweenSlots), backHeight = max(backHeight, 25),slotCount = floor(backWidth/distanceBetweenSlots)){
+         difference() {
+             translate(v = [0,-backThickness,0]) cube(size = [backWidth,backThickness,backHeight]);
+             //Loop through slots and center on the item
+             //Note: I kept doing math until it looked right. It's possible this can be simplified.
+             for (slotNum = [0:1:slotCount-1]) {
+-                translate(v = [distanceBetweenSlots/2+(backWidth/distanceBetweenSlots-slotCount)*distanceBetweenSlots/2+slotNum*distanceBetweenSlots,-2.35+slotDepthMicroadjustment,backHeight-13]) {
+-                    color(c = "red")  slotTool(backHeight);
++                translate(v = [distanceBetweenSlots/2+(backWidth/distanceBetweenSlots-slotCount)*distanceBetweenSlots/2+slotNum*distanceBetweenSlots,-2.35-(backThickness-6.5)+slotDepthMicroadjustment,backHeight-13+slotVerticalOffset]) {
++                    color(c = "red")  slotTool(backHeight, connectVersion, quickRelease);
+                 }
+             }
+         }
+     }
+     //Create Slot Tool
+-    module slotTool(totalHeight) {
++    module slotTool(totalHeight, connectVersion = multiConnectVersion, quickRelease = slotQuickRelease) {
+         scale(v = slotTolerance)
+         //slot minus optional dimple with optional on-ramp
+         let (slotProfile = [[0,0],[10.15,0],[10.15,1.2121],[7.65,3.712],[7.65,5],[0,5]])
+@@ -66,7 +66,7 @@ module multiconnectBack(backWidth, backHeight, distanceBetweenSlots)
+                                 polygon(points = slotProfile);
+                             
+                             // Snap cutout
+-                            if (slotQuickRelease == false && multiConnectVersion == "v2")
++                            if (quickRelease == false && connectVersion == "v2")
+                                 translate(v= [10.15,0,0])
+                                 rotate(a= [-90,0,0])
+                                 linear_extrude(height = 5)  // match slot height (5mm)
+@@ -80,7 +80,7 @@ module multiconnectBack(backWidth, backHeight, distanceBetweenSlots)
+                                     polygon(points = slotProfile);
+                                 
+                                 // Snap cutout
+-                                if (slotQuickRelease == false && multiConnectVersion == "v2")
++                                if (quickRelease == false && connectVersion == "v2")
+                                     translate(v= [10.15,0,0])
+                                     rotate(a= [-90,0,0])
+                                     linear_extrude(height = 5)  // match slot height (5mm)
+@@ -95,7 +95,7 @@ module multiconnectBack(backWidth, backHeight, distanceBetweenSlots)
+                                 color(c = "orange") cylinder(h = 5, r1 = 12, r2 = 10.15);
+             }
+             //dimple
+-            if (slotQuickRelease == false && multiConnectVersion == "v1")
++            if (quickRelease == false && connectVersion == "v1")
+                 scale(v = dimpleScale) 
+                 rotate(a = [90,0,0,]) 
+                     rotate_extrude($fn=50) 

@@ -25,7 +25,15 @@ used by models (`grep` over `models/*.scad`). NopSCADlib / threads-scad /
 MCAD rows in `libs/README.md` are an available-libraries menu, not active
 dependencies — nothing to gate.
 
-### BOSL2 hold (st-kls, re-verified 2026-07-11)
+### BOSL2 hold (st-kls, re-verified 2026-07-11) — SUPERSEDED 2026-07-21
+
+> **Superseded by pst-9sw.** The pin is now `fbcdfdd5` (v2.0.747). The hold
+> below was dissolved not by patching the vector-spin call sites it names,
+> but by dropping both files that contain them: `snapConnector.scad` was
+> already unused, and the 2 shipped models moved to QuackWorks' BOSL2-free
+> copy of the same backer, `Modules/multiconnectSlotDesign.scad`. Nothing in
+> the catalog reaches a vector-spin site now. See `libs/README.md`.
+> The analysis below is kept as the record of why the pin was held.
 
 The pin was rolled back from `663cd7c` to `456fcd8` on 2026-04-17 (st-kls)
 because BOSL2 PR #1475 tightened `attachable()` to assert
