@@ -1,4 +1,4 @@
-"""Invariants for the Apple TV 4th-gen openGrid cradle (pst-hn2).
+"""Invariants for the Apple TV 4th-gen VERTICAL openGrid cradle (pst-e1v).
 
 Built-ins (watertight, orphan fragments, triangle ceiling,
 PRINT_ANCHOR_BBOX drift, preset validity) cover the mesh basics. The
@@ -15,43 +15,57 @@ extras here pin the claims this model exists for:
      the device dimensions demand it — this recomputes that rule and
      fails if the plate drifts off it.
 
-  3. **Snap array on the 28mm pitch, spanning the corner tiles.** The
+  3. **The device is held VERTICALLY.** The bead's headline claim, and
+     the one a regression to the old horizontal tray would break
+     loudest: total reach off the bed must be exactly the snap stack
+     plus plate, back relief, device thickness and lip — i.e. the
+     device stands on edge rather than lying in a tray cantilevered
+     ~100mm off the panel.
+
+  4. **Snap array on the 28mm pitch, spanning the corner tiles.** The
      bed-contact patch (z ~ 0) must span exactly (units - 1) * 28 +
      24.8 per axis. A drifted pitch or a snap that moved off its corner
      tile changes this span, and contact existing at z=0 at all proves
      the snaps-down print orientation.
 
-  4. **Directional snaps, strong nub UP the wall.** The whole mount
-     depends on this: the tray cantilevers a 425g device, so the
-     lever-out load must bear on the rigid 0.8mm front hook, not the
-     0.4mm flexy click side. The front nub protrudes measurably further
-     than the other three (13.1mm vs 12.3-12.7mm off the shipped mesh),
-     so a radial probe at 13.0mm from each snap centre must hit solid
-     at +Y and air at -Y. A snap rotated the wrong way inverts that
-     pair. Full-depth snaps only — the lite variant has no nub band at
-     this height.
+  5. **Directional snaps, strong nub UP the wall.** The device hangs
+     off the panel, so the lever-out load must bear on the rigid 0.8mm
+     front hook, not the 0.4mm flexy click side. The front nub
+     protrudes measurably further than the other three (13.1mm vs
+     12.3-12.7mm off the shipped mesh), so a radial probe at 13.0mm
+     from each snap centre must hit solid at +Y and air at -Y. A snap
+     rotated the wrong way inverts that pair. Full-depth snaps only —
+     the lite variant has no nub band at this height.
 
-  5. **The device envelope is actually clear.** A grid spanning the
-     full device_w x 35mm x device_d box the holder claims to hold must
-     be entirely OUTSIDE the solid. This is what catches a pocket that
-     silently shrank, a rib or lead-in that grew into the device, or an
-     export that dropped the cavity cut.
+  6. **The device envelope is actually clear.** A grid spanning the
+     full device_w (X) x device_h (Y, up the wall) x device_t (Z, off
+     the wall) box must be entirely OUTSIDE the solid. This catches a
+     pocket that silently shrank, a lip or land that grew into the
+     device, or an export that dropped the pocket cut.
 
-  6. **The front lip retains.** Material must stand above the pocket
-     floor just forward of the pocket, or the device slides straight
-     out of a cantilevered tray. Probed on the 45deg ramp band.
+  7. **The shelf is under the device, on both sides of the cable
+     cutout.** A cradle whose shelf vanished (or whose cable cutout ate
+     it) drops a 425g device down the wall.
 
-  7. **The rear port cutout is open and the rib ears are not.** The
-     plugs face the wall; if the cutout closes, the holder is unusable
-     with a cable attached. The paired ear probe stops that check from
-     passing on a rib that vanished entirely (which would let the
-     device slide back and foul its own plugs).
+  8. **The rails retain sideways, and their lips overlap the device's
+     front face.** The lip probe sits at a radius INSIDE the device's
+     own width, so a lip that shrank below real overlap fails even
+     though it still exists. Paired with an air probe on the pocket
+     centreline at the same height, so the check cannot pass on a
+     pocket that closed over.
 
-  8. **Floor slots open, floor web intact.** Both rows — pocket vents
-     (the warm device's only airflow) and plenum cable drops — must be
-     through-holes, and the web between neighbours must stay solid: the
-     floor is the cantilever's tension face, so slots merging into one
-     opening would be a real structural regression.
+  9. **The cable cutout is open, full pocket depth.** Ports face down;
+     if the cutout closes there is nowhere for the plug bodies to go
+     and the holder is unusable with anything plugged in.
+
+ 10. **The back-relief channel is open and the lands are solid.** The
+     device is passively cooled through its case — pressed flat against
+     the plate it cooks. The two lands hold it off; the channel between
+     them is the chimney.
+
+ 11. **Plate vent slots are through-holes and the webs between them
+     survive.** They open that channel to the panel lattice. Merged
+     slots would also mean the cut drifted toward a snap footprint.
 """
 
 from __future__ import annotations
@@ -70,9 +84,8 @@ _SNAP_W = 24.8
 # click side 12.3mm, flanks 12.6mm), at the nub band's mid-height.
 _NUB_PROBE_R = 13.0
 _NUB_PROBE_Z = 4.2
-# Device height is fixed by the model's reason to exist (Apple TV HD is
-# 35mm tall); only the plan dimensions are parametric.
-_DEVICE_H = 35.0
+_MIN_WALL = 2.4
+_WELD = 0.02
 
 
 def _inside(ctx, points):
@@ -104,46 +117,72 @@ def check(ctx):
     failures.extend(expect_connected_solids(ctx, 1))
 
     device_w = p.get("device_w", 98)
-    device_d = p.get("device_d", 98)
+    device_h = p.get("device_h", 98)
+    device_t = p.get("device_t", 35)
     fit_clearance = p.get("fit_clearance", 1)
-    floor_t = p.get("floor_t", 3)
     plate_t = p.get("plate_t", 4)
-    wall_h = p.get("wall_h", 20)
-    rib_h = p.get("rib_h", 8)
-    port_gap = p.get("port_gap", 20)
-    port_cutout_w = p.get("port_cutout_w", 62)
-    slot_count = int(p.get("slot_count", 4))
-    slot_w = p.get("slot_w", 9)
+    shelf_rise = p.get("shelf_rise", 10)
+    shelf_t = p.get("shelf_t", 4)
+    back_relief = p.get("back_relief", 2)
+    lip_reach = p.get("lip_reach", 3)
+    land_w = p.get("land_w", 12)
+    cable_w = p.get("cable_w", 78)
+    cable_x = p.get("cable_x", 0)
+    vent_count = int(p.get("vent_count", 3))
+    vent_w = p.get("vent_w", 10)
     snap_lite = bool(p.get("snap_lite", False))
 
     # Mirror of the .scad's Derived block — keep the two in step.
     pocket_w = device_w + 2 * fit_clearance
-    pocket_d = device_d + 2 * fit_clearance
-    body_h = floor_t + wall_h
+    pocket_h = device_h + fit_clearance
+    pocket_t = device_t + fit_clearance
     units_w = max(int(p.get("width_units", 4)),
-                  math.ceil((pocket_w + 2 * 2.4) / _SNAP_PITCH))
-    units_h = max(int(p.get("height_units", 2)),
-                  math.ceil((body_h + 2) / _SNAP_PITCH))
+                  math.ceil((pocket_w + 2 * _MIN_WALL) / _SNAP_PITCH))
+    units_h = max(int(p.get("height_units", 4)),
+                  math.ceil((shelf_rise + pocket_h) / _SNAP_PITCH))
+    plate_w = units_w * _SNAP_PITCH
+    plate_h = units_h * _SNAP_PITCH
+    side_wall_t = (plate_w - pocket_w) / 2
     snap_h = 3.4 if snap_lite else 6.8
-    plate_top = snap_h - 0.02 + plate_t
-    rib_e = min(rib_h, wall_h - 2)
-    z_rib0 = plate_top + port_gap
-    z_rib1 = z_rib0 + rib_e
-    z_bend = z_rib1 + pocket_d
+    plate_z0 = snap_h - _WELD
+    plate_top = plate_z0 + plate_t
+    land_e = max(0.5, min(land_w, pocket_w / 2 - 5))
+    lip_e = max(0.5, min(lip_reach, min(side_wall_t - 1, pocket_w / 2 - 5)))
+    z_back = plate_top + back_relief
+    z_face = z_back + pocket_t
+    z_front = z_face + lip_e
+    shelf_t_e = min(shelf_t, shelf_rise)
+    y_shelf0 = shelf_rise - shelf_t_e
+    cable_w_e = max(0, min(cable_w, pocket_w - 12))
+    cable_x_max = max(0, (pocket_w - cable_w_e) / 2 - 6)
+    cable_x_e = max(-cable_x_max, min(cable_x, cable_x_max))
+
+    # Reference points inside the pocket, reused by several probes.
+    y_mid = shelf_rise + pocket_h / 2
+    z_mid = (z_back + z_face) / 2
+    y_shelf_mid = y_shelf0 + shelf_t_e / 2
 
     # 2. Footprint = whole openGrid tiles.
     bbox = ctx["bbox_mm"]
-    want_w = units_w * _SNAP_PITCH
-    want_h = units_h * _SNAP_PITCH
-    if abs(bbox[0] - want_w) > 0.5 or abs(bbox[1] - want_h) > 0.5:
+    if abs(bbox[0] - plate_w) > 0.5 or abs(bbox[1] - plate_h) > 0.5:
         failures.append(Failure(
             "footprint",
             f"bbox {bbox[0]:.1f} x {bbox[1]:.1f}mm != {units_w}x{units_h} "
-            f"openGrid tiles ({want_w:.1f} x {want_h:.1f}mm) — the holder "
+            f"openGrid tiles ({plate_w:.1f} x {plate_h:.1f}mm) — the holder "
             f"no longer aligns with the 28mm grid",
         ))
 
-    # 3. Bed contact spans exactly the snap grid.
+    # 3. Vertical hold: reach off the panel is the device's THICKNESS.
+    if abs(bbox[2] - z_front) > 0.5:
+        failures.append(Failure(
+            "vertical_hold",
+            f"model stands {bbox[2]:.1f}mm off the bed but the vertical "
+            f"cradle should be exactly {z_front:.1f}mm (snaps + plate + "
+            f"{back_relief:.1f}mm relief + {pocket_t:.1f}mm pocket + "
+            f"{lip_e:.1f}mm lip) — the device is no longer held on edge",
+        ))
+
+    # 4. Bed contact spans exactly the snap grid.
     verts = ctx["stl"].vertices
     contact = verts[verts[:, 2] < _CONTACT_EPS_MM]
     if len(contact) == 0:
@@ -165,7 +204,7 @@ def check(ctx):
             f"{want_x:.1f} x {want_y:.1f}mm — snap count or pitch drifted",
         ))
 
-    # 4. Every snap's strong nub points UP the wall (+Y).
+    # 5. Every snap's strong nub points UP the wall (+Y).
     if not snap_lite:
         cols = [0, units_w - 1] if units_w > 1 else [0]
         rows = [0, units_h - 1] if units_h > 1 else [0]
@@ -185,14 +224,14 @@ def check(ctx):
                 f"directional-with-strong-nub-up: a probe {_NUB_PROBE_R}mm "
                 f"from the snap centre must be solid at +Y (the 0.8mm front "
                 f"hook) and air at -Y (the 0.4mm click side). First offender "
-                f"at {bad[0]}. The cantilever load bears on the top row's "
+                f"at {bad[0]}. The hang-off load bears on the top row's "
                 f"front nub — a rotated snap puts it on the flexy side",
             ))
 
-    # 5. The whole device envelope is clear.
+    # 6. The whole device envelope is clear, standing on edge.
     xs = np.linspace(-device_w / 2, device_w / 2, 9)
-    ys = np.linspace(floor_t + 0.2, floor_t + _DEVICE_H - 0.2, 6)
-    zs = np.linspace(z_rib1 + 0.2, z_bend - 0.2, 9)
+    ys = np.linspace(shelf_rise + 0.3, shelf_rise + device_h - 0.3, 8)
+    zs = np.linspace(z_back + 0.3, z_back + device_t - 0.3, 7)
     env = [[x, y, z] for x in xs for y in ys for z in zs]
     hits = _inside(ctx, env)
     if hits.any():
@@ -200,78 +239,122 @@ def check(ctx):
         failures.append(Failure(
             "device_envelope",
             f"{int(hits.sum())} of {len(env)} probe points inside the "
-            f"{device_w:.0f} x {device_d:.0f} x {_DEVICE_H:.0f}mm device "
-            f"envelope hit solid material (first at {first[0]:.1f}, "
+            f"{device_w:.0f} x {device_h:.0f} x {device_t:.0f}mm vertical "
+            f"device envelope hit solid material (first at {first[0]:.1f}, "
             f"{first[1]:.1f}, {first[2]:.1f}) — the device no longer fits "
-            f"the pocket",
+            f"the cradle",
         ))
 
-    # 6. Front lip stands above the pocket floor, probed mid-band on the
-    # 45deg ramp 3mm forward of the pocket.
-    if not _inside(ctx, [[0, floor_t + 1.5, z_bend + 3]])[0]:
+    # 7. Shelf ears carry the device either side of the cable cutout.
+    # Written out per side rather than mirrored: the cutout can be
+    # offset, so the two ears are not the same width.
+    cut_l = cable_x_e - cable_w_e / 2
+    cut_r = cable_x_e + cable_w_e / 2
+    ears = [[(cut_r + pocket_w / 2) / 2, y_shelf_mid, z_mid],
+            [(cut_l - pocket_w / 2) / 2, y_shelf_mid, z_mid]]
+    solid = _inside(ctx, ears)
+    if not solid.all():
+        missing = [e for e, ok in zip(ears, solid) if not ok]
         failures.append(Failure(
-            "retaining_lip",
-            f"no material at the front lip (0, {floor_t + 1.5:.1f}, "
-            f"{z_bend + 3:.1f}) — nothing stops the device sliding out of "
-            f"the tray",
+            "shelf",
+            f"the bottom shelf is missing at {missing} — nothing carries "
+            f"the device's weight and it drops down the wall",
         ))
 
-    # 7. Port cutout open, rib ears solid.
-    y_rib = floor_t + rib_e / 2
-    z_rib = z_rib1 - rib_e / 2
-    if _inside(ctx, [[0, y_rib, z_rib]])[0]:
+    # 8. Side rails, plus lips that actually overlap the device's face.
+    rail_x = pocket_w / 2 + side_wall_t / 2
+    if not _inside(ctx, [[rail_x, y_mid, z_mid],
+                         [-rail_x, y_mid, z_mid]]).all():
         failures.append(Failure(
-            "port_cutout",
-            f"the {port_cutout_w:.0f}mm rear port opening is blocked at "
-            f"(0, {y_rib:.1f}, {z_rib:.1f}) — the wall-facing HDMI/power "
-            f"plugs have nowhere to go",
+            "side_rails",
+            f"no rail material at x=+-{rail_x:.1f} (y={y_mid:.1f}, "
+            f"z={z_mid:.1f}) — the device is not constrained sideways",
         ))
-    ear_x = pocket_w / 2 - 3
-    if not _inside(ctx, [[-ear_x, y_rib, z_rib], [ear_x, y_rib, z_rib]]).all():
+    lip_x = pocket_w / 2 - lip_e + 0.3
+    z_lip = z_front - 0.3
+    if lip_x < device_w / 2:
+        if not _inside(ctx, [[lip_x, y_mid, z_lip],
+                             [-lip_x, y_mid, z_lip]]).all():
+            failures.append(Failure(
+                "retaining_lip",
+                f"no lip material at x=+-{lip_x:.1f}, z={z_lip:.1f} — the "
+                f"rails no longer overlap the device's front face and it "
+                f"can tip out of the cradle",
+            ))
+    if _inside(ctx, [[cable_x_e, y_mid, z_lip]])[0]:
         failures.append(Failure(
-            "rear_rib",
-            f"rear retaining rib missing at x=+-{ear_x:.1f} (y={y_rib:.1f}, "
-            f"z={z_rib:.1f}) — the device can slide back into the plenum and "
-            f"foul its own plugs",
+            "pocket_mouth",
+            f"solid material on the pocket centreline at z={z_lip:.1f} — "
+            f"the cradle mouth has closed over and the device cannot be "
+            f"loaded at all",
         ))
 
-    # 8. Both floor slot rows are through-holes; the web between them is
-    # still solid.
-    if slot_count > 0:
-        pitch = pocket_w / slot_count
-        eff_w = min(slot_w, pitch - 3)
-        if eff_w > 0:
-            y_floor = floor_t / 2
-            z_vent = (z_rib1 + z_bend) / 2
-            z_cable = (plate_top + 3 + z_rib0 - 3) / 2
-            centres_x = [(i - (slot_count - 1) / 2) * pitch
-                         for i in range(slot_count)]
-            blocked = _inside(ctx, [[x, y_floor, z_vent] for x in centres_x])
-            if blocked.any():
+    # 9. Cable cutout open through the shelf, full pocket depth.
+    cable_probes = [[cable_x_e, y_shelf_mid, z_back + 1],
+                    [cable_x_e, y_shelf_mid, z_mid],
+                    [cable_x_e, y_shelf_mid, z_face - 1]]
+    blocked = _inside(ctx, cable_probes)
+    if blocked.any():
+        failures.append(Failure(
+            "cable_cutout",
+            f"the {cable_w_e:.0f}mm bottom cable cutout is blocked at "
+            f"{int(blocked.sum())} of {len(cable_probes)} depths — the "
+            f"downward-facing HDMI/power/Ethernet plugs have nowhere to go",
+        ))
+
+    # 10. Back-relief channel open, lands solid.
+    if back_relief >= 1:
+        z_relief = plate_top + back_relief / 2
+        if _inside(ctx, [[0, y_mid, z_relief]])[0]:
+            failures.append(Failure(
+                "back_relief",
+                f"the air channel behind the device is blocked at "
+                f"(0, {y_mid:.1f}, {z_relief:.1f}) — the device would sit "
+                f"flat on the plate with no way to shed heat",
+            ))
+        land_x = pocket_w / 2 - land_e / 2
+        if not _inside(ctx, [[land_x, y_mid, z_relief],
+                             [-land_x, y_mid, z_relief]]).all():
+            failures.append(Failure(
+                "back_lands",
+                f"no land material at x=+-{land_x:.1f}, z={z_relief:.1f} — "
+                f"nothing holds the device off the plate, so the relief "
+                f"channel closes as soon as it is loaded",
+            ))
+
+    # 11. Plate vent slots: through-holes with surviving webs.
+    vent_x_max = (min((units_w - 1) / 2 * _SNAP_PITCH - _SNAP_W / 2 - 2,
+                      pocket_w / 2 - land_e - 2)
+                  if units_w > 1 else 0)
+    vent_y1_raw = ((units_h - 0.5) * _SNAP_PITCH - _SNAP_W / 2 - 2
+                   if units_h > 1 else 0)
+    vent_y0 = max(0.5 * _SNAP_PITCH + _SNAP_W / 2 + 2, shelf_rise + 2)
+    vent_y1 = min(vent_y1_raw, shelf_rise + pocket_h - 2)
+    vent_pitch = 2 * vent_x_max / vent_count if vent_count > 0 else 0
+    vent_w_e = min(vent_w, vent_pitch - 3) if vent_count > 0 else 0
+    vent_ok = (vent_count > 0 and vent_x_max > 6 and vent_w_e > 2
+               and (vent_y1 - vent_y0) > 10)
+    if vent_ok:
+        y_vent = (vent_y0 + vent_y1) / 2
+        z_plate = plate_z0 + plate_t / 2
+        centres_x = [(i - (vent_count - 1) / 2) * vent_pitch
+                     for i in range(vent_count)]
+        blocked = _inside(ctx, [[x, y_vent, z_plate] for x in centres_x])
+        if blocked.any():
+            failures.append(Failure(
+                "vent_slots",
+                f"{int(blocked.sum())} of {vent_count} plate vent slots are "
+                f"not open through the plate — the relief channel has no "
+                f"path to the panel lattice",
+            ))
+        if vent_count > 1 and vent_pitch - vent_w_e > 1:
+            web_x = centres_x[0] + vent_pitch / 2
+            if not _inside(ctx, [[web_x, y_vent, z_plate]])[0]:
                 failures.append(Failure(
-                    "vent_slots",
-                    f"{int(blocked.sum())} of {slot_count} pocket vent slots "
-                    f"are not open through the floor — the device runs warm "
-                    f"and these are its only airflow",
+                    "vent_web",
+                    f"plate web at x={web_x:.1f} between two vent slots is "
+                    f"not solid — the slots have merged, which also means "
+                    f"the cut has drifted toward the snap footprints",
                 ))
-            if (z_rib0 - 3) - (plate_top + 3) > eff_w / 2 + 2:
-                blocked = _inside(ctx, [[x, y_floor, z_cable]
-                                        for x in centres_x])
-                if blocked.any():
-                    failures.append(Failure(
-                        "cable_slots",
-                        f"{int(blocked.sum())} of {slot_count} plenum cable "
-                        f"slots are not open through the floor — the cables "
-                        f"cannot route down the wall",
-                    ))
-            if slot_count > 1 and pitch - eff_w > 1:
-                web_x = centres_x[0] + pitch / 2
-                if not _inside(ctx, [[web_x, y_floor, z_vent]])[0]:
-                    failures.append(Failure(
-                        "floor_web",
-                        f"floor web at x={web_x:.1f} between two vent slots "
-                        f"is not solid — the slots have merged and the "
-                        f"cantilevered floor lost its tension face",
-                    ))
 
     return failures
