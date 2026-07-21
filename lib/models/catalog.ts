@@ -134,4 +134,9 @@ export const CATALOG: Record<string, CatalogEntry> = {
     blurb:
       "US electrical box extension ring that builds out a 1-4 gang box flush with a thick wall. Ports a proven MakerWorld design: rounded rect_tube shell with per-gang screw posts on the standard US box hole spacing.",
   },
+  apple_tv_4th_gen_holder: {
+    categoryId: "multiboard",
+    blurb:
+      "OpenGrid wall cradle for a 4th-gen Apple TV HD (98x98x35mm). The device lies flat in an open tray with a rear plenum so its wall-facing HDMI/power plugs clear the back plate, a 45deg front retaining lip, and floor slots that vent the warm device and drop the cables down the wall. Four corner-tile directional snaps on a 4x2-tile plate, strong nub up for the cantilever load. Prints snaps-down, support-free.",
+  },
 };
