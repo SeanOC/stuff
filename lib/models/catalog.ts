@@ -137,6 +137,6 @@ export const CATALOG: Record<string, CatalogEntry> = {
   apple_tv_4th_gen_holder: {
     categoryId: "multiboard",
     blurb:
-      "OpenGrid wall cradle for a 4th-gen Apple TV HD (98x98x35mm). The device lies flat in an open tray with a rear plenum so its wall-facing HDMI/power plugs clear the back plate, a 45deg front retaining lip, and floor slots that vent the warm device and drop the cables down the wall. Four corner-tile directional snaps on a 4x2-tile plate, strong nub up for the cantilever load. Prints snaps-down, support-free.",
+      "OpenGrid wall cradle that stands a 4th-gen Apple TV HD (98x98x35mm) on edge, flat against the panel, so it protrudes only ~46mm — low enough to tuck behind a wall-mounted TV. Slide-in cradle: bottom shelf, two side rails with 45deg retaining lips, open top. The port edge faces down, so plugs drop through the shelf's cable cutout; two back lands hold the device off the plate for a full-height air channel vented through plate slots. Four corner-tile directional snaps on a 4x4-tile plate, strong nub up. Load it at the bench (tilt the bottom edge in, rock the top back behind the lips) before snapping it to the panel. Prints snaps-down, support-free.",
   },
 };
