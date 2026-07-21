@@ -1,0 +1,77 @@
+pst-d7d: keep multiconnectSlotDesignBOSL.scad working across BOSL2's
+attachable() API drift (BOSL2 ae73c6d, "attachments update", 2024-09-27).
+
+Two independent breaks, both introduced by ae73c6d and both hit on any
+BOSL2 newer than 456fcd8 — which is every BOSL2 that carries the struct
+functions mitufy openConnect needs (st-kls, pst-yr1):
+
+1. VECTOR SPIN. ae73c6d tightened attachable() to assert is_finite(spin),
+   but the two on-ramp cyl() calls pass spin=[90,0,180]. Hoisting the
+   rotation to an outer rot([90,0,180]) and letting attachable() see the
+   default scalar spin reproduces old BOSL2's transform exactly: for a
+   centered cyl the old vector-spin path composed zrot(z)*yrot(y)*xrot(x),
+   which is precisely rot([x,y,z]).
+
+2. ZERO-RADIUS CONE ANCHOR. ae73c6d rewrote conical anchor math to use
+   solve_ellipse(), which evaluates unit([0,0]) when r2 == 0 and trips
+   assert(is_vector(v)) "Invalid vector". The four slot dimples are
+   cylinder(r1=1.5*dimpleScale, r2=0) cones. Truncating the tip to
+   r2 = 0.001*dimpleScale keeps solve_ellipse() non-degenerate; at
+   0.0015mm the truncation is three orders of magnitude below both mesh
+   ($fn=50) and print resolution.
+
+Both edits are geometry-preserving: full-catalog STL A/B across the bump
+showed 0 dimensional changes (pst-yr1 section b). Break 2 is only
+revealed once break 1 is fixed, and note that break 1 fails *silently* on
+Backer models — the failing subtree sits under diff(), so OpenSCAD drops
+it and still writes a watertight-but-wrong STL (ego_lb6500 lost ~94% of
+its multiconnect geometry this way). Drop this patch if QuackWorks
+upstream ever moves off the vector-spin / zero-r2 syntax.
+
+--- a/Modules/multiconnectSlotDesignBOSL.scad
++++ b/Modules/multiconnectSlotDesignBOSL.scad
+@@ -150,7 +150,7 @@ module multiconnectGenerator(width, height, multiconnectPartType = "Backer", dis
+             //top_half() 
+             diff("slotDimple"){
+                 multiconnectRounded(slotProfile = slotProfile)
+-                if(slotDimple) tag("slotDimple")attach(BACK, BOT, inside=true, shiftout=0.01) cylinder(h = 1.5*dimpleScale, r1 = 1.5*dimpleScale, r2 = 0, $fn = 50);
++                if(slotDimple) tag("slotDimple")attach(BACK, BOT, inside=true, shiftout=0.01) cylinder(h = 1.5*dimpleScale, r1 = 1.5*dimpleScale, r2 = 0.001*dimpleScale, $fn = 50);
+             }
+             children();
+         }
+@@ -174,17 +174,17 @@ module multiconnectGenerator(width, height, multiconnectPartType = "Backer", dis
+                     //calculate the dimples. Dimplecount can override if less than calculated slots
+                     if(debug) echo("Dimples for Backer");
+                     tag("slotDimple") attach(BACK, BOT, align=TOP, inside=true, shiftout=0.01) back(1.5*dimpleScale) 
+-                            cylinder(h = 1.5*dimpleScale, r1 = 1.5*dimpleScale, r2 = 0, $fn = 50);
++                            cylinder(h = 1.5*dimpleScale, r1 = 1.5*dimpleScale, r2 = 0.001*dimpleScale, $fn = 50);
+                     zcopies(n = min(length/distanceBetweenSlots/dimpleEveryNSlots+1, dimpleCount), spacing = -distanceBetweenSlots*dimpleEveryNSlots, sp=[0,0,dimpleOffset*distanceBetweenSlots]) 
+                         tag("slotDimple") attach(BACK, BOT, align=TOP, inside=true, shiftout=0.01) back(1.5*dimpleScale) 
+-                            cylinder(h = 1.5*dimpleScale, r1 = 1.5*dimpleScale, r2 = 0, $fn = 50);
++                            cylinder(h = 1.5*dimpleScale, r1 = 1.5*dimpleScale, r2 = 0.001*dimpleScale, $fn = 50);
+                 }
+                 if(slotDimple && dimpleEveryNSlots != 0 && multiconnectPartType == "Passthru"){ //passthru
+                     //calculate the dimples. Dimplecount can override if less than calculated slots
+                     if(debug) echo(str("Dimples for Passthru: ", min(length/distanceBetweenSlots/dimpleEveryNSlots+2, dimpleCount), ". Distance between: ", -distanceBetweenSlots*dimpleEveryNSlots));
+                     zcopies(n = min(length/distanceBetweenSlots/dimpleEveryNSlots+2, dimpleCount), spacing = -distanceBetweenSlots*dimpleEveryNSlots, sp=[0,0,centerMulticonnect ? -length/2+25*3/2-12.5+25+dimpleOffset*distanceBetweenSlots: -length/2+25*3/2+25+dimpleOffset*distanceBetweenSlots]) 
+                         tag("slotDimple") attach(BACK, BOT, align=TOP, inside=true, shiftout=0.01) back(1.5*dimpleScale) 
+-                            cylinder(h = 1.5*dimpleScale, r1 = 1.5*dimpleScale, r2 = 0, $fn = 50);
++                            cylinder(h = 1.5*dimpleScale, r1 = 1.5*dimpleScale, r2 = 0.001*dimpleScale, $fn = 50);
+ 
+                 }
+             
+@@ -208,12 +208,12 @@ module multiconnectGenerator(width, height, multiconnectPartType = "Backer", dis
+                         if(onRampEnabled && onRampEveryNSlots != 0 && multiconnectPartType == "Backer") {
+                                 zcopies(spacing=-distanceBetweenSlots*onRampEveryNSlots, n=length/distanceBetweenSlots/onRampEveryNSlots+1, sp=[0,0,-distanceBetweenSlots-onRampOffsetNSlots*distanceBetweenSlots]) 
+                                     fwd(maxY(slotProfile)/2) color("orange") 
+-                                        cyl(h = maxY(slotProfile), r1 = maxX(slotProfile)+1.75, r2 = maxX(slotProfile), spin=([90,0,180]));
++                                        rot([90,0,180]) cyl(h = maxY(slotProfile), r1 = maxX(slotProfile)+1.75, r2 = maxX(slotProfile));
+                         } 
+                         if(onRampPassthruEnabled && onRampEveryNSlots != 0 && multiconnectPartType == "Passthru"){
+                                 zcopies(spacing=-distanceBetweenSlots*onRampEveryNSlots, n=length/distanceBetweenSlots+2, sp=[0,0,centerMulticonnect ? -length/2+distanceBetweenSlots*3/2-distanceBetweenSlots/2+distanceBetweenSlots: -length/2+distanceBetweenSlots*3/2+distanceBetweenSlots]) 
+                                     fwd(maxY(slotProfile)/2) color("orange") 
+-                                        cyl(h = maxY(slotProfile), r1 = maxX(slotProfile)+1.75, r2 = maxX(slotProfile), spin=([90,0,180]));
++                                        rot([90,0,180]) cyl(h = maxY(slotProfile), r1 = maxX(slotProfile)+1.75, r2 = maxX(slotProfile));
+                         }                    
+                     }
+                     //lop off any extra zcopies pieces
