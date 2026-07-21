@@ -11,6 +11,7 @@ import textwrap
 from pathlib import Path
 
 import pytest
+import trimesh
 
 from .. import export as exp
 
@@ -84,3 +85,56 @@ def test_missing_model_raises(tmp_path: Path) -> None:
     with pytest.raises(exp.ExportError) as excinfo:
         exp.export(tmp_path / "nope.scad", tmp_path / "nope.stl")
     assert "model not found" in str(excinfo.value)
+
+
+# --- silent-geometry-drop gate (pst-d7d) ---------------------------------
+#
+# OpenSCAD can log a failed assertion, exit 0, and still write a watertight
+# STL when the broken subtree was consumed by a diff()/difference() — the
+# subtrahend evaluates to nothing, so nothing is subtracted and the missing
+# geometry is invisible to every downstream check. Simulated here by taking
+# a real, genuinely successful render and only rewriting the process result
+# (rc stays 0, the STL on disk stays valid) so the assertion is the sole
+# thing under test.
+
+_BOSL2_ASSERT = (
+    "ERROR: Assertion '(is_vector(v))' failed: \"Invalid vector\" in file "
+    "BOSL2/vectors.scad, line 91\n"
+    "TRACE: called by 'unit' in file BOSL2/attachments.scad, line 3021\n"
+)
+
+
+def _cube_model(tmp_path: Path) -> Path:
+    return _write(tmp_path, "cube.scad", "cube([10,10,10]);")
+
+
+def test_zero_exit_with_error_line_raises(tmp_path: Path, monkeypatch) -> None:
+    model = _cube_model(tmp_path)
+    out = tmp_path / "cube.stl"
+
+    real_run = exp.subprocess.run
+
+    def fake_run(cmd, *a, **kw):
+        result = real_run(cmd, *a, **kw)
+        result.stderr = (result.stderr or "") + _BOSL2_ASSERT
+        result.returncode = 0
+        return result
+
+    monkeypatch.setattr(exp.subprocess, "run", fake_run)
+    with pytest.raises(exp.ExportError) as excinfo:
+        exp.export(model, out)
+
+    msg = str(excinfo.value)
+    assert "silently incomplete" in msg, msg
+    assert "Invalid vector" in msg, msg
+    # The STL really was written and really is watertight — proving the gate
+    # fires on output that every other check would have waved through.
+    assert out.exists() and out.stat().st_size > 0
+    assert trimesh.load(out, force="mesh").is_watertight
+
+
+def test_clean_render_still_passes(tmp_path: Path) -> None:
+    """Control for the gate above: no ERROR line, no false positive."""
+    res = exp.export(_cube_model(tmp_path), tmp_path / "cube.stl")
+    assert res.is_watertight
+    assert res.triangle_count == 12

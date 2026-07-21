@@ -25,6 +25,18 @@ _WARNING_RE = re.compile(
     re.IGNORECASE,
 )
 
+# OpenSCAD reports a failed assertion (or any other hard evaluation error)
+# on stderr but still exits 0 and still writes an STL, as long as the
+# broken subtree was consumed by something tolerant of an empty child —
+# diff()/difference() being the common case, since a subtrahend that
+# evaluates to nothing simply subtracts nothing. The result is watertight
+# and structurally valid, so every downstream check passes, yet geometry
+# is silently missing (pst-yr1: ego_lb6500_blower_mount lost ~94% of its
+# multiconnect geometry this way across a BOSL2 bump and still exported
+# "ok"). Treat any ERROR: line as fatal even on a zero exit — a correct
+# model has no reason to emit one (pst-d7d).
+_ERROR_RE = re.compile(r"^\s*ERROR:\s*(.+?)\s*$", re.MULTILINE)
+
 
 class ExportError(RuntimeError):
     pass
@@ -89,6 +101,20 @@ def export(
     if warnings:
         raise ExportError(
             f"unresolved use/include in {model.name}: {', '.join(sorted(set(warnings)))}"
+        )
+    errors = _ERROR_RE.findall(combined)
+    if errors:
+        # Same stderr-surfacing rationale as the rc != 0 branch: the JSON
+        # blob only reaches stdout, which export-all.py discards on success.
+        sys.stderr.write(
+            f"--- openscad exited 0 but reported errors exporting {model} ---\n"
+            f"cmd: {' '.join(cmd)}\n"
+            f"{combined}"
+            f"--- end openscad output ---\n"
+        )
+        raise ExportError(
+            f"openscad reported {len(errors)} error(s) in {model.name} despite a "
+            f"zero exit — geometry is silently incomplete: {errors[0]}"
         )
     if not out_stl.exists():
         raise ExportError(f"openscad exited 0 but {out_stl} was not written")
