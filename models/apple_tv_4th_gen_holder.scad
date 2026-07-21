@@ -8,7 +8,7 @@
 // This replaces the original horizontal open-tray form (pst-hn2). A
 // tray cantilevered the device ~75 mm off the panel; standing it up
 // drops the protrusion to the device's 35 mm thickness plus the plate
-// and snaps (~46 mm off the panel face at defaults, vs ~140 mm), which
+// and snaps (~45 mm off the panel face at defaults, vs ~140 mm), which
 // is what makes it tuckable behind a wall-mounted TV. The load path
 // improves with it: the overturning moment falls by ~3.5x because the
 // centre of mass moves from ~75 mm off the panel to ~25 mm.
@@ -47,31 +47,83 @@
 // of the cradle about its bottom-front corner. Behind a TV that is a
 // one-way trip to the floor, so captive won.
 //
-// === Print orientation (native): ZERO supports ===
+// The shelf sits ON the plate's bottom edge (pst-mfy): its underside
+// and the plate's bottom edge are the same plane, y = 0. That plane is
+// the build plate in the print orientation below, which is the whole
+// point — the shelf is the one feature that used to start in mid-air.
+// The device simply rests `shelf_t` lower in the holder than it did.
 //
-// Prints snaps-down, the orientation the snap geometry was designed
-// for. Mounted, +Y is UP the wall and +Z points OUT from the panel, so
-// +Z is also the build direction. Everything that gains material as
-// the print rises is either a 45deg plane or a face at constant Y (a
-// vertical wall in print, free):
+// === Print orientation: STANDING ON THE BOTTOM EDGE (pst-mfy) ===
 //
-//  - plate underside between snaps: 3.2 mm bridges on the 28 mm pitch
-//    (proven at these exact spans by opengrid_bin / the
-//    led_remote_holder twins); plate rim: 45deg chamfer clamped so it
-//    never crosses a snap footprint (st-ocs);
-//  - plate vent slots run straight along the build axis, so they have
-//    no ceiling to bridge at all;
-//  - bottom shelf and side rails: solid columns growing in +Z off the
-//    plate, every layer landing on the one below;
-//  - the back-relief step (where the rails' inner faces jump OUTBOARD
-//    from the device-back lands to the pocket sides at `z_back`) opens
-//    up as Z rises — material is being removed, never added;
-//  - retaining lips: their undersides are 45deg ramps from the pocket
-//    wall to the lip crest, the same self-supporting idiom
-//    opengrid_bin uses for its front lip. A square lip underside would
-//    be a flat overhang the full length of both rails;
-//  - the shelf's bottom-front and the rails' top-front edges carry
-//    45deg end chamfers whose faces point upward in print.
+// Prints STANDING VERTICALLY: the plate's bottom edge and the shelf
+// undersides go on the bed, the plate stands up off it, and the cradle
+// mouth faces the ceiling. The build axis runs UP THE WALL.
+//
+// Everything below is authored in the MOUNT frame — X across the wall,
+// +Y up the wall, +Z out of the panel — because every dimension in
+// this file reads better that way. The assembly is rotated into the
+// PRINT frame at the very bottom of the file, so the exported STL is
+// bed-at-z=0 like every sibling model.
+//
+// WHY NOT SNAPS-DOWN, which pst-hn2/pst-e1v claimed was support-free?
+// That claim went stale when the snap grid thinned to four corner
+// tiles. It described "3.2 mm bridges on the 28 mm pitch", true of a
+// filled grid; with snaps only in the corners the 112 x 112 plate
+// underside floats 6.78 mm over the bed on four 24.8 mm pads, a 59 mm
+// unsupported span. Slicer-style face scan of the exported mesh
+// (overhang = the face's angle away from vertical, flagged past 50deg
+// so the 45deg self-supporting ramps are excluded with margin,
+// bed-contact faces excluded):
+//
+//   orientation                       unsupported downward face area
+//   lying snaps-down, as pst-e1v shipped    8225 mm^2
+//   standing, shelf still inset 6 mm        2280 mm^2
+//   standing, this model                     912 mm^2
+//
+// A 9x reduction, and the operator's premise holds: the snaps ARE
+// sparse — four of them on a sixteen-tile plate — so standing the part
+// up costs almost nothing in overhang while snaps-down pays for the
+// whole plate.
+//
+// The kind of support matters more than the count here. Snaps-down
+// puts all 8225 mm^2 on the plate's UNDERSIDE — which is the openGrid
+// MATING face. Support scars there sit between the panel and the plate
+// and around the snap roots, i.e. on the one surface of this part that
+// has to be flat. Standing moves every scar onto snap undersides,
+// inside the tile, where nothing bears.
+//
+// What makes standing cheap is that the cradle is a CONSTANT CROSS
+// SECTION swept along the build axis: rails, lands, lips, the pocket
+// and the cable gap are all vertical walls in print, every layer
+// landing squarely on the one below. Nothing in the cradle needs
+// support, and nothing in it bridges.
+//
+// Of the 912 mm^2 that remains, 852 is the four snap undersides
+// (24.8 x 6.8 mm each) — the only features that start in mid-air,
+// because a snap hangs off the BACK of the plate and its tile leaves
+// no room underneath for a ramp: the 1.6 mm of tile rim below a snap
+// is panel-contact surface, so a 45deg gusset there would hold the
+// plate off the grid. The bottom pair starts 1.6 mm off the bed and is
+// a non-event; the top pair starts at y = 85.6 mm and wants two slim
+// support towers, or support enforcers on those four footprints.
+// `snap_lite` halves their depth. The last 60 mm^2 is not support at
+// all, it is the deliberate 20 mm bridge at the vent gable's apex.
+//
+// Two features that WOULD have needed support in this orientation were
+// dealt with rather than supported: the shelf moved down onto the bed
+// (~1300 mm^2 of ear underside, the bulk of the 2280 above), and the
+// plate vent window got a 45deg gable so its ceiling never bridges
+// more than 20 mm.
+//
+// Standing is also the stronger orientation for BOTH load paths, which
+// is a happy accident rather than the reason:
+//
+//  - the device's weight runs DOWN the build axis, so the shelf ears
+//    carry it as columns in compression rather than as a cantilever
+//    peeling layers apart;
+//  - the snaps' pull-out load runs across the wall-normal, which is
+//    IN the layer plane here, so the snap-to-plate weld is loaded in
+//    shear along a layer instead of in tension across one.
 //
 // === Wall-hang orientation / load direction ===
 //
@@ -91,24 +143,72 @@
 // snap geometry — a snap count that stays flat over the whole
 // parameter range instead of growing as units_w x units_h.
 //
-// === Ventilation ===
+// === Ventilation, which is also the lightening (pst-mfy) ===
 //
 // The Apple TV runs warm and is passively cooled through its case, so
 // pressing 98 x 98 mm of it flat against a PLA plate would be the one
 // real regression of standing it up. Two vertical `land_w` strips hold
 // the device `back_relief` off the plate, leaving a full-height air
 // channel behind it that is open at the top and vents out of the cable
-// cutout at the bottom — a chimney. `vent_count` slots through the
-// plate open that channel to the panel lattice; they are placed in the
-// band the corner snap footprints leave clear, so they can never
-// collide with a snap.
+// cutout at the bottom — a chimney. ONE large window through the plate
+// opens that channel to the panel lattice.
+//
+// The window replaced three narrow slots, and it is worth saying why,
+// because the intuition is backwards. Printed standing, this part is
+// nearly all perimeter: a 3 mm plate is about four extrusions wide, so
+// its material cost tracks the OUTLINE LENGTH of each layer, not the
+// enclosed area. Punching small holes in it therefore ADDS material —
+// three slots cost more perimeter than the sparse infill they removed.
+// One window big enough to break the plate cross-section into two
+// short segments is the opposite trade, and it vents better. It spans
+// the whole band between the bottom and top snap rows, and as wide as
+// the back lands allow — 72 x 55 mm at defaults, against 3 x 10 mm
+// slots before.
+//
+// Its top is a 45deg gable rather than a flat ceiling: at 72 mm the
+// flat version would be far and away the longest bridge in the print.
+// The gable closes in at 45deg until the remaining flat span is 20 mm.
+//
+// === What the lightening actually bought (pst-mfy) ===
+//
+// Measured on the exported mesh, layer sweep at 0.2 mm with two 0.45 mm
+// perimeters and 15% sparse infill — same estimator for both, both
+// standing, so the orientation change is not doing the work:
+//
+//   solid volume      118.8 cm^3  ->  101.5 cm^3   (-14.6%)
+//   extruded material  52.3 cm^3  ->   45.8 cm^3   (-12.5%)
+//
+// from, in order of size: the plate window, `plate_t` 4 -> 3 (the
+// thickness led_remote_holder_51x84mm already ships on the same snap),
+// the cradle stopping at the top of the pocket instead of following
+// the plate up to its last whole tile, and the shelf dropping from a
+// 10 mm rise to sitting on the bottom edge. At 3 mm the plate carries
+// ~1.3 N of pull-out spread over four snaps and a ~0.12 N.m couple, so
+// it is nowhere near the limit; the window's 20 mm border either side
+// is backed for 18 of those millimetres by a land and a rail.
+//
+// Two things were tried and rejected, both because they read as
+// lightening but are not. Hollowing the 6 mm side rails REPLACES sparse
+// infill with two more perimeter walls and comes out heavier. Thinning
+// the rails saves ~1 cm^3 and costs lip reach, since `lip_reach` is
+// clamped to the rail thickness. Narrowing the lands to 8 mm saves
+// 0.7 cm^3 and narrows the device's back support — not a trade worth
+// making for 1.6%.
+//
+// Note honestly what standing does NOT buy: print TIME. 112 mm of
+// height is 560 layers against 258 lying down, and per-layer perimeter
+// dominates here, so the standing print is longer even after the
+// lightening. What it buys is the support story above, plus the load
+// paths below.
 //
 // === Cables ===
 //
 // The port edge faces down. The shelf is two corner ears with a
 // `cable_w` gap between them, so plug bodies project down through the
 // gap into free air and the cables run down the wall in front of the
-// plate — nothing is trapped between the device and the panel.
+// plate — nothing is trapped between the device and the panel. The gap
+// is clamped to the back lands' inner edges, so it can never undercut
+// a land and leave a sliver of it starting in mid-air.
 //
 // === Why no mount_orientation param ===
 //
@@ -158,9 +258,8 @@ device_t      = 35;  // @param number min=10 max=60 step=0.5 unit=mm group=devic
 fit_clearance = 1;   // @param number min=0.3 max=3 step=0.1 unit=mm group=device label="Pocket clearance per side"
 
 // ----- Shell -----
-plate_t     = 4;  // @param number min=3 max=6 step=0.5 unit=mm group=shell label="Back plate thickness"
-shelf_rise  = 10; // @param number min=4 max=30 step=0.5 unit=mm group=shell label="Shelf height above plate bottom"
-shelf_t     = 4;  // @param number min=2.5 max=8 step=0.5 unit=mm group=shell label="Shelf thickness"
+plate_t     = 3;  // @param number min=3 max=6 step=0.5 unit=mm group=shell label="Back plate thickness"
+shelf_t     = 4;  // @param number min=2.5 max=8 step=0.5 unit=mm group=shell label="Shelf thickness (sits on the plate's bottom edge)"
 back_relief = 2;  // @param number min=0 max=6 step=0.5 unit=mm group=shell label="Air gap behind the device"
 corner_r    = 5;  // @param number min=0 max=10 step=0.5 unit=mm group=shell label="Outer front corner radius"
 
@@ -173,8 +272,7 @@ cable_w = 78; // @param number min=20 max=120 step=1 unit=mm group=cables label=
 cable_x = 0;  // @param number min=-25 max=25 step=1 unit=mm group=cables label="Cable cutout offset (+ = right)"
 
 // ----- Ventilation -----
-vent_count = 3;  // @param integer min=0 max=6 group=vent label="Plate vent slots"
-vent_w     = 10; // @param number min=4 max=20 step=0.5 unit=mm group=vent label="Plate vent slot width"
+vent_margin = 2; // @param number min=1.5 max=30 step=0.5 unit=mm group=vent label="Plate kept clear around the vent window"
 
 // ----- OpenGrid mount -----
 // Tile counts are MINIMUMS: the plate always grows to whole tiles big
@@ -184,8 +282,8 @@ width_units  = 4;     // @param integer min=1 max=6 group=mount label="Width (op
 height_units = 4;     // @param integer min=1 max=6 group=mount label="Height (openGrid units, min)"
 snap_lite    = false; // @param boolean group=mount label="Lite snaps (3.4mm instead of 6.8mm)"
 
-// @preset id="default" label="Apple TV HD, vertical" device_w=98 device_h=98 device_t=35 fit_clearance=1 plate_t=4 shelf_rise=10 shelf_t=4 back_relief=2 corner_r=5 lip_reach=3 land_w=12 cable_w=78 cable_x=0 vent_count=3 vent_w=10 width_units=4 height_units=4 snap_lite=false
-// @preset id="snug" label="Tight captive fit" device_w=98 device_h=98 device_t=35 fit_clearance=0.5 plate_t=4 shelf_rise=10 shelf_t=4 back_relief=2 corner_r=5 lip_reach=5 land_w=12 cable_w=78 cable_x=0 vent_count=3 vent_w=10 width_units=4 height_units=4 snap_lite=false
+// @preset id="default" label="Apple TV HD, vertical" device_w=98 device_h=98 device_t=35 fit_clearance=1 plate_t=3 shelf_t=4 back_relief=2 corner_r=5 lip_reach=3 land_w=12 cable_w=78 cable_x=0 vent_margin=2 width_units=4 height_units=4 snap_lite=false
+// @preset id="snug" label="Tight captive fit" device_w=98 device_h=98 device_t=35 fit_clearance=0.5 plate_t=3 shelf_t=4 back_relief=2 corner_r=5 lip_reach=5 land_w=12 cable_w=78 cable_x=0 vent_margin=2 width_units=4 height_units=4 snap_lite=false
 
 // === Derived ===
 
@@ -207,7 +305,7 @@ pocket_t = device_t + fit_clearance;       // off the wall
 // the device needs it, so the snap grid always covers the cradle.
 min_wall = 2.4;
 units_w  = max(width_units,  ceil((pocket_w + 2 * min_wall) / snap_pitch));
-units_h  = max(height_units, ceil((shelf_rise + pocket_h) / snap_pitch));
+units_h  = max(height_units, ceil((shelf_t + pocket_h) / snap_pitch));
 W = units_w * snap_pitch;
 H = units_h * snap_pitch;
 
@@ -226,43 +324,53 @@ lip_e  = max(0.5, min(lip_reach, min(side_wall_t - 1, pocket_w / 2 - 5)));
 
 z_back  = plate_top + back_relief;  // device's back face rests here
 z_face  = z_back + pocket_t;        // device's front face / lip ramp start
-z_front = z_face + lip_e;           // rail crest, and the model's top in print
+z_front = z_face + lip_e;           // rail crest, and the model's front face
 
-// Shelf cannot start below the plate's bottom edge.
-shelf_t_e = min(shelf_t, shelf_rise);
-y_shelf0  = shelf_rise - shelf_t_e;
+// The shelf stands ON the plate's bottom edge, so its underside is the
+// bed plane in print (pst-mfy). The device rests on top of it.
+y_shelf = shelf_t;                  // shelf top = where the device sits
+// Rails do nothing above the device, so the cradle stops at the top of
+// the pocket rather than following the plate up to its last whole tile.
+y_cradle_top = y_shelf + pocket_h;
 
 // Leave >= 1mm of rail surviving at the rounded outer corner.
 corner_r_e = max(0, min(corner_r, side_wall_t - 1));
 
-// 45deg break on the shelf's bottom-front and the rails' top-front
-// edges. Not a @param: it is finish, and every extra slider costs the
-// wasm sweep a pair of full renders.
-end_chamfer = min(1.5, shelf_t_e - 0.5);
+// 45deg break on the rails' top-front edge. Not a @param: it is finish,
+// and every extra slider costs the wasm sweep a pair of full renders.
+// The shelf's bottom-front edge deliberately does NOT get one — that
+// edge is on the build plate now, and chamfering it would trade first
+// layer adhesion for a bevel nobody sees. Clamped to the lip so the
+// break can never cut past the rail crest it is breaking.
+end_chamfer = min(1.5, lip_e);
 
-// Cable cutout: keep >= 6mm of shelf ear each side, then clamp the
-// offset so both ears survive.
-cable_w_e   = max(0, min(cable_w, pocket_w - 12));
+// Cable cutout: keep >= 6mm of shelf ear each side AND stop at the back
+// lands' inner edges, so the cut can never undercut a land and leave a
+// sliver of it starting in mid-air over the gap. Then clamp the offset
+// so both ears survive.
+cable_w_e   = max(0, min(cable_w, pocket_w - 12, pocket_w - 2 * land_e));
 cable_x_max = max(0, (pocket_w - cable_w_e) / 2 - 6);
 cable_x_e   = max(-cable_x_max, min(cable_x, cable_x_max));
 
-// Plate vent slots live in the rectangle the four corner-tile snap
-// footprints leave clear, further clipped to the device's own back so
-// they always open into the relief channel rather than into a rail.
-vent_x_max  = units_w > 1
-    ? min((units_w - 1) / 2 * snap_pitch - snap_w / 2 - 2,
-          pocket_w / 2 - land_e - 2)
+// The plate vent window spans the band BETWEEN the bottom and top snap
+// rows — vent_y0/vent_y1 are derived from those rows' footprints, so
+// the band is snap-free by construction and the snaps never constrain
+// its width. What does constrain it is the back lands: the window has
+// to open into the relief channel between them rather than into a
+// rail, so it stops vent_margin short of a land's inner edge.
+vent_x_max  = units_w > 1 ? pocket_w / 2 - land_e - vent_margin : 0;
+vent_y0 = max(0.5 * snap_pitch + snap_w / 2 + vent_margin,
+              y_shelf + vent_margin);
+vent_y1 = units_h > 1
+    ? min((units_h - 0.5) * snap_pitch - snap_w / 2 - vent_margin,
+          y_cradle_top - vent_margin)
     : 0;
-vent_y0_raw = 0.5 * snap_pitch + snap_w / 2 + 2;
-vent_y1_raw = units_h > 1
-    ? (units_h - 0.5) * snap_pitch - snap_w / 2 - 2
-    : 0;
-vent_y0 = max(vent_y0_raw, shelf_rise + 2);
-vent_y1 = min(vent_y1_raw, shelf_rise + pocket_h - 2);
-vent_pitch = vent_count > 0 ? 2 * vent_x_max / vent_count : 0;
-vent_w_e   = vent_count > 0 ? min(vent_w, vent_pitch - 3) : 0;
-vent_ok    = vent_count > 0 && vent_x_max > 6 && vent_w_e > 2
-             && (vent_y1 - vent_y0) > 10;
+// The window's ceiling closes in at 45deg until only this much flat
+// span is left to bridge.
+vent_flat = min(2 * vent_x_max, 20);
+vent_roof = vent_x_max - vent_flat / 2;
+vent_ok   = vent_x_max > 6
+            && (vent_y1 - vent_roof - vent_y0) > 4;
 
 plate_corner_r = 1;   // plate outline rounding, matches the siblings
 // 45deg plate bottom-rim chamfer. The snap grid leaves a 1.6mm rim
@@ -274,17 +382,20 @@ plate_chamfer = min(plate_t - bury - 0.2, snap_margin - 0.2);
 assert(side_wall_t >= min_wall - 0.001,
        "pocket is wider than the whole-tile plate — should be impossible");
 assert(pocket_h >= 20, "pocket height collapsed");
-assert(H >= shelf_rise + 1, "plate is shorter than the shelf");
+assert(H >= y_cradle_top - 0.001, "plate is shorter than the cradle");
 
-// PRINT_ANCHOR_BBOX at defaults:
+// PRINT_ANCHOR_BBOX at defaults, in the PRINT frame (build axis +Z, up
+// the wall). X is the plate width, Y is the reach off the panel, Z is
+// the plate height:
 //   X = W = 4 * 28                                  = 112
-//   Y = H = 4 * 28                                  = 112
-//   Z = z_front = (6.8 - 0.02) + 4 + 2 + 36 + 3     = 51.78
-PRINT_ANCHOR_BBOX = [112, 112, 51.78];
+//   Y = z_front = (6.8 - 0.02) + 3 + 2 + 36 + 3     = 50.78
+//   Z = H = 4 * 28                                  = 112
+PRINT_ANCHOR_BBOX = [112, 50.78, 112];
 
 // === Snaps ===
-// Frame: X centered, Y = 0 at the plate's bottom edge (bottom on the
-// wall as mounted), Z = 0 on the bed at the snap faces.
+// Mount frame: X centered, Y = 0 at the plate's bottom edge (bottom on
+// the wall as mounted, and the bed in print), Z = 0 at the snap faces
+// (the panel side).
 
 // One openGrid snap in its own frame (front/strong nub toward +X),
 // welded into a single solid — verbatim from opengrid_bin /
@@ -355,18 +466,21 @@ module plate_rim_chamfers() {
                                      [-ov, plate_z0 + c + ov]]);
 }
 
-// Stadium slots straight through the plate along the build axis, so
-// they cost nothing in print and open the back-relief channel to the
-// panel lattice.
-module vent_slots() {
+// One window straight through the plate, opening the back-relief
+// channel to the panel lattice — and the model's main lightening cut
+// (rationale in the header). Its ceiling is a 45deg gable so the print
+// never bridges more than `vent_flat`; its floor needs no such help,
+// since that is where material stops rather than restarts.
+module vent_window() {
     if (vent_ok)
-        for (i = [0 : vent_count - 1])
-            translate([(i - (vent_count - 1) / 2) * vent_pitch,
-                       (vent_y0 + vent_y1) / 2,
-                       plate_z0 - ov])
-                linear_extrude(height = plate_t + 2 * ov)
-                    rect([vent_w_e, vent_y1 - vent_y0],
-                         rounding = vent_w_e * 0.49);
+        translate([0, 0, plate_z0 - ov])
+            linear_extrude(height = plate_t + 2 * ov)
+                polygon([[-vent_x_max,   vent_y0],
+                         [ vent_x_max,   vent_y0],
+                         [ vent_x_max,   vent_y1 - vent_roof],
+                         [ vent_flat / 2, vent_y1],
+                         [-vent_flat / 2, vent_y1],
+                         [-vent_x_max,   vent_y1 - vent_roof]]);
 }
 
 module plate() {
@@ -375,7 +489,7 @@ module plate() {
             linear_extrude(height = plate_t)
                 rect([W, H], rounding = plate_corner_r, anchor = FRONT);
         plate_rim_chamfers();
-        vent_slots();
+        vent_window();
     }
 }
 
@@ -384,7 +498,9 @@ module plate() {
 // The cradle is extruded along +Y (up the wall) from a plan profile in
 // the XZ plane, which is what lets its outer FRONT corners carry
 // rect(rounding=) without any hull, and what makes the pocket — lands,
-// rail faces and lips alike — a single constant cross-section cut.
+// rail faces and lips alike — a single constant cross-section cut. It
+// is also why the part prints supportless standing up: +Y is the build
+// axis, so every one of those swept faces is a vertical wall.
 // Helper: a 2D profile whose local (x, y) reads as model (X, Z), swept
 // over model Y in [y0, y1].
 module plan_extrude(y0, y1) {
@@ -394,11 +510,11 @@ module plan_extrude(y0, y1) {
                 children();
 }
 
-// Solid slab from the shelf's underside to the plate's top edge, the
-// full plate width, standing off the plate face out to the rail crest.
-// The pocket is carved out of it above the shelf.
+// Solid slab from the plate's bottom edge up to the top of the pocket,
+// the full plate width, standing off the plate face out to the rail
+// crest. The pocket is carved out of it above the shelf.
 module cradle_block() {
-    plan_extrude(y_shelf0, H)
+    plan_extrude(0, y_cradle_top)
         translate([0, plate_top - bury])
             // rect rounding order: [X+Y+, X-Y+, X-Y-, X+Y-]. Local Y+
             // is the front (away from the panel); the plate end stays
@@ -415,7 +531,7 @@ module cradle_block() {
 }
 
 // The pocket, as one (X, Z) profile swept up the wall from the shelf
-// top to past the plate's top edge. Reading it from the plate outward:
+// top to past the cradle's top edge. Reading it from the plate outward:
 // the narrow band at the bottom is the void BETWEEN the two back lands
 // the device rests on; at z_back the void steps outboard to the full
 // pocket width (rail inner faces); at z_face each side ramps back in at
@@ -429,7 +545,7 @@ module pocket_cavity() {
     li   = pw2 - land_e;   // land inner edge — the relief channel wall
     lipi = pw2 - lip_e;    // lip crest, overlapping the device's face
     zc   = plate_top - bury - ov;
-    plan_extrude(shelf_rise, H + ov)
+    plan_extrude(y_shelf, y_cradle_top + ov)
         polygon([[-li,   zc],
                  [ li,   zc],
                  [ li,   z_back],
@@ -446,41 +562,33 @@ module pocket_cavity() {
 
 // Splits the shelf into two corner ears. Cables and plug bodies drop
 // straight down through the gap, and it is also the bottom mouth of the
-// back-relief chimney. Overshoots INTO the pocket void above the shelf
-// (rather than stopping level with it) so the two cut tools overlap
-// instead of meeting face-to-face (st-n4v).
+// back-relief chimney. Overshoots BELOW the bed plane and INTO the
+// pocket void above the shelf (rather than stopping level with either)
+// so the cut tools overlap instead of meeting face-to-face (st-n4v).
 module cable_cut() {
-    y0 = y_shelf0 - ov;
-    y1 = shelf_rise + ov;
+    y0 = -ov;
+    y1 = y_shelf + ov;
     z0 = plate_top - bury - ov;
     z1 = z_front + ov;
     translate([cable_x_e - cable_w_e / 2, y0, z0])
         cube([cable_w_e, y1 - y0, z1 - z0]);
 }
 
-// 45deg breaks on the two exposed front edges that the XZ plan rounding
-// cannot reach: the shelf's bottom-front and the rails' top-front. Both
-// faces point upward in print, so neither costs support. Profiles in
-// (Y, Z), extruded across the full width.
-module end_chamfers() {
+// 45deg break on the rails' top-front edge — the one exposed front edge
+// the XZ plan rounding cannot reach. Its face points up in print, so it
+// costs nothing. Profile in (Y, Z), extruded across the full width.
+module end_chamfer_top() {
     c = end_chamfer;
     if (c > 0.2)
         translate([-(W / 2 + ov), 0, 0])
             rotate([90, 0, 90])
-                linear_extrude(height = W + 2 * ov) {
-                    polygon([[y_shelf0 - ov, z_front - c],
-                             [y_shelf0,      z_front - c],
-                             [y_shelf0 + c,  z_front],
-                             [y_shelf0 + c + ov, z_front],
-                             [y_shelf0 + c + ov, z_front + ov],
-                             [y_shelf0 - ov, z_front + ov]]);
-                    polygon([[H + ov,     z_front - c],
-                             [H,          z_front - c],
-                             [H - c,      z_front],
-                             [H - c - ov, z_front],
-                             [H - c - ov, z_front + ov],
-                             [H + ov,     z_front + ov]]);
-                }
+                linear_extrude(height = W + 2 * ov)
+                    polygon([[y_cradle_top + ov,     z_front - c],
+                             [y_cradle_top,          z_front - c],
+                             [y_cradle_top - c,      z_front],
+                             [y_cradle_top - c - ov, z_front],
+                             [y_cradle_top - c - ov, z_front + ov],
+                             [y_cradle_top + ov,     z_front + ov]]);
 }
 
 module cradle() {
@@ -488,12 +596,19 @@ module cradle() {
         cradle_block();
         pocket_cavity();
         cable_cut();
-        end_chamfers();
+        end_chamfer_top();
     }
 }
 
 // === Assembly ===
-
-grid_snaps();
-plate();
-cradle();
+//
+// Everything above is in the MOUNT frame (+Y up the wall, +Z out of the
+// panel). rotate([90, 0, 0]) maps it into the PRINT frame the exporter,
+// the renderer and the invariants driver expect — build axis +Z, bed at
+// z = 0 — where the bed plane is the plate's bottom edge and the two
+// shelf ear undersides.
+rotate([90, 0, 0]) {
+    grid_snaps();
+    plate();
+    cradle();
+}
