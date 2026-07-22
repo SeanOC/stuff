@@ -1,5 +1,14 @@
 """Invariants for the Apple TV 4th-gen VERTICAL openGrid cradle (pst-e1v).
 
+FRAMES (pst-mfy). The .scad authors its geometry in the MOUNT frame — X
+across the wall, +Y up the wall, +Z out of the panel — and rotates the
+assembly by rotate([90, 0, 0]) at the end so the exported STL is in the
+PRINT frame, build axis +Z, bed at z = 0, like every sibling model. The
+probes below are all written in the MOUNT frame, because that is the
+frame the design reasons in; `_mount_frame()` rotates the loaded mesh
+back into it once, and everything downstream uses that. The one check
+that cares about the print frame — the overhang scan — says so.
+
 Built-ins (watertight, orphan fragments, triangle ceiling,
 PRINT_ANCHOR_BBOX drift, preset validity) cover the mesh basics. The
 extras here pin the claims this model exists for:
@@ -17,16 +26,25 @@ extras here pin the claims this model exists for:
 
   3. **The device is held VERTICALLY.** The bead's headline claim, and
      the one a regression to the old horizontal tray would break
-     loudest: total reach off the bed must be exactly the snap stack
+     loudest: total reach off the PANEL must be exactly the snap stack
      plus plate, back relief, device thickness and lip — i.e. the
      device stands on edge rather than lying in a tray cantilevered
      ~100mm off the panel.
 
   4. **Snap array on the 28mm pitch, spanning the corner tiles.** The
-     bed-contact patch (z ~ 0) must span exactly (units - 1) * 28 +
-     24.8 per axis. A drifted pitch or a snap that moved off its corner
-     tile changes this span, and contact existing at z=0 at all proves
-     the snaps-down print orientation.
+     panel-plane patch (mount z ~ 0) must span exactly (units - 1) * 28
+     + 24.8 per axis. A drifted pitch or a snap that moved off its
+     corner tile changes this span.
+
+ 12. **It stands on the plate's bottom edge.** The print orientation
+     claim (pst-mfy), checked two ways. The bed plane (mount y = 0)
+     must carry BOTH the plate's bottom edge and the two shelf ears —
+     a shelf that drifts back up the wall is the single biggest
+     overhang this design can grow. And a slicer-style scan of the
+     exported mesh in the PRINT frame must find no unsupported
+     downward face outside the four snap footprints: the cradle is a
+     constant cross-section sweep along the build axis, so anything
+     else appearing there means a feature started in mid-air.
 
   5. **Directional snaps, strong nub UP the wall.** The device hangs
      off the panel, so the lever-out load must bear on the rigid 0.8mm
@@ -63,9 +81,13 @@ extras here pin the claims this model exists for:
      the plate it cooks. The two lands hold it off; the channel between
      them is the chimney.
 
- 11. **Plate vent slots are through-holes and the webs between them
-     survive.** They open that channel to the panel lattice. Merged
-     slots would also mean the cut drifted toward a snap footprint.
+ 11. **The plate vent window is open through the plate, and stops
+     clear of the snap rows and the lands.** It opens that channel to
+     the panel lattice, and it is also the model's main lightening cut
+     (pst-mfy), so it is the cut most likely to be grown carelessly. A
+     window that reached a snap row would undercut a snap footprint;
+     one that reached past a land's inner edge would open into a rail
+     instead of into the relief channel.
 """
 
 from __future__ import annotations
@@ -73,6 +95,7 @@ from __future__ import annotations
 import math
 
 import numpy as np
+import trimesh
 
 from scripts.invariants import Failure, as_default_params, expect_connected_solids
 
@@ -86,6 +109,28 @@ _NUB_PROBE_R = 13.0
 _NUB_PROBE_Z = 4.2
 _MIN_WALL = 2.4
 _WELD = 0.02
+# Overhang scan (print frame): a face is flagged when it faces down the
+# build axis and is tilted more than this far from vertical. 50deg
+# rather than the usual 45 so the model's many exactly-45deg
+# self-supporting ramps sit clear of the threshold instead of on it —
+# at 45 they flip in and out on the last bit of float.
+_OVERHANG_FROM_VERTICAL_DEG = 50.0
+_OVERHANG_AREA_CEILING_MM2 = 1100.0
+
+
+def _mount_frame(ctx):
+    """A ctx whose mesh is rotated from the PRINT frame to the MOUNT frame.
+
+    The .scad ends with rotate([90, 0, 0]), i.e. mount (x, y, z) ->
+    print (x, -z, y). This undoes it, so every probe below can be
+    written in the frame the design reasons in.
+    """
+    m = ctx["stl"].copy()
+    m.apply_transform(trimesh.transformations.rotation_matrix(
+        -math.pi / 2, [1, 0, 0]))
+    out = dict(ctx)
+    out["stl"] = m
+    return out
 
 
 def _inside(ctx, points):
@@ -120,16 +165,14 @@ def check(ctx):
     device_h = p.get("device_h", 98)
     device_t = p.get("device_t", 35)
     fit_clearance = p.get("fit_clearance", 1)
-    plate_t = p.get("plate_t", 4)
-    shelf_rise = p.get("shelf_rise", 10)
+    plate_t = p.get("plate_t", 3)
     shelf_t = p.get("shelf_t", 4)
     back_relief = p.get("back_relief", 2)
     lip_reach = p.get("lip_reach", 3)
     land_w = p.get("land_w", 12)
     cable_w = p.get("cable_w", 78)
     cable_x = p.get("cable_x", 0)
-    vent_count = int(p.get("vent_count", 3))
-    vent_w = p.get("vent_w", 10)
+    vent_margin = p.get("vent_margin", 2)
     snap_lite = bool(p.get("snap_lite", False))
 
     # Mirror of the .scad's Derived block — keep the two in step.
@@ -139,7 +182,7 @@ def check(ctx):
     units_w = max(int(p.get("width_units", 4)),
                   math.ceil((pocket_w + 2 * _MIN_WALL) / _SNAP_PITCH))
     units_h = max(int(p.get("height_units", 4)),
-                  math.ceil((shelf_rise + pocket_h) / _SNAP_PITCH))
+                  math.ceil((shelf_t + pocket_h) / _SNAP_PITCH))
     plate_w = units_w * _SNAP_PITCH
     plate_h = units_h * _SNAP_PITCH
     side_wall_t = (plate_w - pocket_w) / 2
@@ -151,45 +194,54 @@ def check(ctx):
     z_back = plate_top + back_relief
     z_face = z_back + pocket_t
     z_front = z_face + lip_e
-    shelf_t_e = min(shelf_t, shelf_rise)
-    y_shelf0 = shelf_rise - shelf_t_e
-    cable_w_e = max(0, min(cable_w, pocket_w - 12))
+    # The shelf sits ON the plate's bottom edge (pst-mfy): underside at
+    # y = 0, device resting on top at y = shelf_t.
+    y_shelf = shelf_t
+    y_cradle_top = y_shelf + pocket_h
+    cable_w_e = max(0, min(cable_w, pocket_w - 12, pocket_w - 2 * land_e))
     cable_x_max = max(0, (pocket_w - cable_w_e) / 2 - 6)
     cable_x_e = max(-cable_x_max, min(cable_x, cable_x_max))
 
-    # Reference points inside the pocket, reused by several probes.
-    y_mid = shelf_rise + pocket_h / 2
-    z_mid = (z_back + z_face) / 2
-    y_shelf_mid = y_shelf0 + shelf_t_e / 2
+    # Everything below probes the MOUNT frame; the export is rotated.
+    print_ctx = ctx
+    ctx = _mount_frame(ctx)
 
-    # 2. Footprint = whole openGrid tiles.
+    # Reference points inside the pocket, reused by several probes.
+    y_mid = y_shelf + pocket_h / 2
+    z_mid = (z_back + z_face) / 2
+    y_shelf_mid = y_shelf / 2
+
+    # 2. Footprint = whole openGrid tiles. The export is in the print
+    # frame, so the plate's two in-plane dimensions are bbox X and Z.
     bbox = ctx["bbox_mm"]
-    if abs(bbox[0] - plate_w) > 0.5 or abs(bbox[1] - plate_h) > 0.5:
+    if abs(bbox[0] - plate_w) > 0.5 or abs(bbox[2] - plate_h) > 0.5:
         failures.append(Failure(
             "footprint",
-            f"bbox {bbox[0]:.1f} x {bbox[1]:.1f}mm != {units_w}x{units_h} "
-            f"openGrid tiles ({plate_w:.1f} x {plate_h:.1f}mm) — the holder "
-            f"no longer aligns with the 28mm grid",
+            f"plate reads {bbox[0]:.1f} x {bbox[2]:.1f}mm != {units_w}x"
+            f"{units_h} openGrid tiles ({plate_w:.1f} x {plate_h:.1f}mm) — "
+            f"the holder no longer aligns with the 28mm grid",
         ))
 
     # 3. Vertical hold: reach off the panel is the device's THICKNESS.
-    if abs(bbox[2] - z_front) > 0.5:
+    # Print-frame Y is the wall normal.
+    if abs(bbox[1] - z_front) > 0.5:
         failures.append(Failure(
             "vertical_hold",
-            f"model stands {bbox[2]:.1f}mm off the bed but the vertical "
+            f"model reaches {bbox[1]:.1f}mm off the panel but the vertical "
             f"cradle should be exactly {z_front:.1f}mm (snaps + plate + "
             f"{back_relief:.1f}mm relief + {pocket_t:.1f}mm pocket + "
             f"{lip_e:.1f}mm lip) — the device is no longer held on edge",
         ))
 
-    # 4. Bed contact spans exactly the snap grid.
+    # 4. The panel-contact patch spans exactly the snap grid.
     verts = ctx["stl"].vertices
     contact = verts[verts[:, 2] < _CONTACT_EPS_MM]
     if len(contact) == 0:
         failures.append(Failure(
             "orientation",
-            "no vertices on z=0; model is not in its snaps-down print "
-            "orientation",
+            "no vertices on the panel plane (mount z=0); the snap faces "
+            "have moved off the grid, or the print-frame rotation in the "
+            ".scad no longer matches _mount_frame()",
         ))
         return failures
     span_x = contact[:, 0].max() - contact[:, 0].min()
@@ -199,7 +251,7 @@ def check(ctx):
     if abs(span_x - want_x) > 0.5 or abs(span_y - want_y) > 0.5:
         failures.append(Failure(
             "snapgrid",
-            f"bed contact spans {span_x:.1f} x {span_y:.1f}mm but a "
+            f"panel contact spans {span_x:.1f} x {span_y:.1f}mm but a "
             f"{units_w}x{units_h} snap grid on the 28mm pitch should span "
             f"{want_x:.1f} x {want_y:.1f}mm — snap count or pitch drifted",
         ))
@@ -230,7 +282,7 @@ def check(ctx):
 
     # 6. The whole device envelope is clear, standing on edge.
     xs = np.linspace(-device_w / 2, device_w / 2, 9)
-    ys = np.linspace(shelf_rise + 0.3, shelf_rise + device_h - 0.3, 8)
+    ys = np.linspace(y_shelf + 0.3, y_shelf + device_h - 0.3, 8)
     zs = np.linspace(z_back + 0.3, z_back + device_t - 0.3, 7)
     env = [[x, y, z] for x in xs for y in ys for z in zs]
     hits = _inside(ctx, env)
@@ -322,39 +374,128 @@ def check(ctx):
                 f"channel closes as soon as it is loaded",
             ))
 
-    # 11. Plate vent slots: through-holes with surviving webs.
-    vent_x_max = (min((units_w - 1) / 2 * _SNAP_PITCH - _SNAP_W / 2 - 2,
-                      pocket_w / 2 - land_e - 2)
-                  if units_w > 1 else 0)
-    vent_y1_raw = ((units_h - 0.5) * _SNAP_PITCH - _SNAP_W / 2 - 2
-                   if units_h > 1 else 0)
-    vent_y0 = max(0.5 * _SNAP_PITCH + _SNAP_W / 2 + 2, shelf_rise + 2)
-    vent_y1 = min(vent_y1_raw, shelf_rise + pocket_h - 2)
-    vent_pitch = 2 * vent_x_max / vent_count if vent_count > 0 else 0
-    vent_w_e = min(vent_w, vent_pitch - 3) if vent_count > 0 else 0
-    vent_ok = (vent_count > 0 and vent_x_max > 6 and vent_w_e > 2
-               and (vent_y1 - vent_y0) > 10)
+    # 11. Plate vent window: open through the plate, and stopping clear
+    # of both snap rows and both lands.
+    vent_x_max = (pocket_w / 2 - land_e - vent_margin) if units_w > 1 else 0
+    vent_y0 = max(0.5 * _SNAP_PITCH + _SNAP_W / 2 + vent_margin,
+                  y_shelf + vent_margin)
+    vent_y1 = (min((units_h - 0.5) * _SNAP_PITCH - _SNAP_W / 2 - vent_margin,
+                   y_cradle_top - vent_margin)
+               if units_h > 1 else 0)
+    vent_flat = min(2 * vent_x_max, 20)
+    vent_roof = vent_x_max - vent_flat / 2
+    vent_ok = vent_x_max > 6 and (vent_y1 - vent_roof - vent_y0) > 4
     if vent_ok:
-        y_vent = (vent_y0 + vent_y1) / 2
         z_plate = plate_z0 + plate_t / 2
-        centres_x = [(i - (vent_count - 1) / 2) * vent_pitch
-                     for i in range(vent_count)]
-        blocked = _inside(ctx, [[x, y_vent, z_plate] for x in centres_x])
-        if blocked.any():
+        # Probe the window's own body, not its gable, so the check does
+        # not depend on where the 45deg roof starts.
+        y_body = (vent_y0 + (vent_y1 - vent_roof)) / 2
+        if _inside(ctx, [[0, y_body, z_plate]])[0]:
             failures.append(Failure(
-                "vent_slots",
-                f"{int(blocked.sum())} of {vent_count} plate vent slots are "
-                f"not open through the plate — the relief channel has no "
-                f"path to the panel lattice",
+                "vent_window",
+                f"the plate vent window is not open through the plate at "
+                f"(0, {y_body:.1f}, {z_plate:.1f}) — the relief channel has "
+                f"no path to the panel lattice",
             ))
-        if vent_count > 1 and vent_pitch - vent_w_e > 1:
-            web_x = centres_x[0] + vent_pitch / 2
-            if not _inside(ctx, [[web_x, y_vent, z_plate]])[0]:
-                failures.append(Failure(
-                    "vent_web",
-                    f"plate web at x={web_x:.1f} between two vent slots is "
-                    f"not solid — the slots have merged, which also means "
-                    f"the cut has drifted toward the snap footprints",
-                ))
+        # The window must not have eaten into a snap row or a land: the
+        # plate stays solid just outside each of its four edges.
+        margins = {
+            "below the bottom snap row": [0, vent_y0 - 1, z_plate],
+            "above the top snap row": [0, vent_y1 + 1, z_plate],
+            "inboard of the +X land": [vent_x_max + 1, y_body, z_plate],
+            "inboard of the -X land": [-vent_x_max - 1, y_body, z_plate],
+        }
+        gone = [name for name, pt in margins.items()
+                if not _inside(ctx, [pt])[0]]
+        if gone:
+            failures.append(Failure(
+                "vent_window_margin",
+                f"plate is not solid {', '.join(gone)} — the vent window has "
+                f"grown past the {vent_margin:.1f}mm margin it is supposed to "
+                f"keep, which either undercuts a snap footprint or opens the "
+                f"window into a rail instead of the relief channel",
+            ))
 
+    # The vent gable's apex is a deliberate flat bridge, not a support
+    # case: at most vent_flat wide through the plate's thickness.
+    bridge_allow = vent_flat * plate_t if vent_ok else 0.0
+
+    failures.extend(_check_print_orientation(
+        print_ctx, units_w, units_h, plate_z0, cable_x_e, cable_w_e,
+        bridge_allow))
+
+    return failures
+
+
+def _check_print_orientation(ctx, units_w, units_h, plate_z0,
+                             cable_x_e, cable_w_e, bridge_allow):
+    """12. Stands on the plate's bottom edge, and nothing else overhangs.
+
+    `ctx` here is the untouched PRINT-frame context: build axis +Z, bed
+    at z = 0, mount y mapping to print z and mount z to -print y.
+    """
+    failures = []
+    mesh = ctx["stl"]
+
+    # (a) The bed plane carries the plate's bottom edge AND both shelf
+    # ears. Vertices alone would pass on a single stray point, so this
+    # asks for face area on the bed either side of the cable gap.
+    on_bed = (mesh.face_normals[:, 2] < -0.99) & \
+             (mesh.triangles_center[:, 2] < _CONTACT_EPS_MM)
+    bed_x = mesh.triangles_center[on_bed][:, 0]
+    bed_area = mesh.area_faces[on_bed]
+    ear_r = float(bed_area[bed_x > cable_w_e / 2 + cable_x_e].sum())
+    ear_l = float(bed_area[bed_x < -cable_w_e / 2 + cable_x_e].sum())
+    if min(ear_r, ear_l) < 100.0:
+        failures.append(Failure(
+            "shelf_on_bed",
+            f"bed contact is {ear_l:.0f}mm2 left / {ear_r:.0f}mm2 right of "
+            f"the cable gap, and both shelf ears should be sitting on it "
+            f"(>100mm2 each) — the shelf has drifted back up off the "
+            f"plate's bottom edge, which is the biggest overhang this "
+            f"design can grow in its standing print orientation",
+        ))
+
+    # (b) No unsupported downward face outside the snap footprints.
+    down = mesh.face_normals[:, 2] < -math.sin(
+        math.radians(_OVERHANG_FROM_VERTICAL_DEG))
+    airborne = mesh.triangles_center[:, 2] > _CONTACT_EPS_MM
+    flagged = down & airborne
+    c = mesh.triangles_center[flagged]
+    area = mesh.area_faces[flagged]
+
+    # Snap footprints in the print frame: centred on their corner tiles
+    # in x/z, and living between the panel plane and the plate underside
+    # in y (print y = -mount z, so the snap band is negative y).
+    cols = [0, units_w - 1] if units_w > 1 else [0]
+    rows = [0, units_h - 1] if units_h > 1 else [0]
+    half = _SNAP_W / 2 + 0.5
+    in_snap = np.zeros(len(c), dtype=bool)
+    for cx in cols:
+        for ry in rows:
+            sx = (cx - (units_w - 1) / 2) * _SNAP_PITCH
+            sz = (ry + 0.5) * _SNAP_PITCH
+            in_snap |= ((np.abs(c[:, 0] - sx) <= half)
+                        & (np.abs(c[:, 2] - sz) <= half)
+                        & (c[:, 1] >= -plate_z0 - 0.5) & (c[:, 1] <= 0.5))
+    stray = float(area[~in_snap].sum())
+    total = float(area.sum())
+    if stray > bridge_allow + 20.0:
+        worst = c[~in_snap][np.argmax(area[~in_snap])]
+        failures.append(Failure(
+            "overhang",
+            f"{stray:.0f}mm2 of unsupported downward face outside the snap "
+            f"footprints, over the {bridge_allow:.0f}mm2 the vent gable's "
+            f"bridge is allowed (largest at print x={worst[0]:.1f}, "
+            f"y={worst[1]:.1f}, z={worst[2]:.1f}) — the cradle is a constant "
+            f"cross-section sweep along the build axis, so every face in it "
+            f"should be a vertical wall; this one starts in mid-air",
+        ))
+    if total > _OVERHANG_AREA_CEILING_MM2:
+        failures.append(Failure(
+            "overhang_budget",
+            f"{total:.0f}mm2 of unsupported downward face, over the "
+            f"{_OVERHANG_AREA_CEILING_MM2:.0f}mm2 budget — the four snap "
+            f"undersides plus the vent gable's bridge should come to ~912",
+        ))
     return failures
