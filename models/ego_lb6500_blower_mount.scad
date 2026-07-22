@@ -22,11 +22,23 @@
 // the old fill_screw_holes plug machinery.
 //
 // LICENSING: both back-mount systems come from QuackWorks — the
-// Multiconnect backer (Modules/multiconnectSlotDesignBOSL.scad) and
+// Multiconnect backer (Modules/multiconnectSlotDesign.scad) and
 // the openGrid snap (openGrid/opengrid-snap.scad, openGrid by David D,
 // OpenSCAD port by metasyntactic) — licensed CC BY-NC-SA 4.0 —
 // NON-COMMERCIAL. This derived mount is for personal use only; do not
 // sell prints or files.
+//
+// REPRINT NOTE (pst-9sw, 2026-07-21): the backer moved from QuackWorks'
+// BOSL2 Multiconnect module to its BOSL2-free master copy, which changes
+// slot retention from the v1 cone dimple to the v2 triangular snap — the
+// current official Multiconnect mechanism. FIT IS UNCHANGED: shoulder
+// (10.15), entry ramp and 25mm pitch are byte-identical, only the
+// non-engaging back pocket deepens 4.15 -> 5mm. Retention *feel* differs
+// (click into the rail rather than seat into a dimple), so a reprint will
+// not match an already-printed part's action. The old slot_dimples
+// @param is now slot_retention (same on/off meaning, new mechanism).
+// Slot z-span, entry on-ramps and bbox are unchanged (measured against
+// the pre-migration export, not merely assumed).
 //
 // === Coordinate frame / print orientation ===
 //
@@ -82,7 +94,7 @@
 include <BOSL2/std.scad>
 // `use` not `include`: keeps the libraries' top-level demo/customizer
 // statements out of the render.
-use <QuackWorks/Modules/multiconnectSlotDesignBOSL.scad>
+use <QuackWorks/Modules/multiconnectSlotDesign.scad>
 use <QuackWorks/openGrid/opengrid-snap.scad>
 
 $fn = 64;
@@ -91,7 +103,7 @@ $fn = 64;
 
 mount_type = "multiconnect"; // @param enum choices=multiconnect|opengrid group=mount label="Wall mount type" filename
 backer_thickness = 6.5;  // @param number min=5.5 max=8 step=0.5 unit=mm group=mount label="Multiconnect backer thickness"
-slot_dimples     = true; // @param boolean group=mount label="Multiconnect slot dimples (click retention)"
+slot_retention   = true; // @param boolean group=mount label="Multiconnect slot click retention"
 snap_lite        = false; // @param boolean group=mount label="Lite openGrid snaps (3.4mm instead of 6.8mm)"
 
 // === Fixed geometry (matches the reference mesh — not tunable) ===
@@ -279,36 +291,41 @@ module blower_body() {
 
 // === Back-mount geometry ===
 //
-// Everything below is a root-level sibling: multiconnectGenerator uses
-// BOSL2 diff() tags internally and is known to break inside an outer
-// explicit union() (see models/cylindrical_holder_slot.scad). Root
-// siblings implicitly union into one solid at render time. The
-// mount_type if() blocks are plain group nodes, not explicit union()
-// calls — the generator's slot cuts survive them (verified by the
-// slot-channel probes in the invariants sidecar).
+// Everything below is a root-level sibling. This was once required —
+// the BOSL2 backer used diff() tags internally and its slot cuts
+// silently vanished inside an outer explicit union() — and the
+// non-BOSL multiconnectBack() is a plain difference() with no such
+// hazard. Kept because root siblings implicitly union and the layout
+// reads the same either way. The slot-channel probes in the invariants
+// sidecar still guard against the cuts going missing.
 
-// Multiconnect backer under the plate face. Generator native frame:
-// width along X, height along Z (dome ends at +Z), slot channels
-// recessed into the -Y face. rotate([90,0,180]) lays it flat with the
-// dome ends toward +Y (the up-when-hung edge — see the load-direction
-// header) and the slot openings still facing -Z (the build plate /
-// wall face); the entry mouths open through the y=0 down edge. Panel
-// is thickened by `weld` so its top sinks into the plate instead of
-// merely touching it.
+// Multiconnect backer under the plate face. multiconnectBack() anchors
+// at a corner — X 0..W, Y -t..0, Z 0..H, slots recessed into the -Y
+// face — so the inner translate re-centers it on the origin, the frame
+// the outer placement assumes. rotate([90,0,180]) then lays it flat
+// with the dome ends toward +Y (the up-when-hung edge — see the
+// load-direction header) and the slot openings still facing -Z (the
+// build plate / wall face); the entry mouths open through the y=0 down
+// edge. slotVerticalOffset lifts the slot ladder 2.85mm to the standard
+// Multiconnect height (upstream's backHeight-13 placement is that much
+// low). Panel is thickened by `weld` so its top sinks into the plate
+// instead of merely touching it — backThickness carries that through,
+// keeping the slot a fixed recess off the wall face.
 backer_h = plate_face_d - top_band; // slot region height (dome edge at y=backer_h)
 
 module backer_panel() {
     translate([plate_w / 2, backer_h / 2, (backer_thickness + weld) / 2])
         rotate([90, 0, 180])
-            multiconnectGenerator(
-                width = plate_w,
-                height = backer_h,
-                multiconnectPartType = "Backer",
-                distanceBetweenSlots = slot_spacing,
-                backerThickness = backer_thickness + weld,
-                slotOrientation = "Vertical",
-                slotDimple = slot_dimples
-            );
+            translate([-plate_w / 2, (backer_thickness + weld) / 2, -backer_h / 2])
+                multiconnectBack(
+                    backWidth = plate_w,
+                    backHeight = backer_h,
+                    distanceBetweenSlots = slot_spacing,
+                    backThickness = backer_thickness + weld,
+                    slotVerticalOffset = 2.85,
+                    connectVersion = "v2",
+                    quickRelease = !slot_retention
+                );
 }
 
 // Solid strip over the slot dome ends (they breach the panel's dome

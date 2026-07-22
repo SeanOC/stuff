@@ -26,15 +26,39 @@ BOSL2 is opt-in (R6 permits); added as a dependency for Multiboard work.
 QuackWorks is **CC BY-NC-SA 4.0** — fine for personal use, derived parts
 cannot be sold.
 
-**BOSL2 pin note (st-kls, 2026-04-17):** pinned back from `663cd7c` (2026-04-16)
-to `456fcd8` (2024-09-22, last commit before PR #1475). BOSL2 PR #1475
-(`ae73c6d`, 2024-09-27) tightened `attachable()` to assert `is_finite(spin)`,
-which breaks QuackWorks `snapConnector.scad:59` and
-`multiconnectSlotDesignBOSL.scad:211` — both pass `spin=[x,y,z]` vectors.
-QuackWorks upstream HEAD (`6123129`) still uses the vector-spin syntax, so a
-forward bump on QuackWorks is not available. The `456fcd8` pin is the newest
-BOSL2 that accepts the syntax every pinned QuackWorks backer (snap + slot)
-depends on. Verified renders without local patches: snap backer, slot backer.
+**BOSL2 pin note (pst-9sw, 2026-07-21):** pin **stays** at `456fcd8`
+(2024-09-22). QuackWorks stays at `6123129` (still upstream HEAD). The
+*original* reason for the hold is gone, but a new one replaced it — see the
+end of this note.
+
+History: st-kls pinned BOSL2 *back* to `456fcd8` because PR #1475 (`ae73c6d`)
+tightened `attachable()` to assert `is_finite(spin)`, and two QuackWorks
+backers — `snapConnector.scad:59` and `multiconnectSlotDesignBOSL.scad:211` —
+pass `spin=[x,y,z]` vectors. That pin was the newest BOSL2 those two files
+accept. A compat patch for the drift was tried and rejected: on the wasm
+engine the BOSL2 slot backer aborts or hangs in *every* configuration under
+v2.0.747 (pst-d7d, pst-q0l, pst-7bs).
+
+That vector-spin blocker is now dissolved — by dropping both files instead of
+patching them. `snapConnector.scad` was already unused by every model; the two
+models that used `multiconnectSlotDesignBOSL.scad` moved to QuackWorks'
+BOSL2-free master copy of the same backer,
+`Modules/multiconnectSlotDesign.scad` (patch 0002 below). Nothing in the
+catalog references either vector-spin call site now, so `is_finite(spin)` is
+moot. That migration is what this change lands, and it is green on the current
+pin: full sweep 720 passed / 20 skipped / 0 failed.
+
+**The bump itself is still blocked, for a new and different reason.** Moving to
+`fbcdfdd5` (v2.0.747) *with* the migration in place regresses 6 wasm sweep
+cases that pass on `456fcd8` — `blu_black_tank_valve_mount` (`hex_ftf_left`/
+`hex_ftf_right=37.5`, `slop=0`, `saddle_w=30`, `wall_t=5`) and
+`blu_flow_meter_mount_80mm` (`base_w=100`), all `CGAL error in applyHull():
+assertion violation`. Both are BOSL2 hull consumers, neither is touched by the
+migration, and desktop CGAL export stays clean — the failure is wasm-only at
+param extremes. A default-params-only check (pst-7bs) called this bump clean
+and was wrong: **gate BOSL2 bumps with `npm run test:sweep`.** Until those 2
+models' hull usage is fixed, the pin holds — which also means mitufy's
+openConnect receivers (st-kls, pst-yr1) are still waiting on it.
 
 **Local patches (st-79a, 2026-07-10):** `scripts/vendor-libs.sh` applies
 `scripts/patches/<lib>/*.patch` after checkout; the `.vendor-sha` marker
@@ -52,6 +76,20 @@ Current patches:
   exports non-watertight STLs for every openGrid-snap model. The patch
   cuts the identical stadium prism with `linear_extrude` of a rounded
   `rect()` — no hull. Drop the patch if upstream fixes the click holes.
+
+- `QuackWorks/0002-multiconnect-nonbosl-backer-parameters.patch` —
+  `Modules/multiconnectSlotDesign.scad` is the BOSL2-free master copy of the
+  Multiconnect backer, and it is what `cylindrical_holder_slot` and
+  `ego_lb6500_blower_mount` mount on (pst-9sw). Upstream's
+  `multiconnectBack()` takes only `(backWidth, backHeight,
+  distanceBetweenSlots)`; backer thickness, slot-ladder height and
+  v1-dimple-vs-v2-snap retention are file-scope Customizer variables, which
+  `use <>` does not import and a model cannot set. The patch promotes the
+  three we need to module parameters, all defaulting to upstream's values so
+  the geometry is unchanged at default arguments. Unlike the BOSL2-compat
+  shim it replaces, it tracks no moving API — the file has zero BOSL2
+  references — so it should not rot across BOSL2 bumps. Drop it if upstream
+  promotes these itself.
 
 Licensing note: the QuackWorks patch contains modified QuackWorks source
 lines, so the patch file itself is a **CC BY-NC-SA 4.0** derivative — it is
