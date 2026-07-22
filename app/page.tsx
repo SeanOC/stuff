@@ -99,7 +99,7 @@ function ModelCard({ m }: { m: ModelEntry }) {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={`/api/thumbnail?model=${encodeURIComponent(m.slug)}`}
-          alt={`top view of ${m.title}`}
+          alt={`iso view of ${m.title}`}
           className="h-full w-full object-cover"
         />
       </div>
