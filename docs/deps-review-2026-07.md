@@ -25,15 +25,32 @@ used by models (`grep` over `models/*.scad`). NopSCADlib / threads-scad /
 MCAD rows in `libs/README.md` are an available-libraries menu, not active
 dependencies — nothing to gate.
 
-### BOSL2 hold (st-kls, re-verified 2026-07-11) — SUPERSEDED 2026-07-21
+### BOSL2 hold (st-kls, re-verified 2026-07-11) — REASON CHANGED 2026-07-21
 
-> **Superseded by pst-9sw.** The pin is now `fbcdfdd5` (v2.0.747). The hold
-> below was dissolved not by patching the vector-spin call sites it names,
-> but by dropping both files that contain them: `snapConnector.scad` was
-> already unused, and the 2 shipped models moved to QuackWorks' BOSL2-free
-> copy of the same backer, `Modules/multiconnectSlotDesign.scad`. Nothing in
-> the catalog reaches a vector-spin site now. See `libs/README.md`.
-> The analysis below is kept as the record of why the pin was held.
+> **Updated by pst-9sw.** The pin stays at `456fcd8`, but *why* it is held
+> has changed. The vector-spin blocker described below is now **dissolved**:
+> `snapConnector.scad` was already unused, and the 2 shipped models moved to
+> QuackWorks' BOSL2-free copy of the same backer,
+> `Modules/multiconnectSlotDesign.scad`. Nothing in the catalog reaches a
+> vector-spin site any more.
+>
+> The pin is now held by a **different, measured** blocker. Bumping to
+> `fbcdfdd5` (v2.0.747) with the migration in place regresses 6 wasm param
+> sweep cases that pass on `456fcd8`, all `CGAL error in applyHull():
+> assertion violation`:
+>
+> - `blu_black_tank_valve_mount` — `hex_ftf_left=37.5`, `hex_ftf_right=37.5`,
+>   `slop=0`, `saddle_w=30`, `wall_t=5`
+> - `blu_flow_meter_mount_80mm` — `base_w=100`
+>
+> Both are BOSL2 hull consumers and neither is touched by the migration.
+> Desktop CGAL export is clean — the breakage is wasm-only and only at param
+> extremes, which is why a default-params-only check (pst-7bs) called this
+> bump clean. **Gate BOSL2 bumps with `npm run test:sweep`, not default
+> renders.** This is exactly the risk the final paragraph below predicted.
+>
+> Migration-only (this pin, non-BOSL backer): full sweep 720 passed /
+> 20 skipped / 0 failed. With the bump: 6 failed / 714 passed / 20 skipped.
 
 The pin was rolled back from `663cd7c` to `456fcd8` on 2026-04-17 (st-kls)
 because BOSL2 PR #1475 tightened `attachable()` to assert

@@ -9,7 +9,7 @@ geometry.
 | NopSCADlib                  | Mechanical + project utilities, vitamins         | `c9baa0e`  | menu only |
 | threads-scad                | ISO metric threads, bolts, nuts, washers         | `4ae9aeb`  | menu only |
 | MCAD                        | General-purpose shape / fastener helpers         | `bd0a7ba`  | menu only |
-| BOSL2                       | Attachment / transform system; broad toolkit     | `fbcdfdd5` | ✅        |
+| BOSL2                       | Attachment / transform system; broad toolkit     | `456fcd8`  | ✅        |
 | gridfinity-rebuilt-openscad | Gridfinity bins, baseplates, lite variants (MIT) | `910e22d`  | ✅        |
 | QuackWorks                  | Multiboard / Multiconnect accessory generators   | `6123129`  | ✅        |
 
@@ -26,8 +26,10 @@ BOSL2 is opt-in (R6 permits); added as a dependency for Multiboard work.
 QuackWorks is **CC BY-NC-SA 4.0** — fine for personal use, derived parts
 cannot be sold.
 
-**BOSL2 pin note (pst-9sw, 2026-07-21):** bumped `456fcd8` (2024-09-22) →
-`fbcdfdd5` (v2.0.747). QuackWorks stays at `6123129` (still upstream HEAD).
+**BOSL2 pin note (pst-9sw, 2026-07-21):** pin **stays** at `456fcd8`
+(2024-09-22). QuackWorks stays at `6123129` (still upstream HEAD). The
+*original* reason for the hold is gone, but a new one replaced it — see the
+end of this note.
 
 History: st-kls pinned BOSL2 *back* to `456fcd8` because PR #1475 (`ae73c6d`)
 tightened `attachable()` to assert `is_finite(spin)`, and two QuackWorks
@@ -37,15 +39,26 @@ accept. A compat patch for the drift was tried and rejected: on the wasm
 engine the BOSL2 slot backer aborts or hangs in *every* configuration under
 v2.0.747 (pst-d7d, pst-q0l, pst-7bs).
 
-What unblocked the bump was dropping both files instead of patching them.
-`snapConnector.scad` was already unused by every model; the two models that
-used `multiconnectSlotDesignBOSL.scad` moved to QuackWorks' BOSL2-free master
-copy of the same backer, `Modules/multiconnectSlotDesign.scad` (patch 0002
-below). Nothing in the catalog references either vector-spin call site now,
-so `is_finite(spin)` is moot and BOSL2 is free to move forward — which is
-what mitufy's openConnect receivers need (st-kls, pst-yr1). Verified on
-v2.0.747: full-catalog desktop CGAL export watertight, full-catalog wasm
-render clean.
+That vector-spin blocker is now dissolved — by dropping both files instead of
+patching them. `snapConnector.scad` was already unused by every model; the two
+models that used `multiconnectSlotDesignBOSL.scad` moved to QuackWorks'
+BOSL2-free master copy of the same backer,
+`Modules/multiconnectSlotDesign.scad` (patch 0002 below). Nothing in the
+catalog references either vector-spin call site now, so `is_finite(spin)` is
+moot. That migration is what this change lands, and it is green on the current
+pin: full sweep 720 passed / 20 skipped / 0 failed.
+
+**The bump itself is still blocked, for a new and different reason.** Moving to
+`fbcdfdd5` (v2.0.747) *with* the migration in place regresses 6 wasm sweep
+cases that pass on `456fcd8` — `blu_black_tank_valve_mount` (`hex_ftf_left`/
+`hex_ftf_right=37.5`, `slop=0`, `saddle_w=30`, `wall_t=5`) and
+`blu_flow_meter_mount_80mm` (`base_w=100`), all `CGAL error in applyHull():
+assertion violation`. Both are BOSL2 hull consumers, neither is touched by the
+migration, and desktop CGAL export stays clean — the failure is wasm-only at
+param extremes. A default-params-only check (pst-7bs) called this bump clean
+and was wrong: **gate BOSL2 bumps with `npm run test:sweep`.** Until those 2
+models' hull usage is fixed, the pin holds — which also means mitufy's
+openConnect receivers (st-kls, pst-yr1) are still waiting on it.
 
 **Local patches (st-79a, 2026-07-10):** `scripts/vendor-libs.sh` applies
 `scripts/patches/<lib>/*.patch` after checkout; the `.vendor-sha` marker

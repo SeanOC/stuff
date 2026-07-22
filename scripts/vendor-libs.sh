@@ -60,6 +60,6 @@ vendor() {
   echo "$want" > "$dir/.vendor-sha"
 }
 
-vendor BOSL2                       https://github.com/BelfrySCAD/BOSL2.git                     fbcdfdd5
+vendor BOSL2                       https://github.com/BelfrySCAD/BOSL2.git                     456fcd8
 vendor QuackWorks                  https://github.com/AndyLevesque/QuackWorks.git              6123129
 vendor gridfinity-rebuilt-openscad https://github.com/kennetek/gridfinity-rebuilt-openscad.git 910e22d
