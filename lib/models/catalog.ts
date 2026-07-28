@@ -47,7 +47,7 @@ export const CATALOG: Record<string, CatalogEntry> = {
   opengrid_bin: {
     categoryId: "multiboard",
     blurb:
-      "Open-topped wall bin for vertically-mounted openGrid panels, sized in 28mm grid units so it aligns with the tiles. One directional snap per tile (strong nub up for the cantilever load), full-height sides, 45° scoop front lip, and a rear floor fillet. Prints snaps-down, support-free.",
+      "Open-topped wall bin sized in 28mm grid units so it aligns with the tiles. Fused to the selected back mount — one directional openGrid snap per tile (strong nub up for the cantilever load) or a Multiconnect slot backer for Multiboard rails (slides down onto wall connectors, load seats into the slot domes). Full-height sides, 45° scoop front lip, rear floor fillet; prints mount-down, support-free. Exports one STL per mount_type.",
   },
   opengrid_panel_aligner: {
     categoryId: "multiboard",
