@@ -93,6 +93,16 @@ plate_len_max = 116; // @param number min=60 max=300 step=1 unit=mm group=cradle
 mount_type = "opengrid"; // @param enum choices=opengrid|multiconnect group=mount label="Wall mount type" filename
 snap_lite = false; // @param boolean group=mount label="Lite snaps (3.4mm instead of 6.8mm)"
 
+// Standard Multiconnect slot tuning (only affects mount_type =
+// "multiconnect"; ignored by the openGrid snaps). Defaults reproduce the
+// shipped backer exactly. This is the canonical @param set the sibling
+// mounts (LED holders, ego) copy — see the multiconnect_backer() call
+// and scripts/patches/QuackWorks/0003 for the pass-through mechanism.
+slot_tolerance = 1.0;  // @param number min=0.925 max=1.075 step=0.005 group=mount label="Slot fit tolerance"
+slot_retention = true; // @param boolean group=mount label="Slot retention (v2 snap)"
+dimple_scale   = 1.0;  // @param number min=0.5 max=1.5 step=0.05 group=mount label="Dimple scale (v1 only)"
+on_ramp        = true; // @param boolean group=mount label="Slot on-ramp lead-in"
+
 // === Derived ===
 
 snap_pitch = 28;    // openGrid tile pitch
@@ -210,7 +220,11 @@ module multiconnect_backer() {
     translate([outer_w / 2, 0, mc_thickness])
         rotate(180, [0, 1, 1])
             multiconnectBack(backWidth = outer_w, backHeight = plate_len,
-                             distanceBetweenSlots = slot_spacing);
+                             distanceBetweenSlots = slot_spacing,
+                             quickRelease = !slot_retention,
+                             tolerance = slot_tolerance,
+                             dimple = dimple_scale,
+                             onRamp = on_ramp);
 }
 
 // NOTE on rounding style: BOSL2 cuboid() implements partial edge
