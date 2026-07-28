@@ -70,6 +70,10 @@ include <BOSL2/std.scad>
 // `use` not `include`: opengrid-snap.scad ends with a top-level demo
 // call that would otherwise inject a stray snap into every render.
 use <QuackWorks/openGrid/opengrid-snap.scad>
+// Multiconnect backer (BOSL2-free master copy — no diff() tags, so it
+// is safe as a root-level sibling, unlike the BOSL2 generator). Same
+// slot back ego_lb6500_blower_mount and cylindrical_holder_slot use.
+use <QuackWorks/Modules/multiconnectSlotDesign.scad>
 
 $fn = 64;
 
@@ -91,7 +95,12 @@ plate_t = 4;   // @param number min=3 max=6 step=0.5 unit=mm group=shell label="
 lip_rise    = 14; // @param number min=4 max=30 step=1 unit=mm group=shape label="Front lip rise (scoop)"
 rear_fillet = 8;  // @param number min=0 max=15 step=1 unit=mm group=shape label="Rear floor fillet"
 
-// ----- OpenGrid mount -----
+// ----- Wall mount -----
+// Two interchangeable back mounts, exported as one STL each (the
+// 'filename' flag fans the export grid over the enum). Default keeps
+// the original openGrid snaps so the shipped opengrid_bin behaviour is
+// unchanged; 'multiconnect' is the new alternative for Multiboard rails.
+mount_type = "opengrid"; // @param enum choices=opengrid|multiconnect group=mount label="Wall mount type" filename
 snap_lite = false; // @param boolean group=mount label="Lite snaps (3.4mm instead of 6.8mm)"
 
 // @preset id="default" label="2x2 units, 60mm deep" width_units=2 height_units=2 depth=60 wall=2.4 floor_t=3 plate_t=4 lip_rise=14 rear_fillet=8 snap_lite=false
@@ -104,10 +113,23 @@ snap_w     = 24.8;  // snap footprint
 snap_h     = snap_lite ? 3.4 : 6.8;
 weld       = 0.02;  // embed depth of snap tops into the plate (st-v7k)
 
+// Multiconnect backer (mount_type = "multiconnect"). The QuackWorks
+// master copy HARDCODES backThickness = 6.5 and ignores any keyword
+// override (mirrors ego_lb6500_blower_mount), so the slab depth is a
+// fixed constant here, not a slider. connectVersion v2 / retention-on
+// are likewise fixed by the vendored file.
+slot_spacing = 25;   // Multiconnect standard pitch
+mc_thickness = 6.5;  // backer slab depth (= the module's fixed backThickness)
+mc_weld      = 0.4;  // backer top sink into the plate (real overlap, not a face-kiss)
+
 W = width_units * snap_pitch;   // plate/body footprint = whole tiles
 H = height_units * snap_pitch;
 
-plate_z0  = snap_h - weld;      // plate bottom (welds into snap tops)
+// Plate bottom / bracket lift = thickness of whichever back mount is
+// selected, minus its weld into the plate. openGrid: snap tops weld
+// 0.02 up. Multiconnect: the 6.5mm slab welds mc_weld up.
+plate_z0  = mount_type == "multiconnect" ? mc_thickness - mc_weld
+                                         : snap_h - weld;
 plate_top = plate_z0 + plate_t;
 z_front   = plate_z0 + depth;   // bin front face (depth counts from the
                                 // panel face the plate back sits on)
@@ -138,10 +160,11 @@ top_ch   = 0.8; // hand-feel chamfer on the body's front-face rim
 snap_margin   = (snap_pitch - snap_w) / 2;
 plate_chamfer = min(plate_t - bury - 0.2, snap_margin - 0.2);
 
-// PRINT_ANCHOR_BBOX at defaults:
+// PRINT_ANCHOR_BBOX at defaults (mount_type = "opengrid"):
 //   X = W = 2 * 28                = 56
 //   Y = H = 2 * 28                = 56
 //   Z = z_front = 6.8 - 0.02 + 60 = 66.78
+// (multiconnect variant: Z = z_front = 6.5 - 0.4 + 60 = 66.1; X, Y same)
 PRINT_ANCHOR_BBOX = [56, 56, 66.78];
 
 // === Snaps ===
@@ -312,8 +335,41 @@ module body() {
     }
 }
 
+// === Multiconnect backer (alternative to openGrid snaps) ===
+//
+// QuackWorks' BOSL2-free master slot back. It is a plain difference()
+// (a slab minus the slot tools) with no BOSL2 diff() tags, so — unlike
+// the BOSL2 generator that silently loses its slot cuts inside an outer
+// union() — it is safe as a root-level sibling (ego_lb6500_blower_mount
+// and cylindrical_holder_slot document the rule). Invoked at root
+// below, never wrapped in an explicit union().
+//
+// multiconnectBack's local frame L: a cube x[0,W] y[-6.5,0] z[0,H]. The
+// slot channels are recessed from the y=-6.5 face, their closed dome
+// (retention) ends at high z and the entry mouths + on-ramps at low z.
+// rotate(180,[0,1,1]) maps (lx,ly,lz) -> (-lx, lz, ly):
+//   L.z -> +Y  — dome ends point UP the wall (retention takes the load)
+//   L.y -> +Z  — slot openings (the y=-6.5 face) face -Z, the bed/wall
+//   L.x -> -X  — then re-centred on x=0
+// The translate lands the slab at z[0, 6.5] with the openings at z=0
+// (the wall face, same plane the openGrid snaps engage) and its solid
+// back at z=6.5; the plate bottom sits mc_weld lower
+// (plate_z0 = 6.5 - mc_weld) so the backer top overlaps into the plate
+// as a real weld. Load direction matches the directional snaps (header):
+// +Y is up, the part slides DOWN onto the wall connectors, and the load
+// seats the connectors into the slot domes.
+module multiconnect_backer() {
+    translate([W / 2, 0, mc_thickness])
+        rotate(180, [0, 1, 1])
+            multiconnectBack(backWidth = W, backHeight = H,
+                             distanceBetweenSlots = slot_spacing);
+}
+
 // === Assembly ===
 
-grid_snaps();
+if (mount_type == "multiconnect")
+    multiconnect_backer();
+else
+    grid_snaps();
 plate();
 body();
