@@ -139,4 +139,9 @@ export const CATALOG: Record<string, CatalogEntry> = {
     blurb:
       "OpenGrid wall cradle that stands a 4th-gen Apple TV HD (98x98x35mm) on edge, flat against the panel, so it protrudes only ~45mm — low enough to tuck behind a wall-mounted TV. Slide-in cradle: shelf on the plate's bottom edge, two side rails with 45deg retaining lips, open top. The port edge faces down, so plugs drop through the shelf's cable cutout; two back lands hold the device off the plate for a full-height air channel, vented through one big gabled plate window that doubles as the lightening cut. Four corner-tile directional snaps on a 4x4-tile plate, strong nub up. Load it at the bench (tilt the bottom edge in, rock the top back behind the lips) before snapping it to the panel. Prints STANDING on the plate's bottom edge — 9x less overhang than lying snaps-down, and no support scars on the panel-mating face; the only supports are under the four snaps.",
   },
+  opengrid_snaps: {
+    categoryId: "multiboard",
+    blurb:
+      "Ready-to-print openGrid snap connectors (28mm pitch). One STL per variant: lite/full depth x directional/bidirectional. Press straight into an openGrid board.",
+  },
 };
