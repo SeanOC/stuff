@@ -1,0 +1,69 @@
+pst-9ij: expose the remaining three Multiconnect slot Customizer variables
+(slotTolerance, dimpleScale, onRampEnabled) as multiconnectBack() module
+parameters, so a use<>-ing model can set them per call instead of only via
+file-scope globals `use <>` cannot import.
+
+Follows 0002, which promoted backThickness / slotVerticalOffset /
+connectVersion / quickRelease for the same reason. Those four plus these
+three now cover every Customizer knob a mount needs; the standard set the
+mounts expose is slot tolerance, retention (quickRelease), dimple scale and
+on-ramp (pst-9ij pilots this on opengrid_bin; the LED holders + ego copy the
+same @param block and pass-through call).
+
+Named distinctly from the file-scope slotTolerance / dimpleScale /
+onRampEnabled so neither shadows the other, and each defaults to its global,
+so the file's own top-level Customizer call and any not-yet-updated caller
+render exactly as before. No geometry changes at default arguments.
+
+This file is CC BY-NC-SA 4.0 (QuackWorks, openGrid by David D); this patch is
+a derivative under the same terms — see scripts/patches/README.md. Drop it if
+upstream promotes these to module parameters.
+
+diff --git a/Modules/multiconnectSlotDesign.scad b/Modules/multiconnectSlotDesign.scad
+--- a/Modules/multiconnectSlotDesign.scad
++++ b/Modules/multiconnectSlotDesign.scad
+@@ -29,7 +29,7 @@ multiconnectBack(backWidth = totalWidth, backHeight = totalHeight, distanceBetwe
+ 
+ //BEGIN MODULES
+ //Slotted back Module
+-module multiconnectBack(backWidth, backHeight, distanceBetweenSlots, backThickness = 6.5, slotVerticalOffset = 0, connectVersion = "v2", quickRelease = false)
++module multiconnectBack(backWidth, backHeight, distanceBetweenSlots, backThickness = 6.5, slotVerticalOffset = 0, connectVersion = "v2", quickRelease = false, tolerance = slotTolerance, dimple = dimpleScale, onRamp = onRampEnabled)
+ {
+     //slot count calculates how many slots can fit on the back. Based on internal width for buffer. 
+     //slot width needs to be at least the distance between slot for at least 1 slot to generate
+@@ -40,14 +40,14 @@ module multiconnectBack(backWidth, backHeight, distanceBetweenSlots, backThickne
+             //Note: I kept doing math until it looked right. It's possible this can be simplified.
+             for (slotNum = [0:1:slotCount-1]) {
+                 translate(v = [distanceBetweenSlots/2+(backWidth/distanceBetweenSlots-slotCount)*distanceBetweenSlots/2+slotNum*distanceBetweenSlots,-2.35-(backThickness-6.5)+slotDepthMicroadjustment,backHeight-13+slotVerticalOffset]) {
+-                    color(c = "red")  slotTool(backHeight, connectVersion, quickRelease);
++                    color(c = "red")  slotTool(backHeight, connectVersion, quickRelease, tolerance, dimple, onRamp);
+                 }
+             }
+         }
+     }
+     //Create Slot Tool
+-    module slotTool(totalHeight, connectVersion = multiConnectVersion, quickRelease = slotQuickRelease) {
+-        scale(v = slotTolerance)
++    module slotTool(totalHeight, connectVersion = multiConnectVersion, quickRelease = slotQuickRelease, tolerance = slotTolerance, dimple = dimpleScale, onRamp = onRampEnabled) {
++        scale(v = tolerance)
+         //slot minus optional dimple with optional on-ramp
+         let (slotProfile = [[0,0],[10.15,0],[10.15,1.2121],[7.65,3.712],[7.65,5],[0,5]])
+         difference() {
+@@ -88,7 +88,7 @@ module multiconnectBack(backWidth, backHeight, distanceBetweenSlots, backThickne
+                             }
+                     }
+                 //on-ramp
+-                if(onRampEnabled)
++                if(onRamp)
+                     for(y = [1:onRampEveryXSlots:totalHeight/distanceBetweenSlots])
+                         translate(v = [0,-5,-y*distanceBetweenSlots]) 
+                             rotate(a = [-90,0,0]) 
+@@ -96,7 +96,7 @@ module multiconnectBack(backWidth, backHeight, distanceBetweenSlots, backThickne
+             }
+             //dimple
+             if (quickRelease == false && connectVersion == "v1")
+-                scale(v = dimpleScale) 
++                scale(v = dimple)
+                 rotate(a = [90,0,0,]) 
+                     rotate_extrude($fn=50) 
+                         polygon(points = [[0,0],[0,1.5],[1.5,0]]);
