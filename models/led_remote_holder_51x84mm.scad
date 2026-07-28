@@ -47,11 +47,27 @@
 // footprints as fit on the 28 mm openGrid pitch inside the plate,
 // keeping >= 1 mm rim per side, always centered. At defaults that is
 // 2 cols x 3 rows of full-depth (6.8 mm) snaps.
+//
+// === Wall mount (mount_type) ===
+//
+// Two interchangeable back mounts, one STL each via the 'filename' flag.
+// Default 'opengrid' keeps the per-tile openGrid snaps (shipped STL
+// unchanged); 'multiconnect' swaps in a QuackWorks Multiconnect slot
+// backer for Multiboard rails. As mounted +Y is UP the wall, so the
+// backer is oriented with its slot entry mouths opening through the
+// bottom (y=0) edge and the closed retention domes capping the top —
+// the cradle slides DOWN onto the wall connectors and the remote's
+// weight seats the connectors into the domes (same load rationale as
+// the directional-snap siblings, ego_lb6500 st-0of).
 
 include <BOSL2/std.scad>
 // `use` not `include`: opengrid-snap.scad ends with a top-level demo
 // call that would otherwise inject a stray snap into every render.
 use <QuackWorks/openGrid/opengrid-snap.scad>
+// Multiconnect backer (BOSL2-free master copy — a plain difference()
+// with no diff() tags, so it is safe as a root-level sibling, unlike
+// the BOSL2 generator that silently loses its slot cuts inside a union).
+use <QuackWorks/Modules/multiconnectSlotDesign.scad>
 
 $fn = 64;
 
@@ -77,6 +93,11 @@ scoop_r  = 13;  // @param number min=8 max=18 step=0.5 unit=mm group=cradle labe
 plate_len_max = 90; // @param number min=60 max=300 step=1 unit=mm group=cradle label="Back plate length cap"
 
 // ----- OpenGrid mount -----
+// Two interchangeable back mounts, exported as one STL each (the
+// 'filename' flag fans the export grid over the enum). Default keeps
+// the original openGrid snaps so the shipped holder behaviour is
+// unchanged; 'multiconnect' is the new alternative for Multiboard rails.
+mount_type = "opengrid"; // @param enum choices=opengrid|multiconnect group=mount label="Wall mount type" filename
 snap_lite = false; // @param boolean group=mount label="Lite snaps (3.4mm instead of 6.8mm)"
 
 // === Derived ===
@@ -85,6 +106,15 @@ snap_pitch = 28;    // openGrid tile pitch
 snap_w     = 24.8;  // snap footprint
 snap_h     = snap_lite ? 3.4 : 6.8;
 weld       = 0.02;  // embed depth of snap tops into the plate (st-v7k)
+
+// Multiconnect backer (mount_type = "multiconnect"). The QuackWorks
+// master copy HARDCODES backThickness = 6.5 and ignores any keyword
+// override (mirrors ego_lb6500_blower_mount / opengrid_bin), so the
+// slab depth is a fixed constant here, not a slider. connectVersion v2
+// / retention-on are likewise fixed by the vendored file.
+slot_spacing = 25;   // Multiconnect standard pitch
+mc_thickness = 6.5;  // backer slab depth (= the module's fixed backThickness)
+mc_weld      = 0.4;  // backer top sink into the plate (real overlap, not a face-kiss)
 
 pocket_w     = remote_w + 2 * side_clearance;
 outer_w      = pocket_w + 2 * wall;
@@ -98,7 +128,11 @@ snap_rows = max(1, floor((plate_len - 2 - snap_w) / snap_pitch) + 1);
 assert(snap_cols * snap_rows >= 2,
        "fewer than 2 snaps fit this plate; grow the remote dims or plate_len_max");
 
-plate_z0  = snap_h - weld;          // plate bottom (welds into snap tops)
+// Plate bottom / lift = thickness of whichever back mount is selected,
+// minus its weld into the plate. openGrid: snap tops weld 0.02 up.
+// Multiconnect: the 6.5mm slab welds mc_weld up.
+plate_z0  = mount_type == "multiconnect" ? mc_thickness - mc_weld
+                                         : snap_h - weld;
 plate_top = plate_z0 + plate_t;
 face_z    = plate_top + pocket_depth;      // remote face plane
 wall_h    = pocket_depth + lip_over + lip_t;
@@ -115,11 +149,12 @@ edge_r         = 1;              // hand-feel rounding on walls/lips
 // this model overlaps by a real volume instead.
 bury = 0.6;
 
-// PRINT_ANCHOR_BBOX at defaults:
+// PRINT_ANCHOR_BBOX at defaults (mount_type = "opengrid"):
 //   X = outer_w  = 51 + 2*0.45 + 2*2.4        = 56.7
 //   Y = plate_len = 2.4 + 84 + 2*0.45          = 87.3
 //   Z = snap_h - weld + plate_t + pocket_depth + lip_over + lip_t
 //     = 6.78 + 3 + 7.3 + 3 + 2                 = 22.08
+// (multiconnect variant: Z = 6.1 + 3 + 7.3 + 3 + 2 = 21.4; X, Y same)
 PRINT_ANCHOR_BBOX = [56.7, 87.3, 22.08];
 
 // === Geometry ===
@@ -289,5 +324,39 @@ module holder() {
     }
 }
 
-grid_snaps();
+// === Multiconnect backer (alternative to openGrid snaps) ===
+//
+// QuackWorks' BOSL2-free master slot back: a plain difference() (a slab
+// minus the slot tools) with no BOSL2 diff() tags, so — unlike the BOSL2
+// generator, which silently loses its slot cuts inside an outer union()
+// — it is safe as a root-level sibling (ego_lb6500_blower_mount and
+// opengrid_bin document the rule). Invoked at root below, never wrapped
+// in an explicit union().
+//
+// multiconnectBack's local frame L: a cube x[0,outer_w] y[-6.5,0]
+// z[0,plate_len]. The slot channels are recessed from the y=-6.5 face,
+// their closed dome (retention) ends at high z and the entry mouths +
+// on-ramps at low z. rotate(180,[0,1,1]) maps (lx,ly,lz) -> (-lx,lz,ly):
+//   L.z -> +Y  — dome ends point UP the wall (retention takes the load)
+//   L.y -> +Z  — slot openings (the y=-6.5 face) face -Z, the bed/wall
+//   L.x -> -X  — then re-centred on x=0 by the translate
+// The translate lands the slab at z[0, 6.5] with the openings at z=0
+// (the wall face, same plane the openGrid snaps engage) and its solid
+// back at z=6.5; the plate bottom sits mc_weld lower
+// (plate_z0 = 6.5 - mc_weld) so the backer top overlaps into the plate
+// as a real weld. Load direction: +Y is up, the cradle slides DOWN onto
+// the wall connectors and the remote's weight seats them into the domes.
+module multiconnect_backer() {
+    translate([outer_w / 2, 0, mc_thickness])
+        rotate(180, [0, 1, 1])
+            multiconnectBack(backWidth = outer_w, backHeight = plate_len,
+                             distanceBetweenSlots = slot_spacing);
+}
+
+// === Assembly ===
+
+if (mount_type == "multiconnect")
+    multiconnect_backer();
+else
+    grid_snaps();
 holder();

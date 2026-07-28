@@ -37,7 +37,7 @@ export const CATALOG: Record<string, CatalogEntry> = {
   led_remote_holder_51x84mm: {
     categoryId: "multiboard",
     blurb:
-      "OpenGrid wall cradle for a 51×84×7mm LED-strip remote. Open-front pocket with 45°-chamfered retaining lips, thumb scoop, and a 2×3 grid of openGrid snaps on 28mm pitch. Prints snaps-down, support-free.",
+      "Wall cradle for a 51×84×7mm LED-strip remote. Open-front pocket with 45°-chamfered retaining lips and a thumb scoop, on a selectable back mount — a 2×3 grid of openGrid snaps on 28mm pitch or a Multiconnect slot backer for Multiboard rails (slides down onto wall connectors, weight seats into the slot domes). Prints mount-down, support-free; exports one STL per mount_type.",
   },
   led_remote_holder_55x124mm: {
     categoryId: "multiboard",
