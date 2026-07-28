@@ -100,6 +100,15 @@ plate_len_max = 90; // @param number min=60 max=300 step=1 unit=mm group=cradle 
 mount_type = "opengrid"; // @param enum choices=opengrid|multiconnect group=mount label="Wall mount type" filename
 snap_lite = false; // @param boolean group=mount label="Lite snaps (3.4mm instead of 6.8mm)"
 
+// Standard Multiconnect slot tuning (only affects mount_type =
+// "multiconnect"; ignored by the openGrid snaps). Defaults reproduce the
+// shipped backer exactly. Canonical @param set copied from opengrid_bin
+// (pst-9ij); passed through to multiconnectBack() via the patch-0003 args.
+slot_tolerance = 1.0;  // @param number min=0.925 max=1.075 step=0.005 group=mount label="Slot fit tolerance"
+slot_retention = true; // @param boolean group=mount label="Slot retention (v2 snap)"
+dimple_scale   = 1.0;  // @param number min=0.5 max=1.5 step=0.05 group=mount label="Dimple scale (v1 only)"
+on_ramp        = true; // @param boolean group=mount label="Slot on-ramp lead-in"
+
 // === Derived ===
 
 snap_pitch = 28;    // openGrid tile pitch
@@ -107,11 +116,12 @@ snap_w     = 24.8;  // snap footprint
 snap_h     = snap_lite ? 3.4 : 6.8;
 weld       = 0.02;  // embed depth of snap tops into the plate (st-v7k)
 
-// Multiconnect backer (mount_type = "multiconnect"). The QuackWorks
-// master copy HARDCODES backThickness = 6.5 and ignores any keyword
-// override (mirrors ego_lb6500_blower_mount / opengrid_bin), so the
-// slab depth is a fixed constant here, not a slider. connectVersion v2
-// / retention-on are likewise fixed by the vendored file.
+// Multiconnect backer (mount_type = "multiconnect"). backThickness is a
+// module parameter (patch 0002) but we keep the 6.5mm slab depth fixed:
+// exposing it invites board-incompatible prints, same as the fixed 25mm
+// pitch. connectVersion stays v2. The retention snap, slot tolerance,
+// dimple and on-ramp ARE tunable now (patch 0003) — plumbed through from
+// the @params above (mirrors opengrid_bin, pst-9ij).
 slot_spacing = 25;   // Multiconnect standard pitch
 mc_thickness = 6.5;  // backer slab depth (= the module's fixed backThickness)
 mc_weld      = 0.4;  // backer top sink into the plate (real overlap, not a face-kiss)
@@ -350,7 +360,11 @@ module multiconnect_backer() {
     translate([outer_w / 2, 0, mc_thickness])
         rotate(180, [0, 1, 1])
             multiconnectBack(backWidth = outer_w, backHeight = plate_len,
-                             distanceBetweenSlots = slot_spacing);
+                             distanceBetweenSlots = slot_spacing,
+                             quickRelease = !slot_retention,
+                             tolerance = slot_tolerance,
+                             dimple = dimple_scale,
+                             onRamp = on_ramp);
 }
 
 // === Assembly ===
