@@ -42,7 +42,7 @@ export const CATALOG: Record<string, CatalogEntry> = {
   led_remote_holder_55x124mm: {
     categoryId: "multiboard",
     blurb:
-      "OpenGrid wall cradle for a 55×124×7.7mm LED-strip remote. Same design as the 51×84 twin with a 2×4 snap grid; the plate is capped at 116mm so the remote stands ~10mm proud for easy grabbing.",
+      "OpenGrid wall cradle for a 55×124×7.7mm LED-strip remote. Same design as the 51×84 twin with a selectable back mount — a 2×4 openGrid snap grid (default) or a Multiconnect slot backer for Multiboard rails; the plate is capped at 116mm so the remote stands ~10mm proud for easy grabbing. Exports one STL per mount_type.",
   },
   opengrid_bin: {
     categoryId: "multiboard",
