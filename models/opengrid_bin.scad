@@ -103,6 +103,16 @@ rear_fillet = 8;  // @param number min=0 max=15 step=1 unit=mm group=shape label
 mount_type = "opengrid"; // @param enum choices=opengrid|multiconnect group=mount label="Wall mount type" filename
 snap_lite = false; // @param boolean group=mount label="Lite snaps (3.4mm instead of 6.8mm)"
 
+// Standard Multiconnect slot tuning (only affects mount_type =
+// "multiconnect"; ignored by the openGrid snaps). Defaults reproduce the
+// shipped backer exactly. This is the canonical @param set the sibling
+// mounts (LED holders, ego) copy — see the multiconnect_backer() call
+// and scripts/patches/QuackWorks/0003 for the pass-through mechanism.
+slot_tolerance = 1.0;  // @param number min=0.925 max=1.075 step=0.005 group=mount label="Slot fit tolerance"
+slot_retention = true; // @param boolean group=mount label="Slot retention (v2 snap)"
+dimple_scale   = 1.0;  // @param number min=0.5 max=1.5 step=0.05 group=mount label="Dimple scale (v1 only)"
+on_ramp        = true; // @param boolean group=mount label="Slot on-ramp lead-in"
+
 // @preset id="default" label="2x2 units, 60mm deep" width_units=2 height_units=2 depth=60 wall=2.4 floor_t=3 plate_t=4 lip_rise=14 rear_fillet=8 snap_lite=false
 // @preset id="wide_tray" label="4x1 units, 28mm (1u) deep tray" width_units=4 height_units=1 depth=28 wall=2.4 floor_t=3 plate_t=4 lip_rise=14 rear_fillet=8 snap_lite=false
 
@@ -113,11 +123,12 @@ snap_w     = 24.8;  // snap footprint
 snap_h     = snap_lite ? 3.4 : 6.8;
 weld       = 0.02;  // embed depth of snap tops into the plate (st-v7k)
 
-// Multiconnect backer (mount_type = "multiconnect"). The QuackWorks
-// master copy HARDCODES backThickness = 6.5 and ignores any keyword
-// override (mirrors ego_lb6500_blower_mount), so the slab depth is a
-// fixed constant here, not a slider. connectVersion v2 / retention-on
-// are likewise fixed by the vendored file.
+// Multiconnect backer (mount_type = "multiconnect"). backThickness is a
+// module parameter (patch 0002) but we keep the 6.5mm slab depth fixed:
+// exposing it invites board-incompatible prints, same reasoning as the
+// fixed 25mm pitch. connectVersion stays v2. The retention snap, slot
+// tolerance, dimple and on-ramp ARE tunable now (patch 0003) — plumbed
+// through from the @params above.
 slot_spacing = 25;   // Multiconnect standard pitch
 mc_thickness = 6.5;  // backer slab depth (= the module's fixed backThickness)
 mc_weld      = 0.4;  // backer top sink into the plate (real overlap, not a face-kiss)
@@ -362,7 +373,11 @@ module multiconnect_backer() {
     translate([W / 2, 0, mc_thickness])
         rotate(180, [0, 1, 1])
             multiconnectBack(backWidth = W, backHeight = H,
-                             distanceBetweenSlots = slot_spacing);
+                             distanceBetweenSlots = slot_spacing,
+                             quickRelease = !slot_retention,
+                             tolerance = slot_tolerance,
+                             dimple = dimple_scale,
+                             onRamp = on_ramp);
 }
 
 // === Assembly ===
