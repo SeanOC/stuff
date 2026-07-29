@@ -41,7 +41,10 @@ def check(ctx):
     bx, by, bz = ctx["bbox_mm"]
 
     # Deck-frame -> print-frame map (mirrors the final assembly flip).
-    top_z = p["flange_h"] + p["knob_h"] + p["knob_vclear"] + p["wall"]
+    # top_z tracks the .scad: a full wall above the HIGHER interior roof.
+    knob_roof_z = p["flange_h"] + p["knob_h"] + p["knob_vclear"]
+    annulus_roof_z = p["flange_h"] + p["screw_head_h"] + p["screw_clear"]
+    top_z = max(knob_roof_z, annulus_roof_z) + p["wall"]
 
     def solid(deck_pts):
         """Containment for deck-frame points, mapped into the exported STL frame."""
@@ -71,26 +74,28 @@ def check(ctx):
 
     # Z stack (deck at z=0).
     knob_top = p["flange_h"] + p["knob_h"]
-    knob_roof = knob_top + p["knob_vclear"]
     screw_top = p["flange_h"] + p["screw_head_h"]
 
-    # 3. Knob floats: cavity hollow over the knob, solid roof above.
+    # 3. Knob floats: cavity hollow over the WHOLE knob envelope (wall AND
+    # top — probing only mid-height would miss a cavity that clears the
+    # sides but caps too low), plus a solid roof above.
     knob_r = p["knob_d"] / 2
-    knob_mid_z = p["flange_h"] + p["knob_h"] / 2
     knob_probes = [
-        (0.0, 0.0, knob_mid_z),               # dead centre, empty
-        (knob_r - 0.5, 0.0, knob_mid_z),      # at the knob wall, empty
+        (0.0, 0.0, p["flange_h"] + p["knob_h"] / 2),   # dead centre, mid-height
+        (knob_r - 0.5, 0.0, p["flange_h"] + p["knob_h"] / 2),  # knob wall, mid
+        (knob_r - 0.5, 0.0, knob_top - 0.3),           # knob wall, near the top
+        (0.0, 0.0, knob_top - 0.3),                    # centre, near the top
     ]
     if any(solid(knob_probes)):
         failures.append(Failure(
             "knob-cavity",
-            f"knob cavity not clear at r<={knob_r:.1f}, z={knob_mid_z:.1f}; "
-            f"the cover would touch/turn the knob",
+            f"knob cavity not clear over the knob envelope (r<={knob_r:.1f}, "
+            f"z up to {knob_top - 0.3:.1f}); the cover could touch/turn the knob",
         ))
-    if not solid([(0.0, 0.0, knob_roof + wall / 2)])[0]:
+    if not solid([(0.0, 0.0, knob_roof_z + wall / 2)])[0]:
         failures.append(Failure(
             "knob-cavity",
-            f"no solid roof above the knob cavity at z={knob_roof + wall / 2:.1f}",
+            f"no solid roof above the knob cavity at z={knob_roof_z + wall / 2:.1f}",
         ))
 
     # 4. Screw-head annulus cleared: hollow above the screw band.

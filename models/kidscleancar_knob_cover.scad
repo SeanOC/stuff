@@ -108,26 +108,43 @@ eps  = 0.1;
 
 // Radii (deck centre at the origin; z = 0 is the deck surface).
 flange_r  = flange_d / 2;
-bore_r    = flange_r + fit_clearance;          // bore clears the flange
+// The knob cavity ALWAYS clears the knob by knob_clear — never shrink it
+// (a smaller cavity would let the cover touch/turn the knob, defeating the
+// lock). Instead the bore/body GROWS to hold the cavity when a large knob
+// relative to its flange would otherwise push the cavity past the flange
+// bore: bore_r is the larger of the flange-clearance bore and the cavity
+// plus a minimum annulus ring. For the measured part (knob << flange) the
+// flange term wins and the OD is unchanged.
+annulus_min = 0.6;                             // min screw-pocket ring width
+knob_cav_r = knob_d / 2 + knob_clear;          // cavity always clears the knob
+bore_r    = max(flange_r + fit_clearance, knob_cav_r + annulus_min);  // clears flange AND holds the cavity
 skirt_or  = bore_r + wall;                     // outer skirt radius
-// Clamp the cavity inside the bore wall: a cavity wider than the bore
-// makes the inner shell contour cross the outer wall -> a non-manifold
-// (non-closed) mesh the native/CGAL export rejects. The knob_d max bound
-// keeps this inactive for sane inputs; this backs it up for odd combos.
-knob_cav_r = min(knob_d / 2 + knob_clear, bore_r - 0.6);  // knob cavity radius
-rib_tip_r = flange_r - rib_interference;       // rib tip bites past the edge
+rib_tip_r = flange_r - rib_interference;       // rib tip bites past the flange edge
 rib_outer = bore_r + bury;                     // rib root welded into wall
 
-// Z stack above the deck.
+// Z stack above the deck. The exterior roof sits a full `wall` above the
+// HIGHER of the two interior roofs (knob cavity vs screw annulus), so a
+// deep screw-clearance pocket can never punch through the top (which would
+// make a non-closed mesh) — it just makes the cover taller.
 knob_top_z    = flange_h + knob_h;                 // 9.25
 screw_top_z   = flange_h + screw_head_h;           // 5.65
 annulus_roof_z = screw_top_z + screw_clear;        // 7.65 (screw pocket roof)
 knob_roof_z   = knob_top_z + knob_vclear;          // 11.15 (knob cavity roof)
-top_z         = knob_roof_z + wall;                // 13.55 (exterior top)
+top_z         = max(knob_roof_z, annulus_roof_z) + wall;   // 13.55 (exterior top)
 
-// Ribs span the flange band (from the skirt mouth up just past the flange
-// top), staying clear of the proud screw heads above.
-rib_z0    = skirt_gap;                              // 0.5
+// Effective skirt-bottom height. The skirt must reach DOWN past the flange
+// top to grip it, so the requested skirt_gap is clamped so the mouth always
+// sits at least engage_min below the flange top — this guarantees rib/flange
+// overlap even at the flange_h minimum (where a raw skirt_gap could exceed
+// flange_h and lift every rib off the flange). engage_min exceeds the rib
+// lead-in ramp so a band of FULL-depth rib still bites the flange (grip =
+// engage_min - lead-in). At defaults skirt_z0 == skirt_gap.
+engage_min = 1.5;
+skirt_z0 = max(0, min(skirt_gap, flange_h - engage_min));  // 0.5 default
+
+// Ribs span from the skirt mouth up just past the flange top, staying clear
+// of the proud screw heads above.
+rib_z0    = skirt_z0;                               // 0.5
 rib_top_z = flange_h + 1;                           // 4.15
 
 // Pry recess lands in a between-rib gap (half a rib pitch off a rib), so
@@ -138,9 +155,9 @@ pry_angle = 180 / rib_count;
 // fails on >1mm drift from the exported STL):
 //   X = Y = skirt_od = flange_d + 2*fit_clearance + 2*wall
 //                    = 48.1 + 0.6 + 4.8            = 53.5
-//   Z = top_z - skirt_gap
-//     = (flange_h + knob_h + knob_vclear + wall) - skirt_gap
-//     = (3.15 + 6.1 + 1.9 + 2.4) - 0.5            = 13.05
+//   Z = top_z - skirt_z0, with top_z = max(knob_roof_z, annulus_roof_z) + wall
+//     = (max(3.15+6.1+1.9, 3.15+2.5+2.0) + 2.4) - 0.5
+//     = (max(11.15, 7.65) + 2.4) - 0.5            = 13.05
 PRINT_ANCHOR_BBOX = [53.5, 53.5, 13.05];
 
 // === Shell ===
@@ -150,7 +167,7 @@ PRINT_ANCHOR_BBOX = [53.5, 53.5, 13.05];
 // sweeps it into the one-piece stepped cup (bore -> screw annulus pocket
 // -> deep knob cavity -> capped top with a chamfered outer rim).
 shell_profile = [
-    [skirt_or,               skirt_gap],           // skirt bottom outer
+    [skirt_or,               skirt_z0],            // skirt bottom outer
     [skirt_or,               top_z - top_chamfer],  // up the outer wall
     [skirt_or - top_chamfer, top_z],                // top-edge chamfer
     [0,                      top_z],                // top centre
@@ -158,7 +175,7 @@ shell_profile = [
     [knob_cav_r,             knob_roof_z],          // knob cavity roof rim
     [knob_cav_r,             annulus_roof_z],       // step down to annulus
     [bore_r,                 annulus_roof_z],       // annulus pocket roof
-    [bore_r,                 skirt_gap],            // down the bore to mouth
+    [bore_r,                 skirt_z0],             // down the bore to mouth
 ];
 
 module shell() {
@@ -202,7 +219,7 @@ module pry_cut() {
     r_in  = bore_r - 1;
     r_out = skirt_or + 1;
     rotate([0, 0, pry_angle])
-        translate([(r_in + r_out) / 2, 0, skirt_gap + pry_notch_h / 2])
+        translate([(r_in + r_out) / 2, 0, skirt_z0 + pry_notch_h / 2])
             cube([r_out - r_in, pry_notch_w, pry_notch_h + 2 * eps], center = true);
 }
 
