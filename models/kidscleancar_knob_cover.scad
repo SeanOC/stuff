@@ -38,14 +38,17 @@
 // === Print orientation (native): MOUTH UP, zero supports ===
 //
 // Print the cover MOUTH-UP — the closed dome/top face flat on the bed,
-// the open skirt mouth pointing up. In this orientation every interior
-// ceiling (the annulus pocket roof and the knob-cavity roof) becomes an
-// UP-FACING floor, fully backed by the solid it was cut from, so the wide
-// interior spans never bridge. The only exterior overhang is the top-edge
-// chamfer (top_chamfer), which prints against the bed as a self-support-
-// ing 45deg flare. The skirt's mouth rim is the last thing printed. No
-// supports anywhere. (Printing mouth-DOWN would leave the ~48mm interior
-// roof as an unsupported ceiling — don't.)
+// the open skirt mouth pointing up. The exported STL is ALREADY IN THIS
+// ORIENTATION: the model is authored in the deck frame for readable math
+// then flipped roof-down in the final assembly, so the dome sits at z = 0
+// (on the bed) and the mouth rim is at max Z. Slice as-is, no rotation.
+// In this orientation every interior ceiling (the annulus pocket roof and
+// the knob-cavity roof) becomes an UP-FACING floor, fully backed by the
+// solid it was cut from, so the wide interior spans never bridge. The only
+// exterior overhang is the top-edge chamfer (top_chamfer), which prints
+// against the bed as a self-supporting 45deg flare. The skirt's mouth rim
+// is the last thing printed. No supports anywhere. (Printing mouth-DOWN
+// would leave the ~48mm interior roof as an unsupported ceiling — don't.)
 //
 // The interior is a single stepped rotate_extrude profile (bore ->
 // annulus pocket -> knob cavity -> capped top), so the shell is one clean
@@ -59,7 +62,11 @@ $fn = 128;   // round-dominant revolved part
 // ----- Measured vehicle geometry (calipers, mm) -----
 flange_d    = 48.1;  // @param number min=30 max=90 step=0.1 unit=mm group=vehicle label="Flange OD (grip target)"
 flange_h    = 3.15;  // @param number min=1.5 max=12 step=0.05 unit=mm group=vehicle label="Flange height above deck (grip band)"
-knob_d      = 29.5;  // @param number min=10 max=60 step=0.1 unit=mm group=vehicle label="Centre knob OD"
+// max capped so the knob cavity always fits inside the flange bore (a
+// knob wider than its own flange is unphysical, and a cavity wider than
+// the body makes shell_profile self-cross -> a non-manifold export; a
+// defensive clamp on knob_cav_r below backs this up for odd combos).
+knob_d      = 29.5;  // @param number min=10 max=40 step=0.1 unit=mm group=vehicle label="Centre knob OD"
 knob_h      = 6.1;   // @param number min=2 max=30 step=0.1 unit=mm group=vehicle label="Knob height above flange"
 screw_head_h = 2.5;  // @param number min=0 max=8 step=0.1 unit=mm group=vehicle label="Screw-head proud height above flange"
 
@@ -68,7 +75,11 @@ fit_clearance = 0.3;  // @param number min=0 max=1.5 step=0.05 unit=mm group=fit
 knob_clear   = 1.25;  // @param number min=0.5 max=5 step=0.05 unit=mm group=fit label="Knob cavity radial clearance"
 knob_vclear  = 1.9;   // @param number min=0.5 max=6 step=0.1 unit=mm group=fit label="Clearance over knob top (Z)"
 screw_clear  = 2.0;   // @param number min=0.5 max=6 step=0.1 unit=mm group=fit label="Clearance over screw heads (Z)"
-skirt_gap    = 0.5;   // @param number min=0 max=4 step=0.1 unit=mm group=fit label="Skirt-bottom gap above deck"
+// max capped below the flange band: the skirt must reach DOWN past the
+// flange top (flange_h) to grip it, so the gap has to stay well under
+// flange_h or the ribs never overlap the flange (no retention) and the
+// squeezed rib profile stops closing.
+skirt_gap    = 0.5;   // @param number min=0 max=2 step=0.1 unit=mm group=fit label="Skirt-bottom gap above deck"
 
 // ----- Crush ribs (the retention tuning knobs) -----
 rib_count        = 6;    // @param integer min=3 max=12 group=ribs label="Number of crush ribs"
@@ -99,7 +110,11 @@ eps  = 0.1;
 flange_r  = flange_d / 2;
 bore_r    = flange_r + fit_clearance;          // bore clears the flange
 skirt_or  = bore_r + wall;                     // outer skirt radius
-knob_cav_r = knob_d / 2 + knob_clear;          // knob cavity radius
+// Clamp the cavity inside the bore wall: a cavity wider than the bore
+// makes the inner shell contour cross the outer wall -> a non-manifold
+// (non-closed) mesh the native/CGAL export rejects. The knob_d max bound
+// keeps this inactive for sane inputs; this backs it up for odd combos.
+knob_cav_r = min(knob_d / 2 + knob_clear, bore_r - 0.6);  // knob cavity radius
 rib_tip_r = flange_r - rib_interference;       // rib tip bites past the edge
 rib_outer = bore_r + bury;                     // rib root welded into wall
 
@@ -156,8 +171,11 @@ module shell() {
 // tangentially by rib_width. The tip stands at rib_tip_r (rib_interference
 // past the flange edge); the root welds bury into the bore wall. The
 // bottom edge is a 45deg lead-in ramp so the flange self-centres on seating.
+// rib_leadin is clamped to the rib's straight height so a shallow rib (large
+// skirt_gap) can never invert the polygon into a non-closed mesh.
+rib_leadin = max(0, min(rib_outer - rib_tip_r, rib_top_z - rib_z0 - 0.3));
 rib_profile = [
-    [rib_tip_r, rib_z0 + (rib_outer - rib_tip_r)],  // top of the lead-in ramp
+    [rib_tip_r, rib_z0 + rib_leadin],                // top of the lead-in ramp
     [rib_tip_r, rib_top_z],                          // tip, top
     [rib_outer, rib_top_z],                          // root, top
     [rib_outer, rib_z0],                             // root, bottom
@@ -189,11 +207,19 @@ module pry_cut() {
 }
 
 // === Assembly ===
-
-difference() {
-    union() {
-        shell();
-        ribs();
-    }
-    if (pry_notch) pry_cut();
-}
+//
+// Built above in the deck frame (z = 0 = deck, mouth low, roof high) for
+// readable measured math, then flipped ROOF-DOWN into the print frame so
+// the exported STL matches the documented support-free orientation: the
+// closed dome lands on the bed at z = 0 and the open mouth points up
+// (z = top_z - skirt_gap at the rim). rotate([180,0,0]) keeps handedness
+// (mirror would flip the pry recess); translate lifts the roof back to z=0.
+translate([0, 0, top_z])
+    rotate([180, 0, 0])
+        difference() {
+            union() {
+                shell();
+                ribs();
+            }
+            if (pry_notch) pry_cut();
+        }
