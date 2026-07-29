@@ -427,3 +427,41 @@ ship as tracked files. `scripts/vendor-libs.sh` runs as the npm
 - **Sweep failure on a case listed in known-failures.ts** — the entry
   was removed or the label changed; re-check the tracking bead before
   re-registering.
+
+## Merge workflow (codex gate + controller merge)
+
+**Nobody hand-merges, and nobody enables GitHub native auto-merge.** Workers
+open a PR from branch `gc-pilot/<bead-id>`, never push `main`, and their job
+ends when the PR is open and CI is green. A city controller order
+(`merge-green-prs`, 3-min cooldown, no LLM) squash-merges each open
+`gc-pilot/* → main` PR once **every reported check** is green — it requires
+both `gh pr checks --required` and `gh pr checks` (all reported contexts) to
+pass, then independently verifies each branch-protection required context has
+a genuine success on the head SHA before running
+`gh pr merge --squash --delete-branch`. It never uses `--admin`.
+
+`main` has **five required status checks**: `unit tests (vitest)`,
+`e2e tests (playwright)`, `render preview images`, `wasm param sweep`, and
+**`codex-review`** (added 2026-07-28, matching underware-planner). The fifth
+is not a GitHub workflow — it is set by an independent cross-model review
+agent (`stuff-codex-reviewer`):
+
+- **`state=success`** when the PR's findings are non-blocking (style nits,
+  pre-existing issues) — recorded as bead notes / follow-ups, never blocking.
+- **`state=failure`** only for defects **this PR introduces or worsens**:
+  correctness, broken invariants, geometry/watertightness regressions,
+  contract violations, security.
+
+A second controller order (`codex-review-gate-stuff`, 3-min cooldown) drives
+it: for each open `gc-pilot/*` PR it slings a review bead to the reviewer when
+the head SHA has no `codex-review` status. On failure it first **nudges the
+PR's live author session** to fix on the same branch (no bead); it only
+dispatches a fix bead when there is no live author or the nudge goes
+unanswered past the grace window (~30 min). After 3 dispatched fix beads on
+one PR it escalates to `human` and stops. A push to the branch resets the
+cycle (new head SHA → fresh review).
+
+Settled context the reviewer will not relitigate: the render/invariants
+pipeline conventions in `AGENTS.md`, the vendored lib pins and patches
+(`libs/README.md`, BOSL2 `456fcd8`), the WASM-preview-only split, and the
+MIT / CC BY-NC-SA licensing split.
