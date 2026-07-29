@@ -1,26 +1,26 @@
 # Continuous integration
 
-CI lives in four workflows:
+CI lives in three workflows:
 
 - [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) — the
   `render`, `unit`, and `e2e` jobs (pushes to `main` + PRs).
 - [`.github/workflows/param-sweep.yml`](../.github/workflows/param-sweep.yml)
   — the wasm param-sweep connectivity guard (pushes to `main` + PRs).
-- [`.github/workflows/pr-automerge.yml`](../.github/workflows/pr-automerge.yml)
-  — arms squash auto-merge on every PR the moment it opens.
 - [`.github/workflows/pr-autoupdate.yml`](../.github/workflows/pr-autoupdate.yml)
   — on every push to `main`, updates all open PR branches so strict
   up-to-date mode can't strand them.
 
-## The PR lifecycle: merges are fully autonomous (pst-2sb)
+## The PR lifecycle: merges are fully autonomous (pst-2sb → codex gate, 2026-07-28)
 
-PRs against `main` run CI and merge entirely on their own — there is
-no human or agent merge step:
+PRs against `main` run CI, get a cross-model code review, and merge
+entirely on their own — there is no human merge step:
 
-1. **PR opened** (or reopened / marked ready) → `pr-automerge.yml`
-   enables squash auto-merge on it.
-2. **Checks run.** All four required contexts report a conclusion on
-   *every* PR — that's what makes auto-merge safe to arm blindly:
+1. **PR opened** (branch `gc-pilot/*`) → the city's
+   `codex-review-gate-stuff` controller order slings a review of the
+   head SHA to the `stuff-codex-reviewer` agent, which sets the
+   `codex-review` commit status (see **Merge workflow** below).
+2. **Checks run.** All CI contexts report a conclusion on *every*
+   PR — that's what lets the controller merge without human input:
    - `unit tests (vitest)` and `e2e tests (playwright)` always run.
    - `render preview images` always runs; a paths-filter step inside
      the job skips the heavy render/export work when nothing
@@ -33,23 +33,23 @@ no human or agent merge step:
    mode marks the PR out of date → `pr-autoupdate.yml` updates every
    open PR branch via the update-branch API, re-running their checks
    against the new base.
-4. **All four checks green + branch up to date** → GitHub merges the
-   PR itself (squash).
+4. **All five checks green + branch up to date** → the city's
+   `merge-green-prs` controller order merges the PR (squash,
+   delete branch) on its next 3-minute pass.
 
 Consequences worth knowing:
 
-- **The merge cascade is intentional.** With N armed PRs open, each
+- **The merge cascade is intentional.** With N open PRs, each
   merge re-updates the other N−1 and re-runs their CI, so merges
   serialize at roughly one per CI wall-clock. Accepted cost of
   strict mode + autonomy.
-- **Token attribution matters.** Auto-merge's eventual merge is
-  attributed to whoever *enabled* it, and pushes/merges made with
-  `GITHUB_TOKEN` don't trigger workflows. Both new workflows
-  therefore authenticate with the `THUMBNAIL_PUSH_TOKEN` PAT (and
-  warn on fallback): with `GITHUB_TOKEN` the merge wouldn't fire
-  `main`'s full sweep, render canonicalization, or the next
-  auto-update round, and branch updates would strand PR runs in
-  `action_required` (pst-dm9).
+- **Token attribution matters.** Pushes/merges made with
+  `GITHUB_TOKEN` don't trigger workflows. `pr-autoupdate.yml`
+  therefore authenticates with the `THUMBNAIL_PUSH_TOKEN` PAT (and
+  warns on fallback): with `GITHUB_TOKEN`, branch updates would
+  strand PR runs in `action_required` (pst-dm9). The controller
+  merge runs under the operator's `gh` auth, so merges to `main`
+  fire the full sweep / render canonicalization normally.
 - **update-branch 422s can be transient.** Right after `main` moves,
   GitHub briefly reports PR mergeability as unknown and the
   update-branch API 422s even for genuinely-behind PRs (seen on the
@@ -63,19 +63,21 @@ Consequences worth knowing:
   fire `pr-autoupdate.yml`. PRs stranded by such a bot-only main
   move get picked up on the next real push, or run the workflow
   manually (`workflow_dispatch`).
-- **Fork PRs are excluded**: fork `pull_request` runs get no secrets
-  and a read-only `GITHUB_TOKEN`, so arming fails soft and those PRs
-  keep the manual merge path.
+- **Fork PRs are excluded**: the controller only merges `gc-pilot/*`
+  branches, so fork PRs keep the manual merge path.
 - **Never make a check required unless it reports on every PR.** A
   required context that sometimes doesn't run (e.g. behind a
-  workflow-level `paths:` filter) hangs auto-merge forever. That's
-  why neither `ci.yml` nor `param-sweep.yml` path-filters its
+  workflow-level `paths:` filter) hangs the controller merge forever
+  (it waits for every reported and required check). That's why
+  neither `ci.yml` nor `param-sweep.yml` path-filters its
   `pull_request` trigger — cheap skipping happens *inside* jobs that
-  still report.
+  still report. (`codex-review` is the exception that proves the
+  rule: it always reports because the gate order slings a review for
+  every `gc-pilot/*` head SHA.)
 
 Required status checks on `main` (strict mode, set via the branch
 protection API): `unit tests (vitest)`, `e2e tests (playwright)`,
-`render preview images`, `wasm param sweep`.
+`render preview images`, `wasm param sweep`, `codex-review`.
 
 ## Job / trigger matrix
 
@@ -86,8 +88,8 @@ protection API): `unit tests (vitest)`, `e2e tests (playwright)`,
 | `e2e` (Playwright, needs `unit`) | Always | Always | `ci.yml` |
 | `sweep` shards (wasm param sweep) | Selective — only the models the PR touched, sharded across parallel jobs (see below); skipped entirely on sweep-irrelevant PRs | Full sweep whenever sweep-relevant paths changed (the coverage guard) | `param-sweep.yml` |
 | `gate` (`wasm param sweep`, the required context) | Always reports — reduces shard results to one conclusion, passes immediately in skip mode | Same | `param-sweep.yml` |
-| `arm` (enable auto-merge) | On open / reopen / ready-for-review | — | `pr-automerge.yml` |
 | `update` (update open PR branches) | — | Always (+ manual dispatch) | `pr-autoupdate.yml` |
+| `codex-review` (required context) | Set by the `stuff-codex-reviewer` agent via the statuses API — not a workflow job | — | city `codex-review-gate-stuff` order |
 
 The `unit` and `e2e` jobs run on every PR regardless; both are cheap
 enough that paths-filtering isn't worth the complexity.
@@ -274,7 +276,7 @@ outcomes: `models/**`, `libs/README.md`, `lib/wasm/**`,
 `package-lock.json`, and the workflow file itself. The
 `pull_request` trigger deliberately has **no** paths filter
 (pst-2sb): `wasm param sweep` is a required status check, and a
-required check that never reports hangs auto-merge — so every PR
+required check that never reports hangs the merge — so every PR
 runs the ~20-second `select` job, and the script's skip mode makes
 sweep-irrelevant PRs pass in seconds via the `gate` job instead of
 not reporting at all.
@@ -427,3 +429,49 @@ ship as tracked files. `scripts/vendor-libs.sh` runs as the npm
 - **Sweep failure on a case listed in known-failures.ts** — the entry
   was removed or the label changed; re-check the tracking bead before
   re-registering.
+
+## Merge workflow (codex gate + controller merge)
+
+**Nobody hand-merges, and nobody enables GitHub native auto-merge.** Workers
+open a PR from branch `gc-pilot/<bead-id>`, never push `main`, and their job
+ends when the PR is open and CI is green. A city controller order
+(`merge-green-prs`, 3-min cooldown, no LLM) squash-merges each open
+`gc-pilot/* → main` PR once **every reported check** is green — it requires
+both `gh pr checks --required` and `gh pr checks` (all reported contexts) to
+pass, then independently verifies each branch-protection required context has
+a genuine success on the head SHA before running
+`gh pr merge --squash --delete-branch`. It never uses `--admin`.
+
+`main` has **five required status checks**: `unit tests (vitest)`,
+`e2e tests (playwright)`, `render preview images`, `wasm param sweep`, and
+**`codex-review`** (added 2026-07-28, matching underware-planner). The fifth
+is not a GitHub workflow — it is set by an independent cross-model review
+agent (`stuff-codex-reviewer`):
+
+- **`state=success`** when the PR's findings are non-blocking (style nits,
+  pre-existing issues) — recorded as bead notes / follow-ups, never blocking.
+- **`state=failure`** only for defects **this PR introduces or worsens**:
+  correctness, broken invariants, geometry/watertightness regressions,
+  contract violations, security.
+
+A second controller order (`codex-review-gate-stuff`, 3-min cooldown) drives
+it: for each open `gc-pilot/*` PR it slings a review bead to the reviewer when
+the head SHA has no `codex-review` status. On failure it first **nudges the
+PR's live author session** to fix on the same branch (no bead); it only
+dispatches a fix bead when there is no live author or the nudge goes
+unanswered past the grace window (~30 min). After 3 dispatched fix beads on
+one PR it escalates to `human` and stops. A push to the branch resets the
+cycle (new head SHA → fresh review).
+
+Settled context the reviewer will not relitigate: the render/invariants
+pipeline conventions in `AGENTS.md`, the vendored lib pins and patches
+(`libs/README.md`, BOSL2 `456fcd8`), the WASM-preview-only split, and the
+MIT / CC BY-NC-SA licensing split.
+
+> Historical note: `pr-automerge.yml` (pst-2sb, 2026-07-13) used to arm GitHub
+> native auto-merge on every PR. It was removed 2026-07-28 when the codex gate
+> landed — native auto-merge satisfies only *required* checks and would bypass
+> the controller's stricter all-reported-checks + verified-contexts condition,
+> leaving two competing merge paths. The controller order is the only merge
+> path now. (`pr-autoupdate.yml` stays — it only keeps branches current with
+> `main`, it never merges.)

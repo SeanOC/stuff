@@ -206,9 +206,10 @@ npx playwright test tests/e2e/stl-download.spec.ts         # download route
 
 - Branch `gc-pilot/<bead-id>` from latest `origin/main`.
 - PR to `main`; never push `main` directly.
-- Auto-merge lands the PR on green with no human merge step, and
-  open PR branches are auto-updated when `main` moves — see
-  [docs/ci.md](ci.md) for the full PR lifecycle.
+- The `merge-green-prs` controller order lands the PR once every
+  reported check — including the `codex-review` gate — is green, with
+  no human merge step; open PR branches are auto-updated when `main`
+  moves — see [docs/ci.md](ci.md) for the full PR lifecycle.
 - Record the PR URL on the bead; expect operator corrections as
   follow-up beads rather than review comments (that's how this whole
   series ran).

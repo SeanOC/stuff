@@ -1,11 +1,11 @@
 # pst-2sb: strict up-to-date branch protection strands every open PR
-# whenever main advances (seen on PRs #11, #13, #21) — armed
-# auto-merge then waits forever on an "out of date" branch. On each
+# whenever main advances (seen on PRs #11, #13, #21) — the
+# controller merge then waits forever on an "out of date" branch. On each
 # push to main, update every open PR branch via the update-branch
-# API so their checks re-run against the new base and auto-merge can
+# API so their checks re-run against the new base and the controller merge can
 # complete.
 #
-# Cascade (intentional, accepted): with N armed PRs open, each merge
+# Cascade (intentional, accepted): with N open PRs, each merge
 # to main re-updates the remaining N-1 and re-runs their CI, so
 # merges serialize at roughly one per CI wall-clock. That's the cost
 # of strict mode + full autonomy; fine at this repo's PR volume.
