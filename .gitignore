@@ -49,6 +49,7 @@ playwright/.cache/
 
 # Gas Town (added by gt)
 .claude/
+.gc/
 .opencode/
 .logs/
 state.json
