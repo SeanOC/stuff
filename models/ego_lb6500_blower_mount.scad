@@ -103,8 +103,17 @@ $fn = 64;
 
 mount_type = "multiconnect"; // @param enum choices=multiconnect|opengrid group=mount label="Wall mount type" filename
 backer_thickness = 6.5;  // @param number min=5.5 max=8 step=0.5 unit=mm group=mount label="Multiconnect backer thickness"
-slot_retention   = true; // @param boolean group=mount label="Multiconnect slot click retention"
-snap_lite        = false; // @param boolean group=mount label="Lite openGrid snaps (3.4mm instead of 6.8mm)"
+// Standard Multiconnect slot tuning shared across the mounts (pst-9ij):
+// same names/labels/ranges as opengrid_bin. Defaults reproduce ego's
+// shipped backer exactly, threaded through the multiconnectBack() call
+// below via the patch-0003 module args. ego uses the SAME
+// multiconnectSlotDesign.scad module as the other mounts (migrated by
+// patch 0002), so all four map cleanly — no generator remapping needed.
+slot_tolerance = 1.0;  // @param number min=0.925 max=1.075 step=0.005 group=mount label="Slot fit tolerance"
+slot_retention = true; // @param boolean group=mount label="Slot retention (v2 snap)"
+dimple_scale   = 1.0;  // @param number min=0.5 max=1.5 step=0.05 group=mount label="Dimple scale (v1 only)"
+on_ramp        = true; // @param boolean group=mount label="Slot on-ramp lead-in"
+snap_lite      = false; // @param boolean group=mount label="Lite openGrid snaps (3.4mm instead of 6.8mm)"
 
 // === Fixed geometry (matches the reference mesh — not tunable) ===
 
@@ -324,7 +333,10 @@ module backer_panel() {
                     backThickness = backer_thickness + weld,
                     slotVerticalOffset = 2.85,
                     connectVersion = "v2",
-                    quickRelease = !slot_retention
+                    quickRelease = !slot_retention,
+                    tolerance = slot_tolerance,
+                    dimple = dimple_scale,
+                    onRamp = on_ramp
                 );
 }
 
