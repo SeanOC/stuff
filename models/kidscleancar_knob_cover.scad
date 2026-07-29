@@ -134,21 +134,23 @@ annulus_roof_z = screw_top_z + screw_clear;        // 7.65 (screw pocket roof)
 knob_roof_z   = knob_top_z + knob_vclear;          // 11.15 (knob cavity roof)
 top_z         = max(knob_roof_z, annulus_roof_z) + wall;   // 13.55 (exterior top)
 
-// Effective skirt-bottom height. The skirt must reach DOWN past the flange
-// top to grip it, so the requested skirt_gap is clamped so the mouth always
-// sits at least engage_min below the flange top — this guarantees rib/flange
-// overlap even at the flange_h minimum (where a raw skirt_gap could exceed
-// flange_h and lift every rib off the flange). engage_min exceeds the rib
-// lead-in ramp so a band of FULL-depth rib still bites the flange (grip =
-// engage_min - lead-in). At defaults skirt_z0 == skirt_gap.
-engage_min = 1.5;
+// The rib must ALWAYS present BOTH a positive insertion lead-in AND a full
+// crush band to the flange — squeezing either to zero gives a square shoulder
+// that snags (no lead-in) or no retention (no band). So the skirt bottom is
+// derived to leave the flange band room for both: engage_min = the grip band
+// (rib_bite) + a minimum lead-in (rib_leadin_min, scaled with rib_interference
+// so a deeper rib gets a longer ramp). skirt_z0 clamps the requested skirt_gap
+// to sit at least engage_min below the flange top. At defaults skirt_z0 ==
+// skirt_gap (0.5) — the extra headroom only bites at the flange_h minimum.
+rib_bite       = 1.5;                          // min full-depth grip band
+rib_leadin_min = max(0.4, rib_interference);   // min insertion ramp height
+engage_min = rib_bite + rib_leadin_min;
 skirt_z0 = max(0, min(skirt_gap, flange_h - engage_min));  // 0.5 default
 
 // Ribs span from the skirt mouth up just past the flange top, staying clear
-// of the proud screw heads above. The lead-in ramp is clamped so the tip
-// reaches FULL depth at least rib_bite before the flange top — a positive
-// crush band always bites the flange (grip_band, asserted >= rib_bite below).
-rib_bite  = 1.5;                                    // min full-depth grip band
+// of the proud screw heads above. The lead-in ramp is the largest ramp the
+// rib depth / height / flange room allow; engage_min above guarantees every
+// term (and hence rib_leadin) is >= rib_leadin_min while grip_band >= rib_bite.
 rib_z0    = skirt_z0;                               // 0.5
 rib_top_z = flange_h + 1;                           // 4.15
 rib_leadin = max(0, min(rib_outer - rib_tip_r,
@@ -196,6 +198,12 @@ assert(grip_band >= 1.5 - eps,
        str("no rib grip: only ", grip_band, "mm of full-depth rib bites the ",
            flange_h, "mm flange band. Increase flange_h or reduce skirt_gap/",
            "fit_clearance/rib_interference."));
+// Seating: the rib must also keep a positive insertion lead-in ramp, or the
+// flange meets a square full-interference shoulder that snags instead of
+// self-centering. engage_min reserves room for both the ramp and the band.
+assert(rib_leadin >= 0.3,
+       str("no insertion lead-in: rib_leadin=", rib_leadin,
+           "mm collapses to a square shoulder. Reduce skirt_gap or increase flange_h."));
 // Roof/chamfer: the chamfered exterior must stay outside the bore wall at the
 // annulus-roof height, or the shell self-crosses (thin wall + deep chamfer +
 // tall screw pocket). The top_chamfer_eff clamp guarantees this; assert it.
