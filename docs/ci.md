@@ -39,7 +39,7 @@ entirely on their own — there is no human merge step:
 
 Consequences worth knowing:
 
-- **The merge cascade is intentional.** With N armed PRs open, each
+- **The merge cascade is intentional.** With N open PRs, each
   merge re-updates the other N−1 and re-runs their CI, so merges
   serialize at roughly one per CI wall-clock. Accepted cost of
   strict mode + autonomy.
