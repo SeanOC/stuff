@@ -59,42 +59,44 @@ $fn = 128;   // round-dominant revolved part
 
 // === User-tunable parameters ===
 
+// This model childproofs ONE knob class — the KidsCleanCar speed knob and
+// close siblings. Every range below is a TIGHT envelope around the measured
+// device, not a general-purpose sweep: it does not try to render a 30mm
+// flange or a 1.5mm grip band. Combinations the narrowed ranges still can't
+// exclude are caught by the `=== Domain validity ===` asserts further down,
+// which fail loudly with a fix hint. Defaults are the measured values.
+
 // ----- Measured vehicle geometry (calipers, mm) -----
-// min set so the smallest flange still fits the DEFAULT knob's cleared
-// cavity plus a screw annulus inside its bore (the domain assert below
-// covers flange_d/knob_d combinations that a single bound can't express).
-flange_d    = 48.1;  // @param number min=34 max=90 step=0.1 unit=mm group=vehicle label="Flange OD (grip target)"
-flange_h    = 3.15;  // @param number min=1.5 max=12 step=0.05 unit=mm group=vehicle label="Flange height above deck (grip band)"
-// max keeps the cleared cavity inside the DEFAULT flange's bore; a knob
-// too big for its actual flange is caught by the domain assert below
-// (knob_cav_r + annulus_min <= bore_r), not silently mis-rendered.
-knob_d      = 29.5;  // @param number min=10 max=44 step=0.1 unit=mm group=vehicle label="Centre knob OD"
-knob_h      = 6.1;   // @param number min=2 max=30 step=0.1 unit=mm group=vehicle label="Knob height above flange"
-screw_head_h = 2.5;  // @param number min=0 max=8 step=0.1 unit=mm group=vehicle label="Screw-head proud height above flange"
+flange_d    = 48.1;  // @param number min=44 max=52 step=0.1 unit=mm group=vehicle label="Flange OD (grip target)"
+flange_h    = 3.15;  // @param number min=2.5 max=4 step=0.05 unit=mm group=vehicle label="Flange height above deck (grip band)"
+knob_d      = 29.5;  // @param number min=26 max=33 step=0.1 unit=mm group=vehicle label="Centre knob OD"
+knob_h      = 6.1;   // @param number min=4 max=8 step=0.1 unit=mm group=vehicle label="Knob height above flange"
+screw_head_h = 2.5;  // @param number min=0 max=4 step=0.1 unit=mm group=vehicle label="Screw-head proud height above flange"
 
 // ----- Fit / clearances -----
-fit_clearance = 0.3;  // @param number min=0 max=1.5 step=0.05 unit=mm group=fit label="Bore radial clearance over flange"
-knob_clear   = 1.25;  // @param number min=0.5 max=5 step=0.05 unit=mm group=fit label="Knob cavity radial clearance"
-knob_vclear  = 1.9;   // @param number min=0.5 max=6 step=0.1 unit=mm group=fit label="Clearance over knob top (Z)"
-screw_clear  = 2.0;   // @param number min=0.5 max=6 step=0.1 unit=mm group=fit label="Clearance over screw heads (Z)"
-// max leaves >=2mm rib/flange overlap at the DEFAULT flange_h (3.15-1.0);
-// smaller flanges are handled by the derived skirt_z0 clamp below, so the
-// skirt always reaches down past the flange top to grip it.
+fit_clearance = 0.3;  // @param number min=0.2 max=0.6 step=0.05 unit=mm group=fit label="Bore radial clearance over flange"
+knob_clear   = 1.25;  // @param number min=0.8 max=2.5 step=0.05 unit=mm group=fit label="Knob cavity radial clearance"
+knob_vclear  = 1.9;   // @param number min=1 max=3 step=0.1 unit=mm group=fit label="Clearance over knob top (Z)"
+screw_clear  = 2.0;   // @param number min=1 max=3.5 step=0.1 unit=mm group=fit label="Clearance over screw heads (Z)"
 skirt_gap    = 0.5;   // @param number min=0 max=1 step=0.1 unit=mm group=fit label="Skirt-bottom gap above deck"
 
 // ----- Crush ribs (the retention tuning knobs) -----
-rib_count        = 6;    // @param integer min=3 max=12 group=ribs label="Number of crush ribs"
-rib_interference = 0.2;  // @param number min=0 max=0.8 step=0.05 unit=mm group=ribs label="Rib interference past flange edge"
-rib_width        = 1.6;  // @param number min=0.8 max=4 step=0.1 unit=mm group=ribs label="Rib tangential width"
+rib_count        = 6;    // @param integer min=4 max=8 group=ribs label="Number of crush ribs"
+rib_interference = 0.2;  // @param number min=0.1 max=0.5 step=0.05 unit=mm group=ribs label="Rib interference past flange edge"
+rib_width        = 1.6;  // @param number min=1 max=2.5 step=0.1 unit=mm group=ribs label="Rib tangential width"
 
 // ----- Body -----
-wall        = 2.4;  // @param number min=1.2 max=5 step=0.1 unit=mm group=body label="Wall / roof thickness"
-top_chamfer = 1.0;  // @param number min=0 max=3 step=0.1 unit=mm group=body label="Top outer-edge chamfer"
+wall        = 2.4;  // @param number min=2 max=3.5 step=0.1 unit=mm group=body label="Wall / roof thickness"
+// The effective chamfer is derived (clamped to `wall`, the roof thickness)
+// below so it only ever cuts the solid cap; this is the raw request.
+top_chamfer = 1.0;  // @param number min=0 max=2 step=0.1 unit=mm group=body label="Top outer-edge chamfer"
 
 // ----- Adult pry recess -----
 pry_notch   = true; // @param boolean group=pry label="Pry recess at the rim (coin/fingernail)"
-pry_notch_w = 12;   // @param number min=6 max=24 step=0.5 unit=mm group=pry label="Pry recess width (tangential)"
-pry_notch_h = 3.5;  // @param number min=1.5 max=8 step=0.1 unit=mm group=pry label="Pry recess height up the skirt"
+// max ~ 1/6 of the bore circumference; the effective width is further clamped
+// to the actual between-rib gap below so it never severs a rib.
+pry_notch_w = 12;   // @param number min=8 max=16 step=0.5 unit=mm group=pry label="Pry recess width (tangential)"
+pry_notch_h = 3.5;  // @param number min=2 max=5 step=0.1 unit=mm group=pry label="Pry recess height up the skirt"
 
 // @preset id="default" label="KidsCleanCar (measured)" flange_d=48.1 flange_h=3.15 knob_d=29.5 knob_h=6.1 rib_count=6 rib_interference=0.2 wall=2.4 pry_notch=true
 // @preset id="tight_grip" label="Tighter grip (8 ribs, 0.3mm)" rib_count=8 rib_interference=0.3
@@ -143,28 +145,64 @@ engage_min = 1.5;
 skirt_z0 = max(0, min(skirt_gap, flange_h - engage_min));  // 0.5 default
 
 // Ribs span from the skirt mouth up just past the flange top, staying clear
-// of the proud screw heads above.
+// of the proud screw heads above. The lead-in ramp is clamped so the tip
+// reaches FULL depth at least rib_bite before the flange top — a positive
+// crush band always bites the flange (grip_band, asserted >= rib_bite below).
+rib_bite  = 1.5;                                    // min full-depth grip band
 rib_z0    = skirt_z0;                               // 0.5
 rib_top_z = flange_h + 1;                           // 4.15
+rib_leadin = max(0, min(rib_outer - rib_tip_r,
+                        rib_top_z - rib_z0 - 0.3,
+                        flange_h - rib_z0 - rib_bite));
+grip_band  = flange_h - rib_z0 - rib_leadin;        // full-depth rib/flange bite
+
+// The top-edge chamfer only ever cuts the SOLID roof cap: clamped to `wall`
+// (the roof thickness above the highest interior pocket) so a deep chamfer on
+// a thin wall can't pull the exterior radius past the bore wall at the annulus
+// roof and self-cross the shell. Exterior radius at the annulus roof height:
+top_chamfer_eff = min(top_chamfer, wall);
+outer_at_annulus = skirt_or - max(0, annulus_roof_z - (top_z - top_chamfer_eff));
 
 // Pry recess lands in a between-rib gap (half a rib pitch off a rib), so
 // it never eats a crush rib no matter the rib count.
 pry_angle = 180 / rib_count;
 
+// The notch width is a tangential chord, but the gap between two adjacent
+// ribs is ANGULAR: at small flange_d / high rib_count a fixed-mm notch spans
+// past its neighbours and severs them into orphan bodies. Clamp the effective
+// width to the chord that fits the free angle between the two flanking ribs
+// (their subtended angle at the bore, plus a clearance margin, removed). If
+// the ribs are so dense no usable notch fits, drop it rather than sever one.
+pry_gap_ang  = 360 / rib_count;                                   // deg between ribs
+pry_rib_ang  = 2 * asin(min(1, (rib_width / 2 + 1.0) / bore_r));  // deg a rib+margin subtends
+pry_free_ang = pry_gap_ang - pry_rib_ang;                         // deg free for the notch
+pry_w_fit    = pry_free_ang > 0 ? 2 * bore_r * sin(pry_free_ang / 2) : 0;
+pry_w_eff    = min(pry_notch_w, pry_w_fit);
+
 // === Domain validity ===
 //
-// Every SINGLE param min/max excursion from the defaults renders valid
-// geometry on its own (that's what the @param bounds guarantee). These
-// asserts catch the CROSS-parameter combinations that no single bound can
-// express, and fail LOUDLY with a fix hint instead of emitting a broken or
-// silently-wrong mesh. They never fire for the measured defaults.
+// The narrowed @param ranges keep every SINGLE excursion valid on its own.
+// These asserts catch the CROSS-parameter combinations the ranges still
+// can't exclude (and any manual out-of-range override), failing LOUDLY with
+// a fix hint instead of emitting a broken or silently-wrong mesh. They never
+// fire for the measured defaults or anywhere inside the declared ranges.
 assert(knob_cav_r + annulus_min <= bore_r,
        str("knob too large for this flange: cleared knob cavity r=", knob_cav_r,
            "mm + ", annulus_min, "mm screw annulus exceeds the flange bore r=",
            bore_r, "mm. Reduce knob_d/knob_clear or increase flange_d/fit_clearance."));
-assert(flange_h - skirt_z0 >= 1.0,
-       str("skirt_gap too large for this flange_h: only ", flange_h - skirt_z0,
-           "mm of skirt reaches the flange band. Reduce skirt_gap or increase flange_h."));
+// Retention: even at flange_h-min + fit_clearance-max + rib_interference-max
+// (deepest rib, shortest flange) a >=1.5mm full-depth crush band must remain.
+assert(grip_band >= 1.5 - eps,
+       str("no rib grip: only ", grip_band, "mm of full-depth rib bites the ",
+           flange_h, "mm flange band. Increase flange_h or reduce skirt_gap/",
+           "fit_clearance/rib_interference."));
+// Roof/chamfer: the chamfered exterior must stay outside the bore wall at the
+// annulus-roof height, or the shell self-crosses (thin wall + deep chamfer +
+// tall screw pocket). The top_chamfer_eff clamp guarantees this; assert it.
+assert(outer_at_annulus > bore_r,
+       str("chamfer self-cross: exterior r=", outer_at_annulus,
+           "mm at the annulus roof is inside the bore r=", bore_r,
+           "mm. Reduce top_chamfer/screw_head_h/screw_clear or thicken wall."));
 assert(rib_top_z > rib_z0,
        "rib has no height: rib_top_z <= rib_z0. Increase flange_h or reduce skirt_gap.");
 
@@ -184,10 +222,10 @@ PRINT_ANCHOR_BBOX = [53.5, 53.5, 13.05];
 // sweeps it into the one-piece stepped cup (bore -> screw annulus pocket
 // -> deep knob cavity -> capped top with a chamfered outer rim).
 shell_profile = [
-    [skirt_or,               skirt_z0],            // skirt bottom outer
-    [skirt_or,               top_z - top_chamfer],  // up the outer wall
-    [skirt_or - top_chamfer, top_z],                // top-edge chamfer
-    [0,                      top_z],                // top centre
+    [skirt_or,                   skirt_z0],             // skirt bottom outer
+    [skirt_or,                   top_z - top_chamfer_eff], // up the outer wall
+    [skirt_or - top_chamfer_eff, top_z],                // top-edge chamfer
+    [0,                          top_z],                // top centre
     [0,                      knob_roof_z],          // knob cavity roof centre
     [knob_cav_r,             knob_roof_z],          // knob cavity roof rim
     [knob_cav_r,             annulus_roof_z],       // step down to annulus
@@ -203,11 +241,9 @@ module shell() {
 
 // One vertical crush rib, drawn in the (r, z) plane and extruded
 // tangentially by rib_width. The tip stands at rib_tip_r (rib_interference
-// past the flange edge); the root welds bury into the bore wall. The
-// bottom edge is a 45deg lead-in ramp so the flange self-centres on seating.
-// rib_leadin is clamped to the rib's straight height so a shallow rib (large
-// skirt_gap) can never invert the polygon into a non-closed mesh.
-rib_leadin = max(0, min(rib_outer - rib_tip_r, rib_top_z - rib_z0 - 0.3));
+// past the flange edge); the root welds bury into the bore wall. The bottom
+// edge is a lead-in ramp (rib_leadin, derived above) so the flange self-
+// centres on seating while a full-depth grip_band still bites the flange.
 rib_profile = [
     [rib_tip_r, rib_z0 + rib_leadin],                // top of the lead-in ramp
     [rib_tip_r, rib_top_z],                          // tip, top
@@ -235,9 +271,12 @@ module ribs() {
 module pry_cut() {
     r_in  = bore_r - 1;
     r_out = skirt_or + 1;
-    rotate([0, 0, pry_angle])
-        translate([(r_in + r_out) / 2, 0, skirt_z0 + pry_notch_h / 2])
-            cube([r_out - r_in, pry_notch_w, pry_notch_h + 2 * eps], center = true);
+    // Only cut a notch that actually fits between the ribs (pry_w_eff >= a
+    // usable minimum); otherwise skip it so a dense-rib cover stays one body.
+    if (pry_w_eff >= 1.5)
+        rotate([0, 0, pry_angle])
+            translate([(r_in + r_out) / 2, 0, skirt_z0 + pry_notch_h / 2])
+                cube([r_out - r_in, pry_w_eff, pry_notch_h + 2 * eps], center = true);
 }
 
 // === Assembly ===
