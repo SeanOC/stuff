@@ -465,3 +465,11 @@ Settled context the reviewer will not relitigate: the render/invariants
 pipeline conventions in `AGENTS.md`, the vendored lib pins and patches
 (`libs/README.md`, BOSL2 `456fcd8`), the WASM-preview-only split, and the
 MIT / CC BY-NC-SA licensing split.
+
+> Historical note: `pr-automerge.yml` (pst-2sb, 2026-07-13) used to arm GitHub
+> native auto-merge on every PR. It was removed 2026-07-28 when the codex gate
+> landed — native auto-merge satisfies only *required* checks and would bypass
+> the controller's stricter all-reported-checks + verified-contexts condition,
+> leaving two competing merge paths. The controller order is the only merge
+> path now. (`pr-autoupdate.yml` stays — it only keeps branches current with
+> `main`, it never merges.)
