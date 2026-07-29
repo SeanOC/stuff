@@ -60,13 +60,15 @@ $fn = 128;   // round-dominant revolved part
 // === User-tunable parameters ===
 
 // ----- Measured vehicle geometry (calipers, mm) -----
-flange_d    = 48.1;  // @param number min=30 max=90 step=0.1 unit=mm group=vehicle label="Flange OD (grip target)"
+// min set so the smallest flange still fits the DEFAULT knob's cleared
+// cavity plus a screw annulus inside its bore (the domain assert below
+// covers flange_d/knob_d combinations that a single bound can't express).
+flange_d    = 48.1;  // @param number min=34 max=90 step=0.1 unit=mm group=vehicle label="Flange OD (grip target)"
 flange_h    = 3.15;  // @param number min=1.5 max=12 step=0.05 unit=mm group=vehicle label="Flange height above deck (grip band)"
-// max capped so the knob cavity always fits inside the flange bore (a
-// knob wider than its own flange is unphysical, and a cavity wider than
-// the body makes shell_profile self-cross -> a non-manifold export; a
-// defensive clamp on knob_cav_r below backs this up for odd combos).
-knob_d      = 29.5;  // @param number min=10 max=40 step=0.1 unit=mm group=vehicle label="Centre knob OD"
+// max keeps the cleared cavity inside the DEFAULT flange's bore; a knob
+// too big for its actual flange is caught by the domain assert below
+// (knob_cav_r + annulus_min <= bore_r), not silently mis-rendered.
+knob_d      = 29.5;  // @param number min=10 max=44 step=0.1 unit=mm group=vehicle label="Centre knob OD"
 knob_h      = 6.1;   // @param number min=2 max=30 step=0.1 unit=mm group=vehicle label="Knob height above flange"
 screw_head_h = 2.5;  // @param number min=0 max=8 step=0.1 unit=mm group=vehicle label="Screw-head proud height above flange"
 
@@ -75,11 +77,10 @@ fit_clearance = 0.3;  // @param number min=0 max=1.5 step=0.05 unit=mm group=fit
 knob_clear   = 1.25;  // @param number min=0.5 max=5 step=0.05 unit=mm group=fit label="Knob cavity radial clearance"
 knob_vclear  = 1.9;   // @param number min=0.5 max=6 step=0.1 unit=mm group=fit label="Clearance over knob top (Z)"
 screw_clear  = 2.0;   // @param number min=0.5 max=6 step=0.1 unit=mm group=fit label="Clearance over screw heads (Z)"
-// max capped below the flange band: the skirt must reach DOWN past the
-// flange top (flange_h) to grip it, so the gap has to stay well under
-// flange_h or the ribs never overlap the flange (no retention) and the
-// squeezed rib profile stops closing.
-skirt_gap    = 0.5;   // @param number min=0 max=2 step=0.1 unit=mm group=fit label="Skirt-bottom gap above deck"
+// max leaves >=2mm rib/flange overlap at the DEFAULT flange_h (3.15-1.0);
+// smaller flanges are handled by the derived skirt_z0 clamp below, so the
+// skirt always reaches down past the flange top to grip it.
+skirt_gap    = 0.5;   // @param number min=0 max=1 step=0.1 unit=mm group=fit label="Skirt-bottom gap above deck"
 
 // ----- Crush ribs (the retention tuning knobs) -----
 rib_count        = 6;    // @param integer min=3 max=12 group=ribs label="Number of crush ribs"
@@ -106,19 +107,18 @@ pry_notch_h = 3.5;  // @param number min=1.5 max=8 step=0.1 unit=mm group=pry la
 bury = 0.3;
 eps  = 0.1;
 
-// Radii (deck centre at the origin; z = 0 is the deck surface).
-flange_r  = flange_d / 2;
-// The knob cavity ALWAYS clears the knob by knob_clear — never shrink it
-// (a smaller cavity would let the cover touch/turn the knob, defeating the
-// lock). Instead the bore/body GROWS to hold the cavity when a large knob
-// relative to its flange would otherwise push the cavity past the flange
-// bore: bore_r is the larger of the flange-clearance bore and the cavity
-// plus a minimum annulus ring. For the measured part (knob << flange) the
-// flange term wins and the OD is unchanged.
+// Radii (deck centre at the origin; z = 0 is the deck surface). The cover
+// tracks the flange: the bore clears the flange OD, the OD is that plus a
+// wall. The knob cavity ALWAYS clears the knob by knob_clear (never
+// shrunk — a smaller cavity would let the cover touch/turn the knob), and
+// the domain assert below guarantees it fits inside the bore with a real
+// screw annulus, so we never grow the body off the flange nor clamp the
+// cavity into the knob.
 annulus_min = 0.6;                             // min screw-pocket ring width
-knob_cav_r = knob_d / 2 + knob_clear;          // cavity always clears the knob
-bore_r    = max(flange_r + fit_clearance, knob_cav_r + annulus_min);  // clears flange AND holds the cavity
+flange_r  = flange_d / 2;
+bore_r    = flange_r + fit_clearance;          // bore clears the flange
 skirt_or  = bore_r + wall;                     // outer skirt radius
+knob_cav_r = knob_d / 2 + knob_clear;          // cavity always clears the knob
 rib_tip_r = flange_r - rib_interference;       // rib tip bites past the flange edge
 rib_outer = bore_r + bury;                     // rib root welded into wall
 
@@ -150,6 +150,23 @@ rib_top_z = flange_h + 1;                           // 4.15
 // Pry recess lands in a between-rib gap (half a rib pitch off a rib), so
 // it never eats a crush rib no matter the rib count.
 pry_angle = 180 / rib_count;
+
+// === Domain validity ===
+//
+// Every SINGLE param min/max excursion from the defaults renders valid
+// geometry on its own (that's what the @param bounds guarantee). These
+// asserts catch the CROSS-parameter combinations that no single bound can
+// express, and fail LOUDLY with a fix hint instead of emitting a broken or
+// silently-wrong mesh. They never fire for the measured defaults.
+assert(knob_cav_r + annulus_min <= bore_r,
+       str("knob too large for this flange: cleared knob cavity r=", knob_cav_r,
+           "mm + ", annulus_min, "mm screw annulus exceeds the flange bore r=",
+           bore_r, "mm. Reduce knob_d/knob_clear or increase flange_d/fit_clearance."));
+assert(flange_h - skirt_z0 >= 1.0,
+       str("skirt_gap too large for this flange_h: only ", flange_h - skirt_z0,
+           "mm of skirt reaches the flange band. Reduce skirt_gap or increase flange_h."));
+assert(rib_top_z > rib_z0,
+       "rib has no height: rib_top_z <= rib_z0. Increase flange_h or reduce skirt_gap.");
 
 // PRINT_ANCHOR_BBOX at defaults (literal numbers — the invariants gate
 // fails on >1mm drift from the exported STL):
