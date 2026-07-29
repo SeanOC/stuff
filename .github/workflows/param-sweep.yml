@@ -20,7 +20,7 @@
 # Always-reporting (pst-2sb): the pull_request trigger deliberately
 # has NO paths filter. "wasm param sweep" (the gate job below) is a
 # required status check, and a required check that never reports
-# hangs auto-merge forever. Instead of workflow-level path gating,
+# hangs the controller merge forever. Instead of workflow-level path gating,
 # every PR runs the cheap `select` job (~20s) and the script's skip
 # mode makes sweep-irrelevant PRs pass in seconds. The push trigger
 # keeps its paths filter — main pushes aren't gated by required

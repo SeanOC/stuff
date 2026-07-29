@@ -125,3 +125,15 @@ rm -rf directory         # not: rm -r directory
 ssh -o BatchMode=yes ... # fail instead of prompting
 apt-get -y ...           # auto-confirm
 ```
+
+## PR & merge workflow — the codex gate
+
+Open a PR from your `gc-pilot/<bead-id>` branch; never push `main`. Do
+**not** click merge and do **not** enable GitHub auto-merge — a controller
+order squash-merges once **every reported check** is green. That includes
+**`codex-review`**, a real pre-merge gate set by an independent cross-model
+reviewer (not a GitHub workflow). If it fails, the reviewer posts file:line
+findings and you (or a fix bead) address them **on the same branch** and
+push — the push triggers a fresh review of the new SHA. Your job ends when
+the PR is open and CI is green. Full mechanism:
+[docs/ci.md](docs/ci.md#merge-workflow-codex-gate--controller-merge).
