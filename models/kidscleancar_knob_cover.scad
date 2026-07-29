@@ -147,12 +147,14 @@ rib_leadin_min = max(0.4, rib_interference);   // min insertion ramp height
 engage_min = rib_bite + rib_leadin_min;
 skirt_z0 = max(0, min(skirt_gap, flange_h - engage_min));  // 0.5 default
 
-// Ribs span from the skirt mouth up just past the flange top, staying clear
-// of the proud screw heads above. The lead-in ramp is the largest ramp the
-// rib depth / height / flange room allow; engage_min above guarantees every
-// term (and hence rib_leadin) is >= rib_leadin_min while grip_band >= rib_bite.
+// Ribs span from the skirt mouth up to EXACTLY the flange top — never above.
+// The rib grips only the flange edge, so any rib above flange_h would sit in
+// the screw-head annulus and could catch a proud screw head or the free-
+// spinning cover (pst-s4l). The lead-in ramp is the largest ramp the rib
+// depth / height / flange room allow; engage_min above guarantees every term
+// (and hence rib_leadin) is >= rib_leadin_min while grip_band >= rib_bite.
 rib_z0    = skirt_z0;                               // 0.5
-rib_top_z = flange_h + 1;                           // 4.15
+rib_top_z = flange_h;                               // 3.15 (never into the annulus)
 rib_leadin = max(0, min(rib_outer - rib_tip_r,
                         rib_top_z - rib_z0 - 0.3,
                         flange_h - rib_z0 - rib_bite));

@@ -106,16 +106,20 @@ def check(ctx):
             f"screw annulus not clear at r={annulus_r:.1f}, z={screw_top - 0.5:.1f}",
         ))
 
-    # 5. Ribs bite past the flange edge; bore is free-spinning between them.
+    # 5. Ribs bite past the flange edge; bore is free-spinning between them;
+    #    and the rib does NOT intrude into the screw-head annulus above the
+    #    flange top (pst-s4l: a rib past flange_h can catch a proud screw head).
     n = int(p["rib_count"])
     bite_r = flange_r - p["rib_interference"] / 2   # inside the flange radius
     z_rib = p["flange_h"] / 2 + 0.5                 # low in the flange band
-    on_rib, between_rib = [], []
+    z_annulus = p["flange_h"] + 0.5                 # above the flange top
+    on_rib, between_rib, above_rib = [], [], []
     for i in range(n):
         a_on = math.radians(i * 360 / n)
         a_bt = math.radians((i + 0.5) * 360 / n)
         on_rib.append((bite_r * math.cos(a_on), bite_r * math.sin(a_on), z_rib))
         between_rib.append((bite_r * math.cos(a_bt), bite_r * math.sin(a_bt), z_rib))
+        above_rib.append((bite_r * math.cos(a_on), bite_r * math.sin(a_on), z_annulus))
     if not all(solid(on_rib)):
         failures.append(Failure(
             "ribs",
@@ -127,6 +131,13 @@ def check(ctx):
             "ribs",
             f"bore is solid between ribs at r={bite_r:.2f}mm — the cover would "
             f"key to the flange instead of spinning free",
+        ))
+    if any(solid(above_rib)):
+        failures.append(Failure(
+            "ribs",
+            f"rib intrudes into the screw annulus at r={bite_r:.2f}mm, "
+            f"z={z_annulus:.2f}mm (above flange_h={p['flange_h']:.2f}) — could "
+            f"catch a proud screw head",
         ))
 
     return failures
