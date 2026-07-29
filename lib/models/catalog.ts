@@ -144,4 +144,9 @@ export const CATALOG: Record<string, CatalogEntry> = {
     blurb:
       "Ready-to-print openGrid snap connectors (28mm pitch). One STL per variant: lite/full depth x directional/bidirectional. Press straight into an openGrid board.",
   },
+  kidscleancar_knob_cover: {
+    categoryId: "toys",
+    blurb:
+      "Friction-fit childproof cover for the speed-adjust knob on a KidsCleanCar kids' ride-on. Slips over the 48.1mm lower flange and grips it with tunable internal crush ribs, spinning free over the knob so a toddler can't change the speed while a straight adult pull lifts it off. Original design; no vehicle modification, fully reversible.",
+  },
 };
