@@ -44,9 +44,18 @@ patching them. `snapConnector.scad` was already unused by every model; the two
 models that used `multiconnectSlotDesignBOSL.scad` moved to QuackWorks'
 BOSL2-free master copy of the same backer,
 `Modules/multiconnectSlotDesign.scad` (patch 0002 below). Nothing in the
-catalog references either vector-spin call site now, so `is_finite(spin)` is
-moot. That migration is what this change lands, and it is green on the current
-pin: full sweep 720 passed / 20 skipped / 0 failed.
+catalog referenced either vector-spin call site at that time, so
+`is_finite(spin)` was moot. That migration is what pst-9sw landed, and it was
+green on the current pin: full sweep 720 passed / 20 skipped / 0 failed.
+
+**Update (pst-ks2, 2026-08-03):** `snapConnector.scad` is a live consumer
+again — `models/multiconnect_connectors.scad`'s `snap-regular` variant invokes
+`snapConnectBacker`, i.e. the `snapConnector.scad:59` vector-spin call site
+(`spin=[0,270,0]`). So `is_finite(spin)` matters once more for that consumer:
+the pin **must stay** at `456fcd8` while `snap-regular` ships (a BOSL2 bump
+would break that variant's export, on top of the wasm hull regressions above).
+`multiconnectSlotDesignBOSL.scad` is still unused; the `pushfit` variant is
+pure OpenSCAD and pin-independent.
 
 **The bump itself is still blocked, for a new and different reason.** Moving to
 `fbcdfdd5` (v2.0.747) *with* the migration in place regresses 6 wasm sweep
