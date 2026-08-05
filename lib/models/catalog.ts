@@ -147,7 +147,7 @@ export const CATALOG: Record<string, CatalogEntry> = {
   multiconnect_connectors: {
     categoryId: "multiboard",
     blurb:
-      "Ready-to-print Multiconnect (Multiboard) connectors that lock an accessory backer into a tile (25mm grid). One STL per variant: snap-regular (bidirectional click), snap-moderate-wb and snap-heavy-wb (unidirectional wing-back, moderate / firm grip), or pushfit (press-in peg). Print one, press it in.",
+      "Ready-to-print Multiconnect (Multiboard) connectors that lock an accessory backer into a tile (25mm grid). One STL per variant: snap-regular (bidirectional click snap) or pushfit (press-in peg). Print one, press it in.",
   },
   kidscleancar_knob_cover: {
     categoryId: "toys",

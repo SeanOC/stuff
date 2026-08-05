@@ -1,16 +1,13 @@
 """Invariants for the standalone Multiconnect connectors (pst-ks2).
 
 `connector_type` fans the export grid into one STL per variant
-(snap-regular, snap-moderate-wb, snap-heavy-wb, pushfit), so this sidecar
-walks ALL FOUR files rather than trusting the single default variant the
-harness hands us as ctx["stl"]. The three snap tiers are derived from the
-one vendored snap primitive (snapConnectBacker) along its real levers —
-bumpout directionality (bidirectional "Regular" vs unidirectional
-"Wing Back") and grip strength — via patch 0004's `bumpoutSides` param;
-pushfit is the vendored push-fit module. See the .scad header for the
-full derivation. The wing-back tiers drop the left/right retention
-bumpouts, so their X footprint is smaller than Y (asymmetric) — the
-expected extents below are per-axis for exactly that reason.
+(snap-regular, pushfit), so this sidecar walks BOTH files rather than
+trusting the single default variant the harness hands us as ctx["stl"].
+Only two variants exist: the vendored QuackWorks connector library has
+exactly one snap module (snapConnectBacker, bidirectional = Multiboard
+"Regular") and one push-fit module — the bead's moderate-wb / heavy-wb
+tiers are Multiboard product taxonomy with no geometry behind them, so
+there is nothing here to assert for them.
 
 For each variant it pins the claims the part exists for:
 
@@ -56,26 +53,21 @@ _CONTACT_EPS_MM = 0.05
 _FOOTPRINT_TOL = 0.6   # mm, allowed drift on the measured footprint
 _HEIGHT_TOL = 0.5      # mm, allowed drift on the measured height
 
-# variant name -> (expected x footprint mm, expected y footprint mm, expected height mm)
-# Regular is square (bumpouts all four sides); the wing-back tiers drop
-# the left/right bumpouts so X < Y, and the heavy tier's stronger grip
-# grows the Y bumpouts further out (still inside the 25mm cell).
+# variant name -> (expected footprint mm [x==y], expected height mm)
 _VARIANTS = {
-    "snap-regular": (23.37, 23.37, 6.58),
-    "snap-moderate-wb": (23.12, 23.37, 6.58),
-    "snap-heavy-wb": (23.12, 24.27, 6.58),
-    "pushfit": (13.50, 13.50, 6.50),
+    "snap-regular": (23.37, 6.58),
+    "pushfit": (13.50, 6.50),
 }
 
 
 def check(ctx):
     failures: list[Failure] = []
-    for variant, (want_x, want_y, want_h) in _VARIANTS.items():
-        failures.extend(_check_variant(ctx["stem"], variant, want_x, want_y, want_h))
+    for variant, (want_fp, want_h) in _VARIANTS.items():
+        failures.extend(_check_variant(ctx["stem"], variant, want_fp, want_h))
     return failures
 
 
-def _check_variant(stem: str, variant: str, want_x: float, want_y: float, want_h: float) -> list[Failure]:
+def _check_variant(stem: str, variant: str, want_fp: float, want_h: float) -> list[Failure]:
     path = EXPORTS_DIR / f"{stem}-{variant}.stl"
     if not path.exists():
         return [Failure(
@@ -113,12 +105,12 @@ def _check_variant(stem: str, variant: str, want_x: float, want_y: float, want_h
     ext = b[1] - b[0]
 
     # 3. Fits one Multiboard cell, connector-side down at z=0.
-    for axis, label, want in ((0, "x", want_x), (1, "y", want_y)):
-        if abs(ext[axis] - want) > _FOOTPRINT_TOL:
+    for axis, label in ((0, "x"), (1, "y")):
+        if abs(ext[axis] - want_fp) > _FOOTPRINT_TOL:
             failures.append(Failure(
                 f"{variant}-footprint-{label}",
                 f"{path.name} {label} footprint {ext[axis]:.2f}mm != "
-                f"{want}mm (+/-{_FOOTPRINT_TOL}) for '{variant}'",
+                f"{want_fp}mm (+/-{_FOOTPRINT_TOL}) for '{variant}'",
             ))
         if ext[axis] > _MB_PITCH:
             failures.append(Failure(

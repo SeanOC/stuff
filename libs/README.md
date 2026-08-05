@@ -48,14 +48,12 @@ catalog referenced either vector-spin call site at that time, so
 `is_finite(spin)` was moot. That migration is what pst-9sw landed, and it was
 green on the current pin: full sweep 720 passed / 20 skipped / 0 failed.
 
-**Update (pst-ks2, 2026-08-04):** `snapConnector.scad` is a live consumer
-again — `models/multiconnect_connectors.scad`'s three snap tiers (`snap-regular`,
-`snap-moderate-wb`, `snap-heavy-wb`) all invoke `snapConnectBacker`, i.e. the
-`snapConnector.scad:59` vector-spin call site (`spin=[0,270,0]`); the wing-back
-tiers differ only in which sides carry the bumpout (patch 0004) and grip, not in
-that call. So `is_finite(spin)` matters once more for those consumers: the pin
-**must stay** at `456fcd8` while any snap tier ships (a BOSL2 bump would break
-their export, on top of the wasm hull regressions above).
+**Update (pst-ks2, 2026-08-03):** `snapConnector.scad` is a live consumer
+again — `models/multiconnect_connectors.scad`'s `snap-regular` variant invokes
+`snapConnectBacker`, i.e. the `snapConnector.scad:59` vector-spin call site
+(`spin=[0,270,0]`). So `is_finite(spin)` matters once more for that consumer:
+the pin **must stay** at `456fcd8` while `snap-regular` ships (a BOSL2 bump
+would break that variant's export, on top of the wasm hull regressions above).
 `multiconnectSlotDesignBOSL.scad` is still unused; the `pushfit` variant is
 pure OpenSCAD and pin-independent.
 
@@ -101,23 +99,6 @@ Current patches:
   shim it replaces, it tracks no moving API — the file has zero BOSL2
   references — so it should not rot across BOSL2 bumps. Drop it if upstream
   promotes these itself.
-
-- `QuackWorks/0003-multiconnect-slot-params.patch` — follows 0002 on the same
-  BOSL2-free `Modules/multiconnectSlotDesign.scad`, promoting the remaining
-  three Multiconnect slot Customizer variables (`slotTolerance`, `dimpleScale`,
-  `onRampEnabled`) to `multiconnectBack()` / `slotTool()` parameters, each
-  defaulting to its file-scope global so geometry is unchanged at default
-  arguments (pst-9ij). Drop it if upstream promotes these itself.
-
-- `QuackWorks/0004-snapconnector-bumpout-sides.patch` — `Modules/snapConnector.scad`'s
-  `snapConnectBacker` hardcodes its retention bumpouts on all four sides
-  (`[RIGHT, LEFT, FWD, BACK]`), i.e. Multiboard's bidirectional "Regular" snap.
-  The patch promotes the side list to a `bumpoutSides` module parameter so
-  `models/multiconnect_connectors.scad` can build the unidirectional "Wing Back"
-  tiers (Moderate WB / Heavy WB) — bumpouts on one opposing pair only — from the
-  same primitive; upstream has no separate wing-back generator (pst-ks2).
-  Defaults to all four sides, so `snap-regular` is unchanged at default
-  arguments. Drop it if upstream adds a directional snap parameter.
 
 Licensing note: the QuackWorks patch contains modified QuackWorks source
 lines, so the patch file itself is a **CC BY-NC-SA 4.0** derivative — it is
