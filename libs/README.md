@@ -38,14 +38,14 @@ accept. A compat patch for the drift was tried and rejected: on the wasm
 engine the BOSL2 slot backer aborts or hangs in *every* configuration under
 v2.0.747 (pst-d7d, pst-q0l, pst-7bs).
 
-That vector-spin blocker is now dissolved — by dropping both files instead of
+That vector-spin blocker is now dissolved — by removing both files instead of
 patching them. `snapConnector.scad` was already unused by every model; the two
 models that used `multiconnectSlotDesignBOSL.scad` moved to QuackWorks'
 BOSL2-free master copy of the same backer,
 `Modules/multiconnectSlotDesign.scad` (patch 0002 below). Nothing in the
-catalog references either vector-spin call site now, so `is_finite(spin)` is
-moot. That migration is what this change lands, and it is green on the current
-pin: full sweep 720 passed / 20 skipped / 0 failed.
+catalog references either vector-spin call site, so `is_finite(spin)` is moot —
+and patch 0004 now physically deletes both files from the vendored tree so they
+cannot break a standalone render under the new pin either.
 
 **The second blocker — the wasm hull regression — is now fixed (pst-a9f).**
 Moving to `fbcdfdd5` (v2.0.747) *with* the migration in place used to regress 6
@@ -95,6 +95,17 @@ Current patches:
   shim it replaces, it tracks no moving API — the file has zero BOSL2
   references — so it should not rot across BOSL2 bumps. Drop it if upstream
   promotes these itself.
+
+- `QuackWorks/0004-remove-orphaned-bosl-vector-spin-modules.patch` —
+  deletes `Modules/multiconnectSlotDesignBOSL.scad` and
+  `Modules/snapConnector.scad` from the vendored tree. Both call
+  `attachable(spin=[x,y,z])`, which BOSL2 `fbcdfdd5` (v2.0.747) rejects with
+  `Invalid spin` — they render empty / error under the current pin. No
+  catalog model references either file (the Multiconnect backer moved to the
+  BOSL2-free `multiconnectSlotDesign.scad`, patch 0002), so they are dead
+  weight; removing them lets the whole vendored QuackWorks tree render clean
+  under the new pin (pst-a9f). Drop this patch if upstream fixes the
+  vector-spin calls.
 
 Licensing note: the QuackWorks patch contains modified QuackWorks source
 lines, so the patch file itself is a **CC BY-NC-SA 4.0** derivative — it is

@@ -259,9 +259,16 @@ round_fn = 32;
 // Matches the old edges="Z" cuboids exactly; the base plate trades its
 // (cosmetic) top-edge roundover for a square top edge — see _base_plate.
 module _rbox(size, r) {
+    // Clamp the corner radius strictly below half the smaller edge. The
+    // offset(delta=-rr) inset would otherwise collapse the inner polygon
+    // to zero area when 2*r >= min(size.x, size.y) — e.g. saddle_w=10,
+    // edge_round_r=5 — and the outer offset(r=rr) cannot rebuild an empty
+    // shape, so the part renders empty. At the clamp limit this yields a
+    // stadium, matching cuboid(rounding=) at rounding = half-edge.
+    rr = max(0, min(r, min(size.x, size.y) / 2 - 0.01));
     linear_extrude(height = size.z, center = true)
-        offset(r = r, $fn = round_fn)
-            offset(delta = -r)
+        offset(r = rr, $fn = round_fn)
+            offset(delta = -rr)
                 square([size.x, size.y], center = true);
 }
 

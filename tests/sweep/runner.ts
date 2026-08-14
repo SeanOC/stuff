@@ -110,6 +110,26 @@ export function buildSweepCases(params: Param[]): SweepCase[] {
 }
 
 /**
+ * Render one model at an explicit param override set through the exact
+ * wasm pipeline the sweep uses. For hand-authored regression cases that
+ * the one-param-at-a-time sweep can't reach — e.g. a cross-product of
+ * two params at their joint boundary. Unset params fall back to their
+ * source defaults (see applyParamOverrides).
+ */
+export async function renderSweepCase(
+  stem: string,
+  values: Record<string, ParamValue>,
+) {
+  const source = readFileSync(path.join(ROOT, "models", `${stem}.scad`), "utf8");
+  const { params } = parseScadParams(source);
+  return renderToStl({
+    source: applyParamOverrides(source, params, values),
+    fetchLibFile: fetchLibFromDisk,
+    fetchAssetFile: fetchAssetFromDisk,
+  });
+}
+
+/**
  * Register a describe() block sweeping one model. Call from a
  * per-model test file so vitest can run models in parallel workers.
  */
