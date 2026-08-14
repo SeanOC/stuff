@@ -246,6 +246,25 @@ base_d       = 60;   // @param number min=30 max=120 step=0.5 unit=mm group=base
 base_t       = 8;    // @param number min=3 max=15  step=0.5 unit=mm group=base label="Base plate thickness (Z)"
 edge_round_r = 1.5;  // @param number min=0 max=5   step=0.25 unit=mm group=base label="Outer edge rounding"
 
+// Arc facet count for the vertical-edge roundovers below.
+round_fn = 32;
+
+// Hull-free rounded box (pst-a9f). BOSL2's cuboid(rounding=) builds its
+// corners with hull() of low-facet spheres; under BOSL2 v2.0.747 that
+// degenerate hull intermittently trips CGAL's randomized convex_hull_3
+// ("applyHull(): assertion violation") on the wasm engine — and no
+// facet count reliably conditions it (the failing sweep case shifts
+// run to run). This helper rounds the four VERTICAL edges with a pure
+// 2D offset() extrude, which never calls hull() and so is CGAL-robust.
+// Matches the old edges="Z" cuboids exactly; the base plate trades its
+// (cosmetic) top-edge roundover for a square top edge — see _base_plate.
+module _rbox(size, r) {
+    linear_extrude(height = size.z, center = true)
+        offset(r = r, $fn = round_fn)
+            offset(delta = -r)
+                square([size.x, size.y], center = true);
+}
+
 // ----- Hardware (M3 SHCS + heat-set insert) -----
 m3_clearance_d = 3.5;  // @param number min=3.0 max=5   step=0.1 unit=mm group=hardware label="M3 clearance hole (base pass-through)"
 m3_head_d      = 5.8;  // @param number min=4.5 max=8   step=0.1 unit=mm group=hardware label="M3 SHCS head diameter (counterbore)"
@@ -322,11 +341,12 @@ function hex_rot_for(sx) = (sx > 0) ? 60 : 30;
 // === Geometry — base + integral saddle bottoms ===
 
 module _base_plate() {
+    // Vertical edges rounded (edge_round_r); top + bottom edges square.
+    // Was cuboid(edges="ALL", except=BOTTOM) — the top-edge roundover
+    // was dropped to get a hull-free CGAL-robust plate (pst-a9f); it was
+    // purely cosmetic and the saddles cover most of the top face anyway.
     translate([0, 0, base_t / 2])
-        cuboid([base_w, base_d, base_t],
-               rounding = edge_round_r,
-               edges    = "ALL",
-               except   = BOTTOM);
+        _rbox([base_w, base_d, base_t], edge_round_r);
 }
 
 module _saddle_bottom(sx) {
@@ -339,9 +359,7 @@ module _saddle_bottom(sx) {
     cx  = sx * saddle_center_x;
     eps = 0.01;
     translate([cx, 0, base_t + saddle_bottom_h / 2 - eps / 2])
-        cuboid([saddle_w, saddle_y, saddle_bottom_h + eps],
-               rounding = edge_round_r,
-               edges    = "Z");
+        _rbox([saddle_w, saddle_y, saddle_bottom_h + eps], edge_round_r);
 }
 
 // Pipe-channel cut for ONE saddle. Each saddle has its own hex bore
@@ -436,9 +454,7 @@ module _cap_geom(sx) {
     cap_marker_z   = cap_bottom_z + cap_h / 2;
     difference() {
         translate([cx, 0, cap_bottom_z + cap_h / 2])
-            cuboid([saddle_w, saddle_y, cap_h],
-                   rounding = edge_round_r,
-                   edges    = "Z");
+            _rbox([saddle_w, saddle_y, cap_h], edge_round_r);
         _pipe_channel_cut(sx);
         for (sy = [-1, +1])
             _cap_insert_pocket(sx, sy);
