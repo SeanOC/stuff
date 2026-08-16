@@ -1,9 +1,10 @@
-pst-990o: migrate QuackWorks BOSL2 vector-spin calls to the v2.0.747 API,
-instead of deleting the modules (operator ruling on PR #60: fund the
-tree-wide fix, keep the modules rendering).
+pst-990o: migrate QuackWorks BOSL2 vector-spin calls to the v2.0.747 API and
+guard the zero-height oct_prism helper, instead of deleting the modules
+(operator ruling on PR #60: fund the tree-wide fix, keep the modules
+rendering).
 
-BOSL2 fbcdfdd5 (v2.0.747, PR #1475 ae73c6d) tightened attachable() to
-assert is_finite(spin), so every vendored QuackWorks call passing a vector
+BOSL2 fbcdfdd5 (v2.0.747, PR #1475 ae73c6d) tightened attachable() to assert
+is_finite(spin), so every vendored QuackWorks call passing a vector
 spin=[x,y,z] aborts with "Invalid spin". For a shape rendered with the
 default orient=UP, a vector spin is exactly rotate([x,y,z]) applied around
 the whole attachable (BOSL2 built the same rot(spin) transform internally),
@@ -30,9 +31,16 @@ Two further v2.0.747 tightenings surface once the spins render again, both
 fixed here behaviour-preservingly (verified geometry-identical against the
 456fcd8 baseline via trimesh volume/bbox):
 
-  * cylinder(h=0) now asserts h>0. snapConnector's oct_prism() is called with
-    h=offset=0 (a degenerate no-op section that rendered empty on 456fcd8),
-    so its two cylinder emissions are guarded with `if (h > 0)`.
+  * cylinder(h=0) now asserts h>0. The octagonal-prism helper oct_prism() is
+    copy-pasted into four files (Modules/snapConnector.scad,
+    Underware/Underware_Connectors.scad, Underware/Underware_keyholes.scad,
+    VerticalMountingSeries/InProgress/UnderwareShelf.scad) and is called with
+    h=0 at the DOCUMENTED flush-fit setting (Snap_Connector_Height=0 /
+    offset=0) — a degenerate no-op section that rendered empty on 456fcd8.
+    Every copy's two cylinder emissions are guarded with `if (h > 0)` so the
+    flush-fit renders again identically. (Verified: Underware_Connectors and
+    Underware_keyholes at Snap_Connector_Height=0 match the 456fcd8 baseline
+    volume exactly on the new pin.)
 
   * attach(..., align=TOP) onto a cone whose top radius is 0 makes the new
     anchor solver (solve_ellipse -> unit()) reject the zero-radius rim with
@@ -41,13 +49,11 @@ fixed here behaviour-preservingly (verified geometry-identical against the
     radius, on a subtracted feature) restores a solvable rim with no
     measurable geometry change.
 
-Every touched module renders on 456fcd8 and fbcdfdd5 with identical geometry
-(multiconnectGenerator Connector Round vol 994.9504; Double-sided 1988.1621;
-snapConnector 29062.5496; slot backer 13591.799 / linear 6335.20;
-UnderwareShelf 143159.077). No catalog model uses these BOSL2 modules
-(the shipped Multiconnect backer is the BOSL2-free multiconnectSlotDesign.scad,
-patch 0002), so the model sweep is unaffected; this patch keeps the
-README-advertised standalone generators rendering under the new pin.
+Every touched module renders on 456fcd8 and fbcdfdd5 with identical geometry.
+No catalog model uses these BOSL2 modules (the shipped Multiconnect backer is
+the BOSL2-free multiconnectSlotDesign.scad, patch 0002), so the model sweep is
+unaffected; this patch keeps the README-advertised standalone generators — and
+their documented flush-fit setting — rendering under the new pin.
 
 This file is CC BY-NC-SA 4.0 (QuackWorks), a derivative under the same terms.
 
@@ -157,8 +163,42 @@ index a8eac58..0fdd17c 100644
              } else {
                  echo("Error: You must provide either r or both r1 and r2.");
              }  
+diff --git a/Underware/Underware_Connectors.scad b/Underware/Underware_Connectors.scad
+index 65436e8..6357fb7 100644
+--- a/Underware/Underware_Connectors.scad
++++ b/Underware/Underware_Connectors.scad
+@@ -237,10 +237,10 @@ module snapConnectBacker(offset = 0, holdingTolerance=1, anchor=CENTER, spin=0,
+             down(h/2)
+             if (r != 0) {
+                 // If r is provided, create a regular octagonal prism with radius r
+-                rotate (22.5) cylinder(h=h, r1=r, r2=r, $fn=8) rotate (-22.5);
++                if (h > 0) rotate (22.5) cylinder(h=h, r1=r, r2=r, $fn=8) rotate (-22.5);
+             } else if (r1 != 0 && r2 != 0) {
+                 // If r1 and r2 are provided, create an octagonal prism with different top and bottom radii
+-                rotate (22.5) cylinder(h=h, r1=r1, r2=r2, $fn=8) rotate (-22.5);
++                if (h > 0) rotate (22.5) cylinder(h=h, r1=r1, r2=r2, $fn=8) rotate (-22.5);
+             } else {
+                 echo("Error: You must provide either r or both r1 and r2.");
+             }  
+diff --git a/Underware/Underware_keyholes.scad b/Underware/Underware_keyholes.scad
+index d114a23..2052b6f 100644
+--- a/Underware/Underware_keyholes.scad
++++ b/Underware/Underware_keyholes.scad
+@@ -280,10 +280,10 @@ module snapConnectBacker(offset = 0, holdingTolerance=1, anchor=CENTER, spin=0,
+             down(h/2)
+             if (r != 0) {
+                 // If r is provided, create a regular octagonal prism with radius r
+-                rotate (22.5) cylinder(h=h, r1=r, r2=r, $fn=8) rotate (-22.5);
++                if (h > 0) rotate (22.5) cylinder(h=h, r1=r, r2=r, $fn=8) rotate (-22.5);
+             } else if (r1 != 0 && r2 != 0) {
+                 // If r1 and r2 are provided, create an octagonal prism with different top and bottom radii
+-                rotate (22.5) cylinder(h=h, r1=r1, r2=r2, $fn=8) rotate (-22.5);
++                if (h > 0) rotate (22.5) cylinder(h=h, r1=r1, r2=r2, $fn=8) rotate (-22.5);
+             } else {
+                 echo("Error: You must provide either r or both r1 and r2.");
+             }  
 diff --git a/VerticalMountingSeries/InProgress/UnderwareShelf.scad b/VerticalMountingSeries/InProgress/UnderwareShelf.scad
-index c7313b3..48c5ca2 100644
+index c7313b3..04bb87e 100644
 --- a/VerticalMountingSeries/InProgress/UnderwareShelf.scad
 +++ b/VerticalMountingSeries/InProgress/UnderwareShelf.scad
 @@ -189,7 +189,7 @@ if(drawerFrontType == "Detached Dovetail" && ExportDrawerFront){
@@ -203,6 +243,19 @@ index c7313b3..48c5ca2 100644
              //delete tools
              //Bottom and side cutout - 2 cubes that form an L (cut from bottom and from outside) and then rotated around the side
              tag("remove") 
+@@ -437,10 +437,10 @@ module snapConnectBacker(offset = 0, holdingTolerance=1, anchor=CENTER, spin=0,
+             down(h/2)
+             if (r != 0) {
+                 // If r is provided, create a regular octagonal prism with radius r
+-                rotate (22.5) cylinder(h=h, r1=r, r2=r, $fn=8) rotate (-22.5);
++                if (h > 0) rotate (22.5) cylinder(h=h, r1=r, r2=r, $fn=8) rotate (-22.5);
+             } else if (r1 != 0 && r2 != 0) {
+                 // If r1 and r2 are provided, create an octagonal prism with different top and bottom radii
+-                rotate (22.5) cylinder(h=h, r1=r1, r2=r2, $fn=8) rotate (-22.5);
++                if (h > 0) rotate (22.5) cylinder(h=h, r1=r1, r2=r2, $fn=8) rotate (-22.5);
+             } else {
+                 echo("Error: You must provide either r or both r1 and r2.");
+             }  
 @@ -494,7 +494,7 @@ module GeneratePart(Select_Profile, Select_Part_Type, Length, Dimples, OnRamps =
      
      if(Select_Part_Type == "Connector Round"){

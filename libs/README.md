@@ -118,12 +118,17 @@ Current patches:
   so each call drops `spin=` and is wrapped in the matching
   `xrot`/`yrot`/`rot`; the `offset_sweep` attach-child case resolves to an
   outer `yrot(90)` (all geometry-verified against the `456fcd8` baseline). The
-  patch also handles two tightenings the restored renders expose:
-  `snapConnector`'s `oct_prism(h=0)` no-op section is guarded with `if (h>0)`
-  (`cylinder` now asserts `h>0`), and the Multiconnect slot dimples become
+  patch also handles two tightenings the restored renders expose: `cylinder`
+  now asserts `h>0`, so the copy-pasted `oct_prism()` helper (in
+  `snapConnector`, `Underware_Connectors`, `Underware_keyholes` and the
+  InProgress `UnderwareShelf`) is guarded with `if (h>0)` in every copy — it
+  is called with `h=0` at the documented flush-fit setting (`offset` /
+  `Snap_Connector_Height = 0`); and the Multiconnect slot dimples become
   `r2=0.001` cones (0.07% of the dimple radius) so the new anchor solver can
-  align to a non-degenerate rim. No catalog model uses these modules, so the
-  sweep is unaffected. Drop this patch if upstream migrates the spins itself.
+  align to a non-degenerate rim. The flush-fit renders are byte-identical to
+  the `456fcd8` baseline (Underware_Connectors 436,990 B; Underware_keyholes
+  267,123 B). No catalog model uses these modules, so the sweep is unaffected.
+  Drop this patch if upstream migrates the spins itself.
 
 Licensing note: the QuackWorks patch contains modified QuackWorks source
 lines, so the patch file itself is a **CC BY-NC-SA 4.0** derivative — it is
