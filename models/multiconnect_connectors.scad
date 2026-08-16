@@ -18,12 +18,14 @@
 // only) plus one push-fit module (multiboard_push_fit in
 // Modules/pushFitConnector.scad). The "Moderate WB" and "Heavy WB" tiers
 // are Multiboard PRODUCT taxonomy (libs/README.md, "Multiboard
-// constants") describing unidirectional wing-back snaps — there is NO
-// .scad module or parameter for them in the vendored generators, so
-// nobody can produce them from this library. The enum therefore ships
-// the two connectors that exist: snap-regular | pushfit. (Recorded
-// assumption — operator option A; see the bead. If the WB tiers are
-// wanted they must first be authored/vendored as real geometry.)
+// constants") describing distinct unidirectional Weight-Bearing snaps
+// (directional load, angled insert, an up-direction marker; the Heavy is
+// a folded hook with a wall offset) — there is NO .scad module or
+// parameter for them in the vendored generators, so nobody can produce
+// them from this library. The enum therefore ships the two connectors
+// that exist: snap-regular | pushfit. (Operator ruling 2026-08-16, Sean
+// via mayor: ship the honest two-variant pack; the WB tiers are DROPPED
+// as unbuildable and deferred to a follow-up bead. See pst-ks2.)
 //
 // LICENSING: the connectors are QuackWorks' snapConnectBacker and
 // multiboard_push_fit (libs/QuackWorks/Modules/{snapConnector,
