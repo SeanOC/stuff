@@ -1,0 +1,223 @@
+pst-990o: migrate QuackWorks BOSL2 vector-spin calls to the v2.0.747 API,
+instead of deleting the modules (operator ruling on PR #60: fund the
+tree-wide fix, keep the modules rendering).
+
+BOSL2 fbcdfdd5 (v2.0.747, PR #1475 ae73c6d) tightened attachable() to
+assert is_finite(spin), so every vendored QuackWorks call passing a vector
+spin=[x,y,z] aborts with "Invalid spin". For a shape rendered with the
+default orient=UP, a vector spin is exactly rotate([x,y,z]) applied around
+the whole attachable (BOSL2 built the same rot(spin) transform internally),
+so the behaviour-preserving migration is to drop the spin argument and wrap
+the call in the equivalent rotation:
+
+  rail(...,  spin=[90,0,0],  anchor=FRONT)   -> xrot(90) rail(..., anchor=FRONT)
+  multiconnectSlot(..., spin=[90,0,0])       -> xrot(90) multiconnectSlot(...)
+  cyl(...,   spin=([90,0,180]))              -> rot([90,0,180]) cyl(...)
+  cuboid(..., spin=[t?0:90,0,0]){...}        -> rot([t?0:90,0,0]) cuboid(...){...}
+
+For offset_sweep used as an attach() child, the vector spin runs through
+_attach_transform's $attach_to branch; working that transform through,
+spin=[0,270,0] there is equivalent to an outer yrot(90) on the (spin=0)
+attach child, verified geometry-identical (Δvolume = 0):
+
+  attach(...) ... offset_sweep(..., spin=[0,270,0]) -> attach(...) ... yrot(90) offset_sweep(...)
+
+The GeneratePart(...) call in UnderwareShelf also passed spin=[90,90,0], but
+GeneratePart has no spin parameter so that argument was always inert; it is
+dropped.
+
+Two further v2.0.747 tightenings surface once the spins render again, both
+fixed here behaviour-preservingly (verified geometry-identical against the
+456fcd8 baseline via trimesh volume/bbox):
+
+  * cylinder(h=0) now asserts h>0. snapConnector's oct_prism() is called with
+    h=offset=0 (a degenerate no-op section that rendered empty on 456fcd8),
+    so its two cylinder emissions are guarded with `if (h > 0)`.
+
+  * attach(..., align=TOP) onto a cone whose top radius is 0 makes the new
+    anchor solver (solve_ellipse -> unit()) reject the zero-radius rim with
+    "Invalid vector". The Multiconnect slot dimples are r2=0 cones aligned by
+    their (zero-radius) tip; giving them r2=0.001 (0.07% of the 1.5mm dimple
+    radius, on a subtracted feature) restores a solvable rim with no
+    measurable geometry change.
+
+Every touched module renders on 456fcd8 and fbcdfdd5 with identical geometry
+(multiconnectGenerator Connector Round vol 994.9504; Double-sided 1988.1621;
+snapConnector 29062.5496; slot backer 13591.799 / linear 6335.20;
+UnderwareShelf 143159.077). No catalog model uses these BOSL2 modules
+(the shipped Multiconnect backer is the BOSL2-free multiconnectSlotDesign.scad,
+patch 0002), so the model sweep is unaffected; this patch keeps the
+README-advertised standalone generators rendering under the new pin.
+
+This file is CC BY-NC-SA 4.0 (QuackWorks), a derivative under the same terms.
+
+diff --git a/Modules/multiconnectGenerator.scad b/Modules/multiconnectGenerator.scad
+index 69db286..93df79c 100644
+--- a/Modules/multiconnectGenerator.scad
++++ b/Modules/multiconnectGenerator.scad
+@@ -148,7 +148,7 @@ module GeneratePart(Width, Length, Select_Profile, Select_Part_Type, Dimples, On
+     
+     if(Select_Part_Type == "Connector Round"){
+         //echo(str("Generating: ", Select_Part_Type));
+-        rail(0,profile[0], dimplesEnabled = dimplesEnabled, dimpleSize = profile[1], dimpleScale = Dimple_Scale, distanceBetweenDimples = Grid_Size, spin=[90,0,0], anchor=FRONT)
++        xrot(90) rail(0,profile[0], dimplesEnabled = dimplesEnabled, dimpleSize = profile[1], dimpleScale = Dimple_Scale, distanceBetweenDimples = Grid_Size, anchor=FRONT)
+             attach([TOP, BOT], BOT, overlap=0.01)
+                 roundedEnd(profile[0], dimplesEnabled = dimplesEnabled, dimpleSize = profile[1], dimpleScale = Dimple_Scale);       
+     }
+@@ -161,7 +161,7 @@ module GeneratePart(Width, Length, Select_Profile, Select_Part_Type, Dimples, On
+     }
+     else if(Select_Part_Type == "Connector Double sided Round"){
+         //echo(str("Generating: ", Select_Part_Type));
+-        rail(0,profile[0], dimplesEnabled = dimplesEnabled, dimpleSize = profile[1], dimpleScale = Dimple_Scale, distanceBetweenDimples = Grid_Size, spin=[90,0,0], anchor=FRONT)
++        xrot(90) rail(0,profile[0], dimplesEnabled = dimplesEnabled, dimpleSize = profile[1], dimpleScale = Dimple_Scale, distanceBetweenDimples = Grid_Size, anchor=FRONT)
+                         attach([TOP, BOT], BOT, overlap=0.01)
+                             roundedEnd(profile[0], dimplesEnabled = dimplesEnabled, dimpleSize = profile[1], dimpleScale = Dimple_Scale)
+                             attach(FRONT, FRONT, overlap=0.01)
+diff --git a/Modules/multiconnectSlotDesignBOSL.scad b/Modules/multiconnectSlotDesignBOSL.scad
+index d5e43d9..db45970 100644
+--- a/Modules/multiconnectSlotDesignBOSL.scad
++++ b/Modules/multiconnectSlotDesignBOSL.scad
+@@ -137,7 +137,7 @@ module multiconnectGenerator(width, height, multiconnectPartType = "Backer", dis
+         }
+         //male connector
+         else  {   
+-            multiconnectSlot(width, slotProfile = connectorStandardPath, onRampEnabled = false, spin=[90,0,0])
++            xrot(90) multiconnectSlot(width, slotProfile = connectorStandardPath, onRampEnabled = false)
+                 attach([TOP, BOT], BOT) multiconnectRoundedEnd(slotProfile = connectorStandardPath);
+         }
+         children();  
+@@ -150,7 +150,7 @@ module multiconnectGenerator(width, height, multiconnectPartType = "Backer", dis
+             //top_half() 
+             diff("slotDimple"){
+                 multiconnectRounded(slotProfile = slotProfile)
+-                if(slotDimple) tag("slotDimple")attach(BACK, BOT, inside=true, shiftout=0.01) cylinder(h = 1.5*dimpleScale, r1 = 1.5*dimpleScale, r2 = 0, $fn = 50);
++                if(slotDimple) tag("slotDimple")attach(BACK, BOT, inside=true, shiftout=0.01) cylinder(h = 1.5*dimpleScale, r1 = 1.5*dimpleScale, r2 = 0.001, $fn = 50);
+             }
+             children();
+         }
+@@ -174,17 +174,17 @@ module multiconnectGenerator(width, height, multiconnectPartType = "Backer", dis
+                     //calculate the dimples. Dimplecount can override if less than calculated slots
+                     if(debug) echo("Dimples for Backer");
+                     tag("slotDimple") attach(BACK, BOT, align=TOP, inside=true, shiftout=0.01) back(1.5*dimpleScale) 
+-                            cylinder(h = 1.5*dimpleScale, r1 = 1.5*dimpleScale, r2 = 0, $fn = 50);
++                            cylinder(h = 1.5*dimpleScale, r1 = 1.5*dimpleScale, r2 = 0.001, $fn = 50);
+                     zcopies(n = min(length/distanceBetweenSlots/dimpleEveryNSlots+1, dimpleCount), spacing = -distanceBetweenSlots*dimpleEveryNSlots, sp=[0,0,dimpleOffset*distanceBetweenSlots]) 
+                         tag("slotDimple") attach(BACK, BOT, align=TOP, inside=true, shiftout=0.01) back(1.5*dimpleScale) 
+-                            cylinder(h = 1.5*dimpleScale, r1 = 1.5*dimpleScale, r2 = 0, $fn = 50);
++                            cylinder(h = 1.5*dimpleScale, r1 = 1.5*dimpleScale, r2 = 0.001, $fn = 50);
+                 }
+                 if(slotDimple && dimpleEveryNSlots != 0 && multiconnectPartType == "Passthru"){ //passthru
+                     //calculate the dimples. Dimplecount can override if less than calculated slots
+                     if(debug) echo(str("Dimples for Passthru: ", min(length/distanceBetweenSlots/dimpleEveryNSlots+2, dimpleCount), ". Distance between: ", -distanceBetweenSlots*dimpleEveryNSlots));
+                     zcopies(n = min(length/distanceBetweenSlots/dimpleEveryNSlots+2, dimpleCount), spacing = -distanceBetweenSlots*dimpleEveryNSlots, sp=[0,0,centerMulticonnect ? -length/2+25*3/2-12.5+25+dimpleOffset*distanceBetweenSlots: -length/2+25*3/2+25+dimpleOffset*distanceBetweenSlots]) 
+                         tag("slotDimple") attach(BACK, BOT, align=TOP, inside=true, shiftout=0.01) back(1.5*dimpleScale) 
+-                            cylinder(h = 1.5*dimpleScale, r1 = 1.5*dimpleScale, r2 = 0, $fn = 50);
++                            cylinder(h = 1.5*dimpleScale, r1 = 1.5*dimpleScale, r2 = 0.001, $fn = 50);
+ 
+                 }
+             
+@@ -208,12 +208,12 @@ module multiconnectGenerator(width, height, multiconnectPartType = "Backer", dis
+                         if(onRampEnabled && onRampEveryNSlots != 0 && multiconnectPartType == "Backer") {
+                                 zcopies(spacing=-distanceBetweenSlots*onRampEveryNSlots, n=length/distanceBetweenSlots/onRampEveryNSlots+1, sp=[0,0,-distanceBetweenSlots-onRampOffsetNSlots*distanceBetweenSlots]) 
+                                     fwd(maxY(slotProfile)/2) color("orange") 
+-                                        cyl(h = maxY(slotProfile), r1 = maxX(slotProfile)+1.75, r2 = maxX(slotProfile), spin=([90,0,180]));
++                                        rot([90,0,180]) cyl(h = maxY(slotProfile), r1 = maxX(slotProfile)+1.75, r2 = maxX(slotProfile));
+                         } 
+                         if(onRampPassthruEnabled && onRampEveryNSlots != 0 && multiconnectPartType == "Passthru"){
+                                 zcopies(spacing=-distanceBetweenSlots*onRampEveryNSlots, n=length/distanceBetweenSlots+2, sp=[0,0,centerMulticonnect ? -length/2+distanceBetweenSlots*3/2-distanceBetweenSlots/2+distanceBetweenSlots: -length/2+distanceBetweenSlots*3/2+distanceBetweenSlots]) 
+                                     fwd(maxY(slotProfile)/2) color("orange") 
+-                                        cyl(h = maxY(slotProfile), r1 = maxX(slotProfile)+1.75, r2 = maxX(slotProfile), spin=([90,0,180]));
++                                        rot([90,0,180]) cyl(h = maxY(slotProfile), r1 = maxX(slotProfile)+1.75, r2 = maxX(slotProfile));
+                         }                    
+                     }
+                     //lop off any extra zcopies pieces
+diff --git a/Modules/snapConnector.scad b/Modules/snapConnector.scad
+index a8eac58..0fdd17c 100644
+--- a/Modules/snapConnector.scad
++++ b/Modules/snapConnector.scad
+@@ -56,7 +56,7 @@ module snapConnectBacker(offset = 0, holdingTolerance=1, anchor=CENTER, spin=0,
+             
+             //end base
+             //bumpouts
+-            attach([RIGHT, LEFT, FWD, BACK],LEFT, shiftout=-0.01)  color("green") down(0.87) fwd(1)scale([1,1,holdingTolerance])offset_sweep(path = bumpout, height=3, spin=[0,270,0]);
++            attach([RIGHT, LEFT, FWD, BACK],LEFT, shiftout=-0.01)  color("green") down(0.87) fwd(1)scale([1,1,holdingTolerance]) yrot(90) offset_sweep(path = bumpout, height=3);
+             //delete tools
+             //Bottom and side cutout - 2 cubes that form an L (cut from bottom and from outside) and then rotated around the side
+             tag("remove") 
+@@ -74,10 +74,10 @@ module snapConnectBacker(offset = 0, holdingTolerance=1, anchor=CENTER, spin=0,
+             down(h/2)
+             if (r != 0) {
+                 // If r is provided, create a regular octagonal prism with radius r
+-                rotate (22.5) cylinder(h=h, r1=r, r2=r, $fn=8) rotate (-22.5);
++                if (h > 0) rotate (22.5) cylinder(h=h, r1=r, r2=r, $fn=8) rotate (-22.5);
+             } else if (r1 != 0 && r2 != 0) {
+                 // If r1 and r2 are provided, create an octagonal prism with different top and bottom radii
+-                rotate (22.5) cylinder(h=h, r1=r1, r2=r2, $fn=8) rotate (-22.5);
++                if (h > 0) rotate (22.5) cylinder(h=h, r1=r1, r2=r2, $fn=8) rotate (-22.5);
+             } else {
+                 echo("Error: You must provide either r or both r1 and r2.");
+             }  
+diff --git a/VerticalMountingSeries/InProgress/UnderwareShelf.scad b/VerticalMountingSeries/InProgress/UnderwareShelf.scad
+index c7313b3..48c5ca2 100644
+--- a/VerticalMountingSeries/InProgress/UnderwareShelf.scad
++++ b/VerticalMountingSeries/InProgress/UnderwareShelf.scad
+@@ -189,7 +189,7 @@ if(drawerFrontType == "Detached Dovetail" && ExportDrawerFront){
+         left(0) //front face placement for export
+         //drawer front wall
+         up(drawerDovetailTest ? 0 :  wallThickness/2)
+-            cuboid([widthInMM+drawerFrontExtraWidth, wallThickness, shelfHeight+baseThickness], anchor=BOT, spin=[drawerDovetailTest ? 0 : 90,0,0]){
++            rot([drawerDovetailTest ? 0 : 90,0,0]) cuboid([widthInMM+drawerFrontExtraWidth, wallThickness, shelfHeight+baseThickness], anchor=BOT){
+         //dovetails
+         up(baseThickness/2)attach(BACK, BOT, align=[LEFT, RIGHT], inset=(drawerMountConeMax+3)/2+wallThickness-drawerMountConeMin/2+drawerFrontExtraWidth/2+slideSlop/2+dovetailTolerance/2) 
+             prismoid(size1=[drawerMountConeMin-dovetailTolerance, shelfHeight], size2=[drawerMountConeMax-dovetailTolerance, shelfHeight], h=drawerMountConeDepth-dovetailTolerance/2);
+@@ -249,7 +249,7 @@ diff(){
+                     attach(FRONT, CENTER+FRONT, align=[$idx == 0 ? LEFT : RIGHT], inset=drawerDimpleInset, shiftout = -drawerDimpleRadius+.5) 
+                         tag("slideDimple") cyl(h= drawerDimpleHeight-1, r = drawerDimpleRadius, $fn=30);
+                 }
+-        attach([TOP], FRONT, overlap=0.01, align=FRONT, inset=15, spin=180)  GeneratePart(Select_Profile = "Standard", Select_Part_Type = "Connector Rail", Length = depthInMM-15, Dimples = "Disabled", Rounding = "One Side", spin=[90,90,0]);
++        attach([TOP], FRONT, overlap=0.01, align=FRONT, inset=15, spin=180)  GeneratePart(Select_Profile = "Standard", Select_Part_Type = "Connector Rail", Length = depthInMM-15, Dimples = "Disabled", Rounding = "One Side");
+         //bottom cutout
+         attach([BOT], FRONT, inside=true, shiftout=0.01, align=FRONT, inset=15)  GeneratePart(Select_Profile = "Standard", Select_Part_Type = "Connector Rail Delete Tool", Length = depthInMM, Dimples, Rounding = "Both Sides", OnRamps = "Disabled", Dimples = "Disabled");
+         //slide lock v2
+@@ -377,12 +377,12 @@ module multiconnectBacker(width, height, slotType = "Backer", distanceBetweenSlo
+                         if(onRampEnabled && onRampEveryNSlots != 0 && slotType == "Backer") {
+                                 zcopies(spacing=-distanceBetweenSlots*onRampEveryNSlots, n=length/distanceBetweenSlots/onRampEveryNSlots+1, sp=[0,0,-distanceBetweenSlots-onRampOffsetNSlots*distanceBetweenSlots]) 
+                                     fwd(4.15/2) color("orange") 
+-                                        cyl(h = 4.15, r1 = 12, r2 = 10.15, spin=([90,0,180]));
++                                        rot([90,0,180]) cyl(h = 4.15, r1 = 12, r2 = 10.15);
+                         } 
+                         if(onRampPassthruEnabled && onRampEveryNSlots != 0 && slotType == "Passthru"){
+                                 zcopies(spacing=-distanceBetweenSlots*onRampEveryNSlots, n=length/distanceBetweenSlots+2, sp=[0,0,centerMulticonnect ? -length/2+25*3/2-12.5+25: -length/2+25*3/2+25]) 
+                                     fwd(4.15/2) color("orange") 
+-                                        cyl(h = 4.15, r1 = 12, r2 = 10.15, spin=([90,0,180]));
++                                        rot([90,0,180]) cyl(h = 4.15, r1 = 12, r2 = 10.15);
+                         }                    
+                     }
+                     //lop off any extra zcopies pieces
+@@ -419,7 +419,7 @@ module snapConnectBacker(offset = 0, holdingTolerance=1, anchor=CENTER, spin=0,
+             
+             //end base
+             //bumpouts
+-            attach([RIGHT, LEFT, FWD, BACK],LEFT, shiftout=-0.01)  color("green") down(0.87) fwd(1)scale([1,1,holdingTolerance])offset_sweep(path = bumpout, height=3, spin=[0,270,0]);
++            attach([RIGHT, LEFT, FWD, BACK],LEFT, shiftout=-0.01)  color("green") down(0.87) fwd(1)scale([1,1,holdingTolerance]) yrot(90) offset_sweep(path = bumpout, height=3);
+             //delete tools
+             //Bottom and side cutout - 2 cubes that form an L (cut from bottom and from outside) and then rotated around the side
+             tag("remove") 
+@@ -494,7 +494,7 @@ module GeneratePart(Select_Profile, Select_Part_Type, Length, Dimples, OnRamps =
+     
+     if(Select_Part_Type == "Connector Round"){
+         //echo(str("Generating: ", Select_Part_Type));
+-        rail(0,profile[0], dimplesEnabled = dimplesEnabled, dimpleSize = profile[1], dimpleScale = Dimple_Scale, distanceBetweenDimples = Grid_Size, spin=[90,0,0], anchor=FRONT)
++        xrot(90) rail(0,profile[0], dimplesEnabled = dimplesEnabled, dimpleSize = profile[1], dimpleScale = Dimple_Scale, distanceBetweenDimples = Grid_Size, anchor=FRONT)
+             attach([TOP, BOT], BOT, overlap=0.01)
+                 roundedEnd(profile[0], dimplesEnabled = dimplesEnabled, dimpleSize = profile[1], dimpleScale = Dimple_Scale);       
+     }
+@@ -507,7 +507,7 @@ module GeneratePart(Select_Profile, Select_Part_Type, Length, Dimples, OnRamps =
+     }
+     else if(Select_Part_Type == "Connector Double sided Round"){
+         //echo(str("Generating: ", Select_Part_Type));
+-        rail(0,profile[0], dimplesEnabled = dimplesEnabled, dimpleSize = profile[1], dimpleScale = Dimple_Scale, distanceBetweenDimples = Grid_Size, spin=[90,0,0], anchor=FRONT)
++        xrot(90) rail(0,profile[0], dimplesEnabled = dimplesEnabled, dimpleSize = profile[1], dimpleScale = Dimple_Scale, distanceBetweenDimples = Grid_Size, anchor=FRONT)
+                         attach([TOP, BOT], BOT, overlap=0.01)
+                             roundedEnd(profile[0], dimplesEnabled = dimplesEnabled, dimpleSize = profile[1], dimpleScale = Dimple_Scale)
+                             attach(FRONT, FRONT, overlap=0.01)

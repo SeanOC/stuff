@@ -38,14 +38,27 @@ accept. A compat patch for the drift was tried and rejected: on the wasm
 engine the BOSL2 slot backer aborts or hangs in *every* configuration under
 v2.0.747 (pst-d7d, pst-q0l, pst-7bs).
 
-That vector-spin blocker is now dissolved — by removing both files instead of
-patching them. `snapConnector.scad` was already unused by every model; the two
-models that used `multiconnectSlotDesignBOSL.scad` moved to QuackWorks'
-BOSL2-free master copy of the same backer,
-`Modules/multiconnectSlotDesign.scad` (patch 0002 below). Nothing in the
-catalog references either vector-spin call site, so `is_finite(spin)` is moot —
-and patch 0004 now physically deletes both files from the vendored tree so they
-cannot break a standalone render under the new pin either.
+That vector-spin blocker is now dissolved — by *migrating* the vector
+`spin=[x,y,z]` calls to the v2.0.747 API rather than removing the modules
+(pst-990o, operator ruling on PR #60: fund the tree-wide fix, keep the modules
+rendering). For a shape drawn with the default `orient=UP`, a vector spin is
+exactly `rotate([x,y,z])` applied around the whole attachable, so each call
+drops its `spin=` argument and is wrapped in the equivalent `xrot`/`yrot`/`rot`
+(the `offset_sweep` attach-child spin works out to an outer `yrot(90)`). Patch
+0004 below migrates all thirteen call sites across `multiconnectGenerator.scad`,
+`multiconnectSlotDesignBOSL.scad`, `snapConnector.scad` and
+`VerticalMountingSeries/InProgress/UnderwareShelf.scad`, plus two further
+v2.0.747 tightenings they expose once the spins render again (`cylinder(h=0)`
+now asserts `h>0`; `align=`-ing onto a zero-radius cone tip trips the new anchor
+solver). Every touched module renders standalone on both `456fcd8` and
+`fbcdfdd5` with geometry-identical output (trimesh volume/bbox verified). No
+catalog model references any of these BOSL2 modules — the shipped Multiconnect
+backer is the BOSL2-free `Modules/multiconnectSlotDesign.scad` (patch 0002) — so
+the model sweep is unaffected; the migration keeps the README-advertised
+standalone generators below rendering under the new pin. (The wasm abort/hang
+history above still applies to `multiconnectSlotDesignBOSL.scad` under v2.0.747,
+but nothing renders it on the wasm engine — no model uses it, and the sweep only
+runs catalog models — so it does not affect any gate.)
 
 **The second blocker — the wasm hull regression — is now fixed (pst-a9f).**
 Moving to `fbcdfdd5` (v2.0.747) *with* the migration in place used to regress 6
@@ -96,16 +109,21 @@ Current patches:
   references — so it should not rot across BOSL2 bumps. Drop it if upstream
   promotes these itself.
 
-- `QuackWorks/0004-remove-orphaned-bosl-vector-spin-modules.patch` —
-  deletes `Modules/multiconnectSlotDesignBOSL.scad` and
-  `Modules/snapConnector.scad` from the vendored tree. Both call
-  `attachable(spin=[x,y,z])`, which BOSL2 `fbcdfdd5` (v2.0.747) rejects with
-  `Invalid spin` — they render empty / error under the current pin. No
-  catalog model references either file (the Multiconnect backer moved to the
-  BOSL2-free `multiconnectSlotDesign.scad`, patch 0002), so they are dead
-  weight; removing them lets the whole vendored QuackWorks tree render clean
-  under the new pin (pst-a9f). Drop this patch if upstream fixes the
-  vector-spin calls.
+- `QuackWorks/0004-migrate-bosl-vector-spin.patch` —
+  migrates every vendored QuackWorks vector `spin=[x,y,z]` call to the
+  v2.0.747 API so the modules keep rendering instead of being deleted
+  (pst-990o). BOSL2 `fbcdfdd5` (v2.0.747) tightened `attachable()` to assert
+  `is_finite(spin)`, so vector spins abort with `Invalid spin`. A vector spin
+  on a default-`orient` shape equals `rotate([x,y,z])` around the attachable,
+  so each call drops `spin=` and is wrapped in the matching
+  `xrot`/`yrot`/`rot`; the `offset_sweep` attach-child case resolves to an
+  outer `yrot(90)` (all geometry-verified against the `456fcd8` baseline). The
+  patch also handles two tightenings the restored renders expose:
+  `snapConnector`'s `oct_prism(h=0)` no-op section is guarded with `if (h>0)`
+  (`cylinder` now asserts `h>0`), and the Multiconnect slot dimples become
+  `r2=0.001` cones (0.07% of the dimple radius) so the new anchor solver can
+  align to a non-degenerate rim. No catalog model uses these modules, so the
+  sweep is unaffected. Drop this patch if upstream migrates the spins itself.
 
 Licensing note: the QuackWorks patch contains modified QuackWorks source
 lines, so the patch file itself is a **CC BY-NC-SA 4.0** derivative — it is

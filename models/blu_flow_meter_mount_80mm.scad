@@ -420,9 +420,10 @@ PRINT_ANCHOR_BBOX = [base_w, base_d, arch_top_z];
 // === Geometry — base + integral saddle bottoms ===
 
 module _base_plate() {
-    // Base block, top rim + vertical corners rounded for finger
-    // safety; bottom rim left sharp so the plate sits flush against
-    // the bench (any roundover there would rock the part).
+    // Base block, vertical corners rounded for finger safety; top and
+    // bottom rims left square (the top-edge roundover was dropped for a
+    // hull-free CGAL-robust plate, pst-a9f; a bottom roundover would let
+    // the plate rock instead of sitting flush against the bench).
     translate([0, 0, base_t / 2])
         // Vertical edges rounded; top + bottom square. Was
         // cuboid(edges="ALL", except=BOTTOM) — top-edge roundover
