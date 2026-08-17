@@ -154,4 +154,9 @@ export const CATALOG: Record<string, CatalogEntry> = {
     blurb:
       "Friction-fit childproof cover for the speed-adjust knob on a KidsCleanCar kids' ride-on. Slips over the 48.1mm lower flange and grips it with tunable internal crush ribs, spinning free over the knob so a toddler can't change the speed while a straight adult pull lifts it off. Original design; no vehicle modification, fully reversible.",
   },
+  opengrid_multiconnect_adapter: {
+    categoryId: "multiboard",
+    blurb:
+      "Cross-ecosystem wall adapter: clicks into an openGrid tile on the back (one directional snap per 28mm tile) and presents a Multiconnect receiver slot on the front (25mm pitch), so a Multiconnect-tabbed accessory hangs on an openGrid wall. Slot dome points down so weight seats the tab. Prints snaps-down, support-free; exports a single-slot (28mm) and a two-slot (56mm) STL.",
+  },
 };
