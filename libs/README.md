@@ -208,3 +208,27 @@ standoff). Depends on BOSL2. **License: CC BY-NC-SA 4.0.**
 - Grid pitch: 25mm (1 MU)
 - Offset snap (DS Part A) standoff: 6.25mm
 - Snap types: Regular (bidirectional), Moderate WB (unidirectional), Heavy WB
+- Multiconnect **slot** profile (from `multiconnectSlotDesign.scad`, v2):
+  dovetail mouth **20.3mm** wide → waist **15.3mm**, **5mm** deep,
+  **25mm** slot pitch. This is a **dovetail** interface.
+
+## openGrid Multiconnect — a DIFFERENT system (measured, TBV)
+
+⚠️ openGrid's own "Multiconnect" (opengrid.world) is **not** the Multiboard
+dovetail above — it is a **screw-thread** two-part system. Reference CAD +
+full write-up: [`assets/openGrid-multiconnect/`](../assets/openGrid-multiconnect/README.md)
+(vendored under `pst-c73m`; **not** on `OPENSCADPATH`, not a build dep).
+
+Measured constants (from delivered STEP/mesh; ±0.15mm, verify on a print):
+
+- **Center thread:** ~**M16 × 3.0** (single-start). Snap internal bore
+  Ø major ~16.5 / minor ~14.5; head external Ø major ~16.0 / minor ~14.0.
+- **Snap body footprint:** **25.6 × 25.6 × 6.8mm** square (Directional
+  variants add a +0.4mm key → 25.6 × 26.0; Lock Snap BETA 25.8 × 25.8).
+  Sized to one openGrid **28mm** lattice cell.
+- **Head/plug:** 20.0 × 20.0mm round-tapered dome, 10.8mm tall.
+
+**Fit vs. our `mount_type=multiconnect`:** NOT compatible. openGrid uses a
+~M16 thread; our channel uses a 20.3mm dovetail slot. Neither mates with
+the other. The "shared-standard" assumption does not hold for the delivered
+parts — see the assets README and mayor ruling `ci-wisp-u8lc7o3`.
