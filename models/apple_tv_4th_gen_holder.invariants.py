@@ -88,16 +88,33 @@ extras here pin the claims this model exists for:
      window that reached a snap row would undercut a snap footprint;
      one that reached past a land's inner edge would open into a rail
      instead of into the relief channel.
+
+ 13. **Multiconnect variant** (exports/<stem>-multiconnect.stl, built by
+     the filename grid alongside the default openGrid variant): the
+     alternative Multiboard back mount. Watertight, one welded solid,
+     grid-aligned footprint, slot channels on the 25mm Multiconnect
+     pitch that open toward the wall face (-Z) with a solid slab back,
+     load orientation matching the directional snaps (entry mouths open
+     through the y=0 down edge, retention domes cap the top), and a solid
+     inter-slot web. A 180-deg flip inverts the load orientation; a
+     collapsed generator diff() fills the channels.
 """
 
 from __future__ import annotations
 
 import math
+from pathlib import Path
 
 import numpy as np
 import trimesh
 
 from scripts.invariants import Failure, as_default_params, expect_connected_solids
+
+MODELS_DIR = Path(__file__).resolve().parent
+EXPORTS_DIR = MODELS_DIR.parent / "exports"
+
+_MC_PITCH = 25.0
+_MC_THICKNESS = 6.5
 
 _CONTACT_EPS_MM = 0.05
 _SNAP_PITCH = 28.0
@@ -424,7 +441,156 @@ def check(ctx):
         print_ctx, units_w, units_h, plate_z0, cable_x_e, cable_w_e,
         bridge_allow))
 
+    # 13. Multiconnect variant (separate STL from the filename grid).
+    failures.extend(_check_multiconnect_variant(
+        print_ctx["stem"], plate_w, plate_h))
+
     return failures
+
+
+def _mc_slot_xs(back_w: float) -> list[float]:
+    """Model-frame x of each Multiconnect slot centre for a backWidth.
+
+    Mirrors multiconnectBack(): slotCount = floor(W/pitch) channels laid
+    on the `pitch` grid and auto-centred on the panel, local x =
+    pitch/2 + (W/pitch - slotCount)*pitch/2 + n*pitch. The backer's
+    rotate(180,[0,1,1]) then re-centres to model x = W/2 - local_x.
+    """
+    p = _MC_PITCH
+    count = int(back_w // p)
+    base = p / 2 + (back_w / p - count) * p / 2
+    return [back_w / 2 - (base + n * p) for n in range(count)]
+
+
+def _check_multiconnect_variant(stem: str, plate_w: float,
+                                plate_h: float) -> list[Failure]:
+    """The Multiconnect back-mount twin of the openGrid default.
+
+    Loaded from its own filename-grid export and rotated into the MOUNT
+    frame (the frame the backer is described in), then probed like
+    opengrid_bin's sidecar: watertight, one welded solid, slots that open
+    toward the wall face (-Z) with a solid slab back, load orientation
+    (entry mouths through the y=0 down edge, retention domes capping the
+    top), and a solid inter-slot web on the 25mm pitch.
+    """
+    path = EXPORTS_DIR / f"{stem}-multiconnect.stl"
+    if not path.exists():
+        return [Failure(
+            "multiconnect-export",
+            f"{path.name} missing — run scripts/export-all.py "
+            "(mount_type filename grid should produce it)",
+        )]
+    mesh = trimesh.load(str(path))
+    failures: list[Failure] = []
+
+    if not bool(mesh.is_watertight):
+        failures.append(Failure(
+            "multiconnect-watertight", f"{path.name} is not watertight"))
+    n = _component_count(mesh)
+    if n != 1:
+        failures.append(Failure(
+            "multiconnect-topology",
+            f"{path.name} has {n} connected components, expected 1 — "
+            "backer not welded to the plate, or an enclosed void",
+        ))
+
+    # Footprint still whole openGrid tiles (backer matches the plate).
+    # Print frame: the plate's two in-plane dims are bbox X and Z.
+    b = mesh.bounds
+    ext = b[1] - b[0]
+    if abs(ext[0] - plate_w) > 0.5 or abs(ext[2] - plate_h) > 0.5:
+        failures.append(Failure(
+            "multiconnect-footprint",
+            f"multiconnect plate {ext[0]:.1f} x {ext[2]:.1f}mm != "
+            f"{plate_w:.1f} x {plate_h:.1f}mm — backer no longer matches "
+            "the grid-aligned plate",
+        ))
+
+    # Rotate into the MOUNT frame (undo the .scad's rotate([90,0,0])), so
+    # the backer sits at x[-W/2,W/2], y[0,H], z[0,6.5] like opengrid_bin.
+    mesh.apply_transform(trimesh.transformations.rotation_matrix(
+        -math.pi / 2, [1, 0, 0]))
+    slot_xs = _mc_slot_xs(plate_w)
+    zwall = 1.5
+    y_channel = 0.35 * plate_h    # below the domes, in the open channel
+    y_mouth = 1.5                 # near the y=0 (down) edge
+    y_dome = plate_h - 3.0        # near the top (high y) edge
+
+    # (a) Slots open toward the WALL (-Z), solid slab back.
+    ch = mesh.contains(np.array([[x, y_channel, zwall] for x in slot_xs]))
+    if bool(ch.any()):
+        bad = [round(slot_xs[i], 1) for i in np.where(ch)[0]]
+        failures.append(Failure(
+            "multiconnect-slots",
+            f"slot channel probe(s) solid at x={bad} (z={zwall}) — "
+            "Multiconnect slots missing (generator diff() collapsed?)",
+        ))
+    back = mesh.contains(
+        np.array([[x, y_channel, _MC_THICKNESS - 0.5] for x in slot_xs]))
+    if not bool(back.all()):
+        failures.append(Failure(
+            "multiconnect-backer",
+            f"slab back probe (z={_MC_THICKNESS - 0.5}) void — the "
+            "Multiconnect backer is missing or thinner than 6.5mm",
+        ))
+
+    # (b) Load orientation (mirrors the directional snaps' +Y-up rule):
+    # entry mouths OPEN through the y=0 (down) edge, domes cap the TOP.
+    mouth = mesh.contains(np.array([[x, y_mouth, zwall] for x in slot_xs]))
+    if bool(mouth.any()):
+        solid = [round(slot_xs[i], 1) for i in np.where(mouth)[0]]
+        failures.append(Failure(
+            "multiconnect-load-orientation",
+            f"slot entry region at y={y_mouth} is solid at x={solid} — "
+            "mouths must open through the y=0 (down) edge so the cradle "
+            "slides DOWN onto connectors; backer looks 180deg off",
+        ))
+    dome = mesh.contains(np.array([[x, y_dome, zwall] for x in slot_xs]))
+    if not bool(dome.all()):
+        void = [round(slot_xs[i], 1) for i in np.where(~dome)[0]]
+        failures.append(Failure(
+            "multiconnect-load-orientation",
+            f"dome cap at y={y_dome:.1f} is void at x={void} — the closed "
+            "retention ends must cap the TOP edge (high y) so the load "
+            "seats connectors into the domes; backer 180deg off",
+        ))
+
+    # (c) Inter-slot web solid (pins the 25mm pitch).
+    webs = [(a + c) / 2 for a, c in zip(slot_xs, slot_xs[1:])]
+    if webs:
+        w = mesh.contains(np.array([[x, y_channel, zwall] for x in webs]))
+        if not bool(w.all()):
+            void = [round(webs[i], 1) for i in np.where(~w)[0]]
+            failures.append(Failure(
+                "multiconnect-web",
+                f"inter-slot web void at x={void} (z={zwall}) — slot "
+                f"pitch drifted off {_MC_PITCH}mm or an extra slot opened",
+            ))
+    return failures
+
+
+def _component_count(mesh) -> int:
+    """Connected components via union-find over face adjacency.
+
+    trimesh.split needs scipy/networkx which CI doesn't have; this
+    mirrors scripts/check-invariants.py's built-in approach.
+    """
+    n = len(mesh.faces)
+    if n == 0:
+        return 0
+    parent = list(range(n))
+
+    def find(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    for a, b in mesh.face_adjacency:
+        ra, rb = find(int(a)), find(int(b))
+        if ra != rb:
+            parent[ra] = rb
+    return len({find(i) for i in range(n)})
 
 
 def _check_print_orientation(ctx, units_w, units_h, plate_z0,

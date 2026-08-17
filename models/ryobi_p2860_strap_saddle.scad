@@ -89,6 +89,10 @@ include <BOSL2/rounding.scad>
 // `use` not `include`: opengrid-snap.scad ends with a top-level demo
 // call that would otherwise inject a stray snap into every render.
 use <QuackWorks/openGrid/opengrid-snap.scad>
+// Multiconnect backer (BOSL2-free master copy — a plain difference(),
+// no diff() tags, so it is safe as a root-level sibling; same slot back
+// opengrid_bin / ego_lb6500_blower_mount use for their mount_type toggle).
+use <QuackWorks/Modules/multiconnectSlotDesign.scad>
 
 $fn = 64;
 
@@ -98,7 +102,24 @@ side = "right"; // @param enum choices=right|left filename group=saddle label="W
 strap_channel = 80; // @param number min=56 max=110 step=1 unit=mm group=saddle label="Strap channel length (pad width + margin)"
 saddle_radius = 55; // @param number min=40 max=80 step=1 unit=mm group=saddle label="Saddle dip radius (shoulder curve)"
 lip_height = 12; // @param number min=6 max=20 step=0.5 unit=mm group=saddle label="Retention lip rise"
+
+// ----- Wall mount -----
+// Two interchangeable back mounts, exported as one STL each per side (the
+// two 'filename' flags — side and mount_type — fan the export grid over
+// their cartesian product). Default keeps the original openGrid snaps so
+// the shipped saddle behaviour is unchanged; 'multiconnect' is the new
+// alternative for Multiboard rails. Same @param set the sibling mounts
+// (opengrid_bin, ego_lb6500_blower_mount) copy.
+mount_type = "opengrid"; // @param enum choices=opengrid|multiconnect group=mount label="Wall mount type" filename
 snap_lite = false; // @param boolean group=mount label="Lite openGrid snaps (3.4mm instead of 6.8mm)"
+
+// Standard Multiconnect slot tuning (only affects mount_type =
+// "multiconnect"; ignored by the openGrid snaps). Defaults reproduce the
+// shipped backer exactly, threaded through the multiconnectBack() call.
+slot_tolerance = 1.0;  // @param number min=0.925 max=1.075 step=0.005 group=mount label="Slot fit tolerance"
+slot_retention = true; // @param boolean group=mount label="Slot retention (v2 snap)"
+dimple_scale   = 1.0;  // @param number min=0.5 max=1.5 step=0.05 group=mount label="Dimple scale (v1 only)"
+on_ramp        = true; // @param boolean group=mount label="Slot on-ramp lead-in"
 
 // @preset id="default" label="Right saddle (default)" side=right strap_channel=80 saddle_radius=55 lip_height=12 snap_lite=false
 // @preset id="left" label="Left saddle" side=left strap_channel=80 saddle_radius=55 lip_height=12 snap_lite=false
@@ -120,7 +141,19 @@ rows = 3;
 plate_w  = cols * snap_pitch;   // 56
 plate_d  = rows * snap_pitch;   // 84
 plate_t  = 6;
-plate_z0 = snap_h - weld;
+
+// Multiconnect backer (mount_type = "multiconnect"). The 6.5mm slab
+// depth and 25mm pitch are held fixed by choice (exposing them invites
+// board-incompatible prints), same reasoning as the sibling mounts.
+slot_spacing = 25;   // Multiconnect standard pitch
+mc_thickness = 6.5;  // backer slab depth (= the module's fixed backThickness)
+mc_weld      = 0.4;  // backer top sink into the plate (real overlap)
+
+// Plate bottom = thickness of whichever back mount is selected, minus
+// its weld into the plate. openGrid: snap tops weld 0.02 up.
+// Multiconnect: the 6.5mm slab welds mc_weld up.
+plate_z0 = mount_type == "multiconnect" ? mc_thickness - mc_weld
+                                        : snap_h - weld;
 plate_zf = plate_z0 + plate_t;  // wall-plate front face
 
 // Prong cross-section (fixed: strength-sized for the 10kg design load,
@@ -147,10 +180,12 @@ dip_hc     = min(dip_hc_raw, (strap_channel - 1.5) / 2);
 dip_cz     = z_lip - dip_hc;
 dip_cy     = prong_top - lip_height + saddle_radius;
 
-// PRINT_ANCHOR_BBOX at defaults (side=right, snap_lite=false):
+// PRINT_ANCHOR_BBOX at defaults (side=right, mount_type=opengrid,
+// snap_lite=false):
 //   X = plate_w = 2 * 28                       = 56
 //   Y = plate_d = 3 * 28                       = 84
 //   Z = 6.8 - 0.02 + 6 + (80 + 12)             = 104.78
+// (multiconnect variant: Z = 6.5 - 0.4 + 6 + 92 = 104.1; X, Y same)
 PRINT_ANCHOR_BBOX = [56, 84, 104.78];
 
 // === Snaps ===
@@ -192,6 +227,34 @@ module grid_snaps() {
                    (ry - (rows - 1) / 2) * snap_pitch,
                    0])
             zrot(90) welded_directional_snap();
+}
+
+// === Multiconnect backer (alternative to openGrid snaps) ===
+//
+// QuackWorks' BOSL2-free master slot back — a plain difference() (slab
+// minus slot tools), safe as a root-level sibling. multiconnectBack's
+// local frame L is a cube x[0,plate_w] y[-6.5,0] z[0,plate_d] with the
+// slot channels recessed from the y=-6.5 face, closed retention domes at
+// high z and entry mouths + on-ramps at low z. rotate(180,[0,1,1]) maps
+// (lx,ly,lz) -> (-lx, lz, ly): L.z -> +Y (domes point UP the wall, +Y,
+// the usage-up axis — retention takes the load), L.y -> +Z (openings
+// face -Z, the bed/wall face, same plane the openGrid snaps engage),
+// L.x -> -X (re-centred on x=0). The outer translate lands the slab at
+// z[0,6.5] with the openings at z=0 and centres it on the plate's own
+// centred frame (y[-plate_d/2, plate_d/2]); the plate bottom sits mc_weld
+// lower so the backer top overlaps into the plate as a real weld. Kept
+// OUTSIDE the side mirror, exactly like grid_snaps(): the backer is
+// X-symmetric, so both mirror variants get an identical backer.
+module multiconnect_backer() {
+    translate([0, -plate_d / 2, 0])
+        translate([plate_w / 2, 0, mc_thickness])
+            rotate(180, [0, 1, 1])
+                multiconnectBack(backWidth = plate_w, backHeight = plate_d,
+                                 distanceBetweenSlots = slot_spacing,
+                                 quickRelease = !slot_retention,
+                                 tolerance = slot_tolerance,
+                                 dimple = dimple_scale,
+                                 onRamp = on_ramp);
 }
 
 // === Body ===
@@ -252,7 +315,9 @@ module body() {
 }
 
 union() {
-    grid_snaps();  // never mirrored — see header
+    // Back mount, never mirrored — see header / multiconnect_backer().
+    if (mount_type == "multiconnect") multiconnect_backer();
+    else grid_snaps();
     if (side == "left") mirror([1, 0, 0]) body();
     else body();
 }

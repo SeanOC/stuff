@@ -246,6 +246,10 @@ include <BOSL2/std.scad>
 // `use` not `include`: opengrid-snap.scad ends with a top-level demo
 // call that would otherwise inject a stray snap into every render.
 use <QuackWorks/openGrid/opengrid-snap.scad>
+// Multiconnect backer (BOSL2-free master copy — a plain difference(),
+// no diff() tags, so it is safe as a root-level sibling; same slot back
+// opengrid_bin / ego_lb6500_blower_mount use for their mount_type toggle).
+use <QuackWorks/Modules/multiconnectSlotDesign.scad>
 
 $fn = 64;
 
@@ -280,7 +284,21 @@ vent_margin = 2; // @param number min=1.5 max=30 step=0.5 unit=mm group=vent lab
 // device dimensions are set to.
 width_units  = 4;     // @param integer min=1 max=6 group=mount label="Width (openGrid units, min)"
 height_units = 4;     // @param integer min=1 max=6 group=mount label="Height (openGrid units, min)"
+// Two interchangeable back mounts, exported as one STL each (the
+// 'filename' flag fans the export grid over the enum). Default keeps the
+// original openGrid snaps so the shipped cradle behaviour is unchanged;
+// 'multiconnect' is the new alternative for Multiboard rails. Same
+// @param set the sibling mounts (opengrid_bin, ego_lb6500) copy.
+mount_type   = "opengrid"; // @param enum choices=opengrid|multiconnect group=mount label="Wall mount type" filename
 snap_lite    = false; // @param boolean group=mount label="Lite snaps (3.4mm instead of 6.8mm)"
+
+// Standard Multiconnect slot tuning (only affects mount_type =
+// "multiconnect"; ignored by the openGrid snaps). Defaults reproduce the
+// shipped backer exactly, threaded through the multiconnectBack() call.
+slot_tolerance = 1.0;  // @param number min=0.925 max=1.075 step=0.005 group=mount label="Slot fit tolerance"
+slot_retention = true; // @param boolean group=mount label="Slot retention (v2 snap)"
+dimple_scale   = 1.0;  // @param number min=0.5 max=1.5 step=0.05 group=mount label="Dimple scale (v1 only)"
+on_ramp        = true; // @param boolean group=mount label="Slot on-ramp lead-in"
 
 // @preset id="default" label="Apple TV HD, vertical" device_w=98 device_h=98 device_t=35 fit_clearance=1 plate_t=3 shelf_t=4 back_relief=2 corner_r=5 lip_reach=3 land_w=12 cable_w=78 cable_x=0 vent_margin=2 width_units=4 height_units=4 snap_lite=false
 // @preset id="snug" label="Tight captive fit" device_w=98 device_h=98 device_t=35 fit_clearance=0.5 plate_t=3 shelf_t=4 back_relief=2 corner_r=5 lip_reach=5 land_w=12 cable_w=78 cable_x=0 vent_margin=2 width_units=4 height_units=4 snap_lite=false
@@ -291,6 +309,13 @@ snap_pitch = 28;    // openGrid tile pitch
 snap_w     = 24.8;  // snap footprint
 snap_h     = snap_lite ? 3.4 : 6.8;
 weld       = 0.02;  // embed depth of snap tops into the plate (st-v7k)
+
+// Multiconnect backer (mount_type = "multiconnect"). The 6.5mm slab
+// depth and 25mm pitch are held fixed by choice (exposing them invites
+// board-incompatible prints), same reasoning as the sibling mounts.
+slot_spacing = 25;   // Multiconnect standard pitch
+mc_thickness = 6.5;  // backer slab depth (= the module's fixed backThickness)
+mc_weld      = 0.4;  // backer top sink into the plate (real overlap)
 
 // Parts sink this far into the solid below them; cut tools overshoot
 // this far past every face they pass through.
@@ -313,7 +338,11 @@ H = units_h * snap_pitch;
 // pocket, so their thickness is derived rather than dialled.
 side_wall_t = (W - pocket_w) / 2;
 
-plate_z0  = snap_h - weld;      // plate bottom (welds into snap tops)
+// Plate bottom = thickness of whichever back mount is selected, minus
+// its weld into the plate. openGrid: snap tops weld 0.02 up.
+// Multiconnect: the 6.5mm slab welds mc_weld up.
+plate_z0  = mount_type == "multiconnect" ? mc_thickness - mc_weld
+                                         : snap_h - weld;
 plate_top = plate_z0 + plate_t; // plate front face
 
 // Both clamps floor at 0.5 rather than 0: a zero-width land or lip
@@ -390,6 +419,8 @@ assert(H >= y_cradle_top - 0.001, "plate is shorter than the cradle");
 //   X = W = 4 * 28                                  = 112
 //   Y = z_front = (6.8 - 0.02) + 3 + 2 + 36 + 3     = 50.78
 //   Z = H = 4 * 28                                  = 112
+// (multiconnect variant: Y = z_front = 6.1 + 3 + 2 + 36 + 3 = 50.1;
+//  X, Z same)
 PRINT_ANCHOR_BBOX = [112, 50.78, 112];
 
 // === Snaps ===
@@ -431,6 +462,34 @@ module grid_snaps() {
                    (ry + 0.5) * snap_pitch,
                    0])
             zrot(90) welded_directional_snap();
+}
+
+// === Multiconnect backer (alternative to openGrid snaps) ===
+//
+// QuackWorks' BOSL2-free master slot back — a plain difference() (slab
+// minus slot tools), safe as a root-level sibling. Built in the MOUNT
+// frame like everything else; the assembly's closing rotate([90,0,0])
+// carries it into the print frame with the rest. multiconnectBack's
+// local frame L is a cube x[0,W] y[-6.5,0] z[0,H] with the slot channels
+// recessed from the y=-6.5 face, closed retention domes at high z and
+// entry mouths + on-ramps at low z. rotate(180,[0,1,1]) maps (lx,ly,lz)
+// -> (-lx, lz, ly): L.z -> +Y (domes point UP the wall, +Y — retention
+// takes the cantilever load, same rule as the directional snaps), L.y ->
+// +Z (openings face -Z, the panel face, the plane the openGrid snaps
+// engage), L.x -> -X (re-centred on x=0). The outer translate lands the
+// slab at z[0,6.5] with the openings at z=0 and the solid back at z=6.5;
+// the plate bottom sits mc_weld lower (plate_z0 = 6.5 - mc_weld) so the
+// backer top overlaps into the plate as a real weld. Verbatim transform
+// from opengrid_bin — the plate shares its FRONT-anchored y[0,H] frame.
+module multiconnect_backer() {
+    translate([W / 2, 0, mc_thickness])
+        rotate(180, [0, 1, 1])
+            multiconnectBack(backWidth = W, backHeight = H,
+                             distanceBetweenSlots = slot_spacing,
+                             quickRelease = !slot_retention,
+                             tolerance = slot_tolerance,
+                             dimple = dimple_scale,
+                             onRamp = on_ramp);
 }
 
 // === Back plate ===
@@ -608,7 +667,8 @@ module cradle() {
 // z = 0 — where the bed plane is the plate's bottom edge and the two
 // shelf ear undersides.
 rotate([90, 0, 0]) {
-    grid_snaps();
+    if (mount_type == "multiconnect") multiconnect_backer();
+    else grid_snaps();
     plate();
     cradle();
 }
