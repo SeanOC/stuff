@@ -87,7 +87,12 @@ extras here pin the claims this model exists for:
      (pst-mfy), so it is the cut most likely to be grown carelessly. A
      window that reached a snap row would undercut a snap footprint;
      one that reached past a land's inner edge would open into a rail
-     instead of into the relief channel.
+     instead of into the relief channel. This through-vent contract is
+     scoped to the openGrid default (the variant this check renders):
+     on mount_type=multiconnect the 6.5mm slab backer intentionally
+     seals the window into a blind relief pocket (operator ruling
+     2026-08-17, pst-d3c3) — item 13 asserts that backing is present
+     rather than requiring the vent to pass through it.
 
  13. **Multiconnect variant** (exports/<stem>-multiconnect.stl, built by
      the filename grid alongside the default openGrid variant): the
@@ -97,7 +102,13 @@ extras here pin the claims this model exists for:
      load orientation matching the directional snaps (entry mouths open
      through the y=0 down edge, retention domes cap the top), and a solid
      inter-slot web. A 180-deg flip inverts the load orientation; a
-     collapsed generator diff() fills the channels.
+     collapsed generator diff() fills the channels. It also asserts the
+     intended vent behaviour for this variant: the plate vent window
+     (open through-vent on openGrid, item 11) lands on the solid backer
+     slab here — a blind relief pocket backed by the mount, accepted by
+     design (operator ruling 2026-08-17, pst-d3c3). The assertion pins
+     that backing so a later change that reopened the vent (and holed the
+     mount) would be caught.
 """
 
 from __future__ import annotations
@@ -555,7 +566,29 @@ def _check_multiconnect_variant(stem: str, plate_w: float,
             "seats connectors into the domes; backer 180deg off",
         ))
 
-    # (c) Inter-slot web solid (pins the 25mm pitch).
+    # (c') Vent window is backed by the mount slab BY DESIGN.
+    # The openGrid variant's plate vent window (item 11) is a through-cut
+    # on the panel centreline. On the Multiconnect variant the 6.5mm slab
+    # sits directly behind the plate, so that same window lands on solid
+    # backer — a blind relief pocket, accepted by the operator on
+    # 2026-08-17 (pst-d3c3): airflow apertures through the slab would clip
+    # the slot side-walls. Assert the backing is present at the plate side
+    # of the slab (z near _MC_THICKNESS) along the vent centreline, so a
+    # later change that reopened the vent (and holed the mount) is caught.
+    vent_ys = [0.35 * plate_h, 0.5 * plate_h]
+    z_back = _MC_THICKNESS - 0.5
+    vent_back = mesh.contains(np.array([[0.0, y, z_back] for y in vent_ys]))
+    if not bool(vent_back.all()):
+        void = [round(vent_ys[i], 1) for i in np.where(~vent_back)[0]]
+        failures.append(Failure(
+            "multiconnect-vent-backed",
+            f"vent centreline (x=0) is not backed by the slab at "
+            f"y={void} (z={z_back}) — the Multiconnect mount is holed "
+            "behind the plate vent; the vent is meant to land on the "
+            "solid backer here (operator ruling 2026-08-17, pst-d3c3)",
+        ))
+
+    # (d) Inter-slot web solid (pins the 25mm pitch).
     webs = [(a + c) / 2 for a, c in zip(slot_xs, slot_xs[1:])]
     if webs:
         w = mesh.contains(np.array([[x, y_channel, zwall] for x in webs]))

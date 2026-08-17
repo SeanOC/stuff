@@ -530,6 +530,17 @@ module plate_rim_chamfers() {
 // (rationale in the header). Its ceiling is a 45deg gable so the print
 // never bridges more than `vent_flat`; its floor needs no such help,
 // since that is where material stops rather than restarts.
+//
+// mount_type interaction: on the openGrid default the window is a true
+// through-vent (the snap grid leaves the panel face open behind it). On
+// mount_type = "multiconnect" the 6.5mm slab backer sits directly behind
+// the plate (z[0,6.5], plate_z0 = 6.5 - mc_weld), so the same window
+// becomes a BLIND relief pocket sealed by the mount slab — accepted by
+// design (operator ruling 2026-08-17, pst-d3c3): routing airflow
+// apertures through the slab would clip the Multiconnect slot side-walls
+// (the ~4.7mm inter-slot webs can't route around the vent band), and the
+// air channel still exhausts out the open cradle top. The window is kept
+// identical across mounts so the plate geometry stays shared.
 module vent_window() {
     if (vent_ok)
         translate([0, 0, plate_z0 - ov])
