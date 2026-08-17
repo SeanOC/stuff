@@ -216,7 +216,7 @@ standoff). Depends on BOSL2. **License: CC BY-NC-SA 4.0.**
   The mating **male** stud is a Ø20 cap on a narrow neck (not a linear
   dovetail; the on-ramp and v2 snap provide retention).
 
-## openGrid Multiconnect — same interface, different board pitch (measured, TBV)
+## openGrid Multiconnect — same interface, different board pitch (measured)
 
 openGrid's own "Multiconnect" (opengrid.world) presents the **same
 Multiconnect male stud** our `mount_type=multiconnect` slot receives — it is

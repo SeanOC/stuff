@@ -26,16 +26,17 @@ build dependency.
 - Upstream publishes **no SCAD** for these parts; STEP/mesh is the only
   machine-readable source available.
 
-## License — **TBV (to be verified)**
+## License — **CC BY 4.0** (operator-verified)
 
-- openGrid's documentation repo (`openGrid-docs`) states **CC BY 4.0**,
-  but the **per-model MakerWorld license for these specific snap parts is
-  UNVERIFIED**. Treat as **TBV** until the operator confirms the exact
-  publication terms.
-- The `models/*.scad` in this repo are **CC BY-NC-SA 4.0** regardless, so
-  any derived SCAD would inherit the non-commercial restriction anyway.
-- Attribution to `ddanier` / the openGrid project must be preserved in any
-  derived work.
+- **CC BY 4.0.** Operator-verified: Sean read the MakerWorld model pages
+  directly on 2026-08-17 (models **1307474** and **1179191**). Republishing
+  the STEP/3MF/STL in this public repo is permitted **with attribution** —
+  this resolves the earlier vendoring/republish question.
+- **Attribution (required):** the **openGrid project** / **David D
+  (`ddanier`)**. Preserve it in this repo and in any derived work.
+- The `models/*.scad` in this repo are **CC BY-NC-SA 4.0**; a SCAD part
+  *derived* from these CC-BY sources can ship under the repo's own terms so
+  long as openGrid / `ddanier` attribution is carried through.
 
 ## What was vendored (and what was not)
 
@@ -189,5 +190,5 @@ inline in the PR for `pst-c73m`. Summary:
   `CIRCLE`, `CYLINDRICAL_SURFACE` entities.
 - Print-body footprints: parse `.3mf` (zip + `3dmodel.model` XML) → trimesh
   → `split()` connected components → per-body bbox.
-- Dovetail/thread cross-sections: `trimesh.section()` sweeps along each
+- Stud / thread cross-sections: `trimesh.section()` sweeps along each
   axis; thread pitch by autocorrelating bore radius vs. Z.
