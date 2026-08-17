@@ -209,26 +209,41 @@ standoff). Depends on BOSL2. **License: CC BY-NC-SA 4.0.**
 - Offset snap (DS Part A) standoff: 6.25mm
 - Snap types: Regular (bidirectional), Moderate WB (unidirectional), Heavy WB
 - Multiconnect **slot** profile (from `multiconnectSlotDesign.scad`, v2):
-  dovetail mouth **20.3mm** wide → waist **15.3mm**, **5mm** deep,
-  **25mm** slot pitch. This is a **dovetail** interface.
+  `rotate_extrude`d from `[[0,0],[10.15,0],[10.15,1.2121],[7.65,3.712],
+  [7.65,5],[0,5]]` → a rotationally-symmetric **female** cavity, mouth
+  **Ø20.3mm** (r 10.15) for the first **1.2121mm**, tapering to a
+  **Ø15.3mm** (r 7.65) throat by 3.712mm, **5mm** deep, **25mm** slot pitch.
+  The mating **male** stud is a Ø20 cap on a narrow neck (not a linear
+  dovetail; the on-ramp and v2 snap provide retention).
 
-## openGrid Multiconnect — a DIFFERENT system (measured, TBV)
+## openGrid Multiconnect — same interface, different board pitch (measured, TBV)
 
-⚠️ openGrid's own "Multiconnect" (opengrid.world) is **not** the Multiboard
-dovetail above — it is a **screw-thread** two-part system. Reference CAD +
-full write-up: [`assets/openGrid-multiconnect/`](../assets/openGrid-multiconnect/README.md)
+openGrid's own "Multiconnect" (opengrid.world) presents the **same
+Multiconnect male stud** our `mount_type=multiconnect` slot receives — it is
+a two-part snap (openGrid-lattice clip + a head that **screws** into the
+clip). The screw thread is the **internal** head↔clip joint, **not** the
+accessory interface. Reference CAD + full clearance write-up:
+[`assets/openGrid-multiconnect/`](../assets/openGrid-multiconnect/README.md)
 (vendored under `pst-c73m`; **not** on `OPENSCADPATH`, not a build dep).
 
 Measured constants (from delivered STEP/mesh; ±0.15mm, verify on a print):
 
-- **Center thread:** ~**M16 × 3.0** (single-start). Snap internal bore
-  Ø major ~16.5 / minor ~14.5; head external Ø major ~16.0 / minor ~14.0.
+- **Accessory-facing male stud:** Ø ~20.0mm cap (~1.2mm thick) on a Ø ~7.5mm
+  neck. Seats in our slot mouth (Ø20.3 × 1.2121mm) with ~0.3mm clearance; the
+  neck clears the Ø15.3 throat and the Ø20 cap is retained behind it.
+- **Internal center thread (head↔clip only):** ~**M16 × 3.0** (single-start).
+  Snap internal bore Ø major ~16.5 / minor ~14.5; head external Ø major
+  ~16.0 / minor ~14.0.
 - **Snap body footprint:** **25.6 × 25.6 × 6.8mm** square (Directional
   variants add a +0.4mm key → 25.6 × 26.0; Lock Snap BETA 25.8 × 25.8).
   Sized to one openGrid **28mm** lattice cell.
-- **Head/plug:** 20.0 × 20.0mm round-tapered dome, 10.8mm tall.
 
-**Fit vs. our `mount_type=multiconnect`:** NOT compatible. openGrid uses a
-~M16 thread; our channel uses a 20.3mm dovetail slot. Neither mates with
-the other. The "shared-standard" assumption does not hold for the delivered
-parts — see the assets README and mayor ruling `ci-wisp-u8lc7o3`.
+**Fit vs. our `mount_type=multiconnect`:** compatible **per connector** — the
+male stud and our female slot are two halves of the same Multiconnect
+interface. The real limitation is **pitch**: openGrid cells are **28mm**
+apart, the Multiboard slot default is **25mm**, so a single stud always
+mates but a multi-slot accessory must be built at `distanceBetweenSlots = 28`
+to engage multiple openGrid snaps at once. See the assets README for the
+direct clearance table; re mayor ruling `ci-wisp-u8lc7o3`, the systems share
+the stud profile and differ in native board pitch — which system to target
+by default remains an operator call.

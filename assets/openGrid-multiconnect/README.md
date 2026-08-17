@@ -64,7 +64,7 @@ editable `.shapr` originals archived in-repo too, they can be added.
 
 | Part                         | step | mesh   | Footprint (mm)      | Height (mm) | Role                                                            |
 |------------------------------|------|--------|---------------------|-------------|----------------------------------------------------------------|
-| openGrid Multiconnect        | ✅   | .3mf   | 20.0 × 20.0 (round-tapered) | 10.8 | Screw-in **head/plug** — male thread + slotted grip dome       |
+| openGrid Multiconnect        | ✅   | .3mf   | 20.0 × 20.0 (round-tapered) | 10.8 | Screw-in **head/plug** — internal M16 shank + presents the Multiconnect **male stud** |
 | openGrid Multiconnect Snap   | ✅   | .3mf   | 25.6 × 25.6 (square) | 6.8        | Base **snap body** — clicks into openGrid lattice, threaded bore |
 | … Directional Snap           | ✅   | .3mf   | 25.6 × 26.0 (square + key) | 6.8   | Snap body with a directional/anti-rotation key (+0.4 in Y)     |
 | … Directional Snap v2        | ✅   | .3mf   | 25.6 × 26.0 (square + key) | 6.8   | Revised directional snap                                       |
@@ -78,10 +78,13 @@ quoted from a published spec. Cross-checked STEP `CYLINDRICAL_SURFACE`
 radii against mesh cross-sections; treat as ±0.15 mm and verify against a
 test print before committing SCAD to them.
 
-### Center thread (snap bore ↔ head screw)
+### Center thread (snap bore ↔ head screw) — *internal joint only*
 
-The snap body carries an **internal** thread; the head/plug carries the
-mating **external** thread.
+This thread is the **internal** joint that assembles the two-part snap: it
+attaches the head/plug to the snap body, nothing else. It is **not** the
+accessory-facing interface (that is the male stud measured below). The snap
+body carries the internal thread; the head/plug carries the mating external
+thread.
 
 | Feature                    | Ø major | Ø minor | pitch    | notes                              |
 |----------------------------|---------|---------|----------|------------------------------------|
@@ -107,34 +110,75 @@ mating **external** thread.
 - Directional snap adds a **+0.4 mm** key in one axis (25.6 × 26.0).
 - Lock Snap (BETA) is **25.8 × 25.8 × 6.8**, two-body.
 
-## Fit verification vs. our `mount_type=multiconnect` channel — ⚠️ DIFFERENT INTERFACES
+### Accessory-facing male stud (the Multiconnect interface)
+
+Once the head is screwed into the snap, the part it presents to an
+accessory is **not** the thread — it is a **rotationally-symmetric male
+stud**: a Ø ~20 mm cap ~1.2 mm thick sitting on a Ø ~7.5 mm neck. Measured
+from the head mesh (`openGrid Multiconnect.3mf`, radial envelope by Z):
+
+| Z from cap face | outer Ø | feature                                            |
+|-----------------|---------|----------------------------------------------------|
+| 0.0 – 1.2 mm    | ~20.0   | cap disc (the retained head)                       |
+| 1.2 – 3.0 mm    | ~11 → 7.5 | neck taper down to the stem                       |
+| 3.0 – 9.0 mm    | ~16 / 15 | M16 thread shank — screws **into the snap**, hidden |
+
+The exposed cap-on-neck is the Multiconnect **male** profile; the thread
+below it is internal (see above).
+
+## Fit verification vs. our `mount_type=multiconnect` channel — they mate
 
 Bead `pst-c73m` asked to confirm the "shared-standard compatibility" claim
-with real numbers. **The numbers do not support it.** These openGrid parts
-and our Multiboard-derived channel are **mechanically different systems:**
+with real numbers. **The numbers confirm it.** Our `mount_type=multiconnect`
+builds the **female** Multiconnect slot; these openGrid snaps present the
+matching **male** stud. They are two halves of the *same* Multiconnect
+interface.
 
-| | openGrid Multiconnect (this pack) | Multiboard Multiconnect (`libs/QuackWorks/Modules/multiconnectSlotDesign.scad`, our `mount_type=multiconnect`) |
-|---|---|---|
-| Interface     | **Screw thread**, ~M16 × 3.0        | **Dovetail slot**                                    |
-| Female profile| Threaded bore Ø ~16.5               | Dovetail: mouth 20.3 mm → waist 15.3 mm, 5 mm deep   |
-| Male profile  | Threaded dome/plug Ø ~16.0          | Dovetail stud, 25 mm slot pitch                      |
-| Engagement    | Rotate to screw in                  | Slide along the 25 mm slot axis                      |
+Our slot is `rotate_extrude`d from the profile
+`[[0,0],[10.15,0],[10.15,1.2121],[7.65,3.712],[7.65,5],[0,5]]` in
+`multiconnectSlotDesign.scad` — i.e. a rotationally-symmetric cavity, **not**
+a linear dovetail. Direct clearance comparison (male head vs female slot):
 
-A part built for one **will not mount** to the other: there is no dovetail
-anywhere in these openGrid files (every cross-section of the head is
-rotationally symmetric — a threaded knob, not a slide-in stud), and our
-`multiconnectSlotDesign` has no thread. The "Multiconnect accessory
-channel = shared standard" premise recorded in the bead is **not borne out
-by the delivered geometry.**
+| Feature                | openGrid male stud | our female slot | clearance / note                     |
+|------------------------|--------------------|-----------------|--------------------------------------|
+| Cap / mouth Ø          | ~20.0 mm           | 20.3 mm (r 10.15) | 0.3 mm — cap seats in the mouth pocket |
+| Cap / mouth seat depth | ~1.2 mm            | 1.2121 mm       | ≈ exact — near-identical seat height |
+| Neck Ø vs throat Ø     | ~7.5 mm neck       | 15.3 mm waist (r 7.65) | neck clears the throat freely  |
+| Retention             | Ø20 cap > Ø15.3 throat | v2 snap + on-ramp | cap is captured behind the throat |
 
-This matches the mayor's standing source-ambiguity note
-(`ci-wisp-u8lc7o3`): openGrid Multiconnect (threaded) is a genuinely
-different profile from Multiboard Multiconnect (dovetail). **This finding
-is documentation only** — per the bead, existing Multiboard connectors are
-not to be relabeled and nothing is rebuilt in SCAD here. It is flagged for
-the operator because it bears directly on `pst-d3c3` (the apple_tv MC
-backer) and on whether our `mount_type=multiconnect` targets the intended
-system.
+The cap Ø and its 1.2 mm seat depth match the slot mouth (20.3 mm, 1.2121 mm)
+almost exactly; the Ø7.5 neck passes through the Ø15.3 throat while the Ø20
+cap is retained behind it. This is a textbook Multiconnect male/female
+engagement, and it corrects the earlier read that these were "different
+systems" — the earlier conclusion mistook the internal assembly thread for
+the accessory interface, and assumed a rotationally-symmetric stud could not
+be Multiconnect (our own slot is itself rotationally symmetric).
+
+**The real, documented limitation is pitch, not profile:**
+
+- One openGrid cell = **28 mm**; the Multiboard slot default
+  (`distanceBetweenSlots`) = **25 mm**. A **single** stud mates with a single
+  slot regardless.
+- To engage **multiple** openGrid studs at once (snaps in adjacent cells,
+  28 mm apart), build the accessory back at `distanceBetweenSlots = 28`
+  instead of the 25 mm default, so slot spacing matches the openGrid lattice.
+- Tolerance: cap Ø20.0 vs mouth Ø20.3 gives ~0.3 mm nominal clearance;
+  measurements are ±0.15 mm — **verify fit on a test print** before relying
+  on them, and note the v2 retention snap engages the neck.
+
+Directional and Lock Snap variants add anti-rotation keys but present the
+same male stud, so the fit conclusion is unchanged.
+
+**This is documentation only** — per the bead, existing Multiboard
+connectors are not relabeled and nothing is rebuilt in SCAD here. It bears
+on `pst-d3c3` (the apple_tv MC backer): the two systems **do** interoperate
+on a single stud, which supports keeping the `mount_type=multiconnect`
+target as-is. Re the mayor's source-ambiguity note (`ci-wisp-u8lc7o3`):
+openGrid Multiconnect and Multiboard Multiconnect share the male/female
+**stud profile**; they differ in **native board pitch** (28 mm vs 25 mm) and
+in how the snap attaches to its board (openGrid lattice clip + screw vs
+Multiboard slot). Naming a single "correct" system is still an operator call,
+but on geometry they are cross-compatible per connector.
 
 ## Measurement method (reproducible)
 
