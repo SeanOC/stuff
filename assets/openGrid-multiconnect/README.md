@@ -34,12 +34,12 @@ this notice also lives beside the files as
 
 - **License:** Creative Commons Attribution 4.0 International (**CC BY 4.0**) —
   <https://creativecommons.org/licenses/by/4.0/>. Operator-verified: Sean read
-  the source model pages directly on 2026-08-17 (openGrid Multiconnect on
-  MakerWorld, models **1307474** and **1179191**). Republishing the STEP/3MF/STL
+  the source model page directly on 2026-08-17 (openGrid Multiconnect on
+  MakerWorld, David D's model **1179191**). Republishing the STEP/3MF/STL
   in this public repo is permitted **with attribution**.
 - **Author / project:** **David D (`ddanier`)** for the **openGrid project**.
 - **Canonical source:** openGrid Multiconnect — <https://www.opengrid.world/projects/multiconnect/>
-  (files published on MakerWorld models 1307474 / 1179191).
+  (David D's source bundle published on MakerWorld model 1179191).
 - **Attribution (required):** "openGrid Multiconnect by David D (ddanier),
   CC BY 4.0" — preserve it in this repo and in any derived work.
 - **Modification status:** the committed `.step` and `.3mf`/`.stl` files are
