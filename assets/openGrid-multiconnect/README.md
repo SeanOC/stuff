@@ -157,39 +157,58 @@ builds the **female** Multiconnect slot; these openGrid snaps present the
 matching **male** stud. They are two halves of the *same* Multiconnect
 interface.
 
-**The female slot is not one revolved cavity.** In pinned
+**The female slot is a throat-first undercut, not a countersink.** In pinned
 `QuackWorks/Modules/multiconnectSlotDesign.scad` the profile
 `[[0,0],[10.15,0],[10.15,1.2121],[7.65,3.712],[7.65,5],[0,5]]` is used two
-ways: a `rotate_extrude` builds the **round loading pocket** (the on-ramp end
-you drop the stud into), and two mirrored `linear_extrude` calls sweep the
-same profile into a **longitudinal receiving channel** you then slide along.
-Both present the same cross-section: a mouth **Ø20.3 mm** (half-width 10.15)
-at the wall face for the first **1.2121 mm** of depth, tapering to **Ø15.3 mm**
-(half-width 7.65) by **3.712 mm** depth and holding it to 5 mm. The male
-Ø20→Ø15 frustum seats into exactly that taper; a v2 retention snap plus the
-loading pocket hold the stud, so it is a countersunk slide-fit, **not** a
-linear dovetail undercut.
+ways: a `rotate_extrude` builds the **round loading pocket** (entered via the
+on-ramp cone) and two mirrored `linear_extrude` calls sweep the same profile
+into the **longitudinal channel** you slide along. What matters is how that
+profile lands in the slab once `multiconnectBack()` places it: the slab
+occupies `y ∈ [−6.5, 0]` (board face at `y = −6.5`), the slot tool is
+translated `y = −2.35`, and the revolve axis ends up along `y`, so profile
+depth `q` maps to `y = −2.35 − q`. **Measured directly** — a single-slot
+`multiconnectBack(25, 40, 25)` exported (Manifold + CGAL) and cross-sectioned
+through the pocket centre with `trimesh.section` — the cavity is:
 
-Depth-aligned clearance (male stud outer Ø vs the female profile Ø at the
-same depth from the wall face; female Ø computed from the profile):
+| Depth from board face (`y = −6.5`) | cavity Ø | feature                          |
+|------------------------------------|----------|----------------------------------|
+| 0.00 mm (board face)               | **15.3** | **throat** — the narrow opening  |
+| 0.00 – ~0.44 mm                    | 15.3     | throat land                      |
+| ~0.44 → ~2.9 mm                    | 15.3 → 20.3 | flares open to the undercut   |
+| ~2.9 – ~4.15 mm                    | **20.3** | **undercut pocket** (widest)     |
+| ~4.15 mm                           | —        | blind end (2.35 mm of solid backing to the front face) |
 
-| Depth from face | male stud Ø | female slot Ø | diametral clearance |
-|-----------------|-------------|---------------|---------------------|
-| 0.0 – 1.0 mm    | ~20.0       | 20.3 (mouth)  | ~0.3 mm             |
-| 1.5 mm          | ~19.0       | ~19.7         | ~0.7 mm             |
-| 2.0 mm          | ~18.0       | ~18.7         | ~0.7 mm             |
-| 2.5 mm          | ~17.0       | ~17.7         | ~0.7 mm             |
-| 3.0 mm          | ~16.0       | ~16.7         | ~0.7 mm             |
-| 3.5 mm          | ~15.0       | ~15.7         | ~0.7 mm             |
-| 3.712 – 5 mm    | ~15 (thread)| 15.3 (throat) | ~0.3 mm             |
+So the board-facing opening is **Ø15.3**, widening to a **Ø20.3 undercut**
+behind it and blind-ending at **~4.15 mm** — **not** a Ø20.3 mouth tapering to
+Ø15.3 over 5 mm. (An earlier revision had this axis reversed.)
 
-The male Ø20→Ø15 frustum tracks the female Ø20.3→Ø15.3 taper with a
-consistent **~0.3–0.7 mm diametral clearance** across the full engagement
-depth — a comfortable matched slip-fit (tightest ~0.3 mm at the mouth and at
-the throat). This corrects the earlier read that these were "different
-systems": it had mistaken the head's assembly thread for the accessory
-interface, and mis-measured a Ø7.5 *neck* (actually the 7.5 mm *radius* of
-the cap's inner drive recess).
+**How the stud engages.** It is **not** pushed straight through the throat —
+the Ø20 cap will not pass a Ø15.3 hole. The stud enters where the **on-ramp**
+cone (`r1 = 12 → r2 = 10.15`) locally opens the throat, then **slides along
+the channel**; the **Ø20 cap is captured in the Ø20.3 undercut behind the
+Ø15.3 throat**, and the v2 snap detent seats it. This is a keyhole/undercut
+slide-fit — the same family as our own slot, and the mechanism that makes the
+two systems interoperate.
+
+**Co-located clearances** (male feature vs the female feature it actually
+rides in, once seated):
+
+| Female feature        | female Ø | mating male feature      | male Ø | diametral clearance |
+|-----------------------|----------|--------------------------|--------|---------------------|
+| throat                | 15.3     | Ø15 stem (frustum small end / behind cap) | ~15.0 | ~0.3 mm |
+| undercut pocket       | 20.3     | Ø20 cap                  | ~20.0  | ~0.3 mm             |
+| flare (throat→pocket) | 15.3→20.3 over ~2.5 mm | Ø20→Ø15 frustum (complementary sense) | ~2.5 mm band | slip |
+
+The Ø15 stem clears the Ø15.3 throat (~0.3 mm) and the Ø20 cap is retained in
+the Ø20.3 pocket (~0.3 mm), with the male Ø20→Ø15 frustum and the female
+Ø15.3→Ø20.3 flare complementary across the ~2.5 mm taper. **Assembled axial
+seating** (how deep the cap sits, exactly where the detent bites — the pocket
+is only ~4.15 mm deep) is **not** proven on paper: measurements are ±0.15 mm,
+so **verify fit on a test print** before relying on the joint.
+
+This still corrects the original "different systems" read (it mistook the
+head's internal assembly thread for the accessory interface); the systems do
+share the Multiconnect male/female interface.
 
 **The real, documented limitation is pitch, not profile:**
 
@@ -199,9 +218,6 @@ the cap's inner drive recess).
 - To engage **multiple** openGrid studs at once (snaps in adjacent cells,
   28 mm apart), build the accessory back at `distanceBetweenSlots = 28`
   instead of the 25 mm default, so slot spacing matches the openGrid lattice.
-- Tolerance: the ~0.3–0.7 mm diametral clearance above is nominal;
-  measurements are ±0.15 mm — **verify fit on a test print** before relying
-  on them, and note the v2 retention snap engages the frustum in the channel.
 
 Directional and Lock Snap variants add anti-rotation keys but present the
 same male stud, so the fit conclusion is unchanged.

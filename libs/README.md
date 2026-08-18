@@ -211,13 +211,16 @@ standoff). Depends on BOSL2. **License: CC BY-NC-SA 4.0.**
 - Multiconnect **slot** profile (from `multiconnectSlotDesign.scad`, v2):
   profile `[[0,0],[10.15,0],[10.15,1.2121],[7.65,3.712],[7.65,5],[0,5]]`
   used two ways — a `rotate_extrude` **round loading pocket** plus two
-  mirrored `linear_extrude` calls forming a **longitudinal receiving
-  channel** (so the slot is *not* wholly rotationally symmetric). Both give
-  a mouth **Ø20.3mm** (half-width 10.15) at the face for the first
-  **1.2121mm**, tapering to a **Ø15.3mm** (half-width 7.65) throat by
-  3.712mm, **5mm** deep, **25mm** slot pitch. The mating **male** stud is a
-  Ø20→Ø15 tapered frustum (countersunk slide-fit; on-ramp + v2 snap retain
-  it — not a linear dovetail undercut).
+  mirrored `linear_extrude` calls forming a **longitudinal channel** (so the
+  slot is *not* wholly rotationally symmetric). Once `multiconnectBack()`
+  places it in the `y ∈ [−6.5, 0]` slab (slot tool at `y = −2.35`), the cut
+  is a **throat-first undercut** (measured by exported cross-section, not just
+  the raw profile): board-facing opening **Ø15.3mm** (throat), flaring to a
+  **Ø20.3mm** undercut pocket behind it, blind at **~4.15mm** deep, **25mm**
+  slot pitch. The **male** stud (Ø20 cap → Ø15 stem) enters via the on-ramp
+  and **slides in**; the Ø20 cap is captured in the Ø20.3 pocket behind the
+  Ø15.3 throat (keyhole undercut + v2 snap — not a straight countersink, not
+  a linear dovetail).
 
 ## openGrid Multiconnect — same interface, different board pitch (measured)
 
@@ -232,10 +235,11 @@ accessory interface. Reference CAD + full clearance write-up:
 Measured constants (from delivered STEP/mesh; ±0.15mm, verify on a print):
 
 - **Accessory-facing male stud:** a smooth **Ø20→Ø15 tapered frustum** over
-  the first ~3.5mm (Ø20.0 cap face → Ø19@1.5 → Ø18@2.0 → Ø16@3.0 → Ø15@3.5,
-  by watertight cross-section). No narrow neck — it seats into our slot's
-  Ø20.3→Ø15.3 taper with a matched **~0.3–0.7mm** diametral slip-fit through
-  the engagement depth.
+  the first ~3.5mm (Ø20.0 cap face → Ø18@2.0 → Ø16@3.0 → Ø15@3.5, by
+  watertight cross-section). No narrow neck. Co-located with the female cut:
+  the Ø15 stem clears the Ø15.3 throat (~0.3mm) and the Ø20 cap is retained
+  in the Ø20.3 undercut pocket (~0.3mm); assembled axial seating to be
+  print-verified.
 - **Center thread (head↔clip joint only):** ~**M16 × 3.0** (single-start).
   The head carries the **external** thread that screws into the snap's
   internal bore (bore Ø major ~16.5 / minor ~14.5; head external Ø major
@@ -251,6 +255,6 @@ interface. The real limitation is **pitch**: openGrid cells are **28mm**
 apart, the Multiboard slot default is **25mm**, so a single stud always
 mates but a multi-slot accessory must be built at `distanceBetweenSlots = 28`
 to engage multiple openGrid snaps at once. See the assets README for the
-direct clearance table; re mayor ruling `ci-wisp-u8lc7o3`, the systems share
-the stud profile and differ in native board pitch — which system to target
-by default remains an operator call.
+measured cavity profile + co-located clearances; re mayor ruling
+`ci-wisp-u8lc7o3`, the systems share the stud profile and differ in native
+board pitch — which system to target by default remains an operator call.
