@@ -209,12 +209,15 @@ standoff). Depends on BOSL2. **License: CC BY-NC-SA 4.0.**
 - Offset snap (DS Part A) standoff: 6.25mm
 - Snap types: Regular (bidirectional), Moderate WB (unidirectional), Heavy WB
 - Multiconnect **slot** profile (from `multiconnectSlotDesign.scad`, v2):
-  `rotate_extrude`d from `[[0,0],[10.15,0],[10.15,1.2121],[7.65,3.712],
-  [7.65,5],[0,5]]` → a rotationally-symmetric **female** cavity, mouth
-  **Ø20.3mm** (r 10.15) for the first **1.2121mm**, tapering to a
-  **Ø15.3mm** (r 7.65) throat by 3.712mm, **5mm** deep, **25mm** slot pitch.
-  The mating **male** stud is a Ø20 cap on a narrow neck (not a linear
-  dovetail; the on-ramp and v2 snap provide retention).
+  profile `[[0,0],[10.15,0],[10.15,1.2121],[7.65,3.712],[7.65,5],[0,5]]`
+  used two ways — a `rotate_extrude` **round loading pocket** plus two
+  mirrored `linear_extrude` calls forming a **longitudinal receiving
+  channel** (so the slot is *not* wholly rotationally symmetric). Both give
+  a mouth **Ø20.3mm** (half-width 10.15) at the face for the first
+  **1.2121mm**, tapering to a **Ø15.3mm** (half-width 7.65) throat by
+  3.712mm, **5mm** deep, **25mm** slot pitch. The mating **male** stud is a
+  Ø20→Ø15 tapered frustum (countersunk slide-fit; on-ramp + v2 snap retain
+  it — not a linear dovetail undercut).
 
 ## openGrid Multiconnect — same interface, different board pitch (measured)
 
@@ -228,12 +231,16 @@ accessory interface. Reference CAD + full clearance write-up:
 
 Measured constants (from delivered STEP/mesh; ±0.15mm, verify on a print):
 
-- **Accessory-facing male stud:** Ø ~20.0mm cap (~1.2mm thick) on a Ø ~7.5mm
-  neck. Seats in our slot mouth (Ø20.3 × 1.2121mm) with ~0.3mm clearance; the
-  neck clears the Ø15.3 throat and the Ø20 cap is retained behind it.
-- **Internal center thread (head↔clip only):** ~**M16 × 3.0** (single-start).
-  Snap internal bore Ø major ~16.5 / minor ~14.5; head external Ø major
-  ~16.0 / minor ~14.0.
+- **Accessory-facing male stud:** a smooth **Ø20→Ø15 tapered frustum** over
+  the first ~3.5mm (Ø20.0 cap face → Ø19@1.5 → Ø18@2.0 → Ø16@3.0 → Ø15@3.5,
+  by watertight cross-section). No narrow neck — it seats into our slot's
+  Ø20.3→Ø15.3 taper with a matched **~0.3–0.7mm** diametral slip-fit through
+  the engagement depth.
+- **Center thread (head↔clip joint only):** ~**M16 × 3.0** (single-start).
+  The head carries the **external** thread that screws into the snap's
+  internal bore (bore Ø major ~16.5 / minor ~14.5; head external Ø major
+  ~16.0 / minor ~14.0); it is buried in the snap after assembly, not part of
+  the accessory interface.
 - **Snap body footprint:** **25.6 × 25.6 × 6.8mm** square (Directional
   variants add a +0.4mm key → 25.6 × 26.0; Lock Snap BETA 25.8 × 25.8).
   Sized to one openGrid **28mm** lattice cell.

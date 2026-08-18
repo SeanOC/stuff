@@ -28,12 +28,24 @@ build dependency.
 
 ## License — **CC BY 4.0** (operator-verified)
 
-- **CC BY 4.0.** Operator-verified: Sean read the MakerWorld model pages
-  directly on 2026-08-17 (models **1307474** and **1179191**). Republishing
-  the STEP/3MF/STL in this public repo is permitted **with attribution** —
-  this resolves the earlier vendoring/republish question.
-- **Attribution (required):** the **openGrid project** / **David D
-  (`ddanier`)**. Preserve it in this repo and in any derived work.
+Redistribution notice for the vendored files (CC BY 4.0 §3(a)(1)). A copy of
+this notice also lives beside the files as
+[`NOTICE`](./NOTICE).
+
+- **License:** Creative Commons Attribution 4.0 International (**CC BY 4.0**) —
+  <https://creativecommons.org/licenses/by/4.0/>. Operator-verified: Sean read
+  the source model pages directly on 2026-08-17 (openGrid Multiconnect on
+  MakerWorld, models **1307474** and **1179191**). Republishing the STEP/3MF/STL
+  in this public repo is permitted **with attribution**.
+- **Author / project:** **David D (`ddanier`)** for the **openGrid project**.
+- **Canonical source:** openGrid Multiconnect — <https://www.opengrid.world/projects/multiconnect/>
+  (files published on MakerWorld models 1307474 / 1179191).
+- **Attribution (required):** "openGrid Multiconnect by David D (ddanier),
+  CC BY 4.0" — preserve it in this repo and in any derived work.
+- **Modification status:** the committed `.step` and `.3mf`/`.stl` files are
+  vendored **verbatim (unmodified)**, keeping their original filenames; only
+  the `.shapr` editables and the bundle `.zip` were omitted (see below).
+  Nothing in these files was altered.
 - The `models/*.scad` in this repo are **CC BY-NC-SA 4.0**; a SCAD part
   *derived* from these CC-BY sources can ship under the repo's own terms so
   long as openGrid / `ddanier` attribution is carried through.
@@ -65,7 +77,7 @@ editable `.shapr` originals archived in-repo too, they can be added.
 
 | Part                         | step | mesh   | Footprint (mm)      | Height (mm) | Role                                                            |
 |------------------------------|------|--------|---------------------|-------------|----------------------------------------------------------------|
-| openGrid Multiconnect        | ✅   | .3mf   | 20.0 × 20.0 (round-tapered) | 10.8 | Screw-in **head/plug** — internal M16 shank + presents the Multiconnect **male stud** |
+| openGrid Multiconnect        | ✅   | .3mf   | 20.0 × 20.0 (round-tapered) | 10.8 | Screw-in **head/plug** — **external** M16 shank (screws into the snap bore) + presents the Multiconnect **male stud** |
 | openGrid Multiconnect Snap   | ✅   | .3mf   | 25.6 × 25.6 (square) | 6.8        | Base **snap body** — clicks into openGrid lattice, threaded bore |
 | … Directional Snap           | ✅   | .3mf   | 25.6 × 26.0 (square + key) | 6.8   | Snap body with a directional/anti-rotation key (+0.4 in Y)     |
 | … Directional Snap v2        | ✅   | .3mf   | 25.6 × 26.0 (square + key) | 6.8   | Revised directional snap                                       |
@@ -113,19 +125,29 @@ thread.
 
 ### Accessory-facing male stud (the Multiconnect interface)
 
-Once the head is screwed into the snap, the part it presents to an
-accessory is **not** the thread — it is a **rotationally-symmetric male
-stud**: a Ø ~20 mm cap ~1.2 mm thick sitting on a Ø ~7.5 mm neck. Measured
-from the head mesh (`openGrid Multiconnect.3mf`, radial envelope by Z):
+Once the head is screwed home, the shape it presents to an accessory is a
+**tapered male stud** — a smooth Ø20 → Ø15 frustum, **not** a cap-on-neck.
+Measured from the head mesh (`openGrid Multiconnect.3mf`) by **watertight
+cross-section** — the outer Ø of the closed section outline at each depth Z
+below the cap face (`trimesh.section`, so it reads the true cone surface, not
+just mesh vertices):
 
-| Z from cap face | outer Ø | feature                                            |
-|-----------------|---------|----------------------------------------------------|
-| 0.0 – 1.2 mm    | ~20.0   | cap disc (the retained head)                       |
-| 1.2 – 3.0 mm    | ~11 → 7.5 | neck taper down to the stem                       |
-| 3.0 – 9.0 mm    | ~16 / 15 | M16 thread shank — screws **into the snap**, hidden |
+| Z below cap face | outer Ø | feature                                                        |
+|------------------|---------|----------------------------------------------------------------|
+| 0.0 – 1.0 mm     | ~20.0   | flat cap face (with a central screwdriver-drive recess)        |
+| 1.2 mm           | ~19.6   | cap edge starts to taper                                       |
+| 1.5 mm           | ~19.0   | taper                                                          |
+| 2.0 mm           | ~18.0   | taper                                                          |
+| 2.5 mm           | ~17.0   | taper                                                          |
+| 3.0 mm           | ~16.0   | taper                                                          |
+| 3.5 mm           | ~15.0   | end of frustum → start of thread shank                        |
+| 3.5 – ~9.6 mm    | Ø14–16  | **external** M16-class thread — screws INTO the snap bore, hidden after assembly |
 
-The exposed cap-on-neck is the Multiconnect **male** profile; the thread
-below it is internal (see above).
+There is **no narrow Ø7.5 neck** — an earlier reading took the Ø~7.5 *inner*
+loop of the cap's drive recess (7.5 mm is its *radius*, ~Ø15) for an outer
+neck. The exposed male profile is the Ø20→Ø15 frustum; below it the head
+carries its **external** thread, which is swallowed by the snap body's
+internal bore once assembled.
 
 ## Fit verification vs. our `mount_type=multiconnect` channel — they mate
 
@@ -135,25 +157,39 @@ builds the **female** Multiconnect slot; these openGrid snaps present the
 matching **male** stud. They are two halves of the *same* Multiconnect
 interface.
 
-Our slot is `rotate_extrude`d from the profile
-`[[0,0],[10.15,0],[10.15,1.2121],[7.65,3.712],[7.65,5],[0,5]]` in
-`multiconnectSlotDesign.scad` — i.e. a rotationally-symmetric cavity, **not**
-a linear dovetail. Direct clearance comparison (male head vs female slot):
+**The female slot is not one revolved cavity.** In pinned
+`QuackWorks/Modules/multiconnectSlotDesign.scad` the profile
+`[[0,0],[10.15,0],[10.15,1.2121],[7.65,3.712],[7.65,5],[0,5]]` is used two
+ways: a `rotate_extrude` builds the **round loading pocket** (the on-ramp end
+you drop the stud into), and two mirrored `linear_extrude` calls sweep the
+same profile into a **longitudinal receiving channel** you then slide along.
+Both present the same cross-section: a mouth **Ø20.3 mm** (half-width 10.15)
+at the wall face for the first **1.2121 mm** of depth, tapering to **Ø15.3 mm**
+(half-width 7.65) by **3.712 mm** depth and holding it to 5 mm. The male
+Ø20→Ø15 frustum seats into exactly that taper; a v2 retention snap plus the
+loading pocket hold the stud, so it is a countersunk slide-fit, **not** a
+linear dovetail undercut.
 
-| Feature                | openGrid male stud | our female slot | clearance / note                     |
-|------------------------|--------------------|-----------------|--------------------------------------|
-| Cap / mouth Ø          | ~20.0 mm           | 20.3 mm (r 10.15) | 0.3 mm — cap seats in the mouth pocket |
-| Cap / mouth seat depth | ~1.2 mm            | 1.2121 mm       | ≈ exact — near-identical seat height |
-| Neck Ø vs throat Ø     | ~7.5 mm neck       | 15.3 mm waist (r 7.65) | neck clears the throat freely  |
-| Retention             | Ø20 cap > Ø15.3 throat | v2 snap + on-ramp | cap is captured behind the throat |
+Depth-aligned clearance (male stud outer Ø vs the female profile Ø at the
+same depth from the wall face; female Ø computed from the profile):
 
-The cap Ø and its 1.2 mm seat depth match the slot mouth (20.3 mm, 1.2121 mm)
-almost exactly; the Ø7.5 neck passes through the Ø15.3 throat while the Ø20
-cap is retained behind it. This is a textbook Multiconnect male/female
-engagement, and it corrects the earlier read that these were "different
-systems" — the earlier conclusion mistook the internal assembly thread for
-the accessory interface, and assumed a rotationally-symmetric stud could not
-be Multiconnect (our own slot is itself rotationally symmetric).
+| Depth from face | male stud Ø | female slot Ø | diametral clearance |
+|-----------------|-------------|---------------|---------------------|
+| 0.0 – 1.0 mm    | ~20.0       | 20.3 (mouth)  | ~0.3 mm             |
+| 1.5 mm          | ~19.0       | ~19.7         | ~0.7 mm             |
+| 2.0 mm          | ~18.0       | ~18.7         | ~0.7 mm             |
+| 2.5 mm          | ~17.0       | ~17.7         | ~0.7 mm             |
+| 3.0 mm          | ~16.0       | ~16.7         | ~0.7 mm             |
+| 3.5 mm          | ~15.0       | ~15.7         | ~0.7 mm             |
+| 3.712 – 5 mm    | ~15 (thread)| 15.3 (throat) | ~0.3 mm             |
+
+The male Ø20→Ø15 frustum tracks the female Ø20.3→Ø15.3 taper with a
+consistent **~0.3–0.7 mm diametral clearance** across the full engagement
+depth — a comfortable matched slip-fit (tightest ~0.3 mm at the mouth and at
+the throat). This corrects the earlier read that these were "different
+systems": it had mistaken the head's assembly thread for the accessory
+interface, and mis-measured a Ø7.5 *neck* (actually the 7.5 mm *radius* of
+the cap's inner drive recess).
 
 **The real, documented limitation is pitch, not profile:**
 
@@ -163,9 +199,9 @@ be Multiconnect (our own slot is itself rotationally symmetric).
 - To engage **multiple** openGrid studs at once (snaps in adjacent cells,
   28 mm apart), build the accessory back at `distanceBetweenSlots = 28`
   instead of the 25 mm default, so slot spacing matches the openGrid lattice.
-- Tolerance: cap Ø20.0 vs mouth Ø20.3 gives ~0.3 mm nominal clearance;
+- Tolerance: the ~0.3–0.7 mm diametral clearance above is nominal;
   measurements are ±0.15 mm — **verify fit on a test print** before relying
-  on them, and note the v2 retention snap engages the neck.
+  on them, and note the v2 retention snap engages the frustum in the channel.
 
 Directional and Lock Snap variants add anti-rotation keys but present the
 same male stud, so the fit conclusion is unchanged.
@@ -190,5 +226,9 @@ inline in the PR for `pst-c73m`. Summary:
   `CIRCLE`, `CYLINDRICAL_SURFACE` entities.
 - Print-body footprints: parse `.3mf` (zip + `3dmodel.model` XML) → trimesh
   → `split()` connected components → per-body bbox.
-- Stud / thread cross-sections: `trimesh.section()` sweeps along each
-  axis; thread pitch by autocorrelating bore radius vs. Z.
+- Stud / thread cross-sections: parse `.3mf` (zip + `3dmodel.model` XML) for
+  vertices **and** triangles → build a `trimesh.Trimesh` → `mesh.section()` at
+  each depth Z, and take the outer Ø from the closed section outline (not
+  per-vertex radii — a vertex sweep under-samples a smooth cone between mesh
+  rows and can misread an inner recess as an outer neck). Thread pitch by
+  autocorrelating bore radius vs. Z.

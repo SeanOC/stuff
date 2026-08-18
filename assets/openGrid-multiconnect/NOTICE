@@ -1,0 +1,30 @@
+openGrid Multiconnect — vendored reference CAD/mesh
+===================================================
+
+Files:      step/*.step (6), mesh/*.3mf (5), mesh/*.stl (1)
+Work:       openGrid Multiconnect (snap bodies + head/plug family)
+Author:     David D (ddanier)
+Project:    openGrid — https://www.opengrid.world/projects/multiconnect/
+Source:     Published by the author on MakerWorld (openGrid Multiconnect,
+            models 1307474 and 1179191). Delivered to this repo by the
+            operator on 2026-08-17.
+
+License:    Creative Commons Attribution 4.0 International (CC BY 4.0)
+            https://creativecommons.org/licenses/by/4.0/
+            Operator-verified against the source model pages on 2026-08-17.
+
+Required attribution:
+            "openGrid Multiconnect by David D (ddanier), licensed CC BY 4.0."
+            Preserve this attribution in this repo and in any derived work.
+
+Modification status:
+            The committed .step, .3mf and .stl files are redistributed
+            VERBATIM (unmodified), retaining their original filenames; each
+            is byte-for-byte identical (sha256) to the delivered original.
+            The proprietary .shapr editables and the redundant bundle .zip
+            from the delivered set were NOT committed (repo hygiene) — an
+            omission of files, not a modification of the ones kept.
+
+These are reference assets only: not on OPENSCADPATH, not `include`d by any
+model, not a build dependency. See README.md for provenance, measured
+constants and the fit analysis vs. our mount_type=multiconnect slot.
