@@ -1,37 +1,68 @@
-// SPDX-License-Identifier: LicenseRef-MakerWorld-unverified
-// Vendored model — original by an upstream MakerWorld author (st-w2g).
-// Source:    https://makerworld.com/en/models/551375-disney-ear-hanger
-// Profile:   https://makerworld.com/en/@profileId-469918
-// Imported:  2026-05-01
+// SPDX-License-Identifier: CC-BY-NC-SA-4.0
 //
-// We did not author this model. The MakerWorld page was Cloudflare-
-// gated when this file was vendored, so the upstream author's display
-// name and the model's specific license badge could not be captured
-// programmatically. The SPDX line above is a placeholder — replace
-// `LicenseRef-MakerWorld-unverified` with the correct license tag
-// (e.g. CC-BY-4.0, CC-BY-NC-4.0, CC-BY-SA-4.0, CC-BY-NC-SA-4.0, or
-// LicenseRef-MakerWorld-<short-tag>) once the page can be opened in
-// a browser. Do not relicense without checking the upstream listing.
+// Disney ear hanger — saddle hanger for Disney-style ear headbands
+// (Mickey/Minnie ears). Wall-mounts with double-sided tape or 3M
+// Command strips: stick the flat mounting face to the wall, and the
+// headbands drape over the saddle arch that projects out from it.
 //
-// Contributions to this file should be minimal and respect the
-// upstream author's design intent. If the model needs structural
-// changes, prefer reaching out to the upstream author or forking
-// with explicit derivative attribution. Don't claim copyright.
+// REMIX / ATTRIBUTION (this is a derivative work, not original):
+//   Original: "Disney Ear Hanger" by SpruceWayne
+//     Creator: https://makerworld.com/en/@user_2791005939
+//     Model:   https://makerworld.com/en/models/551375-disney-ear-hanger
+//   (The MakerWorld id 469918 is the default print-profile/instance,
+//    not an author profile.)
+//   License: CC BY-NC-SA 4.0 (operator-verified — pst-15du). This is a
+//     NON-COMMERCIAL license: do not sell prints or files, and share
+//     any derivatives alike. Credit SpruceWayne on reshare.
 //
-// Print orientation: see upstream listing — the MakerWorld page hosts
-// the canonical print profile and orientation guidance.
-// Install context: ear hanger — most likely a wall-mount or shelf-edge
-// clip that hooks Disney-style ear headbands (Mickey/Minnie ears).
-// Polecat: confirm with user before adding install-side fillets,
-// keying, or surface treatments.
-//   (See mayor memory feedback_confirm_install_orientation_for_wallmount_parts.md.)
+// Our contribution over the upstream .scad is house-style integration
+// only — @param exposure, a print-orientation anchor, and catalog +
+// invariant wiring. The geometry is IDENTICAL to the upstream model at
+// default parameters (pst-15du: an add, not a redesign); hangerLength
+// only scales how far the saddle projects out from the wall.
+//
+// Print orientation: the top-level call is rigidly rotated so the flat
+// mounting face (the tab and the saddle end) lies on the bed and the
+// arch extrudes straight up. This is the upstream orientation — no
+// special settings are needed (the vertical cross-section is constant,
+// so no supports), and the broad mounting face prints against the
+// plate. Keep that face smooth — print it against a smooth plate so the
+// tape / 3M Command strip bonds to a smooth, clean, dry surface (their
+// adhesive is rated for smooth surfaces; plate texture weakens the bond).
+// The rotate/translate wraps only the top-level call; the earHanger()
+// body geometry is unchanged (pst-yfml finding #1).
 
 $fn = 50;
 
-hangerLength = 28;
-padding = 0.1;
+// === User-tunable parameters ===
 
-earHanger();
+hangerLength = 28;  // @param number min=15 max=60 step=1 unit=mm group=hanger label="Projection (saddle depth off wall)"
+
+// @preset id="standard" label="Standard (28mm projection)" hangerLength=28
+// @preset id="deep"     label="Deep (45mm projection)"     hangerLength=45
+
+// === Derived ===
+
+padding = 0.1;  // internal epsilon for clean CSG cuts; not user-tunable
+
+// PRINT_ANCHOR_BBOX — outermost printed bbox in mm (X, Y, Z) at defaults,
+// measured in the print orientation below (flat mounting face on the bed,
+// arch pointing up).
+// X: saddle arch height (the dome span, formerly Z) = 31.1
+// Y: saddle width across the two ±55 side clips (±32.5) = 65.0
+// Z: saddle projection = hangerLength(28) + the two end flares (each +5),
+//    now the vertical print height = 38.1
+PRINT_ANCHOR_BBOX = [31.1, 65, 38.1];
+
+// Print-orientation transform (pst-yfml finding #1): rigidly rotate the
+// top-level model so the flat mounting face lies on the bed (arch up),
+// then centre in X/Y and seat min-Z at 0. Body geometry is unchanged.
+// The Z seat is parameter-derived: after rotate([0,-90,0]) the body's
+// X-extent [-(hangerLength/2+5.05), +(hangerLength/2+5.05)] becomes the
+// build-Z span, so the offset must track hangerLength (pst-t9ri finding
+// #1). At the 28mm default this evaluates to 19.05, matching the prior
+// constant; short/deep/max presets now also seat min-Z at 0.
+translate([ 18.95, 0, hangerLength / 2 + 5.05 ]) rotate([ 0, -90, 0 ]) earHanger();
 
 module earHanger()
 {
