@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: CC-BY-NC-SA-4.0
 //
 // Disney ear hanger — saddle hanger for Disney-style ear headbands
-// (Mickey/Minnie ears). Wall-mounts with double-sided tape or 3M
-// Command strips: stick the flat mounting face to the wall, and the
-// headbands drape over the saddle arch that projects out from it.
+// (Mickey/Minnie ears). The saddle arch projects out from the wall and
+// the headbands drape over it. Three interchangeable wall mounts
+// (mount_type): the original adhesive TAB, an openGrid snap backer, or a
+// Multiconnect slot backer.
 //
 // REMIX / ATTRIBUTION (this is a derivative work, not original):
 //   Original: "Disney Ear Hanger" by SpruceWayne
@@ -15,43 +16,114 @@
 //     NON-COMMERCIAL license: do not sell prints or files, and share
 //     any derivatives alike. Credit SpruceWayne on reshare.
 //
-// Our contribution over the upstream .scad is house-style integration
-// only — @param exposure, a print-orientation anchor, and catalog +
-// invariant wiring. The geometry is IDENTICAL to the upstream model at
-// default parameters (pst-15du: an add, not a redesign); hangerLength
-// only scales how far the saddle projects out from the wall.
+// The openGrid snap comes from QuackWorks
+// (libs/QuackWorks/openGrid/opengrid-snap.scad, openGrid by David D,
+// OpenSCAD port by metasyntactic) and the Multiconnect slot from
+// QuackWorks/Modules/multiconnectSlotDesign.scad — both CC BY-NC-SA 4.0,
+// NON-COMMERCIAL. Same mount hardware the sibling models
+// (apple_tv_4th_gen_holder, ryobi_p2860_strap_saddle) carry.
 //
-// Print orientation: the top-level call is rigidly rotated so the flat
-// mounting face (the tab and the saddle end) lies on the bed and the
-// arch extrudes straight up. This is the upstream orientation — no
-// special settings are needed (the vertical cross-section is constant,
-// so no supports), and the broad mounting face prints against the
-// plate. Keep that face smooth — print it against a smooth plate so the
-// tape / 3M Command strip bonds to a smooth, clean, dry surface (their
-// adhesive is rated for smooth surfaces; plate texture weakens the bond).
-// The rotate/translate wraps only the top-level call; the earHanger()
-// body geometry is unchanged (pst-yfml finding #1).
+// === Mount options (mount_type, pst-3tum) ===
+//
+// The saddle geometry is IDENTICAL across all three mounts — only the
+// wall attachment at the wall end changes, and it is the export-grid
+// filename axis:
+//   tab (default)  — the original rounded-square adhesive fin. Geometry
+//                    is BYTE-IDENTICAL to the pre-mount model; tape / 3M
+//                    Command strip to a smooth wall (pst-15du/pst-wjte).
+//   opengrid       — an openGrid snap plate that REPLACES the tab, so the
+//                    hanger clicks onto a 28mm openGrid panel.
+//   multiconnect   — a Multiconnect slot backer (Multiboard / openGrid MC
+//                    studs) that replaces the tab.
+// The backer is a whole-tile plate sized to cover the saddle's wall-end
+// footprint (grows to 3 tiles wide to span the 65mm saddle; >=2 tiles
+// tall for a cantilever snap couple), tunable via width_units/height_units
+// minimums exactly like the sibling mounts. It is deliberately larger
+// than the small saddle — the tile grid needs a snap couple to hold the
+// saddle's lever-out (JUDGMENT CALL flagged to the operator, pst-3tum).
+//
+// === Up-the-wall axis / load (pst-3tum, JUDGMENT CALL) ===
+//
+// Mounted, the wall-end face is against the wall (the bed in print), the
+// saddle projects horizontally out (+X body), and the headbands drape
+// over the crown and hang DOWN. "Up the wall" is the saddle body's +Z
+// (the crown side). The saddle cantilevers off the wall, so its weight
+// levers the TOP of the backer away from the panel: the directional snaps
+// point their strong 0.8mm front nub UP the wall so that pull-out bears on
+// the rigid hook, and the Multiconnect retention domes point up too — the
+// same rule the sibling mounts use.
+//
+// === Print orientation: wall face on the bed, arch up ===
+//
+// Every variant prints with the flat mounting side on the bed and the
+// arch rising straight up (rotate([0,-90,0]); the upstream orientation,
+// supportless — the saddle is a constant vertical cross-section). tab
+// reproduces the upstream transform byte-for-byte. For the backer
+// variants the plate + snaps/slots print snaps-DOWN on the bed (first
+// layers are the panel-mating face) with the saddle rising off the plate
+// front; the min-Z bed seat is parameter-derived per variant (pst-t9ri
+// rule — no default-only seating). Print the panel-mating face against a
+// smooth plate.
 
-$fn = 50;
+include <BOSL2/std.scad>
+// `use` not `include`: opengrid-snap.scad ends with a top-level demo
+// call that would otherwise inject a stray snap into every render.
+use <QuackWorks/openGrid/opengrid-snap.scad>
+// Multiconnect backer (BOSL2-free master copy — a plain difference(),
+// no diff() tags, so it is safe as a root-level sibling; same slot back
+// apple_tv_4th_gen_holder / ryobi_p2860_strap_saddle / opengrid_bin use).
+use <QuackWorks/Modules/multiconnectSlotDesign.scad>
+
+$fn = 50;   // saddle resolution — held at the upstream value so the tab
+            // variant stays byte-identical. The snap/slot backer is
+            // rendered at $fn = 64 in its own module scope (below), the
+            // resolution the sibling mounts use.
 
 // === User-tunable parameters ===
 
 hangerLength = 28;  // @param number min=15 max=60 step=1 unit=mm group=hanger label="Projection (saddle depth off wall)"
 
-// Hanging tab — the rounded-square fin on the flat mounting face at the
-// wall end that the whole hanger hooks / mounts by. It is square by
-// nature (the upstream source is `square(15)`), so a single size drives
-// both width and height. `tabRounding` is the corner radius, which also
-// grows the plate outward by that radius (offset semantics); `tabThickness`
-// is how far the fin stands off the wall face. Defaults reproduce the
-// upstream geometry byte-for-byte.
+// Hanging tab (mount_type = "tab") — the rounded-square fin on the flat
+// mounting face at the wall end that the whole hanger hooks / mounts by.
+// It is square by nature (the upstream source is `square(15)`), so a
+// single size drives both width and height. `tabRounding` is the corner
+// radius, which also grows the plate outward by that radius (offset
+// semantics); `tabThickness` is how far the fin stands off the wall face.
+// Defaults reproduce the upstream geometry byte-for-byte. Ignored by the
+// openGrid / Multiconnect mounts.
 tabSize      = 15;  // @param number min=8 max=30 step=1   unit=mm group=tab label="Tab size (square side)"
 tabThickness = 3;   // @param number min=2 max=6  step=0.5 unit=mm group=tab label="Tab thickness (stand-off)"
 tabRounding  = 2;   // @param number min=0 max=5  step=0.5 unit=mm group=tab label="Tab corner rounding"
 
-// @preset id="standard"   label="Standard (28mm projection)" hangerLength=28
-// @preset id="deep"       label="Deep (45mm projection)"     hangerLength=45
-// @preset id="chunky-tab" label="Chunky mounting tab"        tabSize=22 tabThickness=4 tabRounding=3
+// ----- Wall mount -----
+// Three interchangeable back mounts, exported as one STL each (the
+// 'filename' flag fans the export grid over the enum). Default is the
+// original adhesive tab so the shipped hanger is unchanged; 'opengrid'
+// and 'multiconnect' are the panel-mount alternatives. Same @param set
+// the sibling mounts (apple_tv, ryobi, opengrid_bin) copy.
+mount_type = "tab"; // @param enum choices=tab|opengrid|multiconnect group=mount label="Wall mount type" filename
+
+// Backer plate size in whole openGrid tiles. MINIMUMS: the plate always
+// grows to cover the saddle's wall-end footprint (>=3 tiles wide to span
+// the 65mm saddle), so it stays grid-aligned whatever these are set to.
+// Only affect the opengrid / multiconnect mounts.
+width_units  = 2;     // @param integer min=1 max=6 group=mount label="Backer width (openGrid units, min)"
+height_units = 2;     // @param integer min=1 max=6 group=mount label="Backer height (openGrid units, min)"
+snap_lite    = false; // @param boolean group=mount label="Lite openGrid snaps (3.4mm instead of 6.8mm)"
+
+// Standard Multiconnect slot tuning (only affects mount_type =
+// "multiconnect"; ignored otherwise). Defaults reproduce the shipped
+// sibling backer exactly, threaded through the multiconnectBack() call.
+slot_tolerance = 1.0;  // @param number min=0.925 max=1.075 step=0.005 group=mount label="Slot fit tolerance"
+slot_retention = true; // @param boolean group=mount label="Slot retention (v2 snap)"
+dimple_scale   = 1.0;  // @param number min=0.5 max=1.5 step=0.05 group=mount label="Dimple scale (v1 only)"
+on_ramp        = true; // @param boolean group=mount label="Slot on-ramp lead-in"
+
+// @preset id="standard"     label="Standard tab (28mm projection)"  mount_type=tab hangerLength=28
+// @preset id="deep"         label="Deep tab (45mm projection)"      mount_type=tab hangerLength=45
+// @preset id="chunky-tab"   label="Chunky mounting tab"             mount_type=tab tabSize=22 tabThickness=4 tabRounding=3
+// @preset id="opengrid"     label="openGrid snap backer"            mount_type=opengrid width_units=2 height_units=2
+// @preset id="multiconnect" label="Multiconnect slot backer"        mount_type=multiconnect width_units=2 height_units=2
 
 // === Derived ===
 
@@ -70,32 +142,95 @@ padding = 0.1;  // internal epsilon for clean CSG cuts; not user-tunable
 tabSeatZ   = 15.5;
 tabCenterZ = tabSeatZ + tabSize / 2 + tabRounding;
 
-// PRINT_ANCHOR_BBOX — outermost printed bbox in mm (X, Y, Z) at defaults,
-// measured in the print orientation below (flat mounting face on the bed,
-// arch pointing up). Verified against the exported STL, not hand-derived.
-// X (31.1): TAB-DEPENDENT. The print rotate maps the body-Z axis to
-//    build-X, so this spans from the arch's lowest interior point
-//    (body z ~= 3.4) up to the tab's top edge (body z = tabCenterZ +
-//    tabSize/2 + tabRounding = 34.5 at defaults). Raising tabSize or
-//    tabRounding raises the tab top and therefore this extent — 31.1
-//    holds only at default tab params.
-// Y (65.0): saddle width across the two ±32.5 side clips — arch-only and
-//    param-independent (the tab half-width tabSize/2+tabRounding stays
-//    well inside ±32.5 over its whole range, so it never drives Y).
+// ----- Mount hardware constants (verbatim from the sibling mounts) -----
+snap_pitch = 28;    // openGrid tile pitch
+snap_w     = 24.8;  // snap footprint
+snap_h     = snap_lite ? 3.4 : 6.8;
+weld       = 0.02;  // embed of snap tops into the plate (st-v7k)
+
+// Multiconnect backer. The 6.5mm slab depth and 25mm pitch are held fixed
+// by choice (exposing them invites board-incompatible prints), same
+// reasoning as the sibling mounts.
+slot_spacing = 25;   // Multiconnect standard pitch
+mc_thickness = 6.5;  // backer slab depth (= the module's fixed backThickness)
+mc_weld      = 0.4;  // backer top sink into the plate (real overlap)
+
+// Parts sink this far into the solid below them; cut tools overshoot this
+// far past every face they pass through (st-n4v / st-v7k).
+bury = 0.6;
+ov   = 2;
+
+plate_t = 4;   // backer plate thickness (fixed — sturdy enough for a
+               // light headband hook; not worth a sweep axis).
+
+// Plate is a whole number of openGrid tiles on each axis, grown past the
+// unit minimums whenever the saddle needs it, so the snap grid always
+// covers the saddle's wall-end footprint. across-wall (Y) = 65mm, up the
+// wall (Z) the saddle spans ~19mm; min_wall pads each side before the
+// ceil to whole tiles.
+min_wall = 2.4;
+saddle_across = 65;                 // saddle wall-end width  (body Y)
+saddle_up     = 19;                 // saddle wall-end height (body Z, dome)
+units_w  = max(width_units,  ceil((saddle_across + 2 * min_wall) / snap_pitch));
+units_h  = max(height_units, ceil((saddle_up     + 2 * min_wall) / snap_pitch));
+W = units_w * snap_pitch;
+H = units_h * snap_pitch;
+
+// Plate bottom = thickness of whichever back mount is selected, minus its
+// weld into the plate. openGrid: snap tops weld 0.02 up. Multiconnect: the
+// 6.5mm slab welds mc_weld up. (Used only by the backer variants.)
+plate_z0  = mount_type == "multiconnect" ? mc_thickness - mc_weld
+                                         : snap_h - weld;
+plate_top = plate_z0 + plate_t;     // plate front face (mount-frame z)
+plate_corner_r = 1;                 // plate outline rounding, matches siblings
+
+// ----- Backer placement in the saddle body frame (pst-3tum) -----
+// The mount is authored in a local MOUNT frame (Xm across the wall, +Ym up
+// the wall, +Zm out of the wall / toward the saddle, panel face at Zm=0),
+// exactly like the sibling mounts, so the snap/slot/plate code is reused
+// unchanged. rotate([90,0,90]) maps (Xm,Ym,Zm) -> (Zm,Xm,Ym) = body
+// (X out, Y across, Z up) — VERIFIED by render, not just arithmetic.
+// Then translate lands it at the wall end:
+//   body_x = Zm + mount_tx : plate front (Zm=plate_top) welds weld_embed
+//            into the saddle wall face at x = -(hangerLength/2+5); snaps
+//            (Zm=0) sit furthest -X (the bed after the print rotate).
+//   body_y = Xm            : plate X-centred on the saddle (Ty=0).
+//   body_z = Ym + mount_tz : plate (Ym in [0,H]) centred up-the-wall on
+//            the saddle dome centre.
+weld_embed    = 2;    // plate front buried this deep into the saddle wall
+wall_face_x   = -(hangerLength / 2 + 5);       // saddle wall face, body X
+plate_front_x = wall_face_x + weld_embed;      // plate front face, body X
+mount_tx      = plate_front_x - plate_top;     // so Zm=plate_top -> plate_front_x
+saddle_up_center = 12.6;                        // dome up-wall centre (measured), body Z
+mount_tz      = saddle_up_center - H / 2;       // centre the plate on it
+
+// Bed seat (min build-Z = 0) after rotate([0,-90,0]) (which maps body X ->
+// build Z). tab: min body X is the wall cap at -(hangerLength/2+5.05).
+// backer: min body X is the snap/slot panel face at mount_tx. Derived per
+// variant so every mount_type + hangerLength seats on the bed (pst-t9ri).
+seat_z = mount_type == "tab" ? hangerLength / 2 + 5.05 : -mount_tx;
+// Centre the backer variants in build-X (cosmetic; the anchor check only
+// covers the tab default). tab keeps its shipped 18.95 (pst-t9ri).
+seat_x = mount_type == "tab" ? 18.95 : saddle_up_center;
+
+// PRINT_ANCHOR_BBOX — measured at the DEFAULT variant (mount_type = tab);
+// this is the STL the drift check and the invariants sidecar load.
+// X (31.1): tab-dependent. rotate maps body-Z to build-X, spanning the
+//    arch's lowest interior point (body z ~= 3.4) up to the tab top (body
+//    z = tabCenterZ + tabSize/2 + tabRounding = 34.5 at defaults).
+// Y (65.0): saddle width across the two ±32.5 side clips — arch-only.
 // Z (38.1): vertical print height = hangerLength(28) + the two end flares
-//    (each +5), i.e. the body-X span mapped to build-Z. hangerLength-
-//    dependent; independent of the tab.
+//    (each +5); hangerLength-dependent.
+// The opengrid / multiconnect variants have their own (larger) bbox — the
+// backer plate is W x H tiles (84 x 56 at defaults) — measured on their
+// own STLs, not pinned here.
 PRINT_ANCHOR_BBOX = [31.1, 65, 38.1];
 
-// Print-orientation transform (pst-yfml finding #1): rigidly rotate the
-// top-level model so the flat mounting face lies on the bed (arch up),
-// then centre in X/Y and seat min-Z at 0. Body geometry is unchanged.
-// The Z seat is parameter-derived: after rotate([0,-90,0]) the body's
-// X-extent [-(hangerLength/2+5.05), +(hangerLength/2+5.05)] becomes the
-// build-Z span, so the offset must track hangerLength (pst-t9ri finding
-// #1). At the 28mm default this evaluates to 19.05, matching the prior
-// constant; short/deep/max presets now also seat min-Z at 0.
-translate([ 18.95, 0, hangerLength / 2 + 5.05 ]) rotate([ 0, -90, 0 ]) earHanger();
+// === Assembly ===
+translate([ seat_x, 0, seat_z ]) rotate([ 0, -90, 0 ]) {
+    earHanger();
+    if (mount_type != "tab") wall_mount_placed();
+}
 
 module earHanger()
 {
@@ -109,11 +244,13 @@ module earHanger()
             // main shape
             translate([ 0, 0, 0 ]) baseShape(hangerLength);
 
-            // hanging tab
-            translate([ -hangerLength / 2 - 5, 0, tabCenterZ ]) rotate([ 0, 90, 0 ]) linear_extrude(height = tabThickness)
-            {
-                offset(tabRounding) square(tabSize, center = true);
-            }
+            // hanging tab (mount_type = "tab" only; the openGrid /
+            // Multiconnect backers replace it — pst-3tum)
+            if (mount_type == "tab")
+                translate([ -hangerLength / 2 - 5, 0, tabCenterZ ]) rotate([ 0, 90, 0 ]) linear_extrude(height = tabThickness)
+                {
+                    offset(tabRounding) square(tabSize, center = true);
+                }
 
             // front end
             hull()
@@ -152,4 +289,93 @@ module baseShape(height)
 
         translate([ 0, -55, 0 ]) cube([ height + padding, 45, 60 ], center = true);
     }
+}
+
+// ===================================================================
+// Wall mount (openGrid / Multiconnect) — pst-3tum
+// ===================================================================
+// Authored in the MOUNT frame (Xm across, +Ym up-wall, +Zm out-of-wall),
+// then rotate([90,0,90]) + translate carry it to the saddle wall end. The
+// snap wrapper, grid layout and Multiconnect transform are verbatim from
+// apple_tv_4th_gen_holder (st-0of / pst-qdje) — do not re-derive them.
+
+// One openGrid snap in its own frame (front/strong nub toward +X), welded
+// into a single solid. Each click-nub root gets a 0.3mm shim straddling
+// the nub/core contact plane (local x=12.4); the 14mm-wide front nub's
+// shim widens to 14.6, and the rear nub's sits 0.65 higher (its root rides
+// above the base band in the directional variant). NEVER re-derive snap
+// geometry — kept textually identical across models.
+module welded_directional_snap() {
+    base   = snap_lite ? 0 : 3.4;
+    root_z = max(0, base - 0.01);
+    root_h = snap_lite ? 0.61 : 0.62;
+    openGridSnap(lite = snap_lite, directional = true,
+                 anchor = BOT, orient = UP, spin = 0);
+    for (a = [90, 270])                       // side nubs
+        zrot(a) translate([12.4, 0, root_z])
+            cuboid([0.3, 11.6, root_h], anchor = BOT);
+    translate([12.4, 0, root_z])              // front (strong) nub
+        cuboid([0.3, 14.6, root_h], anchor = BOT);
+    zrot(180) translate([12.4, 0, base + 0.64])  // rear (click) nub
+        cuboid([0.3, 11.6, 0.62], anchor = BOT);
+}
+
+// One snap in EVERY tile (ryobi_p2860_strap_saddle precedent, not
+// apple_tv's four corners): this backer prints snaps-DOWN, so a full grid
+// keeps the plate underside supported — 24.8mm snap pads on the 28mm pitch
+// leave only 3.2mm bridges, where corner-only snaps would float the plate
+// 6.8mm over the bed across a ~59mm span. zrot(90) turns each snap's strong
+// front nub toward +Ym — up the wall (load rationale in the header).
+module grid_snaps() {
+    for (cx = [0 : units_w - 1], ry = [0 : units_h - 1])
+        translate([(cx - (units_w - 1) / 2) * snap_pitch,
+                   (ry + 0.5) * snap_pitch,
+                   0])
+            zrot(90) welded_directional_snap();
+}
+
+// QuackWorks' BOSL2-free master slot back — a plain difference() (slab
+// minus slot tools). multiconnectBack's local frame L is a cube x[0,W]
+// y[-6.5,0] z[0,H] with the slot channels recessed from the y=-6.5 face,
+// closed retention domes at high z and entry mouths + on-ramps at low z.
+// rotate(180,[0,1,1]) maps (lx,ly,lz) -> (-lx, lz, ly): L.z -> +Ym (domes
+// point UP the wall — retention takes the cantilever load), L.y -> +Zm
+// (openings face -Zm, the panel/bed face the snaps engage), L.x -> -Xm
+// (re-centred on x=0). The outer translate lands the slab at z[0,6.5] with
+// the openings at z=0; the plate bottom sits mc_weld lower (plate_z0) so
+// the backer top overlaps into the plate as a real weld. Verbatim
+// transform from the sibling mounts (front-anchored y[0,H] frame).
+module multiconnect_backer() {
+    translate([W / 2, 0, mc_thickness])
+        rotate(180, [0, 1, 1])
+            multiconnectBack(backWidth = W, backHeight = H,
+                             distanceBetweenSlots = slot_spacing,
+                             quickRelease = !slot_retention,
+                             tolerance = slot_tolerance,
+                             dimple = dimple_scale,
+                             onRamp = on_ramp);
+}
+
+// The backer plate: a plain rounded slab, front-anchored y[0,H], X-centred,
+// z[plate_z0, plate_top]. Its front face (plate_top) welds into the saddle.
+module plate() {
+    translate([0, 0, plate_z0])
+        linear_extrude(height = plate_t)
+            rect([W, H], rounding = plate_corner_r, anchor = FRONT);
+}
+
+// Whole mount in the MOUNT frame: plate + (snaps or Multiconnect backer),
+// at the sibling resolution ($fn = 64).
+module wall_mount() {
+    $fn = 64;
+    plate();
+    if (mount_type == "multiconnect") multiconnect_backer();
+    else grid_snaps();
+}
+
+// Mount placed at the saddle wall end (see the placement derivation above).
+module wall_mount_placed() {
+    translate([mount_tx, 0, mount_tz])
+        rotate([90, 0, 90])
+            wall_mount();
 }
