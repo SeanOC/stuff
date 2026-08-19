@@ -26,9 +26,11 @@
 // arch extrudes straight up. This is the upstream orientation — no
 // special settings are needed (the vertical cross-section is constant,
 // so no supports), and the broad mounting face prints against the
-// plate. Print on a textured plate for better tape/Command-strip
-// adhesion. The rotate/translate wraps only the top-level call; the
-// earHanger() body geometry is unchanged (pst-yfml finding #1).
+// plate. Keep that face smooth — print it against a smooth plate so the
+// tape / 3M Command strip bonds to a smooth, clean, dry surface (their
+// adhesive is rated for smooth surfaces; plate texture weakens the bond).
+// The rotate/translate wraps only the top-level call; the earHanger()
+// body geometry is unchanged (pst-yfml finding #1).
 
 $fn = 50;
 
