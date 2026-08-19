@@ -36,9 +36,10 @@
 //   multiconnect   — a Multiconnect slot backer (Multiboard / openGrid MC
 //                    studs) that replaces the tab.
 // The backer is a whole-tile plate sized to cover the saddle's wall-end
-// footprint (grows to 3 tiles wide to span the 65mm saddle; >=2 tiles
-// tall for a cantilever snap couple), tunable via width_units/height_units
-// minimums exactly like the sibling mounts. It is deliberately larger
+// footprint (>=3 tiles wide to span the 65mm saddle; >=2 tiles tall for a
+// cantilever snap couple). width_units is offered from its 3-tile floor up
+// (every value materially widens the plate — pst-51es); height_units is a
+// minimum that floats up, like the sibling mounts. It is deliberately larger
 // than the small saddle — the tile grid needs a snap couple to hold the
 // saddle's lever-out (JUDGMENT CALL flagged to the operator, pst-3tum).
 //
@@ -103,11 +104,17 @@ tabRounding  = 2;   // @param number min=0 max=5  step=0.5 unit=mm group=tab lab
 // the sibling mounts (apple_tv, ryobi, opengrid_bin) copy.
 mount_type = "tab"; // @param enum choices=tab|opengrid|multiconnect group=mount label="Wall mount type" filename
 
-// Backer plate size in whole openGrid tiles. MINIMUMS: the plate always
-// grows to cover the saddle's wall-end footprint (>=3 tiles wide to span
-// the 65mm saddle), so it stays grid-aligned whatever these are set to.
+// Backer plate size in whole openGrid tiles. The plate must cover the
+// saddle's wall-end footprint, so it has a structural FLOOR: >=3 tiles
+// wide to span the 65mm saddle (65 + 2*min_wall -> ceil = 3 tiles) and
+// >=1 tall. width_units is therefore offered from that floor (min=3) so
+// every slider value maps 1:1 to a distinct plate width — declaring it
+// from 1 made 1/2/3 all collapse to 3 tiles, so the width control read as
+// ignored across its low end (pst-51es). height keeps a minimum (the
+// header wants >=2 tiles tall for a snap couple; the floor only enforces
+// >=1, so 1 is a permitted-but-weak override — see pst-51es PR note).
 // Only affect the opengrid / multiconnect mounts.
-width_units  = 2;     // @param integer min=1 max=6 group=mount label="Backer width (openGrid units, min)"
+width_units  = 3;     // @param integer min=3 max=6 group=mount label="Backer width (openGrid units)"
 height_units = 2;     // @param integer min=1 max=6 group=mount label="Backer height (openGrid units, min)"
 snap_lite    = false; // @param boolean group=mount label="Lite openGrid snaps (3.4mm instead of 6.8mm)"
 
@@ -122,8 +129,8 @@ on_ramp        = true; // @param boolean group=mount label="Slot on-ramp lead-in
 // @preset id="standard"     label="Standard tab (28mm projection)"  mount_type=tab hangerLength=28
 // @preset id="deep"         label="Deep tab (45mm projection)"      mount_type=tab hangerLength=45
 // @preset id="chunky-tab"   label="Chunky mounting tab"             mount_type=tab tabSize=22 tabThickness=4 tabRounding=3
-// @preset id="opengrid"     label="openGrid snap backer"            mount_type=opengrid width_units=2 height_units=2
-// @preset id="multiconnect" label="Multiconnect slot backer"        mount_type=multiconnect width_units=2 height_units=2
+// @preset id="opengrid"     label="openGrid snap backer"            mount_type=opengrid width_units=3 height_units=2
+// @preset id="multiconnect" label="Multiconnect slot backer"        mount_type=multiconnect width_units=3 height_units=2
 
 // === Derived ===
 
@@ -167,7 +174,9 @@ plate_t = 4;   // backer plate thickness (fixed — sturdy enough for a
 // unit minimums whenever the saddle needs it, so the snap grid always
 // covers the saddle's wall-end footprint. across-wall (Y) = 65mm, up the
 // wall (Z) the saddle spans ~19mm; min_wall pads each side before the
-// ceil to whole tiles.
+// ceil to whole tiles. width_units's @param min is pinned to this width
+// floor (3), so max() is a no-op guard there and units_w == width_units
+// across the whole slider — height still floats above its min (pst-51es).
 min_wall = 2.4;
 saddle_across = 65;                 // saddle wall-end width  (body Y)
 saddle_up     = 19;                 // saddle wall-end height (body Z, dome)
