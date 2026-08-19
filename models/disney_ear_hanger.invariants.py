@@ -96,8 +96,29 @@ def _inside(mesh, points):
     return votes * 2 > len(offsets)
 
 
-def _components(mesh):
-    return len(mesh.split(only_watertight=False))
+def _components(mesh) -> int:
+    """Connected components via union-find over face adjacency.
+
+    trimesh.split needs scipy/networkx which CI doesn't have; this
+    mirrors scripts/check-invariants.py's built-in approach (and the
+    sibling mount sidecars, e.g. apple_tv_4th_gen_holder).
+    """
+    n = len(mesh.faces)
+    if n == 0:
+        return 0
+    parent = list(range(n))
+
+    def find(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    for a, b in mesh.face_adjacency:
+        ra, rb = find(int(a)), find(int(b))
+        if ra != rb:
+            parent[ra] = rb
+    return len({find(i) for i in range(n)})
 
 
 def check(ctx):
