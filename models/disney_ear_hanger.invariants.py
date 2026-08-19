@@ -129,9 +129,35 @@ def check(ctx):
     failures.extend(expect_connected_solids(ctx, 1))
 
     hanger_length = float(p.get("hangerLength", 28))
-    width_units = int(p.get("width_units", 2))
+    width_units = int(p.get("width_units", 3))
     height_units = int(p.get("height_units", 2))
     stem = ctx["stem"]
+
+    # --- Width control must be live across its whole declared range
+    # (pst-51es regression guard). The plate grows to a saddle-spanning
+    # FLOOR of ceil((65 + 2*min_wall)/pitch) = 3 tiles via
+    #   units_w = max(width_units, floor_w)
+    # so any width_units value at or below that floor collapses to it and
+    # the backer stops responding to the width slider — the reported bug
+    # (width_units was declared min=1/default=2, making 1/2/3 all render 3
+    # tiles). Cross-check the DECLARED @param min against the floor (two
+    # independent sources of truth: the annotation vs. the geometry): if the
+    # min dips below the floor, the low end of the slider is a dead zone and
+    # a width change there does NOT move the backer bbox. Keep the @param min
+    # pinned at the floor so units_w == width_units 1:1 across the range.
+    floor_w = math.ceil((_SADDLE_ACROSS + 2 * _MIN_WALL) / _SNAP_PITCH)
+    declared_min_w = ctx["params"].get("width_units", {}).get("min")
+    if declared_min_w is not None and int(declared_min_w) < floor_w:
+        failures.append(Failure(
+            "width-range-dead-zone",
+            f"width_units @param min={int(declared_min_w)} is below the "
+            f"{floor_w}-tile saddle-spanning floor: every value "
+            f"{int(declared_min_w)}..{floor_w - 1} collapses to {floor_w} "
+            f"tiles (units_w=max(width_units,{floor_w})), so the width "
+            f"control is ignored across the low end of its range and a width "
+            f"change there leaves the backer bbox unchanged. Raise the "
+            f"@param min to {floor_w} (pst-51es).",
+        ))
 
     # --- Backer variants: openGrid + Multiconnect, each its own export. ---
     for mount_type in ("opengrid", "multiconnect"):
