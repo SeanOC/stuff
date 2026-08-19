@@ -55,7 +55,12 @@ PRINT_ANCHOR_BBOX = [31.1, 65, 38.1];
 // Print-orientation transform (pst-yfml finding #1): rigidly rotate the
 // top-level model so the flat mounting face lies on the bed (arch up),
 // then centre in X/Y and seat min-Z at 0. Body geometry is unchanged.
-translate([ 18.95, 0, 19.05 ]) rotate([ 0, -90, 0 ]) earHanger();
+// The Z seat is parameter-derived: after rotate([0,-90,0]) the body's
+// X-extent [-(hangerLength/2+5.05), +(hangerLength/2+5.05)] becomes the
+// build-Z span, so the offset must track hangerLength (pst-t9ri finding
+// #1). At the 28mm default this evaluates to 19.05, matching the prior
+// constant; short/deep/max presets now also seat min-Z at 0.
+translate([ 18.95, 0, hangerLength / 2 + 5.05 ]) rotate([ 0, -90, 0 ]) earHanger();
 
 module earHanger()
 {
