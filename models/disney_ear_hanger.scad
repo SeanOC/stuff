@@ -1,35 +1,51 @@
-// SPDX-License-Identifier: LicenseRef-MakerWorld-unverified
-// Vendored model — original by an upstream MakerWorld author (st-w2g).
-// Source:    https://makerworld.com/en/models/551375-disney-ear-hanger
-// Profile:   https://makerworld.com/en/@profileId-469918
-// Imported:  2026-05-01
+// SPDX-License-Identifier: CC-BY-NC-SA-4.0
 //
-// We did not author this model. The MakerWorld page was Cloudflare-
-// gated when this file was vendored, so the upstream author's display
-// name and the model's specific license badge could not be captured
-// programmatically. The SPDX line above is a placeholder — replace
-// `LicenseRef-MakerWorld-unverified` with the correct license tag
-// (e.g. CC-BY-4.0, CC-BY-NC-4.0, CC-BY-SA-4.0, CC-BY-NC-SA-4.0, or
-// LicenseRef-MakerWorld-<short-tag>) once the page can be opened in
-// a browser. Do not relicense without checking the upstream listing.
+// Disney ear hanger — saddle hook for Disney-style ear headbands
+// (Mickey/Minnie ears). Drapes over a wall ledge, shelf lip, or door
+// top; the vertical tab faces out and the headbands hang on the arch.
 //
-// Contributions to this file should be minimal and respect the
-// upstream author's design intent. If the model needs structural
-// changes, prefer reaching out to the upstream author or forking
-// with explicit derivative attribution. Don't claim copyright.
+// REMIX / ATTRIBUTION (this is a derivative work, not original):
+//   Original: "Disney Ear Hanger" by the MakerWorld author at
+//     https://makerworld.com/en/@profileId-469918
+//   Source:  https://makerworld.com/en/models/551375-disney-ear-hanger
+//   License: CC BY-NC-SA 4.0 (operator-verified — pst-15du). This is a
+//     NON-COMMERCIAL license: do not sell prints or files, and share
+//     any derivatives alike. Credit the original author on reshare.
 //
-// Print orientation: see upstream listing — the MakerWorld page hosts
-// the canonical print profile and orientation guidance.
-// Install context: ear hanger — most likely a wall-mount or shelf-edge
-// clip that hooks Disney-style ear headbands (Mickey/Minnie ears).
-// Polecat: confirm with user before adding install-side fillets,
-// keying, or surface treatments.
-//   (See mayor memory feedback_confirm_install_orientation_for_wallmount_parts.md.)
+// Our contribution over the upstream .scad is house-style integration
+// only — @param exposure, a print-orientation anchor, and catalog +
+// invariant wiring. The geometry is IDENTICAL to the upstream model at
+// default parameters (pst-15du: an add, not a redesign); hangerLength
+// only scales the saddle's span across the edge it hooks over.
+//
+// Print orientation (as delivered): arch up, tab up, saddle opening
+// down — the natural upstream orientation. The inner arch is a bridge,
+// so enable slicer support/bridging under the saddle if your printer
+// struggles with the unsupported span. Reorienting the assembly would
+// change the exported geometry and is deliberately out of scope for
+// this vendoring bead — flag it as a follow-up if a flatter print
+// orientation is wanted.
 
 $fn = 50;
 
-hangerLength = 28;
-padding = 0.1;
+// === User-tunable parameters ===
+
+hangerLength = 28;  // @param number min=15 max=60 step=1 unit=mm group=hanger label="Edge span (saddle width)"
+
+// @preset id="standard" label="Standard (28mm edge)" hangerLength=28
+// @preset id="wide"     label="Wide ledge (45mm)"    hangerLength=45
+
+// === Derived ===
+
+padding = 0.1;  // internal epsilon for clean CSG cuts; not user-tunable
+
+// PRINT_ANCHOR_BBOX — outermost printed bbox in mm (X, Y, Z) at defaults.
+// X: hangerLength(28) + the two end flares (each reaches x = L/2 + 5) = 38.1
+// Y: elliptical saddle (d35, y-scaled x2 -> Ø70) clipped by the ±55 side
+//    cubes to ±32.5 = 65.0
+// Z: saddle floor (min-Z 3.4 after the inner bore) up to the tab top
+//    (z=25 + 9.5) = 34.5 -> 31.1 tall
+PRINT_ANCHOR_BBOX = [38.1, 65, 31.1];
 
 earHanger();
 

@@ -82,7 +82,7 @@ export const CATALOG: Record<string, CatalogEntry> = {
   disney_ear_hanger: {
     categoryId: "household",
     blurb:
-      "Vendored MakerWorld Disney ear hanger — wall-mount clip for Mickey/Minnie ear headbands. Original by an upstream MakerWorld author; see the file header for attribution.",
+      "Saddle hook for Disney-style ear headbands (Mickey/Minnie) — drapes over a wall ledge, shelf lip, or door top with the headbands hanging on the arch. Remix of a MakerWorld model (CC BY-NC-SA 4.0, non-commercial); hangerLength tunes the edge span. See the file header for attribution.",
   },
   goblu_filter_holder_3x90mm: {
     categoryId: "household",

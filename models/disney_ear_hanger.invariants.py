@@ -1,11 +1,13 @@
-"""Invariants for the vendored Disney ear hanger (st-w2g).
+"""Invariants for the Disney ear hanger (remix, pst-15du).
 
-This is an externally-authored model imported from MakerWorld with the
-original `.scad` body intact. We don't claim authorship, so there are
-no original geometric invariants to assert beyond the built-ins
-(watertight, orphan-fragment, triangle ceiling). Pin topology so a
-future regression — e.g. an accidental `difference()` that severs the
-hanger from its tab — surfaces loudly.
+Derivative of an externally-authored MakerWorld model (CC BY-NC-SA
+4.0) with the original `.scad` body intact — house-style @param /
+anchor wiring only, geometry identical at defaults. We don't claim
+authorship, so there are no original geometric invariants beyond the
+built-ins (watertight, orphan-fragment, triangle ceiling, and the
+PRINT_ANCHOR_BBOX drift check now that the model declares an anchor).
+Pin topology so a future regression — e.g. an accidental
+`difference()` that severs the hanger from its tab — surfaces loudly.
 """
 
 from __future__ import annotations
