@@ -1,53 +1,61 @@
 // SPDX-License-Identifier: CC-BY-NC-SA-4.0
 //
-// Disney ear hanger — saddle hook for Disney-style ear headbands
-// (Mickey/Minnie ears). Drapes over a wall ledge, shelf lip, or door
-// top; the vertical tab faces out and the headbands hang on the arch.
+// Disney ear hanger — saddle hanger for Disney-style ear headbands
+// (Mickey/Minnie ears). Wall-mounts with double-sided tape or 3M
+// Command strips: stick the flat mounting face to the wall, and the
+// headbands drape over the saddle arch that projects out from it.
 //
 // REMIX / ATTRIBUTION (this is a derivative work, not original):
-//   Original: "Disney Ear Hanger" by the MakerWorld author at
-//     https://makerworld.com/en/@profileId-469918
-//   Source:  https://makerworld.com/en/models/551375-disney-ear-hanger
+//   Original: "Disney Ear Hanger" by SpruceWayne
+//     Creator: https://makerworld.com/en/@user_2791005939
+//     Model:   https://makerworld.com/en/models/551375-disney-ear-hanger
+//   (The MakerWorld id 469918 is the default print-profile/instance,
+//    not an author profile.)
 //   License: CC BY-NC-SA 4.0 (operator-verified — pst-15du). This is a
 //     NON-COMMERCIAL license: do not sell prints or files, and share
-//     any derivatives alike. Credit the original author on reshare.
+//     any derivatives alike. Credit SpruceWayne on reshare.
 //
 // Our contribution over the upstream .scad is house-style integration
 // only — @param exposure, a print-orientation anchor, and catalog +
 // invariant wiring. The geometry is IDENTICAL to the upstream model at
 // default parameters (pst-15du: an add, not a redesign); hangerLength
-// only scales the saddle's span across the edge it hooks over.
+// only scales how far the saddle projects out from the wall.
 //
-// Print orientation (as delivered): arch up, tab up, saddle opening
-// down — the natural upstream orientation. The inner arch is a bridge,
-// so enable slicer support/bridging under the saddle if your printer
-// struggles with the unsupported span. Reorienting the assembly would
-// change the exported geometry and is deliberately out of scope for
-// this vendoring bead — flag it as a follow-up if a flatter print
-// orientation is wanted.
+// Print orientation: the top-level call is rigidly rotated so the flat
+// mounting face (the tab and the saddle end) lies on the bed and the
+// arch extrudes straight up. This is the upstream orientation — no
+// special settings are needed (the vertical cross-section is constant,
+// so no supports), and the broad mounting face prints against the
+// plate. Print on a textured plate for better tape/Command-strip
+// adhesion. The rotate/translate wraps only the top-level call; the
+// earHanger() body geometry is unchanged (pst-yfml finding #1).
 
 $fn = 50;
 
 // === User-tunable parameters ===
 
-hangerLength = 28;  // @param number min=15 max=60 step=1 unit=mm group=hanger label="Edge span (saddle width)"
+hangerLength = 28;  // @param number min=15 max=60 step=1 unit=mm group=hanger label="Projection (saddle depth off wall)"
 
-// @preset id="standard" label="Standard (28mm edge)" hangerLength=28
-// @preset id="wide"     label="Wide ledge (45mm)"    hangerLength=45
+// @preset id="standard" label="Standard (28mm projection)" hangerLength=28
+// @preset id="deep"     label="Deep (45mm projection)"     hangerLength=45
 
 // === Derived ===
 
 padding = 0.1;  // internal epsilon for clean CSG cuts; not user-tunable
 
-// PRINT_ANCHOR_BBOX — outermost printed bbox in mm (X, Y, Z) at defaults.
-// X: hangerLength(28) + the two end flares (each reaches x = L/2 + 5) = 38.1
-// Y: elliptical saddle (d35, y-scaled x2 -> Ø70) clipped by the ±55 side
-//    cubes to ±32.5 = 65.0
-// Z: saddle floor (min-Z 3.4 after the inner bore) up to the tab top
-//    (z=25 + 9.5) = 34.5 -> 31.1 tall
-PRINT_ANCHOR_BBOX = [38.1, 65, 31.1];
+// PRINT_ANCHOR_BBOX — outermost printed bbox in mm (X, Y, Z) at defaults,
+// measured in the print orientation below (flat mounting face on the bed,
+// arch pointing up).
+// X: saddle arch height (the dome span, formerly Z) = 31.1
+// Y: saddle width across the two ±55 side clips (±32.5) = 65.0
+// Z: saddle projection = hangerLength(28) + the two end flares (each +5),
+//    now the vertical print height = 38.1
+PRINT_ANCHOR_BBOX = [31.1, 65, 38.1];
 
-earHanger();
+// Print-orientation transform (pst-yfml finding #1): rigidly rotate the
+// top-level model so the flat mounting face lies on the bed (arch up),
+// then centre in X/Y and seat min-Z at 0. Body geometry is unchanged.
+translate([ 18.95, 0, 19.05 ]) rotate([ 0, -90, 0 ]) earHanger();
 
 module earHanger()
 {

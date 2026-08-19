@@ -82,7 +82,7 @@ export const CATALOG: Record<string, CatalogEntry> = {
   disney_ear_hanger: {
     categoryId: "household",
     blurb:
-      "Saddle hook for Disney-style ear headbands (Mickey/Minnie) — drapes over a wall ledge, shelf lip, or door top with the headbands hanging on the arch. Remix of a MakerWorld model (CC BY-NC-SA 4.0, non-commercial); hangerLength tunes the edge span. See the file header for attribution.",
+      "Saddle hanger for Disney-style ear headbands (Mickey/Minnie) — wall-mounts with double-sided tape or 3M Command strips, and the headbands drape over the saddle arch. Remix of a MakerWorld model by SpruceWayne (CC BY-NC-SA 4.0, non-commercial); hangerLength tunes how far the saddle projects off the wall. See the file header for attribution.",
   },
   goblu_filter_holder_3x90mm: {
     categoryId: "household",
