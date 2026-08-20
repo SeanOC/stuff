@@ -190,7 +190,12 @@ H = units_h * snap_pitch;
 plate_z0  = mount_type == "multiconnect" ? mc_thickness - mc_weld
                                          : snap_h - weld;
 plate_top = plate_z0 + plate_t;     // plate front face (mount-frame z)
-plate_corner_r = 1;                 // plate outline rounding, matches siblings
+// Uniform backer corner rounding = the tab's upstream offset(2) (pst-4g1u).
+// The plate AND the Multiconnect slab under it are clipped to ONE rounded
+// outline (backer_outline below), so their corners round together and no
+// square slab corner pokes past the rounded plate as a stray post. The
+// snap grid is inboard of this radius, so it is untouched.
+plate_corner_r = 2;
 
 // ----- Backer placement in the saddle body frame (pst-3tum) -----
 // The mount is authored in a local MOUNT frame (Xm across the wall, +Ym up
@@ -355,14 +360,31 @@ module grid_snaps() {
 // the backer top overlaps into the plate as a real weld. Verbatim
 // transform from the sibling mounts (front-anchored y[0,H] frame).
 module multiconnect_backer() {
-    translate([W / 2, 0, mc_thickness])
-        rotate(180, [0, 1, 1])
-            multiconnectBack(backWidth = W, backHeight = H,
-                             distanceBetweenSlots = slot_spacing,
-                             quickRelease = !slot_retention,
-                             tolerance = slot_tolerance,
-                             dimple = dimple_scale,
-                             onRamp = on_ramp);
+    // Clip the vendored slab's square corners to the shared rounded outline
+    // so it matches the plate cap welded on top of it — kills the stray
+    // square-corner post that poked past the rounded plate (pst-4g1u). The
+    // clip prism spans the slab's full depth (z 0..mc_thickness); the slots
+    // sit inboard of the corners, so only the 4 corners are trimmed.
+    intersection() {
+        translate([W / 2, 0, mc_thickness])
+            rotate(180, [0, 1, 1])
+                multiconnectBack(backWidth = W, backHeight = H,
+                                 distanceBetweenSlots = slot_spacing,
+                                 quickRelease = !slot_retention,
+                                 tolerance = slot_tolerance,
+                                 dimple = dimple_scale,
+                                 onRamp = on_ramp);
+        translate([0, 0, -padding])
+            linear_extrude(height = mc_thickness + 2 * padding)
+                backer_outline();
+    }
+}
+
+// The shared backer footprint: a rounded rect, front-anchored y[0,H],
+// X-centred. Both the plate cap and the Multiconnect slab are built on this
+// one outline so their corners round uniformly (pst-4g1u).
+module backer_outline() {
+    rect([W, H], rounding = plate_corner_r, anchor = FRONT);
 }
 
 // The backer plate: a plain rounded slab, front-anchored y[0,H], X-centred,
@@ -370,7 +392,7 @@ module multiconnect_backer() {
 module plate() {
     translate([0, 0, plate_z0])
         linear_extrude(height = plate_t)
-            rect([W, H], rounding = plate_corner_r, anchor = FRONT);
+            backer_outline();
 }
 
 // Whole mount in the MOUNT frame: plate + (snaps or Multiconnect backer),
