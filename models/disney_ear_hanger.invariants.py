@@ -40,7 +40,6 @@ _MC_THICKNESS = 6.5
 _MC_WELD = 0.4
 _PLATE_T = 4.0
 _MIN_WALL = 2.4
-_SADDLE_ACROSS = 65.0
 _SADDLE_UP = 19.0
 _WELD_EMBED = 2.0
 _SADDLE_UP_CENTER = 12.6
@@ -55,8 +54,7 @@ _CONTACT_EPS = 0.6
 def _variant_geom(hanger_length, width_units, height_units, mount_type):
     """Mirror the .scad's mount derivation for one variant."""
     snap_h = 6.8  # full snaps only (invariants render defaults, snap_lite=False)
-    units_w = max(int(width_units),
-                  math.ceil((_SADDLE_ACROSS + 2 * _MIN_WALL) / _SNAP_PITCH))
+    units_w = max(int(width_units), 1)  # no saddle-spanning floor (pst-gmg0)
     units_h = max(int(height_units),
                   math.ceil((_SADDLE_UP + 2 * _MIN_WALL) / _SNAP_PITCH))
     W = units_w * _SNAP_PITCH
@@ -71,8 +69,10 @@ def _variant_geom(hanger_length, width_units, height_units, mount_type):
     seat_z = -mount_tx
     seat_x = _SADDLE_UP_CENTER
     return dict(units_w=units_w, units_h=units_h, W=W, H=H,
+                plate_z0=plate_z0, plate_top=plate_top,
                 mount_tx=mount_tx, mount_tz=mount_tz,
                 seat_x=seat_x, seat_z=seat_z,
+                wall_face_x=wall_face_x,
                 saddle_front_x=hanger_length / 2 + 5)
 
 
@@ -129,34 +129,37 @@ def check(ctx):
     failures.extend(expect_connected_solids(ctx, 1))
 
     hanger_length = float(p.get("hangerLength", 28))
-    width_units = int(p.get("width_units", 3))
+    width_units = int(p.get("width_units", 1))
     height_units = int(p.get("height_units", 2))
     stem = ctx["stem"]
 
-    # --- Width control must be live across its whole declared range
-    # (pst-51es regression guard). The plate grows to a saddle-spanning
-    # FLOOR of ceil((65 + 2*min_wall)/pitch) = 3 tiles via
-    #   units_w = max(width_units, floor_w)
-    # so any width_units value at or below that floor collapses to it and
-    # the backer stops responding to the width slider — the reported bug
-    # (width_units was declared min=1/default=2, making 1/2/3 all render 3
-    # tiles). Cross-check the DECLARED @param min against the floor (two
-    # independent sources of truth: the annotation vs. the geometry): if the
-    # min dips below the floor, the low end of the slider is a dead zone and
-    # a width change there does NOT move the backer bbox. Keep the @param min
-    # pinned at the floor so units_w == width_units 1:1 across the range.
-    floor_w = math.ceil((_SADDLE_ACROSS + 2 * _MIN_WALL) / _SNAP_PITCH)
+    # --- Width control must be live across its whole declared range AND
+    # reach the minimal single-tile backer (pst-gmg0, reversing pst-51es).
+    # The hung headband is trivially light, so the backer has NO
+    # saddle-spanning floor: units_w = max(width_units, 1), a single whole
+    # tile. Two failure modes this guards:
+    #   * @param min < 1 -> sub-tile / no whole snap tile.
+    #   * @param min > 1 -> the width control cannot reach the minimal
+    #     single-snap backer the operator requires (and, if a caller ever
+    #     re-adds a saddle-spanning floor above the min, the low end of the
+    #     slider becomes a dead zone again — the original pst-51es bug).
+    # Pin the declared @param min at the 1-tile structural floor so
+    # units_w == width_units 1:1 across the range and width=1 is reachable.
+    # (The mount-footprint check below is the second, independent source of
+    # truth: it re-derives W from width_units and fails if the export width
+    # does not track it, catching a re-added floor at the default.)
+    floor_w = 1
     declared_min_w = ctx["params"].get("width_units", {}).get("min")
-    if declared_min_w is not None and int(declared_min_w) < floor_w:
+    if declared_min_w is not None and int(declared_min_w) != floor_w:
         failures.append(Failure(
-            "width-range-dead-zone",
-            f"width_units @param min={int(declared_min_w)} is below the "
-            f"{floor_w}-tile saddle-spanning floor: every value "
-            f"{int(declared_min_w)}..{floor_w - 1} collapses to {floor_w} "
-            f"tiles (units_w=max(width_units,{floor_w})), so the width "
-            f"control is ignored across the low end of its range and a width "
-            f"change there leaves the backer bbox unchanged. Raise the "
-            f"@param min to {floor_w} (pst-51es).",
+            "width-range-min",
+            f"width_units @param min={int(declared_min_w)} != the {floor_w}-"
+            f"tile structural floor. The minimal backer has no saddle-"
+            f"spanning floor (pst-gmg0): min<{floor_w} is sub-tile, and "
+            f"min>{floor_w} forbids the minimal single-snap backer (or masks "
+            f"a re-added floor that would collapse the low end of the slider "
+            f"into a dead zone, the pst-51es bug). Pin the @param min to "
+            f"{floor_w} so units_w == width_units 1:1 and width=1 is reachable.",
         ))
 
     # --- Backer variants: openGrid + Multiconnect, each its own export. ---
@@ -184,21 +187,35 @@ def check(ctx):
                 "moved plate breaks the fusion first)",
             ))
 
-        # Footprint = whole openGrid tiles. Print frame: the plate lies flat
-        # on the bed, so its in-plane dims are build-X (= body up-wall, H) and
-        # build-Y (= body across, W).
-        ext = mesh.bounds[1] - mesh.bounds[0]
-        if abs(ext[0] - g["H"]) > 0.5 or abs(ext[1] - g["W"]) > 0.5:
-            failures.append(Failure(
-                f"{mount_type}-footprint",
-                f"backer plate reads {ext[0]:.1f} x {ext[1]:.1f}mm != "
-                f"{g['units_h']}x{g['units_w']} openGrid tiles "
-                f"({g['H']:.1f} x {g['W']:.1f}mm) — off the 28mm grid",
-            ))
-
         # Into the body frame for the wall-end probes.
         bm = _body_frame(mesh, g["seat_x"], g["seat_z"])
         bext = bm.bounds
+
+        # Footprint = whole openGrid tiles (W across x H up-wall). The plate
+        # may now be NARROWER than the 65mm saddle (pst-gmg0 minimal backer),
+        # so the whole-mesh bbox no longer reads the plate width — the saddle
+        # dominates. Measure the plate on the PANEL SIDE of the saddle weld:
+        # the saddle's nearest-wall face is at body x = wall_face_x, and the
+        # plate/snaps live below it, so vertices with x < wall_face_x are
+        # plate + snaps only (saddle-free). The plate corners are the widest
+        # and tallest of those, giving W (body Y) and H (body Z) directly.
+        panel = bm.vertices[bm.vertices[:, 0] < g["wall_face_x"] - 0.5]
+        if len(panel):
+            w_meas = panel[:, 1].max() - panel[:, 1].min()
+            h_meas = panel[:, 2].max() - panel[:, 2].min()
+            if abs(w_meas - g["W"]) > 0.5 or abs(h_meas - g["H"]) > 0.5:
+                failures.append(Failure(
+                    f"{mount_type}-footprint",
+                    f"backer plate reads {w_meas:.1f} x {h_meas:.1f}mm != "
+                    f"{g['units_w']}x{g['units_h']} openGrid tiles "
+                    f"({g['W']:.1f} x {g['H']:.1f}mm) — off the 28mm grid",
+                ))
+        else:
+            failures.append(Failure(
+                f"{mount_type}-footprint",
+                "no plate vertices on the panel side of the saddle weld — "
+                "the backer moved or the frame no longer matches _body_frame()",
+            ))
 
         # Panel plane (snap/slot faces) sits at the most -X face = mount_tx.
         if abs(bext[0][0] - g["mount_tx"]) > 0.6:
