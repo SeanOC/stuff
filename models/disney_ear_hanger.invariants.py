@@ -49,6 +49,17 @@ _SADDLE_UP_CENTER = 12.6
 _NUB_PROBE_R = 13.0
 _NUB_PROBE_Z = 4.2
 _CONTACT_EPS = 0.6
+# Corner-rounding probe (pst-4g1u). The backer footprint must carry a
+# uniform rounded corner (plate cap AND the Multiconnect slab under it) like
+# the tab's offset(2) — no square slab corner poking past the rounded plate
+# as a stray post. Probe the slot-free plate layer: a point _CORNER_AIR mm
+# diagonally inside each true rectangle corner must be AIR (the corner is
+# rounded), while a point _CORNER_SOLID mm in must be SOLID. With rounding
+# r, a corner point at diagonal inset d is air iff d < r*(1 - 1/sqrt2) ~=
+# 0.29*r; at r=2 that is 0.59mm, so 0.4mm is comfortably air, while a square
+# corner (r=0) keeps it solid.
+_CORNER_AIR = 0.4
+_CORNER_SOLID = 3.0
 
 
 def _variant_geom(hanger_length, width_units, height_units, mount_type):
@@ -216,6 +227,45 @@ def check(ctx):
                 "no plate vertices on the panel side of the saddle weld — "
                 "the backer moved or the frame no longer matches _body_frame()",
             ))
+
+        # Uniform rounded corners (pst-4g1u). At each of the 4 footprint
+        # corners a point just inside the true rectangle corner must be air
+        # (the corner is rounded) and a point well inside must be solid.
+        # Probe every solid, slot-free layer of the backer at that corner:
+        #   * the plate cap (both mounts) — a plain rounded rect, no slots.
+        #   * the Multiconnect slab (multiconnect only) — where the original
+        #     square corner poked past the plate as the stray post; the slots
+        #     sit inboard so the corners are solid slab. The openGrid snaps
+        #     are inboard of the footprint, so there is no snap layer to probe
+        #     (a corner probe there would be air by design).
+        corners = [(sy * g["W"] / 2, g["mount_tz"] + sz * g["H"])
+                   for sy in (1, -1) for sz in (0, 1)]
+        layers = {"plate": g["mount_tx"] + (g["plate_z0"] + g["plate_top"]) / 2}
+        if mount_type == "multiconnect":
+            layers["slab"] = g["mount_tx"] + _MC_THICKNESS / 2
+        for layer, x_probe in layers.items():
+            near_pts, far_pts = [], []
+            for cy, cz in corners:
+                iy = -1.0 if cy > 0 else 1.0
+                iz = -1.0 if cz > g["mount_tz"] + g["H"] / 2 else 1.0
+                near_pts.append([x_probe, cy + iy * _CORNER_AIR,
+                                 cz + iz * _CORNER_AIR])
+                far_pts.append([x_probe, cy + iy * _CORNER_SOLID,
+                                cz + iz * _CORNER_SOLID])
+            near_solid = _inside(bm, near_pts)
+            far_solid = _inside(bm, far_pts)
+            sharp = [corners[i] for i in range(4)
+                     if near_solid[i] or not far_solid[i]]
+            if sharp:
+                failures.append(Failure(
+                    f"{mount_type}-corner-rounding",
+                    f"{len(sharp)} of 4 {layer} corners are not rounded: a "
+                    f"probe {_CORNER_AIR}mm inside the true rectangle corner "
+                    "reads solid (a square corner poking past the rounded "
+                    "plate — the pst-4g1u stray post — or the rounding "
+                    f"regressed), expected air. First offender (body y,z)="
+                    f"{sharp[0]}",
+                ))
 
         # Panel plane (snap/slot faces) sits at the most -X face = mount_tx.
         if abs(bext[0][0] - g["mount_tx"]) > 0.6:
