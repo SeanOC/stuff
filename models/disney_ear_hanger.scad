@@ -35,13 +35,14 @@
 //                    hanger clicks onto a 28mm openGrid panel.
 //   multiconnect   — a Multiconnect slot backer (Multiboard / openGrid MC
 //                    studs) that replaces the tab.
-// The backer is a whole-tile plate sized to cover the saddle's wall-end
-// footprint (>=3 tiles wide to span the 65mm saddle; >=2 tiles tall for a
-// cantilever snap couple). width_units is offered from its 3-tile floor up
-// (every value materially widens the plate — pst-51es); height_units is a
-// minimum that floats up, like the sibling mounts. It is deliberately larger
-// than the small saddle — the tile grid needs a snap couple to hold the
-// saddle's lever-out (JUDGMENT CALL flagged to the operator, pst-3tum).
+// The backer is a whole-tile plate behind the saddle's wall end. There is
+// NO saddle-spanning floor: the hung headband is trivially light, so a
+// MINIMAL plate is by design — in the spirit of the original small
+// adhesive tab (operator correction, pst-gmg0). It defaults to a single
+// tile (one openGridSnap / one Multiconnect slot behind the saddle) and
+// widens 1:1 with width_units for anyone who wants a broader couple;
+// height_units floats up from 1 like the sibling mounts. width_units maps
+// 1:1 to a distinct plate width across its whole 1..6 range.
 //
 // === Up-the-wall axis / load (pst-3tum, JUDGMENT CALL) ===
 //
@@ -104,17 +105,15 @@ tabRounding  = 2;   // @param number min=0 max=5  step=0.5 unit=mm group=tab lab
 // the sibling mounts (apple_tv, ryobi, opengrid_bin) copy.
 mount_type = "tab"; // @param enum choices=tab|opengrid|multiconnect group=mount label="Wall mount type" filename
 
-// Backer plate size in whole openGrid tiles. The plate must cover the
-// saddle's wall-end footprint, so it has a structural FLOOR: >=3 tiles
-// wide to span the 65mm saddle (65 + 2*min_wall -> ceil = 3 tiles) and
-// >=1 tall. width_units is therefore offered from that floor (min=3) so
-// every slider value maps 1:1 to a distinct plate width — declaring it
-// from 1 made 1/2/3 all collapse to 3 tiles, so the width control read as
-// ignored across its low end (pst-51es). height keeps a minimum (the
-// header wants >=2 tiles tall for a snap couple; the floor only enforces
-// >=1, so 1 is a permitted-but-weak override — see pst-51es PR note).
-// Only affect the opengrid / multiconnect mounts.
-width_units  = 3;     // @param integer min=3 max=6 group=mount label="Backer width (openGrid units)"
+// Backer plate size in whole openGrid tiles. NO saddle-spanning floor: the
+// hung headband is trivially light, so a minimal plate behind the saddle is
+// by design (pst-gmg0, reversing the pst-51es 3-tile floor). width_units
+// maps 1:1 to a distinct plate width across 1..6 — width=1 is a single
+// openGridSnap / Multiconnect slot directly behind the saddle, in the
+// spirit of the original small tab. height_units keeps its own >=1 tile
+// floor (units_h below) that equals its min, so it maps 1:1 too. Only
+// affect the opengrid / multiconnect mounts.
+width_units  = 1;     // @param integer min=1 max=6 group=mount label="Backer width (openGrid units)"
 height_units = 2;     // @param integer min=1 max=6 group=mount label="Backer height (openGrid units, min)"
 snap_lite    = false; // @param boolean group=mount label="Lite openGrid snaps (3.4mm instead of 6.8mm)"
 
@@ -129,8 +128,8 @@ on_ramp        = true; // @param boolean group=mount label="Slot on-ramp lead-in
 // @preset id="standard"     label="Standard tab (28mm projection)"  mount_type=tab hangerLength=28
 // @preset id="deep"         label="Deep tab (45mm projection)"      mount_type=tab hangerLength=45
 // @preset id="chunky-tab"   label="Chunky mounting tab"             mount_type=tab tabSize=22 tabThickness=4 tabRounding=3
-// @preset id="opengrid"     label="openGrid snap backer"            mount_type=opengrid width_units=3 height_units=2
-// @preset id="multiconnect" label="Multiconnect slot backer"        mount_type=multiconnect width_units=3 height_units=2
+// @preset id="opengrid"     label="openGrid snap backer"            mount_type=opengrid width_units=1 height_units=2
+// @preset id="multiconnect" label="Multiconnect slot backer"        mount_type=multiconnect width_units=1 height_units=2
 
 // === Derived ===
 
@@ -170,18 +169,18 @@ ov   = 2;
 plate_t = 4;   // backer plate thickness (fixed — sturdy enough for a
                // light headband hook; not worth a sweep axis).
 
-// Plate is a whole number of openGrid tiles on each axis, grown past the
-// unit minimums whenever the saddle needs it, so the snap grid always
-// covers the saddle's wall-end footprint. across-wall (Y) = 65mm, up the
-// wall (Z) the saddle spans ~19mm; min_wall pads each side before the
-// ceil to whole tiles. width_units's @param min is pinned to this width
-// floor (3), so max() is a no-op guard there and units_w == width_units
-// across the whole slider — height still floats above its min (pst-51es).
+// Plate is a whole number of openGrid tiles on each axis. width: NO
+// saddle-spanning floor (pst-gmg0, reversing pst-51es) — just a >=1
+// whole-tile guard, so units_w == width_units across the range and a
+// 1-tile plate backs the saddle minimally (the plate may be narrower than
+// the 65mm saddle by design). height: a >=1 tile floor from the saddle's
+// up-wall span (~19mm + min_wall pad -> ceil = 1 tile), which equals
+// height_units's @param min, so units_h == height_units too (no dead
+// zone). max() on each axis is a no-op guard at the declared mins.
 min_wall = 2.4;
-saddle_across = 65;                 // saddle wall-end width  (body Y)
 saddle_up     = 19;                 // saddle wall-end height (body Z, dome)
-units_w  = max(width_units,  ceil((saddle_across + 2 * min_wall) / snap_pitch));
-units_h  = max(height_units, ceil((saddle_up     + 2 * min_wall) / snap_pitch));
+units_w  = max(width_units,  1);
+units_h  = max(height_units, ceil((saddle_up + 2 * min_wall) / snap_pitch));
 W = units_w * snap_pitch;
 H = units_h * snap_pitch;
 
@@ -230,9 +229,10 @@ seat_x = mount_type == "tab" ? 18.95 : saddle_up_center;
 // Y (65.0): saddle width across the two ±32.5 side clips — arch-only.
 // Z (38.1): vertical print height = hangerLength(28) + the two end flares
 //    (each +5); hangerLength-dependent.
-// The opengrid / multiconnect variants have their own (larger) bbox — the
-// backer plate is W x H tiles (84 x 56 at defaults) — measured on their
-// own STLs, not pinned here.
+// The opengrid / multiconnect variants have their own bbox — the backer
+// plate is W x H tiles (28 x 56 at defaults, one tile wide) and is
+// narrower than the 65mm saddle, so their across-wall extent is still the
+// saddle's 65mm — measured on their own STLs, not pinned here.
 PRINT_ANCHOR_BBOX = [31.1, 65, 38.1];
 
 // === Assembly ===

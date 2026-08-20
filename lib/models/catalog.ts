@@ -82,7 +82,7 @@ export const CATALOG: Record<string, CatalogEntry> = {
   disney_ear_hanger: {
     categoryId: "household",
     blurb:
-      "Saddle hanger for Disney-style ear headbands (Mickey/Minnie) — the headbands drape over the saddle arch that projects off the wall. Selectable wall mount (mount_type, one STL each): the default adhesive tab (double-sided tape / 3M Command strip), an openGrid snap backer, or a Multiconnect slot backer for Multiboard rails — the backer replaces the tab at the wall end and is a whole-tile plate sized to cover the saddle, with directional snaps' strong nub up the wall. Remix of a MakerWorld model by SpruceWayne (CC BY-NC-SA 4.0, non-commercial); hangerLength tunes how far the saddle projects, tabSize/thickness/rounding the adhesive tab. See the file header for attribution.",
+      "Saddle hanger for Disney-style ear headbands (Mickey/Minnie) — the headbands drape over the saddle arch that projects off the wall. Selectable wall mount (mount_type, one STL each): the default adhesive tab (double-sided tape / 3M Command strip), an openGrid snap backer, or a Multiconnect slot backer for Multiboard rails — the backer replaces the tab at the wall end and is a minimal whole-tile plate behind the saddle (defaults to a single tile in the spirit of the small tab; widen it with width_units), with directional snaps' strong nub up the wall. Remix of a MakerWorld model by SpruceWayne (CC BY-NC-SA 4.0, non-commercial); hangerLength tunes how far the saddle projects, tabSize/thickness/rounding the adhesive tab. See the file header for attribution.",
   },
   goblu_filter_holder_3x90mm: {
     categoryId: "household",
