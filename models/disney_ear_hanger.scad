@@ -470,11 +470,17 @@ module wall_mount_placed() {
 // PART A — the standalone slim Multiconnect slot plate, in its OWN print
 // frame: the slab lies flat with the slot/panel face DOWN on the bed
 // (build z=0) and the dovetail rail rising UP (+build z). The vendored
-// multiconnectBack L-frame is a cube x[0,W] y[-t,0] z[0,H] with the slots
-// recessed from the y=0 mating face; rotate([-90,0,0]) maps L(x,y,z) ->
-// (x, z, -y), so the slab sits at build x[0,W] y[0,H] z[0,t] with the
-// mating face on the bed (L.y=0 -> build z=0). See the print note in the
-// header for why slot-DOWN / rail-UP (the rail cannot point below the bed).
+// multiconnectBack L-frame is a cube x[0,W] y[-t,0] z[0,H] with the slot
+// channels recessed from the y=-t face (openings there; blind back wall at
+// y=0), matching the sibling backers (apple_tv). We need those openings on
+// the board-side face, i.e. on the bed. translate([0,H,t]) rotate([90,0,0])
+// maps L(x,y,z) -> (x, H - z, t + y): the openings (L.y=-t) land at build
+// z=0 (board side, on the bed) and the blind wall (L.y=0) at build z=t,
+// tucked under the rail. The slab sits at build x[0,W] y[0,H] z[0,t]. See
+// the print note in the header for why slot-DOWN / rail-UP (the rail cannot
+// point below the bed). A prior revision used rotate([-90,0,0]), which put
+// the openings on the TOP (rail side) and a solid face on the board — the
+// plate could not engage a Multiconnect board (pst-cu7n).
 module mc_plate_part() {
     $fn = 64;
     union() {
@@ -487,7 +493,8 @@ module mc_plate_part() {
 // the sibling backers (pst-4g1u), lying flat slot-face-down.
 module mc_slab_slotdown() {
     intersection() {
-        rotate([-90, 0, 0])
+        translate([0, H, mc_thickness])
+        rotate([90, 0, 0])
             multiconnectBack(backWidth = W, backHeight = H,
                              distanceBetweenSlots = slot_spacing,
                              backThickness = mc_thickness,

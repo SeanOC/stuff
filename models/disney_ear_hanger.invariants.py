@@ -328,6 +328,23 @@ def _check_mc_plate(stem, width_units, height_units, failures):
             f"dovetail rail length {rail_len:.1f}mm != {_DT_LEN:.0f}mm interface "
             "— the fixed-size joint drifted"))
 
+    # Slots open on the BOARD side (build z=0, on the bed), NOT the rail side.
+    # The plate mounts flat against a Multiconnect board, so the slot mouths
+    # must face the board or the plate cannot engage the rails at all. At the
+    # centre slot: void near the board face (z=1.0 AIR), blind back wall under
+    # the rail (z=5.0 SOLID). A prior revision (rotate([-90,0,0])) inverted
+    # this — solid face to the board, slots opening up (pst-cu7n).
+    board_side_solid = _inside(mesh, [[W / 2, H / 2, 1.0]])[0]
+    rail_side_solid = _inside(mesh, [[W / 2, H / 2, 5.0]])[0]
+    if board_side_solid or not rail_side_solid:
+        failures.append(Failure(
+            "mc_plate-slot-direction",
+            f"slot channel opens the wrong way: board-side (z=1.0) is "
+            f"{'SOLID' if board_side_solid else 'air'}, rail-side (z=5.0) is "
+            f"{'solid' if rail_side_solid else 'AIR'}. The slot mouths must "
+            "face the board (open at z=0) with the blind wall under the rail "
+            "(pst-cu7n) — else the plate presents a solid face to the board."))
+
 
 def _check_mc_saddle(stem, hanger_length, failures):
     """multiconnect_saddle: the saddle with a solid wall-end backing and a
