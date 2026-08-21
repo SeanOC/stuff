@@ -36,7 +36,7 @@
 //                        the hanger clicks onto a 28mm openGrid panel.
 //   multiconnect_plate — PART A of the Multiconnect mount: a slim (~6mm)
 //                        Multiconnect slot plate with a dovetail RAIL on its
-//                        accessory face. Prints flat, on its own.
+//                        accessory face. Prints standing, on its own.
 //   multiconnect_saddle— PART B: the ear-hanger saddle with a dovetail
 //                        SOCKET cut into its wall end (no backer welded on).
 //                        Prints in the original supportless orientation.
@@ -66,18 +66,20 @@
 // (independent of plate size) so a future tab/opengrid back could grow the
 // same rail and become interchangeable (pst-j3ej "don't preclude it").
 //
-// === Print: the Multiconnect plate prints SLOT-DOWN, rail UP (judgment) ===
+// === Print: the Multiconnect plate prints STANDING, slots horizontal ===
 //
-// pst-j3ej asked for the plate "slot-up". A saddle-facing dovetail rail
-// cannot coexist with slot-openings-up in a FLAT print: the rail would
-// have to point below the bed. So the plate prints FLAT with the
-// slot/panel face DOWN on the bed and the dovetail rail pointing UP as a
-// shallow (26.6deg) self-supporting ridge — the same supportless
-// slot-down orientation the sibling backers already use. The only cost is
-// the slot's thin (1.85mm) blind back wall bridging its ~12mm mouth on the
-// hidden board-side face; the engaging throat walls print as vertical
-// walls. (A true slot-up print would need the plate stood on edge — tippy
-// — or the rail moved onto the saddle, which the bead rules out.)
+// The plate prints in multiconnectBack's NATIVE frame: the slab is a wall
+// in the X-Z plane, thin in Y, standing on its z=0 bottom edge. The slot
+// openings face horizontal (-Y) and print as vertical walls with their
+// undercuts and retention domes self-supporting and the on-ramp bridging —
+// the standard Multiconnect ZERO-SUPPORT orientation the sibling backers
+// (apple_tv_4th_gen_holder etc.) already print in. The dovetail rail
+// protrudes horizontally (+Y) off the SOLID back face, opposite the slot
+// openings, and adds no overhang of its own. (pst-j3ej: the operator chose
+// the standing print. It is taller than the saddle — brim it if tippy —
+// but it is the only orientation that is both support-free AND presents the
+// slot openings to the board. An earlier flat print had the slots inverted
+// so the plate met the board with a solid face — see the invariant probe.)
 //
 // === Up-the-wall axis / load (pst-3tum, JUDGMENT CALL) ===
 //
@@ -100,10 +102,11 @@
 // dovetail socket relieved into its wall end (a small ~12mm bridge on the
 // bed-facing wall block). The opengrid backer prints snaps-DOWN on the bed
 // (first layers are the panel-mating face) with the saddle rising off the
-// plate front. The multiconnect_plate prints on its OWN — flat, slot face
-// down / rail up (see the two-piece print note above). Every part's min-Z
-// bed seat is parameter-derived per variant (pst-t9ri rule — no
-// default-only seating). Print the panel-mating face against a smooth plate.
+// plate front. The multiconnect_plate prints on its OWN — STANDING, slots
+// facing horizontal / rail out (see the two-piece print note above). Every
+// part's min-Z bed seat is parameter-derived per variant (pst-t9ri rule —
+// no default-only seating). Print the panel-mating face against a smooth
+// plate.
 
 include <BOSL2/std.scad>
 // `use` not `include`: opengrid-snap.scad ends with a top-level demo
@@ -253,8 +256,9 @@ plate_corner_r = 2;
 // cross-section flares in body Z from a dt_neck neck at the plate face to a
 // wider dt_tip tip at depth dt_depth, so it captures body +X pull-out (the
 // cantilever lever-out) and body Z (gravity) on the flared shoulders.
-// Flank angle atan((dt_tip-dt_neck)/2 / dt_depth) ~= 26.6deg — a
-// self-supporting ridge on the plate (rail up) and a ~dt_tip-wide bridge on
+// Flank angle atan((dt_tip-dt_neck)/2 / dt_depth) ~= 26.6deg — a short
+// self-supporting ridge on the standing plate (rail out, +Y) and a
+// ~dt_tip-wide bridge on
 // the saddle wall block (socket relieved into the bed-facing face).
 dt_depth = 4;    // rail height / socket depth (body X)
 dt_neck  = 8;    // rail width at the plate face (body Z)
@@ -470,57 +474,64 @@ module wall_mount_placed() {
 // PART A — the standalone slim Multiconnect slot plate, in its OWN print
 // frame: the slab lies flat with the slot/panel face DOWN on the bed
 // (build z=0) and the dovetail rail rising UP (+build z). The vendored
-// multiconnectBack L-frame is a cube x[0,W] y[-t,0] z[0,H] with the slot
-// channels recessed from the y=-t face (openings there; blind back wall at
-// y=0), matching the sibling backers (apple_tv). We need those openings on
-// the board-side face, i.e. on the bed. translate([0,H,t]) rotate([90,0,0])
-// maps L(x,y,z) -> (x, H - z, t + y): the openings (L.y=-t) land at build
-// z=0 (board side, on the bed) and the blind wall (L.y=0) at build z=t,
-// tucked under the rail. The slab sits at build x[0,W] y[0,H] z[0,t]. See
-// the print note in the header for why slot-DOWN / rail-UP (the rail cannot
-// point below the bed). A prior revision used rotate([-90,0,0]), which put
-// the openings on the TOP (rail side) and a solid face on the board — the
-// plate could not engage a Multiconnect board (pst-cu7n).
+// multiconnectBack L-frame is a cube x[0,W] y[-t,0] z[0,H] with the slots
+// recessed from the y=0 mating face; rotate([-90,0,0]) maps L(x,y,z) ->
+// (x, z, -y), so the slab sits at build x[0,W] y[0,H] z[0,t] with the
+// mating face on the bed (L.y=0 -> build z=0). See the print note in the
+// header for why slot-DOWN / rail-UP (the rail cannot point below the bed).
+// The standalone Multiconnect slot plate, in its own STANDING print frame.
+// The slab sits in multiconnectBack's NATIVE frame — a wall in the X-Z
+// plane, thin in Y, standing on its z=0 bottom edge — so the slot openings
+// face horizontal (-Y) and print as vertical walls with self-supporting
+// undercuts and an on-ramp bridge: the native Multiconnect ZERO-SUPPORT
+// orientation the sibling backers use once stood up (pst-j3ej, operator-
+// picked standing plate). The dovetail rail protrudes horizontally (+Y)
+// off the SOLID back face (y=0), opposite the slot openings.
 module mc_plate_part() {
     $fn = 64;
     union() {
-        mc_slab_slotdown();
-        plate_rail();
+        mc_slab_standing();
+        plate_rail_standing();
     }
 }
 
-// The slim slot slab, clipped to the rounded outline so its corners match
-// the sibling backers (pst-4g1u), lying flat slot-face-down.
-module mc_slab_slotdown() {
+// The slim slot slab in the native frame, clipped to the rounded outline
+// (in the X-Z face plane, through the full Y depth) so its corners match
+// the sibling backers (pst-4g1u). multiconnectBack's cube is x[0,W]
+// y[-mc_thickness,0] z[0,H] with the slot channels recessed from the
+// y=-mc_thickness face (openings face -Y) and the solid back at y=0.
+module mc_slab_standing() {
     intersection() {
-        translate([0, H, mc_thickness])
-        rotate([90, 0, 0])
-            multiconnectBack(backWidth = W, backHeight = H,
-                             distanceBetweenSlots = slot_spacing,
-                             backThickness = mc_thickness,
-                             quickRelease = !slot_retention,
-                             tolerance = slot_tolerance,
-                             dimple = dimple_scale,
-                             onRamp = on_ramp);
-        translate([0, 0, -padding])
-            linear_extrude(height = mc_thickness + 2 * padding)
-                translate([W / 2, H / 2])
-                    rect([W, H], rounding = plate_corner_r);
+        multiconnectBack(backWidth = W, backHeight = H,
+                         distanceBetweenSlots = slot_spacing,
+                         backThickness = mc_thickness,
+                         quickRelease = !slot_retention,
+                         tolerance = slot_tolerance,
+                         dimple = dimple_scale,
+                         onRamp = on_ramp);
+        translate([0, padding, 0])
+            rotate([90, 0, 0])
+                linear_extrude(height = mc_thickness + 2 * padding)
+                    translate([W / 2, H / 2])
+                        rect([W, H], rounding = plate_corner_r);
     }
 }
 
-// The dovetail rail: a shallow trapezoidal ridge on the accessory (up)
-// face, centred on the plate, running along build X (= body Y = the
-// horizontal slide axis). Hull of a narrow neck band (dt_neck, buried bury
-// into the slab) and a wider tip band (dt_tip) at height dt_depth -> a
-// self-supporting undercut ridge (flanks ~26.6deg).
-module plate_rail() {
-    translate([W / 2, H / 2, mc_thickness])
+// The dovetail rail: a shallow trapezoidal ridge on the SOLID back face
+// (y=0), centred on the plate, protruding +Y (horizontal, toward the
+// saddle) and running along build X (= the across-wall slide axis). Hull
+// of a narrow neck band (dt_neck, buried bury into the slab) and a wider
+// tip band (dt_tip) at depth dt_depth -> an undercut ridge (flanks
+// ~26.6deg). Same trapezoidal shape (24 long x 4 deep x 8->12 flare) the
+// saddle socket receives — the two parts print separately and slide
+// together, so the plate's print frame is independent of the joint.
+module plate_rail_standing() {
+    translate([W / 2, 0, H / 2])
         hull() {
-            translate([0, 0, -bury / 2])
-                cube([dt_len, dt_neck, bury], center = true);
-            translate([0, 0, dt_depth])
-                cube([dt_len, dt_tip, 0.2], center = true);
+            translate([0, -bury / 2, 0])
+                cube([dt_len, bury, dt_neck], center = true);
+            translate([0, dt_depth, 0])
+                cube([dt_len, 0.2, dt_tip], center = true);
         }
 }
 

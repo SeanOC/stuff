@@ -262,7 +262,9 @@ def _check_opengrid(stem, hanger_length, width_units, height_units, failures):
 
 def _check_mc_plate(stem, width_units, height_units, failures):
     """multiconnect_plate: standalone slim slot slab + dovetail rail, read in
-    the build (print) frame — slab flat at z[0,mc_thickness], rail up."""
+    its STANDING print frame — the slab is a wall in the X-Z plane at
+    y[-mc_thickness, 0] (slot openings on the -Y board face, solid back at
+    y=0), standing on its z=0 bottom edge; the dovetail rail protrudes +Y."""
     units_w, units_h = _units(width_units, height_units)
     W, H = units_w * _SNAP_PITCH, units_h * _SNAP_PITCH
     mesh = _load(stem, "multiconnect_plate", "mc_plate", failures)
@@ -270,44 +272,61 @@ def _check_mc_plate(stem, width_units, height_units, failures):
         return
     ext = mesh.bounds[1] - mesh.bounds[0]
 
-    # Footprint = the W x H slab; total build height = slab + rail.
-    if abs(ext[0] - W) > 0.6 or abs(ext[1] - H) > 0.6:
+    # Footprint = the W(x) x H(z) tile slab; total depth = slab + rail (Y).
+    if abs(ext[0] - W) > 0.6 or abs(ext[2] - H) > 0.6:
         failures.append(Failure(
             "mc_plate-footprint",
-            f"slot slab reads {ext[0]:.1f} x {ext[1]:.1f}mm != {units_w}x"
+            f"slot slab reads {ext[0]:.1f} x {ext[2]:.1f}mm != {units_w}x"
             f"{units_h} tiles ({W:.1f} x {H:.1f}mm) — off the 28mm grid"))
-    want_z = _MC_THICKNESS + _DT_DEPTH
-    if abs(ext[2] - want_z) > 0.6:
+    want_y = _MC_THICKNESS + _DT_DEPTH
+    if abs(ext[1] - want_y) > 0.6:
         failures.append(Failure(
             "mc_plate-thickness",
-            f"build height {ext[2]:.2f}mm != slim slab + rail "
-            f"({_MC_THICKNESS:.1f}+{_DT_DEPTH:.1f}={want_z:.1f}mm) — the plate is "
-            "not the slimmed ~6mm slab or the rail height drifted (pst-j3ej A1)"))
+            f"plate depth {ext[1]:.2f}mm != slim slab + rail "
+            f"({_MC_THICKNESS:.1f}+{_DT_DEPTH:.1f}={want_y:.1f}mm) — the plate is "
+            "not the slimmed ~6mm slab or the rail depth drifted (pst-j3ej A1)"))
 
     # Slab really is only mc_thickness thick where there is no rail: probe a
-    # near-corner column, clear of the central rail (x~W/2,y~H/2) and the
-    # central slot — solid inside the slab, air above mc_thickness.
-    cx, cy = W * 0.12, H * 0.12
-    if not _inside(mesh, [[cx, cy, _MC_THICKNESS / 2]])[0]:
+    # near-corner column in Y, clear of the central rail (x~W/2,z~H/2) —
+    # solid inside the slab, air past the y=0 back face (no rail there).
+    cx, cz = W * 0.12, H * 0.12
+    if not _inside(mesh, [[cx, -_MC_THICKNESS / 2, cz]])[0]:
         failures.append(Failure(
             "mc_plate-thickness",
             "no slab where a corner column was probed — frame/footprint mismatch"))
-    elif _inside(mesh, [[cx, cy, _MC_THICKNESS + 1.0]])[0]:
+    elif _inside(mesh, [[cx, 1.0, cz]])[0]:
         failures.append(Failure(
             "mc_plate-thickness",
-            f"slab is solid above z={_MC_THICKNESS}mm away from the rail — the "
+            f"slab is solid past the y=0 back face away from the rail — the "
             "slot plate is thicker than the slim ~6mm target (pst-j3ej A1)"))
 
-    # Dovetail rail is a real undercut: at the plate centre the rail is WIDER
-    # in Y near its tip than at its base (self-supporting flare that captures
-    # pull-out). Measure the solid Y-span at two heights on the rail.
-    x0 = W / 2
-    def rail_width(zoff):
-        z = _MC_THICKNESS + zoff
-        ys = np.arange(H / 2 - 10, H / 2 + 10, 0.2)
-        solid = _inside(mesh, [[x0, y, z] for y in ys])
-        yin = ys[solid]
-        return (yin.max() - yin.min()) if len(yin) else 0.0
+    # SLOT DIRECTION (pst-j3ej): the slots MUST open on the -Y board face, so
+    # the plate engages a Multiconnect board — not a solid face. An earlier
+    # print had the rotation inverted, sealing the board face solid (the part
+    # met the rails with a blank wall). Probe the central slot: AIR just
+    # inside the -Y face (the open slot mouth), SOLID at the back behind it.
+    board_air = _inside(mesh, [[W / 2, -_MC_THICKNESS + 0.4, H / 2]])[0]
+    back_solid = _inside(mesh, [[W / 2, -0.5, H / 2]])[0]
+    if board_air:
+        failures.append(Failure(
+            "mc_plate-slot-direction",
+            "the -Y board face is SOLID at the central slot — the slot "
+            "openings face the wrong way, so the plate cannot engage a "
+            "Multiconnect board (pst-j3ej: inverted slot rotation)"))
+    if not back_solid:
+        failures.append(Failure(
+            "mc_plate-slot-direction",
+            "no solid back wall behind the central slot — the slab is open "
+            "through, so there is nothing to host the retention undercut"))
+
+    # Dovetail rail is a real undercut: protruding +Y off the back, it is
+    # WIDER in Z near its tip than at its base (self-supporting flare that
+    # captures pull-out). Measure the solid Z-span at two rail depths.
+    def rail_width(yoff):
+        zs = np.arange(H / 2 - 10, H / 2 + 10, 0.2)
+        solid = _inside(mesh, [[W / 2, yoff, z] for z in zs])
+        zin = zs[solid]
+        return (zin.max() - zin.min()) if len(zin) else 0.0
     w_base = rail_width(0.5)
     w_tip = rail_width(_DT_DEPTH - 0.5)
     if not (w_base > 1 and w_tip > w_base + 1.0):
@@ -319,7 +338,7 @@ def _check_mc_plate(stem, width_units, height_units, failures):
     # Rail runs a finite length along X (the slide axis) ~ dt_len, not the
     # whole plate — so the joint is a fixed interface.
     xs = np.arange(W / 2 - 15, W / 2 + 15, 0.25)
-    solid = _inside(mesh, [[x, H / 2, _MC_THICKNESS + _DT_DEPTH / 2] for x in xs])
+    solid = _inside(mesh, [[x, _DT_DEPTH / 2, H / 2] for x in xs])
     xin = xs[solid]
     rail_len = (xin.max() - xin.min()) if len(xin) else 0.0
     if abs(rail_len - _DT_LEN) > 2.0:
@@ -327,23 +346,6 @@ def _check_mc_plate(stem, width_units, height_units, failures):
             "mc_plate-rail",
             f"dovetail rail length {rail_len:.1f}mm != {_DT_LEN:.0f}mm interface "
             "— the fixed-size joint drifted"))
-
-    # Slots open on the BOARD side (build z=0, on the bed), NOT the rail side.
-    # The plate mounts flat against a Multiconnect board, so the slot mouths
-    # must face the board or the plate cannot engage the rails at all. At the
-    # centre slot: void near the board face (z=1.0 AIR), blind back wall under
-    # the rail (z=5.0 SOLID). A prior revision (rotate([-90,0,0])) inverted
-    # this — solid face to the board, slots opening up (pst-cu7n).
-    board_side_solid = _inside(mesh, [[W / 2, H / 2, 1.0]])[0]
-    rail_side_solid = _inside(mesh, [[W / 2, H / 2, 5.0]])[0]
-    if board_side_solid or not rail_side_solid:
-        failures.append(Failure(
-            "mc_plate-slot-direction",
-            f"slot channel opens the wrong way: board-side (z=1.0) is "
-            f"{'SOLID' if board_side_solid else 'air'}, rail-side (z=5.0) is "
-            f"{'solid' if rail_side_solid else 'AIR'}. The slot mouths must "
-            "face the board (open at z=0) with the blind wall under the rail "
-            "(pst-cu7n) — else the plate presents a solid face to the board."))
 
 
 def _check_mc_saddle(stem, hanger_length, failures):
