@@ -10,9 +10,10 @@ presets, and Vercel deploy.
 2. Vendored OpenSCAD libraries populated under `../libs/` (the WASM
    include closure walker fetches them through `/api/source`).
    `bash scripts/vendor-libs.sh` clones and pins all of them; it also
-   runs as the npm `prebuild` hook, so `npm run build` and `npm run
-   test:e2e` do it for you. Pins and the BOSL2 hold-back rationale live
-   in [`../libs/README.md`](../libs/README.md).
+   runs as the npm `prebuild` hook, so `npm run build` does it for
+   you. `npm run test:e2e` does not vendor — it assumes a prior
+   `npm run build` (or an explicit script run). Pins and the BOSL2
+   hold-back rationale live in [`../libs/README.md`](../libs/README.md).
 
 ## Run
 
@@ -119,9 +120,11 @@ render swap in (a few seconds for a cold Manifold build).
 
 Types: `number`, `integer`, `boolean`, `string`, `enum`. Numeric attrs:
 `min=`, `max=`, `step=`. Enums require `choices=a|b|c`. Optional
-display hints on any param: `unit=`, `group=`, `short=`. Presets are
-`// @preset id="…" label="…" <param>=<value>` lines inside the same
-block. See `lib/scad-params/parse.test.ts` for the full surface.
+display hints on any param: `unit=`, `group=`. Presets are
+`// @preset id="…" label="…" <param>=<value>` lines; the parser scans
+them anywhere in the file, with the convention of clustering them near
+the parameter block. See `lib/scad-params/parse.test.ts` for the full
+surface.
 
 A model file without any `@param` annotations still appears in the
 gallery and renders at compile-time defaults; the detail page shows a
