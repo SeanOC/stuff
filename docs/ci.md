@@ -208,6 +208,9 @@ Built-in invariants (every model, no opt-in):
 - **anchor bbox drift** — if the `.scad` declares
   `PRINT_ANCHOR_BBOX = [x, y, z]`, the exported STL's bbox extents
   must match within ±1 mm per axis. Catches silent size regressions.
+- **presets** — every `@preset` key must name a declared `@param` and
+  coerce to its kind (st-1j9). A bad preset would crash the TS parser
+  and break the webapp load, so it fails CI here instead of shipping.
 
 Sidecar conventions, the minimum skeleton, and the scaffold that
 generates them live in the `new-model` skill
