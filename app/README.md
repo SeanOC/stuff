@@ -1,32 +1,25 @@
 # Stuff Web
 
 Next.js App Router frontend that exposes parametric OpenSCAD models with
-a live in-browser WASM preview. Phase 3 ships the model gallery, dynamic
-slug routing, and Vercel deploy config.
+a live in-browser WASM preview: model gallery, dynamic slug routing,
+presets, and Vercel deploy.
 
 ## Prereqs
 
 1. Node 22+
 2. Vendored OpenSCAD libraries populated under `../libs/` (the WASM
-   include closure walker fetches them through `/api/source`):
-
-   ```bash
-   cd libs
-   git clone https://github.com/BelfrySCAD/BOSL2.git BOSL2
-   ( cd BOSL2 && git checkout 456fcd8 )
-   git clone https://github.com/AndyLevesque/QuackWorks.git QuackWorks
-   ( cd QuackWorks && git checkout 6123129 )
-   ```
-
-   Both pins match `libs/README.md`. BOSL2 is held back from HEAD because
-   newer commits break QuackWorks' vector-spin syntax (st-kls).
+   include closure walker fetches them through `/api/source`).
+   `bash scripts/vendor-libs.sh` clones and pins all of them; it also
+   runs as the npm `prebuild` hook, so `npm run build` and `npm run
+   test:e2e` do it for you. Pins and the BOSL2 hold-back rationale live
+   in [`../libs/README.md`](../libs/README.md).
 
 ## Run
 
 ```bash
 npm install
 npm run dev          # http://localhost:3000
-npm test             # vitest, 33 unit tests
+npm test             # vitest (unit)
 npm run build        # production build
 ```
 
@@ -50,9 +43,10 @@ to override.
 
 1. Drop a `tests/e2e/<name>.spec.ts`. Playwright auto-discovers.
 2. Hit pages via `page.goto("/models/…")` — `baseURL` is already set.
-3. Lean on the status-line text pattern (`/rendered in \d+ms · [\d,]+ bytes/`)
-   when you need to wait for a WASM render to complete — it's the most
-   stable signal the coordinator exposes.
+3. Wait for a render with `waitForRenderState(page, "ready")` from
+   `tests/e2e/support/render.ts` — it keys on the viewer's
+   `data-render-state` attribute (the render lifecycle itself), not a
+   text pattern that future UI changes will outlive.
 4. For anything that might vary by render (byte counts, bboxes), assert
    on deltas between two states, not absolute values — keeps the test
    robust across OpenSCAD version bumps.
@@ -73,9 +67,9 @@ retry, 2 workers). Add `--headed` to watch it run.
 ### Silent-override regression
 
 `tests/fixtures/bug_regression.scad` + `tests/e2e/bug-regression.spec.ts`
-exist specifically to guard the Phase 1/2 silent-override bug: the
+guard the original silent-override bug: the
 class where the form reports new values but the render sees old ones.
-Test asserts the STL's X-extent shifts from 40mm (default) to 160mm
+It asserts the STL's X-extent shifts from 40mm (default) to 160mm
 (override). If `applyParamOverrides` ever becomes a no-op, the
 override render produces a 40mm plate and the assertion fails with a
 numeric diff, not a timeout.
@@ -83,7 +77,7 @@ numeric diff, not a timeout.
 Open <http://localhost:3000/>. The gallery lists every `.scad` file in
 `models/` with a thumbnail, title, and parameter count. Click a card to
 land on `/models/<slug>`, twiddle a slider, and watch the in-browser
-render swap in (~250ms debounce, then a few seconds for Manifold).
+render swap in (a few seconds for a cold Manifold build).
 
 ## Architecture
 
@@ -91,8 +85,9 @@ render swap in (~250ms debounce, then a few seconds for Manifold).
   emits a CSS grid of cards.
 - `app/models/[slug]/page.tsx` — dynamic route with
   `generateStaticParams()` over every `.scad` file. Falls back to
-  notFound() on unknown slugs. Renders `<ModelStudio>` always; shows a
-  "parameters not yet annotated" note when `@param` count is zero.
+  notFound() on unknown slugs. Renders `<DetailPage>`; the param rail
+  shows a "No parameters in this model." note when `@param` count is
+  zero.
 - `app/api/thumbnail/route.ts` — serves `renders/<stem>/top.png` with
   regex stem allowlist + path confinement; 403 on hostile slug, 404 on
   missing render.
@@ -111,11 +106,10 @@ render swap in (~250ms debounce, then a few seconds for Manifold).
   `openscad-wasm-prebuilt` silently ignores `-D` flags and a prepended
   prelude gets clobbered by OpenSCAD's last-assignment-wins scoping.
 - `lib/wasm/closure.ts` — BFS over `include`/`use` to collect the
-  minimal lib-file set (avoids the 60s mount of all 576 lib files seen
-  in Phase 0 spike).
+  minimal lib-file set (avoids mounting the whole `libs/` tree).
 - `lib/wasm/render.ts` — lazy-loaded openscad-wasm-prebuilt instance,
-  mounts the closure under `/libraries/`, runs with
-  `--backend Manifold` (CGAL OOMs at 3.3GB on BOSL2; non-negotiable).
+  mounts the closure under `/libraries/`, runs with `--backend Manifold`
+  — CGAL OOMs on BOSL2.
 
 ## `@param` annotation grammar
 
@@ -124,12 +118,14 @@ render swap in (~250ms debounce, then a few seconds for Manifold).
 ```
 
 Types: `number`, `integer`, `boolean`, `string`, `enum`. Numeric attrs:
-`min=`, `max=`, `step=`. Enums require `choices=a|b|c`. See
-`lib/scad-params/parse.test.ts` for the full surface.
+`min=`, `max=`, `step=`. Enums require `choices=a|b|c`. Optional
+display hints on any param: `unit=`, `group=`, `short=`. Presets are
+`// @preset id="…" label="…" <param>=<value>` lines inside the same
+block. See `lib/scad-params/parse.test.ts` for the full surface.
 
 A model file without any `@param` annotations still appears in the
-gallery and renders at compile-time defaults; the model page shows a
-"parameters not yet annotated" note in place of the form.
+gallery and renders at compile-time defaults; the detail page shows a
+"No parameters in this model." note in place of the form.
 
 ## Vercel deploy
 
@@ -148,12 +144,6 @@ vercel deploy
 vercel deploy --prod
 ```
 
-No environment variables required for Phase 3. The `models/` and
-`libs/` trees ship as part of the build because the API routes read
-them from disk at request time (Fluid Compute, Node.js runtime).
-
-## Loopback artifact server
-
-`scripts/serve.py` is a stdlib HTTP browser for the rendered PNG +
-exported STL artifacts on a headless print rig. Independent of this
-Next.js app — see top-level `CLAUDE.md` for usage.
+No environment variables required. The `models/` and `libs/` trees
+ship as part of the build because the API routes read them from disk
+at request time (Node.js runtime).
