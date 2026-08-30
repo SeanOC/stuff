@@ -1,0 +1,38 @@
+# build123d PoC toolchain (Sean 2026-08-30). ADVISORY job — deliberately NOT a
+# required status check while the PoC runs, and path-filtered at the workflow
+# level (safe because it is not required; the required checks in ci.yml must
+# never get a workflow-level filter — see the comment there).
+name: bd123
+on:
+  pull_request:
+    paths: ["build123d/**", ".github/workflows/bd123.yml"]
+  push:
+    branches: [main]
+    paths: ["build123d/**", ".github/workflows/bd123.yml"]
+
+jobs:
+  bd123:
+    name: build123d models
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: build123d } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: sync env (pinned via uv.lock)
+        run: uv sync --frozen
+      - name: tests (registry-driven manifold + dims)
+        run: uv run pytest tests/ -q
+      - name: export all models (STL + GLB + PNG)
+        run: uv run python scripts/export.py
+      - name: upload artifacts (STL/GLB/PNG + viewer)
+        uses: actions/upload-artifact@v4
+        with:
+          name: bd123-models
+          path: |
+            build123d/out/
+            build123d/viewer/index.html
+      - name: render summary (PNGs inline)
+        run: |
+          echo "## build123d models" >> "$GITHUB_STEP_SUMMARY"
+          echo "Download the **bd123-models** artifact for STL/GLB + the drag-drop viewer (viewer/index.html)." >> "$GITHUB_STEP_SUMMARY"
+          for f in out/*.png; do echo "### $(basename "$f" .png)" >> "$GITHUB_STEP_SUMMARY"; done

@@ -1,0 +1,17 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>stuff build123d viewer</title>
+<script type="module" src="https://cdnjs.cloudflare.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
+<style>body{margin:0;font-family:system-ui}header{padding:8px 12px;background:#1e293b;color:#e2e8f0}model-viewer{width:100vw;height:calc(100vh - 42px);background:#f1f5f9}</style>
+<header>
+  <b>build123d viewer</b> — drop a .glb here or
+  <input type="file" id="pick" accept=".glb,.gltf">
+</header>
+<model-viewer id="mv" camera-controls shadow-intensity="1" exposure="0.9"></model-viewer>
+<script>
+  const mv = document.getElementById("mv");
+  const load = f => { mv.src = URL.createObjectURL(f); };
+  document.getElementById("pick").onchange = e => e.target.files[0] && load(e.target.files[0]);
+  addEventListener("dragover", e => e.preventDefault());
+  addEventListener("drop", e => { e.preventDefault(); e.dataTransfer.files[0] && load(e.dataTransfer.files[0]); });
+</script>
