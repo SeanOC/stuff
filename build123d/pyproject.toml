@@ -1,0 +1,22 @@
+# build123d PoC toolchain (Sean, 2026-08-30). Experiment: "manufacturing as
+# code" — parametric models in Python consuming PUBLISHED libraries as deps.
+# HARD RULE: mount geometry (openGrid / Multiconnect) comes ONLY from the
+# opengrid library (fangpenlin, MakerRepo) or other existing build123d
+# ecosystem libraries. No home-grown or SCAD-ported mount geometry.
+[project]
+name = "stuff-bd"
+version = "0.1.0"
+description = "build123d PoC models for the stuff repo (openGrid/Multiconnect holders)"
+requires-python = ">=3.13"
+dependencies = [
+    "build123d>=0.10.0",
+    # openGrid + Multiconnect primitives (MIT, build123d-native).
+    # Pinned to a commit for reproducibility (BOSL2-pin discipline).
+    "opengrid",
+    "trimesh>=4.0",          # mesh sanity checks in tests (manifold, volume)
+    "pytest>=8.0",
+    "matplotlib>=3.9",   # software PNG renders in CI (no GL)
+]
+
+[tool.uv.sources]
+opengrid = { git = "https://makerrepo.com/r/fangpenlin/opengrid.git", rev = "eea2b4154a10d2909e5edece567cbe0563aaf955" }
