@@ -203,12 +203,15 @@ def holder(
     return part
 
 
-def _params(d_default: float, h_default: float) -> tuple:
+def _params(d: float, h: float) -> tuple[Param, ...]:
+    """Param spec for one holder instance — defaults carry THAT model's
+    shape (spray can vs bottle), so each registered model keeps its own
+    identity in the default export and in the manifest."""
     return (
         Param(
             name="d",
             kind="number",
-            default=d_default,
+            default=d,
             min=D_MIN,
             max=D_MAX,
             step=1.0,
@@ -219,7 +222,7 @@ def _params(d_default: float, h_default: float) -> tuple:
         Param(
             name="h",
             kind="number",
-            default=h_default,
+            default=h,
             min=H_MIN,
             max=H_MAX,
             step=1.0,
