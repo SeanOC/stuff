@@ -24,7 +24,7 @@ def test_library_dims_opengrid_tile():
 
 @pytest.mark.parametrize("spec", SPECS, ids=[s.name for s in SPECS])
 def test_model_builds_and_is_manifold(spec, tmp_path):
-    part = spec.build()
+    part = spec.build(spec.resolve_values())
     assert part.volume > 0
     stl = tmp_path / f"{spec.name}.stl"
     export_stl(part, str(stl))
