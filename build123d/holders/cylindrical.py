@@ -49,7 +49,7 @@ from build123d.topology import Part
 from opengrid.base import Base
 from opengrid.constants import OPEN_GRID_UNIT_SIZE
 
-from holders.registry import ModelSpec, register
+from holders.registry import ModelSpec, Param, Preset, register
 
 # Parameter ranges (AC: out-of-range raises ValueError with a message).
 D_MIN, D_MAX = 30.0, 120.0        # cylinder diameter, mm
@@ -203,19 +203,92 @@ def holder(
     return part
 
 
+_PARAMS = (
+    Param(
+        name="d",
+        kind="number",
+        default=66.0,
+        min=D_MIN,
+        max=D_MAX,
+        step=1.0,
+        unit="mm",
+        label="Cylinder diameter",
+        group="geometry",
+    ),
+    Param(
+        name="h",
+        kind="number",
+        default=60.0,
+        min=H_MIN,
+        max=H_MAX,
+        step=1.0,
+        unit="mm",
+        label="Collar height",
+        group="geometry",
+    ),
+    Param(
+        name="wall",
+        kind="number",
+        default=2.4,
+        min=WALL_MIN,
+        max=WALL_MAX,
+        step=0.1,
+        unit="mm",
+        label="Wall thickness",
+        group="geometry",
+    ),
+    Param(
+        name="opening_deg",
+        kind="number",
+        default=90.0,
+        min=OPENING_MIN,
+        max=OPENING_MAX,
+        step=5.0,
+        unit="deg",
+        label="Opening arc",
+        group="geometry",
+    ),
+)
+
+_PRESETS = (
+    Preset(
+        id="spray_can",
+        label="Spray can (d=66, h=60)",
+        values={"d": 66.0, "h": 60.0},
+    ),
+    Preset(
+        id="bottle_500ml",
+        label="500ml bottle (d=73, h=50)",
+        values={"d": 73.0, "h": 50.0},
+    ),
+)
+
+
+def _build(values: dict) -> Part:
+    return holder(**values)
+
+
 register(
     ModelSpec(
         name="holder_spray_can",
-        build=lambda: holder(d=66.0, h=60.0),
+        build=_build,
         description="open-front C-ring holder, spray can (d=66, collar h=60), openGrid tile back plate",
         tags=("holder", "opengrid", "cylindrical"),
+        params=_PARAMS,
+        presets=_PRESETS,
+        title="Spray can holder",
+        category_id="multiboard",
     )
 )
 register(
     ModelSpec(
         name="holder_bottle_500ml",
-        build=lambda: holder(d=73.0, h=50.0),
+        build=_build,
         description="open-front C-ring holder, 500ml bottle (d=73, collar h=50), openGrid tile back plate",
         tags=("holder", "opengrid", "cylindrical"),
+        params=_PARAMS,
+        presets=_PRESETS,
+        title="500ml bottle holder",
+        category_id="multiboard",
     )
 )

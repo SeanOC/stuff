@@ -20,10 +20,22 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - name: sync env (pinned via uv.lock)
         run: uv sync --frozen
-      - name: tests (registry-driven manifold + dims)
+      - name: regenerate manifest (deterministic emitter)
+        # The committed build123d/manifest.json must match what the
+        # registry currently produces — same freshness contract as the
+        # thumbnail renders in ci.yml. A stale manifest means the model
+        # change forgot to run `uv run python scripts/manifest.py`.
+        run: uv run python scripts/manifest.py
+      - name: manifest freshness (fail on drift)
+        run: git diff --exit-code build123d/manifest.json
+      - name: tests (registry-driven manifold + manifest schema + bake)
         run: uv run pytest tests/ -q
       - name: export all models (STL + GLB + PNG)
         run: uv run python scripts/export.py
+      - name: bake presets (STL + GLB per preset)
+        # --presets-only is the P1c build input; exercising it in CI keeps
+        # the contract covered (tests also assert the output set).
+        run: uv run python scripts/export.py --presets-only out/presets
       - name: upload artifacts (STL/GLB/PNG + viewer)
         uses: actions/upload-artifact@v4
         with:

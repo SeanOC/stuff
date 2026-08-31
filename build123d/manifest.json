@@ -1,0 +1,147 @@
+{
+  "schemaVersion": 1,
+  "models": [
+    {
+      "slug": "holder-spray-can",
+      "engine": "build123d",
+      "title": "Spray can holder",
+      "blurb": "open-front C-ring holder, spray can (d=66, collar h=60), openGrid tile back plate",
+      "categoryId": "multiboard",
+      "params": [
+        {
+          "name": "d",
+          "label": "Cylinder diameter",
+          "group": "geometry",
+          "unit": "mm",
+          "kind": "number",
+          "default": 66.0,
+          "min": 30.0,
+          "max": 120.0,
+          "step": 1.0
+        },
+        {
+          "name": "h",
+          "label": "Collar height",
+          "group": "geometry",
+          "unit": "mm",
+          "kind": "number",
+          "default": 60.0,
+          "min": 20.0,
+          "max": 120.0,
+          "step": 1.0
+        },
+        {
+          "name": "wall",
+          "label": "Wall thickness",
+          "group": "geometry",
+          "unit": "mm",
+          "kind": "number",
+          "default": 2.4,
+          "min": 1.6,
+          "max": 4.0,
+          "step": 0.1
+        },
+        {
+          "name": "opening_deg",
+          "label": "Opening arc",
+          "group": "geometry",
+          "unit": "deg",
+          "kind": "number",
+          "default": 90.0,
+          "min": 60.0,
+          "max": 120.0,
+          "step": 5.0
+        }
+      ],
+      "presets": [
+        {
+          "id": "spray_can",
+          "label": "Spray can (d=66, h=60)",
+          "values": {
+            "d": 66.0,
+            "h": 60.0
+          }
+        },
+        {
+          "id": "bottle_500ml",
+          "label": "500ml bottle (d=73, h=50)",
+          "values": {
+            "d": 73.0,
+            "h": 50.0
+          }
+        }
+      ]
+    },
+    {
+      "slug": "holder-bottle-500ml",
+      "engine": "build123d",
+      "title": "500ml bottle holder",
+      "blurb": "open-front C-ring holder, 500ml bottle (d=73, collar h=50), openGrid tile back plate",
+      "categoryId": "multiboard",
+      "params": [
+        {
+          "name": "d",
+          "label": "Cylinder diameter",
+          "group": "geometry",
+          "unit": "mm",
+          "kind": "number",
+          "default": 66.0,
+          "min": 30.0,
+          "max": 120.0,
+          "step": 1.0
+        },
+        {
+          "name": "h",
+          "label": "Collar height",
+          "group": "geometry",
+          "unit": "mm",
+          "kind": "number",
+          "default": 60.0,
+          "min": 20.0,
+          "max": 120.0,
+          "step": 1.0
+        },
+        {
+          "name": "wall",
+          "label": "Wall thickness",
+          "group": "geometry",
+          "unit": "mm",
+          "kind": "number",
+          "default": 2.4,
+          "min": 1.6,
+          "max": 4.0,
+          "step": 0.1
+        },
+        {
+          "name": "opening_deg",
+          "label": "Opening arc",
+          "group": "geometry",
+          "unit": "deg",
+          "kind": "number",
+          "default": 90.0,
+          "min": 60.0,
+          "max": 120.0,
+          "step": 5.0
+        }
+      ],
+      "presets": [
+        {
+          "id": "spray_can",
+          "label": "Spray can (d=66, h=60)",
+          "values": {
+            "d": 66.0,
+            "h": 60.0
+          }
+        },
+        {
+          "id": "bottle_500ml",
+          "label": "500ml bottle (d=73, h=50)",
+          "values": {
+            "d": 73.0,
+            "h": 50.0
+          }
+        }
+      ]
+    }
+  ]
+}
