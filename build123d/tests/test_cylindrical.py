@@ -19,6 +19,7 @@ from opengrid.base import Base  # noqa: E402
 from opengrid.constants import OPEN_GRID_UNIT_SIZE  # noqa: E402
 
 from holders.cylindrical import (  # noqa: E402
+    BORE_CLEARANCE,
     D_MAX,
     D_MIN,
     H_MAX,
@@ -178,7 +179,8 @@ def test_mount_is_the_library_tile():
     tile = tile.moved(Location((0, back_center_y + 3.4, h / 2.0)))
 
     bore = Cylinder(
-        radius=r_in, height=h + 8.0, align=(Align.CENTER, Align.CENTER, Align.CENTER)
+        radius=r_in + BORE_CLEARANCE, height=h + 8.0,
+        align=(Align.CENTER, Align.CENTER, Align.CENTER),
     )
     expected = tile - bore
     present = part.intersect(tile)
@@ -186,6 +188,19 @@ def test_mount_is_the_library_tile():
     assert present_vol == pytest.approx(expected.volume, abs=1.0), (
         f"library tile not fully present: {present_vol:.1f} vs {expected.volume:.1f}"
     )
+
+
+@pytest.mark.parametrize("d", [D_MIN, 50.0, 85.0, 90.0, 112.0, D_MAX])
+def test_export_is_watertight_across_diameter_range(d, tmp_path):
+    """Regression: the bore re-carve must stay off-coplanar with the
+    collar's inner face. A coplanar carve left the exported STL
+    non-watertight for several tile footprints (d=30..50, 85..112)."""
+    part = holder(d, 60.0)
+    stl = tmp_path / f"wt_d{d}.stl"
+    export_stl(part, str(stl))
+    mesh = trimesh.load_mesh(stl)
+    assert mesh.is_watertight, f"d={d}: exported STL not watertight"
+    assert mesh.body_count == 1
 
 
 def test_can_space_is_clear():

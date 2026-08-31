@@ -59,6 +59,12 @@ OPENING_MIN, OPENING_MAX = 60.0, 120.0  # opening arc, degrees (wrap >= 240)
 
 LIP_RADIUS = 1.0  # mm, nominal real BRep fillet on the opening's entry corners
 
+# Radial clearance between the cylinder and the re-carved bore, mm. Keeps the
+# carve off-coplanar with the collar's inner face (a coplanar boolean left the
+# exported STL non-watertight for some tile footprints) and gives the
+# slip-fit holder a real insertion gap.
+BORE_CLEARANCE = 0.1
+
 
 def _lip_radius(wall: float) -> float:
     """Fillet radius for the opening's entry corners.
@@ -186,7 +192,9 @@ def holder(
     # Re-carve the bore so the tile lattice never intrudes into the
     # cylinder space (the tile's front 5+mm of overlap is removed).
     bore = Cylinder(
-        radius=r_in, height=h + 8.0, align=(Align.CENTER, Align.CENTER, Align.CENTER)
+        radius=r_in + BORE_CLEARANCE,
+        height=h + 8.0,
+        align=(Align.CENTER, Align.CENTER, Align.CENTER),
     )
     part = (part - bore).clean()
     return part
