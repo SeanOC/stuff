@@ -57,7 +57,21 @@ H_MIN, H_MAX = 20.0, 120.0        # collar height (cylinder height held), mm
 WALL_MIN, WALL_MAX = 1.6, 4.0     # collar wall thickness, mm
 OPENING_MIN, OPENING_MAX = 60.0, 120.0  # opening arc, degrees (wrap >= 240)
 
-LIP_RADIUS = 1.0  # mm, real BRep fillet on the opening's entry corners
+LIP_RADIUS = 1.0  # mm, nominal real BRep fillet on the opening's entry corners
+
+
+def _lip_radius(wall: float) -> float:
+    """Fillet radius for the opening's entry corners.
+
+    The nominal 1.0 mm lip does not fit a thin wall: a 1.0 mm BRep fillet
+    on both edges of a radial cut face consumes the full wall thickness
+    (verified: it fails on the 1.6 mm minimum wall for every in-range d,
+    h, and opening_deg), so the advertised wall range could not be built.
+    Below the crossover the radius scales with the wall and keeps a small
+    safety margin (OCCT rejects radius >= wall/2, and wall/2 itself
+    leaves the fillet tangent to the bore, so we stay just under).
+    """
+    return min(LIP_RADIUS, 0.5 * wall - 0.02)
 
 
 def _validate(d: float, h: float, wall: float, opening_deg: float, mount: str) -> None:
@@ -148,8 +162,10 @@ def holder(
     collar = annulus - wedge_part
 
     # Real BRep fillets on the opening's entry corners (AC: no sharp lips).
+    # Radius scales down for thin walls so the full [WALL_MIN, WALL_MAX]
+    # range stays buildable (see _lip_radius).
     lip_edges = _opening_lip_edges(collar, a1, a2)
-    collar = collar.fillet(radius=LIP_RADIUS, edge_list=lip_edges)
+    collar = collar.fillet(radius=_lip_radius(wall), edge_list=lip_edges)
 
     # --- openGrid back-plate mount (100% library geometry) ---------------
     # Tile footprint in whole 28mm grid cells: wide enough to clear the

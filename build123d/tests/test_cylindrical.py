@@ -13,7 +13,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from build123d import Align, Axis, Cylinder, Location  # noqa: E402
+import trimesh  # noqa: E402
+from build123d import Align, Axis, Cylinder, Location, export_stl  # noqa: E402
 from opengrid.base import Base  # noqa: E402
 from opengrid.constants import OPEN_GRID_UNIT_SIZE  # noqa: E402
 
@@ -27,6 +28,7 @@ from holders.cylindrical import (  # noqa: E402
     OPENING_MIN,
     WALL_MAX,
     WALL_MIN,
+    _lip_radius,
     holder,
 )
 from holders.registry import all_models  # noqa: E402
@@ -59,6 +61,32 @@ def test_out_of_range_params_raise_valueerror(kwargs):
     with pytest.raises(ValueError) as exc:
         holder(**kwargs)
     assert "out of range" in str(exc.value)
+
+
+def test_lip_radius_respects_thin_walls():
+    """The lip fillet must never demand more than the wall can hold
+    (regression: wall=WALL_MIN was advertised but unbuildable because the
+    1.0 mm fillet consumed the full 1.6 mm wall)."""
+    for wall in (WALL_MIN, 2.4, WALL_MAX):
+        assert _lip_radius(wall) < wall / 2.0
+        assert _lip_radius(wall) >= 0.05
+    assert _lip_radius(2.4) == LIP_RADIUS  # nominal 1.0 mm where it fits
+    assert _lip_radius(WALL_MAX) == LIP_RADIUS  # 4.0 mm wall keeps 1.0 mm
+
+
+@pytest.mark.parametrize("d", [D_MIN, 66.0, D_MAX])
+def test_min_wall_builds_and_is_watertight(d, tmp_path):
+    """Regression: every in-range d must build at wall=WALL_MIN, and the
+    exported STL must be watertight and single-body."""
+    for h in (20.0, 60.0, 120.0):
+        for opening_deg in (60.0, 90.0, 120.0):
+            part = holder(d=d, h=h, wall=WALL_MIN, opening_deg=opening_deg)
+            assert part.volume > 0
+            stl = tmp_path / f"w{WALL_MIN}_d{d}_h{h}_o{opening_deg}.stl"
+            export_stl(part, str(stl))
+            mesh = trimesh.load_mesh(stl)
+            assert mesh.is_watertight, f"d={d}, h={h}, opening={opening_deg}: not watertight"
+            assert mesh.body_count == 1, f"d={d}, h={h}, opening={opening_deg}: {mesh.body_count} bodies"
 
 
 def test_unsupported_mount_raises_valueerror():
