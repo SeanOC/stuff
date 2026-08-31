@@ -14,6 +14,7 @@ If a library can't do something, that's a *finding for the eval*, not an invitat
 - `holders/smoke.py` — library-provided smoke artifacts (tile, MC round head)
 - `holders/cylindrical.py` — the PoC parametric C-ring holder (lands via its bead)
 - `scripts/export.py` — STL (print) + GLB (viewer) + PNG (3-view review render) per model → `out/`
+- `docs/renders/` — review renders (3-view PNGs) of shipped presets, tracked for PR review
 - `viewer/index.html` — drag-drop GLB viewer (model-viewer, static, no build)
 - `tests/` — registry-driven: every model must build, be watertight, have volume; library dims pinned
 
