@@ -176,7 +176,7 @@ def test_mount_is_the_library_tile():
     tile = Base(x_count=x_count, y_count=y_count)
     tile = tile.moved(Location((0, 0, 0), (1, 0, 0), 90))
     back_center_y = -(r_in + r_out) / 2.0
-    tile = tile.moved(Location((0, back_center_y + 3.4, h / 2.0)))
+    tile = tile.moved(Location((0, back_center_y + 4.0, h / 2.0)))
 
     bore = Cylinder(
         radius=r_in + BORE_CLEARANCE, height=h + 8.0,
@@ -190,17 +190,30 @@ def test_mount_is_the_library_tile():
     )
 
 
-@pytest.mark.parametrize("d", [D_MIN, 50.0, 85.0, 90.0, 112.0, D_MAX])
-def test_export_is_watertight_across_diameter_range(d, tmp_path):
-    """Regression: the bore re-carve must stay off-coplanar with the
-    collar's inner face. A coplanar carve left the exported STL
-    non-watertight for several tile footprints (d=30..50, 85..112)."""
-    part = holder(d, 60.0)
-    stl = tmp_path / f"wt_d{d}.stl"
-    export_stl(part, str(stl))
-    mesh = trimesh.load_mesh(stl)
-    assert mesh.is_watertight, f"d={d}: exported STL not watertight"
-    assert mesh.body_count == 1
+@pytest.mark.parametrize(
+    ("d", "h"),
+    [
+        # Review round 2's failing set at h=20 (tile z-extent degeneracy),
+        # plus the round-1 failing set at h=60, plus two known-good points.
+        (30.0, 20.0), (40.0, 20.0), (50.0, 20.0), (56.0, 20.0),
+        (85.0, 20.0), (90.0, 20.0), (112.0, 20.0), (66.0, 20.0),
+        (30.0, 60.0), (50.0, 60.0), (85.0, 60.0), (90.0, 60.0),
+        (112.0, 60.0), (66.0, 60.0),
+    ],
+)
+def test_export_is_watertight_across_corner_cases(d, h, tmp_path):
+    """Regression: the bore re-carve and the tile fuse must stay
+    off-degenerate across the parameter space. Two coplanar-boolean
+    defects left exported STLs non-watertight: the bore at exactly r_in
+    (round 1, h=60 footprints) and the tile centered on the ring wall
+    midplane (round 2, h=20 footprints)."""
+    for wall in (WALL_MIN, 2.4):
+        part = holder(d, h, wall=wall)
+        stl = tmp_path / f"wt_d{d}_h{h}_w{wall}.stl"
+        export_stl(part, str(stl))
+        mesh = trimesh.load_mesh(stl)
+        assert mesh.is_watertight, f"d={d}, h={h}, wall={wall}: not watertight"
+        assert mesh.body_count == 1
 
 
 def test_can_space_is_clear():

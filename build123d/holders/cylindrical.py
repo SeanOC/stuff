@@ -183,9 +183,12 @@ def holder(
     # Snap face (local +Z) ends up on -Y: the board side.
     tile = tile.moved(Location((0, 0, 0), (1, 0, 0), 90))
     # Straddle the collar's back wall (y in [-r_out, -r_in]) so the fuse
-    # gets solid overlap, not a tangent touch.
+    # gets solid overlap, not a tangent touch. The +4.0 centering (vs the
+    # exact wall midplane at 3.4) moves the bore's re-carve cut face off
+    # the tile lattice faces; at the exact midplane the carve was
+    # degenerate for several footprints and left open STL edges at h=20.
     back_center_y = -(r_in + r_out) / 2.0
-    tile = tile.moved(Location((0, back_center_y + 3.4, h / 2.0)))
+    tile = tile.moved(Location((0, back_center_y + 4.0, h / 2.0)))
 
     part = collar.fuse(tile)
 
