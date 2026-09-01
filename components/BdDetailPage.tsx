@@ -11,6 +11,8 @@ import Link from "next/link";
 import { useCallback, useState } from "react";
 import clsx from "clsx";
 import GlbViewer, { type GlbBbox } from "./GlbViewer";
+import { AxesIndicator } from "./AxesIndicator";
+import type { CameraAxes } from "./StlViewer";
 import type { Param, Preset } from "@/lib/scad-params/parse";
 
 export interface BdDetailPageModel {
@@ -33,6 +35,10 @@ export default function BdDetailPage({ model }: { model: BdDetailPageModel }) {
   // Loaded GLB extents, surfaced for the e2e orientation assertion and
   // shown in the stat strip. size = [x, y, z] in the GLB's units.
   const [bbox, setBbox] = useState<GlbBbox | null>(null);
+  // Live camera orientation from the GLB viewer, feeding the shared
+  // orientation compass. null until the first onCameraChange fires (on
+  // GLB load), at which point AxesIndicator shows the live projection.
+  const [axes, setAxes] = useState<CameraAxes | null>(null);
 
   const activePreset =
     model.presets.find((p) => p.id === activePresetId) ?? model.presets[0];
@@ -104,7 +110,11 @@ export default function BdDetailPage({ model }: { model: BdDetailPageModel }) {
             url={assetUrl(model.slug, activePreset.id, "glb")}
             onLoaded={onLoaded}
             onError={onError}
+            onCameraChange={setAxes}
           />
+          {/* Orientation compass — same component as the SCAD viewer.
+              Offset up to clear the bottom stat strip below. */}
+          <AxesIndicator axes={axes} className="bottom-40 left-12" />
           {viewerError && (
             <div
               data-testid="bd-viewer-error"

@@ -22,10 +22,38 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import {
+  computeCameraAxes,
+  type CameraAxes,
+  type WorldBasis,
+} from "./StlViewer";
 
 export interface GlbBbox {
   /** World-space extents (width, height, depth) of the loaded scene. */
   size: [number, number, number];
+}
+
+// The baked GLB is Y-up: build123d authors its parts Z-up, and the OCP
+// exporter bakes a -90°X root rotation so glTF's Y-up convention holds
+// (see the file header). The orientation compass, however, must show the
+// *part's* native axes so it matches the SCAD viewer's Z-up compass. That
+// -90°X maps the part basis into this Y-up world as:
+//   part X → world +X,  part Y → world -Z,  part Z → world +Y.
+// Projecting these (rather than the raw world axes) keeps the X/Y/Z labels
+// meaningful — Z reads as "up" here just as it does for a SCAD render.
+const PART_BASIS_IN_WORLD: WorldBasis = {
+  x: new THREE.Vector3(1, 0, 0),
+  y: new THREE.Vector3(0, 0, -1),
+  z: new THREE.Vector3(0, 1, 0),
+};
+
+/**
+ * View-space projection of the GLB part's native X/Y/Z axes for a given
+ * camera. Pure (delegates to computeCameraAxes with the fixed Z-up→Y-up
+ * basis above); unit-tested in GlbViewer.test.
+ */
+export function partCameraAxes(camera: THREE.Camera): CameraAxes {
+  return computeCameraAxes(camera, PART_BASIS_IN_WORLD);
 }
 
 interface Props {
@@ -41,6 +69,13 @@ interface Props {
   onLoaded?: (bbox: GlbBbox) => void;
   /** Fired if the GLB fails to load/parse. */
   onError?: (message: string) => void;
+  /**
+   * Fired on every OrbitControls change (and once on load) with the
+   * part's native axes projected into view space. Drives the shared
+   * AxesIndicator so the GLB viewer shows the same orientation compass
+   * as the SCAD viewer. (pst-6ram)
+   */
+  onCameraChange?: (axes: CameraAxes) => void;
 }
 
 /**
@@ -70,16 +105,23 @@ export function fitCamera(
   };
 }
 
-export default function GlbViewer({ url, onLoaded, onError }: Props) {
+export default function GlbViewer({
+  url,
+  onLoaded,
+  onError,
+  onCameraChange,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   // Latest callbacks in refs so the mount-once scene closure always
   // calls the current prop without re-registering.
   const onLoadedRef = useRef(onLoaded);
   const onErrorRef = useRef(onError);
+  const onCameraChangeRef = useRef(onCameraChange);
   useEffect(() => {
     onLoadedRef.current = onLoaded;
     onErrorRef.current = onError;
-  }, [onLoaded, onError]);
+    onCameraChangeRef.current = onCameraChange;
+  }, [onLoaded, onError, onCameraChange]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -107,7 +149,19 @@ export default function GlbViewer({ url, onLoaded, onError }: Props) {
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = false;
-    const render = () => renderer.render(scene, camera);
+    // Only emit axes once the model is on screen — before that the
+    // orientation compass has no meaningful frame to point at, and the
+    // Y-up world axes would flash the wrong labels.
+    let modelLoaded = false;
+    const emitAxes = () => {
+      if (!modelLoaded) return;
+      camera.updateMatrixWorld();
+      onCameraChangeRef.current?.(partCameraAxes(camera));
+    };
+    const render = () => {
+      renderer.render(scene, camera);
+      emitAxes();
+    };
     controls.addEventListener("change", render);
 
     function handleResize() {
@@ -137,6 +191,7 @@ export default function GlbViewer({ url, onLoaded, onError }: Props) {
         camera.updateProjectionMatrix();
         controls.target.copy(fit.target);
         controls.update();
+        modelLoaded = true;
         render();
 
         const size = new THREE.Vector3();
