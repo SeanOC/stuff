@@ -22,14 +22,21 @@ baking, which cover app-listed models only.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable
 
-from build123d import Part
+from build123d import Location, Part
 
 # URL-safe id: alphanumeric start, then alphanumerics, '-', '_'. Used for
 # model slugs and preset ids (both end up in file paths / URL segments).
 SAFE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
+
+# Mount types a model may declare via ``ModelSpec.mounts``. Each must have a
+# deterministic geometry contract in tests/mount_contracts.py (the contract
+# module asserts full coverage at import). A model tagged with an unknown
+# mount fails loudly at registration (see _validate_spec). Add a new mount
+# type here AND its contract together.
+KNOWN_MOUNTS: frozenset[str] = frozenset({"multiconnect-slot"})
 
 # Mirrors MODEL_CATEGORIES ids in lib/models/catalog.ts (app catalog
 # contract). Keep in sync when a category is added there.
@@ -144,6 +151,31 @@ def _validate_param(param: Param) -> str | None:
     return _validate_value(param.kind, param.name, param.default)
 
 
+@dataclass
+class MountFixtures:
+    """Library-geometry fixtures for one mount instance on a model.
+
+    Returned by a model module's ``mount_fixtures(mount_type, values)`` hook
+    and consumed by the deterministic mount contracts (tests/mount_contracts
+    .py). Everything here is 100% opengrid library geometry, positioned in
+    the model's own coordinate frame — the contract needs nothing bespoke,
+    so a new model inherits the whole contract suite just by supplying this.
+
+    cutters:    the placed library slot cutters (the pockets carved into the
+                model's back plate). Prove the entry aperture is at the plate
+                bottom face — a sealed pocket removes nothing there.
+    seat_locs:  one world ``Location`` per slot; ``loc * RoundHead()`` is a
+                real library round head at its seated (fully-inserted) pose.
+    entry_axis: unit direction a wall head travels as the holder lowers onto
+                it and the head rides to the seat. The channel opening faces
+                ``-entry_axis``. Currently the contracts assume ``(0, 0, 1)``.
+    """
+
+    cutters: list[Part]
+    seat_locs: list[Location]
+    entry_axis: tuple[float, float, float] = (0.0, 0.0, 1.0)
+
+
 @dataclass(frozen=True)
 class ModelSpec:
     """A registered buildable artifact.
@@ -169,6 +201,12 @@ class ModelSpec:
     presets: tuple[Preset, ...] = ()
     title: str = ""
     category_id: str = ""
+    # Mount types this model carries (see KNOWN_MOUNTS). The test harness
+    # auto-parametrizes the deterministic mount contracts over every model
+    # with a non-empty ``mounts``, so future models inherit mount
+    # verification for free. A model declaring a mount must expose a
+    # ``mount_fixtures(mount_type, values)`` hook in its module.
+    mounts: tuple[str, ...] = ()
 
     @property
     def slug(self) -> str:
@@ -272,6 +310,17 @@ def _validate_spec(spec: ModelSpec) -> str | None:
         if preset.id in seen_ids:
             return f"{spec.name}: duplicate preset id {preset.id!r}"
         seen_ids.add(preset.id)
+    seen_mounts: set[str] = set()
+    for mount in spec.mounts:
+        if mount not in KNOWN_MOUNTS:
+            return (
+                f"{spec.name}: unknown mount type {mount!r} "
+                f"(known: {sorted(KNOWN_MOUNTS)}) — add it to KNOWN_MOUNTS "
+                "and give it a contract in tests/mount_contracts.py"
+            )
+        if mount in seen_mounts:
+            return f"{spec.name}: duplicate mount type {mount!r}"
+        seen_mounts.add(mount)
     if not spec.is_smoke:
         if spec.category_id not in CATEGORY_IDS:
             return (
