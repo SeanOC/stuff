@@ -6,23 +6,26 @@ Geometry
 --------
 - A C-ring collar: an annulus wrapping 360-opening_deg degrees around the
   cylinder, with the opening's entry corners rounded by real BRep fillets
-  (no sharp entry edges at the lip).
+  (no sharp entry edges at the lip). A solid FLOOR closes the collar
+  bottom so an item rests on it instead of dropping through the bore; the
+  front opening stays open above the floor.
 - A solid back plate fused to the collar's back, carrying Multiconnect
   SLOT geometry cut straight from the library
-  (``opengrid.multiconnect.SnapInSlotCutter``). The holder slides down onto
-  wall-mounted Multiconnect round heads (the wall side is out of scope):
-  each round head enters the wide top opening and seats in the narrow slot,
-  the snap-in side notches locking it without tools. The mount is 100%
-  library geometry - the pockets are the library's own cutter, nothing
-  bespoke, nothing ported from models/. The slot count scales with plate
-  width at the library's 28 mm (``OPEN_GRID_UNIT_SIZE``) pitch.
+  (``opengrid.multiconnect.SnapInSlotCutter``). The holder lowers straight
+  DOWN onto wall-mounted Multiconnect round heads (the wall side is out of
+  scope): each round head enters the aperture at the plate's BOTTOM edge
+  and rides up to the narrow seat, the snap-in side notches locking it
+  without tools; the holder's weight then keeps the head seated. The mount
+  is 100% library geometry - the pockets are the library's own cutter,
+  nothing bespoke, nothing ported from models/. The slot count scales with
+  plate width at the library's 28 mm (``OPEN_GRID_UNIT_SIZE``) pitch.
 
 Orientation convention (defined per plan review on pst-7lgg)
 -------------------------------------------------------------
 - Z: cylinder axis (vertical when installed; the can is pushed in from the
-  front and rests on the collar's bottom arc, grip from the 270deg wrap).
-  The Multiconnect slots slide along +Z, so the holder drops DOWN onto the
-  wall heads and gravity keeps it seated.
+  front and rests on the FLOOR, grip from the 270deg wrap). The Multiconnect
+  slot openings face -Z (the plate's bottom edge), so the holder drops DOWN
+  onto the wall heads and its weight keeps them seated.
 - -Y: board side. The back plate's mount face (where the slot pockets open)
   points at the wall. +Y: front, where the opening gap faces.
 - X: lateral (slots are spaced along X at the 28 mm pitch).
@@ -47,6 +50,7 @@ from build123d import (
     Location,
     Plane,
     Pos,
+    Rotation as Rot,
     extrude,
 )
 from build123d import make_face
@@ -61,6 +65,18 @@ D_MIN, D_MAX = 30.0, 120.0        # cylinder diameter, mm
 H_MIN, H_MAX = 20.0, 120.0        # collar height (cylinder height held), mm
 WALL_MIN, WALL_MAX = 1.6, 4.0     # collar wall thickness, mm
 OPENING_MIN, OPENING_MAX = 60.0, 120.0  # opening arc, degrees (wrap >= 240)
+FLOOR_MIN, FLOOR_MAX = 1.6, 10.0  # floor (base) thickness, mm
+# Default floor is ~2x the default wall (2.4 mm) — a solid base that
+# closes the collar bottom so a can rests on it instead of dropping
+# through the bore. Always on by default (the range starts at a
+# printable 1.6 mm); the front opening stays open ABOVE the floor.
+FLOOR_DEFAULT = 4.8
+# The floor disc is inset this far under the collar's outer radius. A disc
+# at exactly r_out shares a coincident cylindrical face with the collar
+# wall, which OCCT tessellates degenerately for thin walls (some footprints
+# exported non-watertight). 0.1 mm inside the wall is visually nil but
+# gives the fuse a clean, non-coincident boundary.
+FLOOR_EDGE_INSET = 0.1
 
 LIP_RADIUS = 1.0  # mm, nominal real BRep fillet on the opening's entry corners
 
@@ -86,9 +102,14 @@ SLOT_PITCH = OPEN_GRID_UNIT_SIZE  # 28 mm, the library's Multiconnect spacing
 # The library SnapInSlotCutter, at rotation (-90, 0, 0), spans ~+/-16.7 mm in
 # X (slot body + snap-in side notches) and z in [seat-10.15, seat+28].
 _SLOT_HALF_WIDTH = 16.75   # mm, notch reach either side of a slot centre
-_SLOT_BELOW_SEAT = 10.15   # mm, slot body below the head seat
-_SLOT_ABOVE_SEAT = 28.0    # mm, slide travel above the head seat (opening)
+_SLOT_BELOW_SEAT = 10.15   # mm, slot body on the closed (seat) side
+_SLOT_ABOVE_SEAT = 28.0    # mm, slide travel on the OPEN (entry) side
 _SLOT_EDGE_MARGIN = 3.0    # mm, solid plate margin around the slot envelope
+# The channel entry (slide opening) must cut THROUGH the plate's bottom
+# edge so a wall head can enter — a sealed pocket has no way in. Position
+# the seat so the opening mouth pokes this far BELOW the plate bottom
+# (z=0), guaranteeing a clean aperture rather than a tangent edge.
+_SLOT_BOTTOM_OVERSHOOT = 2.0
 
 # One slot for holders up to ~3 grid units wide; two for wider/heavier ones.
 TWO_SLOT_WIDTH_THRESHOLD = 84.0  # mm (3 * OPEN_GRID_UNIT_SIZE)
@@ -116,12 +137,15 @@ def _lip_radius(wall: float) -> float:
     return min(LIP_RADIUS, 0.5 * wall - 0.02)
 
 
-def _validate(d: float, h: float, wall: float, opening_deg: float) -> None:
+def _validate(
+    d: float, h: float, wall: float, opening_deg: float, floor_thickness: float
+) -> None:
     for value, lo, hi, label in (
         (d, D_MIN, D_MAX, "d (cylinder diameter)"),
         (h, H_MIN, H_MAX, "h (collar height)"),
         (wall, WALL_MIN, WALL_MAX, "wall"),
         (opening_deg, OPENING_MIN, OPENING_MAX, "opening_deg"),
+        (floor_thickness, FLOOR_MIN, FLOOR_MAX, "floor_thickness"),
     ):
         if not (lo <= value <= hi):
             raise ValueError(f"{label}={value} out of range [{lo}, {hi}]")
@@ -176,15 +200,20 @@ def _plate_geometry(r_in: float, r_out: float, h: float) -> tuple[float, float, 
     The plate front face touches the collar's inner radius (``-r_in``) so it
     fuses through the full collar wall; the mount face sits one panel
     thickness further out (-Y), standing proud of the collar. The head seat
-    is placed so the wide slot opening sits just below the plate top and the
-    whole slot envelope stays inside the plate height.
+    is placed near the BOTTOM so the slide opening reaches (and cuts through)
+    the plate's bottom edge — the holder lowers straight down onto the wall
+    head, which enters at the bottom aperture and rides up to the seat.
     """
     collar_width = 2.0 * r_out
     n_slots = slot_count(collar_width)
     width = max(collar_width, _min_plate_width(n_slots))
     plate_h = max(h, MIN_PLATE_HEIGHT)
     mount_y = -r_in - PANEL_THICKNESS
-    z_seat = plate_h - _SLOT_ABOVE_SEAT - _SLOT_EDGE_MARGIN
+    # Seat sits _SLOT_ABOVE_SEAT above the opening mouth; place it so the
+    # mouth pokes _SLOT_BOTTOM_OVERSHOOT below the plate bottom (z=0),
+    # cutting an aperture through the bottom edge. Independent of plate_h:
+    # the entry is always at the bottom, so the seat is a fixed height up.
+    z_seat = _SLOT_ABOVE_SEAT - _SLOT_BOTTOM_OVERSHOOT
     return width, plate_h, mount_y, z_seat, n_slots
 
 
@@ -201,15 +230,20 @@ def slot_cutters(r_in: float, r_out: float, h: float) -> list[Part]:
     """The library Multiconnect slot cutters, positioned on the back plate.
 
     Each is ``opengrid.multiconnect.SnapInSlotCutter`` at rotation
-    (-90, 0, 0): pocket depth -> +Y (into the plate from the -Y mount face),
-    slide -> +Z (opening at the plate top), width -> X. Verified against the
-    library's own ``snap_in_slot_cutter_fitting_test`` recipe. The holder
-    slides DOWN onto wall-mounted round heads; the snap-in side notches lock
-    each head in place. 100% library geometry - no bespoke slot solids.
+    (-90, 0, 0) with an added 180-degree spin about Y (``Rot(0, 180, 0)``):
+    pocket depth -> +Y (into the plate from the -Y mount face), slide -> -Z
+    (opening at the plate BOTTOM), width -> X. The base (-90, 0, 0) cutter
+    opens at +Z (top) with the pocket at +Y; the Y-spin flips the slide to
+    -Z while keeping the pocket on +Y (verified by measuring the cutter
+    bbox: base z in [-10.15, 28], y in [0, 4.15]; spun z in [-28, 10.15],
+    y in [0, 4.15]). The holder lowers DOWN onto wall-mounted round heads:
+    each head enters the aperture at the plate's bottom edge and rides up
+    to the seat, where the snap-in side notches lock it. 100% library
+    geometry - no bespoke slot solids.
     """
     _w, _ph, mount_y, z_seat, n_slots = _plate_geometry(r_in, r_out, h)
     return [
-        Pos(x, mount_y, z_seat) * SnapInSlotCutter(rotation=(-90, 0, 0))
+        Pos(x, mount_y, z_seat) * Rot(0, 180, 0) * SnapInSlotCutter(rotation=(-90, 0, 0))
         for x in _slot_x_positions(n_slots)
     ]
 
@@ -219,6 +253,7 @@ def holder(
     h: float,
     wall: float = 2.4,
     opening_deg: float = 90.0,
+    floor_thickness: float = FLOOR_DEFAULT,
 ) -> Part:
     """Build the C-ring cylinder holder.
 
@@ -228,8 +263,11 @@ def holder(
         wall: collar wall thickness, mm. Range [1.6, 4].
         opening_deg: opening arc of the C-ring, degrees. Range [60, 120],
             i.e. the collar always wraps at least 240 degrees.
+        floor_thickness: solid base closing the collar bottom so an item
+            rests on it instead of dropping through the bore, mm. Range
+            [1.6, 10]. The front opening stays open above the floor.
     """
-    _validate(d, h, wall, opening_deg)
+    _validate(d, h, wall, opening_deg, floor_thickness)
 
     r_in = d / 2.0
     r_out = r_in + wall
@@ -251,6 +289,10 @@ def holder(
             make_face()
         # Collar spans z 0..h (Align.MIN); overshoot 1mm at the bottom so
         # the cut is through-all and not coplanar with the collar's faces.
+        # The floor (fused below) re-closes the opening's bottom, but the
+        # full-height cut keeps the opening EDGES running off the bottom so
+        # their fillet stays buildable (a fillet that terminated on the
+        # floor top exported non-watertight for tall, thin footprints).
         extrude(amount=h + 1.0, dir=(0, 0, 1))
     wedge_part = wedge.part.moved(Location((0, 0, -1.0)))
     collar = annulus - wedge_part
@@ -262,23 +304,39 @@ def holder(
     collar = collar.fillet(radius=_lip_radius(wall), edge_list=lip_edges)
 
     # --- Multiconnect slot back plate (100% library geometry) ------------
-    # Fuse a solid plate to the collar's back, then carve the library's own
-    # SnapInSlotCutter pockets out of the unified body so each pocket is
-    # exactly the library cutter (nothing bespoke, no refilled sliver).
+    # Fuse a solid plate to the collar's back and re-carve the bore so no
+    # plate material intrudes into the cylinder space (the plate front face
+    # sits at the inner radius; this trims the coincident sliver and keeps
+    # the boolean off-coplanar with the bore).
     part = collar.fuse(_back_plate_solid(r_in, r_out, h))
-    for cutter in slot_cutters(r_in, r_out, h):
-        part = part - cutter
-
-    # Re-carve the bore so no plate material intrudes into the cylinder
-    # space (the plate front face sits at the inner radius; this trims the
-    # coincident sliver and keeps the boolean off-coplanar with the bore).
     bore = Cylinder(
         radius=r_in + BORE_CLEARANCE,
         height=h + 8.0,
         align=(Align.CENTER, Align.CENTER, Align.CENTER),
     )
     part = (part - bore).clean()
-    return part
+
+    # --- Floor (solid base) ----------------------------------------------
+    # Close the collar bottom so an item rests on a solid base instead of
+    # dropping through the bore (live-review bug, pst-t9wi). A full disc
+    # across the C-ring footprint, inset FLOOR_EDGE_INSET under r_out (see
+    # that constant): the front opening therefore stays open only ABOVE the
+    # floor. Fused AFTER the bore re-carve so the base stays solid.
+    if floor_thickness > 0.0:
+        floor = Cylinder(
+            radius=r_out - FLOOR_EDGE_INSET,
+            height=floor_thickness,
+            align=(Align.CENTER, Align.CENTER, Align.MIN),
+        )
+        part = part.fuse(floor).clean()
+
+    # Carve the library slot pockets LAST, out of the unified body, so each
+    # pocket is exactly the library cutter (nothing bespoke) and the floor
+    # can never refill a pocket. Their opening cuts THROUGH the plate's
+    # bottom edge (aperture) — the wall head's way in.
+    for cutter in slot_cutters(r_in, r_out, h):
+        part = part - cutter
+    return part.clean()
 
 
 def _params(d: float, h: float) -> tuple[Param, ...]:
@@ -328,6 +386,17 @@ def _params(d: float, h: float) -> tuple[Param, ...]:
             step=5.0,
             unit="deg",
             label="Opening arc",
+            group="geometry",
+        ),
+        Param(
+            name="floor_thickness",
+            kind="number",
+            default=FLOOR_DEFAULT,
+            min=FLOOR_MIN,
+            max=FLOOR_MAX,
+            step=0.2,
+            unit="mm",
+            label="Floor thickness",
             group="geometry",
         ),
     )

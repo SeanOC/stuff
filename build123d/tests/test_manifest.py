@@ -291,5 +291,6 @@ def test_resolve_values_rejects_unknown_and_out_of_range():
         spec.resolve_values({"h": 999.0})
     assert spec.resolve_values({"d": 40.0})["d"] == 40.0
     assert spec.resolve_values() == {
-        "d": 66.0, "h": 60.0, "wall": 2.4, "opening_deg": 90.0
+        "d": 66.0, "h": 60.0, "wall": 2.4, "opening_deg": 90.0,
+        "floor_thickness": 4.8,
     }
