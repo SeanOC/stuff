@@ -57,8 +57,20 @@ export function partCameraAxes(camera: THREE.Camera): CameraAxes {
 }
 
 interface Props {
-  /** URL of the GLB to load (the /api/bd-asset serving route). */
-  url: string;
+  /**
+   * URL of the GLB to load (the /api/bd-asset baked-preset route). Used
+   * for the instant preset view. Exactly one of `url` / `bytes` is set:
+   * `bytes` wins when both are present.
+   */
+  url?: string;
+  /**
+   * In-memory GLB to parse directly, bypassing a network fetch. This is
+   * the live-render path (pst-qbas): /api/bd-render returns GLB bytes for
+   * the current live params, and the detail page feeds them straight in
+   * rather than round-tripping through a URL. Keep the reference stable
+   * across renders — a fresh Uint8Array identity re-runs the loader.
+   */
+  bytes?: Uint8Array;
   /**
    * Fired once per successful load with the loaded model's bbox. The
    * detail page uses it as an orientation guard: a double-rotation
@@ -107,6 +119,7 @@ export function fitCamera(
 
 export default function GlbViewer({
   url,
+  bytes,
   onLoaded,
   onError,
   onCameraChange,
@@ -176,36 +189,42 @@ export default function GlbViewer({
     let model: THREE.Object3D | null = null;
     let disposed = false;
     const loader = new GLTFLoader();
-    loader.load(
-      url,
-      (gltf) => {
-        if (disposed) return;
-        model = gltf.scene;
-        scene.add(model);
+    const onGltf = (gltf: { scene: THREE.Object3D }) => {
+      if (disposed) return;
+      model = gltf.scene;
+      scene.add(model);
 
-        const box = new THREE.Box3().setFromObject(model);
-        const fit = fitCamera(box, camera.fov);
-        camera.position.copy(fit.position);
-        camera.near = fit.near;
-        camera.far = fit.far;
-        camera.updateProjectionMatrix();
-        controls.target.copy(fit.target);
-        controls.update();
-        modelLoaded = true;
-        render();
+      const box = new THREE.Box3().setFromObject(model);
+      const fit = fitCamera(box, camera.fov);
+      camera.position.copy(fit.position);
+      camera.near = fit.near;
+      camera.far = fit.far;
+      camera.updateProjectionMatrix();
+      controls.target.copy(fit.target);
+      controls.update();
+      modelLoaded = true;
+      render();
 
-        const size = new THREE.Vector3();
-        box.getSize(size);
-        onLoadedRef.current?.({ size: [size.x, size.y, size.z] });
-      },
-      undefined,
-      (err) => {
-        if (disposed) return;
-        onErrorRef.current?.(
-          err instanceof Error ? err.message : "failed to load GLB",
-        );
-      },
-    );
+      const size = new THREE.Vector3();
+      box.getSize(size);
+      onLoadedRef.current?.({ size: [size.x, size.y, size.z] });
+    };
+    const onLoadError = (err: unknown) => {
+      if (disposed) return;
+      onErrorRef.current?.(
+        err instanceof Error ? err.message : "failed to load GLB",
+      );
+    };
+    if (bytes) {
+      // Live-render path: parse the in-memory GLB directly. Copy into a
+      // fresh, offset-0 ArrayBuffer so parse owns a clean buffer even when
+      // `bytes` is a view into a larger (possibly shared) allocation.
+      const copy = new Uint8Array(bytes.byteLength);
+      copy.set(bytes);
+      loader.parse(copy.buffer, "", onGltf, onLoadError);
+    } else if (url) {
+      loader.load(url, onGltf, undefined, onLoadError);
+    }
 
     const ro = new ResizeObserver(handleResize);
     ro.observe(container);
@@ -230,7 +249,7 @@ export default function GlbViewer({
         container.removeChild(renderer.domElement);
       }
     };
-  }, [url]);
+  }, [url, bytes]);
 
   return (
     <div
