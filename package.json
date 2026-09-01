@@ -10,7 +10,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "prebuild": "./scripts/vendor-libs.sh",
+    "prebuild": "./scripts/vendor-libs.sh && ./scripts/bake-bd-presets.sh",
     "build": "next build",
     "start": "next start",
     "test": "vitest run",
