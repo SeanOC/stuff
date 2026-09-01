@@ -5,7 +5,7 @@
       "slug": "holder-spray-can",
       "engine": "build123d",
       "title": "Spray can holder",
-      "blurb": "open-front C-ring holder, spray can (d=66, collar h=60), openGrid tile back plate",
+      "blurb": "open-front C-ring holder, spray can (d=66, collar h=60), Multiconnect slot back plate",
       "categoryId": "multiboard",
       "params": [
         {
@@ -68,7 +68,7 @@
       "slug": "holder-bottle-500ml",
       "engine": "build123d",
       "title": "500ml bottle holder",
-      "blurb": "open-front C-ring holder, 500ml bottle (d=73, collar h=50), openGrid tile back plate",
+      "blurb": "open-front C-ring holder, 500ml bottle (d=73, collar h=50), Multiconnect slot back plate",
       "categoryId": "multiboard",
       "params": [
         {
