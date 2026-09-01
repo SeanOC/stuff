@@ -58,3 +58,6 @@ GEMINI.md
 
 # render service build artifact (st-065)
 services/render/dist/
+
+# build123d preset-bake uv cache (scripts/bake-bd-presets.sh, pst-0um9)
+.uv-cache/

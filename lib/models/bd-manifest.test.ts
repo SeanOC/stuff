@@ -5,7 +5,7 @@
 // instead we assert the real file parses into a valid BdManifest.
 
 import { describe, expect, it } from "vitest";
-import { bdModelsEnabled, loadBdManifest } from "./bd-manifest";
+import { bdModelsEnabled, loadBdManifest, loadBdModel } from "./bd-manifest";
 
 describe("loadBdManifest", () => {
   it("parses the committed manifest into the app contract", async () => {
@@ -29,6 +29,19 @@ describe("loadBdManifest", () => {
         }
       }
     }
+  });
+});
+
+describe("loadBdModel", () => {
+  it("returns the manifest entry for a known slug", async () => {
+    const model = await loadBdModel("holder-spray-can");
+    expect(model).not.toBeNull();
+    expect(model!.slug).toBe("holder-spray-can");
+    expect(model!.presets.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("returns null for an unknown slug", async () => {
+    expect(await loadBdModel("no-such-model")).toBeNull();
   });
 });
 

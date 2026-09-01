@@ -46,7 +46,18 @@ export default defineConfig({
     command: isCI
       ? `npx next start -p ${PORT} -H 127.0.0.1`
       : `npx next dev -p ${PORT} -H 127.0.0.1`,
-    env: { STUFF_ENABLE_TEST_ROUTES: "1" },
+    // STUFF_ENABLE_TEST_ROUTES unlocks the app/dev/** fixtures (above).
+    // BD_MODELS_ENABLED is passed THROUGH from the runner env (unset by
+    // default) so the build123d preset flow is only live when a run opts
+    // in — `BD_MODELS_ENABLED=1 npm run test:e2e` with the presets baked
+    // (scripts/bake-bd-presets.sh). Unset in CI → bd pages stay hidden
+    // and tests/e2e/bd-model.spec.ts skips itself, leaving CI untouched.
+    env: {
+      STUFF_ENABLE_TEST_ROUTES: "1",
+      ...(process.env.BD_MODELS_ENABLED
+        ? { BD_MODELS_ENABLED: process.env.BD_MODELS_ENABLED }
+        : {}),
+    },
     port: PORT,
     reuseExistingServer: !isCI,
     timeout: 120_000,

@@ -97,9 +97,25 @@ export async function loadBdManifest(): Promise<BdManifest> {
 }
 
 /**
+ * Load one build123d model by its manifest slug, or null if the slug
+ * is unknown. Read side for the detail page (P1c) and the preset-asset
+ * serving route: both need the manifest's preset allowlist keyed by
+ * slug. Shares loadBdManifest's shape-check, so a malformed manifest
+ * throws here too.
+ */
+export async function loadBdModel(slug: string): Promise<BdModel | null> {
+  const manifest = await loadBdManifest();
+  return manifest.models.find((m) => m.slug === slug) ?? null;
+}
+
+/**
  * Feature flag: build123d models only appear in the gallery once the
  * detail-view side of the epic (P1c) exists. Default OFF. Set
- * BD_MODELS_ENABLED=1 in the Vercel project env when P1c lands.
+ * BD_MODELS_ENABLED=1 in the Vercel project env to activate — the same
+ * switch also turns on the build-time preset bake (scripts/bake-bd-
+ * presets.sh, chained into the `prebuild` npm hook), so one env var
+ * gates both the feature and the assets it needs. Leaving it unset
+ * keeps CI and every other build untouched.
  */
 export function bdModelsEnabled(): boolean {
   return process.env.BD_MODELS_ENABLED === "1";
