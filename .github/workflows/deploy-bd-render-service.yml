@@ -1,18 +1,3 @@
-# ⚠️ STAGED WORKFLOW — must be moved to .github/workflows/ by a human.
-#
-# This file is the deploy pipeline required by bead pst-so26 (AC #7). It is
-# parked here, NOT under .github/workflows/, because the automation worker
-# that authored this PR is prohibited from creating/modifying files under
-# .github/workflows/. To activate it, an operator runs (from the repo root):
-#
-#     git mv services/bd-render/deploy-bd-render-service.yml \
-#            .github/workflows/deploy-bd-render-service.yml
-#
-# It SHIPS DARK regardless of location: the deploy job is gated on the
-# GCP WIF repo variable, so even once moved it is a no-op until the operator
-# sets that variable. Moving it changes nothing about running CI until then.
-# ---------------------------------------------------------------------------
-#
 # Deploy the live build123d render service (services/bd-render/) to Cloud
 # Run — bead pst-so26. Mirrors deploy-render-service.yml (the native
 # OpenSCAD service): KEYLESS via GitHub OIDC → Workload Identity Federation,
