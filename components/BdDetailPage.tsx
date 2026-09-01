@@ -40,16 +40,18 @@ export default function BdDetailPage({ model }: { model: BdDetailPageModel }) {
   const onLoaded = useCallback((b: GlbBbox) => {
     setViewerError(null);
     setBbox(b);
-    // Orientation guard: these holders are taller (Y, up in glTF) than
-    // deep (Z). If a regression re-introduced a manual rotation the axes
-    // would swap — surface it in the console rather than shipping a
-    // model lying on its side. (The e2e spec asserts the same via the
-    // data-glb-size attribute below.)
+    // Orientation guard: warn only on a gross lay-down. A depth (Z) that
+    // *dwarfs* the height (Y) means the Y-up transform was likely applied
+    // twice, toppling the model. We can't assert "Y is tallest" generically:
+    // a near-cubic holder legitimately has depth slightly over height (the
+    // spray-can's ~64mm back-plate depth vs 60mm collar). So flag only when
+    // depth exceeds height by a wide margin, which no upright holder does.
+    // (The e2e spec pins the exact envelope via data-glb-size below.)
     const [, y, z] = b.size;
-    if (z > y) {
+    if (z > y * 1.5) {
       console.warn(
         `GLB orientation looks wrong for ${model.slug}: depth ${z.toFixed(4)} ` +
-          `exceeds height ${y.toFixed(4)} — is the Y-up transform being ` +
+          `far exceeds height ${y.toFixed(4)} — is the Y-up transform being ` +
           `applied twice?`,
       );
     }

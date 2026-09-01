@@ -33,9 +33,10 @@ interface Props {
   url: string;
   /**
    * Fired once per successful load with the loaded model's bbox. The
-   * detail page uses it as an orientation assertion: height (Y) must be
-   * the tallest axis for these upright holders — a double-rotation
-   * regression would swap Y and Z and trip a test/console check.
+   * detail page uses it as an orientation guard: a double-rotation
+   * regression would swap Y and Z and topple the model, which a
+   * gross depth-over-height check surfaces in the console (the e2e
+   * spec pins the exact upright envelope).
    */
   onLoaded?: (bbox: GlbBbox) => void;
   /** Fired if the GLB fails to load/parse. */

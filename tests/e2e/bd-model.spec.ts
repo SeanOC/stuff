@@ -34,18 +34,24 @@ test("bd model page loads, GLB renders upright, and the preset STL downloads", a
   await expect(page.getByTestId("bd-preset-spray_can")).toBeVisible();
 
   // GLB load populates the bbox strip. data-glb-size = "x,y,z" in the
-  // GLB's own units (metres, from OCP). Orientation assertion: the
-  // holder is taller (Y, up in glTF) than deep (Z) — a double-rotation
-  // regression would swap them.
+  // GLB's own units (metres, from OCP). Orientation assertion: pin the
+  // known-good upright envelope for this preset (collar h=60mm → Y-up,
+  // back-plate depth pushing Z past it). A double -90°X rotation would
+  // swap Y and Z, dropping the ring's 60mm height into Z — which the
+  // `z > 0.062` bound below catches. We assert the shipped envelope
+  // rather than "Y is tallest" because for this near-cubic holder the
+  // back-plate depth (~64mm) legitimately exceeds the collar height.
   const sizeEl = page.getByTestId("bd-glb-size");
   await expect(sizeEl).toBeVisible({ timeout: 30_000 });
   const raw = await sizeEl.getAttribute("data-glb-size");
   expect(raw).toBeTruthy();
   const [x, y, z] = raw!.split(",").map(Number);
   expect(Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)).toBe(true);
-  expect(y).toBeGreaterThan(0);
-  // Height (Y) is the tallest axis for this upright holder.
-  expect(y).toBeGreaterThanOrEqual(z);
+  // Ring height (60mm collar) maps to Y-up; depth incl. the back plate
+  // (~64mm) is the largest axis. A double-rotation swap would put the
+  // 60mm height into Z (< 0.062) and fail the second bound.
+  expect(y).toBeCloseTo(0.06, 2);
+  expect(z).toBeGreaterThan(0.062);
 
   // Download the baked preset STL.
   const [download] = await Promise.all([
