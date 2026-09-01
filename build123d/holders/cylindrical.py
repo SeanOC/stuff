@@ -58,7 +58,7 @@ from build123d.topology import Part
 from opengrid.constants import OPEN_GRID_UNIT_SIZE
 from opengrid.multiconnect import SnapInSlotCutter
 
-from holders.registry import ModelSpec, Param, Preset, register
+from holders.registry import ModelSpec, MountFixtures, Param, Preset, register
 
 # Parameter ranges (AC: out-of-range raises ValueError with a message).
 D_MIN, D_MAX = 30.0, 120.0        # cylinder diameter, mm
@@ -339,6 +339,42 @@ def holder(
     return part.clean()
 
 
+def mount_fixtures(mount_type: str, values: dict) -> MountFixtures:
+    """Library-geometry fixtures for the deterministic mount contracts.
+
+    The mount contract suite (tests/mount_contracts.py) is model-agnostic:
+    it verifies the aperture, orientation, seat clearance and entry travel
+    from these fixtures alone. This hook supplies them for the C-ring holder
+    — the same placed library ``SnapInSlotCutter`` pockets the build carves,
+    plus the world pose of a seated library ``RoundHead`` at each slot.
+
+    A seated head is ``seat_loc * RoundHead()`` — the exact pose the cutter's
+    own internal round-head cutter occupies (``Pos(x, mount_y, z_seat)`` then
+    the ``Rot(0, 180, 0) * Rot(-90, 0, 0)`` orientation that flips the slide
+    opening to -Z while keeping the pocket on +Y; see ``slot_cutters``).
+    """
+    if mount_type != "multiconnect-slot":
+        raise ValueError(
+            f"cylindrical holder has no {mount_type!r} mount "
+            "(only 'multiconnect-slot')"
+        )
+    d = values["d"]
+    h = values["h"]
+    wall = values.get("wall", 2.4)
+    r_in = d / 2.0
+    r_out = r_in + wall
+    _w, _ph, mount_y, z_seat, n_slots = _plate_geometry(r_in, r_out, h)
+    seat_locs = [
+        Pos(x, mount_y, z_seat) * Rot(0, 180, 0) * Rot(-90, 0, 0)
+        for x in _slot_x_positions(n_slots)
+    ]
+    return MountFixtures(
+        cutters=slot_cutters(r_in, r_out, h),
+        seat_locs=seat_locs,
+        entry_axis=(0.0, 0.0, 1.0),
+    )
+
+
 def _params(d: float, h: float) -> tuple[Param, ...]:
     """Param spec for one holder instance — defaults carry THAT model's
     shape (spray can vs bottle), so each registered model keeps its own
@@ -422,6 +458,7 @@ register(
         ),
         title="Spray can holder",
         category_id="multiboard",
+        mounts=("multiconnect-slot",),
     )
 )
 register(
@@ -440,5 +477,6 @@ register(
         ),
         title="500ml bottle holder",
         category_id="multiboard",
+        mounts=("multiconnect-slot",),
     )
 )

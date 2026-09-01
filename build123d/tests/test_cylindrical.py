@@ -210,38 +210,10 @@ def test_mount_is_the_library_slot():
         )
 
 
-def test_slot_opening_faces_down_and_cuts_bottom_edge():
-    """The slot opening faces -Z and its channel cuts THROUGH the plate's
-    bottom edge, so a wall head can actually enter (the failure this pins:
-    a sealed pocket with no aperture). The pocket opens on the -Y mount
-    face; the plate stays solid ABOVE the slot body and flanking the
-    channel at the bottom edge.
-
-    This is an APERTURE assertion, not a volume check: it proves an actual
-    opening exists through the bottom face — exactly the failure class a
-    watertight test cannot catch (a sealed pocket is watertight too)."""
-    d, h = 66.0, 60.0
-    r_in = d / 2.0
-    r_out = r_in + 2.4
-    part = holder(d, h)
-    width, plate_h, mount_y, z_seat, _n = _plate_geometry(r_in, r_out, h)
-    yq = mount_y + 1.0  # just inside the -Y mount face, at the slot centre
-
-    # 1) The channel is OPEN at the bottom edge: just inside the mount face,
-    #    at the slot centre X, immediately above the plate bottom -> empty.
-    #    This is the aperture the wall head enters through.
-    assert not part.is_inside((0.0, yq, 0.5)), (
-        "no aperture: slot channel is sealed at the plate's bottom edge"
-    )
-    # 2) The pocket is open at the head seat (mount face carved there too).
-    assert not part.is_inside((0.0, yq, z_seat)), "pocket not open at mount face"
-    # 3) The aperture is a real hole, not the whole bottom missing: the
-    #    plate is SOLID flanking the channel at the same low z.
-    edge_x = width / 2.0 - 1.0
-    assert part.is_inside((edge_x, yq, 0.5)), "plate not solid flanking the slot aperture"
-    # 4) The plate is SOLID above the slot body (the opening runs out the
-    #    BOTTOM, not the top — the inverse of the old top-opening bug).
-    assert part.is_inside((0.0, yq, plate_h - 1.0)), "plate not solid above the slot"
+# The slot APERTURE / ORIENTATION assertions that used to live here (the
+# channel opens at the plate's bottom edge, not the top) migrated into the
+# systematic mount-contract library — tests/mount_contracts.py, exercised by
+# tests/test_mount_contracts.py over every mount-tagged model (bead pst-3eun).
 
 
 def test_floor_closes_collar_bottom():
