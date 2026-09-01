@@ -9,11 +9,17 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { parseScadParams, type Param, type Preset } from "../scad-params/parse";
-import { CATALOG } from "./catalog";
+import { CATALOG, BUILD123D_CATALOG, type CategoryId } from "./catalog";
+import { bdModelsEnabled, loadBdManifest } from "./bd-manifest";
 
 const MODELS_DIR = path.resolve(process.cwd(), "models");
 
 export interface ModelEntry {
+  /**
+   * Geometry engine. "scad" for the models/ .scad sources, "build123d"
+   * for models discovered from build123d/manifest.json.
+   */
+  engine: "scad" | "build123d";
   /** Filename stem, e.g. "cylindrical_holder_slot". */
   stem: string;
   /** URL-safe slug derived from stem, dashes for underscores. */
@@ -26,7 +32,7 @@ export interface ModelEntry {
   annotated: boolean;
   /** Number of parsed @param annotations. */
   paramCount: number;
-  /** Catalog category. Joined from lib/models/catalog.ts. */
+  /** Catalog category (SCAD) or the manifest's categoryId (build123d). */
   categoryId: string;
   /** Two-line library card blurb. Joined from lib/models/catalog.ts. */
   blurb: string;
@@ -48,7 +54,7 @@ export async function listModels(): Promise<ModelEntry[]> {
     .map((f) => f.slice(0, -".scad".length))
     .sort();
 
-  return Promise.all(stems.map(async (stem) => {
+  const scadModels = await Promise.all(stems.map(async (stem) => {
     const modelPath = `models/${stem}.scad`;
     const source = await fs.readFile(path.join(MODELS_DIR, `${stem}.scad`), "utf8");
     const { params } = parseScadParams(source);
@@ -59,6 +65,7 @@ export async function listModels(): Promise<ModelEntry[]> {
       );
     }
     return {
+      engine: "scad" as const,
       stem,
       slug: stemToSlug(stem),
       modelPath,
@@ -69,6 +76,60 @@ export async function listModels(): Promise<ModelEntry[]> {
       blurb: catalogEntry.blurb,
     };
   }));
+
+  // build123d models come from the generated manifest (P1a, pst-dsiq).
+  // Flag-gated (BD_MODELS_ENABLED, default off): their detail routes
+  // don't exist until P1c, so the gallery must not link to them yet.
+  // The machinery + merge tests land with the flag off.
+  const bdModels = bdModelsEnabled()
+    ? await listBdModels()
+    : [];
+
+  return [...scadModels, ...bdModels].sort(
+    (a, b) => a.slug.localeCompare(b.slug),
+  );
+}
+
+/**
+ * build123d models from the generated manifest, merged into the same
+ * ModelEntry shape. Titles/blurb/category come from the manifest, but
+ * the category id must still be a real CATALOG category and each slug
+ * must have a BUILD123D_CATALOG entry — same no-entry-throws enforcement
+ * as SCAD models (the manifest's categoryId is cross-checked against
+ * the catalog here so a drift fails loud rather than mis-shelving the
+ * card).
+ */
+export async function listBdModels(): Promise<ModelEntry[]> {
+  const manifest = await loadBdManifest();
+  return manifest.models.map((m) => {
+    const stem = slugToStem(m.slug);
+    const catalogEntry = BUILD123D_CATALOG[stem];
+    if (!catalogEntry) {
+      throw new Error(
+        `No catalog entry for build123d model "${stem}". ` +
+          `Add it to BUILD123D_CATALOG in lib/models/catalog.ts.`,
+      );
+    }
+    if (catalogEntry.categoryId !== (m.categoryId as CategoryId)) {
+      throw new Error(
+        `build123d manifest categoryId "${m.categoryId}" for "${stem}" ` +
+          `does not match the catalog ("${catalogEntry.categoryId}"). ` +
+          `Fix the registry or lib/models/catalog.ts, then regenerate ` +
+          `build123d/manifest.json.`,
+      );
+    }
+    return {
+      engine: "build123d" as const,
+      stem,
+      slug: m.slug,
+      modelPath: "build123d/manifest.json",
+      title: m.title,
+      annotated: m.params.length > 0,
+      paramCount: m.params.length,
+      categoryId: catalogEntry.categoryId,
+      blurb: m.blurb,
+    };
+  });
 }
 
 /** Load one model by slug, or null if not found. */
@@ -91,6 +152,7 @@ export async function loadModel(slug: string): Promise<ModelDetail | null> {
     );
   }
   return {
+    engine: "scad",
     stem,
     slug,
     modelPath: `models/${stem}.scad`,
