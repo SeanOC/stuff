@@ -50,6 +50,43 @@ run the manifest emitter. The registry rejects spec/preset errors at
 registration time (unknown params, out-of-range defaults, enum values not
 in choices, duplicate slugs/ids).
 
+## Mount contracts — deterministic geometry checks per mount type
+
+A watertight, sane-looking render is not a working mount: the v2 Multiconnect
+slot shipped upside-down and sealed (no way in) yet passed watertight export,
+codex review, and the render audit. `tests/mount_contracts.py` adds a
+**gating, deterministic** layer that verifies a mount's *function* with
+boolean geometry, using the opengrid library's own parts as fixtures. For
+`multiconnect-slot` it asserts: an entry **aperture** through the plate's
+bottom face, the opening **orientation** faces −Z (not the top), a library
+`RoundHead` **seats** with clearance, and a collision-free **entry travel**
+from the aperture to the seat. `tests/test_mount_contracts.py` auto-runs the
+contract over every registered model tagged with a mount — like the
+build/watertight suite, a new model inherits it for free — and includes a
+negative fixture proving the aperture check can fail.
+
+A model **declares** its mounts and supplies the fixtures:
+- add `mounts=("multiconnect-slot",)` to the `ModelSpec`, and
+- expose `mount_fixtures(mount_type, values) -> registry.MountFixtures` in the
+  model's module (the placed library cutters + each seated-head `Location`).
+
+An unknown mount tag is rejected at registration.
+
+**Adding a NEW mount contract** (e.g. an opengrid-snap contract later):
+1. add the name to `registry.KNOWN_MOUNTS`;
+2. write `verify_<mount>(part, fx)` in `tests/mount_contracts.py` (raise
+   `AssertionError` on violation) and register it in `CONTRACTS` — the module
+   asserts at import that every `KNOWN_MOUNTS` entry has a contract;
+3. add an advisory rubric for it in `scripts/render_review.py` `RUBRICS`;
+4. tag the models that carry it and implement their `mount_fixtures` hook.
+
+### Advisory render review (Layer 2, not a gate)
+`scripts/render_review.py` sends each model's 3-view PNG plus the mount rubric
+to a vision model via OpenRouter and prints a Markdown summary. It is
+**advisory only** — always exits 0, and degrades gracefully (a skip note)
+when `OPENROUTER_API_KEY` is absent. Wiring it into CI needs a workflow edit
+and the `OPENROUTER_API_KEY` secret — tracked as a follow-up (see the PR).
+
 ## PR conventions
 **Embed renders via commit-SHA raw URLs, never branch-relative ones.**
 A PR that shows off `docs/renders/*.png` must link them through a
