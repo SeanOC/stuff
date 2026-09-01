@@ -61,6 +61,29 @@ overrun (`→ 504`). Fast param validation (slug + `resolve_values`) runs in
 the server process first, so `4xx` inputs never spawn a worker. The worker
 also fails loud on a zero-volume mesh rather than writing an empty file.
 
+## Concurrency & memory safety (bead pst-mmxw)
+
+Each render spawns a heavy OCP subprocess (hundreds of MB resident) and
+`ThreadingHTTPServer` accepts connections without limit, so a burst of
+concurrent renders could OOM a 4 Gi instance. Two independent bounds guard
+this:
+
+- **In-process** — an in-process semaphore (`BD_RENDER_CONCURRENCY`, default
+  `2`) caps how many OCP subprocesses run at once; excess requests queue as
+  cheap blocked threads rather than stacking heavy processes. This ships in
+  `server.py` and holds regardless of how the container is deployed.
+- **Deploy (recommended)** — add `--concurrency 2` (≈ `BD_RENDER_CONCURRENCY`)
+  to the `gcloud run deploy` in `.github/workflows/deploy-bd-render-service
+  .yml` so Cloud Run also bounds per-instance requests (default is 80). That
+  file lives under `.github/workflows/` and is out of scope for the worker
+  policy that landed this change — it is a one-line operator follow-up, and
+  the in-process semaphore is the real safety net until then.
+
+The server is also defensive at the edge: a malformed `Content-Length` header
+returns a structured `400`, and any unexpected error inside request handling
+returns a generic `500 {"ok": false, "errorMessage": "internal error"}`
+rather than dropping the connection (parity with `services/render/server.ts`).
+
 ## Build & run (local, Docker) — the container smoke (AC #6)
 
 ```bash
@@ -120,6 +143,7 @@ that authored this**; tracked as a follow-up.
 | `PORT` | `8080` | listen port |
 | `BD_BUILD123D_ROOT` | `<repo>/build123d` | root that `holders`/`scripts` import from (fixed to `/build123d` in the image) |
 | `BD_RENDER_TIMEOUT` | `90` | hard per-request render timeout, seconds |
+| `BD_RENDER_CONCURRENCY` | `2` | max concurrent OCP renders per instance (in-process semaphore; ≥ 1) |
 
 ## Deploy
 
