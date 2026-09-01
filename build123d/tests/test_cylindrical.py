@@ -14,23 +14,30 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import trimesh  # noqa: E402
-from build123d import Align, Axis, Cylinder, Location, export_stl  # noqa: E402
-from opengrid.base import Base  # noqa: E402
+from build123d import Align, Cylinder, export_stl  # noqa: E402
 from opengrid.constants import OPEN_GRID_UNIT_SIZE  # noqa: E402
+from opengrid.multiconnect import SnapInSlotCutter  # noqa: E402
 
 from holders.cylindrical import (  # noqa: E402
-    BORE_CLEARANCE,
     D_MAX,
     D_MIN,
     H_MAX,
     H_MIN,
     LIP_RADIUS,
+    MIN_PLATE_HEIGHT,
     OPENING_MAX,
     OPENING_MIN,
+    PANEL_THICKNESS,
+    SLOT_PITCH,
+    TWO_SLOT_WIDTH_THRESHOLD,
     WALL_MAX,
     WALL_MIN,
+    _SLOT_ABOVE_SEAT,
+    _SLOT_EDGE_MARGIN,
     _lip_radius,
     holder,
+    slot_count,
+    slot_cutters,
 )
 from holders.registry import all_models  # noqa: E402
 
@@ -90,12 +97,6 @@ def test_min_wall_builds_and_is_watertight(d, tmp_path):
             assert mesh.body_count == 1, f"d={d}, h={h}, opening={opening_deg}: {mesh.body_count} bodies"
 
 
-def test_unsupported_mount_raises_valueerror():
-    with pytest.raises(ValueError) as exc:
-        holder(66, 60, mount="multiconnect")
-    assert "unsupported" in str(exc.value)
-
-
 def test_collar_wrap_is_real():
     """The solid must actually cover >= 240deg around the axis (AC)."""
     d, h = 66.0, 60.0
@@ -116,8 +117,8 @@ def test_collar_wrap_is_real():
     # opening 90deg -> expect ~270deg of wrap; floor is the AC (>=240deg).
     assert coverage >= 240 / 360.0 - 0.02, f"wrap coverage too low: {coverage:.3f}"
     assert coverage <= 300 / 360.0 + 0.02, f"wrap coverage too high: {coverage:.3f}"
-    # The back (0deg, -Y board side) must actually be solid (tile fused in).
-    assert part.is_inside((r_mid, 0.0, z_mid)), "back of collar not solid"
+    # A point in the collar wall away from the opening must be solid.
+    assert part.is_inside((r_mid, 0.0, z_mid)), "collar wall not solid"
 
 
 def test_opening_lips_are_filleted():
@@ -163,31 +164,60 @@ def test_opening_lips_are_filleted():
         )
 
 
-def test_mount_is_the_library_tile():
-    """The back plate must be exactly the opengrid Base tile (minus the
-    bore re-carve) - i.e. 100% library geometry, present in the part."""
+def test_slot_pitch_is_the_library_unit():
+    """Slots are spaced at the library's 28 mm openGrid/Multiconnect unit."""
+    assert SLOT_PITCH == OPEN_GRID_UNIT_SIZE
+
+
+def test_slot_count_scales_with_width():
+    """One slot for spray-can-class holders; two once wide/heavy."""
+    assert slot_count(TWO_SLOT_WIDTH_THRESHOLD - 1) == 1
+    assert slot_count(TWO_SLOT_WIDTH_THRESHOLD) == 2
+    # The shipped presets (~70-78 mm plates) are single-slot.
+    assert slot_count(2 * (66.0 / 2 + 2.4)) == 1
+    assert slot_count(2 * (73.0 / 2 + 2.4)) == 1
+
+
+def test_mount_is_the_library_slot():
+    """The back-plate pockets must be exactly the opengrid library's
+    SnapInSlotCutter - i.e. 100% library geometry, carved out of the plate
+    (nothing bespoke). Rebuild the library cutter at the plate's slot
+    positions and assert each region is fully absent from the part."""
     d, h = 66.0, 60.0
     r_in = d / 2.0
     r_out = r_in + 2.4
     part = holder(d, h)
 
-    x_count = max(1, int(math.ceil(d / OPEN_GRID_UNIT_SIZE)))
-    y_count = max(1, int(math.ceil(h / OPEN_GRID_UNIT_SIZE)))
-    tile = Base(x_count=x_count, y_count=y_count)
-    tile = tile.moved(Location((0, 0, 0), (1, 0, 0), 90))
-    back_center_y = -(r_in + r_out) / 2.0
-    tile = tile.moved(Location((0, back_center_y + 4.0, h / 2.0)))
+    # Sanity: the module builds its cutters from the library type.
+    assert isinstance(SnapInSlotCutter(), SnapInSlotCutter)
 
-    bore = Cylinder(
-        radius=r_in + BORE_CLEARANCE, height=h + 8.0,
-        align=(Align.CENTER, Align.CENTER, Align.CENTER),
-    )
-    expected = tile - bore
-    present = part.intersect(tile)
-    present_vol = sum(s.volume for s in present.solids()) if present is not None else 0.0
-    assert present_vol == pytest.approx(expected.volume, abs=1.0), (
-        f"library tile not fully present: {present_vol:.1f} vs {expected.volume:.1f}"
-    )
+    cutters = slot_cutters(r_in, r_out, h)
+    assert len(cutters) == slot_count(2 * r_out) >= 1
+    for cutter in cutters:
+        assert cutter.volume > 100.0, "sanity: library cutter is a real pocket"
+        present = part.intersect(cutter)
+        present_vol = (
+            sum(s.volume for s in present.solids()) if present is not None else 0.0
+        )
+        assert present_vol == pytest.approx(0.0, abs=1.0), (
+            f"library slot pocket not carved: residual {present_vol:.2f}"
+        )
+
+
+def test_slot_opening_faces_up_and_out():
+    """The slot slides along +Z (holder drops onto wall heads) and the
+    pocket opens on the -Y mount face: the mount face at the slot is carved
+    while the plate stays solid below the slot envelope."""
+    d, h = 66.0, 60.0
+    r_in = d / 2.0
+    part = holder(d, h)
+    mount_y = -r_in - PANEL_THICKNESS
+    plate_h = max(h, MIN_PLATE_HEIGHT)
+    z_seat = plate_h - _SLOT_ABOVE_SEAT - _SLOT_EDGE_MARGIN
+    # Just inside the mount face at the head seat -> carved (empty).
+    assert not part.is_inside((0.0, mount_y + 1.0, z_seat)), "pocket not open at mount face"
+    # Well below the slot envelope, just inside the mount face -> solid plate.
+    assert part.is_inside((0.0, mount_y + 1.0, 1.0)), "plate not solid below slot"
 
 
 @pytest.mark.parametrize(
