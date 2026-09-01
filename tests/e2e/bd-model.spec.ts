@@ -53,6 +53,15 @@ test("bd model page loads, GLB renders upright, and the preset STL downloads", a
   expect(y).toBeCloseTo(0.06, 2);
   expect(z).toBeGreaterThan(0.062);
 
+  // Orientation compass parity with the SCAD viewer (pst-6ram): the same
+  // axes indicator renders, and by GLB-load time it has switched off the
+  // static fallback onto the live camera projection (X/Y/Z lines present).
+  const compass = page.getByTestId("axes-indicator");
+  await expect(compass).toBeVisible();
+  await expect(compass.locator('g[data-axis="x"] line')).toBeVisible();
+  await expect(compass.locator('g[data-axis="y"] line')).toBeVisible();
+  await expect(compass.locator('g[data-axis="z"] line')).toBeVisible();
+
   // Download the baked preset STL.
   const [download] = await Promise.all([
     page.waitForEvent("download"),
