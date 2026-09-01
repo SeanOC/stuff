@@ -1,0 +1,30 @@
+# Build-context excludes for services/bd-render/Dockerfile (BuildKit reads
+# <dockerfile>.dockerignore). The build only COPYs build123d/{pyproject.toml,
+# uv.lock,holders,scripts} and services/bd-render/ — everything else is dead
+# weight in the context.
+**/node_modules
+**/.next
+**/dist
+**/__pycache__
+**/.pytest_cache
+.git
+app
+components
+hooks
+lib
+models
+libs
+scripts
+services/render
+exports
+renders
+test-results
+tests
+build123d/.venv
+build123d/out
+build123d/baked
+build123d/viewer
+build123d/docs
+build123d/tests
+*.stl
+*.glb

@@ -73,3 +73,19 @@ test("bd model page loads, GLB renders upright, and the preset STL downloads", a
   const { statSync } = await import("node:fs");
   expect(statSync(path!).size).toBeGreaterThan(1000);
 });
+
+test("gallery thumbnail is served from the baked preset (single source)", async ({
+  request,
+}) => {
+  // /api/thumbnail serves build123d cards from the same bake that
+  // produced the GLB above (build123d/baked/<slug>/<preset>.png), so
+  // the listing card can never drift from the shipped geometry
+  // (bead pst-1vi5). A 200 PNG here == the card resolves.
+  const res = await request.get(
+    `/api/thumbnail?model=${encodeURIComponent(SLUG)}`,
+  );
+  expect(res.status()).toBe(200);
+  expect(res.headers()["content-type"]).toBe("image/png");
+  const body = await res.body();
+  expect(body.byteLength).toBeGreaterThan(1000);
+});

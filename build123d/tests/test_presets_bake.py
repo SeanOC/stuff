@@ -4,10 +4,14 @@ Builds every preset of every app-listed (non-smoke) model via
 scripts/export.py --presets-only and asserts the AC:
 
   - every registered app-listed model appears (no silent skips),
-  - every preset of every such model gets STL + GLB,
-  - paths are deterministic and safe: <target>/<slug>/<preset-id>.{stl,glb},
-  - no other files are written (no PNGs, no leftovers),
+  - every preset of every such model gets STL + GLB + PNG thumbnail,
+  - paths are deterministic and safe: <target>/<slug>/<preset-id>.{stl,glb,png},
+  - no other files are written (no leftovers),
   - a missing expected output fails the test.
+
+The PNG is the gallery thumbnail (bead pst-1vi5): rendered from the same
+built part as the GLB/STL so the listing card can never drift from the
+detail-view geometry.
 """
 import json
 import subprocess
@@ -43,14 +47,21 @@ def test_presets_only_bakes_every_app_listed_preset(tmp_path):
         for preset in spec.presets:
             expected_files.add(target / spec.slug / f"{preset.id}.stl")
             expected_files.add(target / spec.slug / f"{preset.id}.glb")
+            expected_files.add(target / spec.slug / f"{preset.id}.png")
 
-    # Every expected artifact exists and is a valid mesh.
+    # Every expected artifact exists and is a valid mesh / non-empty PNG.
     for path in sorted(expected_files):
         assert path.exists(), f"missing baked artifact: {path}"
         if path.suffix == ".stl":
             mesh = trimesh.load_mesh(path)
             assert mesh.is_watertight, f"{path.name}: baked STL not watertight"
             assert mesh.volume > 0, f"{path.name}: baked STL zero volume"
+        if path.suffix == ".png":
+            # PNG signature + non-trivial size: a real render, not a stub.
+            assert path.stat().st_size > 1000, f"{path.name}: thumbnail too small"
+            assert path.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n", (
+                f"{path.name}: not a PNG"
+            )
 
     # Nothing else was written — deterministic path set, no skips/extras.
     actual_files = {p for p in target.rglob("*") if p.is_file()}
@@ -60,8 +71,8 @@ def test_presets_only_bakes_every_app_listed_preset(tmp_path):
         f"missing={sorted(map(str, expected_files - actual_files))}"
     )
 
-    # Count: exactly 2 files per preset of every app-listed model.
-    expected_count = sum(len(s.presets) for s in specs) * 2
+    # Count: exactly 3 files (STL + GLB + PNG) per preset of every model.
+    expected_count = sum(len(s.presets) for s in specs) * 3
     assert len(actual_files) == expected_count
 
 

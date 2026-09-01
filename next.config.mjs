@@ -14,7 +14,15 @@ const nextConfig = {
   outputFileTracingIncludes: {
     "/api/source": ["./libs/**/*.scad", "./models/**/*.scad"],
     "/api/export": ["./libs/**/*.scad", "./models/**/*.scad"],
-    "/api/thumbnail": ["./renders/**/*.png"],
+    // SCAD thumbnails live under renders/; build123d thumbnails are
+    // baked into build123d/baked/ by the prebuild bake (pst-1vi5), the
+    // same artifact stream the GLB/STL come from. Both are dynamic
+    // process.cwd() reads the tracer can't see, so include both.
+    "/api/thumbnail": [
+      "./renders/**/*.png",
+      "./build123d/baked/**/*.png",
+      "./build123d/manifest.json",
+    ],
     // Accessory STL streamer + the model page that lists them — both
     // stat / read files under accessories/ via process.cwd() at request
     // time, so the file tracer needs the include hint.
