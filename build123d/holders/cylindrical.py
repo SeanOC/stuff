@@ -170,37 +170,48 @@ def _slot_x_positions(n_slots: int) -> list[float]:
     return [(-(n_slots - 1) / 2.0 + i) * SLOT_PITCH for i in range(n_slots)]
 
 
-def _back_plate(r_in: float, r_out: float, h: float) -> Part:
-    """Solid back plate carrying library Multiconnect slot pockets.
+def _plate_geometry(r_in: float, r_out: float, h: float) -> tuple[float, float, float, float, int]:
+    """Derived back-plate dimensions: (width, plate_h, mount_y, z_seat, n_slots).
 
     The plate front face touches the collar's inner radius (``-r_in``) so it
-    fuses through the full collar wall; it extends one panel thickness
-    further out (-Y) as the mount face. Slots slide along +Z (holder drops
-    down onto wall heads); the wide opening is near the plate top.
+    fuses through the full collar wall; the mount face sits one panel
+    thickness further out (-Y), standing proud of the collar. The head seat
+    is placed so the wide slot opening sits just below the plate top and the
+    whole slot envelope stays inside the plate height.
     """
     collar_width = 2.0 * r_out
     n_slots = slot_count(collar_width)
     width = max(collar_width, _min_plate_width(n_slots))
     plate_h = max(h, MIN_PLATE_HEIGHT)
-
-    front_y = -r_in                 # touches collar inner radius (full-wall fuse)
-    mount_y = front_y - PANEL_THICKNESS  # mount face, stands proud of collar
-
-    # Head seat placed so the wide slot opening sits just below the plate top
-    # and the whole slot envelope stays inside the plate height.
+    mount_y = -r_in - PANEL_THICKNESS
     z_seat = plate_h - _SLOT_ABOVE_SEAT - _SLOT_EDGE_MARGIN
+    return width, plate_h, mount_y, z_seat, n_slots
 
-    plate = Pos(0, mount_y, 0) * Box(
+
+def _back_plate_solid(r_in: float, r_out: float, h: float) -> Part:
+    """The plain (un-pocketed) back-plate box behind the collar."""
+    width, plate_h, mount_y, _z_seat, _n = _plate_geometry(r_in, r_out, h)
+    return Pos(0, mount_y, 0) * Box(
         width, PANEL_THICKNESS, plate_h,
         align=(Align.CENTER, Align.MIN, Align.MIN),
     )
-    for x in _slot_x_positions(n_slots):
-        # rotation (-90,0,0): pocket depth -> +Y (into plate from the -Y mount
-        # face), slide -> +Z (opening at top), width -> X. Verified against the
-        # library's own snap_in_slot_cutter_fitting_test recipe.
-        cutter = Pos(x, mount_y, z_seat) * SnapInSlotCutter(rotation=(-90, 0, 0))
-        plate = plate - cutter
-    return plate
+
+
+def slot_cutters(r_in: float, r_out: float, h: float) -> list[Part]:
+    """The library Multiconnect slot cutters, positioned on the back plate.
+
+    Each is ``opengrid.multiconnect.SnapInSlotCutter`` at rotation
+    (-90, 0, 0): pocket depth -> +Y (into the plate from the -Y mount face),
+    slide -> +Z (opening at the plate top), width -> X. Verified against the
+    library's own ``snap_in_slot_cutter_fitting_test`` recipe. The holder
+    slides DOWN onto wall-mounted round heads; the snap-in side notches lock
+    each head in place. 100% library geometry - no bespoke slot solids.
+    """
+    _w, _ph, mount_y, z_seat, n_slots = _plate_geometry(r_in, r_out, h)
+    return [
+        Pos(x, mount_y, z_seat) * SnapInSlotCutter(rotation=(-90, 0, 0))
+        for x in _slot_x_positions(n_slots)
+    ]
 
 
 def holder(
@@ -251,10 +262,12 @@ def holder(
     collar = collar.fillet(radius=_lip_radius(wall), edge_list=lip_edges)
 
     # --- Multiconnect slot back plate (100% library geometry) ------------
-    # A solid plate standing proud of the collar's back, carrying the
-    # library's own SnapInSlotCutter pockets (see _back_plate).
-    plate = _back_plate(r_in, r_out, h)
-    part = collar.fuse(plate)
+    # Fuse a solid plate to the collar's back, then carve the library's own
+    # SnapInSlotCutter pockets out of the unified body so each pocket is
+    # exactly the library cutter (nothing bespoke, no refilled sliver).
+    part = collar.fuse(_back_plate_solid(r_in, r_out, h))
+    for cutter in slot_cutters(r_in, r_out, h):
+        part = part - cutter
 
     # Re-carve the bore so no plate material intrudes into the cylinder
     # space (the plate front face sits at the inner radius; this trims the
