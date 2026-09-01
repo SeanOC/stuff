@@ -1,19 +1,33 @@
 "use client";
 
-// Detail view for build123d (engine="build123d") models — the P1 preset
-// flow (bead pst-0um9). Deliberately NOT the SCAD DetailPage: there is
-// no live WASM preview and no param editing yet. The viewer shows the
-// build-time-baked GLB for the selected preset; Download STL streams the
-// baked STL. Params are shown read-only with a clear "presets only for
-// now" banner so the missing live controls read as intentional.
+// Detail view for build123d (engine="build123d") models.
+//
+// P1 (pst-0um9) shipped a presets-only view: a baked GLB per preset, an
+// STL download of that bake, and a read-only param table. P2c (pst-qbas)
+// turns it live:
+//   • Params are EDITABLE via the shared ParamRail (same control set as
+//     the SCAD viewer). useDetailState drives param/preset/modified state.
+//   • Selecting a preset loads its INSTANT baked GLB (via /api/bd-asset) —
+//     no service call. Page-load and preset views therefore cost nothing.
+//   • Changing any param marks the view stale. An explicit Update/Enter
+//     action (manual refresh, matching the SCAD pst-vfp decision — NOT a
+//     render on every keystroke) calls /api/bd-render for a fresh live
+//     render of the current params. build123d can't render in the browser,
+//     so there is no WASM fallback: a cold/slow service shows a clear
+//     "rendering…" state and a disabled/unreachable one a friendly error.
+//   • STL Download uses the CURRENT live params via /api/bd-render?format=
+//     stl, so a tweaked download reflects the tweak, not just the preset.
 
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import clsx from "clsx";
 import GlbViewer, { type GlbBbox } from "./GlbViewer";
 import { AxesIndicator } from "./AxesIndicator";
+import { ParamRail } from "./ParamRail";
 import type { CameraAxes } from "./StlViewer";
-import type { Param, Preset } from "@/lib/scad-params/parse";
+import { paramsEqual, useDetailState } from "@/hooks/useDetailState";
+import { useBdRenderer } from "@/hooks/useBdRenderer";
+import type { Param, ParamValue, Preset } from "@/lib/scad-params/parse";
 
 export interface BdDetailPageModel {
   slug: string;
@@ -28,31 +42,85 @@ function assetUrl(slug: string, presetId: string, format: "glb" | "stl"): string
 }
 
 export default function BdDetailPage({ model }: { model: BdDetailPageModel }) {
-  const [activePresetId, setActivePresetId] = useState(
-    model.presets[0]?.id ?? "",
-  );
+  const detail = useDetailState({
+    params: model.params,
+    stockPresets: model.presets,
+    slug: model.slug,
+  });
+  const bd = useBdRenderer(model.slug);
+
   const [viewerError, setViewerError] = useState<string | null>(null);
   // Loaded GLB extents, surfaced for the e2e orientation assertion and
   // shown in the stat strip. size = [x, y, z] in the GLB's units.
   const [bbox, setBbox] = useState<GlbBbox | null>(null);
   // Live camera orientation from the GLB viewer, feeding the shared
-  // orientation compass. null until the first onCameraChange fires (on
-  // GLB load), at which point AxesIndicator shows the live projection.
+  // orientation compass. null until the first onCameraChange fires.
   const [axes, setAxes] = useState<CameraAxes | null>(null);
+  // The GLB currently driven into the viewer from a successful live
+  // render. null = show the baked preset GLB. Set only on a render
+  // success (not during loading/error) so the last good geometry stays
+  // on screen while the next render is in flight — mirrors the SCAD
+  // viewer keeping the previous mesh during a re-render.
+  const [liveGlb, setLiveGlb] = useState<{ bytes: Uint8Array; seq: number } | null>(
+    null,
+  );
 
+  const activePresetId = detail.state.activePresetId ?? model.presets[0]?.id ?? "";
   const activePreset =
     model.presets.find((p) => p.id === activePresetId) ?? model.presets[0];
+
+  // Land on the first preset on mount so the baked GLB shows immediately
+  // and the controls reflect that preset's values. Runs once.
+  useEffect(() => {
+    if (detail.state.activePresetId === null && model.presets[0]) {
+      detail.loadPreset(model.presets[0].id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Promote a completed render into the viewer.
+  useEffect(() => {
+    if (bd.state.kind === "ready") {
+      setLiveGlb({ bytes: bd.state.glb, seq: bd.state.seq });
+    }
+  }, [bd.state]);
+
+  const showingLive = liveGlb !== null;
+
+  // Staleness: does the on-screen geometry match the live controls?
+  //   • Showing a live render → compare against its snapshot.
+  //   • Showing a baked preset → drift from the preset (modified) is stale.
+  const stale = showingLive
+    ? bd.renderedValues === null ||
+      !paramsEqual(detail.state.params, bd.renderedValues, model.params)
+    : detail.state.modified;
+
+  const selectPreset = useCallback(
+    (id: string) => {
+      detail.loadPreset(id);
+      // Back to the instant baked view — drop any live render and cancel
+      // an in-flight one so a preset click never costs a service call.
+      bd.reset();
+      setLiveGlb(null);
+      setViewerError(null);
+    },
+    [detail, bd],
+  );
+
+  const update = useCallback(() => {
+    if (!stale && bd.state.kind !== "error") return;
+    setViewerError(null);
+    bd.refresh(detail.state.params);
+  }, [stale, bd, detail.state.params]);
 
   const onLoaded = useCallback((b: GlbBbox) => {
     setViewerError(null);
     setBbox(b);
     // Orientation guard: warn only on a gross lay-down. A depth (Z) that
     // *dwarfs* the height (Y) means the Y-up transform was likely applied
-    // twice, toppling the model. We can't assert "Y is tallest" generically:
-    // a near-cubic holder legitimately has depth slightly over height (the
-    // spray-can's ~64mm back-plate depth vs 60mm collar). So flag only when
-    // depth exceeds height by a wide margin, which no upright holder does.
-    // (The e2e spec pins the exact envelope via data-glb-size below.)
+    // twice, toppling the model. See the P1 note — near-cubic holders
+    // legitimately have depth slightly over height, so flag only a wide
+    // margin. (The e2e spec pins the exact upright envelope.)
     const [, y, z] = b.size;
     if (z > y * 1.5) {
       console.warn(
@@ -75,17 +143,20 @@ export default function BdDetailPage({ model }: { model: BdDetailPageModel }) {
         <Link href="/" className="text-11 text-text-dim hover:text-text">
           ← all models
         </Link>
-        <p className="mt-12">
-          {model.title} has no presets to display.
-        </p>
+        <p className="mt-12">{model.title} has no presets to display.</p>
       </div>
     );
   }
+
+  const renderState = bd.state.kind;
 
   return (
     <div
       data-testid="bd-detail-root"
       data-engine="build123d"
+      data-bd-render-state={renderState}
+      data-bd-source={showingLive ? "live" : "preset"}
+      data-bd-stale={stale ? "true" : "false"}
       className="flex flex-col min-[1200px]:h-[calc(100vh-38px)]"
     >
       {/* Header */}
@@ -106,8 +177,13 @@ export default function BdDetailPage({ model }: { model: BdDetailPageModel }) {
         {/* Viewer */}
         <div className="relative min-h-[360px] bg-panel2 min-[1200px]:min-h-0">
           <GlbViewer
-            key={`${model.slug}/${activePreset.id}`}
-            url={assetUrl(model.slug, activePreset.id, "glb")}
+            key={
+              showingLive
+                ? `live-${liveGlb!.seq}`
+                : `preset-${activePreset.id}`
+            }
+            url={showingLive ? undefined : assetUrl(model.slug, activePreset.id, "glb")}
+            bytes={showingLive ? liveGlb!.bytes : undefined}
             onLoaded={onLoaded}
             onError={onError}
             onCameraChange={setAxes}
@@ -115,7 +191,60 @@ export default function BdDetailPage({ model }: { model: BdDetailPageModel }) {
           {/* Orientation compass — same component as the SCAD viewer.
               Offset up to clear the bottom stat strip below. */}
           <AxesIndicator axes={axes} className="bottom-40 left-12" />
-          {viewerError && (
+
+          {/* Stale callout: params drifted from the shown geometry. An
+              explicit Update triggers the (manual) live render. */}
+          {stale && renderState !== "loading" && (
+            <div
+              data-testid="bd-stale-notice"
+              className="absolute inset-x-0 top-0 m-8 flex items-center justify-between gap-8 rounded-3 border border-accent-line bg-panel/95 px-10 py-6 text-11 text-text"
+            >
+              <span>Parameters changed — preview is out of date.</span>
+              <button
+                type="button"
+                data-testid="bd-update-render"
+                onClick={update}
+                className="rounded-3 border border-accent-line bg-accent px-8 py-3 font-semibold text-accent-ink hover:opacity-90"
+              >
+                Update
+              </button>
+            </div>
+          )}
+
+          {/* Warming / rendering state — build123d renders in a scale-to-
+              zero service, so a cold start can take seconds. Say so
+              explicitly rather than showing a silent spinner. */}
+          {renderState === "loading" && (
+            <div
+              data-testid="bd-render-warming"
+              className="absolute inset-x-0 top-0 m-8 rounded-3 border border-accent-line bg-panel/95 px-10 py-6 text-11 text-text"
+            >
+              Rendering… the build123d service may be warming up from cold.
+            </div>
+          )}
+
+          {/* Live-render error — no WASM fallback, so this is terminal for
+              the attempt; the controls stay editable and Update retries. */}
+          {renderState === "error" && (
+            <div
+              data-testid="bd-render-error"
+              className="absolute inset-x-0 top-0 m-8 flex items-center justify-between gap-8 rounded-3 border border-red/40 bg-panel px-10 py-6 text-11 text-red"
+            >
+              <span>
+                {bd.state.kind === "error" ? bd.state.message : "Render failed."}
+              </span>
+              <button
+                type="button"
+                data-testid="bd-render-retry"
+                onClick={update}
+                className="rounded-3 border border-red/40 bg-panel2 px-8 py-3 font-semibold text-red hover:opacity-90"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
+          {viewerError && renderState !== "error" && (
             <div
               data-testid="bd-viewer-error"
               className="absolute inset-x-0 top-0 m-8 rounded-3 border border-red/40 bg-panel px-10 py-6 text-11 text-red"
@@ -123,9 +252,12 @@ export default function BdDetailPage({ model }: { model: BdDetailPageModel }) {
               Couldn&apos;t load preview: {viewerError}
             </div>
           )}
+
           {/* Stat strip — mirrors the SCAD viewer's 36px footer. */}
           <div className="absolute inset-x-0 bottom-0 flex items-center gap-12 border-t border-line bg-panel/90 px-12 py-6 font-mono text-10 text-text-mute">
-            <span data-testid="bd-preset-label">{activePreset.label}</span>
+            <span data-testid="bd-preset-label">
+              {showingLive ? "live render" : activePreset.label}
+            </span>
             {bbox && (
               <span
                 data-testid="bd-glb-size"
@@ -137,31 +269,20 @@ export default function BdDetailPage({ model }: { model: BdDetailPageModel }) {
           </div>
         </div>
 
-        {/* Right rail: presets + download + read-only params */}
+        {/* Right rail: presets + download + editable params */}
         <aside
           data-testid="bd-detail-rail"
           className="min-h-0 border-t border-line bg-panel p-12 min-[1200px]:overflow-y-auto min-[1200px]:border-l min-[1200px]:border-t-0"
         >
           <p className="m-0 text-12 text-text-dim">{model.blurb}</p>
 
-          {/* Presets-only notice */}
-          <div
-            data-testid="bd-presets-only-notice"
-            className="mt-12 rounded-3 border border-line bg-panel2 px-10 py-8 text-11 text-text-dim"
-          >
-            <span className="font-semibold text-text">Presets only for now.</span>{" "}
-            This is a build123d model — interactive preview and live
-            parameter editing aren&apos;t available yet. Pick a preset below to
-            view it and download the print-ready STL.
-          </div>
-
-          {/* Preset picker */}
+          {/* Preset picker — each loads its baked GLB with no service call. */}
           <div className="mt-16 font-mono text-10 uppercase tracking-wide text-text-mute">
             Presets
           </div>
           <div className="mt-6 flex flex-col gap-4" role="listbox" aria-label="Presets">
             {model.presets.map((p) => {
-              const active = p.id === activePreset.id;
+              const active = !showingLive && p.id === activePreset.id;
               return (
                 <button
                   key={p.id}
@@ -169,7 +290,7 @@ export default function BdDetailPage({ model }: { model: BdDetailPageModel }) {
                   role="option"
                   aria-selected={active}
                   data-testid={`bd-preset-${p.id}`}
-                  onClick={() => setActivePresetId(p.id)}
+                  onClick={() => selectPreset(p.id)}
                   className={clsx(
                     "flex flex-col items-start rounded-3 border px-10 py-6 text-left",
                     active
@@ -184,52 +305,112 @@ export default function BdDetailPage({ model }: { model: BdDetailPageModel }) {
             })}
           </div>
 
-          {/* Download */}
-          <a
-            data-testid="bd-download-stl"
-            href={assetUrl(model.slug, activePreset.id, "stl")}
-            download={`${model.slug}-${activePreset.id}.stl`}
-            className={clsx(
-              "mt-16 inline-flex w-full items-center justify-center rounded-3",
-              "border border-accent-line bg-accent px-8 py-6",
-              "font-semibold text-accent-ink no-underline hover:opacity-90",
-            )}
-          >
-            Download STL
-          </a>
+          {/* Download — always the CURRENT live params via /api/bd-render. */}
+          <BdDownloadStl slug={model.slug} values={detail.state.params} />
 
-          {/* Read-only params for the active preset */}
+          {/* Editable params — shared control set with the SCAD viewer. */}
           <div className="mt-18 font-mono text-10 uppercase tracking-wide text-text-mute">
             Parameters
           </div>
-          <table className="mt-6 w-full border-collapse text-12">
-            <tbody>
-              {model.params.map((param) => (
-                <tr key={param.name} className="border-b border-line-soft">
-                  <td className="py-3 pr-8 text-text-dim">
-                    {param.label ?? param.name}
-                  </td>
-                  <td className="py-3 text-right font-mono text-text">
-                    {formatParamValue(param, activePreset.values[param.name])}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <p className="mt-2 text-10 text-text-mute">
+            Edit values, then Update the preview. Changes render on the
+            build123d service — presets stay instant.
+          </p>
+          <div className="mt-6 border-t border-line">
+            <ParamRail
+              params={model.params}
+              values={detail.state.params}
+              onChange={detail.setParam}
+            />
+          </div>
         </aside>
       </div>
     </div>
   );
 }
 
-function formatParamValue(
-  param: Param,
-  value: Preset["values"][string] | undefined,
-): string {
-  // A preset only pins the params it changes; unpinned ones show their
-  // declared default so the table is never blank.
-  const v = value ?? param.default;
-  const unit = "unit" in param && param.unit ? ` ${param.unit}` : "";
-  if (typeof v === "boolean") return v ? "yes" : "no";
-  return `${v}${unit}`;
+type DownloadState =
+  | { kind: "idle" }
+  | { kind: "exporting" }
+  | { kind: "error"; message: string };
+
+// STL download for build123d: always renders the CURRENT live params via
+// /api/bd-render?format=stl (AC6) — a tweaked download reflects the tweak,
+// not just the baked preset. No WASM fallback, so a disabled/unreachable
+// service surfaces a friendly inline error.
+function BdDownloadStl({
+  slug,
+  values,
+}: {
+  slug: string;
+  values: Record<string, ParamValue>;
+}) {
+  const [state, setState] = useState<DownloadState>({ kind: "idle" });
+
+  const download = useCallback(async () => {
+    setState({ kind: "exporting" });
+    try {
+      const res = await fetch("/api/bd-render?format=stl", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ slug, params: values }),
+      });
+      if (!res.ok) {
+        let message =
+          res.status === 503
+            ? "Live rendering is currently unavailable."
+            : `Export failed (HTTP ${res.status}).`;
+        try {
+          const body = await res.json();
+          if (typeof body?.error === "string") message = body.error;
+        } catch {
+          /* keep message */
+        }
+        setState({ kind: "error", message });
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${slug}.stl`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setState({ kind: "idle" });
+    } catch (e) {
+      setState({
+        kind: "error",
+        message: e instanceof Error ? e.message : "network error",
+      });
+    }
+  }, [slug, values]);
+
+  return (
+    <div className="mt-16">
+      <button
+        type="button"
+        data-testid="bd-download-stl"
+        onClick={download}
+        disabled={state.kind === "exporting"}
+        className={clsx(
+          "inline-flex w-full items-center justify-center rounded-3",
+          "border border-accent-line bg-accent px-8 py-6",
+          "font-semibold text-accent-ink no-underline hover:opacity-90",
+          "disabled:cursor-wait disabled:opacity-60",
+        )}
+      >
+        {state.kind === "exporting" ? "Preparing STL…" : "Download STL"}
+      </button>
+      {state.kind === "error" && (
+        <p
+          data-testid="bd-download-error"
+          className="mt-4 text-10 text-red"
+        >
+          {state.message}
+        </p>
+      )}
+    </div>
+  );
 }
