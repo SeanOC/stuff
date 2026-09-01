@@ -1,0 +1,139 @@
+# ⚠️ STAGED WORKFLOW — must be moved to .github/workflows/ by a human.
+#
+# This file is the deploy pipeline required by bead pst-so26 (AC #7). It is
+# parked here, NOT under .github/workflows/, because the automation worker
+# that authored this PR is prohibited from creating/modifying files under
+# .github/workflows/. To activate it, an operator runs (from the repo root):
+#
+#     git mv services/bd-render/deploy-bd-render-service.yml \
+#            .github/workflows/deploy-bd-render-service.yml
+#
+# It SHIPS DARK regardless of location: the deploy job is gated on the
+# GCP WIF repo variable, so even once moved it is a no-op until the operator
+# sets that variable. Moving it changes nothing about running CI until then.
+# ---------------------------------------------------------------------------
+#
+# Deploy the live build123d render service (services/bd-render/) to Cloud
+# Run — bead pst-so26. Mirrors deploy-render-service.yml (the native
+# OpenSCAD service): KEYLESS via GitHub OIDC → Workload Identity Federation,
+# auth-required, scale-to-zero.
+#
+# Scale-to-zero is an operator decision (2026-09-01): build123d traffic is
+# tweak-only (presets stay baked and served from build123d/baked/), so a
+# cold start on the occasional live-render request is acceptable and avoids
+# paying for an always-warm OCP instance.
+#
+# Reuses the SAME WIF infra as the SCAD render service; only the deployed
+# service name differs (BD_RENDER_SERVICE_NAME). If the operator prefers a
+# separate identity/pool for this service, set GCP_BD_WIF_PROVIDER (+ a
+# matching deployer SA) and swap the two `vars.GCP_WIF_PROVIDER` /
+# `vars.GCP_DEPLOYER_SA` references below.
+#
+# Required repository variables (Settings → Secrets and variables →
+# Actions → Variables):
+#   GCP_WIF_PROVIDER   WIF provider resource for the GitHub-CI pool
+#   GCP_DEPLOYER_SA    deployer SA email (Cloud Run deploy + Artifact Registry writer)
+#   GCP_PROJECT_ID     GCP project id
+# Optional (defaults in env below):
+#   GCP_REGION, GAR_REPOSITORY, BD_RENDER_SERVICE_NAME
+#
+# The image bakes the build123d env + holders (services/bd-render/Dockerfile),
+# so a change to the service, the models, or the pinned lockfile needs a
+# redeploy — hence the paths filter.
+
+name: deploy-bd-render-service
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "services/bd-render/**"
+      - "build123d/holders/**"
+      - "build123d/scripts/**"
+      - "build123d/pyproject.toml"
+      - "build123d/uv.lock"
+      - ".github/workflows/deploy-bd-render-service.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-bd-render-service
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  # Mint the GitHub OIDC token that WIF exchanges for GCP credentials.
+  id-token: write
+
+jobs:
+  deploy:
+    name: build + deploy to Cloud Run
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    # Ships dark: skip cleanly until the operator's WIF infra exists.
+    if: vars.GCP_WIF_PROVIDER != ''
+    env:
+      REGION: ${{ vars.GCP_REGION || 'us-central1' }}
+      REPOSITORY: ${{ vars.GAR_REPOSITORY || 'stuff' }}
+      SERVICE: ${{ vars.BD_RENDER_SERVICE_NAME || 'stuff-bd-render' }}
+      PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to GCP (keyless, GitHub OIDC -> WIF)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure docker for Artifact Registry
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - name: Build image
+        # Build context is the repo root: the Dockerfile bakes the
+        # build123d/OCP env (uv --frozen against build123d/uv.lock) + holders.
+        run: |
+          IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${SERVICE}"
+          echo "IMAGE=${IMAGE}" >> "$GITHUB_ENV"
+          docker build -f services/bd-render/Dockerfile \
+            -t "${IMAGE}:${GITHUB_SHA}" -t "${IMAGE}:latest" .
+
+      - name: Push image
+        run: |
+          docker push "${IMAGE}:${GITHUB_SHA}"
+          docker push "${IMAGE}:latest"
+
+      - name: Deploy to Cloud Run
+        # Auth REQUIRED (no --allow-unauthenticated): only identities with
+        # roles/run.invoker (the app's render-invoker SA) can call it.
+        # min-instances=0 => scale-to-zero (operator decision). 2 CPU / 4Gi
+        # sized for OCP headroom; timeout 120 > the 90s per-request render cap.
+        run: |
+          gcloud run deploy "${SERVICE}" \
+            --image "${IMAGE}:${GITHUB_SHA}" \
+            --project "${PROJECT_ID}" \
+            --region "${REGION}" \
+            --platform managed \
+            --no-allow-unauthenticated \
+            --min-instances 0 \
+            --max-instances 3 \
+            --cpu 2 \
+            --memory 4Gi \
+            --timeout 120 \
+            --port 8080 \
+            --quiet
+
+      - name: Verify service is serving
+        # describe proves the revision exists; hit /health to prove it
+        # answers. Best-effort (needs the deployer SA to hold run.invoker).
+        continue-on-error: true
+        run: |
+          URL=$(gcloud run services describe "${SERVICE}" \
+            --project "${PROJECT_ID}" --region "${REGION}" \
+            --format 'value(status.url)')
+          echo "service URL: ${URL}"
+          TOKEN=$(gcloud auth print-identity-token \
+            --impersonate-service-account "${{ vars.GCP_DEPLOYER_SA }}" \
+            --audiences "${URL}")
+          curl -fsS -H "Authorization: Bearer ${TOKEN}" "${URL}/health"
