@@ -160,20 +160,45 @@ export function addLights(scene: THREE.Scene, camera: THREE.Camera): void {
   camera.add(key);
 }
 
-export function computeCameraAxes(camera: THREE.Camera): CameraAxes {
+/**
+ * World basis whose three unit vectors are projected into view space.
+ * Defaults to the world axes (identity), which is what the SCAD viewer
+ * wants: its geometry is Z-up in world space, so world X/Y/Z *are* the
+ * part's axes. A caller whose model sits under a non-identity root
+ * transform (the Y-up GLB scene) passes the part's native axes expressed
+ * in world coordinates so the projected labels still read as part X/Y/Z.
+ */
+export interface WorldBasis {
+  x: THREE.Vector3;
+  y: THREE.Vector3;
+  z: THREE.Vector3;
+}
+
+const WORLD_AXES: WorldBasis = {
+  x: new THREE.Vector3(1, 0, 0),
+  y: new THREE.Vector3(0, 1, 0),
+  z: new THREE.Vector3(0, 0, 1),
+};
+
+export function computeCameraAxes(
+  camera: THREE.Camera,
+  basis: WorldBasis = WORLD_AXES,
+): CameraAxes {
   // World→view rotation: inverse of the camera's world matrix applied
   // to a direction. `transformDirection` ignores translation + scale.
   // Caller is responsible for the camera's matrixWorld being current
   // (OrbitControls.update() calls camera.updateMatrixWorld).
   const inv = new THREE.Matrix4().copy(camera.matrixWorld).invert();
-  const project = (x: number, y: number, z: number): [number, number, number] => {
-    const r = new THREE.Vector3(x, y, z).transformDirection(inv);
+  const project = (v: THREE.Vector3): [number, number, number] => {
+    // Clone: transformDirection mutates and normalizes in place, and the
+    // basis vectors are caller-owned (the GLB path reuses its constant).
+    const r = v.clone().transformDirection(inv);
     return [r.x, r.y, r.z];
   };
   return {
-    x: project(1, 0, 0),
-    y: project(0, 1, 0),
-    z: project(0, 0, 1),
+    x: project(basis.x),
+    y: project(basis.y),
+    z: project(basis.z),
   };
 }
 
