@@ -89,9 +89,12 @@ render swap in (a few seconds for a cold Manifold build).
   notFound() on unknown slugs. Renders `<DetailPage>`; the param rail
   shows a "No parameters in this model." note when `@param` count is
   zero.
-- `app/api/thumbnail/route.ts` — serves `renders/<stem>/top.png` with
+- `app/api/thumbnail/route.ts` — serves the gallery thumbnail with a
   regex stem allowlist + path confinement; 403 on hostile slug, 404 on
-  missing render.
+  missing render. SCAD models resolve `renders/<stem>/iso.png`;
+  build123d models resolve the build-time-baked
+  `build123d/baked/<slug>/<preset>.png` (same source as the detail
+  GLB, pst-1vi5).
 - `app/api/source/route.ts` — read-only file server scoped to `libs/`
   and `models/`; same path-confinement pattern.
 - `app/api/export/route.ts` — server-side STL render. Validates

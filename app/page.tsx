@@ -97,10 +97,10 @@ function ModelCard({ m }: { m: ModelEntry }) {
       )}
     >
       <div className="aspect-[4/3] overflow-hidden border-b border-line-soft bg-panel2">
-        {/* Same /api/thumbnail route serves both engines: scripts/
-            render-all.py mirrors BD review PNGs into
-            renders/<stem>/iso.png so the slug-keyed URL resolves
-            for BD cards too. */}
+        {/* Same /api/thumbnail route serves both engines: SCAD from
+            renders/<stem>/iso.png, build123d from the build-time bake
+            (build123d/baked/<slug>/<preset>.png — same source as the
+            detail-view GLB, pst-1vi5). */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={`/api/thumbnail?model=${encodeURIComponent(m.slug)}`}
