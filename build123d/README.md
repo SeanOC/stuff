@@ -20,11 +20,22 @@ If a library can't do something, that's a *finding for the eval*, not an invitat
   `manifest.json` (the app-facing catalog; CI gates freshness via
   `git diff --exit-code`)
 - `manifest.json` — committed, app-facing: models with slug/engine/title/
-  blurb/categoryId/params/presets in the app's `Param`/`Preset` shapes
+  blurb/categoryId/params/presets in the app's `Param`/`Preset` shapes.
+  The web app ingests it directly (lib/models/bd-manifest.ts); BD models
+  are gallery-flag-gated (BD_MODELS_ENABLED, default off) until the
+  detail view lands (P1c). Their catalog entries live in
+  BUILD123D_CATALOG (lib/models/catalog.ts)
 - `scripts/export.py` — STL (print) + GLB (viewer) + PNG (3-view review
   render) per model → `out/`; `--presets-only TARGET_DIR` bakes
   `TARGET_DIR/<slug>/<preset-id>.{stl,glb}` for every app-listed preset
-- `docs/renders/` — review renders (3-view PNGs) of shipped presets, tracked for PR review
+- `scripts/render-all.py` (repo root) — after the SCAD render pass,
+  mirrors the 3-view review PNGs into `renders/<stem>/iso.png` so the
+  gallery serves BD thumbnails through the same `/api/thumbnail` route
+  as SCAD models (pst-dsiq)
+- `docs/renders/` — review renders (3-view PNGs) of shipped presets, tracked
+  for PR review; `scripts/render-all.py` mirrors them into
+  `renders/<stem>/iso.png` for the web app (add a new model's review PNG
+  here so its gallery tile is non-blank)
 - `viewer/index.html` — drag-drop GLB viewer (model-viewer, static, no build)
 - `tests/` — registry-driven: every model must build, be watertight, have volume; library dims pinned
 

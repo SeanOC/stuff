@@ -86,6 +86,7 @@ export default async function Home() {
 }
 
 function ModelCard({ m }: { m: ModelEntry }) {
+  const isBd = m.engine === "build123d";
   return (
     <Link
       href={`/models/${m.slug}`}
@@ -96,6 +97,10 @@ function ModelCard({ m }: { m: ModelEntry }) {
       )}
     >
       <div className="aspect-[4/3] overflow-hidden border-b border-line-soft bg-panel2">
+        {/* Same /api/thumbnail route serves both engines: scripts/
+            render-all.py mirrors BD review PNGs into
+            renders/<stem>/iso.png so the slug-keyed URL resolves
+            for BD cards too. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={`/api/thumbnail?model=${encodeURIComponent(m.slug)}`}
@@ -105,10 +110,14 @@ function ModelCard({ m }: { m: ModelEntry }) {
       </div>
       <div className="flex flex-col gap-4 p-12">
         <div className="text-13 font-semibold text-text">{m.title}</div>
-        <code className="font-mono text-10 text-text-mute">{m.stem}.scad</code>
+        <code className="font-mono text-10 text-text-mute">
+          {isBd ? `${m.stem}.py (build123d)` : `${m.stem}.scad`}
+        </code>
         <p className="m-0 text-12 text-text-dim line-clamp-2">{m.blurb}</p>
         <div className="font-mono text-10 text-text-mute">
-          {m.paramCount} {m.paramCount === 1 ? "param" : "params"}
+          {isBd
+            ? "preset model"
+            : `${m.paramCount} ${m.paramCount === 1 ? "param" : "params"}`}
         </div>
       </div>
     </Link>

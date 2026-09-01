@@ -153,6 +153,19 @@ filter job is filed as st-2nv). Render-relevant paths:
 - `scripts/vendor-libs.sh` — the library pin script
 - `libs/README.md` — library pins
 
+**The BD thumbnail mirror is always on.** After the SCAD pass,
+`render-all.py` unconditionally copies each
+`build123d/manifest.json` model's committed review render
+(`build123d/docs/renders/<name>.png`) into `renders/<stem>/iso.png`
+and prunes BD stems the manifest no longer lists (pst-dsiq) — so a PR
+that touches only `build123d/**` can still shift the gallery
+thumbnails without touching any render-relevant path above. The
+mirror is a byte-for-byte copy of tracked PNGs, so it produces no
+byte-noise and the commit-back's tree-hash check skips it; the
+commit-back canonicalizes BD thumbnails the same way it does SCAD
+renders. A BD model whose review PNG is missing only warns — the
+gallery shows a blank tile rather than failing the run.
+
 The filter also emits the changed `models/*.scad` + `libs/**` file
 list, passed to `render-all.py` / `export-all.py` as
 `--changed-paths` (`CHANGED_PATHS` env var). Three modes result:

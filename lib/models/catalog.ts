@@ -18,6 +18,11 @@ export interface CatalogEntry {
   blurb: string;
 }
 
+// Every models/*.scad stem must have an entry here (listModels() throws
+// on a missing one). build123d models are cataloged under
+// BUILD123D_CATALOG instead: their stems have no .scad file, so the
+// "dangling key" parity test in catalog.test.ts correctly stays scoped
+// to the SCAD set.
 export const CATALOG: Record<string, CatalogEntry> = {
   aquor_bib_drip_deflector: {
     categoryId: "household",
@@ -158,5 +163,24 @@ export const CATALOG: Record<string, CatalogEntry> = {
     categoryId: "multiboard",
     blurb:
       "Cross-ecosystem wall adapter: clicks into an openGrid tile on the back (one directional snap per 28mm tile) and presents a Multiconnect receiver slot on the front (25mm pitch), so a Multiconnect-tabbed accessory hangs on an openGrid wall. Slot dome points down so weight seats the tab. Prints snaps-down, support-free; exports a single-slot (28mm) and a two-slot (56mm) STL.",
+  },
+};
+
+/**
+ * Catalog entries for build123d models, keyed by stem (manifest slug
+ * with dashes -> underscores). The manifest itself carries blurb +
+ * categoryId; listBdModels() uses this table for the no-entry-throws
+ * enforcement and cross-checks the manifest's categoryId against it.
+ */
+export const BUILD123D_CATALOG: Record<string, CatalogEntry> = {
+  holder_spray_can: {
+    categoryId: "multiboard",
+    blurb:
+      "Open-front C-ring holder for a spray can (d=66, collar h=60) on an openGrid tile back plate. A build123d model (P1 preset flow) — params come from the generated manifest; the detail view lands with P1c.",
+  },
+  holder_bottle_500ml: {
+    categoryId: "multiboard",
+    blurb:
+      "Open-front C-ring holder for a 500ml bottle (d=73, collar h=50) on an openGrid tile back plate. A build123d model (P1 preset flow) — params come from the generated manifest; the detail view lands with P1c.",
   },
 };

@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
-import { deriveTitle, listModels, loadModel, slugToStem, stemToSlug } from "./discover";
+import { afterEach, describe, expect, it } from "vitest";
+import { deriveTitle, listModels, listBdModels, loadModel, slugToStem, stemToSlug } from "./discover";
+import { bdModelsEnabled } from "./bd-manifest";
 
 describe("stem/slug conversion", () => {
   it("round-trips underscore <-> dash", () => {
@@ -84,5 +85,63 @@ describe("listModels", () => {
     }
     const spraycan = models.find((m) => m.stem === "spraycan_carrier_6x50mm");
     expect(spraycan?.categoryId).toBe("storage");
+  });
+});
+
+describe("build123d discovery (pst-dsiq)", () => {
+  afterEach(() => {
+    delete process.env.BD_MODELS_ENABLED;
+  });
+
+  it("listBdModels() merges manifest models into ModelEntry shape", async () => {
+    const models = await listBdModels();
+    expect(models.length).toBeGreaterThanOrEqual(2);
+    const sprayCan = models.find((m) => m.slug === "holder-spray-can");
+    expect(sprayCan, "manifest's holder-spray-can is listed").toBeDefined();
+    expect(sprayCan?.engine).toBe("build123d");
+    expect(sprayCan?.stem).toBe("holder_spray_can");
+    expect(sprayCan?.modelPath).toBe("build123d/manifest.json");
+    expect(sprayCan?.title).toBe("Spray can holder");
+    expect(sprayCan?.paramCount).toBeGreaterThan(0);
+    expect(sprayCan?.categoryId).toBe("multiboard");
+    expect(sprayCan?.blurb.length).toBeGreaterThan(0);
+    expect(sprayCan?.annotated).toBe(true);
+  });
+
+  it("listModels() excludes BD models while BD_MODELS_ENABLED is off (default)", async () => {
+    delete process.env.BD_MODELS_ENABLED;
+    expect(bdModelsEnabled()).toBe(false);
+    const models = await listModels();
+    expect(models.some((m) => m.engine === "build123d")).toBe(false);
+    // SCAD side is untouched by the flag.
+    expect(models.every((m) => m.engine === "scad")).toBe(true);
+    expect(models.map((m) => m.slug)).toContain("cylindrical-holder-slot");
+  });
+
+  it("listModels() merges BD models when BD_MODELS_ENABLED=1, sorted by slug", async () => {
+    process.env.BD_MODELS_ENABLED = "1";
+    const models = await listModels();
+    const bd = models.filter((m) => m.engine === "build123d");
+    expect(bd.length).toBeGreaterThanOrEqual(2);
+    const slugs = models.map((m) => m.slug);
+    expect(slugs).toEqual([...slugs].sort((a, b) => a.localeCompare(b)));
+    // BD cards must not collide with SCAD slugs.
+    const scadSlugs = new Set(models.filter((m) => m.engine === "scad").map((m) => m.slug));
+    for (const m of bd) {
+      expect(scadSlugs.has(m.slug), `slug collision: ${m.slug}`).toBe(false);
+    }
+  });
+
+  it("flag must be exactly '1' to enable (not truthy strings)", async () => {
+    process.env.BD_MODELS_ENABLED = "true";
+    const models = await listModels();
+    expect(models.some((m) => m.engine === "build123d")).toBe(false);
+  });
+
+  it("loadModel() still refuses BD slugs until P1c (no detail routing)", async () => {
+    const bd = await listBdModels();
+    for (const m of bd) {
+      expect(await loadModel(m.slug), `${m.slug} has no detail route yet`).toBeNull();
+    }
   });
 });
