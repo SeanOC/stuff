@@ -14,26 +14,26 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import trimesh  # noqa: E402
-from build123d import Align, Cylinder, export_stl  # noqa: E402
+from build123d import Align, Cylinder, Pos, export_stl  # noqa: E402
 from opengrid.constants import OPEN_GRID_UNIT_SIZE  # noqa: E402
 from opengrid.multiconnect import SnapInSlotCutter  # noqa: E402
 
 from holders.cylindrical import (  # noqa: E402
     D_MAX,
     D_MIN,
+    FLOOR_DEFAULT,
+    FLOOR_MAX,
+    FLOOR_MIN,
     H_MAX,
     H_MIN,
     LIP_RADIUS,
-    MIN_PLATE_HEIGHT,
     OPENING_MAX,
     OPENING_MIN,
-    PANEL_THICKNESS,
     SLOT_PITCH,
     TWO_SLOT_WIDTH_THRESHOLD,
     WALL_MAX,
     WALL_MIN,
-    _SLOT_ABOVE_SEAT,
-    _SLOT_EDGE_MARGIN,
+    _plate_geometry,
     _lip_radius,
     holder,
     slot_count,
@@ -63,6 +63,8 @@ def test_both_presets_registered():
         dict(d=66, h=60, wall=WALL_MAX + 0.1),
         dict(d=66, h=60, opening_deg=OPENING_MIN - 1),
         dict(d=66, h=60, opening_deg=OPENING_MAX + 1),
+        dict(d=66, h=60, floor_thickness=FLOOR_MIN - 0.1),
+        dict(d=66, h=60, floor_thickness=FLOOR_MAX + 0.1),
     ],
 )
 def test_out_of_range_params_raise_valueerror(kwargs):
@@ -149,12 +151,16 @@ def test_opening_lips_are_filleted():
     # 2) The flat radial cut face at each lip must be narrowed by the
     #    fillet (a 1mm fillet eats ~1mm off each of the two corners, so a
     #    2.4mm wall shrinks to well under half its un-filleted width).
+    # The floor closes the opening's bottom, so the exposed radial cut face
+    # now spans z in [floor_thickness, h] — height h - FLOOR_DEFAULT, not the
+    # full h. Match that reduced extent.
+    exposed_h = h - FLOOR_DEFAULT
     flat_faces = [
         f
         for f in part.faces()
         if str(f.geom_type) == "GeomType.PLANE"
         and near(math.degrees(math.atan2(f.center().Y, f.center().X)) % 360.0, a1)
-        and f.bounding_box().size.Z > h - 1.0
+        and f.bounding_box().size.Z > exposed_h - 1.0
     ]
     assert flat_faces, "expected the flat radial cut face at the opening lip"
     for face in flat_faces:
@@ -204,20 +210,55 @@ def test_mount_is_the_library_slot():
         )
 
 
-def test_slot_opening_faces_up_and_out():
-    """The slot slides along +Z (holder drops onto wall heads) and the
-    pocket opens on the -Y mount face: the mount face at the slot is carved
-    while the plate stays solid below the slot envelope."""
+def test_slot_opening_faces_down_and_cuts_bottom_edge():
+    """The slot opening faces -Z and its channel cuts THROUGH the plate's
+    bottom edge, so a wall head can actually enter (the failure this pins:
+    a sealed pocket with no aperture). The pocket opens on the -Y mount
+    face; the plate stays solid ABOVE the slot body and flanking the
+    channel at the bottom edge.
+
+    This is an APERTURE assertion, not a volume check: it proves an actual
+    opening exists through the bottom face — exactly the failure class a
+    watertight test cannot catch (a sealed pocket is watertight too)."""
+    d, h = 66.0, 60.0
+    r_in = d / 2.0
+    r_out = r_in + 2.4
+    part = holder(d, h)
+    width, plate_h, mount_y, z_seat, _n = _plate_geometry(r_in, r_out, h)
+    yq = mount_y + 1.0  # just inside the -Y mount face, at the slot centre
+
+    # 1) The channel is OPEN at the bottom edge: just inside the mount face,
+    #    at the slot centre X, immediately above the plate bottom -> empty.
+    #    This is the aperture the wall head enters through.
+    assert not part.is_inside((0.0, yq, 0.5)), (
+        "no aperture: slot channel is sealed at the plate's bottom edge"
+    )
+    # 2) The pocket is open at the head seat (mount face carved there too).
+    assert not part.is_inside((0.0, yq, z_seat)), "pocket not open at mount face"
+    # 3) The aperture is a real hole, not the whole bottom missing: the
+    #    plate is SOLID flanking the channel at the same low z.
+    edge_x = width / 2.0 - 1.0
+    assert part.is_inside((edge_x, yq, 0.5)), "plate not solid flanking the slot aperture"
+    # 4) The plate is SOLID above the slot body (the opening runs out the
+    #    BOTTOM, not the top — the inverse of the old top-opening bug).
+    assert part.is_inside((0.0, yq, plate_h - 1.0)), "plate not solid above the slot"
+
+
+def test_floor_closes_collar_bottom():
+    """A solid floor closes the collar bottom so an item rests on it instead
+    of dropping through the bore; the front opening stays open above it."""
     d, h = 66.0, 60.0
     r_in = d / 2.0
     part = holder(d, h)
-    mount_y = -r_in - PANEL_THICKNESS
-    plate_h = max(h, MIN_PLATE_HEIGHT)
-    z_seat = plate_h - _SLOT_ABOVE_SEAT - _SLOT_EDGE_MARGIN
-    # Just inside the mount face at the head seat -> carved (empty).
-    assert not part.is_inside((0.0, mount_y + 1.0, z_seat)), "pocket not open at mount face"
-    # Well below the slot envelope, just inside the mount face -> solid plate.
-    assert part.is_inside((0.0, mount_y + 1.0, 1.0)), "plate not solid below slot"
+    r_mid = r_in + 1.2  # inside the front wall/opening region
+
+    # Bore centre: SOLID within the floor, EMPTY above it (item space).
+    assert part.is_inside((0.0, 0.0, FLOOR_DEFAULT / 2.0)), "floor does not close the bore"
+    assert not part.is_inside((0.0, 0.0, FLOOR_DEFAULT + 10.0)), "bore not open above floor"
+    # The floor spans the full C-ring footprint: the FRONT (where the
+    # opening is) is solid at floor level but open above it.
+    assert part.is_inside((0.0, r_mid, FLOOR_DEFAULT / 2.0)), "floor gap at the front opening"
+    assert not part.is_inside((0.0, r_mid, h / 2.0)), "front opening closed above the floor"
 
 
 @pytest.mark.parametrize(
@@ -246,11 +287,18 @@ def test_export_is_watertight_across_corner_cases(d, h, tmp_path):
         assert mesh.body_count == 1
 
 
-def test_can_space_is_clear():
-    """The cylinder must pass through the bore: zero interference."""
+def test_can_space_is_clear_above_floor():
+    """The cylinder drops into the bore and rests ON the floor: zero
+    interference with the collar walls above the floor. (Below the floor
+    the base is intentionally solid — see test_floor_closes_collar_bottom.)"""
     d, h = 66.0, 60.0
     part = holder(d, h)
-    can = Cylinder(radius=d / 2.0, height=h, align=(Align.CENTER, Align.CENTER, Align.CENTER))
+    # Can sits on the floor: from z=FLOOR_DEFAULT up to the collar top.
+    can = Pos(0, 0, FLOOR_DEFAULT) * Cylinder(
+        radius=d / 2.0,
+        height=h - FLOOR_DEFAULT,
+        align=(Align.CENTER, Align.CENTER, Align.MIN),
+    )
     overlap = part.intersect(can)
     overlap_vol = sum(s.volume for s in overlap.solids()) if overlap is not None else 0.0
     assert overlap_vol == pytest.approx(0.0, abs=1e-3)
