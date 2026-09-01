@@ -13,9 +13,10 @@ dependencies = [
     # openGrid + Multiconnect primitives (MIT, build123d-native).
     # Pinned to a commit for reproducibility (BOSL2-pin discipline).
     "opengrid",
-    "trimesh>=4.0",          # mesh sanity checks in tests (manifold, volume)
+    "trimesh>=4.0",          # GLB load + smooth normals for the thumbnail rasteriser; test mesh checks
+    "numpy>=1.26",           # pure-numpy software thumbnail rasteriser (scripts/thumbnail.py)
+    "pillow>=10.0",          # PNG encode for the thumbnail rasteriser
     "pytest>=8.0",
-    "matplotlib>=3.9",   # software PNG renders in CI (no GL)
 ]
 
 [tool.uv.sources]
