@@ -27,15 +27,11 @@ If a library can't do something, that's a *finding for the eval*, not an invitat
   BUILD123D_CATALOG (lib/models/catalog.ts)
 - `scripts/export.py` — STL (print) + GLB (viewer) + PNG (3-view review
   render) per model → `out/`; `--presets-only TARGET_DIR` bakes
-  `TARGET_DIR/<slug>/<preset-id>.{stl,glb}` for every app-listed preset
-- `scripts/render-all.py` (repo root) — after the SCAD render pass,
-  mirrors the 3-view review PNGs into `renders/<stem>/iso.png` so the
-  gallery serves BD thumbnails through the same `/api/thumbnail` route
-  as SCAD models (pst-dsiq)
-- `docs/renders/` — review renders (3-view PNGs) of shipped presets, tracked
-  for PR review; `scripts/render-all.py` mirrors them into
-  `renders/<stem>/iso.png` for the web app (add a new model's review PNG
-  here so its gallery tile is non-blank)
+  `TARGET_DIR/<slug>/<preset-id>.{stl,glb,png}` for every app-listed
+  preset (the `.png` is the single-view gallery thumbnail; see below)
+- `docs/renders/` — review renders (3-view PNGs) of shipped presets,
+  tracked for PR review only (embed them in the PR body via commit-SHA
+  raw URLs, see PR conventions). These do **not** feed the gallery.
 - `viewer/index.html` — drag-drop GLB viewer (model-viewer, static, no build)
 - `tests/` — registry-driven: every model must build, be watertight, have volume; library dims pinned
 
@@ -68,6 +64,32 @@ readers open the PR (this bit us on #75). Example:
 ```
 
 Grab `<sha>` from `git rev-parse HEAD` after your final push.
+
+## Gallery thumbnails — single source of truth (pst-1vi5)
+The gallery card for a build123d model is served straight from the
+build-time bake, not from a separately committed image:
+
+- `scripts/bake-bd-presets.sh` (chained into the app's `prebuild` npm
+  hook, gated on `BD_MODELS_ENABLED`) runs `export.py --presets-only
+  build123d/baked`, which now emits, per preset, a single-view iso
+  thumbnail `build123d/baked/<slug>/<preset>.png` **rendered from the
+  same built part as that preset's GLB and STL**.
+- `/api/thumbnail?model=<slug>` (app/api/thumbnail/route.ts) serves that
+  PNG for build123d models — the first preset's — exactly as
+  `/api/bd-asset` serves the baked GLB/STL. SCAD models are unchanged
+  (`renders/<stem>/iso.png`).
+
+Because the thumbnail, the viewer GLB, and the download STL are all
+outputs of one bake of one part, a geometry or preset change can never
+leave the listing card showing stale geometry. There is no image to
+hand-commit or hand-refresh, and no CI mirror step to fall out of sync
+(the earlier `render-all.py` docs-render mirror was removed — it went
+stale on `build123d/**`-only PRs that don't trigger the render job).
+The bake contract (`tests/test_presets_bake.py`) asserts the PNG is
+produced alongside the STL/GLB for every app-listed preset. When
+`BD_MODELS_ENABLED` is unset the bake is skipped and BD cards aren't
+listed, so no thumbnail is requested; a stale-build 404 degrades to a
+blank tile just like a missing GLB.
 
 ## Eval dimensions (vs OpenSCAD)
 agent workability · geometry/output quality (real fillets) · CI fit · preview experience

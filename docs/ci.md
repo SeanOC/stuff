@@ -153,18 +153,18 @@ filter job is filed as st-2nv). Render-relevant paths:
 - `scripts/vendor-libs.sh` — the library pin script
 - `libs/README.md` — library pins
 
-**The BD thumbnail mirror is always on.** After the SCAD pass,
-`render-all.py` unconditionally copies each
-`build123d/manifest.json` model's committed review render
-(`build123d/docs/renders/<name>.png`) into `renders/<stem>/iso.png`
-and prunes BD stems the manifest no longer lists (pst-dsiq) — so a PR
-that touches only `build123d/**` can still shift the gallery
-thumbnails without touching any render-relevant path above. The
-mirror is a byte-for-byte copy of tracked PNGs, so it produces no
-byte-noise and the commit-back's tree-hash check skips it; the
-commit-back canonicalizes BD thumbnails the same way it does SCAD
-renders. A BD model whose review PNG is missing only warns — the
-gallery shows a blank tile rather than failing the run.
+**build123d thumbnails are NOT rendered here (pst-1vi5).** The gallery
+card for a build123d model is served from `build123d/baked/<slug>/<preset>.png`,
+rendered from the same built part as the detail-view GLB/STL by the
+prebuild bake (`scripts/bake-bd-presets.sh`, gated on
+`BD_MODELS_ENABLED`). `render-all.py` no longer mirrors
+`build123d/docs/renders/*.png` into `renders/<stem>/iso.png` — that
+second, hand-committed source could drift from the shipped geometry
+(and did: a `build123d/**`-only PR never triggers this render job, so
+the mirror went stale). With the single source of truth, a model or
+preset change updates the thumbnail as a side effect of the same bake
+that produces the GLB, so the card can never be stale. Any leftover
+`renders/<bd-stem>/` dir is pruned here as stale.
 
 The filter also emits the changed `models/*.scad` + `libs/**` file
 list, passed to `render-all.py` / `export-all.py` as
