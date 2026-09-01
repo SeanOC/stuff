@@ -54,5 +54,20 @@ run the manifest emitter. The registry rejects spec/preset errors at
 registration time (unknown params, out-of-range defaults, enum values not
 in choices, duplicate slugs/ids).
 
+## PR conventions
+**Embed renders via commit-SHA raw URLs, never branch-relative ones.**
+A PR that shows off `docs/renders/*.png` must link them through a
+**permanent** `raw.githubusercontent.com/<owner>/<repo>/<commit-sha>/...`
+URL (a real 40-char commit SHA, not a branch name). Branch-relative GitHub
+links (`.../blob/<branch>/...` or `.../raw/<branch>/...`) 404 the moment the
+branch is deleted on merge — which is exactly when reviewers and future
+readers open the PR (this bit us on #75). Example:
+
+```markdown
+![spray can holder](https://raw.githubusercontent.com/<owner>/stuff/<sha>/build123d/docs/renders/holder_spray_can.png)
+```
+
+Grab `<sha>` from `git rev-parse HEAD` after your final push.
+
 ## Eval dimensions (vs OpenSCAD)
 agent workability · geometry/output quality (real fillets) · CI fit · preview experience
