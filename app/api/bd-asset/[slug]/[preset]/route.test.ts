@@ -56,6 +56,11 @@ describe("/api/bd-asset", () => {
     expect(res.headers.get("content-type")).toBe("model/gltf-binary");
     // GLB is inline (viewer fetch), not an attachment.
     expect(res.headers.get("content-disposition")).toBeNull();
+    // The URL is deploy-stable but the bytes change with geometry/presets,
+    // so it must revalidate rather than be cached `immutable` for a year.
+    const cc = res.headers.get("cache-control") ?? "";
+    expect(cc).toContain("must-revalidate");
+    expect(cc).not.toContain("immutable");
     expect(new Uint8Array(await res.arrayBuffer())).toEqual(GLB_BYTES);
   });
 

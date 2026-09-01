@@ -86,10 +86,13 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
   const headers: Record<string, string> = {
     "content-type": CONTENT_TYPE[format],
     "content-length": String(body.byteLength),
-    // Baked assets are content-stable for a given deploy: the manifest
-    // pins the preset values and the bake is deterministic. Safe to
-    // cache hard; a new deploy serves from a fresh function anyway.
-    "cache-control": "public, max-age=31536000, immutable",
+    // This URL (/api/bd-asset/<slug>/<preset>) is stable across deploys,
+    // but the baked bytes behind it change whenever model geometry or a
+    // preset value changes. It is NOT content-addressed (unlike /api/export's
+    // HIT path, whose URL hashes the render), so `immutable` would let a
+    // client serve last year's geometry after a redeploy. Allow shared
+    // caching but require revalidation so a new bake is picked up promptly.
+    "cache-control": "public, max-age=0, must-revalidate",
   };
   // STL is a download; GLB is fetched by the in-page viewer (inline).
   if (format === "stl") {
