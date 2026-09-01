@@ -121,22 +121,15 @@ that authored this**; tracked as a follow-up.
 | `BD_BUILD123D_ROOT` | `<repo>/build123d` | root that `holders`/`scripts` import from (fixed to `/build123d` in the image) |
 | `BD_RENDER_TIMEOUT` | `90` | hard per-request render timeout, seconds |
 
-## Deploy (ships dark)
+## Deploy
 
-The deploy pipeline is staged at
-[`deploy-bd-render-service.yml`](./deploy-bd-render-service.yml) and **must
-be moved into `.github/workflows/` by a human** (the authoring worker can't
-touch that directory):
-
-```bash
-git mv services/bd-render/deploy-bd-render-service.yml \
-       .github/workflows/deploy-bd-render-service.yml
-```
+The deploy pipeline lives at
+[`.github/workflows/deploy-bd-render-service.yml`](../../.github/workflows/deploy-bd-render-service.yml)
+(activated by the operator on 2026-09-01; it was staged in this directory
+until then because the authoring worker can't touch `.github/workflows/`).
 
 It mirrors `deploy-render-service.yml`: keyless GitHub-OIDC → WIF,
 `--no-allow-unauthenticated`, **`--min-instances 0`** (scale-to-zero,
 operator decision), `--max-instances 3`, `--cpu 2 --memory 4Gi`,
-`--timeout 120`. It **ships dark** — gated on the `GCP_WIF_PROVIDER` repo
-variable — so even once moved it is a no-op until the operator sets that
-variable. It reuses the SCAD service's WIF infra; only the service name
+`--timeout 120`. The deploy job is gated on the `GCP_WIF_PROVIDER` repo variable (set). It reuses the SCAD service's WIF infra; only the service name
 (`BD_RENDER_SERVICE_NAME`, default `stuff-bd-render`) differs.
