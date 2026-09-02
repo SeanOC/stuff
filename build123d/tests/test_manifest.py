@@ -293,4 +293,7 @@ def test_resolve_values_rejects_unknown_and_out_of_range():
     assert spec.resolve_values() == {
         "d": 66.0, "h": 60.0, "wall": 2.4, "opening_deg": 90.0,
         "floor_thickness": 4.8,
+        # Mount tunables (§5) — defaults reproduce today's shipped geometry.
+        "slot_count": 1, "slot_travel": 28.0, "snap_notches": True,
+        "plate_margin": 3.0,
     }
