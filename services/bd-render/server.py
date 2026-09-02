@@ -53,6 +53,8 @@ import os
 import subprocess
 import sys
 import tempfile
+import threading
+import traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -71,6 +73,17 @@ MAX_BODY_BYTES = 64 * 1024
 # second locally; the cap only guards a pathological OCP hang.
 RENDER_TIMEOUT_S = float(os.environ.get("BD_RENDER_TIMEOUT", "90"))
 PORT = int(os.environ.get("PORT", "8080"))
+
+# Bound concurrent OCP renders. Each POST spawns a heavy build123d/OCP
+# subprocess (hundreds of MB resident); ThreadingHTTPServer accepts
+# connections without limit and the Cloud Run deploy sets no per-instance
+# request concurrency (default 80), so an unguarded burst of concurrent
+# renders could OOM a 4Gi instance. This semaphore caps how many renders run
+# at once IN THIS PROCESS — excess requests queue as cheap blocked threads
+# rather than stacking heavy subprocesses. Pair with `--concurrency` on the
+# Cloud Run deploy for defence in depth (see services/bd-render/README.md).
+RENDER_CONCURRENCY = max(1, int(os.environ.get("BD_RENDER_CONCURRENCY", "2")))
+_RENDER_SLOTS = threading.BoundedSemaphore(RENDER_CONCURRENCY)
 
 CONTENT_TYPE = {"glb": "model/gltf-binary", "stl": "application/sla"}
 
@@ -106,11 +119,17 @@ def _resolve_or_error(slug: str, params: dict) -> str | None:
 
 
 class Handler(BaseHTTPRequestHandler):
+    # Set once a response has started, so the last-resort 500 in do_POST
+    # never tries to write a second response over a half-sent one (parity
+    # with server.ts's `!res.headersSent` guard).
+    _responded = False
+
     # Quieter, single-line request logging.
     def log_message(self, fmt: str, *args) -> None:  # noqa: A003
         sys.stderr.write("%s - %s\n" % (self.address_string(), fmt % args))
 
     def _send_json(self, status: int, payload: dict) -> None:
+        self._responded = True
         body = json.dumps(payload).encode("utf-8")
         self.send_response(status)
         self.send_header("content-type", "application/json")
@@ -119,6 +138,7 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def _send_bytes(self, data: bytes, content_type: str, filename: str) -> None:
+        self._responded = True
         self.send_response(200)
         self.send_header("content-type", content_type)
         self.send_header("content-length", str(len(data)))
@@ -135,6 +155,21 @@ class Handler(BaseHTTPRequestHandler):
         self._send_json(404, {"ok": False, "errorMessage": "not found"})
 
     def do_POST(self) -> None:  # noqa: N802
+        # Last-resort guard: an unexpected error must return a structured 500,
+        # never drop the connection (parity with services/render/server.ts).
+        try:
+            self._handle_post()
+        except Exception:  # noqa: BLE001 - deliberately catch-all at the boundary
+            sys.stderr.write(traceback.format_exc())
+            if not self._responded:
+                try:
+                    self._send_json(
+                        500, {"ok": False, "errorMessage": "internal error"}
+                    )
+                except Exception:  # noqa: BLE001 - the socket may already be gone
+                    pass
+
+    def _handle_post(self) -> None:
         parsed = urlparse(self.path)
         if parsed.path != "/render":
             return self._send_json(404, {"ok": False, "errorMessage": "not found"})
@@ -145,7 +180,22 @@ class Handler(BaseHTTPRequestHandler):
                 400, {"ok": False, "errorMessage": f"unknown format {fmt!r}"}
             )
 
-        length = int(self.headers.get("content-length") or 0)
+        # Guard the content-length parse: a non-numeric or negative header must
+        # yield a structured 400, not a ValueError that drops the connection.
+        raw_len = self.headers.get("content-length")
+        if raw_len is None:
+            length = 0
+        else:
+            try:
+                length = int(raw_len)
+            except ValueError:
+                return self._send_json(
+                    400, {"ok": False, "errorMessage": "invalid content-length header"}
+                )
+            if length < 0:
+                return self._send_json(
+                    400, {"ok": False, "errorMessage": "invalid content-length header"}
+                )
         if length > MAX_BODY_BYTES:
             return self._send_json(
                 413,
@@ -184,21 +234,25 @@ class Handler(BaseHTTPRequestHandler):
     def _render(self, slug: str, params: dict, fmt: str) -> None:
         with tempfile.TemporaryDirectory(prefix="bd-render-") as d:
             out = os.path.join(d, f"out.{fmt}")
-            try:
-                proc = subprocess.run(
-                    [sys.executable, WORKER, slug, fmt, out],
-                    input=json.dumps(params).encode("utf-8"),
-                    capture_output=True,
-                    timeout=RENDER_TIMEOUT_S,
-                )
-            except subprocess.TimeoutExpired:
-                return self._send_json(
-                    504,
-                    {
-                        "ok": False,
-                        "errorMessage": f"render exceeded {RENDER_TIMEOUT_S:.0f}s timeout",
-                    },
-                )
+            # Hold a render slot only for the heavy OCP subprocess; the cheap
+            # read/send below runs unbounded. A blocked caller waits here
+            # rather than stacking another subprocess on a memory-tight box.
+            with _RENDER_SLOTS:
+                try:
+                    proc = subprocess.run(
+                        [sys.executable, WORKER, slug, fmt, out],
+                        input=json.dumps(params).encode("utf-8"),
+                        capture_output=True,
+                        timeout=RENDER_TIMEOUT_S,
+                    )
+                except subprocess.TimeoutExpired:
+                    return self._send_json(
+                        504,
+                        {
+                            "ok": False,
+                            "errorMessage": f"render exceeded {RENDER_TIMEOUT_S:.0f}s timeout",
+                        },
+                    )
 
             if proc.returncode != 0:
                 status = _WORKER_BADREQ.get(proc.returncode, 500)

@@ -14,10 +14,13 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import socket
 import threading
 import urllib.error
 import urllib.request
+from contextlib import contextmanager
 from pathlib import Path
+from urllib.parse import urlparse
 
 import pytest
 
@@ -33,10 +36,10 @@ def _load_server():
     return module
 
 
-@pytest.fixture(scope="module")
-def base_url():
-    server = _load_server()
-    httpd = server.make_server(0)  # ephemeral port
+@contextmanager
+def _running(module):
+    """Boot a given server module on an ephemeral port; yield its base URL."""
+    httpd = module.make_server(0)
     port = httpd.server_address[1]
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
@@ -45,6 +48,12 @@ def base_url():
     finally:
         httpd.shutdown()
         thread.join(timeout=5)
+
+
+@pytest.fixture(scope="module")
+def base_url():
+    with _running(_load_server()) as url:
+        yield url
 
 
 def _post(base_url: str, path: str, body):
@@ -171,3 +180,81 @@ def test_oversize_body_is_413(base_url):
     big = {"slug": "holder-spray-can", "params": {"pad": "x" * (64 * 1024 + 10)}}
     status, _h, _body = _post(base_url, "/render", big)
     assert status == 413
+
+
+# --- hardening (bead pst-mmxw) ------------------------------------------
+
+def _raw_post(base_url: str, headers: str, body: bytes = b"") -> str:
+    """Send a hand-built request so we control the exact header bytes (urllib
+    would recompute Content-Length). Returns the response's status line."""
+    u = urlparse(base_url)
+    with socket.create_connection((u.hostname, u.port), timeout=5) as s:
+        s.sendall(headers.encode("ascii") + b"\r\n" + body)
+        chunk = s.recv(1024)
+    return chunk.decode("latin-1").splitlines()[0]
+
+
+def test_malformed_content_length_is_400(base_url):
+    """A non-numeric Content-Length must return a structured 400, not drop the
+    connection on a ValueError (bead pst-mmxw AC#2)."""
+    status_line = _raw_post(
+        base_url,
+        "POST /render HTTP/1.0\r\n"
+        "Host: x\r\n"
+        "Content-Type: application/json\r\n"
+        "Content-Length: not-a-number\r\n"
+        "Connection: close\r\n",
+    )
+    assert "400" in status_line, status_line
+
+
+def test_negative_content_length_is_400(base_url):
+    status_line = _raw_post(
+        base_url,
+        "POST /render HTTP/1.0\r\n"
+        "Host: x\r\n"
+        "Content-Type: application/json\r\n"
+        "Content-Length: -5\r\n"
+        "Connection: close\r\n",
+    )
+    assert "400" in status_line, status_line
+
+
+def test_unexpected_error_returns_structured_500(monkeypatch):
+    """An unexpected error inside handling must yield a generic 500 with a JSON
+    body (parity with services/render/server.ts), not a dropped connection
+    (bead pst-mmxw AC#3)."""
+    module = _load_server()
+    # Inject a fault on the in-process validation path (a non-ValueError the
+    # handler does not expect) so the top-level do_POST guard is exercised.
+    def boom(_slug, _params):
+        raise RuntimeError("injected fault")
+
+    monkeypatch.setattr(module, "_resolve_or_error", boom)
+    with _running(module) as url:
+        status, headers, body = _post(url, "/render", {"slug": "holder-spray-can"})
+    assert status == 500
+    assert headers["content-type"] == "application/json"
+    doc = json.loads(body)
+    assert doc["ok"] is False and doc["errorMessage"] == "internal error"
+
+
+def test_concurrent_renders_are_bounded_and_all_succeed(base_url):
+    """The render semaphore must serialize heavy renders without deadlocking or
+    dropping any — every concurrent request still returns a valid GLB (bead
+    pst-mmxw AC#1)."""
+    results: list[int] = []
+    lock = threading.Lock()
+
+    def fire():
+        status, _h, body = _post(base_url, "/render", {"slug": "holder-spray-can"})
+        with lock:
+            results.append((status, body[:4]))
+
+    threads = [threading.Thread(target=fire) for _ in range(6)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=60)
+    assert len(results) == 6
+    assert all(status == 200 and magic == b"glTF" for status, magic in results), results
