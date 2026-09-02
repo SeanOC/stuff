@@ -12,13 +12,15 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import pytest  # noqa: E402
-from build123d import Align, Box, Pos  # noqa: E402
+from build123d import Align, Box, Pos, Rotation as Rot  # noqa: E402
 from opengrid.multiconnect import SnapInSlotCutter  # noqa: E402
 
 from holders.registry import KNOWN_MOUNTS, MountFixtures, all_models  # noqa: E402
 from tests.mount_contracts import (  # noqa: E402
     CONTRACTS,
     assert_aperture,
+    assert_profile,
+    assert_retention,
     resolve_fixtures,
     verify,
 )
@@ -90,3 +92,59 @@ def test_negative_sealed_pocket_fails_aperture():
     part, fx = _sealed_pocket_fixture()
     with pytest.raises(AssertionError, match="aperture"):
         assert_aperture(part, fx)
+
+
+def _inverted_pocket_fixture():
+    """The v3 print defect reproduced from library geometry (bug pst-p07j): the
+    SnapInSlotCutter placed with the OLD transform — ``Rot(0, 180, 0) *
+    SnapInSlotCutter(rotation=(-90, 0, 0))`` anchored AT the mount face — so
+    the dovetail comes out WIDE at the open surface and NARROW inside. Nothing
+    retains the head: it pulls straight off the wall. The aperture/orientation/
+    seat/travel checks (a)-(d) all PASS on this (the bug shipped and passed CI);
+    the retention (e) and profile (f) checks must REJECT it. Returns (part, fx)
+    with the same dims as the real spray-can holder (mount_y=-39.4, z_seat=26)."""
+    mount_y, z_seat = -39.4, 26.0
+    plate = Pos(0.0, mount_y, 0.0) * Box(
+        90.0, 6.4, 60.0, align=(Align.CENTER, Align.MIN, Align.MIN)
+    )
+    cutter = Pos(0.0, mount_y, z_seat) * Rot(0, 180, 0) * SnapInSlotCutter(rotation=(-90, 0, 0))
+    part = (plate - cutter).clean()
+    seat = Pos(0.0, mount_y, z_seat) * Rot(0, 180, 0) * Rot(-90, 0, 0)
+    fx = MountFixtures(
+        cutters=[cutter], seat_locs=[seat],
+        entry_axis=(0.0, 0.0, 1.0), face_normal=(0.0, -1.0, 0.0),
+    )
+    return part, fx
+
+
+def test_negative_inverted_pocket_fails_retention():
+    """The v3 inverted pocket MUST fail the retention check — the head pulls
+    straight off the wall. Proves (e) catches the exact print-verified defect."""
+    part, fx = _inverted_pocket_fixture()
+    with pytest.raises(AssertionError, match="retains|pulls off"):
+        assert_retention(part, fx)
+
+
+def test_negative_inverted_pocket_fails_profile():
+    """The v3 inverted pocket MUST fail the profile check — wide at the open
+    face, narrow inside. Proves (f) catches the exact print-verified defect."""
+    part, fx = _inverted_pocket_fixture()
+    with pytest.raises(AssertionError, match="inverted|profile"):
+        assert_profile(part, fx)
+
+
+def test_negative_inverted_pocket_still_passes_a_through_d():
+    """The inverted pocket passes aperture/orientation/seat/travel — that is
+    WHY the v3 bug shipped, and why (e)/(f) had to be added. If any of (a)-(d)
+    starts failing here, good, but the point stands: they were depth-blind."""
+    from tests.mount_contracts import (
+        assert_aperture as _ap,
+        assert_orientation as _or,
+        assert_seat_clearance as _sc,
+        assert_entry_travel as _et,
+    )
+    part, fx = _inverted_pocket_fixture()
+    _ap(part, fx)
+    _or(part, fx)
+    _sc(part, fx)
+    _et(part, fx)
