@@ -21,6 +21,7 @@ baking, which cover app-listed models only.
 """
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass, field
 from typing import Any, Callable
@@ -216,6 +217,18 @@ class ModelSpec:
     # verification for free. A model declaring a mount must expose a
     # ``mount_fixtures(mount_type, values)`` hook in its module.
     mounts: tuple[str, ...] = ()
+    # Print orientation: the unit vector, IN THIS MODEL'S OWN COORDINATE
+    # FRAME, that points UP (away from the build plate) in the declared
+    # print pose. The default ``(0, 0, 1)`` means "printed as modelled, +Z
+    # up"; a model that prints on another face declares the axis that ends
+    # up pointing up (a holder printed back-plate-down on its −Y face would
+    # declare ``(0, 1, 0)``). The deterministic print audit
+    # (tests/print_audit.py) measures overhangs/bridges/walls against this.
+    # Additive with a backward-compatible default — not serialized into
+    # manifest.json (scripts/manifest.py emits an explicit field list). A
+    # production model declares a non-default orientation only once it passes
+    # the audit at that orientation (design-guidelines §6 items 1–3).
+    print_orientation: tuple[float, float, float] = (0.0, 0.0, 1.0)
 
     @property
     def slug(self) -> str:
@@ -330,6 +343,18 @@ def _validate_spec(spec: ModelSpec) -> str | None:
         if mount in seen_mounts:
             return f"{spec.name}: duplicate mount type {mount!r}"
         seen_mounts.add(mount)
+    orient = spec.print_orientation
+    if (
+        not isinstance(orient, tuple)
+        or len(orient) != 3
+        or not all(_is_number(c) and math.isfinite(c) for c in orient)
+    ):
+        return (
+            f"{spec.name}: print_orientation must be a 3-tuple of finite "
+            f"numbers, got {orient!r}"
+        )
+    if math.sqrt(sum(c * c for c in orient)) < 1e-9:
+        return f"{spec.name}: print_orientation must be a non-zero vector"
     if not spec.is_smoke:
         if spec.category_id not in CATEGORY_IDS:
             return (

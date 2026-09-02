@@ -790,6 +790,11 @@ register(
         title="Spray can holder",
         category_id="multiboard",
         mounts=("multiconnect-slot",),
+        # print_orientation deliberately left at the (0, 0, 1) default: the
+        # round collar has real overhangs the print audit surfaces (back-
+        # plate-down: 57.6° overhang + 4 downward curved faces), so a print
+        # pose is not yet asserted. The audit ships advisory; the orientation
+        # is declared together with the geometry fix in the follow-up bead.
     )
 )
 register(
@@ -831,5 +836,10 @@ register(
         title="500ml bottle holder",
         category_id="multiboard",
         mounts=("multiconnect-slot",),
+        # print_orientation deliberately left at the (0, 0, 1) default: the
+        # round collar has real overhangs the print audit surfaces (back-
+        # plate-down: 58.4° overhang + 4 downward curved faces), so a print
+        # pose is not yet asserted. The audit ships advisory; the orientation
+        # is declared together with the geometry fix in the follow-up bead.
     )
 )
