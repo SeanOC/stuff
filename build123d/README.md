@@ -3,6 +3,8 @@
 Parametric models in **Python + [build123d](https://github.com/gumyr/build123d)**, consuming **published
 parametric libraries as dependencies** — evaluated against our OpenSCAD workflow (see repo root).
 
+> **Design guidelines:** every model in this directory follows [docs/design-guidelines.md](docs/design-guidelines.md) (printability for the Bambu H2S in PLA/PCTG, edge treatment, material efficiency, structural integration, mount parametrics). The reviewer checks PRs against §6.
+
 ## Hard rule
 openGrid / Multiconnect geometry comes **only** from the pinned
 [`opengrid` library](https://makerrepo.com/r/fangpenlin/opengrid/) (MIT, build123d-native) or other
