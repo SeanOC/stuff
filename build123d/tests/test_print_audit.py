@@ -51,9 +51,11 @@ from tests.print_audit import (  # noqa: E402
 )
 
 # One-line switch (AC 3): False = advisory (xfail on failure, report printed);
-# True = the registry-driven audit is a hard gate. Keep advisory until the
-# holder passes its own audit — a round collar printed on its side has real
-# overhangs the audit correctly surfaces.
+# True = the registry-driven audit is a hard gate. Kept advisory until the
+# production holders pass their own audit — they miss §1 at every orientation
+# today (a round collar on its side has real overhangs), so the geometry fix +
+# a declared print_orientation + this flip all land together as "holder v5"
+# (follow-up bead pst-xz3m). See build123d/README.md → Print audit.
 PRINT_AUDIT_REQUIRED = False
 
 # Generous per-model ceiling for AC 1 ("< 60 s each"); the real cost is ~0.1 s.

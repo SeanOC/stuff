@@ -221,11 +221,13 @@ class ModelSpec:
     # FRAME, that points UP (away from the build plate) in the declared
     # print pose. The default ``(0, 0, 1)`` means "printed as modelled, +Z
     # up"; a model that prints on another face declares the axis that ends
-    # up pointing up (e.g. a holder printed back-plate-down on its −Y face
-    # declares ``(0, 1, 0)``). The deterministic print audit
+    # up pointing up (a holder printed back-plate-down on its −Y face would
+    # declare ``(0, 1, 0)``). The deterministic print audit
     # (tests/print_audit.py) measures overhangs/bridges/walls against this.
     # Additive with a backward-compatible default — not serialized into
-    # manifest.json (scripts/manifest.py emits an explicit field list).
+    # manifest.json (scripts/manifest.py emits an explicit field list). A
+    # production model declares a non-default orientation only once it passes
+    # the audit at that orientation (design-guidelines §6 items 1–3).
     print_orientation: tuple[float, float, float] = (0.0, 0.0, 1.0)
 
     @property

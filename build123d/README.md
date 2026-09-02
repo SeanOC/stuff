@@ -103,9 +103,11 @@ PR (design-guidelines §6 items 1–3).
 
 **Print orientation** is a unit vector on the `ModelSpec` — `print_orientation`, the
 model-frame direction that points UP (away from the bed) in the print pose. Default
-`(0, 0, 1)` ("printed as modelled"); the C-ring holder prints its −Y back plate on the
-bed, so it declares `(0, 1, 0)`. The field is additive (backward-compatible default)
-and is **not** serialized into `manifest.json`.
+`(0, 0, 1)` ("printed as modelled"); a holder printed back-plate-down on its −Y face
+would declare `(0, 1, 0)`. The field is additive (backward-compatible default) and is
+**not** serialized into `manifest.json`. A production model declares a non-default
+orientation only once it passes the audit at that orientation (design-guidelines §6
+items 1–3) — see the advisory note below.
 
 `tests/test_print_audit.py` has two layers, like the mount contracts:
 - **synthetic self-tests** (always gating): a 50° overhang fails / 40° passes, a 12 mm
@@ -113,11 +115,17 @@ and is **not** serialized into `manifest.json`.
   / bottom chamfer passes, and a library cutter pocket is excluded;
 - **registry-driven run** (**advisory**): every registered model is audited at its
   declared orientation and the report printed; a failure is an `xfail`, not a hard
-  failure, until the holder passes its own audit. **Flip the one-line
+  failure, until the production holders pass their own audit. **Flip the one-line
   `PRINT_AUDIT_REQUIRED = True`** at the top of `tests/test_print_audit.py` to make the
-  registry run a hard gate (design-guidelines §6). The C-ring holder currently reports
-  real overhangs (a round collar printed on its side) — expected, and why the run stays
-  advisory for now.
+  registry run a hard gate (design-guidelines §6).
+
+The C-ring holders miss §1 at every orientation today (upright: a 90° downward ceiling;
+back-plate-down: ~57–58° collar overhang + bottom-side lip fillets), so they keep the
+`(0, 0, 1)` default and assert no print pose. Fixing that geometry, declaring each
+holder's real `print_orientation`, and flipping the switch to required all land
+**together** as "holder v5" (follow-up bead `pst-xz3m`) — this PR ships the audit tooling
+and the schema field only, so no production holder declares an orientation it fails at
+(design-guidelines §6 items 1–3 stay honest).
 
 ### Advisory render review (Layer 2, not a gate)
 `scripts/render_review.py` sends each model's 3-view PNG plus the mount rubric

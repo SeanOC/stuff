@@ -37,9 +37,10 @@ Orientation convention
 ``up`` is the unit vector, IN THE MODEL'S OWN COORDINATE FRAME, that points
 up (away from the bed) in the declared print pose. The default ``(0, 0, 1)``
 means "printed as modelled, +Z up". A model that prints on a different face
-declares the axis that ends up pointing up — e.g. the C-ring holder prints
-its back plate (the −Y face) on the bed, so its ``up`` is ``(0, 1, 0)``.
-Models carry this as ``ModelSpec.print_orientation``.
+declares the axis that ends up pointing up — a holder printed back-plate-down
+on its −Y face would declare ``(0, 1, 0)``. Models carry this as
+``ModelSpec.print_orientation`` (default +Z; a production model declares a
+non-default value only once it passes the audit at that orientation).
 
 The numbers are computed on the build123d BRep (exact face normals and
 geometry types), not on a tessellated mesh, so a fillet reads as one curved
