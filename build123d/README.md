@@ -91,7 +91,10 @@ no supports**) instead of a reviewer eyeball. Given a `Part` and its declared pr
 orientation it returns a typed `PrintAuditReport`:
 
 - **overhang** — steepest downward face from vertical (threshold **45°**);
-- **bridge** — widest unsupported flat span (threshold **10 mm**);
+- **bridge** — widest unsupported flat span (threshold **10 mm**), measured by a
+  sampled local-span scan (solid-above/void-below raster + shortest through-run),
+  so a thin annular or arc ledge is scored by its narrow real width, not its
+  bounding-box diameter;
 - **min wall** — thinnest wall, sampled by inward normal marching (threshold **0.9 mm**;
   load-bearing 1.6 mm deferred until faces can be tagged);
 - **downward fillets** — any downward-facing *curved* face (use a 45° chamfer) → fail;
@@ -112,7 +115,8 @@ items 1–3) — see the advisory note below.
 `tests/test_print_audit.py` has two layers, like the mount contracts:
 - **synthetic self-tests** (always gating): a 50° overhang fails / 40° passes, a 12 mm
   bridge fails / 8 mm passes, a 0.8 mm wall fails / 1.2 mm passes, a bottom fillet fails
-  / bottom chamfer passes, and a library cutter pocket is excluded;
+  / bottom chamfer passes, a wide-bbox thin annular ledge is *not* read as a bridge, and
+  a library cutter pocket is excluded;
 - **registry-driven run** (**advisory**): every registered model is audited at its
   declared orientation and the report printed; a failure is an `xfail`, not a hard
   failure, until the production holders pass their own audit. **Flip the one-line

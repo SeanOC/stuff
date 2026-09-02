@@ -16,10 +16,16 @@ reports and flags:
   angle from vertical (a vertical wall is 0°, a flat ceiling is 90°). Faces
   inside a registered library cutter's envelope are excluded (the slot
   profile is spec, not our overhang). Threshold **45°**.
-* **longest bridge** — the widest unsupported span of any downward-facing
-  near-horizontal planar face (a flat ceiling over a void), taken as the
-  shorter in-plane dimension of the face (a bridge is supported along its
-  long edges and spans the short way). Threshold **10 mm**.
+* **longest bridge** — the widest *unsupported* span of any downward-facing
+  near-horizontal planar face (a flat ceiling over a void). Measured by a
+  conservative sampled local-span method: the face plane is rasterised, each
+  cell kept only where the solid is above and a void is directly below (an
+  actual unsupported ceiling point — not the mere bounding box), and the span
+  is the largest *local width* over those cells (the shortest through-run in
+  four in-plane directions, so a bridge is scored the short way it is printed).
+  This does not read a thin annular or arc ledge — whose bbox is the full
+  diameter but whose material is a narrow sliver — as a wide bridge.
+  Threshold **10 mm**.
 * **min wall** — the thinnest wall, sampled by marching inward along the
   surface normal from a grid of points on every face (a normal-direction
   ray-cast proxy: no ray engine is available, but point-membership is).
@@ -72,6 +78,9 @@ _WALL_UV = (0.3, 0.5, 0.7)                # sparser grid for the (costlier) wall
 _CHAMFER_MAX_EXTENT = 1.0  # mm: a bed chamfer's rise along `up` is at most this
 _CHAMFER_ANGLE_LO = 25.0   # deg: a 45° bed chamfer reads in this band ...
 _CHAMFER_ANGLE_HI = 65.0   # ... allowing for fillet-fallback slopes
+_BRIDGE_STEP = 0.5         # mm: finest raster cell for the bridge local-span scan
+_BRIDGE_MAX_SAMPLES = 80   # cap cells per axis (coarsen the step on a large face)
+_BRIDGE_PROBE = 0.1        # mm: offset used to test solid-above / void-below a cell
 
 
 @dataclass(frozen=True)
@@ -201,6 +210,14 @@ def _cutter_boxes(cutters, margin=_CUTTER_MARGIN):
     return boxes
 
 
+def _bbox_corners(bb):
+    """The eight corners of a build123d ``BoundBox`` as (x, y, z) tuples."""
+    xs = (bb.min.X, bb.max.X)
+    ys = (bb.min.Y, bb.max.Y)
+    zs = (bb.min.Z, bb.max.Z)
+    return [(x, y, z) for x in xs for y in ys for z in zs]
+
+
 def _in_any_box(x: float, y: float, z: float, boxes) -> bool:
     for (x0, y0, z0, x1, y1, z1) in boxes:
         if x0 <= x <= x1 and y0 <= y <= y1 and z0 <= z <= z1:
@@ -301,11 +318,70 @@ def _downward_curved_faces(part, up, boxes, hmin):
     return tuple(found)
 
 
+def _max_local_span(grid, step) -> float:
+    """Largest local width over the marked cells of a boolean ``grid``.
+
+    For every marked cell, take the contiguous marked run THROUGH it in each of
+    four in-plane directions (rows, columns, both diagonals) and keep the
+    SHORTEST — a bridge is printed across its narrow way, so its local width is
+    its shortest through-run. The face's span is the largest such width. A thin
+    sliver (annular ledge) is narrow in some direction everywhere, so it never
+    reads as a wide bridge, whatever its bounding box."""
+    nx = len(grid)
+    ny = len(grid[0]) if nx else 0
+    if nx == 0 or ny == 0:
+        return 0.0
+    inf = float("inf")
+    minlen = [[inf] * ny for _ in range(nx)]
+
+    def _apply(cells, unit_len):
+        # ``cells`` are ordered along one line; score each maximal marked run.
+        k, m = 0, len(cells)
+        while k < m:
+            if not grid[cells[k][0]][cells[k][1]]:
+                k += 1
+                continue
+            start = k
+            while k < m and grid[cells[k][0]][cells[k][1]]:
+                k += 1
+            seg = (k - start) * unit_len
+            for t in range(start, k):
+                i, j = cells[t]
+                if seg < minlen[i][j]:
+                    minlen[i][j] = seg
+
+    diag = step * math.sqrt(2.0)
+    for j in range(ny):                       # rows  (1, 0)
+        _apply([(i, j) for i in range(nx)], step)
+    for i in range(nx):                       # cols  (0, 1)
+        _apply([(i, j) for j in range(ny)], step)
+    d1: dict = {}
+    d2: dict = {}
+    for i in range(nx):
+        for j in range(ny):
+            d1.setdefault(i - j, []).append((i, j))   # diagonal   (1, 1)
+            d2.setdefault(i + j, []).append((i, j))   # anti-diag  (1, -1)
+    for cells in d1.values():
+        _apply(sorted(cells), diag)
+    for cells in d2.values():
+        _apply(sorted(cells), diag)
+
+    best = 0.0
+    for i in range(nx):
+        for j in range(ny):
+            if grid[i][j] and minlen[i][j] < inf:
+                best = max(best, minlen[i][j])
+    return best
+
+
 def _longest_bridge(part, up, boxes, hmin):
-    """Widest unsupported flat span. For each downward-facing near-horizontal
-    planar face above the bed, the span is the SHORTER of its two in-plane
-    dimensions (a bridge is supported along its long edges)."""
+    """Widest unsupported flat span, measured (not bounding-boxed). For each
+    downward-facing near-horizontal planar face above the bed, rasterise the
+    face plane, keep only cells that are an actual unsupported ceiling (solid
+    just above, void just below), and take the largest local width over them
+    (see ``_max_local_span``)."""
     u1, u2 = _in_plane_axes(up)
+    eps = _BRIDGE_PROBE
     worst = 0.0
     for face in part.faces():
         if str(face.geom_type) != "GeomType.PLANE":
@@ -316,13 +392,41 @@ def _longest_bridge(part, up, boxes, hmin):
         cdot = n.X * up[0] + n.Y * up[1] + n.Z * up[2]
         if cdot > -_FLAT_COS:  # not a near-horizontal ceiling
             continue
-        verts = [v for v in face.vertices()]
-        if not verts or max(_height(v, up) for v in verts) <= hmin + _BED_EPS:
+        # In-plane extent + top height from the face's bbox corners — robust to
+        # a full-circle face (no vertices), unlike sampling face.vertices().
+        corners = _bbox_corners(face.bounding_box())
+        if max(_dot(p, up) for p in corners) <= hmin + _BED_EPS:
+            continue  # sits in the bed plane — supported by the plate
+        e1 = [_dot(p, u1) for p in corners]
+        e2 = [_dot(p, u2) for p in corners]
+        a0, a1, b0, b1 = min(e1), max(e1), min(e2), max(e2)
+        ext = max(a1 - a0, b1 - b0)
+        if ext <= 0:
             continue
-        e1 = [_dot((v.X, v.Y, v.Z), u1) for v in verts]
-        e2 = [_dot((v.X, v.Y, v.Z), u2) for v in verts]
-        span = min(max(e1) - min(e1), max(e2) - min(e2))
-        worst = max(worst, span)
+        # Exact plane height at each in-plane cell: solve n·(a·u1+b·u2+t·up)=n·c
+        # so a face tilted up to ~10° is probed on its own surface, not a flat h.
+        nn = (n.X, n.Y, n.Z)
+        ndu1, ndu2, ndup = _dot(nn, u1), _dot(nn, u2), _dot(nn, up)
+        ndc = nn[0] * c.X + nn[1] * c.Y + nn[2] * c.Z
+        step = max(_BRIDGE_STEP, ext / _BRIDGE_MAX_SAMPLES)
+        nx = max(1, int(math.ceil((a1 - a0) / step)))
+        ny = max(1, int(math.ceil((b1 - b0) / step)))
+        grid = [[False] * ny for _ in range(nx)]
+        for i in range(nx):
+            ai = a0 + (i + 0.5) * step
+            for j in range(ny):
+                bj = b0 + (j + 0.5) * step
+                t = (ndc - ai * ndu1 - bj * ndu2) / ndup
+                qx = ai * u1[0] + bj * u2[0] + t * up[0]
+                qy = ai * u1[1] + bj * u2[1] + t * up[1]
+                qz = ai * u1[2] + bj * u2[2] + t * up[2]
+                if _in_any_box(qx, qy, qz, boxes):
+                    continue
+                above = (qx + up[0] * eps, qy + up[1] * eps, qz + up[2] * eps)
+                below = (qx - up[0] * eps, qy - up[1] * eps, qz - up[2] * eps)
+                if part.is_inside(above) and not part.is_inside(below):
+                    grid[i][j] = True
+        worst = max(worst, _max_local_span(grid, step))
     return worst
 
 

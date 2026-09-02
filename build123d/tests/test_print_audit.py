@@ -32,6 +32,7 @@ from build123d import (  # noqa: E402
     BuildLine,
     BuildPart,
     BuildSketch,
+    Cylinder,
     Line,
     Plane,
     Pos,
@@ -47,6 +48,11 @@ from tests.print_audit import (  # noqa: E402
     MAX_OVERHANG_DEG,
     MIN_WALL_MM,
     PrintAuditReport,
+    _dot,
+    _FLAT_COS,
+    _height,
+    _in_plane_axes,
+    _outward_normal,
     audit,
 )
 
@@ -157,6 +163,65 @@ def test_bridge_8mm_passes():
     report = audit(_bridge_model(8.0), _UP_Z, model="bridge8")
     assert report.longest_bridge_mm == pytest.approx(8.0, abs=0.5)
     assert report.longest_bridge_mm <= MAX_BRIDGE_MM
+
+
+def _annular_ledge(outer_r=25.0, wall_r=21.0, hole_r=17.0, wall_h=10.0, top_t=3.0):
+    """A thin outer ring wall carrying a top annular plate that overhangs
+    inward. The plate's underside over ``hole_r..wall_r`` is a downward ceiling
+    with a void below (an unsupported annular ledge); its radial width is only
+    ``wall_r - hole_r`` mm, but its bounding box is the full ``2*outer_r``. The
+    regression: a big-bbox ledge must be scored by its narrow real span, not by
+    its diameter (the old bounding-box metric misread this as a wide bridge)."""
+    def ring(r_out, r_in, h):
+        return (
+            Cylinder(r_out, h, align=(Align.CENTER, Align.CENTER, Align.MIN))
+            - Cylinder(r_in, h + 0.2, align=(Align.CENTER, Align.CENTER, Align.MIN))
+        )
+    wall = ring(outer_r, wall_r, wall_h)
+    top = Pos(0, 0, wall_h) * ring(outer_r, hole_r, top_t)
+    return (wall + top).clean()
+
+
+def _downward_face_bbox_span(part, up):
+    """The old metric: the shorter in-plane bounding-box extent of the widest
+    downward-facing near-horizontal planar face (what a bbox measure reports)."""
+    u1, u2 = _in_plane_axes(up)
+    worst = 0.0
+    for face in part.faces():
+        if str(face.geom_type) != "GeomType.PLANE":
+            continue
+        _c, n = _outward_normal(part, face)
+        if n.X * up[0] + n.Y * up[1] + n.Z * up[2] > -_FLAT_COS:
+            continue
+        bb = face.bounding_box()
+        corners = [
+            (x, y, z)
+            for x in (bb.min.X, bb.max.X)
+            for y in (bb.min.Y, bb.max.Y)
+            for z in (bb.min.Z, bb.max.Z)
+        ]
+        e1 = [_dot(p, u1) for p in corners]
+        e2 = [_dot(p, u2) for p in corners]
+        worst = max(worst, min(max(e1) - min(e1), max(e2) - min(e2)))
+    return worst
+
+
+def test_wide_bbox_annular_ledge_is_not_a_bridge():
+    """A downward annular ledge, ~48 mm across but only 4 mm of real material,
+    must NOT trip the 10 mm bridge threshold — the metric measures unsupported
+    span, not bounding box (regression for the bbox-width false positive)."""
+    part = _annular_ledge()  # wall_r 21, hole_r 17 → 4 mm radial ledge, ~50 mm bbox
+    report = audit(part, _UP_Z, model="annular_ledge")
+    # The old bounding-box metric would have read the full diameter as the span.
+    assert _downward_face_bbox_span(part, _UP_Z) > MAX_BRIDGE_MM, (
+        "setup: the ledge's downward face must have a >10 mm bounding box"
+    )
+    # The honest local-span metric reads only the ~4 mm radial width → no bridge.
+    assert report.longest_bridge_mm <= MAX_BRIDGE_MM, report.format()
+    assert report.longest_bridge_mm < 8.0, (
+        f"annular ledge span {report.longest_bridge_mm} mm should track its "
+        "~4 mm radial width, not its ~48 mm diameter"
+    )
 
 
 # --- wall thickness (AC 2) ------------------------------------------------
