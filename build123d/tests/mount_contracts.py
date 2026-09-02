@@ -19,7 +19,7 @@ auto-parametrizes ``verify(mount_type, part, fx)`` over every registered
 model tagged with a mount — like the export/watertight suite, a new model
 inherits the whole contract for free.
 
-The multiconnect-slot contract asserts four things:
+The multiconnect-slot contract asserts six things:
   (a) APERTURE     — the slot void breaks through the plate's BOTTOM face, so
                      a wall head can actually enter (the v2 sealed-pocket bug).
   (b) ORIENTATION  — the channel opening faces -Z (bottom), never the top
@@ -29,6 +29,13 @@ The multiconnect-slot contract asserts four things:
   (d) ENTRY TRAVEL — that RoundHead swept from below the plate up to the seat
                      never collides with the model (a continuous insertion
                      path exists, not merely a reachable seat).
+  (e) RETENTION    — a seated RoundHead pulled straight off the wall (along the
+                     mount face normal) FOULS the plate: the narrow lip holds
+                     the head's wide flange (the v3 print bug — the pocket was
+                     carved inverted, so the head pulled straight off and (a)-(d)
+                     all passed since none is sensitive to the depth profile).
+  (f) PROFILE      — the slot void is NARROW at the open (mount) face and WIDE
+                     inside, the dovetail lip (e) relies on (inverted on v3).
 
 Adding a new mount contract
 ---------------------------
@@ -57,6 +64,13 @@ _SOLID_MIN = 0.5      # mm^3: occupied volume proving a small probe sits in soli
 _APERTURE_MIN = 10.0  # mm^3: cutter material the slot must remove at the bottom face
 _TRAVEL_TOL = 2.0     # mm^3: entry-travel grazing tolerance (intended snap-notch contact)
 _SLAB = 1.0           # mm: thickness of the face-probe slabs
+_RETENTION_MIN = 1.0  # mm^3: a seated head pulled off the wall must foul the plate
+                      #        by at least this — the lip retains the head's flange
+_PROFILE_MIN_DELTA = 3.0  # mm: min (deep width - surface width) proving the dovetail
+                          #     is narrow at the open face and wide inside (retention)
+_PULL_DISTS = (0.5, 1.0, 2.0)  # mm: off-wall pull distances the head must be held at
+_SURFACE_IN = 0.4     # mm: depth just inside the mount face for the surface width probe
+_DEEP_IN = 3.75       # mm: depth near the pocket back for the deep width probe
 
 _CENTER3 = (Align.CENTER, Align.CENTER, Align.CENTER)
 
@@ -87,6 +101,30 @@ def _require_z_entry(fx: MountFixtures) -> None:
             f"multiconnect-slot contract currently assumes entry_axis=(0,0,1), "
             f"got {fx.entry_axis} — generalize the face/travel probes to extend it"
         )
+
+
+def _require_y_face(fx: MountFixtures) -> None:
+    ax = tuple(round(a, 6) for a in fx.face_normal)
+    if ax != (0.0, -1.0, 0.0):
+        raise AssertionError(
+            f"multiconnect-slot contract currently assumes face_normal=(0,-1,0), "
+            f"got {fx.face_normal} — generalize the retention/profile probes to extend it"
+        )
+
+
+def _cutter_x_width(cutter: Part, y: float, z: float) -> float:
+    """Width across X of a cutter (the slot void) in a thin Y*Z slab.
+
+    With entry_axis=+Z and face_normal=-Y the dovetail taper runs along Y and
+    the width that captures/releases the head runs along X, so this measures
+    the pocket's clear span at a given depth (y) and the seat height (z)."""
+    slab = Pos(0.0, y, z) * Box(1000.0, 0.2, 0.4, align=_CENTER3)
+    inter = cutter.intersect(slab)
+    solids = list(inter.solids()) if inter is not None else []
+    if not solids:
+        return 0.0
+    xs = [v.X for s in solids for v in s.vertices()]
+    return max(xs) - min(xs)
 
 
 # --- multiconnect-slot assertions ----------------------------------------
@@ -180,12 +218,62 @@ def assert_entry_travel(part: Part, fx: MountFixtures) -> None:
             z += 1.0
 
 
+def assert_retention(part: Part, fx: MountFixtures) -> None:
+    """(e) A seated RoundHead pulled straight off the wall (along the mount
+    face normal) must FOUL the plate — the narrow lip holds the head's wide
+    flange. This is the retention the v3 print lacked: with the pocket carved
+    inverted (wide at the open surface) the head pulled straight off and the
+    depth-blind checks (a)-(d) all passed anyway. Model-agnostic: fixtures
+    only."""
+    _require_y_face(fx)
+    nx, ny, nz = fx.face_normal
+    for loc in fx.seat_locs:
+        head = loc * RoundHead()
+        assert head.volume > 100.0, "sanity: the library RoundHead is a real solid"
+        for dist in _PULL_DISTS:
+            pulled = Pos(nx * dist, ny * dist, nz * dist) * head
+            r = _residual_vol(part, pulled)
+            assert r > _RETENTION_MIN, (
+                f"seated head at x={loc.position.X:.1f} pulls off the wall: "
+                f"displaced {dist} mm along the mount normal it fouls only "
+                f"{r:.3f} mm^3 (need > {_RETENTION_MIN}) — nothing retains the "
+                "head (the pocket is likely inverted: wide at the open face)"
+            )
+
+
+def assert_profile(part: Part, fx: MountFixtures) -> None:
+    """(f) The slot void must be NARROW at the open (mount) face and WIDE
+    inside — the dovetail lip that (e) relies on. Measures the pocket's X span
+    just inside the mount face and near its back; the deep span must exceed the
+    surface span by >= _PROFILE_MIN_DELTA. Fails on the inverted v3 pocket
+    (wide surface, narrow back → negative delta)."""
+    _require_z_entry(fx)
+    _require_y_face(fx)
+    mount_face_y = part.bounding_box().min.Y   # the -Y board face
+    for cutter, loc in zip(fx.cutters, fx.seat_locs):
+        z = loc.position.Z
+        surface = _cutter_x_width(cutter, mount_face_y + _SURFACE_IN, z)
+        deep = _cutter_x_width(cutter, mount_face_y + _DEEP_IN, z)
+        assert surface > 0.0 and deep > 0.0, (
+            f"slot at x={loc.position.X:.1f}: empty width probe "
+            f"(surface={surface:.2f}, deep={deep:.2f}) — pocket not where expected"
+        )
+        assert deep - surface >= _PROFILE_MIN_DELTA, (
+            f"slot at x={loc.position.X:.1f} depth profile is not retentive: "
+            f"width is {surface:.2f} mm at the open face vs {deep:.2f} mm deep "
+            f"(need deep - surface >= {_PROFILE_MIN_DELTA}) — the dovetail must "
+            "be narrow at the surface and wide inside, not inverted"
+        )
+
+
 def verify_multiconnect_slot(part: Part, fx: MountFixtures) -> None:
     """Run every multiconnect-slot assertion against a built model."""
     assert_aperture(part, fx)
     assert_orientation(part, fx)
     assert_seat_clearance(part, fx)
     assert_entry_travel(part, fx)
+    assert_retention(part, fx)
+    assert_profile(part, fx)
 
 
 # mount type -> contract. Every KNOWN_MOUNTS entry must appear here.

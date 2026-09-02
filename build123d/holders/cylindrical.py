@@ -104,6 +104,14 @@ SLOT_PITCH = OPEN_GRID_UNIT_SIZE  # 28 mm, the library's Multiconnect spacing
 _SLOT_HALF_WIDTH = 16.75   # mm, notch reach either side of a slot centre
 _SLOT_BELOW_SEAT = 10.15   # mm, slot body on the closed (seat) side
 _SLOT_ABOVE_SEAT = 28.0    # mm, slide travel on the OPEN (entry) side
+# Pocket depth along the dovetail taper axis (narrow lip -> wide flange), i.e.
+# the library slot's clearanced z0..z3: bottom_height 1 + bottom clearance
+# 0.212132 + taper 2.5 + top_height 0.5 + top clearance -0.062132 = 4.15 mm.
+# The pocket is anchored one POCKET_DEPTH inside the -Y mount face so its WIDE
+# (retention) end lands at the pocket back and its NARROW lip at the mount
+# face — the head's wide pad seats BEHIND the lip (bug pst-p07j: the pocket
+# was carved inverted, wide at the open surface, so nothing retained the head).
+POCKET_DEPTH = 4.15
 _SLOT_EDGE_MARGIN = 3.0    # mm, solid plate margin around the slot envelope
 # The channel entry (slide opening) must cut THROUGH the plate's bottom
 # edge so a wall head can enter — a sealed pocket has no way in. Position
@@ -230,20 +238,23 @@ def slot_cutters(r_in: float, r_out: float, h: float) -> list[Part]:
     """The library Multiconnect slot cutters, positioned on the back plate.
 
     Each is ``opengrid.multiconnect.SnapInSlotCutter`` at rotation
-    (-90, 0, 0) with an added 180-degree spin about Y (``Rot(0, 180, 0)``):
-    pocket depth -> +Y (into the plate from the -Y mount face), slide -> -Z
-    (opening at the plate BOTTOM), width -> X. The base (-90, 0, 0) cutter
-    opens at +Z (top) with the pocket at +Y; the Y-spin flips the slide to
-    -Z while keeping the pocket on +Y (verified by measuring the cutter
-    bbox: base z in [-10.15, 28], y in [0, 4.15]; spun z in [-28, 10.15],
-    y in [0, 4.15]). The holder lowers DOWN onto wall-mounted round heads:
-    each head enters the aperture at the plate's bottom edge and rides up
-    to the seat, where the snap-in side notches lock it. 100% library
-    geometry - no bespoke slot solids.
+    (90, 0, 0), anchored at the pocket BACK (``mount_y + POCKET_DEPTH``):
+    the (90, 0, 0) spin lays the dovetail taper along -Y with its WIDE
+    (retention) end toward -Y and points the slide opening at -Z (the plate
+    BOTTOM); width -> X. Anchoring the wide end at the pocket back puts the
+    NARROW lip at the -Y mount face and the wide flange deep inside, so a
+    seated round head's wide pad sits BEHIND the narrow lip and cannot pull
+    straight off the wall (bug pst-p07j, print-verified: the pocket was
+    previously carved INVERTED — ``Rot(0, 180, 0) * SnapInSlotCutter(
+    rotation=(-90, 0, 0))`` put the wide end at the open surface and the
+    narrow end inside, so nothing retained the head). The holder lowers DOWN
+    onto wall-mounted round heads: each head enters the aperture at the
+    plate's bottom edge and rides up to the seat, where the snap-in side
+    notches lock it. 100% library geometry - no bespoke slot solids.
     """
     _w, _ph, mount_y, z_seat, n_slots = _plate_geometry(r_in, r_out, h)
     return [
-        Pos(x, mount_y, z_seat) * Rot(0, 180, 0) * SnapInSlotCutter(rotation=(-90, 0, 0))
+        Pos(x, mount_y + POCKET_DEPTH, z_seat) * SnapInSlotCutter(rotation=(90, 0, 0))
         for x in _slot_x_positions(n_slots)
     ]
 
@@ -349,9 +360,14 @@ def mount_fixtures(mount_type: str, values: dict) -> MountFixtures:
     plus the world pose of a seated library ``RoundHead`` at each slot.
 
     A seated head is ``seat_loc * RoundHead()`` — the exact pose the cutter's
-    own internal round-head cutter occupies (``Pos(x, mount_y, z_seat)`` then
-    the ``Rot(0, 180, 0) * Rot(-90, 0, 0)`` orientation that flips the slide
-    opening to -Z while keeping the pocket on +Y; see ``slot_cutters``).
+    own internal round-head cutter occupies: ``Pos(x, mount_y + POCKET_DEPTH,
+    z_seat) * Rot(90, 0, 0)``, matching ``slot_cutters``. The (90, 0, 0) spin
+    lays the head's dovetail along -Y with its WIDE pad toward -Y; anchoring
+    at the pocket back (``mount_y + POCKET_DEPTH``) seats that wide pad at the
+    pocket back, BEHIND the narrow lip at the mount face (bug pst-p07j — the
+    seated pose was previously the inverted ``Rot(0, 180, 0) * Rot(-90, 0, 0)``
+    pose, wide pad at the open surface, which the depth-blind contracts could
+    not catch; the retention/profile contracts now can).
     """
     if mount_type != "multiconnect-slot":
         raise ValueError(
@@ -365,13 +381,14 @@ def mount_fixtures(mount_type: str, values: dict) -> MountFixtures:
     r_out = r_in + wall
     _w, _ph, mount_y, z_seat, n_slots = _plate_geometry(r_in, r_out, h)
     seat_locs = [
-        Pos(x, mount_y, z_seat) * Rot(0, 180, 0) * Rot(-90, 0, 0)
+        Pos(x, mount_y + POCKET_DEPTH, z_seat) * Rot(90, 0, 0)
         for x in _slot_x_positions(n_slots)
     ]
     return MountFixtures(
         cutters=slot_cutters(r_in, r_out, h),
         seat_locs=seat_locs,
         entry_axis=(0.0, 0.0, 1.0),
+        face_normal=(0.0, -1.0, 0.0),
     )
 
 

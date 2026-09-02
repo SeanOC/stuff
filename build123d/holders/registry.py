@@ -169,11 +169,20 @@ class MountFixtures:
     entry_axis: unit direction a wall head travels as the holder lowers onto
                 it and the head rides to the seat. The channel opening faces
                 ``-entry_axis``. Currently the contracts assume ``(0, 0, 1)``.
+    face_normal: outward unit normal of the mount (board-facing) face — the
+                direction a seated head would travel to pull straight off the
+                wall. The retention contract drives each seated head along
+                this axis and requires it to FOUL the plate (the narrow lip
+                holds the head's wide flange). Distinct from ``entry_axis``:
+                the head slides IN along ``+entry_axis`` but is retained
+                across ``face_normal`` (the dovetail taper axis). Defaults to
+                ``(0, -1, 0)`` (the -Y board side).
     """
 
     cutters: list[Part]
     seat_locs: list[Location]
     entry_axis: tuple[float, float, float] = (0.0, 0.0, 1.0)
+    face_normal: tuple[float, float, float] = (0.0, -1.0, 0.0)
 
 
 @dataclass(frozen=True)
