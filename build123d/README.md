@@ -74,6 +74,32 @@ A model **declares** its mounts and supplies the fixtures:
 
 An unknown mount tag is rejected at registration.
 
+### Mount parametrics (design-guidelines §5)
+
+A mount exposes what changes its **robustness**, never what the spec fixes. The
+C-ring holder's Multiconnect slot back plate carries four tunables (group
+`mount`), all 100% library geometry — the plate derives from them:
+
+| param | kind | range | default | effect |
+| --- | --- | --- | --- | --- |
+| `slot_count` | integer | 1–3 | today's width heuristic (1 for both presets) | slots at the fixed 28 mm pitch, centred; sets plate width |
+| `slot_travel` | number (mm) | `SLOT_TRAVEL_MIN`(=head bottom-radius + overshoot = 12) – 45 | 28 (== `MULTICONNECT_SLOT_LENGTH`) | slide length the wall head rides to the seat; sets plate height |
+| `snap_notches` | boolean | — | true | library snap detent (robust) vs plain slot channel + seat (lighter/looser) |
+| `plate_margin` | number (mm) | 2–6 | 3 | solid material around the slot envelope |
+
+The `slot_travel` **floor is derived from the library constants**, not guessed:
+below `MULTICONNECT_ROUND_HEAD_BOTTOM_RADIUS + overshoot` a seated `RoundHead`
+pokes back out the bottom aperture instead of seating within the plate
+(`test_cylindrical.test_slot_travel_floor_is_derived_from_library_constants`).
+**Spec constants stay fixed and unexposed**: the 28 mm pitch, the head/slot
+cross-section profile, all clearances, and the ~4.15 mm pocket depth are library
+constants. Defaults reproduce today's geometry exactly (volume + bbox equal), so
+the shipped `spray_can` / `bottle_500ml` presets are unchanged; each model also
+ships a `*_light` (1 slot, min travel, no notches) and `*_robust` (2 slots, full
+travel, notches) preset. The mount contract suite runs over the whole
+`slot_count × slot_travel × snap_notches` grid
+(`test_mount_contracts.test_mount_contract_over_robustness_grid`).
+
 **Adding a NEW mount contract** (e.g. an opengrid-snap contract later):
 1. add the name to `registry.KNOWN_MOUNTS`;
 2. write `verify_<mount>(part, fx)` in `tests/mount_contracts.py` (raise

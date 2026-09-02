@@ -30,6 +30,11 @@ const MODEL: BdModel = {
     { name: "d", kind: "number", default: 66, min: 30, max: 120 },
     { name: "count", kind: "integer", default: 2, min: 1, max: 4 },
     { name: "mode", kind: "enum", default: "a", choices: ["a", "b"] },
+    // Multiconnect mount tunables (pst-c1qo) — the route must accept them.
+    { name: "slot_count", kind: "integer", default: 1, min: 1, max: 3 },
+    { name: "slot_travel", kind: "number", default: 28, min: 12, max: 45 },
+    { name: "snap_notches", kind: "boolean", default: true },
+    { name: "plate_margin", kind: "number", default: 3, min: 2, max: 6 },
   ],
   presets: [],
 };
@@ -162,6 +167,41 @@ describe("/api/bd-render validation", () => {
     const { res } = await call({ slug: "holder-spray-can", params: { d: 70, count: 3 } });
     expect(res.status).toBe(200);
     expect(bdClient.renderBdViaService).toHaveBeenCalledTimes(1);
+  });
+
+  it("accepts the Multiconnect mount tunables and forwards them", async () => {
+    const { res } = await call({
+      slug: "holder-spray-can",
+      params: { slot_count: 3, slot_travel: 45, snap_notches: false, plate_margin: 6 },
+    });
+    expect(res.status).toBe(200);
+    expect(bdClient.renderBdViaService).toHaveBeenCalledTimes(1);
+    const forwarded = bdClient.renderBdViaService.mock.calls[0][0].params;
+    expect(forwarded).toMatchObject({
+      slot_count: 3,
+      slot_travel: 45,
+      snap_notches: false,
+      plate_margin: 6,
+    });
+  });
+
+  it('coerces "true"/"false" strings for a boolean mount param', async () => {
+    const { res } = await call({ slug: "holder-spray-can", params: { snap_notches: "false" } });
+    expect(res.status).toBe(200);
+    expect(bdClient.renderBdViaService.mock.calls[0][0].params.snap_notches).toBe(false);
+  });
+
+  it("400 on out-of-range slot_travel (below the library-derived floor)", async () => {
+    const { res, json } = await call({ slug: "holder-spray-can", params: { slot_travel: 5 } });
+    expect(res.status).toBe(400);
+    expect((json!).error).toContain("below min");
+    expect(bdClient.renderBdViaService).not.toHaveBeenCalled();
+  });
+
+  it("400 on out-of-range slot_count", async () => {
+    const { res, json } = await call({ slug: "holder-spray-can", params: { slot_count: 4 } });
+    expect(res.status).toBe(400);
+    expect((json!).error).toContain("above max");
   });
 });
 

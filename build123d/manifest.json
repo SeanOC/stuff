@@ -62,6 +62,45 @@
           "min": 1.6,
           "max": 10.0,
           "step": 0.2
+        },
+        {
+          "name": "slot_count",
+          "label": "Slot count",
+          "group": "mount",
+          "kind": "integer",
+          "default": 1,
+          "min": 1,
+          "max": 3,
+          "step": 1
+        },
+        {
+          "name": "slot_travel",
+          "label": "Slot travel",
+          "group": "mount",
+          "unit": "mm",
+          "kind": "number",
+          "default": 28.0,
+          "min": 12.0,
+          "max": 45.0,
+          "step": 1.0
+        },
+        {
+          "name": "snap_notches",
+          "label": "Snap notches",
+          "group": "mount",
+          "kind": "boolean",
+          "default": true
+        },
+        {
+          "name": "plate_margin",
+          "label": "Plate margin",
+          "group": "mount",
+          "unit": "mm",
+          "kind": "number",
+          "default": 3.0,
+          "min": 2.0,
+          "max": 6.0,
+          "step": 0.5
         }
       ],
       "presets": [
@@ -71,6 +110,30 @@
           "values": {
             "d": 66.0,
             "h": 60.0
+          }
+        },
+        {
+          "id": "spray_can_light",
+          "label": "Spray can \u2014 light mount (1 slot, no notch)",
+          "values": {
+            "d": 66.0,
+            "h": 60.0,
+            "slot_count": 1,
+            "slot_travel": 12.0,
+            "snap_notches": false,
+            "plate_margin": 2.0
+          }
+        },
+        {
+          "id": "spray_can_robust",
+          "label": "Spray can \u2014 robust mount (2 slots, full travel)",
+          "values": {
+            "d": 66.0,
+            "h": 60.0,
+            "slot_count": 2,
+            "slot_travel": 45.0,
+            "snap_notches": true,
+            "plate_margin": 3.0
           }
         }
       ]
@@ -136,6 +199,45 @@
           "min": 1.6,
           "max": 10.0,
           "step": 0.2
+        },
+        {
+          "name": "slot_count",
+          "label": "Slot count",
+          "group": "mount",
+          "kind": "integer",
+          "default": 1,
+          "min": 1,
+          "max": 3,
+          "step": 1
+        },
+        {
+          "name": "slot_travel",
+          "label": "Slot travel",
+          "group": "mount",
+          "unit": "mm",
+          "kind": "number",
+          "default": 28.0,
+          "min": 12.0,
+          "max": 45.0,
+          "step": 1.0
+        },
+        {
+          "name": "snap_notches",
+          "label": "Snap notches",
+          "group": "mount",
+          "kind": "boolean",
+          "default": true
+        },
+        {
+          "name": "plate_margin",
+          "label": "Plate margin",
+          "group": "mount",
+          "unit": "mm",
+          "kind": "number",
+          "default": 3.0,
+          "min": 2.0,
+          "max": 6.0,
+          "step": 0.5
         }
       ],
       "presets": [
@@ -145,6 +247,30 @@
           "values": {
             "d": 73.0,
             "h": 50.0
+          }
+        },
+        {
+          "id": "bottle_500ml_light",
+          "label": "500ml bottle \u2014 light mount (1 slot, no notch)",
+          "values": {
+            "d": 73.0,
+            "h": 50.0,
+            "slot_count": 1,
+            "slot_travel": 12.0,
+            "snap_notches": false,
+            "plate_margin": 2.0
+          }
+        },
+        {
+          "id": "bottle_500ml_robust",
+          "label": "500ml bottle \u2014 robust mount (2 slots, full travel)",
+          "values": {
+            "d": 73.0,
+            "h": 50.0,
+            "slot_count": 2,
+            "slot_travel": 45.0,
+            "snap_notches": true,
+            "plate_margin": 3.0
           }
         }
       ]
