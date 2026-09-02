@@ -14,9 +14,20 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import trimesh  # noqa: E402
-from build123d import Align, Cylinder, GeomType, Pos, export_stl  # noqa: E402
-from opengrid.constants import OPEN_GRID_UNIT_SIZE  # noqa: E402
-from opengrid.multiconnect import SnapInSlotCutter  # noqa: E402
+from build123d import (  # noqa: E402
+    Align,
+    Cylinder,
+    GeomType,
+    Pos,
+    Rotation as Rot,
+    export_stl,
+)
+from opengrid.constants import (  # noqa: E402
+    MULTICONNECT_ROUND_HEAD_BOTTOM_RADIUS,
+    MULTICONNECT_SLOT_LENGTH,
+    OPEN_GRID_UNIT_SIZE,
+)
+from opengrid.multiconnect import RoundHead, SnapInSlotCutter  # noqa: E402
 
 from holders.cylindrical import (  # noqa: E402
     D_MAX,
@@ -29,19 +40,35 @@ from holders.cylindrical import (  # noqa: E402
     LIP_RADIUS,
     OPENING_MAX,
     OPENING_MIN,
+    PLATE_MARGIN_DEFAULT,
+    PLATE_MARGIN_MAX,
+    PLATE_MARGIN_MIN,
+    SLOT_COUNT_MAX,
+    SLOT_COUNT_MIN,
     SLOT_PITCH,
+    SLOT_TRAVEL_DEFAULT,
+    SLOT_TRAVEL_MAX,
+    SLOT_TRAVEL_MIN,
     TWO_SLOT_WIDTH_THRESHOLD,
     WALL_MAX,
     WALL_MIN,
-    MIN_PLATE_HEIGHT,
     _min_plate_width,
     _plate_geometry,
+    _plate_height,
     _lip_radius,
+    _slot_x_positions,
     holder,
     slot_count,
     slot_cutters,
 )
 from holders.registry import all_models  # noqa: E402
+
+# Default mount params (what ``holder(d, h)`` and the shipped presets use).
+_DEF_MOUNT = dict(
+    slot_count=SLOT_COUNT_MIN,
+    slot_travel=SLOT_TRAVEL_DEFAULT,
+    plate_margin=PLATE_MARGIN_DEFAULT,
+)
 
 
 def _model_names():
@@ -67,6 +94,12 @@ def test_both_presets_registered():
         dict(d=66, h=60, opening_deg=OPENING_MAX + 1),
         dict(d=66, h=60, floor_thickness=FLOOR_MIN - 0.1),
         dict(d=66, h=60, floor_thickness=FLOOR_MAX + 0.1),
+        dict(d=66, h=60, slot_count=SLOT_COUNT_MIN - 1),
+        dict(d=66, h=60, slot_count=SLOT_COUNT_MAX + 1),
+        dict(d=66, h=60, slot_travel=SLOT_TRAVEL_MIN - 0.1),
+        dict(d=66, h=60, slot_travel=SLOT_TRAVEL_MAX + 0.1),
+        dict(d=66, h=60, plate_margin=PLATE_MARGIN_MIN - 0.1),
+        dict(d=66, h=60, plate_margin=PLATE_MARGIN_MAX + 0.1),
     ],
 )
 def test_out_of_range_params_raise_valueerror(kwargs):
@@ -178,58 +211,162 @@ def test_slot_pitch_is_the_library_unit():
 
 
 def test_slot_count_scales_with_width():
-    """One slot for spray-can-class holders; two once wide/heavy."""
+    """One slot for spray-can-class holders; two once wide/heavy. (Only used to
+    pick each model's DEFAULT slot_count — the count is now an explicit tunable.)"""
     assert slot_count(TWO_SLOT_WIDTH_THRESHOLD - 1) == 1
     assert slot_count(TWO_SLOT_WIDTH_THRESHOLD) == 2
-    # The shipped presets (~70-78 mm plates) are single-slot.
+    # The shipped presets (~70-78 mm plates) default to single-slot.
     assert slot_count(2 * (66.0 / 2 + 2.4)) == 1
     assert slot_count(2 * (73.0 / 2 + 2.4)) == 1
 
 
+def test_mount_tunables_appear_in_param_list():
+    """AC 1: the four mount tunables appear in every mount model's Param list
+    with the specified ranges/defaults."""
+    expected = {
+        "slot_count": (SLOT_COUNT_MIN, SLOT_COUNT_MAX, "integer"),
+        "slot_travel": (SLOT_TRAVEL_MIN, SLOT_TRAVEL_MAX, "number"),
+        "snap_notches": (None, None, "boolean"),
+        "plate_margin": (PLATE_MARGIN_MIN, PLATE_MARGIN_MAX, "number"),
+    }
+    for spec in all_models():
+        if not spec.mounts:
+            continue
+        by_name = {p.name: p for p in spec.params}
+        for name, (lo, hi, kind) in expected.items():
+            assert name in by_name, f"{spec.name} missing mount param {name}"
+            p = by_name[name]
+            assert p.kind == kind, f"{spec.name}.{name} kind {p.kind} != {kind}"
+            assert p.group == "mount"
+            if lo is not None:
+                assert p.min == lo and p.max == hi
+        # snap_notches default true; count default = today's width heuristic.
+        assert by_name["snap_notches"].default is True
+        assert by_name["slot_count"].default == SLOT_COUNT_MIN  # both presets 1-slot
+
+
+def test_spec_constants_are_unchanged_and_unexposed():
+    """AC 2: the spec (28 mm pitch, head/slot profile, clearances, pocket depth)
+    is the library constant and is NOT a tunable."""
+    import holders.cylindrical as cyl
+    assert cyl.SLOT_PITCH == OPEN_GRID_UNIT_SIZE == 28
+    assert cyl.POCKET_DEPTH == 4.15
+    # slot_travel maps exactly onto the library SlotCutter LENGTH default.
+    assert SLOT_TRAVEL_DEFAULT == MULTICONNECT_SLOT_LENGTH == 28
+    # The exposed params are ONLY the mount robustness tunables — never the
+    # pitch, profile, clearances or pocket depth.
+    exposed = {p.name for s in all_models() if s.mounts for p in s.params}
+    for spec_name in ("pitch", "pocket_depth", "slot_width", "head_radius",
+                      "clearance", "taper"):
+        assert spec_name not in exposed, f"spec constant {spec_name} must not be exposed"
+
+
+@pytest.mark.parametrize("n", [1, 2, 3])
+def test_slot_centres_are_multiples_of_pitch(n):
+    """AC 2: slot centres stay at multiples of the 28 mm pitch for every count,
+    symmetric about the plate centre."""
+    xs = _slot_x_positions(n)
+    assert len(xs) == n
+    step = SLOT_PITCH / 2.0  # symmetric layout lands on half-pitch multiples
+    for x in xs:
+        k = x / step
+        assert k == pytest.approx(round(k)), f"slot centre {x} not on the pitch grid"
+    # Adjacent centres are exactly one pitch apart.
+    for a, b in zip(xs, xs[1:]):
+        assert b - a == pytest.approx(SLOT_PITCH)
+    assert sum(xs) == pytest.approx(0.0), "slot centres not symmetric about 0"
+
+
+def test_slot_travel_floor_is_derived_from_library_constants():
+    """AC 3: the slot_travel minimum is derived from library constants (a seated
+    RoundHead must sit at least one bottom-radius above the aperture so it enters
+    fully and is captured WITHIN the plate), not guessed."""
+    assert SLOT_TRAVEL_MIN == MULTICONNECT_ROUND_HEAD_BOTTOM_RADIUS + 2.0  # + overshoot
+
+    # At the minimum travel a seated RoundHead's bottom sits at (≈) the plate
+    # bottom z=0 — fully seated within the plate. Just below the floor it would
+    # poke back out the bottom aperture (which is why the floor is where it is).
+    def seated_head_bottom_z(travel):
+        _w, _ph, mount_y, z_seat, _n = _plate_geometry(33.0, 1, travel, PLATE_MARGIN_DEFAULT)
+        head = Pos(0.0, mount_y + 4.15, z_seat) * Rot(90, 0, 0) * RoundHead()
+        return head.bounding_box().min.Z
+
+    at_min = seated_head_bottom_z(SLOT_TRAVEL_MIN)
+    below = seated_head_bottom_z(SLOT_TRAVEL_MIN - 2.0)
+    assert at_min == pytest.approx(0.0, abs=0.2), (
+        f"at the floor the seated head bottom should reach z=0, got {at_min:.2f}"
+    )
+    assert below < -1.0, "below the floor the seated head should poke out the aperture"
+
+
+def test_head_enters_and_seats_at_minimum_travel():
+    """AC 3: a head can actually enter at the bottom aperture and reach the seat
+    at the minimum travel — the full mount contract holds there."""
+    from tests import mount_contracts as MC
+    for spec in all_models():
+        if "multiconnect-slot" not in spec.mounts:
+            continue
+        vals = spec.resolve_values({"slot_travel": SLOT_TRAVEL_MIN})
+        MC.verify(spec, "multiconnect-slot", vals)
+
+
+def test_light_and_robust_presets_registered():
+    """AC 4: each mount model ships a 'light' and a 'robust' preset."""
+    for spec in all_models():
+        if "multiconnect-slot" not in spec.mounts:
+            continue
+        ids = {p.id for p in spec.presets}
+        light = next(p for p in spec.presets if p.id.endswith("_light"))
+        robust = next(p for p in spec.presets if p.id.endswith("_robust"))
+        # light: one slot, minimum travel, no notches.
+        assert light.values["slot_count"] == 1
+        assert light.values["slot_travel"] == SLOT_TRAVEL_MIN
+        assert light.values["snap_notches"] is False
+        # robust: 2-3 slots, full travel, notches.
+        assert 2 <= robust.values["slot_count"] <= 3
+        assert robust.values["slot_travel"] == SLOT_TRAVEL_MAX
+        assert robust.values["snap_notches"] is True
+
+
 def test_plate_is_sized_to_the_slot_envelope_not_the_cup():
     """§3 material efficiency (design-guidelines): the back plate is the SLOT
-    ENVELOPE + margin, a function of the slot COUNT alone — independent of the
-    cup diameter d and height h. ``_min_plate_width(n)`` and
-    ``MIN_PLATE_HEIGHT`` already fold _SLOT_EDGE_MARGIN in on every side, so
-    they ARE "envelope + 2*margin". v4 oversized the plate to
-    max(collar_width, ...) x max(h, ...); this pins the fix."""
-    # For holder(d=66, h=40): a single-slot plate.
-    w, ph, _my, _zs, n = _plate_geometry(33.0, 35.4, 40.0)
+    ENVELOPE + margin, a pure function of the MOUNT tunables (slot_count,
+    slot_travel, plate_margin) — independent of the cup diameter d and height h.
+    ``_min_plate_width(n, margin)`` and ``_plate_height(travel, margin)`` fold
+    the margin in on every side, so they ARE "envelope + 2*margin". v4 oversized
+    the plate to max(collar_width, ...) x max(h, ...); this pins the fix."""
+    # For a single-slot default mount: width/height are the slot envelope.
+    w, ph, _my, _zs, n = _plate_geometry(33.0, **_DEF_MOUNT)
     assert n == 1
-    assert w == pytest.approx(_min_plate_width(1), abs=0.5)
-    assert ph == pytest.approx(MIN_PLATE_HEIGHT, abs=0.5)
+    assert w == pytest.approx(_min_plate_width(1, PLATE_MARGIN_DEFAULT), abs=1e-6)
+    assert ph == pytest.approx(_plate_height(SLOT_TRAVEL_DEFAULT, PLATE_MARGIN_DEFAULT), abs=1e-6)
 
-    # Sweep d and h widely: for a FIXED slot count the plate size never moves,
-    # and the height never moves at all. (Slot count itself still scales with
-    # the cup — a deliberate load choice, promoted to a tunable in pst-c1qo.)
-    seen: dict[int, tuple[float, float]] = {}
+    # Sweep d widely at FIXED mount params: the plate size never moves — width,
+    # height and seat depend only on the mount tunables, not on the cup.
+    ref = _plate_geometry(15.0, **_DEF_MOUNT)
     for d in (30.0, 40.0, 66.0, 73.0, 90.0, 120.0):
-        for h in (20.0, 40.0, 60.0, 90.0, 120.0):
-            r_in = d / 2.0
-            r_out = r_in + 2.4
-            width, plate_h, _m, _z, n_slots = _plate_geometry(r_in, r_out, h)
-            # height is independent of EVERYTHING
-            assert plate_h == pytest.approx(MIN_PLATE_HEIGHT, abs=1e-6), (
-                f"plate height moved with d={d}, h={h}"
-            )
-            # width is a pure function of the slot count
-            assert width == pytest.approx(_min_plate_width(n_slots), abs=1e-6), (
-                f"plate width not the slot envelope at d={d}, h={h}"
-            )
-            if n_slots in seen:
-                assert seen[n_slots] == (width, plate_h)
-            seen[n_slots] = (width, plate_h)
+        width, plate_h, _m, z_seat, n_slots = _plate_geometry(d / 2.0, **_DEF_MOUNT)
+        assert (width, plate_h, z_seat, n_slots) == pytest.approx(
+            (ref[0], ref[1], ref[3], ref[4])
+        ), f"plate envelope moved with d={d}"
 
-    # Both shipped presets are single-slot -> identical plate footprint.
-    p66 = _plate_geometry(33.0, 35.4, 60.0)[:2]
-    p73 = _plate_geometry(36.5, 38.9, 50.0)[:2]
+    # The plate DOES grow with the mount tunables (that is their whole job):
+    wide = _plate_geometry(33.0, slot_count=3, slot_travel=SLOT_TRAVEL_MAX,
+                           plate_margin=PLATE_MARGIN_MAX)
+    assert wide[0] > w and wide[1] > ph, "mount tunables must resize the plate"
+
+    # Both shipped presets default to single-slot -> identical plate footprint.
+    p66 = _plate_geometry(33.0, **_DEF_MOUNT)[:2]
+    p73 = _plate_geometry(36.5, **_DEF_MOUNT)[:2]
     assert p66 == p73, "the two presets must share one plate footprint (both 1-slot)"
 
 
 def _slot_boxes(d, h):
     r_in = d / 2.0
-    r_out = r_in + 2.4
-    return [c.bounding_box() for c in slot_cutters(r_in, r_out, h)]
+    return [
+        c.bounding_box()
+        for c in slot_cutters(r_in, **_DEF_MOUNT, snap_notches=True)
+    ]
 
 
 def _in_slot(c, boxes, pad=0.7):
@@ -319,14 +456,13 @@ def test_mount_is_the_library_slot():
     positions and assert each region is fully absent from the part."""
     d, h = 66.0, 60.0
     r_in = d / 2.0
-    r_out = r_in + 2.4
     part = holder(d, h)
 
     # Sanity: the module builds its cutters from the library type.
     assert isinstance(SnapInSlotCutter(), SnapInSlotCutter)
 
-    cutters = slot_cutters(r_in, r_out, h)
-    assert len(cutters) == slot_count(2 * r_out) >= 1
+    cutters = slot_cutters(r_in, **_DEF_MOUNT, snap_notches=True)
+    assert len(cutters) == SLOT_COUNT_MIN >= 1
     for cutter in cutters:
         assert cutter.volume > 100.0, "sanity: library cutter is a real pocket"
         present = part.intersect(cutter)

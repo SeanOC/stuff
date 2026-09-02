@@ -59,6 +59,47 @@ def test_model_mount_contract(spec, mount):
         verify(spec, mount, spec.resolve_values(preset.values))
 
 
+# AC 3: the contract must hold over the whole robustness grid — every
+# slot_count x slot_travel x snap_notches combination in range. This is the
+# guarantee that "every combination yields a mountable plate", not just the
+# shipped presets. Only meaningful for multiconnect-slot mounts.
+from holders.cylindrical import (  # noqa: E402
+    SLOT_TRAVEL_DEFAULT,
+    SLOT_TRAVEL_MAX,
+    SLOT_TRAVEL_MIN,
+)
+
+_GRID = [
+    (n, travel, notch)
+    for n in (1, 2, 3)
+    for travel in (SLOT_TRAVEL_MIN, SLOT_TRAVEL_DEFAULT, SLOT_TRAVEL_MAX)
+    for notch in (True, False)
+]
+_GRID_CASES = [
+    (spec, mount, n, travel, notch)
+    for spec, mount in _MOUNTED
+    if mount == "multiconnect-slot"
+    for (n, travel, notch) in _GRID
+]
+
+
+@pytest.mark.parametrize(
+    ("spec", "mount", "n", "travel", "notch"),
+    _GRID_CASES,
+    ids=[
+        f"{s.name}:n{n}:t{int(t)}:{'notch' if k else 'plain'}"
+        for s, m, n, t, k in _GRID_CASES
+    ],
+)
+def test_mount_contract_over_robustness_grid(spec, mount, n, travel, notch):
+    """Every slot_count x slot_travel x snap_notches in range yields a plate
+    that hosts the full envelope and keeps all six mount contracts green."""
+    values = spec.resolve_values(
+        {"slot_count": n, "slot_travel": travel, "snap_notches": notch}
+    )
+    verify(spec, mount, values)
+
+
 def test_resolve_fixtures_are_library_geometry():
     """Fixtures a model hands the contract are real, positioned library parts."""
     for spec, mount in _MOUNTED:

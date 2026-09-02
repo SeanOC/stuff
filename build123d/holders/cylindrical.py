@@ -59,6 +59,7 @@ from build123d import (
     Cylinder,
     Line,
     Location,
+    Locations,
     Plane,
     Pos,
     Rotation as Rot,
@@ -66,8 +67,11 @@ from build123d import (
 )
 from build123d import make_face
 from build123d.topology import Part
-from opengrid.constants import OPEN_GRID_UNIT_SIZE
-from opengrid.multiconnect import SnapInSlotCutter
+from opengrid.constants import (
+    MULTICONNECT_ROUND_HEAD_BOTTOM_RADIUS,
+    OPEN_GRID_UNIT_SIZE,
+)
+from opengrid.multiconnect import RoundHeadCutter, Slot, SlotCutter, SnapInSlotCutter
 
 from holders.registry import ModelSpec, MountFixtures, Param, Preset, register
 
@@ -124,7 +128,9 @@ SLOT_PITCH = OPEN_GRID_UNIT_SIZE  # 28 mm, the library's Multiconnect spacing
 # X (slot body + snap-in side notches) and z in [seat-10.15, seat+28].
 _SLOT_HALF_WIDTH = 16.75   # mm, notch reach either side of a slot centre
 _SLOT_BELOW_SEAT = 10.15   # mm, slot body on the closed (seat) side
-_SLOT_ABOVE_SEAT = 28.0    # mm, slide travel on the OPEN (entry) side
+_SLOT_ABOVE_SEAT = 28.0    # mm, DEFAULT slide travel on the OPEN (entry) side
+                           # (== the library MULTICONNECT_SLOT_LENGTH). Now the
+                           # default of the ``slot_travel`` mount tunable (§5).
 # Pocket depth along the dovetail taper axis (narrow lip -> wide flange), i.e.
 # the library slot's clearanced z0..z3: bottom_height 1 + bottom clearance
 # 0.212132 + taper 2.5 + top_height 0.5 + top clearance -0.062132 = 4.15 mm.
@@ -133,23 +139,57 @@ _SLOT_ABOVE_SEAT = 28.0    # mm, slide travel on the OPEN (entry) side
 # face — the head's wide pad seats BEHIND the lip (bug pst-p07j: the pocket
 # was carved inverted, wide at the open surface, so nothing retained the head).
 POCKET_DEPTH = 4.15
-_SLOT_EDGE_MARGIN = 3.0    # mm, solid plate margin around the slot envelope
+_SLOT_EDGE_MARGIN = 3.0    # mm, DEFAULT solid plate margin around the slot
+                           # envelope (the default of the ``plate_margin`` §5
+                           # tunable).
 # The channel entry (slide opening) must cut THROUGH the plate's bottom
 # edge so a wall head can enter — a sealed pocket has no way in. Position
 # the seat so the opening mouth pokes this far BELOW the plate bottom
 # (z=0), guaranteeing a clean aperture rather than a tangent edge.
 _SLOT_BOTTOM_OVERSHOOT = 2.0
+# The two round-head cutters the library carves at the seat are spaced this
+# far apart along the slide axis (opengrid.multiconnect.SnapInSlotCutter's
+# ``head_spacing`` default). Mirrored here so the no-notch cutter reproduces
+# the library seat exactly (see ``_slot_cutter``).
+_HEAD_SPACING = 0.795
+
+# --- Mount tunables (design-guidelines §5) -------------------------------
+# Expose what changes the ROBUSTNESS of the mount; never the spec (pitch,
+# head/slot profile, clearances, pocket depth stay library constants).
+SLOT_COUNT_MIN, SLOT_COUNT_MAX = 1, 3      # slots at the fixed 28 mm pitch
+PLATE_MARGIN_MIN, PLATE_MARGIN_MAX = 2.0, 6.0   # mm, solid material round slots
+PLATE_MARGIN_DEFAULT = _SLOT_EDGE_MARGIN        # 3.0 mm — today's number
+# ``slot_travel`` is the library SlotCutter LENGTH: the slide the wall head
+# rides from the bottom aperture up to the seat. §5 lists slot travel/length
+# as a robustness tunable (the cross-section PROFILE stays spec). The FLOOR is
+# derived from library constants, not guessed: a seated RoundHead spans one
+# bottom-radius either side of the seat, so the seat must sit at least one
+# head-radius above the aperture for the head to enter fully and be captured
+# WITHIN the plate (below this the seated head pokes back out the bottom
+# aperture). seat_z = slot_travel - overshoot, so slot_travel_min = head bottom
+# radius + overshoot. Proven by test_cylindrical (a head enters + seats at the
+# minimum, and pokes out just below it).
+SLOT_TRAVEL_MIN = MULTICONNECT_ROUND_HEAD_BOTTOM_RADIUS + _SLOT_BOTTOM_OVERSHOOT  # 12
+SLOT_TRAVEL_MAX = 45.0
+SLOT_TRAVEL_DEFAULT = _SLOT_ABOVE_SEAT     # 28.0 mm (== MULTICONNECT_SLOT_LENGTH)
 
 # One slot for holders up to ~3 grid units wide; two for wider/heavier ones.
+# Only used to pick each model's DEFAULT ``slot_count`` so presets don't change
+# (the count is now an explicit tunable — see ``_params``).
 TWO_SLOT_WIDTH_THRESHOLD = 84.0  # mm (3 * OPEN_GRID_UNIT_SIZE)
 
-# Minimum plate width to host N slots without the notches breaking the edge.
-def _min_plate_width(n_slots: int) -> float:
+# Plate width hosting N slots at the pitch, with the notch reach + margin on
+# every side (§3: the plate is the slot ENVELOPE + margin, nothing more).
+def _min_plate_width(n_slots: int, plate_margin: float = PLATE_MARGIN_DEFAULT) -> float:
     span = (n_slots - 1) * SLOT_PITCH + 2 * _SLOT_HALF_WIDTH
-    return span + 2 * _SLOT_EDGE_MARGIN
+    return span + 2 * plate_margin
 
-# Minimum plate height to host the full slot envelope with margins.
-MIN_PLATE_HEIGHT = _SLOT_BELOW_SEAT + _SLOT_ABOVE_SEAT + 2 * _SLOT_EDGE_MARGIN
+# Plate height hosting the full slot envelope (seat cap + slide travel) with
+# margins top and bottom.
+def _plate_height(
+    slot_travel: float = SLOT_TRAVEL_DEFAULT, plate_margin: float = PLATE_MARGIN_DEFAULT
+) -> float:
+    return _SLOT_BELOW_SEAT + slot_travel + 2 * plate_margin
 
 
 def _lip_radius(wall: float) -> float:
@@ -167,7 +207,14 @@ def _lip_radius(wall: float) -> float:
 
 
 def _validate(
-    d: float, h: float, wall: float, opening_deg: float, floor_thickness: float
+    d: float,
+    h: float,
+    wall: float,
+    opening_deg: float,
+    floor_thickness: float,
+    slot_count: int,
+    slot_travel: float,
+    plate_margin: float,
 ) -> None:
     for value, lo, hi, label in (
         (d, D_MIN, D_MAX, "d (cylinder diameter)"),
@@ -175,9 +222,14 @@ def _validate(
         (wall, WALL_MIN, WALL_MAX, "wall"),
         (opening_deg, OPENING_MIN, OPENING_MAX, "opening_deg"),
         (floor_thickness, FLOOR_MIN, FLOOR_MAX, "floor_thickness"),
+        (slot_count, SLOT_COUNT_MIN, SLOT_COUNT_MAX, "slot_count"),
+        (slot_travel, SLOT_TRAVEL_MIN, SLOT_TRAVEL_MAX, "slot_travel"),
+        (plate_margin, PLATE_MARGIN_MIN, PLATE_MARGIN_MAX, "plate_margin"),
     ):
         if not (lo <= value <= hi):
             raise ValueError(f"{label}={value} out of range [{lo}, {hi}]")
+    if int(slot_count) != slot_count:
+        raise ValueError(f"slot_count={slot_count} must be a whole number")
 
 
 def _polar(r: float, angle_deg: float) -> tuple[float, float]:
@@ -223,7 +275,53 @@ def _slot_x_positions(n_slots: int) -> list[float]:
     return [(-(n_slots - 1) / 2.0 + i) * SLOT_PITCH for i in range(n_slots)]
 
 
-def _plate_geometry(r_in: float, r_out: float, h: float) -> tuple[float, float, float, float, int]:
+def _slot_cutter(slot_travel: float, snap_notches: bool) -> Part:
+    """One Multiconnect slot cutter, at rotation (90, 0, 0), sized to
+    ``slot_travel`` — 100% library geometry, the cross-section PROFILE fixed.
+
+    ``slot_travel`` is the library ``SlotCutter`` LENGTH (the slide the wall
+    head rides from the bottom aperture to the seat). It is threaded in via a
+    ``Slot`` subclass that only overrides ``length`` — every width, height,
+    taper and clearance stays the library constant, so the retention dovetail
+    profile is untouched (§5: travel/length is a tunable, the profile is spec).
+
+    ``snap_notches`` selects the locking detent:
+    - True  -> ``SnapInSlotCutter``: the library slot channel + the two seat
+      round-head cutters + the side-triangle snap notches (a detent that clicks
+      the head in place). The robust connection.
+    - False -> the SAME library slot channel + the SAME two seat round-head
+      cutters, with the detent triangles OMITTED — i.e. the snap cutter minus
+      its notches (assembled here from the library ``SlotCutter`` +
+      ``RoundHeadCutter`` exactly as ``SnapInSlotCutter`` does, using the
+      library ``_HEAD_SPACING``). The lighter/looser connection: the head still
+      seats and the dovetail lip still retains it, but nothing clicks it home.
+    """
+    class _Slot(Slot):
+        def __init__(self, **kwargs):
+            kwargs["length"] = slot_travel
+            super().__init__(**kwargs)
+
+    class _SlotCutter(SlotCutter):
+        def __init__(self, **kwargs):
+            kwargs["slot"] = _Slot
+            super().__init__(**kwargs)
+
+    if snap_notches:
+        return SnapInSlotCutter(slot_cutter=_SlotCutter, rotation=(90, 0, 0))
+    # No-notch: replicate SnapInSlotCutter's slot-channel + seat assembly with
+    # the detent triangle step dropped. Same alignment (CENTER, MAX, MIN) and
+    # the same two seat round heads at the library head spacing, so the seat,
+    # aperture and retention profile are identical — only the notches are gone.
+    with BuildPart() as cutter:
+        _SlotCutter(align=(Align.CENTER, Align.MAX, Align.MIN))
+        with Locations((0, 0, 0), (0, -_HEAD_SPACING, 0)):
+            RoundHeadCutter()
+    return Rot(90, 0, 0) * cutter.part
+
+
+def _plate_geometry(
+    r_in: float, slot_count: int, slot_travel: float, plate_margin: float
+) -> tuple[float, float, float, float, int]:
     """Derived back-plate dimensions: (width, plate_h, mount_y, z_seat, n_slots).
 
     The plate front face touches the collar's inner radius (``-r_in``) so it
@@ -232,38 +330,47 @@ def _plate_geometry(r_in: float, r_out: float, h: float) -> tuple[float, float, 
     is placed near the BOTTOM so the slide opening reaches (and cuts through)
     the plate's bottom edge — the holder lowers straight down onto the wall
     head, which enters at the bottom aperture and rides up to the seat.
+
+    §3 material efficiency: the plate is the SLOT ENVELOPE + margin, centred
+    behind the cup — NOT stretched to the cup's width or height. Width, height
+    and seat are functions of the MOUNT tunables (slot_count, slot_travel,
+    plate_margin) ALONE, independent of d and h.
     """
-    collar_width = 2.0 * r_out
-    n_slots = slot_count(collar_width)
-    # §3 material efficiency (design-guidelines): the plate is the SLOT
-    # ENVELOPE + margin, centred behind the cup — NOT stretched to the cup's
-    # width or height. ``_min_plate_width(n)`` and ``MIN_PLATE_HEIGHT`` already
-    # fold _SLOT_EDGE_MARGIN in on every side, so the plate size is a function
-    # of the slot count ALONE — independent of d and h (bug: v4 set width =
-    # max(collar_width, ...) and plate_h = max(h, ...), oversizing the plate).
-    # The slot COUNT still scales with the cup (heavier cup -> more bearing
-    # surface); the sibling bead pst-c1qo promotes it to a tunable.
-    width = _min_plate_width(n_slots)
-    plate_h = MIN_PLATE_HEIGHT
+    n_slots = slot_count
+    width = _min_plate_width(n_slots, plate_margin)
+    plate_h = _plate_height(slot_travel, plate_margin)
     mount_y = -r_in - PANEL_THICKNESS
-    # Seat sits _SLOT_ABOVE_SEAT above the opening mouth; place it so the
-    # mouth pokes _SLOT_BOTTOM_OVERSHOOT below the plate bottom (z=0),
-    # cutting an aperture through the bottom edge. Independent of plate_h:
-    # the entry is always at the bottom, so the seat is a fixed height up.
-    z_seat = _SLOT_ABOVE_SEAT - _SLOT_BOTTOM_OVERSHOOT
+    # Seat sits slot_travel above the opening mouth; place it so the mouth pokes
+    # _SLOT_BOTTOM_OVERSHOOT below the plate bottom (z=0), cutting an aperture
+    # through the bottom edge. The entry is always at the bottom, so the seat is
+    # a fixed height (slot_travel - overshoot) up.
+    z_seat = slot_travel - _SLOT_BOTTOM_OVERSHOOT
     return width, plate_h, mount_y, z_seat, n_slots
 
 
-def _back_plate_solid(r_in: float, r_out: float, h: float) -> Part:
+def _back_plate_solid(
+    r_in: float, slot_count: int, slot_travel: float, plate_margin: float
+) -> Part:
     """The plain (un-pocketed) back-plate box behind the collar."""
-    width, plate_h, mount_y, _z_seat, _n = _plate_geometry(r_in, r_out, h)
+    width, plate_h, mount_y, _z_seat, _n = _plate_geometry(
+        r_in, slot_count, slot_travel, plate_margin
+    )
     return Pos(0, mount_y, 0) * Box(
         width, PANEL_THICKNESS, plate_h,
         align=(Align.CENTER, Align.MIN, Align.MIN),
     )
 
 
-def _treat_edges(part: Part, wall: float, r_in: float, r_out: float, h: float) -> Part:
+def _treat_edges(
+    part: Part,
+    wall: float,
+    r_in: float,
+    r_out: float,
+    h: float,
+    slot_count: int,
+    slot_travel: float,
+    plate_margin: float,
+) -> Part:
     """Fillet/chamfer the user-exposed, non-functional edges (design-guidelines
     §1, §2). Runs on the fused body BEFORE the slot pockets are carved, so it
     never touches the library cutter profile (the spec). Functional edges stay
@@ -279,7 +386,9 @@ def _treat_edges(part: Part, wall: float, r_in: float, r_out: float, h: float) -
     in OCP, fall back rather than ship a hard edge); a per-category flag lets a
     test confirm what was applied.
     """
-    _w, plate_h, mount_y, _zs, _n = _plate_geometry(r_in, r_out, h)
+    _w, plate_h, mount_y, _zs, _n = _plate_geometry(
+        r_in, slot_count, slot_travel, plate_margin
+    )
     plate_half_w = _w / 2.0
 
     # 1) Bed-contact chamfer: every edge lying on the z=0 build-plate face.
@@ -334,10 +443,14 @@ def _treat_edges(part: Part, wall: float, r_in: float, r_out: float, h: float) -
     return part
 
 
-def slot_cutters(r_in: float, r_out: float, h: float) -> list[Part]:
+def slot_cutters(
+    r_in: float, slot_count: int, slot_travel: float, plate_margin: float,
+    snap_notches: bool,
+) -> list[Part]:
     """The library Multiconnect slot cutters, positioned on the back plate.
 
-    Each is ``opengrid.multiconnect.SnapInSlotCutter`` at rotation
+    Each is ``_slot_cutter(slot_travel, snap_notches)`` (100% library geometry
+    — the library slot channel + seat, snap notches on/off) at rotation
     (90, 0, 0), anchored at the pocket BACK (``mount_y + POCKET_DEPTH``):
     the (90, 0, 0) spin lays the dovetail taper along -Y with its WIDE
     (retention) end toward -Y and points the slide opening at -Z (the plate
@@ -349,12 +462,15 @@ def slot_cutters(r_in: float, r_out: float, h: float) -> list[Part]:
     rotation=(-90, 0, 0))`` put the wide end at the open surface and the
     narrow end inside, so nothing retained the head). The holder lowers DOWN
     onto wall-mounted round heads: each head enters the aperture at the
-    plate's bottom edge and rides up to the seat, where the snap-in side
-    notches lock it. 100% library geometry - no bespoke slot solids.
+    plate's bottom edge and rides up to the seat, where (with snap_notches)
+    the side notches lock it. ``slot_count`` slots at the library 28 mm pitch.
     """
-    _w, _ph, mount_y, z_seat, n_slots = _plate_geometry(r_in, r_out, h)
+    _w, _ph, mount_y, z_seat, n_slots = _plate_geometry(
+        r_in, slot_count, slot_travel, plate_margin
+    )
+    cutter = _slot_cutter(slot_travel, snap_notches)
     return [
-        Pos(x, mount_y + POCKET_DEPTH, z_seat) * SnapInSlotCutter(rotation=(90, 0, 0))
+        Pos(x, mount_y + POCKET_DEPTH, z_seat) * cutter
         for x in _slot_x_positions(n_slots)
     ]
 
@@ -365,6 +481,10 @@ def holder(
     wall: float = 2.4,
     opening_deg: float = 90.0,
     floor_thickness: float = FLOOR_DEFAULT,
+    slot_count: int = SLOT_COUNT_MIN,
+    slot_travel: float = SLOT_TRAVEL_DEFAULT,
+    snap_notches: bool = True,
+    plate_margin: float = PLATE_MARGIN_DEFAULT,
 ) -> Part:
     """Build the C-ring cylinder holder.
 
@@ -377,8 +497,19 @@ def holder(
         floor_thickness: solid base closing the collar bottom so an item
             rests on it instead of dropping through the bore, mm. Range
             [1.6, 10]. The front opening stays open above the floor.
+        slot_count: number of Multiconnect slots at the fixed 28 mm pitch,
+            centred. Range [1, 3]. More slots = more bearing surface and
+            anti-rotation; the plate width derives from it.
+        slot_travel: slide length (library SlotCutter length) the wall head
+            rides from the bottom aperture to the seat, mm. Range
+            [SLOT_TRAVEL_MIN, 45]. The plate height derives from it.
+        snap_notches: use the library snap-in detent notches (True, robust) or
+            the plain slot channel + seat (False, lighter/looser connection).
+        plate_margin: solid material around the slot envelope, mm. Range [2, 6].
     """
-    _validate(d, h, wall, opening_deg, floor_thickness)
+    _validate(
+        d, h, wall, opening_deg, floor_thickness, slot_count, slot_travel, plate_margin
+    )
 
     r_in = d / 2.0
     r_out = r_in + wall
@@ -419,7 +550,7 @@ def holder(
     # plate material intrudes into the cylinder space (the plate front face
     # sits at the inner radius; this trims the coincident sliver and keeps
     # the boolean off-coplanar with the bore).
-    part = collar.fuse(_back_plate_solid(r_in, r_out, h))
+    part = collar.fuse(_back_plate_solid(r_in, slot_count, slot_travel, plate_margin))
     bore = Cylinder(
         radius=r_in + BORE_CLEARANCE,
         height=h + 8.0,
@@ -445,13 +576,17 @@ def holder(
     # pockets are carved: fillet the user-facing outer/top edges, chamfer the
     # bed-contact edges. Doing it here keeps the library cutter profile (carved
     # next) untouched and the mount face / slot walls sharp.
-    part = _treat_edges(part, wall, r_in, r_out, h)
+    part = _treat_edges(
+        part, wall, r_in, r_out, h, slot_count, slot_travel, plate_margin
+    )
 
     # Carve the library slot pockets LAST, out of the unified body, so each
     # pocket is exactly the library cutter (nothing bespoke) and the floor
     # can never refill a pocket. Their opening cuts THROUGH the plate's
     # bottom edge (aperture) — the wall head's way in.
-    for cutter in slot_cutters(r_in, r_out, h):
+    for cutter in slot_cutters(
+        r_in, slot_count, slot_travel, plate_margin, snap_notches
+    ):
         part = part - cutter
     return part.clean()
 
@@ -481,17 +616,23 @@ def mount_fixtures(mount_type: str, values: dict) -> MountFixtures:
             "(only 'multiconnect-slot')"
         )
     d = values["d"]
-    h = values["h"]
     wall = values.get("wall", 2.4)
+    slot_count = int(values.get("slot_count", SLOT_COUNT_MIN))
+    slot_travel = float(values.get("slot_travel", SLOT_TRAVEL_DEFAULT))
+    plate_margin = float(values.get("plate_margin", PLATE_MARGIN_DEFAULT))
+    snap_notches = bool(values.get("snap_notches", True))
     r_in = d / 2.0
-    r_out = r_in + wall
-    _w, _ph, mount_y, z_seat, n_slots = _plate_geometry(r_in, r_out, h)
+    _w, _ph, mount_y, z_seat, n_slots = _plate_geometry(
+        r_in, slot_count, slot_travel, plate_margin
+    )
     seat_locs = [
         Pos(x, mount_y + POCKET_DEPTH, z_seat) * Rot(90, 0, 0)
         for x in _slot_x_positions(n_slots)
     ]
     return MountFixtures(
-        cutters=slot_cutters(r_in, r_out, h),
+        cutters=slot_cutters(
+            r_in, slot_count, slot_travel, plate_margin, snap_notches
+        ),
         seat_locs=seat_locs,
         entry_axis=(0.0, 0.0, 1.0),
         face_normal=(0.0, -1.0, 0.0),
@@ -501,7 +642,12 @@ def mount_fixtures(mount_type: str, values: dict) -> MountFixtures:
 def _params(d: float, h: float) -> tuple[Param, ...]:
     """Param spec for one holder instance — defaults carry THAT model's
     shape (spray can vs bottle), so each registered model keeps its own
-    identity in the default export and in the manifest."""
+    identity in the default export and in the manifest.
+
+    The mount tunables (§5) default to reproduce today's geometry: the default
+    ``slot_count`` is the value the historical width heuristic gives for this
+    model's own default footprint, so the shipped preset is byte-identical."""
+    default_slot_count = slot_count(2.0 * (d / 2.0 + 2.4))
     return (
         Param(
             name="d",
@@ -558,6 +704,46 @@ def _params(d: float, h: float) -> tuple[Param, ...]:
             label="Floor thickness",
             group="geometry",
         ),
+        # --- Mount tunables (design-guidelines §5) -----------------------
+        Param(
+            name="slot_count",
+            kind="integer",
+            default=default_slot_count,
+            min=SLOT_COUNT_MIN,
+            max=SLOT_COUNT_MAX,
+            step=1,
+            label="Slot count",
+            group="mount",
+        ),
+        Param(
+            name="slot_travel",
+            kind="number",
+            default=SLOT_TRAVEL_DEFAULT,
+            min=SLOT_TRAVEL_MIN,
+            max=SLOT_TRAVEL_MAX,
+            step=1.0,
+            unit="mm",
+            label="Slot travel",
+            group="mount",
+        ),
+        Param(
+            name="snap_notches",
+            kind="boolean",
+            default=True,
+            label="Snap notches",
+            group="mount",
+        ),
+        Param(
+            name="plate_margin",
+            kind="number",
+            default=PLATE_MARGIN_DEFAULT,
+            min=PLATE_MARGIN_MIN,
+            max=PLATE_MARGIN_MAX,
+            step=0.5,
+            unit="mm",
+            label="Plate margin",
+            group="mount",
+        ),
     )
 
 
@@ -578,6 +764,28 @@ register(
                 label="Spray can (d=66, h=60)",
                 values={"d": 66.0, "h": 60.0},
             ),
+            Preset(
+                id="spray_can_light",
+                label="Spray can — light mount (1 slot, no notch)",
+                values={
+                    "d": 66.0, "h": 60.0,
+                    "slot_count": 1,
+                    "slot_travel": SLOT_TRAVEL_MIN,
+                    "snap_notches": False,
+                    "plate_margin": PLATE_MARGIN_MIN,
+                },
+            ),
+            Preset(
+                id="spray_can_robust",
+                label="Spray can — robust mount (2 slots, full travel)",
+                values={
+                    "d": 66.0, "h": 60.0,
+                    "slot_count": 2,
+                    "slot_travel": SLOT_TRAVEL_MAX,
+                    "snap_notches": True,
+                    "plate_margin": PLATE_MARGIN_DEFAULT,
+                },
+            ),
         ),
         title="Spray can holder",
         category_id="multiboard",
@@ -596,6 +804,28 @@ register(
                 id="bottle_500ml",
                 label="500ml bottle (d=73, h=50)",
                 values={"d": 73.0, "h": 50.0},
+            ),
+            Preset(
+                id="bottle_500ml_light",
+                label="500ml bottle — light mount (1 slot, no notch)",
+                values={
+                    "d": 73.0, "h": 50.0,
+                    "slot_count": 1,
+                    "slot_travel": SLOT_TRAVEL_MIN,
+                    "snap_notches": False,
+                    "plate_margin": PLATE_MARGIN_MIN,
+                },
+            ),
+            Preset(
+                id="bottle_500ml_robust",
+                label="500ml bottle — robust mount (2 slots, full travel)",
+                values={
+                    "d": 73.0, "h": 50.0,
+                    "slot_count": 2,
+                    "slot_travel": SLOT_TRAVEL_MAX,
+                    "snap_notches": True,
+                    "plate_margin": PLATE_MARGIN_DEFAULT,
+                },
             ),
         ),
         title="500ml bottle holder",
