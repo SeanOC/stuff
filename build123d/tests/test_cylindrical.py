@@ -14,7 +14,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import trimesh  # noqa: E402
-from build123d import Align, Cylinder, Pos, export_stl  # noqa: E402
+from build123d import Align, Cylinder, GeomType, Pos, export_stl  # noqa: E402
 from opengrid.constants import OPEN_GRID_UNIT_SIZE  # noqa: E402
 from opengrid.multiconnect import SnapInSlotCutter  # noqa: E402
 
@@ -33,6 +33,8 @@ from holders.cylindrical import (  # noqa: E402
     TWO_SLOT_WIDTH_THRESHOLD,
     WALL_MAX,
     WALL_MIN,
+    MIN_PLATE_HEIGHT,
+    _min_plate_width,
     _plate_geometry,
     _lip_radius,
     holder,
@@ -182,6 +184,132 @@ def test_slot_count_scales_with_width():
     # The shipped presets (~70-78 mm plates) are single-slot.
     assert slot_count(2 * (66.0 / 2 + 2.4)) == 1
     assert slot_count(2 * (73.0 / 2 + 2.4)) == 1
+
+
+def test_plate_is_sized_to_the_slot_envelope_not_the_cup():
+    """§3 material efficiency (design-guidelines): the back plate is the SLOT
+    ENVELOPE + margin, a function of the slot COUNT alone — independent of the
+    cup diameter d and height h. ``_min_plate_width(n)`` and
+    ``MIN_PLATE_HEIGHT`` already fold _SLOT_EDGE_MARGIN in on every side, so
+    they ARE "envelope + 2*margin". v4 oversized the plate to
+    max(collar_width, ...) x max(h, ...); this pins the fix."""
+    # For holder(d=66, h=40): a single-slot plate.
+    w, ph, _my, _zs, n = _plate_geometry(33.0, 35.4, 40.0)
+    assert n == 1
+    assert w == pytest.approx(_min_plate_width(1), abs=0.5)
+    assert ph == pytest.approx(MIN_PLATE_HEIGHT, abs=0.5)
+
+    # Sweep d and h widely: for a FIXED slot count the plate size never moves,
+    # and the height never moves at all. (Slot count itself still scales with
+    # the cup — a deliberate load choice, promoted to a tunable in pst-c1qo.)
+    seen: dict[int, tuple[float, float]] = {}
+    for d in (30.0, 40.0, 66.0, 73.0, 90.0, 120.0):
+        for h in (20.0, 40.0, 60.0, 90.0, 120.0):
+            r_in = d / 2.0
+            r_out = r_in + 2.4
+            width, plate_h, _m, _z, n_slots = _plate_geometry(r_in, r_out, h)
+            # height is independent of EVERYTHING
+            assert plate_h == pytest.approx(MIN_PLATE_HEIGHT, abs=1e-6), (
+                f"plate height moved with d={d}, h={h}"
+            )
+            # width is a pure function of the slot count
+            assert width == pytest.approx(_min_plate_width(n_slots), abs=1e-6), (
+                f"plate width not the slot envelope at d={d}, h={h}"
+            )
+            if n_slots in seen:
+                assert seen[n_slots] == (width, plate_h)
+            seen[n_slots] = (width, plate_h)
+
+    # Both shipped presets are single-slot -> identical plate footprint.
+    p66 = _plate_geometry(33.0, 35.4, 60.0)[:2]
+    p73 = _plate_geometry(36.5, 38.9, 50.0)[:2]
+    assert p66 == p73, "the two presets must share one plate footprint (both 1-slot)"
+
+
+def _slot_boxes(d, h):
+    r_in = d / 2.0
+    r_out = r_in + 2.4
+    return [c.bounding_box() for c in slot_cutters(r_in, r_out, h)]
+
+
+def _in_slot(c, boxes, pad=0.7):
+    return any(
+        b.min.X - pad <= c.X <= b.max.X + pad
+        and b.min.Y - pad <= c.Y <= b.max.Y + pad
+        and b.min.Z - pad <= c.Z <= b.max.Z + pad
+        for b in boxes
+    )
+
+
+@pytest.mark.parametrize("d,h", [(66.0, 60.0), (73.0, 50.0), (66.0, 40.0)])
+def test_no_downward_facing_fillets(d, h):
+    """§1/§6.2: NO downward-facing fillet. In the declared print pose (floor,
+    z=0, on the bed; +Z up) a fillet on a bottom edge is a shallow overhang
+    that prints as a curl. Every face steeper than 45° below horizontal must
+    be either the flat bed itself (touching z=0), a 45° chamfer (PLANE/CONE),
+    or the library slot profile (the spec, exempt) — never a rolled fillet
+    surface. (The lone pre-existing 0.1 mm bore-top ledge at z=(h+8)/2 is a
+    PLANE, not a fillet, and is flagged as an out-of-scope follow-up.)"""
+    part = holder(d=d, h=h)
+    boxes = _slot_boxes(d, h)
+    cos45 = math.cos(math.radians(45))
+    offenders = []
+    for f in part.faces():
+        n = f.normal_at(f.center())
+        if n.Z < -cos45 - 1e-3:                      # steeper than 45° downward
+            bb = f.bounding_box()
+            c = f.center()
+            if bb.min.Z < 0.1 or _in_slot(c, boxes):  # bed / chamfer / library
+                continue
+            # A fillet rolls a torus (curved edge) or a tangent cylinder; a
+            # chamfer is a PLANE or a 45° CONE. Only planar faces (the bore
+            # ledge) are tolerated here.
+            if f.geom_type != GeomType.PLANE:
+                offenders.append((str(f.geom_type), round(f.area, 1),
+                                  (round(c.X, 1), round(c.Y, 1), round(c.Z, 1))))
+    assert not offenders, f"downward-facing fillet surfaces present: {offenders}"
+
+
+def test_bed_contact_edges_are_chamfered():
+    """§1/§6.2: the z=0 build-plate face carries a 0.3-0.5 mm 45° chamfer
+    (elephant-foot relief), not a fillet. Detect the chamfer faces that touch
+    the bed and slope at ~45° (normal Z ≈ -sin45), and confirm the relief is
+    within the 0.3-0.5 mm band."""
+    from holders.cylindrical import BED_CHAMFER
+    assert 0.3 <= BED_CHAMFER <= 0.5, "bed chamfer must be a 0.3-0.5 mm relief"
+    part = holder(d=66.0, h=60.0)
+    sin45 = math.sin(math.radians(45))
+    bed_chamfers = [
+        f for f in part.faces()
+        if f.bounding_box().min.Z < 0.1
+        and -sin45 - 0.15 < f.normal_at(f.center()).Z < -sin45 + 0.15
+        and f.geom_type in (GeomType.PLANE, GeomType.CONE)
+    ]
+    assert len(bed_chamfers) >= 4, (
+        f"expected the bottom outline chamfered; found {len(bed_chamfers)} "
+        "bed-contact 45° faces"
+    )
+
+
+def test_outer_edges_are_softened():
+    """§2/§6.4: user-exposed outer/top edges are treated (filleted/chamfered),
+    not left sharp. Edge treatment only ever REMOVES material, so a treated
+    build is strictly lighter than the same body with the treatment bypassed;
+    a meaningful drop proves the outer verticals + top + rim were rounded (the
+    plate side fillets alone remove tens of mm^3)."""
+    import holders.cylindrical as cyl
+    treated = holder(d=66.0, h=60.0).volume
+    orig = cyl._treat_edges
+    cyl._treat_edges = lambda part, *a, **k: part
+    try:
+        untreated = holder(d=66.0, h=60.0).volume
+    finally:
+        cyl._treat_edges = orig
+    assert untreated - treated > 30.0, (
+        f"edge treatment barely changed the body (untreated {untreated:.0f} - "
+        f"treated {treated:.0f} = {untreated - treated:.1f} mm^3) — outer/top "
+        "edges may not be getting rounded"
+    )
 
 
 def test_mount_is_the_library_slot():

@@ -71,6 +71,8 @@ _PROFILE_MIN_DELTA = 3.0  # mm: min (deep width - surface width) proving the dov
 _PULL_DISTS = (0.5, 1.0, 2.0)  # mm: off-wall pull distances the head must be held at
 _SURFACE_IN = 0.4     # mm: depth just inside the mount face for the surface width probe
 _DEEP_IN = 3.75       # mm: depth near the pocket back for the deep width probe
+_FLANK_OFFSET = 1.5   # mm: how far beyond the slot's X-extent the plate must
+                      #     still be solid (into the plate's own side margin)
 
 _CENTER3 = (Align.CENTER, Align.CENTER, Align.CENTER)
 
@@ -152,8 +154,14 @@ def assert_aperture(part: Part, fx: MountFixtures) -> None:
             f"slot at x={x:.1f} is sealed at the bottom edge (residual {r:.2f} "
             "mm^3) — no aperture for the wall head"
         )
-    # Not merely "the whole bottom is missing": the plate is solid at its edge.
-    flank = Pos(bb.max.X - 1.0, y_in, z_low) * Box(1.5, 3.0, _SLAB, align=_CENTER3)
+    # Not merely "the whole bottom is missing": the plate is solid just BESIDE
+    # the slot. Anchor the flank probe to the slot's own X-extent, not the
+    # part's global max-X: the plate is sized to the slot envelope + margin and
+    # is now typically NARROWER than the cup (design-guidelines §3), so
+    # bb.max.X is the collar edge, with no plate behind the mount face there.
+    slot_max_x = max(c.bounding_box().max.X for c in fx.cutters)
+    flank_x = slot_max_x + _FLANK_OFFSET   # into the plate's side margin
+    flank = Pos(flank_x, y_in, z_low) * Box(1.0, 3.0, _SLAB, align=_CENTER3)
     fr = _residual_vol(part, flank)
     assert fr > _SOLID_MIN, (
         f"plate not solid flanking the slot aperture (edge residual {fr:.2f} mm^3)"
@@ -173,13 +181,19 @@ def assert_orientation(part: Part, fx: MountFixtures) -> None:
     )
     bb = part.bounding_box()
     y_in = bb.min.Y + 2.0
-    for loc in fx.seat_locs:
+    # Probe just above each slot's own closed (top) end, not the part's global
+    # max-Z: the plate is sized to the slot envelope and may be SHORTER than
+    # the cup (design-guidelines §3), so bb.max.Z can be the collar top, well
+    # above the plate. The slot cap is what must be solid — the head must not
+    # exit upward — so anchor the probe to the cutter's top.
+    for cutter, loc in zip(fx.cutters, fx.seat_locs):
         x = loc.position.X
-        above = Pos(x, y_in, bb.max.Z - 1.0) * Box(4.0, 3.0, _SLAB, align=_CENTER3)
+        slot_top = cutter.bounding_box().max.Z
+        above = Pos(x, y_in, slot_top + _SLAB) * Box(4.0, 3.0, _SLAB, align=_CENTER3)
         r = _residual_vol(part, above)
         assert r > _SOLID_MIN, (
-            f"plate not solid above the slot at x={x:.1f} (residual {r:.2f} "
-            "mm^3) — the channel appears to run out the TOP"
+            f"plate not solid just above the slot at x={x:.1f} (residual "
+            f"{r:.2f} mm^3) — the channel appears to run out the TOP"
         )
 
 
