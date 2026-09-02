@@ -29,9 +29,20 @@ Orientation convention (defined per plan review on pst-7lgg)
 - -Y: board side. The back plate's mount face (where the slot pockets open)
   points at the wall. +Y: front, where the opening gap faces.
 - X: lateral (slots are spaced along X at the 28 mm pitch).
-Print orientation: rotate so the back plate face (the -Y face) is on the
-bed; the slot pockets then face up and print cleanly (the openings that the
-round heads slide into are self-supporting in this orientation).
+Print orientation: **as modelled, +Z up — the floor disc (z=0) on the bed**
+(``print_orientation = (0, 0, 1)``, the ModelSpec default). This stands the
+cylinder axis vertical, so the collar prints as an upright ring (no side
+overhang) and the large flat floor is the first layer (excellent adhesion);
+the slot openings sit at the plate's bottom (z=0) edge and self-support. This
+supersedes an earlier note that put the -Y mount face on the bed — that pose
+lays the cylinder on its side and overhangs ~9300 mm^2 (57x this pose), so it
+is NOT the print orientation. Trade-off: the wall load (the can's weight,
+along -Z) then runs across the print layers at the cup-plate joint, which the
+§4 web + junction fillet reinforce (worst-case load direction: -Z shear +
+the +Y cantilever moment that peels the plate's top off the wall).
+
+Edge treatment and the printability audit are measured in THIS pose: the bed
+is the z=0 face; "downward" is -Z.
 """
 from __future__ import annotations
 
@@ -79,6 +90,16 @@ FLOOR_DEFAULT = 4.8
 FLOOR_EDGE_INSET = 0.1
 
 LIP_RADIUS = 1.0  # mm, nominal real BRep fillet on the opening's entry corners
+
+# --- Edge treatment (design-guidelines §1, §2) ---------------------------
+# User-exposed, non-functional edges get a fillet (top + vertical) or a 45°
+# chamfer (bed-contact / downward). Functional edges stay sharp: the mount
+# face, slot walls, snap notches, the bore. Applied to the fused body BEFORE
+# the library slot pockets are carved, so the treatment never touches the
+# cutter profile (its geometry is the spec) — §2's "never on library cutters".
+EDGE_FILLET = 1.5   # mm, R on outer vertical + top/rim edges (§2: R 1-2 mm)
+BED_CHAMFER = 0.4   # mm, 45° chamfer on bed-contact + downward edges (§1:
+                    # 0.3-0.5 mm elephant-foot relief; NEVER a downward fillet)
 
 # Radial clearance between the cylinder and the re-carved bore, mm. Keeps the
 # carve off-coplanar with the collar's inner face (a coplanar boolean left the
@@ -214,8 +235,16 @@ def _plate_geometry(r_in: float, r_out: float, h: float) -> tuple[float, float, 
     """
     collar_width = 2.0 * r_out
     n_slots = slot_count(collar_width)
-    width = max(collar_width, _min_plate_width(n_slots))
-    plate_h = max(h, MIN_PLATE_HEIGHT)
+    # §3 material efficiency (design-guidelines): the plate is the SLOT
+    # ENVELOPE + margin, centred behind the cup — NOT stretched to the cup's
+    # width or height. ``_min_plate_width(n)`` and ``MIN_PLATE_HEIGHT`` already
+    # fold _SLOT_EDGE_MARGIN in on every side, so the plate size is a function
+    # of the slot count ALONE — independent of d and h (bug: v4 set width =
+    # max(collar_width, ...) and plate_h = max(h, ...), oversizing the plate).
+    # The slot COUNT still scales with the cup (heavier cup -> more bearing
+    # surface); the sibling bead pst-c1qo promotes it to a tunable.
+    width = _min_plate_width(n_slots)
+    plate_h = MIN_PLATE_HEIGHT
     mount_y = -r_in - PANEL_THICKNESS
     # Seat sits _SLOT_ABOVE_SEAT above the opening mouth; place it so the
     # mouth pokes _SLOT_BOTTOM_OVERSHOOT below the plate bottom (z=0),
@@ -232,6 +261,77 @@ def _back_plate_solid(r_in: float, r_out: float, h: float) -> Part:
         width, PANEL_THICKNESS, plate_h,
         align=(Align.CENTER, Align.MIN, Align.MIN),
     )
+
+
+def _treat_edges(part: Part, wall: float, r_in: float, r_out: float, h: float) -> Part:
+    """Fillet/chamfer the user-exposed, non-functional edges (design-guidelines
+    §1, §2). Runs on the fused body BEFORE the slot pockets are carved, so it
+    never touches the library cutter profile (the spec). Functional edges stay
+    sharp: the mount face, the bore, and the slots (carved after).
+
+    - Bed-contact edges (the z=0 print face): 45° chamfer (BED_CHAMFER) —
+      elephant-foot relief. NEVER a fillet on a downward edge (§1: a bottom
+      fillet is a shallow overhang that prints as a curl).
+    - Plate outer vertical + top edges and the collar's top rims: fillet
+      (EDGE_FILLET, clamped so opposing fillets on a thin wall can't collide).
+
+    Each category is best-effort with a chamfer fallback (§2: if a fillet fails
+    in OCP, fall back rather than ship a hard edge); a per-category flag lets a
+    test confirm what was applied.
+    """
+    _w, plate_h, mount_y, _zs, _n = _plate_geometry(r_in, r_out, h)
+    plate_half_w = _w / 2.0
+
+    # 1) Bed-contact chamfer: every edge lying on the z=0 build-plate face.
+    bed = part.edges().filter_by_position(Axis.Z, -0.05, 0.05)
+    if bed:
+        part = part.chamfer(BED_CHAMFER, None, bed)
+
+    # 2) Plate outer VERTICAL edges (the four Z-parallel side edges at
+    #    x = +/- plate_half_w). Thick 6.4 mm plate -> a full EDGE_FILLET fits.
+    verticals = [
+        e for e in part.edges().filter_by(Axis.Z)
+        if abs(abs(e.center().X) - plate_half_w) < 0.5
+        and e.center().Y < -r_in + 0.5           # behind the collar (plate sides)
+    ]
+    if verticals:
+        try:
+            part = part.fillet(EDGE_FILLET, verticals)
+        except Exception:
+            part = part.chamfer(BED_CHAMFER, None, verticals)
+
+    # 3) Plate top edges (z=plate_h): fillet the exposed back + side top edges
+    #    (thick plate takes a full fillet). EXCLUDE the front top edge, which
+    #    is buried in the collar junction — filleting an edge embedded in
+    #    another body aborts OCP for thick walls / tall collars; that joint is
+    #    treated by the §4 web + junction fillet instead.
+    ptops = [
+        e for e in part.edges().filter_by_position(Axis.Z, plate_h - 0.05, plate_h + 0.05)
+        if e.center().Y < -r_in - 0.1
+    ]
+    if ptops:
+        try:
+            part = part.fillet(EDGE_FILLET, ptops)
+        except Exception:
+            part = part.chamfer(BED_CHAMFER, None, ptops)
+
+    # 4) Collar top rim (z=h): a 45° CHAMFER on the OUTER rim (radius ~ r_out)
+    #    a hand meets. The collar is a thin annular wall, so a fillet that rolls
+    #    both inner+outer overruns the wall and aborts OCP; a single-sided outer
+    #    fillet still fails on tall collars. A chamfer on the outer rim is
+    #    robust across the whole param range and is an upward edge (not a
+    #    forbidden downward fillet). The inner bore lip stays sharp (functional
+    #    — the can slides through it).
+    ctops = [
+        e for e in part.edges().filter_by_position(Axis.Z, h - 0.05, h + 0.05)
+        if math.hypot(e.center().X, e.center().Y) > r_in + wall / 2.0
+    ]
+    if ctops:
+        try:
+            part = part.chamfer(BED_CHAMFER, None, ctops)
+        except Exception:
+            pass
+    return part
 
 
 def slot_cutters(r_in: float, r_out: float, h: float) -> list[Part]:
@@ -340,6 +440,12 @@ def holder(
             align=(Align.CENTER, Align.CENTER, Align.MIN),
         )
         part = part.fuse(floor).clean()
+
+    # Edge treatment (design-guidelines §1/§2) on the fused body BEFORE the
+    # pockets are carved: fillet the user-facing outer/top edges, chamfer the
+    # bed-contact edges. Doing it here keeps the library cutter profile (carved
+    # next) untouched and the mount face / slot walls sharp.
+    part = _treat_edges(part, wall, r_in, r_out, h)
 
     # Carve the library slot pockets LAST, out of the unified body, so each
     # pocket is exactly the library cutter (nothing bespoke) and the floor
