@@ -82,6 +82,43 @@ An unknown mount tag is rejected at registration.
 3. add an advisory rubric for it in `scripts/render_review.py` `RUBRICS`;
 4. tag the models that carry it and implement their `mount_fixtures` hook.
 
+## Print audit — deterministic printability checks (design-guidelines §1)
+
+A watertight, contract-passing part can still be unprintable. `tests/print_audit.py`
+turns the [design-guidelines §1](docs/design-guidelines.md) rules into a standing,
+deterministic check for the target machine (**Bambu H2S, 0.4 mm nozzle, PLA/PCTG,
+no supports**) instead of a reviewer eyeball. Given a `Part` and its declared print
+orientation it returns a typed `PrintAuditReport`:
+
+- **overhang** — steepest downward face from vertical (threshold **45°**);
+- **bridge** — widest unsupported flat span (threshold **10 mm**);
+- **min wall** — thinnest wall, sampled by inward normal marching (threshold **0.9 mm**;
+  load-bearing 1.6 mm deferred until faces can be tagged);
+- **downward fillets** — any downward-facing *curved* face (use a 45° chamfer) → fail;
+- **bed chamfer** — plate-contact edge chamfer present (0.3–0.5 mm) → advisory *warn*.
+
+Faces inside a registered library cutter's envelope are excluded (the slot profile
+is spec, not our overhang). `report.format()` emits a compact block to paste into a
+PR (design-guidelines §6 items 1–3).
+
+**Print orientation** is a unit vector on the `ModelSpec` — `print_orientation`, the
+model-frame direction that points UP (away from the bed) in the print pose. Default
+`(0, 0, 1)` ("printed as modelled"); the C-ring holder prints its −Y back plate on the
+bed, so it declares `(0, 1, 0)`. The field is additive (backward-compatible default)
+and is **not** serialized into `manifest.json`.
+
+`tests/test_print_audit.py` has two layers, like the mount contracts:
+- **synthetic self-tests** (always gating): a 50° overhang fails / 40° passes, a 12 mm
+  bridge fails / 8 mm passes, a 0.8 mm wall fails / 1.2 mm passes, a bottom fillet fails
+  / bottom chamfer passes, and a library cutter pocket is excluded;
+- **registry-driven run** (**advisory**): every registered model is audited at its
+  declared orientation and the report printed; a failure is an `xfail`, not a hard
+  failure, until the holder passes its own audit. **Flip the one-line
+  `PRINT_AUDIT_REQUIRED = True`** at the top of `tests/test_print_audit.py` to make the
+  registry run a hard gate (design-guidelines §6). The C-ring holder currently reports
+  real overhangs (a round collar printed on its side) — expected, and why the run stays
+  advisory for now.
+
 ### Advisory render review (Layer 2, not a gate)
 `scripts/render_review.py` sends each model's 3-view PNG plus the mount rubric
 to a vision model via OpenRouter and prints a Markdown summary. It is

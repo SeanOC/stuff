@@ -476,6 +476,9 @@ register(
         title="Spray can holder",
         category_id="multiboard",
         mounts=("multiconnect-slot",),
+        # Printed back-plate-down: the −Y mount face sits on the bed, so +Y
+        # points up (see the "Print orientation" header note).
+        print_orientation=(0.0, 1.0, 0.0),
     )
 )
 register(
@@ -495,5 +498,8 @@ register(
         title="500ml bottle holder",
         category_id="multiboard",
         mounts=("multiconnect-slot",),
+        # Printed back-plate-down: the −Y mount face sits on the bed, so +Y
+        # points up (see the "Print orientation" header note).
+        print_orientation=(0.0, 1.0, 0.0),
     )
 )
