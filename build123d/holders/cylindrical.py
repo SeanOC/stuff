@@ -30,16 +30,35 @@ Orientation convention (defined per plan review on pst-7lgg)
   points at the wall. +Y: front, where the opening gap faces.
 - X: lateral (slots are spaced along X at the 28 mm pitch).
 Print orientation: **as modelled, +Z up — the floor disc (z=0) on the bed**
-(``print_orientation = (0, 0, 1)``, the ModelSpec default). This stands the
-cylinder axis vertical, so the collar prints as an upright ring (no side
+(``print_orientation = (0, 0, 1)``, declared on both ModelSpecs). This stands
+the cylinder axis vertical, so the collar prints as an upright ring (no side
 overhang) and the large flat floor is the first layer (excellent adhesion);
 the slot openings sit at the plate's bottom (z=0) edge and self-support. This
 supersedes an earlier note that put the -Y mount face on the bed — that pose
 lays the cylinder on its side and overhangs ~9300 mm^2 (57x this pose), so it
-is NOT the print orientation. Trade-off: the wall load (the can's weight,
-along -Z) then runs across the print layers at the cup-plate joint, which the
-§4 web + junction fillet reinforce (worst-case load direction: -Z shear +
-the +Y cantilever moment that peels the plate's top off the wall).
+is NOT the print orientation. The holder passes the deterministic print audit
+(tests/print_audit.py) at THIS pose: overhang 45.0deg (the outer bed chamfer;
+no face exceeds 45deg), 0 downward-facing fillets, 0 mm unsupported bridge,
+min wall 2.15 mm — support-free on a Bambu H2S in PLA or PCTG.
+
+Worst-case load direction (design-guidelines §6.8)
+--------------------------------------------------
+Installed, the mounted cylinder's WEIGHT pulls straight DOWN along -Z, and
+its mass sitting forward of the wall adds a +Y cantilever moment that tries to
+peel the plate's top edge off the wall. So the cup-to-plate weld carries a -Z
+vertical shear plus a bending moment about X. In the +Z print pose that load
+runs ACROSS the print layers at the joint (the weakest direction — this is the
+one deliberate printability/strength trade-off of standing the ring upright,
+accepted because every side-laid pose needs supports). Mitigations: the plate
+fuses to the collar through the FULL wall (overlap = wall, not a tangent
+contact, §4) and PANEL_THICKNESS (6.4 mm) >> the collar wall so the joint
+section is thick. Material choice for the load: **PCTG is preferred** — its
+tough, high-elongation layer adhesion resists the across-layer peel far better
+than PLA, which is stiff but brittle and creeps under a sustained hung load
+(a warm room, a sunny shelf). PLA is fine for a light, indoor, intermittently
+loaded holder; choose PCTG for a heavy or long-term hang. Neither needs
+supports in this pose. Overhangs are checked against the PCTG case (§1: PCTG
+sags sooner than PLA), and the audit's 45deg limit already satisfies it.
 
 Edge treatment and the printability audit are measured in THIS pose: the bed
 is the z=0 face; "downward" is -Z.
@@ -551,10 +570,23 @@ def holder(
     # sits at the inner radius; this trims the coincident sliver and keeps
     # the boolean off-coplanar with the bore).
     part = collar.fuse(_back_plate_solid(r_in, slot_count, slot_travel, plate_margin))
-    bore = Cylinder(
+    # Re-carve the bore as a through-cut spanning the WHOLE part height (the
+    # taller of the collar and the back plate) plus a 4 mm overshoot each end,
+    # so the cylinder's flat end caps always terminate in air. A finite bore
+    # that stops inside solid material leaves a downward annular ledge at its
+    # top cap — a flat downward face the print audit reads as a 90° overhang.
+    # (The earlier CENTER-aligned cut of height h+8 centred on the origin only
+    # reached z=(h+8)/2, so for any collar taller than 8 mm it stopped short of
+    # the collar top and left that ledge inside the bore; sizing the cut to the
+    # full envelope removes it for every d/h/slot_travel/plate_margin.)
+    _pw, plate_h, _my, _zs, _n = _plate_geometry(
+        r_in, slot_count, slot_travel, plate_margin
+    )
+    bore_top = max(h, plate_h) + 4.0
+    bore = Pos(0, 0, -4.0) * Cylinder(
         radius=r_in + BORE_CLEARANCE,
-        height=h + 8.0,
-        align=(Align.CENTER, Align.CENTER, Align.CENTER),
+        height=bore_top + 4.0,
+        align=(Align.CENTER, Align.CENTER, Align.MIN),
     )
     part = (part - bore).clean()
 
@@ -790,11 +822,11 @@ register(
         title="Spray can holder",
         category_id="multiboard",
         mounts=("multiconnect-slot",),
-        # print_orientation deliberately left at the (0, 0, 1) default: the
-        # round collar has real overhangs the print audit surfaces (back-
-        # plate-down: 57.6° overhang + 4 downward curved faces), so a print
-        # pose is not yet asserted. The audit ships advisory; the orientation
-        # is declared together with the geometry fix in the follow-up bead.
+        # Declared print pose (pst-xz3m): +Z up, the floor disc (z=0) on the
+        # bed. The holder passes the print audit at this orientation (overhang
+        # 45.0°, 0 downward fillets, bridge 0, min wall 2.15 mm). See the module
+        # header for the pose rationale and load direction.
+        print_orientation=(0.0, 0.0, 1.0),
     )
 )
 register(
@@ -836,10 +868,10 @@ register(
         title="500ml bottle holder",
         category_id="multiboard",
         mounts=("multiconnect-slot",),
-        # print_orientation deliberately left at the (0, 0, 1) default: the
-        # round collar has real overhangs the print audit surfaces (back-
-        # plate-down: 58.4° overhang + 4 downward curved faces), so a print
-        # pose is not yet asserted. The audit ships advisory; the orientation
-        # is declared together with the geometry fix in the follow-up bead.
+        # Declared print pose (pst-xz3m): +Z up, the floor disc (z=0) on the
+        # bed. The holder passes the print audit at this orientation (overhang
+        # 45.0°, 0 downward fillets, bridge 0, min wall 2.15 mm). See the module
+        # header for the pose rationale and load direction.
+        print_orientation=(0.0, 0.0, 1.0),
     )
 )

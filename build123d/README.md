@@ -143,19 +143,22 @@ items 1–3) — see the advisory note below.
   bridge fails / 8 mm passes, a 0.8 mm wall fails / 1.2 mm passes, a bottom fillet fails
   / bottom chamfer passes, a wide-bbox thin annular ledge is *not* read as a bridge, and
   a library cutter pocket is excluded;
-- **registry-driven run** (**advisory**): every registered model is audited at its
-  declared orientation and the report printed; a failure is an `xfail`, not a hard
-  failure, until the production holders pass their own audit. **Flip the one-line
-  `PRINT_AUDIT_REQUIRED = True`** at the top of `tests/test_print_audit.py` to make the
-  registry run a hard gate (design-guidelines §6).
+- **registry-driven run** (**hard gate for production models**): every registered model
+  is audited at its declared orientation and the report printed. With
+  `PRINT_AUDIT_REQUIRED = True` (the current setting), a failure on a **production** model
+  is a hard failure (design-guidelines §6); a **smoke** scaffolding tile (`_is_production`
+  is `False`) stays an advisory `xfail`. Set the flag back to `False` to make the whole
+  registry run advisory again.
 
-The C-ring holders miss §1 at every orientation today (upright: a 90° downward ceiling;
-back-plate-down: ~57–58° collar overhang + bottom-side lip fillets), so they keep the
-`(0, 0, 1)` default and assert no print pose. Fixing that geometry, declaring each
-holder's real `print_orientation`, and flipping the switch to required all land
-**together** as "holder v5" (follow-up bead `pst-xz3m`) — this PR ships the audit tooling
-and the schema field only, so no production holder declares an orientation it fails at
-(design-guidelines §6 items 1–3 stay honest).
+The C-ring holders now **pass** §1 at their declared `print_orientation = (0, 0, 1)`
+(upright, floor on the bed): overhang 45.0°, 0 downward fillets, 0 mm bridge, min wall
+2.15 mm (`pst-xz3m`, "holder v5"). Two fixes made this honest: the bore re-carve now
+spans the whole part height so it no longer leaves a 90° downward ledge at its end cap,
+and the audit's downward-fillet check now distinguishes a constant-45° **conical chamfer**
+on a round bed edge (a legitimate elephant-foot relief — the CONE it produces is not a
+rolled fillet) from a real bottom fillet whose slope sweeps past 45°. The one still-known
+miss is `smoke_opengrid_tile_1x1` (0.80 mm wall < 0.9 mm), tracked as its own bead and
+kept advisory via the smoke exemption so it does not block the production flip.
 
 ### Advisory render review (Layer 2, not a gate)
 `scripts/render_review.py` sends each model's 3-view PNG plus the mount rubric

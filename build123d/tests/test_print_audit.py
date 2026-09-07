@@ -57,12 +57,24 @@ from tests.print_audit import (  # noqa: E402
 )
 
 # One-line switch (AC 3): False = advisory (xfail on failure, report printed);
-# True = the registry-driven audit is a hard gate. Kept advisory until the
-# production holders pass their own audit — they miss §1 at every orientation
-# today (a round collar on its side has real overhangs), so the geometry fix +
-# a declared print_orientation + this flip all land together as "holder v5"
-# (follow-up bead pst-xz3m). See build123d/README.md → Print audit.
-PRINT_AUDIT_REQUIRED = False
+# True = the registry-driven audit is a hard gate for PRODUCTION models. The
+# C-ring holders now pass their own audit at the declared (0,0,1) orientation
+# (pst-xz3m: full-height bore re-carve removes the 90° ledge; the round bed
+# edges carry a constant-45° conical chamfer, which the audit no longer
+# mistakes for a rolled fillet), so the geometry fix + the declared
+# print_orientation + this flip land together as "holder v5".
+#
+# The gate is scoped to PRODUCTION models (see ``_is_production``): a model
+# tagged "smoke" stays advisory (xfail) so the known smoke_opengrid_tile_1x1
+# 0.80 mm min-wall miss — tracked as its own follow-up bead, OUT of scope here
+# — does not block the production flip. See build123d/README.md → Print audit.
+PRINT_AUDIT_REQUIRED = True
+
+
+def _is_production(spec) -> bool:
+    """A registered model the print-audit hard gate applies to: everything
+    except the ``smoke`` scaffolding tiles (whose failures stay advisory)."""
+    return "smoke" not in spec.tags
 
 # Generous per-model ceiling for AC 1 ("< 60 s each"); the real cost is ~0.1 s.
 _PER_MODEL_BUDGET_S = 60.0
@@ -265,6 +277,40 @@ def test_bottom_chamfer_passes():
     assert report.ok, report.format()
 
 
+def _cylinder_bottom_edge(cyl: Cylinder):
+    return cyl.edges().filter_by(Axis.Z, reverse=True).group_by(Axis.Z)[0]
+
+
+def test_conical_bottom_chamfer_passes():
+    """A 45° chamfer on a ROUND bed edge is a CONE (a chamfer on a circle
+    cannot be planar), but its downslope is a constant ~45° — the elephant-foot
+    relief §1 asks for on every bed-contact edge. It must PASS: a curved
+    downward face at ≤45° is a chamfer, not a rolled fillet. (Regression for the
+    false positive that made the guideline's round-edge chamfer un-passable.)"""
+    cyl = Cylinder(20, 10, align=(Align.CENTER, Align.CENTER, Align.MIN))
+    chamfered = cyl.chamfer(0.4, None, _cylinder_bottom_edge(cyl))
+    report = audit(chamfered, _UP_Z, model="cone_chamfer")
+    assert not report.downward_fillets, (
+        "a constant-45° conical chamfer is elephant-foot relief, not a fillet: "
+        + report.format()
+    )
+    assert report.max_overhang_deg <= MAX_OVERHANG_DEG + 1e-6
+    assert report.ok, report.format()
+
+
+def test_conical_bottom_fillet_fails():
+    """A rolled fillet on the SAME round bed edge sweeps from near-vertical to
+    near-horizontal (measured ~9°→81°): it curls as it prints and must still
+    FAIL, proving the ≤45° discriminator did not blind the check to real bottom
+    fillets on curved geometry."""
+    cyl = Cylinder(20, 10, align=(Align.CENTER, Align.CENTER, Align.MIN))
+    filleted = cyl.fillet(2.0, _cylinder_bottom_edge(cyl))
+    report = audit(filleted, _UP_Z, model="cone_fillet")
+    assert report.downward_fillets, "a round bottom fillet must still be flagged"
+    assert report.max_overhang_deg > MAX_OVERHANG_DEG
+    assert not report.ok
+
+
 # --- library cutter envelope exclusion (AC 2) -----------------------------
 
 def test_library_cutter_pocket_is_excluded():
@@ -329,14 +375,21 @@ def test_model_audit_produces_report_within_budget(spec):
 
 @pytest.mark.parametrize("spec", _SPECS, ids=[s.name for s in _SPECS])
 def test_model_print_audit(spec, capsys):
-    """AC 3: advisory printability audit over every registered model. The
-    report is printed; a failure is an xfail until PRINT_AUDIT_REQUIRED flips."""
+    """AC 3: printability audit over every registered model. The report is
+    printed; a failure is a hard fail for a PRODUCTION model once
+    PRINT_AUDIT_REQUIRED is set, and an advisory xfail otherwise (a smoke
+    tile, or the flag still False)."""
     report = _audit_model(spec)
     with capsys.disabled():
         print("\n" + report.format())
     if report.ok:
         return
-    reason = f"advisory print audit not yet gating for {spec.name}:\n{report.format()}"
-    if PRINT_AUDIT_REQUIRED:
+    gating = PRINT_AUDIT_REQUIRED and _is_production(spec)
+    reason = (
+        f"print audit failed for {spec.name}"
+        + ("" if gating else " (advisory — not gating for this model)")
+        + f":\n{report.format()}"
+    )
+    if gating:
         pytest.fail(reason)
     pytest.xfail(reason)
