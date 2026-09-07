@@ -285,8 +285,27 @@ def _max_overhang(part, up, boxes, hmin):
 
 
 def _downward_curved_faces(part, up, boxes, hmin):
-    """Downward-facing NON-planar faces — bottom-side fillets that print as a
-    rough curl (guideline: use a 45° chamfer there). Library cutters excluded."""
+    """Downward-facing NON-planar faces that print as a rough curl — a bottom-
+    side *fillet*, the thing the guideline forbids ("use a 45° chamfer there").
+    Library cutters excluded.
+
+    A curved face is only a fillet failure when its STEEPEST downward sample
+    exceeds the overhang threshold (45°). This is the discriminator between a
+    rolled fillet and a legitimate chamfer on a ROUND edge:
+
+    * A rolled fillet (a torus/cylinder blend on a bottom edge) sweeps from
+      near-vertical to near-horizontal — its downslope runs well past 45°
+      (measured ~9°→81° on a round bottom fillet) and curls as it prints.
+    * A 45° chamfer on a ROUND bed edge is necessarily a CONE (a chamfer on a
+      circle cannot be planar), but its downslope is a CONSTANT ~45° — within
+      the overhang limit and exactly the elephant-foot relief §1 asks for on
+      every bed-contact edge. Flagging it as a fillet was a false positive that
+      made the guideline's own recommendation impossible to satisfy on any
+      round part; a constant-≤45° conical chamfer now passes.
+
+    Faces steeper than 45° are also caught by the overhang check; reporting
+    them here as well names the offending curved geometry so a fix ("chamfer,
+    not fillet") is obvious in the PR report."""
     found: list[DownwardFillet] = []
     for face in part.faces():
         if str(face.geom_type) == "GeomType.PLANE":
@@ -307,7 +326,7 @@ def _downward_curved_faces(part, up, boxes, hmin):
             if cdot < -_DOWN_EPS:
                 downward = True
                 worst = max(worst, math.degrees(math.asin(min(1.0, -cdot))))
-        if downward:
+        if downward and worst > MAX_OVERHANG_DEG + 1e-6:
             found.append(
                 DownwardFillet(
                     geom_type=str(face.geom_type).replace("GeomType.", ""),
