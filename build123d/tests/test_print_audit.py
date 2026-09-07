@@ -39,6 +39,7 @@ from build123d import (  # noqa: E402
     extrude,
     make_face,
 )
+from opengrid.base import Base  # noqa: E402
 from opengrid.multiconnect import SnapInSlotCutter  # noqa: E402
 
 from holders.registry import all_models  # noqa: E402
@@ -65,15 +66,25 @@ from tests.print_audit import (  # noqa: E402
 # print_orientation + this flip land together as "holder v5".
 #
 # The gate is scoped to PRODUCTION models (see ``_is_production``): a model
-# tagged "smoke" stays advisory (xfail) so the known smoke_opengrid_tile_1x1
-# 0.80 mm min-wall miss — tracked as its own follow-up bead, OUT of scope here
-# — does not block the production flip. See build123d/README.md → Print audit.
+# tagged "smoke" stays advisory (xfail). The one standing smoke miss is
+# smoke_opengrid_tile_1x1 (0.80 mm min wall < 0.9 mm) — and that 0.80 mm is the
+# openGrid snap-fit retention dent, a published-spec mating feature that cannot
+# be thickened without breaking cross-tool compatibility, so it is a permanent
+# spec exemption rather than a bug to fix (pst-saf9). It is kept narrow and
+# self-policing by ``test_smoke_tile_wall_miss_is_openGrid_spec`` below, so a
+# future audit change cannot silently void the exemption or let it excuse a new,
+# real defect. See build123d/README.md → Print audit.
 PRINT_AUDIT_REQUIRED = True
 
 
 def _is_production(spec) -> bool:
     """A registered model the print-audit hard gate applies to: everything
-    except the ``smoke`` scaffolding tiles (whose failures stay advisory)."""
+    except the ``smoke`` scaffolding tiles (whose failures stay advisory).
+
+    The sole standing smoke miss — smoke_opengrid_tile_1x1's 0.80 mm min wall —
+    is the openGrid spec snap-fit dent, an unalterable published-standard mating
+    feature (pst-saf9), pinned by ``test_smoke_tile_wall_miss_is_openGrid_spec``.
+    """
     return "smoke" not in spec.tags
 
 # Generous per-model ceiling for AC 1 ("< 60 s each"); the real cost is ~0.1 s.
@@ -309,6 +320,40 @@ def test_conical_bottom_fillet_fails():
     assert report.downward_fillets, "a round bottom fillet must still be flagged"
     assert report.max_overhang_deg > MAX_OVERHANG_DEG
     assert not report.ok
+
+
+# --- standing spec exemption (pst-saf9) -----------------------------------
+
+def test_smoke_tile_wall_miss_is_openGrid_spec():
+    """Pin the ONE standing print-audit exemption so it stays narrow and cannot
+    silently regress (bead pst-saf9 / plan-review "done" line).
+
+    ``smoke_opengrid_tile_1x1`` is a verbatim library ``Base()`` — a pipeline
+    canary, not a holder — and its 0.80 mm min wall is the openGrid snap-fit
+    retention dent (``BaseSnapSlotCutter.snap_cut_bottom_dent_width = 0.8 mm``):
+    a published-spec mating feature that cannot be thickened without breaking
+    cross-tool compatibility. It is therefore kept advisory (``_is_production``
+    is False for smoke tiles) rather than "fixed".
+
+    This makes that exemption self-policing:
+    * the tile must STILL fail — if a future audit change makes it pass, the
+      exemption is stale: drop it and let the tile rejoin the hard gate;
+    * it must fail ONLY on min wall, at the spec 0.80 mm — a NEW failure mode
+      (a real overhang, bridge, or bottom fillet) is a genuine defect the smoke
+      exemption must not excuse, and this assertion flags it.
+    """
+    report = audit(Base(), _UP_Z, model="smoke_opengrid_tile_1x1")
+    assert not report.ok, (
+        "smoke tile now passes the audit — the spec exemption is stale; drop it "
+        "and let the tile rejoin the hard gate (see _is_production / pst-saf9)"
+    )
+    # The single allowed miss: the 0.80 mm openGrid snap-dent wall.
+    assert report.min_wall_mm == pytest.approx(0.80, abs=0.05), report.format()
+    assert report.min_wall_mm < MIN_WALL_MM
+    # Narrow: min wall is the ONLY miss — a new failure mode is a real defect.
+    assert report.max_overhang_deg <= MAX_OVERHANG_DEG + 1e-6, report.format()
+    assert report.longest_bridge_mm <= MAX_BRIDGE_MM + 1e-6, report.format()
+    assert not report.downward_fillets, report.format()
 
 
 # --- library cutter envelope exclusion (AC 2) -----------------------------

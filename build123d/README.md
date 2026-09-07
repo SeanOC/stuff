@@ -156,9 +156,14 @@ The C-ring holders now **pass** §1 at their declared `print_orientation = (0, 0
 spans the whole part height so it no longer leaves a 90° downward ledge at its end cap,
 and the audit's downward-fillet check now distinguishes a constant-45° **conical chamfer**
 on a round bed edge (a legitimate elephant-foot relief — the CONE it produces is not a
-rolled fillet) from a real bottom fillet whose slope sweeps past 45°. The one still-known
-miss is `smoke_opengrid_tile_1x1` (0.80 mm wall < 0.9 mm), tracked as its own bead and
-kept advisory via the smoke exemption so it does not block the production flip.
+rolled fillet) from a real bottom fillet whose slope sweeps past 45°. The one remaining
+audit miss is `smoke_opengrid_tile_1x1` (0.80 mm wall < 0.9 mm) — and that 0.80 mm is the
+**openGrid snap-fit retention dent**, a published-spec mating feature that cannot be
+thickened without breaking cross-tool compatibility. It is therefore a **permanent spec
+exemption** (kept advisory via the smoke exemption), not a bug to fix (`pst-saf9`); the
+exemption is kept narrow and self-policing by `test_smoke_tile_wall_miss_is_openGrid_spec`
+(the tile must still fail, and fail *only* on that spec wall), so a future audit change
+cannot silently void it or let it excuse a new, real defect.
 
 ### Advisory render review (Layer 2, not a gate)
 `scripts/render_review.py` sends each model's 3-view PNG plus the mount rubric
