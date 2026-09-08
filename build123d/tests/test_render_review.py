@@ -48,6 +48,17 @@ def test_main_is_advisory_with_no_pngs():
     assert rr.main([]) == 0
 
 
+def test_summary_header_reports_model_and_prompt_version(tmp_path, capsys, monkeypatch):
+    """The summary must name the exact model + prompt version it used (AC 2)."""
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    png = tmp_path / "holder-spray-can.png"
+    png.write_bytes(b"\x89PNG\r\n")
+    assert rr.main([str(png), "--model", "some/vision-model"]) == 0
+    out = capsys.readouterr().out
+    assert "some/vision-model" in out
+    assert rr.PROMPT_VERSION in out
+
+
 def test_request_payload_shape(tmp_path):
     png = tmp_path / "holder-spray-can.png"
     png.write_bytes(b"\x89PNG\r\n\x1a\n")

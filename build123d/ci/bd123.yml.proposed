@@ -1,0 +1,82 @@
+# PROPOSED bd123.yml — adds the advisory VLM render-review step (bead pst-ae3v).
+#
+# The stuff/worker policy forbids editing .github/workflows/, so this is the
+# full proposed replacement for .github/workflows/bd123.yml, staged here for a
+# human to copy into place. See build123d/ci/README.md for the two operator
+# steps (copy this file over the workflow + add the OPENROUTER_API_KEY secret).
+#
+# Only change vs the current .github/workflows/bd123.yml: the new
+# "advisory VLM render review" step below (marked ADDED). Everything else is
+# byte-identical to main as of this PR.
+#
+# build123d PoC toolchain (Sean 2026-08-30). ADVISORY job — deliberately NOT a
+# required status check while the PoC runs, and path-filtered at the workflow
+# level (safe because it is not required; the required checks in ci.yml must
+# never get a workflow-level filter — see the comment there).
+name: bd123
+on:
+  pull_request:
+    paths: ["build123d/**", ".github/workflows/bd123.yml"]
+  push:
+    branches: [main]
+    paths: ["build123d/**", ".github/workflows/bd123.yml"]
+
+jobs:
+  bd123:
+    name: build123d models
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: build123d } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: sync env (pinned via uv.lock)
+        run: uv sync --frozen
+      - name: regenerate manifest (deterministic emitter)
+        # The committed build123d/manifest.json must match what the
+        # registry currently produces — same freshness contract as the
+        # thumbnail renders in ci.yml. A stale manifest means the model
+        # change forgot to run `uv run python scripts/manifest.py`.
+        run: uv run python scripts/manifest.py
+      - name: manifest freshness (fail on drift)
+        # Note: job working-directory is build123d/, hence the relative path.
+        run: git diff --exit-code manifest.json
+      - name: tests (registry-driven manifold + manifest schema + bake)
+        run: uv run pytest tests/ -q
+      - name: export all models (STL + GLB + PNG)
+        run: uv run python scripts/export.py
+      - name: bake presets (STL + GLB per preset)
+        # --presets-only is the P1c build input; exercising it in CI keeps
+        # the contract covered (tests also assert the output set).
+        run: uv run python scripts/export.py --presets-only out/presets
+      # ---- ADDED (pst-ae3v): advisory VLM render review, Layer 2 of pst-3eun ----
+      - name: advisory VLM render review (never gates)
+        # A vision model eyeballs the just-exported out/*.png. ADVISORY ONLY:
+        # render_review.py always exits 0, so this can never fail the job (and
+        # the job itself is not a required check). With no OPENROUTER_API_KEY
+        # the script prints a skip note and still exits 0 — safe on forks and
+        # on PRs from contributors without the secret.
+        #
+        # TOGGLE: unset/remove the OPENROUTER_API_KEY repo secret to disable the
+        # review (the step then prints a skip note, green). RENDER_REVIEW_MODEL
+        # overrides the vision model id if needed.
+        #
+        # Bounded to one review per PR head: it lives in the bd123 job, which
+        # runs once per push to a build123d/** PR; the script writes its
+        # Markdown straight to $GITHUB_STEP_SUMMARY.
+        continue-on-error: true
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: uv run python scripts/render_review.py --models-dir out
+      # ---- end ADDED ----
+      - name: upload artifacts (STL/GLB/PNG + viewer)
+        uses: actions/upload-artifact@v4
+        with:
+          name: bd123-models
+          path: |
+            build123d/out/
+            build123d/viewer/index.html
+      - name: render summary (PNGs inline)
+        run: |
+          echo "## build123d models" >> "$GITHUB_STEP_SUMMARY"
+          echo "Download the **bd123-models** artifact for STL/GLB + the drag-drop viewer (viewer/index.html)." >> "$GITHUB_STEP_SUMMARY"
+          for f in out/*.png; do echo "### $(basename "$f" .png)" >> "$GITHUB_STEP_SUMMARY"; done

@@ -43,6 +43,11 @@ from holders.registry import all_models  # noqa: E402
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 DEFAULT_MODEL = "qwen/qwen3-vl-235b-a22b-instruct"  # vision model (inx assess.ts pattern)
 
+# Bump when the rubric text or prompt scaffold in _build_prompt/RUBRICS changes,
+# so a summary is traceable to the exact wording that produced it. Reported in
+# the Markdown header alongside the model id (bead pst-ae3v, AC 2).
+PROMPT_VERSION = "1"
+
 # Mount-type -> the checklist a reviewer applies to the render. Keyed by the
 # same names as registry.KNOWN_MOUNTS so a new mount contract can add its rubric
 # alongside its deterministic check.
@@ -177,7 +182,14 @@ def main(argv: list[str] | None = None) -> int:
     api_key = os.environ.get("OPENROUTER_API_KEY", "")
     by_slug = _models_by_slug()
 
-    parts = ["## Advisory render review", "", "_Vision-model sanity check — NOT a gate._", ""]
+    parts = [
+        "## Advisory render review",
+        "",
+        "_Vision-model sanity check — NOT a gate._",
+        "",
+        f"_Model: `{args.model}` · prompt version: `{PROMPT_VERSION}`_",
+        "",
+    ]
     for png in pngs:
         parts.append(review_one(png, by_slug, api_key, args.model))
     _emit("\n".join(parts))
