@@ -167,10 +167,25 @@ cannot silently void it or let it excuse a new, real defect.
 
 ### Advisory render review (Layer 2, not a gate)
 `scripts/render_review.py` sends each model's 3-view PNG plus the mount rubric
-to a vision model via OpenRouter and prints a Markdown summary. It is
-**advisory only** — always exits 0, and degrades gracefully (a skip note)
-when `OPENROUTER_API_KEY` is absent. Wiring it into CI needs a workflow edit
-and the `OPENROUTER_API_KEY` secret — tracked as a follow-up (see the PR).
+to a vision model via OpenRouter and prints a Markdown summary (naming the exact
+model id and prompt version it used). It is **advisory only** — always exits 0,
+and degrades gracefully (a skip note) when `OPENROUTER_API_KEY` is absent.
+
+**CI wiring (pst-ae3v):** the review runs as an added step in the advisory
+`bd123` job, after the export step, against the just-rendered `out/*.png`. It
+never gates — the `bd123` job is not a required check, the step carries
+`continue-on-error`, and the script always exits 0. It runs once per PR head
+(the `bd123` job runs once per push to a `build123d/**` PR) and writes its
+Markdown straight to the job step summary.
+
+**Toggle:** delete the `OPENROUTER_API_KEY` repo secret to disable the review
+(the step prints a skip note and stays green); delete the step for a hard off;
+set `RENDER_REVIEW_MODEL` to change the vision model.
+
+Activating it requires a `.github/workflows/` edit plus the `OPENROUTER_API_KEY`
+secret — both outside the worker's access — so the exact change is **staged for
+an operator** in [`ci/`](ci/README.md): the proposed workflow
+(`ci/bd123.yml.proposed`) and the two activation steps.
 
 ## PR conventions
 **Embed renders via commit-SHA raw URLs, never branch-relative ones.**
