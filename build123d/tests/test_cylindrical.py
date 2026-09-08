@@ -30,6 +30,7 @@ from opengrid.constants import (  # noqa: E402
 from opengrid.multiconnect import RoundHead, SnapInSlotCutter  # noqa: E402
 
 from holders.cylindrical import (  # noqa: E402
+    BORE_CLEARANCE,
     D_MAX,
     D_MIN,
     FLOOR_DEFAULT,
@@ -385,8 +386,9 @@ def test_no_downward_facing_fillets(d, h):
     that prints as a curl. Every face steeper than 45° below horizontal must
     be either the flat bed itself (touching z=0), a 45° chamfer (PLANE/CONE),
     or the library slot profile (the spec, exempt) — never a rolled fillet
-    surface. (The lone pre-existing 0.1 mm bore-top ledge at z=(h+8)/2 is a
-    PLANE, not a fillet, and is flagged as an out-of-scope follow-up.)"""
+    surface. (The internal bore top-cap ledge at z=(h+8)/2 that the earlier
+    finite bore left is now gone — pst-ky8n's full-height re-carve removes it;
+    ``test_bore_spans_full_height_no_internal_ledge`` pins that directly.)"""
     part = holder(d=d, h=h)
     boxes = _slot_boxes(d, h)
     cos45 = math.cos(math.radians(45))
@@ -405,6 +407,90 @@ def test_no_downward_facing_fillets(d, h):
                 offenders.append((str(f.geom_type), round(f.area, 1),
                                   (round(c.X, 1), round(c.Y, 1), round(c.Z, 1))))
     assert not offenders, f"downward-facing fillet surfaces present: {offenders}"
+
+
+def _bore_top_cap_faces(part, r_in, h, floor_top):
+    """Downward-facing horizontal PLANE faces lying wholly inside the bore
+    annulus (radius <= r_in + clearance) and strictly between the floor top
+    and the collar top — i.e. an internal top cap or annular ledge. The bore
+    wall itself is a CYLINDER (not a PLANE) so it never matches; a real ledge
+    (a flat downward face left where a finite bore stopped inside solid) does.
+    """
+    lim = r_in + BORE_CLEARANCE + 0.5
+    out = []
+    for f in part.faces():
+        if f.geom_type != GeomType.PLANE:
+            continue
+        if f.normal_at(f.center()).Z >= -0.99:   # not a downward-horizontal face
+            continue
+        bb = f.bounding_box()
+        # The whole face must sit within the bore cylinder (all XY extremes
+        # inside r_in+clearance) — this excludes plate/pocket downward faces,
+        # which lie further out in -Y at radius >> r_in.
+        if max(abs(bb.min.X), abs(bb.max.X), abs(bb.min.Y), abs(bb.max.Y)) > lim:
+            continue
+        c = f.center()
+        if floor_top + 0.5 < c.Z < h - 0.5:
+            out.append((round(math.hypot(c.X, c.Y), 2), round(c.Z, 2), round(f.area, 2)))
+    return out
+
+
+@pytest.mark.parametrize(
+    "d,h",
+    [
+        (66.0, 60.0),   # holder_spray_can production preset
+        (73.0, 50.0),   # holder_bottle_500ml production preset
+        (66.0, H_MIN),  # min collar height in range
+        (66.0, H_MAX),  # max collar height in range
+        (D_MIN, H_MAX), # thin+tall corner
+        (D_MAX, H_MIN), # wide+short corner
+    ],
+)
+def test_bore_spans_full_height_no_internal_ledge(d, h):
+    """Regression (pst-ky8n): the re-carved bore must span the FULL collar at
+    radius r_in + BORE_CLEARANCE, leaving no internal horizontal top cap and no
+    annular ledge anywhere in the bore.
+
+    History: the bore was ``Cylinder(r_in+clearance, height=h+8, CENTER)``,
+    centred at the origin, so it reached only z=(h+8)/2. For any h>8 the upper
+    collar was NOT re-carved with the slip-fit clearance (tight at r_in) and a
+    ~0.1 mm downward annular ledge sat at z=(h+8)/2 — a flat downward face the
+    print audit reads as a 90° overhang (15.4 mm^2 on the default preset). The
+    fix sizes the cut to the full envelope (pst-xz3m, PR #95).
+
+    Two section-based assertions:
+    1. No downward-facing PLANE lies inside the bore annulus between the floor
+       top and the collar top (``_bore_top_cap_faces``) — no top cap / ledge.
+    2. Sectioning the solidity along Z at the SOLID back (-Y): the inner void
+       wall sits at r_in+clearance for every level of the collar interior — the
+       clearance covers the WHOLE bore, with no tight upper section. A point
+       just inside the clearance is empty (carved); a point just past it is in
+       the wall (solid).
+    """
+    part = holder(d=d, h=h)
+    r_in = d / 2.0
+    floor_top = FLOOR_DEFAULT
+
+    ledges = _bore_top_cap_faces(part, r_in, h, floor_top)
+    assert not ledges, (
+        f"internal bore top-cap/ledge faces (radius, z, area) present: {ledges}"
+    )
+
+    # Section the solidity along Z at the back (-Y), where the collar wall and
+    # plate are solid at every height (no opening there). The bore void wall
+    # must be at r_in+clearance across the full interior.
+    zs = [
+        floor_top + 1.0 + i * (h - 1.0 - (floor_top + 1.0)) / 11.0
+        for i in range(12)
+    ]
+    for z in zs:
+        assert not part.is_inside((0.0, -(r_in + BORE_CLEARANCE / 2.0), z)), (
+            f"bore not carved to full clearance at z={z:.1f} "
+            "(upper collar left tight at r_in — the ledge bug)"
+        )
+        assert part.is_inside((0.0, -(r_in + BORE_CLEARANCE + 0.3), z)), (
+            f"collar wall missing behind the bore at z={z:.1f} (setup sanity)"
+        )
 
 
 def test_bed_contact_edges_are_chamfered():
