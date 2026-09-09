@@ -11,6 +11,15 @@
 // openGrid snaps on the standard 28 mm tile pitch (default), or a
 // Multiconnect slot backer for Multiboard rails.
 //
+// Intentional square Multiconnect slab corners (pst-jvui / pst-kapi):
+// accepted poke past the r1 plate outline is 0.414214 mm (sqrt(2)-1).
+// Do not clip the slab: native CGAL shows an r1 clip intersects the
+// slot/on-ramp at both bottom corners (0.1238 mm^3 overlap) for
+// remote_w=44.5, side_clearance=0.45, wall=2.4, remote_h=124,
+// plate_len_max=67, slot_tolerance=1.075, on_ramp=true (other defaults;
+// plate W=50.2, H=67). Preserve the library slot geometry and shipped
+// silhouette per the pst-kapi contract; this bounded poke is accepted.
+//
 // Twin model: led_remote_holder_51x84mm.scad is this same design with
 // different remote dims / snap-grid defaults. The two files are kept
 // textually identical apart from the parameter defaults and this
