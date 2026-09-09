@@ -225,13 +225,33 @@ def _in_any_box(x: float, y: float, z: float, boxes) -> bool:
     return False
 
 
-def _outward_normal(part: Part, face):
-    """(center, outward-oriented unit normal) for a face of ``part``.
+def _face_point(face):
+    """Find a point on the trimmed face, never its untrimmed UV surface.
 
-    ``normal_at`` follows the face's own orientation, which boolean ops can
-    leave pointing inward; flip it using a point-membership test so it always
-    points out of the solid."""
+    A planar centroid can lie in a hole or beyond a concave boundary. Try
+    progressively finer interior grids in that case; fail explicitly rather
+    than silently auditing an off-face point if none can be found.
+    """
     c = face.center()
+    if face.is_inside(c):
+        return c
+    for uvs in (_OVERHANG_UV, tuple(i / 20 for i in range(1, 20)),
+                tuple(i / 100 for i in range(1, 100))):
+        for u in uvs:
+            for v in uvs:
+                p = face.position_at(u, v)
+                if face.is_inside(p):
+                    return p
+    raise ValueError("print audit could not find a point on a trimmed face")
+
+
+def _outward_normal(part: Part, face):
+    """(on-face point, outward-oriented unit normal) for a face of ``part``.
+
+    Probe only from the trimmed face: a centroid in a hole may have unrelated
+    material above it, which would incorrectly flip an upward-facing normal.
+    """
+    c = _face_point(face)
     n = face.normal_at(c)
     probe = (c.X + n.X * _NORMAL_PROBE, c.Y + n.Y * _NORMAL_PROBE, c.Z + n.Z * _NORMAL_PROBE)
     if part.is_inside(probe):
@@ -240,23 +260,37 @@ def _outward_normal(part: Part, face):
 
 
 def _face_samples(face, uvs):
-    """(point, normal) at a UV grid on ``face`` (skips points OCC can't map)."""
+    """(point, normal) samples restricted to the face's trimmed boundary.
+
+    UV bounds describe the underlying surface rectangle, including holes and
+    cut-away regions. Keep only points belonging to this face. A narrow face
+    missed by the grid still gets an on-face sample.
+    """
     out = []
     for u in uvs:
         for v in uvs:
             try:
                 p = face.position_at(u, v)
+                if not face.is_inside(p):
+                    continue
                 n = face.normal_at(p)
             except Exception:
                 continue
             out.append((p, n))
+    if not out:
+        p = _face_point(face)
+        out.append((p, face.normal_at(p)))
     return out
 
 
-def _signed(sample_n, ref_n):
-    """Orient a per-sample normal to agree with the face's outward normal."""
+def _signed(sample_n, ref_n, raw_ref_n):
+    """Apply the orientation correction measured at the SAME reference point.
+
+    Curved-face normals can legitimately differ by more than 90 degrees
+    across a face; comparing a sample to a distant reference would flip them.
+    """
     return sample_n if _dot(
-        (sample_n.X, sample_n.Y, sample_n.Z), (ref_n.X, ref_n.Y, ref_n.Z)
+        (raw_ref_n.X, raw_ref_n.Y, raw_ref_n.Z), (ref_n.X, ref_n.Y, ref_n.Z)
     ) >= 0 else -sample_n
 
 
@@ -277,7 +311,7 @@ def _max_overhang(part, up, boxes, hmin):
         for p, sn in _face_samples(face, _OVERHANG_UV) or [(c, n)]:
             if _in_any_box(p.X, p.Y, p.Z, boxes):
                 continue
-            s = _signed(sn, n)
+            s = _signed(sn, n, face.normal_at(c))
             cdot = s.X * up[0] + s.Y * up[1] + s.Z * up[2]
             if cdot < -_DOWN_EPS:
                 worst = max(worst, math.degrees(math.asin(min(1.0, -cdot))))
@@ -321,7 +355,7 @@ def _downward_curved_faces(part, up, boxes, hmin):
         for p, sn in _face_samples(face, _OVERHANG_UV) or [(c, n)]:
             if _in_any_box(p.X, p.Y, p.Z, boxes):
                 continue
-            s = _signed(sn, n)
+            s = _signed(sn, n, face.normal_at(c))
             cdot = s.X * up[0] + s.Y * up[1] + s.Z * up[2]
             if cdot < -_DOWN_EPS:
                 downward = True
@@ -441,6 +475,8 @@ def _longest_bridge(part, up, boxes, hmin):
                 qz = ai * u1[2] + bj * u2[2] + t * up[2]
                 if _in_any_box(qx, qy, qz, boxes):
                     continue
+                if not face.is_inside((qx, qy, qz)):
+                    continue
                 above = (qx + up[0] * eps, qy + up[1] * eps, qz + up[2] * eps)
                 below = (qx - up[0] * eps, qy - up[1] * eps, qz - up[2] * eps)
                 if part.is_inside(above) and not part.is_inside(below):
@@ -459,7 +495,7 @@ def _min_wall(part, up, boxes):
         for p, sn in _face_samples(face, _WALL_UV):
             if _in_any_box(p.X, p.Y, p.Z, boxes):
                 continue
-            s = _signed(sn, n)
+            s = _signed(sn, n, face.normal_at(c))
 
             def inside(depth: float) -> bool:
                 return part.is_inside(
