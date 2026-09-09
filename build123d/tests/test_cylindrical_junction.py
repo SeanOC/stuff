@@ -6,10 +6,12 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from build123d import Box, Pos
+
 from holders import cylindrical
 from holders.registry import all_models
 from tests.mount_contracts import verify
-from tests.print_audit import audit
+from tests.print_audit import _outward_normal, audit
 
 
 BASELINE_VOLUMES = {
@@ -51,9 +53,41 @@ def test_all_max_junction_prints_and_mounts(monkeypatch):
     monkeypatch.setattr(cylindrical, "_reinforce_junction", lambda part, *args: part)
     baseline = spec.build(values)
     baseline_report = _audit(spec, values, baseline)
-    assert not baseline_report.ok
-    assert baseline_report.max_overhang_deg == 90.0
-    assert baseline_report.min_wall_mm < 0.9
+    # Removing reinforcement is not a printability defect. The old audit
+    # reported 90 degrees / 0.131 mm only because this upward plate face's
+    # centroid and some UV samples lie inside the continuing collar, outside
+    # the trimmed face (pst-h1wy). Preserve the useful gusset independently.
+    assert baseline_report.ok, baseline_report.failures()
+    assert baseline_report.max_overhang_deg == 45.0
+    assert baseline_report.min_wall_mm == pytest.approx(2.25, abs=0.01)
+    assert 0 < part.volume - baseline.volume < 20
+    plate_top = next(f for f in baseline.faces()
+                     if abs(f.center().Z - 61.15) < 1e-6)
+    center = plate_top.center()
+    assert not plate_top.is_inside(center)
+    assert plate_top.normal_at(center).Z == pytest.approx(1)
+    assert baseline.is_inside((center.X, center.Y, center.Z + 0.05))
+    point, normal = _outward_normal(baseline, plate_top)
+    assert plate_top.is_inside(point)
+    assert normal.Z == pytest.approx(1)
+
+    # A still-valid bad mutation: cut a side-opening notch through the collar
+    # away from the registered mount cutters. Its roof is an actual downward
+    # face, with material above and a void below, rather than a centroid in
+    # another face's trimmed-away region. The unchanged 45-degree gate must
+    # catch this unsupported ceiling on the same baseline holder.
+    bad = baseline - Pos(35, 0, 90) * Box(10, 12, 4)
+    assert bad.is_valid
+    assert len(bad.solids()) == 1
+    ceiling_point = (35, 0, 92)
+    ceiling = next(f for f in bad.faces() if f.is_inside(ceiling_point))
+    assert ceiling.normal_at(ceiling_point).Z == pytest.approx(-1)
+    assert bad.is_inside((35, 0, 92.05))
+    assert not bad.is_inside((35, 0, 91.95))
+    bad_report = _audit(spec, values, bad)
+    assert not bad_report.ok
+    assert bad_report.max_overhang_deg == 90.0
+    assert any(f.startswith("overhang ") for f in bad_report.failures())
 
 
 @pytest.mark.parametrize(
