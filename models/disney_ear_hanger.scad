@@ -471,14 +471,6 @@ module wall_mount_placed() {
 // — pst-j3ej
 // ===================================================================
 
-// PART A — the standalone slim Multiconnect slot plate, in its OWN print
-// frame: the slab lies flat with the slot/panel face DOWN on the bed
-// (build z=0) and the dovetail rail rising UP (+build z). The vendored
-// multiconnectBack L-frame is a cube x[0,W] y[-t,0] z[0,H] with the slots
-// recessed from the y=0 mating face; rotate([-90,0,0]) maps L(x,y,z) ->
-// (x, z, -y), so the slab sits at build x[0,W] y[0,H] z[0,t] with the
-// mating face on the bed (L.y=0 -> build z=0). See the print note in the
-// header for why slot-DOWN / rail-UP (the rail cannot point below the bed).
 // The standalone Multiconnect slot plate, in its own STANDING print frame.
 // The slab sits in multiconnectBack's NATIVE frame — a wall in the X-Z
 // plane, thin in Y, standing on its z=0 bottom edge — so the slot openings
@@ -537,9 +529,9 @@ module plate_rail_standing() {
 
 // PART B backing — the saddle's wall end is a hollow arch the whole way
 // through (the inner cut's scale([1,2,2]) doubles its length past the wall
-// cap), so there is no solid there to host a socket. This refills the arch
-// channel over just the wall-cap depth (x in [wall_face_x-ov,
-// wall_face_x+dt_depth+2]) with the arch's OWN outer silhouette (baseShape
+// cap), so there is no solid there to host a socket. This refills the arch's
+// full outer silhouette across the wall slab (x in [wall_face_x-ov,
+// wall_face_x+dt_depth+2]) using (baseShape
 // + the wall-end hull, un-hollowed), clipped to that slab — a solid
 // mounting back flush inside the arch outline (bbox unchanged). Prints flat
 // on the bed with the rest of the wall face. The socket is then cut into it.
