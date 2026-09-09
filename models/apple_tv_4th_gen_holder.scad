@@ -282,8 +282,11 @@ vent_margin = 2; // @param number min=1.5 max=30 step=0.5 unit=mm group=vent lab
 // Tile counts are MINIMUMS: the plate always grows to whole tiles big
 // enough for the device, so the mount stays grid-aligned whatever the
 // device dimensions are set to.
-width_units  = 4;     // @param integer min=1 max=6 group=mount label="Width (openGrid units, min)"
-height_units = 4;     // @param integer min=1 max=6 group=mount label="Height (openGrid units, min)"
+// Device-relative minimums: plate = max(slider, computed device floor).
+// The UI has no dependency-aware minimum; 4 is the default-device floor.
+// Device dimensions may exceed it and auto-grow either plate dimension.
+width_units  = 4;     // @param integer min=4 max=6 group=mount label="Minimum width (tiles; larger devices auto-grow)"
+height_units = 4;     // @param integer min=4 max=6 group=mount label="Minimum height (tiles; larger devices auto-grow)"
 // Two interchangeable back mounts, exported as one STL each (the
 // 'filename' flag fans the export grid over the enum). Default keeps the
 // original openGrid snaps so the shipped cradle behaviour is unchanged;

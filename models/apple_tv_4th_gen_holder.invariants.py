@@ -183,8 +183,33 @@ def _inside(ctx, points):
     return votes * 2 > len(offsets)
 
 
-def check(ctx):
+def _check_plate_range(ctx):
+    """Fixed UI minima cover the default device; mesh checks use actual params."""
+    p = as_default_params(ctx["params"])
+    floors = {
+        "width_units": math.ceil((p["device_w"] + 2 * p["fit_clearance"]
+                                  + 2 * _MIN_WALL) / _SNAP_PITCH),
+        "height_units": math.ceil((p["shelf_t"] + p["device_h"]
+                                   + p["fit_clearance"]) / _SNAP_PITCH),
+    }
     failures = []
+    for name, floor in floors.items():
+        minimum = ctx["params"][name].get("min")
+        if minimum is None or minimum < floor:
+            failures.append(Failure(
+                "plate-slider-range",
+                f"{name} min={minimum} is below default-device floor {floor}",
+            ))
+        # Recorded pre-pst-12zu baseline: both plate axes are 112 mm.
+        if max(p[name], floor) * _SNAP_PITCH != 112:
+            failures.append(Failure(
+                "default-plate-baseline", f"{name} default plate must remain 112mm",
+            ))
+    return failures
+
+
+def check(ctx):
+    failures = _check_plate_range(ctx)
     p = as_default_params(ctx["params"])
 
     failures.extend(expect_connected_solids(ctx, 1))
