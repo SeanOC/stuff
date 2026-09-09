@@ -165,7 +165,6 @@ snap_lite    = false; // @param boolean group=mount label="Lite openGrid snaps (
 // slot exactly, threaded through the multiconnectBack() call.
 slot_tolerance = 1.0;  // @param number min=0.925 max=1.075 step=0.005 group=mount label="Slot fit tolerance"
 slot_retention = true; // @param boolean group=mount label="Slot retention (v2 snap)"
-dimple_scale   = 1.0;  // @param number min=0.5 max=1.5 step=0.05 group=mount label="Dimple scale (v1 only)"
 on_ramp        = true; // @param boolean group=mount label="Slot on-ramp lead-in"
 
 // Dovetail joint fit (multiconnect_plate rail <-> multiconnect_saddle
@@ -499,7 +498,6 @@ module mc_slab_standing() {
                          backThickness = mc_thickness,
                          quickRelease = !slot_retention,
                          tolerance = slot_tolerance,
-                         dimple = dimple_scale,
                          onRamp = on_ramp);
         translate([0, padding, 0])
             rotate([90, 0, 0])
