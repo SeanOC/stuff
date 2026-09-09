@@ -230,16 +230,24 @@ module plate() {
 //      slab so its solid back overlaps bury=0.6mm into the plate top and
 //      its mouths open at the front face (z = plate_top - bury + 6.5).
 module receiver() {
-    translate([0, H, 0])
-        zrot(180)
-            translate([-W / 2, 0, plate_top - bury])
-                rotate([-90, 0, 0])
-                    multiconnectBack(backWidth = W, backHeight = H,
-                                     distanceBetweenSlots = slot_spacing,
-                                     quickRelease = !slot_retention,
-                                     tolerance = slot_tolerance,
-                                     dimple = dimple_scale,
-                                     onRamp = on_ramp);
+    // Both plate sizes keep even the widest on-ramp inboard of the
+    // 1mm corners: 14 - 12*1.075 = 1.1mm minimum side clearance.
+    // Clip the slab to the plate outline without moving its slots.
+    intersection() {
+        translate([0, H, 0])
+            zrot(180)
+                translate([-W / 2, 0, plate_top - bury])
+                    rotate([-90, 0, 0])
+                        multiconnectBack(backWidth = W, backHeight = H,
+                                         distanceBetweenSlots = slot_spacing,
+                                         quickRelease = !slot_retention,
+                                         tolerance = slot_tolerance,
+                                         dimple = dimple_scale,
+                                         onRamp = on_ramp);
+        translate([0, 0, plate_top - bury])
+            linear_extrude(height = mc_thickness)
+                rect([W, H], rounding = corner_r, anchor = FRONT);
+    }
 }
 
 // === Assembly (root-level siblings; receiver never union()'d away) ===

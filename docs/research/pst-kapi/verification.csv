@@ -1,0 +1,30 @@
+model,case,params,before_mm3,after_mm3,delta_mm3,bbox_unchanged,watertight,solids,corner_probe_pass,inboard_samples_unchanged
+ego_powerhead_mount,default,{},285954.207846,285930.204023,-24.003823,True,True,1,True,True
+ego_powerhead_mount,ext_fillet-1.0,"{""ext_fillet"": 1.0}",286001.946475,285986.944142,-15.002333,True,True,1,True,True
+ego_powerhead_mount,ext_fillet-3.0,"{""ext_fillet"": 3.0}",285878.295206,285839.288890,-39.006316,True,True,1,True,True
+ego_powerhead_mount,backer_thickness-5.5,"{""backer_thickness"": 5.5}",279682.208045,279661.658028,-20.550017,True,True,1,True,True
+ego_powerhead_mount,backer_thickness-8.0,"{""backer_thickness"": 8.0}",295362.207849,295333.023318,-29.184531,True,True,1,True,True
+ego_powerhead_mount,slot_tolerance-min,"{""slot_tolerance"": 0.925}",287286.643141,287262.639318,-24.003823,True,True,1,True,True
+ego_powerhead_mount,slot_tolerance-max,"{""slot_tolerance"": 1.075}",284545.355739,284521.351917,-24.003823,True,True,1,True,True
+ego_powerhead_mount,combined,"{""backer_thickness"": 5.5, ""ext_fillet"": 3, ""slot_tolerance"": 1.075}",278197.443299,278164.049421,-33.393878,True,True,1,True,True
+ego_powerhead_mount,closest-onramp,"{""ext_fillet"": 3, ""slot_tolerance"": 1.005}",285791.422747,285752.416431,-39.006316,True,True,1,True,True
+ego_ea0820_edger_mount,default,{},332275.537700,332251.533873,-24.003827,True,True,1,True,True
+ego_ea0820_edger_mount,ext_fillet-1.0,"{""ext_fillet"": 1.0}",332353.044634,332338.042308,-15.002326,True,True,1,True,True
+ego_ea0820_edger_mount,ext_fillet-3.0,"{""ext_fillet"": 3.0}",332151.983161,332112.976882,-39.006279,True,True,1,True,True
+ego_ea0820_edger_mount,backer_thickness-5.5,"{""backer_thickness"": 5.5}",324435.537997,324414.987976,-20.550020,True,True,1,True,True
+ego_ea0820_edger_mount,backer_thickness-8.0,"{""backer_thickness"": 8.0}",344035.537696,344006.353160,-29.184537,True,True,1,True,True
+ego_ea0820_edger_mount,slot_tolerance-min,"{""slot_tolerance"": 0.925}",334062.785479,334038.781652,-24.003827,True,True,1,True,True
+ego_ea0820_edger_mount,slot_tolerance-max,"{""slot_tolerance"": 1.075}",330573.508963,330549.505136,-24.003827,True,True,1,True,True
+ego_ea0820_edger_mount,combined,"{""backer_thickness"": 5.5, ""ext_fillet"": 3, ""slot_tolerance"": 1.075}",322609.954720,322576.560874,-33.393846,True,True,1,True,True
+ego_ea0820_edger_mount,closest-onramp,"{""ext_fillet"": 3, ""slot_tolerance"": 1.025}",331610.313399,331571.307121,-39.006279,True,True,1,True,True
+opengrid_multiconnect_adapter,default,{},9833.587752,9827.975303,-5.612449,True,True,1,True,True
+opengrid_multiconnect_adapter,size-single,"{""size"": ""single""}",9833.587752,9827.975303,-5.612449,True,True,1,True,True
+opengrid_multiconnect_adapter,size-double,"{""size"": ""double""}",19670.111063,19664.498614,-5.612449,True,True,1,True,True
+opengrid_multiconnect_adapter,plate_t-3.0,"{""plate_t"": 3.0}",9050.451272,9044.838383,-5.612889,True,True,1,True,True
+opengrid_multiconnect_adapter,plate_t-6.0,"{""plate_t"": 6.0}",11399.860851,11394.248402,-5.612449,True,True,1,True,True
+opengrid_multiconnect_adapter,slot_tolerance-min,"{""slot_tolerance"": 0.925}",10020.969300,10015.356851,-5.612449,True,True,1,True,True
+opengrid_multiconnect_adapter,slot_tolerance-max,"{""slot_tolerance"": 1.075}",9634.282732,9628.670283,-5.612449,True,True,1,True,True
+opengrid_multiconnect_adapter,single-plate-3-wide-slot,"{""plate_t"": 3, ""size"": ""single"", ""slot_tolerance"": 1.075}",8851.146112,8845.533253,-5.612859,True,True,1,True,True
+opengrid_multiconnect_adapter,single-plate-6-wide-slot,"{""plate_t"": 6, ""size"": ""single"", ""slot_tolerance"": 1.075}",11200.555825,11194.943376,-5.612449,True,True,1,True,True
+opengrid_multiconnect_adapter,double-plate-3-wide-slot,"{""plate_t"": 3, ""size"": ""double"", ""slot_tolerance"": 1.075}",17704.364234,17698.750963,-5.613271,True,True,1,True,True
+opengrid_multiconnect_adapter,double-plate-6-wide-slot,"{""plate_t"": 6, ""size"": ""double"", ""slot_tolerance"": 1.075}",22405.774020,22400.161571,-5.612449,True,True,1,True,True

@@ -228,6 +228,21 @@ def _check_multiconnect_variant(stem: str) -> list[Failure]:
             "matches the grid-aligned plate",
         ))
 
+    # pst-kapi: slab corners follow the r2 source plate at low Y and
+    # the extension's r2 default at high Y. Probe the slab, below the body,
+    # so the rounded body cannot hide a square slab corner. The 0.1*r
+    # inset is outside the arc; 0.4*r is inside it and clear of the slots.
+    air, solid = [], []
+    for x, dx in [(0, 1), (_MC_PLATE_W, -1)]:
+        for y, dy in [(0, 1), (_MC_BACK_D, -1)]:
+            air.append([x + dx * 0.2, y + dy * 0.2, 3.25])
+            solid.append([x + dx * 0.8, y + dy * 0.8, 3.25])
+    if mesh.contains(np.array(air)).any() or not mesh.contains(np.array(solid)).all():
+        failures.append(Failure(
+            "multiconnect-corner-rounding",
+            "slab corners must be air outside the plate arc and solid inside it",
+        ))
+
     slot_xs = _mc_slot_xs(_MC_PLATE_W)
     zwall = 1.5
     y_channel = _MC_BACK_D * 0.5   # mid-plate, in the open channel
