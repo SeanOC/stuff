@@ -54,7 +54,6 @@ _DT_NECK = 8.0
 _DT_TIP = 12.0
 _DT_LEN = 24.0
 _DOVETAIL_Z = 11.0
-_DT_CLEAR = 0.25
 # Directional nub probe (opengrid): radius at which the strong front nub is
 # solid but the other three nubs are air, at the nub band's mid-height.
 _NUB_PROBE_R = 13.0
@@ -115,11 +114,26 @@ def _inside(mesh, points):
 
 
 def _air_span_z(mesh, x, y, z0, z1, step=0.2):
-    """Span of the AIR interval in z at (x,y) over [z0,z1] — 0 if none."""
-    zs = np.arange(z0, z1 + 1e-9, step)
+    """Span of connected air containing _DOVETAIL_Z within [z0,z1].
+
+    Return 0.0 if the anchor is outside the bounds or is not air. Walk
+    outward from its probe, stopping at the first solid on each side.
+    """
+    if not z0 <= _DOVETAIL_Z <= z1:
+        return 0.0
+    below = np.arange(_DOVETAIL_Z, z0 - 1e-9, -step)[::-1]
+    above = np.arange(_DOVETAIL_Z + step, z1 + 1e-9, step)
+    zs = np.concatenate((below, above))
     air = ~_inside(mesh, [[x, y, z] for z in zs])
-    zin = zs[air]
-    return (zin.max() - zin.min()) if len(zin) else 0.0
+    anchor = len(below) - 1
+    if not air[anchor]:
+        return 0.0
+    lo = hi = anchor
+    while lo > 0 and air[lo - 1]:
+        lo -= 1
+    while hi + 1 < len(zs) and air[hi + 1]:
+        hi += 1
+    return float(zs[hi] - zs[lo])
 
 
 def _components(mesh) -> int:
