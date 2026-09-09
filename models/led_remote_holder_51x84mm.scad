@@ -16,6 +16,20 @@
 // includes from vendored libs/ — a shared project-side module file is
 // not reachable there. Fix a bug here → apply it to the twin too.
 //
+// === Intentional square Multiconnect slab corners (pst-5fq5) ===
+// The backer stays rectangular; the plate above it has R1 corners
+// (plate_corner_r = 1, NOT R8). Native CGAL measures a maximum radial
+// poke of 0.414214 mm beyond that outline: sqrt(2)*1 - 1. Defaults
+// attain that maximum, as do every plate-footprint @param min/max and the
+// narrow/tall and wide/short combinations (within STL precision).
+// Do not clip the slab: at remote_w=44, side_clearance=0.6,
+// plate_len_max=67, slot_tolerance=1.075, on_ramp=true, the R1
+// corner-removal region intersects the slot/on-ramp entrance. The
+// pst-kapi contract preserves the library slot profile and positions;
+// this bounded corner poke is accepted to preserve them and the shipped
+// silhouette. The sidecar pins the square corners and slot boundaries.
+// This exception is specific to this model; no twin geometry changes.
+//
 // LICENSING: the openGrid snap comes from QuackWorks
 // (libs/QuackWorks/openGrid/opengrid-snap.scad, openGrid by David D,
 // OpenSCAD port by metasyntactic), licensed CC BY-NC-SA 4.0 —
