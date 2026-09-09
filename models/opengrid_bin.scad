@@ -370,14 +370,22 @@ module body() {
 // +Y is up, the part slides DOWN onto the wall connectors, and the load
 // seats the connectors into the slot domes.
 module multiconnect_backer() {
-    translate([W / 2, 0, mc_thickness])
-        rotate(180, [0, 1, 1])
-            multiconnectBack(backWidth = W, backHeight = H,
-                             distanceBetweenSlots = slot_spacing,
-                             quickRelease = !slot_retention,
-                             tolerance = slot_tolerance,
-                             dimple = dimple_scale,
-                             onRamp = on_ramp);
+    // Slot tools (including the r=12 on-ramp at max tolerance) stay
+    // at least 14 - 12*1.075 = 1.1mm inboard for width_units=1..6.
+    // The r=1 corner clip therefore removes slab only, never slot faces.
+    intersection() {
+        translate([0, 0, -ov])
+            linear_extrude(height = mc_thickness + 2 * ov)
+                rect([W, H], rounding = corner_r, anchor = FRONT);
+        translate([W / 2, 0, mc_thickness])
+            rotate(180, [0, 1, 1])
+                multiconnectBack(backWidth = W, backHeight = H,
+                                 distanceBetweenSlots = slot_spacing,
+                                 quickRelease = !slot_retention,
+                                 tolerance = slot_tolerance,
+                                 dimple = dimple_scale,
+                                 onRamp = on_ramp);
+    }
 }
 
 // === Assembly ===

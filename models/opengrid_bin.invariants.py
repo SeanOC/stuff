@@ -200,6 +200,8 @@ def _check_multiconnect_variant(stem: str, want_w: float,
             "the grid-aligned plate",
         ))
 
+    failures.extend(check_multiconnect_corners(mesh, want_w, want_h))
+
     # (a) Slots exist and open toward the WALL (-Z): the channel is void
     # at the wall-side z (z~1.5) at each 25mm-pitch slot centre, while
     # the slab BACK (z~6) stays solid. A collapsed generator diff()
@@ -289,3 +291,24 @@ def _component_count(mesh) -> int:
         if ra != rb:
             parent[ra] = rb
     return len({find(i) for i in range(n)})
+
+
+def check_multiconnect_corners(mesh, width, height):
+    """Probe all four r=1 slab corners, independent of plate dimensions.
+
+    At diagonal inset 0.15 the square corner must be air; at 0.4 it
+    must be solid. Probe below, within, and near the top of the slab,
+    away from the plate rim chamfer. Mirrors pst-4g1u's paired probes.
+    """
+    failures = []
+    for z in (0.2, 3.25, 6.0):
+        for sx in (-1, 1):
+            for top in (False, True):
+                points = [[sx * (width / 2 - inset),
+                           height - inset if top else inset, z]
+                          for inset in (0.15, 0.4)]
+                if list(mesh.contains(points)) != [False, True]:
+                    failures.append(Failure(
+                        "multiconnect-corner-rounding",
+                        f"expected corner air/solid pair at {points}"))
+    return failures
