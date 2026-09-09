@@ -521,6 +521,21 @@ def _check_multiconnect_variant(stem: str, plate_w: float,
     # the backer sits at x[-W/2,W/2], y[0,H], z[0,6.5] like opengrid_bin.
     mesh.apply_transform(trimesh.transformations.rotation_matrix(
         -math.pi / 2, [1, 0, 0]))
+    corner_air = []
+    corner_solid = []
+    for side in [-1, 1]:
+        for edge_y, inward_y in [(0, 1), (plate_h, -1)]:
+            for depth in [0.5, _MC_THICKNESS / 2, _MC_THICKNESS - 0.5]:
+                corner_air.append([side * (plate_w / 2 - 0.1),
+                                   edge_y + inward_y * 0.1, depth])
+                corner_solid.append([side * (plate_w / 2 - 0.4),
+                                     edge_y + inward_y * 0.4, depth])
+    if mesh.contains(np.array(corner_air)).any() or not mesh.contains(
+            np.array(corner_solid)).all():
+        failures.append(Failure(
+            "multiconnect-corner-rounding",
+            "Slab corners must match the plate's 1mm radius at every depth",
+        ))
     slot_xs = _mc_slot_xs(plate_w)
     zwall = 1.5
     y_channel = 0.35 * plate_h    # below the domes, in the open channel
