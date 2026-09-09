@@ -113,10 +113,12 @@ export function buildSweepCases(params: Param[]): SweepCase[] {
  * Register a describe() block sweeping one model. Call from a
  * per-model test file so vitest can run models in parallel workers.
  */
-export function sweepModel(stem: string): void {
+export function sweepModel(stem: string, extraCases: SweepCase[] = []): void {
   const source = readFileSync(path.join(ROOT, "models", `${stem}.scad`), "utf8");
   const { params } = parseScadParams(source);
-  const cases = buildSweepCases(params);
+  const cases = [...buildSweepCases(params), ...extraCases.map((c) => ({
+    label: c.label, values: { ...defaultsOf(params), ...c.values },
+  }))];
 
   describe(`param sweep: ${stem}`, () => {
     for (const c of cases) {
