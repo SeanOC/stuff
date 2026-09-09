@@ -25,9 +25,10 @@ import argparse
 import importlib.util
 import sys
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import trimesh
+if TYPE_CHECKING:
+    import trimesh
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MODELS_DIR = REPO_ROOT / "models"
@@ -72,6 +73,9 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 3
 
+    # Keep export-path selection usable without the gated mesh dependencies.
+    import trimesh
+
     mesh = trimesh.load(stl, force="mesh")
     if not isinstance(mesh, trimesh.Trimesh):
         print(f"error: trimesh could not load {stl} as a single mesh", file=sys.stderr)
@@ -103,13 +107,11 @@ def _resolve_stl(stem: str, source: str) -> Path:
     """Pick which exports/<…>.stl to invariant-check for this model.
 
     Default case: exports/<stem>.stl. When the model opts into the
-    filename grid (st-sq6), there is no <stem>.stl; the invariants
-    check the variant produced by the param's default value, which
-    is what the catalog uses to represent the model.
+    filename grid (st-sq6), check the variant produced by the param's
+    default value, which is what the catalog uses to represent the model.
+    Ignore legacy <stem>.stl files left over from before grid opt-in.
     """
     default_path = EXPORTS_DIR / f"{stem}.stl"
-    if default_path.exists():
-        return default_path
     params = parse_params(source)
     fn_params = filename_export_params(params)
     if not fn_params:
