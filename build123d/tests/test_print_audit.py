@@ -50,10 +50,14 @@ from tests.print_audit import (  # noqa: E402
     MIN_WALL_MM,
     PrintAuditReport,
     _dot,
+    _face_samples,
+    _WALL_UV,
+    _OVERHANG_UV,
     _FLAT_COS,
     _height,
     _in_plane_axes,
     _outward_normal,
+    _signed,
     audit,
 )
 
@@ -154,6 +158,64 @@ def _plate_with_pocket() -> tuple[Box, SnapInSlotCutter]:
     cutter = Pos(0, mount_y + 4.15, 26.0) * SnapInSlotCutter(rotation=(90, 0, 0))
     part = (plate - cutter).clean()
     return part, cutter
+
+
+# --- trimmed-face regressions (pst-h1wy) ----------------------------------
+
+@pytest.mark.parametrize("offset_y", [0.0, 2.5], ids=["holed", "concave"])
+def test_trimmed_top_face_keeps_upward_normal_and_on_face_samples(offset_y):
+    # A raised block occupies the hole/notch in the plate's exposed top. Its
+    # centroid lies in that block, so the old center+normal probe flipped +Z.
+    plate = Box(20, 20, 4)
+    raised = Pos(0, offset_y, 2.065) * Box(12, 12 if offset_y == 0 else 15, 0.13)
+    part = (plate + raised).clean()
+    face = next(f for f in part.faces() if abs(f.center().Z - 2) < 1e-6)
+    centroid = face.center()
+    assert not face.is_inside(centroid), "fixture must put centroid outside trim"
+    assert part.is_inside((centroid.X, centroid.Y, centroid.Z + 0.05))
+    assert face.normal_at(centroid).Z == pytest.approx(1)
+
+    point, normal = _outward_normal(part, face)
+    assert face.is_inside(point)
+    assert normal.Z == pytest.approx(1)
+    for grid in (_WALL_UV, _OVERHANG_UV):
+        samples = _face_samples(face, grid)
+        assert samples
+        assert all(face.is_inside(p) for p, _ in samples)
+        assert all(n.Z == pytest.approx(1) for _, n in samples)
+
+    report = audit(part, _UP_Z, model="trimmed_top")
+    assert report.max_overhang_deg == 0
+    assert report.longest_bridge_mm == 0
+    # Sampling the raised patch as though it belonged to the plate top used
+    # to report its 0.13 mm height as a wall, despite the thick plate below.
+    assert report.min_wall_mm == pytest.approx(3.0)
+    assert report.ok, report.format()
+
+
+def test_narrow_holed_face_gets_sample_when_uv_grid_misses():
+    # Every point of both normal grids is in the hole; do not silently omit
+    # this face (including from wall thickness) or fall back to its centroid.
+    part = Box(100, 100, 4) - Box(98, 98, 10)
+    face = part.faces().sort_by(Axis.Z)[-1]
+    assert not any(face.is_inside(face.position_at(u, v))
+                   for u in _OVERHANG_UV for v in _OVERHANG_UV)
+    samples = _face_samples(face, _WALL_UV)
+    assert samples
+    assert all(face.is_inside(p) for p, _ in samples)
+    assert _outward_normal(part, face)[1].Z == pytest.approx(1)
+
+
+def test_curved_samples_keep_orientation_across_opposite_normals():
+    part = Cylinder(10, 5)
+    face = next(f for f in part.faces() if str(f.geom_type) == "GeomType.CYLINDER")
+    point, outward = _outward_normal(part, face)
+    raw_reference = face.normal_at(point)
+    samples = _face_samples(face, _OVERHANG_UV)
+    assert any(n.dot(outward) < 0 for _, n in samples)
+    for _, normal in samples:
+        assert _signed(normal, outward, raw_reference).dot(normal) == pytest.approx(1)
+        assert _signed(normal, -outward, raw_reference).dot(normal) == pytest.approx(-1)
 
 
 # --- overhang (AC 2) ------------------------------------------------------
