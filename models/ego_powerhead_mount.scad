@@ -113,7 +113,6 @@ snap_lite = false; // @param boolean group=mount label="Lite openGrid snaps (3.4
 // shipped backer exactly, threaded through the multiconnectBack() call.
 slot_tolerance = 1.0;  // @param number min=0.925 max=1.075 step=0.005 group=mount label="Slot fit tolerance"
 slot_retention = true; // @param boolean group=mount label="Slot retention (v2 snap)"
-dimple_scale   = 1.0;  // @param number min=0.5 max=1.5 step=0.05 group=mount label="Dimple scale (v1 only)"
 on_ramp        = true; // @param boolean group=mount label="Slot on-ramp lead-in"
 
 // Every convex edge on the source bracket measures r=2.0 (plate
@@ -386,7 +385,6 @@ module backer_panel() {
                                  distanceBetweenSlots = slot_spacing,
                                  quickRelease = !slot_retention,
                                  tolerance = slot_tolerance,
-                                 dimple = dimple_scale,
                                  onRamp = on_ramp);
         linear_extrude(height = bt)
             translate([plate_w / 2, back_d / 2])

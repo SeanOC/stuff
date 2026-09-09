@@ -117,7 +117,7 @@ export const CATALOG: Record<string, CatalogEntry> = {
   ego_powerhead_mount: {
     categoryId: "multiboard",
     blurb:
-      "Ego Power+ powerhead wall holder converted from screw-mount to openGrid: the operator's holder mesh import()ed as-is, its four countersunk screw holes plugged solid, and eight directional openGrid snaps (strong nub up) fused to a grid-aligned back plate. Prints supportless snaps-down — snap the four breakaway ribs out of the shelf notches before first use. Hangs the powerhead by its shaft on the original fork and shelf bearing surfaces.",
+      "Ego Power+ powerhead wall holder converted from screw-mount to openGrid or Multiconnect (pick mount_type): the operator's holder mesh import()ed as-is, its four countersunk screw holes plugged solid, and either eight directional openGrid snaps (strong nub up) fused to a grid-aligned back plate or a Multiconnect slot-plate backer. Prints supportless snaps-down — snap the four breakaway ribs out of the shelf notches before first use. Hangs the powerhead by its shaft on the original fork and shelf bearing surfaces.",
   },
   ryobi_p2860_strap_saddle: {
     categoryId: "multiboard",
@@ -127,7 +127,7 @@ export const CATALOG: Record<string, CatalogEntry> = {
   ego_ea0820_edger_mount: {
     categoryId: "multiboard",
     blurb:
-      "Ego MultiHead EA0820 edger attachment wall mount converted from screw-mount to openGrid: the operator's bracket mesh import()ed as-is, its four countersunk screw holes plugged solid, and ten directional openGrid snaps (strong nub up) fused to a grid-aligned extended back plate. Prints supportless snaps-down — snap the two breakaway ribs out of the tool slots before first use. Hangs the EA0820 edger head by its original slot bearing surfaces.",
+      "Ego MultiHead EA0820 edger attachment wall mount converted from screw-mount to openGrid or Multiconnect (pick mount_type): the operator's bracket mesh import()ed as-is, its four countersunk screw holes plugged solid, and either ten directional openGrid snaps (strong nub up) fused to a grid-aligned extended back plate or a Multiconnect slot-plate backer. Prints supportless snaps-down — snap the two breakaway ribs out of the tool slots before first use. Hangs the EA0820 edger head by its original slot bearing surfaces.",
   },
   littletikes_dream_machine_cartridge_holder: {
     categoryId: "toys",
