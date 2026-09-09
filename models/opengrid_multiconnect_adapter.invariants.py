@@ -127,6 +127,20 @@ def _check_variant(stem, variant, w, snap_count, slot_cx) -> list[Failure]:
                 f"{want_x:.1f}mm — snap count or pitch drifted",
             ))
 
+    # pst-kapi: probe within the receiver slab, clear of the plate and
+    # snaps. At r1, a 0.1mm diagonal inset is outside the rounded outline;
+    # a 0.4mm inset is inside. Check all corners of both exported sizes.
+    air, solid = [], []
+    for x, dx in [(-w / 2, 1), (w / 2, -1)]:
+        for y, dy in [(0, 1), (_PLATE_H, -1)]:
+            air.append([x + dx * 0.1, y + dy * 0.1, b[1][2] - 3.25])
+            solid.append([x + dx * 0.4, y + dy * 0.4, b[1][2] - 3.25])
+    if mesh.contains(np.array(air)).any() or not mesh.contains(np.array(solid)).all():
+        failures.append(Failure(
+            f"{variant}-corner-rounding",
+            "receiver corners must be air outside the plate arc and solid inside it",
+        ))
+
     # 3. Multiconnect receiver: each slot is a real carved channel.
     front_z = ext[2]
     for cx in slot_cx:

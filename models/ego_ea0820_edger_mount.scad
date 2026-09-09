@@ -342,15 +342,25 @@ module grid_snaps() {
 // face-kiss.
 module backer_panel() {
     bt = backer_thickness + mc_weld;
-    translate([0, back_d, bt])
-        rotate([90, 0, 0])
-            multiconnectBack(backWidth = plate_w, backHeight = back_d,
-                             backThickness = bt,
-                             distanceBetweenSlots = slot_spacing,
-                             quickRelease = !slot_retention,
-                             tolerance = slot_tolerance,
-                             dimple = dimple_scale,
-                             onRamp = on_ramp);
+    // Match the r2 imported plate corners at low Y and the extension's
+    // tunable corners at high Y. Only the slab is clipped (pst-kapi).
+    // The slot channels remain inboard: their nearest edge is >=4.58mm
+    // from X=0/56 at maximum tolerance, beyond the largest 3mm corner.
+    intersection() {
+        translate([0, back_d, bt])
+            rotate([90, 0, 0])
+                multiconnectBack(backWidth = plate_w, backHeight = back_d,
+                                 backThickness = bt,
+                                 distanceBetweenSlots = slot_spacing,
+                                 quickRelease = !slot_retention,
+                                 tolerance = slot_tolerance,
+                                 dimple = dimple_scale,
+                                 onRamp = on_ramp);
+        linear_extrude(height = bt)
+            translate([plate_w / 2, back_d / 2])
+                rect([plate_w, back_d],
+                     rounding = [ext_fillet, ext_fillet, 2, 2]);
+    }
 }
 
 translate([0, 0, body_lift]) holder_body();
