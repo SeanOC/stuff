@@ -1,7 +1,7 @@
 """Invariants for the OpenGrid LED-remote holder (st-vmn, pst-egv).
 
-Twin sidecar: led_remote_holder_55x124mm.invariants.py is identical —
-both variants share one design and the checks are all param-driven.
+The 55x124mm twin shares the cradle checks. This sidecar additionally
+pins the intentional square Multiconnect backer exception (pst-5fq5).
 
 The holder ships a selectable back mount (`mount_type`, exported as a
 separate STL per choice via the filename grid): the original openGrid
@@ -236,6 +236,98 @@ def _check_multiconnect_variant(stem: str, outer_w: float,
             f"inter-slot web at x=0 (z={zwall}) is void — slot pitch "
             f"drifted off {_MC_PITCH}mm or an extra slot opened",
         ))
+    failures.extend(_check_accepted_square_backer(mesh, path.name))
+    return failures
+
+
+def _check_accepted_square_backer(mesh, label: str) -> list[Failure]:
+    """Default-only mesh contract, independent of current library constants.
+
+    Library local slot profile (half-width, depth): (10.15, 0),
+    (10.15, 1.2121), (7.65, 3.712), (7.65, 5). The model maps
+    depth to z=4.15-depth and the dome centre to y=87.3-13=74.3.
+    Probe both sides of each boundary, avoiding faces. The main profile
+    probes avoid ramp stations (y=49.3, 24.3, -0.7) and the retention notch;
+    dedicated probes below pin the ramp and retention dimensions too.
+    """
+    failures = []
+    points = []
+    expected = []
+    names = []
+
+    def probe(name, point, solid):
+        names.append(name)
+        points.append(point)
+        expected.append(solid)
+
+    for x in _MC_SLOT_XS:
+        for z, half_width in ((4.0, 10.15),
+                              (2.0, 10.15 - (2.15 - 1.2121) * 2.5 / 2.4999),
+                              (0.2, 7.65)):
+            for sign in (-1, 1):
+                for delta, solid in ((-0.08, False), (0.08, True)):
+                    probe(f"slot x={x} z={z} flank={sign} offset={delta}",
+                          [x + sign * (half_width + delta), 36.8, z], solid)
+        for z, solid in ((4.07, False), (4.23, True)):
+            probe(f"slot x={x} floor z={z}", [x, 36.8, z], solid)
+        for y, solid in ((84.35, False), (84.55, True)):
+            probe(f"slot x={x} dome y={y}", [x, y, 4.0], solid)
+        # v2 retention triangle: 0.4mm deep over 8mm below y=74.3;
+        # y=70.3 avoids the dome overlapping the top of that triangle.
+        # Lead-in cone at y=49.3: radius 10.15 at z=4.15, 12 at z=-0.85.
+        for y, z, half_width in ((70.3, 4.0, 9.95),
+                                  (49.3, 0.2, 10.15 + 3.95 * 1.85 / 5)):
+            for sign in (-1, 1):
+                for delta, solid in ((-0.08, False), (0.08, True)):
+                    probe(f"slot x={x} retention/ramp y={y} flank={sign} offset={delta}",
+                          [x + sign * (half_width + delta), y, z], solid)
+        # At the entrance z=4 is within the full 20.3mm-wide channel.
+        # The outer flank is 28.35-12.5-10.15=5.7mm from the slab edge.
+        for sign in (-1, 1):
+            for width, solid in ((10.0, False), (10.3, True)):
+                probe(f"slot x={x} entrance flank={sign} width={width}",
+                      [x + sign * width, 0.1, 4.0], solid)
+
+    actual = mesh.contains(np.array(points))
+    bad = [names[i] for i in range(len(points)) if actual[i] != expected[i]]
+    if bad:
+        failures.append(Failure(
+            "multiconnect-slot-profile",
+            f"{label}: shipped slot positions/dimensions changed: " + "; ".join(bad),
+        ))
+
+    # Require material at all four square slab corners, away from the
+    # boundary and below the rounded plate (which begins at z=6.1).
+    corners = [[sx * 28.25, y, z]
+               for sx in (-1, 1) for y in (0.1, 87.2)
+               for z in (0.2, 4.0, 6.0)]
+    if not bool(mesh.contains(np.array(corners)).all()):
+        failures.append(Failure(
+            "multiconnect-intentional-square-corners",
+            f"{label}: accepted square slab corner material missing; "
+            "clipping to the R1 plate conflicts with the slot/on-ramp "
+            "at supported dimensions (pst-5fq5)",
+        ))
+
+    # Signed distance outside the actual R1 plate outline, per corner.
+    # Use fixed shipped dimensions, independent of changed model/library
+    # constants: a missing corner AND a larger protrusion must fail.
+    verts = mesh.vertices
+    slab = verts[(verts[:, 2] >= -0.01) & (verts[:, 2] <= 6.01)]
+    xy = slab[:, :2] - [0, 43.65]
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            corner = xy[(sx * xy[:, 0] > 27.35) &
+                        (sy * xy[:, 1] > 42.65)]
+            poke = (float(np.max(np.linalg.norm(
+                np.abs(corner) - [27.35, 42.65], axis=1))) - 1
+                if len(corner) else float("nan"))
+            if not math.isfinite(poke) or abs(poke - 0.4142135624) > 0.02:
+                failures.append(Failure(
+                    "multiconnect-accepted-corner-poke",
+                    f"{label}: corner ({sx}, {sy}) poke={poke:.6f}mm; "
+                    "expected intentional 0.414214mm (+/-0.02), pst-5fq5",
+                ))
     return failures
 
 
