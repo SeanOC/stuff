@@ -482,14 +482,18 @@ module grid_snaps() {
 // backer top overlaps into the plate as a real weld. Verbatim transform
 // from opengrid_bin — the plate shares its FRONT-anchored y[0,H] frame.
 module multiconnect_backer() {
-    translate([W / 2, 0, mc_thickness])
-        rotate(180, [0, 1, 1])
-            multiconnectBack(backWidth = W, backHeight = H,
-                             distanceBetweenSlots = slot_spacing,
-                             quickRelease = !slot_retention,
-                             tolerance = slot_tolerance,
-                             dimple = dimple_scale,
-                             onRamp = on_ramp);
+    intersection() {
+        translate([W / 2, 0, mc_thickness])
+            rotate(180, [0, 1, 1])
+                multiconnectBack(backWidth = W, backHeight = H,
+                                 distanceBetweenSlots = slot_spacing,
+                                 quickRelease = !slot_retention,
+                                 tolerance = slot_tolerance,
+                                 dimple = dimple_scale,
+                                 onRamp = on_ramp);
+        linear_extrude(height = mc_thickness)
+            rect([W, H], rounding = plate_corner_r, anchor = FRONT);
+    }
 }
 
 // === Back plate ===
