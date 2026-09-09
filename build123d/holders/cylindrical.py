@@ -76,10 +76,12 @@ from build123d import (
     Box,
     CenterArc,
     Cylinder,
+    GeomType,
     Line,
     Location,
     Locations,
     Plane,
+    Polygon,
     Pos,
     Rotation as Rot,
     extrude,
@@ -462,6 +464,64 @@ def _treat_edges(
     return part
 
 
+def _reinforce_junction(
+    part: Part,
+    wall: float,
+    r_in: float,
+    h: float,
+    slot_count: int,
+    slot_travel: float,
+    plate_margin: float,
+    bore: Part,
+) -> Part:
+    """Bridge the plate-top junction for a thick collar rising above the plate.
+
+    Above half the panel thickness, the collar leaves less backing than its
+    own wall thickness. A full-wall-wide central web supports the tall collar
+    against peel and replaces the narrow central junction chamfer with a
+    continuous 45-degree ramp. Its base overlaps the plate by one wall; its
+    nose spans the collar wall, with the functional bore carved clear. The
+    vertical collar junctions receive 1 mm stress-relief fillets.
+
+    Short collars and thinner walls retain their existing geometry, including
+    every shipped preset. The web needs a full panel thickness of headroom
+    so its ramp terminates below the collar rim.
+    """
+    _, plate_h, mount_y, _, _ = _plate_geometry(
+        r_in, slot_count, slot_travel, plate_margin
+    )
+    if wall <= PANEL_THICKNESS / 2.0 or h <= plate_h + PANEL_THICKNESS:
+        return part
+    with BuildPart() as web:
+        with BuildSketch(Plane.YZ.offset(-wall / 2.0)):
+            Polygon(
+                (mount_y, plate_h - wall),
+                (mount_y, plate_h),
+                (-r_in, plate_h + PANEL_THICKNESS),
+                (-r_in, plate_h - wall),
+                align=None,
+            )
+        extrude(amount=wall)
+    part = part.fuse(web.part - bore).clean()
+    ramp_edges = [
+        edge for edge in part.edges()
+        if abs(abs(edge.center().X) - wall / 2.0) < 0.001
+        and edge.center().Z > plate_h
+        and edge.center().Y < -(r_in + wall)
+        and edge.geom_type == GeomType.LINE
+        and edge.bounding_box().size.Y > 1.0
+    ]
+    part = part.chamfer(BED_CHAMFER, None, ramp_edges)
+    junction_y = -math.sqrt((r_in + wall) ** 2 - (wall / 2.0) ** 2)
+    junction_edges = [
+        edge for edge in part.edges().filter_by(Axis.Z)
+        if abs(abs(edge.center().X) - wall / 2.0) < 0.001
+        and abs(edge.center().Y - junction_y) < 0.001
+        and edge.center().Z > plate_h
+    ]
+    return part.fillet(1.0, junction_edges)
+
+
 def slot_cutters(
     r_in: float, slot_count: int, slot_travel: float, plate_margin: float,
     snap_notches: bool,
@@ -610,6 +670,9 @@ def holder(
     # next) untouched and the mount face / slot walls sharp.
     part = _treat_edges(
         part, wall, r_in, r_out, h, slot_count, slot_travel, plate_margin
+    )
+    part = _reinforce_junction(
+        part, wall, r_in, h, slot_count, slot_travel, plate_margin, bore
     )
 
     # Carve the library slot pockets LAST, out of the unified body, so each

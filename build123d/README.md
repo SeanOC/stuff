@@ -100,6 +100,15 @@ travel, notches) preset. The mount contract suite runs over the whole
 `slot_count × slot_travel × snap_notches` grid
 (`test_mount_contracts.test_mount_contract_over_robustness_grid`).
 
+Tall, thick collars receive a localized plate-top gusset when `wall` exceeds
+half the panel thickness and the collar extends more than one panel thickness
+above the plate. The full-wall-wide web overlaps the plate by one wall and
+rises at 45° toward the collar, with chamfered ramp edges, 1 mm vertical
+junction fillets, and the bore kept clear. The all-max spray-can corner
+(`h=120`, `wall=4`, two slots, 45 mm travel)
+passes the print audit with registered cutter exclusions. All six shipped
+presets bypass this reinforcement and retain their original geometry.
+
 **Adding a NEW mount contract** (e.g. an opengrid-snap contract later):
 1. add the name to `registry.KNOWN_MOUNTS`;
 2. write `verify_<mount>(part, fx)` in `tests/mount_contracts.py` (raise
