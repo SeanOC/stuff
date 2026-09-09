@@ -300,7 +300,6 @@ snap_lite    = false; // @param boolean group=mount label="Lite snaps (3.4mm ins
 // shipped backer exactly, threaded through the multiconnectBack() call.
 slot_tolerance = 1.0;  // @param number min=0.925 max=1.075 step=0.005 group=mount label="Slot fit tolerance"
 slot_retention = true; // @param boolean group=mount label="Slot retention (v2 snap)"
-dimple_scale   = 1.0;  // @param number min=0.5 max=1.5 step=0.05 group=mount label="Dimple scale (v1 only)"
 on_ramp        = true; // @param boolean group=mount label="Slot on-ramp lead-in"
 
 // @preset id="default" label="Apple TV HD, vertical" device_w=98 device_h=98 device_t=35 fit_clearance=1 plate_t=3 shelf_t=4 back_relief=2 corner_r=5 lip_reach=3 land_w=12 cable_w=78 cable_x=0 vent_margin=2 width_units=4 height_units=4 snap_lite=false
@@ -492,7 +491,6 @@ module multiconnect_backer() {
                                  distanceBetweenSlots = slot_spacing,
                                  quickRelease = !slot_retention,
                                  tolerance = slot_tolerance,
-                                 dimple = dimple_scale,
                                  onRamp = on_ramp);
         linear_extrude(height = mc_thickness)
             rect([W, H], rounding = plate_corner_r, anchor = FRONT);

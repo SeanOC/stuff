@@ -109,7 +109,6 @@ snap_lite = false; // @param boolean group=mount label="Lite snaps (3.4mm instea
 // and scripts/patches/QuackWorks/0003 for the pass-through mechanism.
 slot_tolerance = 1.0;  // @param number min=0.925 max=1.075 step=0.005 group=mount label="Slot fit tolerance"
 slot_retention = true; // @param boolean group=mount label="Slot retention (v2 snap)"
-dimple_scale   = 1.0;  // @param number min=0.5 max=1.5 step=0.05 group=mount label="Dimple scale (v1 only)"
 on_ramp        = true; // @param boolean group=mount label="Slot on-ramp lead-in"
 
 // === Derived ===
@@ -232,7 +231,6 @@ module multiconnect_backer() {
                              distanceBetweenSlots = slot_spacing,
                              quickRelease = !slot_retention,
                              tolerance = slot_tolerance,
-                             dimple = dimple_scale,
                              onRamp = on_ramp);
 }
 

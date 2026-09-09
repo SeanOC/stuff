@@ -110,7 +110,6 @@ snap_lite = false; // @param boolean group=mount label="Lite snaps (3.4mm instea
 // and scripts/patches/QuackWorks/0003 for the pass-through mechanism.
 slot_tolerance = 1.0;  // @param number min=0.925 max=1.075 step=0.005 group=mount label="Slot fit tolerance"
 slot_retention = true; // @param boolean group=mount label="Slot retention (v2 snap)"
-dimple_scale   = 1.0;  // @param number min=0.5 max=1.5 step=0.05 group=mount label="Dimple scale (v1 only)"
 on_ramp        = true; // @param boolean group=mount label="Slot on-ramp lead-in"
 
 // @preset id="default" label="2x2 units, 60mm deep" width_units=2 height_units=2 depth=60 wall=2.4 floor_t=3 plate_t=4 lip_rise=14 rear_fillet=8 snap_lite=false
@@ -127,7 +126,7 @@ weld       = 0.02;  // embed depth of snap tops into the plate (st-v7k)
 // module parameter (patch 0002) but we keep the 6.5mm slab depth fixed:
 // exposing it invites board-incompatible prints, same reasoning as the
 // fixed 25mm pitch. connectVersion stays v2. The retention snap, slot
-// tolerance, dimple and on-ramp ARE tunable now (patch 0003) — plumbed
+// tolerance and on-ramp ARE tunable now (patch 0003) — plumbed
 // through from the @params above.
 slot_spacing = 25;   // Multiconnect standard pitch
 mc_thickness = 6.5;  // backer slab depth (= the module's fixed backThickness)
@@ -383,7 +382,6 @@ module multiconnect_backer() {
                                  distanceBetweenSlots = slot_spacing,
                                  quickRelease = !slot_retention,
                                  tolerance = slot_tolerance,
-                                 dimple = dimple_scale,
                                  onRamp = on_ramp);
     }
 }

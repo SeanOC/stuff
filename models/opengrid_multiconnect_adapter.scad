@@ -127,7 +127,6 @@ plate_t = 4; // @param number min=3 max=6 step=0.5 unit=mm group=plate label="Ba
 // fixed by choice (board compatibility).
 slot_tolerance = 1.0;  // @param number min=0.925 max=1.075 step=0.005 group=slot label="Slot fit tolerance"
 slot_retention = true; // @param boolean group=slot label="Slot retention (v2 snap)"
-dimple_scale   = 1.0;  // @param number min=0.5 max=1.5 step=0.05 group=slot label="Dimple scale (v1 only)"
 on_ramp        = true; // @param boolean group=slot label="Slot on-ramp lead-in"
 
 // @preset id="default" label="Single tile, directional full snap" size=single snap_type=directional snap_lite=false plate_t=4
@@ -242,7 +241,6 @@ module receiver() {
                                          distanceBetweenSlots = slot_spacing,
                                          quickRelease = !slot_retention,
                                          tolerance = slot_tolerance,
-                                         dimple = dimple_scale,
                                          onRamp = on_ramp);
         translate([0, 0, plate_top - bury])
             linear_extrude(height = mc_thickness)
