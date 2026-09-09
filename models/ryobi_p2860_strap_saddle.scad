@@ -83,6 +83,17 @@
 // is 56mm → ~100N pull spread over the two top-row snaps (~5kg each);
 // a 2x2 grid's 28mm arm would double that. Six snaps also carry the
 // ~100N shear at ~17N each. Plate is 2x3 tiles = 56 x 84mm.
+//
+// === Intentional square Multiconnect slab corners (pst-iabc) ===
+//
+// The rectangular slab projects ~3.313708mm past the r8 plate corner
+// (8*sqrt(2)-8 at defaults). This poke is accepted, not a rounding bug.
+// At 0.1mm from the entrance Y edge the r8 arc starts 6.739mm inward,
+// but the slot mouth starts only 5.35mm from the X edge. Clipping the
+// slab would cut its slot side wall / change the entrance profile,
+// forbidden by the pst-kapi slot-preservation contract. Keep the slab
+// square and every variant's shipped geometry unchanged; the sidecar
+// pins the slot profile and the intentional, bounded corner protrusion.
 
 include <BOSL2/std.scad>
 include <BOSL2/rounding.scad>

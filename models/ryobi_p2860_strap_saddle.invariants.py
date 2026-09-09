@@ -44,6 +44,13 @@ Numbered claims:
      of claim 3 — and (c) leave the inter-slot web solid. A 180-deg
      flip inverts (b); a collapsed generator diff() fills (a). Kept
      outside the side mirror, so it is identical for both saddles.
+
+  7. **Intentional square Multiconnect slab corners (pst-iabc).** Both
+     mirror exports retain the accepted 8*sqrt(2)-8 = 3.313708mm poke
+     beyond the r8 plate outline. Clipping would intersect the entrance
+     slot; pin its mouth, dovetail cross-section, floor and closed end
+     from multiconnectSlotDesign instead of applying the clipped-sibling
+     corner-rounding check. Geometry and volume are unchanged.
 """
 
 from __future__ import annotations
@@ -187,16 +194,17 @@ def check(ctx):
                 "is not mirroring the body",
             ))
 
-    # 6. Multiconnect variant (separate STL from the filename grid).
-    failures.extend(_check_multiconnect_variant(ctx["stem"]))
+    # 6–7. Both Multiconnect sides (separate STLs from the filename grid).
+    for mc_side in ("right", "left"):
+        failures.extend(_check_multiconnect_variant(ctx["stem"], mc_side))
 
     return failures
 
 
-def _check_multiconnect_variant(stem: str) -> list[Failure]:
+def _check_multiconnect_variant(stem: str, side: str) -> list[Failure]:
     # Two filename params (side, mount_type) → the default sidecar STL is
-    # side=right/mount_type=opengrid; the multiconnect twin is this one.
-    path = EXPORTS_DIR / f"{stem}-side=right-mount_type=multiconnect.stl"
+    # side=right/mount_type=opengrid; inspect each multiconnect twin here.
+    path = EXPORTS_DIR / f"{stem}-side={side}-mount_type=multiconnect.stl"
     if not path.exists():
         return [Failure(
             "multiconnect-export",
@@ -283,6 +291,93 @@ def _check_multiconnect_variant(stem: str) -> list[Failure]:
             f"inter-slot web at x=0 (z={zwall}) is void — slot pitch "
             f"drifted off {_MC_PITCH}mm or an extra slot opened",
         ))
+    failures.extend(_check_accepted_square_backer(mesh, path.name))
+    return failures
+
+
+def _check_accepted_square_backer(mesh, label: str) -> list[Failure]:
+    """Default-only mesh contract, independent of current library constants.
+
+    Library local slot profile (half-width, depth): (10.15, 0),
+    (10.15, 1.2121), (7.65, 3.712), (7.65, 5). The model maps
+    depth to z=4.15-depth and the dome centre to y=84/2-13=29.
+    Probe both sides of each boundary, avoiding faces. The main profile
+    probes avoid ramp stations (y=4, -21, -46) and the retention notch;
+    dedicated probes below pin the ramp and retention dimensions too.
+    """
+    failures = []
+    points = []
+    expected = []
+    names = []
+
+    def probe(name, point, solid):
+        names.append(name)
+        points.append(point)
+        expected.append(solid)
+
+    for x in _MC_SLOT_XS:
+        for z, half_width in ((4.0, 10.15),
+                              (2.0, 10.15 - (2.15 - 1.2121) * 2.5 / 2.4999),
+                              (0.2, 7.65)):
+            for sign in (-1, 1):
+                for delta, solid in ((-0.08, False), (0.08, True)):
+                    probe(f"slot x={x} z={z} flank={sign} offset={delta}",
+                          [x + sign * (half_width + delta), -8.5, z], solid)
+        for z, solid in ((4.07, False), (4.23, True)):
+            probe(f"slot x={x} floor z={z}", [x, -8.5, z], solid)
+        for y, solid in ((39.05, False), (39.25, True)):
+            probe(f"slot x={x} dome y={y}", [x, y, 4.0], solid)
+        # v2 retention triangle: 0.4mm deep over 8mm below y=29;
+        # y=25 avoids the dome overlapping the top of that triangle.
+        # Lead-in cone at y=4: radius 10.15 at z=4.15, 12 at z=-0.85.
+        for y, z, half_width in ((25.0, 4.0, 9.95),
+                                  (4.0, 0.2, 10.15 + 3.95 * 1.85 / 5)):
+            for sign in (-1, 1):
+                for delta, solid in ((-0.08, False), (0.08, True)):
+                    probe(f"slot x={x} retention/ramp y={y} flank={sign} offset={delta}",
+                          [x + sign * (half_width + delta), y, z], solid)
+        # At the entrance z=4 is within the full 20.3mm-wide channel.
+        # The outer flank is 28-12.5-10.15=5.35mm from the slab edge.
+        for sign in (-1, 1):
+            for width, solid in ((10.0, False), (10.3, True)):
+                probe(f"slot x={x} entrance flank={sign} width={width}",
+                      [x + sign * width, -41.9, 4.0], solid)
+
+    actual = mesh.contains(np.array(points))
+    bad = [names[i] for i in range(len(points)) if actual[i] != expected[i]]
+    if bad:
+        failures.append(Failure(
+            "multiconnect-slot-profile",
+            f"{label}: shipped slot positions/dimensions changed: " + "; ".join(bad),
+        ))
+
+    # Require material at all four square slab corners, away from the
+    # boundary and below the rounded plate (which begins at z=6.1).
+    corners = [[sx * 27.9, sy * 41.9, z]
+               for sx in (-1, 1) for sy in (-1, 1) for z in (0.2, 4.0, 6.0)]
+    if not bool(mesh.contains(np.array(corners)).all()):
+        failures.append(Failure(
+            "multiconnect-intentional-square-corners",
+            f"{label}: accepted square slab corner material missing; do not "
+            "clip to the r8 plate — it intersects the slot entrance (pst-iabc)",
+        ))
+
+    # Signed distance outside the rounded rectangle. Pin each corner's
+    # maximum protrusion, so a missing corner or an enlarged poke fails.
+    verts = mesh.vertices
+    slab = verts[(verts[:, 2] >= -0.01) & (verts[:, 2] <= 6.01)]
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            corner = slab[(sx * slab[:, 0] > 20) & (sy * slab[:, 1] > 34)]
+            poke = (float(np.max(np.linalg.norm(
+                np.abs(corner[:, :2]) - [20, 34], axis=1))) - 8
+                if len(corner) else float("nan"))
+            if not math.isfinite(poke) or abs(poke - (8 * math.sqrt(2) - 8)) > 0.02:
+                failures.append(Failure(
+                    "multiconnect-accepted-corner-poke",
+                    f"{label}: corner ({sx}, {sy}) poke={poke:.6f}mm; "
+                    "expected intentional 3.313708mm (+/-0.02), pst-iabc",
+                ))
     return failures
 
 
