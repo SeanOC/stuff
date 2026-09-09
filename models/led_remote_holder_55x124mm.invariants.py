@@ -46,6 +46,12 @@ exists for:
      solid. A 180-deg-flipped backer inverts (b); a collapsed generator
      diff() fills (a).
 
+  6. **Accepted square Multiconnect corners (pst-jvui).** Pin the
+     library slot profile, floor, retention dome and on-ramps, material
+     at all four slab corners, and the intentional 0.414214 mm poke
+     past the r1 outline. A corner clip conflicts with the slot at
+     valid UI values documented in the model header.
+
 Uses mesh.contains() and trimesh's numpy ray engine — CI has no
 shapely/scipy, hence the local union-find for the variant mesh
 component count (mirrors opengrid_bin.invariants).
@@ -250,6 +256,106 @@ def _check_multiconnect_variant(stem: str, want_w: float,
             "pocket probe on the multiconnect variant is solid — the "
             "open front / remote pocket is obstructed",
         ))
+    failures.extend(_check_accepted_square_backer(mesh, path.name, want_w, want_h))
+    return failures
+
+
+def _check_accepted_square_backer(mesh, label: str, width: float,
+                                height: float) -> list[Failure]:
+    """Default-only mesh contract, independent of current library constants.
+
+    Library local slot profile (half-width, depth): (10.15, 0),
+    (10.15, 1.2121), (7.65, 3.712), (7.65, 5). The model maps
+    depth to z=4.15-depth and the dome centre to y=height-13 (103 at
+    defaults). Mirrors the pst-iabc accepted-square-backer probes.
+    Probe both sides of each boundary, avoiding faces. The main profile
+    probes avoid ramp stations (y=78, 53, 28, 3) and the retention notch;
+    dedicated probes below pin the ramp and retention dimensions too.
+    """
+    dome_y = height - 13
+    channel_y = dome_y - 37.5  # halfway between the first two ramps
+    failures = []
+    points = []
+    expected = []
+    names = []
+
+    def probe(name, point, solid):
+        names.append(name)
+        points.append(point)
+        expected.append(solid)
+
+    for x in _MC_SLOT_XS:
+        for z, half_width in ((4.0, 10.15),
+                              (2.0, 10.15 - (2.15 - 1.2121) * 2.5 / 2.4999),
+                              (0.2, 7.65)):
+            for sign in (-1, 1):
+                for delta, solid in ((-0.08, False), (0.08, True)):
+                    probe(f"slot x={x} z={z} flank={sign} offset={delta}",
+                          [x + sign * (half_width + delta), channel_y, z], solid)
+        for z, solid in ((4.07, False), (4.23, True)):
+            probe(f"slot x={x} floor z={z}", [x, channel_y, z], solid)
+        for y, solid in ((dome_y + 10.05, False), (dome_y + 10.25, True)):
+            probe(f"slot x={x} dome y={y}", [x, y, 4.0], solid)
+        # v2 retention triangle: 0.4mm deep over 8mm below the dome centre;
+        # dome_y-4 avoids the dome overlapping the top of that triangle.
+        # Lead-in cones every 25mm below the dome: radius 10.15 at
+        # z=4.15, 12 at z=-0.85. Check every in-slab ramp station.
+        retention_and_ramps = [(dome_y - 4, 4.0, 9.95)] + [
+            (dome_y - 25 * i, 0.2, 10.15 + 3.95 * 1.85 / 5)
+            for i in range(1, math.floor(height / 25) + 1)
+            if dome_y - 25 * i > 0
+        ]
+        for y, z, half_width in retention_and_ramps:
+            for sign in (-1, 1):
+                for delta, solid in ((-0.08, False), (0.08, True)):
+                    probe(f"slot x={x} retention/ramp y={y} flank={sign} offset={delta}",
+                          [x + sign * (half_width + delta), y, z], solid)
+        # At the entrance z=4 is within the full 20.3mm-wide channel.
+        # The outer flank is 30.35-12.5-10.15=7.7mm from the slab edge.
+        for sign in (-1, 1):
+            for half_width, solid in ((10.0, False), (10.3, True)):
+                probe(f"slot x={x} entrance flank={sign} width={half_width}",
+                      [x + sign * half_width, 0.1, 4.0], solid)
+
+    actual = mesh.contains(np.array(points))
+    bad = [names[i] for i in range(len(points)) if actual[i] != expected[i]]
+    if bad:
+        failures.append(Failure(
+            "multiconnect-slot-profile",
+            f"{label}: shipped slot positions/dimensions changed: " + "; ".join(bad),
+        ))
+
+    # Require material at all four square slab corners, away from the
+    # boundary and below the rounded plate (which begins at z=6.1).
+    corners = [[sx * (width / 2 - 0.05), y, z]
+               for sx in (-1, 1) for y in (0.05, height - 0.05)
+               for z in (0.2, 4.0, 6.0)]
+    if not bool(mesh.contains(np.array(corners)).all()):
+        failures.append(Failure(
+            "multiconnect-intentional-square-corners",
+            f"{label}: accepted square slab corner material missing; do not "
+            "clip to the r1 plate — it intersects slot/on-ramp geometry (pst-jvui)",
+        ))
+
+    # Measure each corner's maximum radial excess over the r1 outline
+    # from actual mesh vertices below the plate, not just its bounding box.
+    verts = mesh.vertices
+    slab = verts[(verts[:, 2] >= -0.01) & (verts[:, 2] <= 6.01)].copy()
+    slab[:, 1] -= height / 2
+    arc_centres = np.array([width / 2 - 1, height / 2 - 1])
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            corner = slab[(sx * slab[:, 0] > arc_centres[0]) &
+                          (sy * slab[:, 1] > arc_centres[1])]
+            poke = (float(np.max(np.linalg.norm(
+                np.abs(corner[:, :2]) - arc_centres, axis=1))) - 1
+                if len(corner) else float("nan"))
+            if not math.isfinite(poke) or abs(poke - (math.sqrt(2) - 1)) > 0.02:
+                failures.append(Failure(
+                    "multiconnect-accepted-corner-poke",
+                    f"{label}: corner ({sx}, {sy}) poke={poke:.6f}mm; "
+                    "expected intentional 0.414214mm (+/-0.02), pst-jvui",
+                ))
     return failures
 
 
