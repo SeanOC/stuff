@@ -5,7 +5,7 @@
       "slug": "holder-cup-lid",
       "engine": "build123d",
       "title": "Cup lid holder (Multibuild)",
-      "blurb": "Curved cradle for an 85.3 mm sippy-cup lid, with shoulder-retaining end channels and two locating pins. Prototype: mount and print validation pending.",
+      "blurb": "Curved cradle for an 85.3 mm sippy-cup lid, with shoulder-retaining end channels and two locating pins. Prototype: bolt seat and physical fit validation pending.",
       "categoryId": "multiboard",
       "params": [
         {

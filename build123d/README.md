@@ -249,7 +249,7 @@ permit replacement of the existing library mounts. The module records the
 25 mm pitch, measured 6 mm small-hole throat and 6.4 mm board depth, together
 with sources and the per-side printed clearance.
 
-The cup-lid implementation is a **prototype**, pending the full print audit
-and verification of the center Fix Point interface. See
+The cup-lid implementation is a **prototype**, passing the end-standing digital print
+audit but awaiting the verified front seat for the small-thread flat-head bolt. See
 [the validation record](docs/cup-lid-validation.md). Its STL is for geometry
 review, not an approved support-free print.

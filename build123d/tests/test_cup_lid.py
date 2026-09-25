@@ -12,7 +12,7 @@ import trimesh
 from build123d import export_stl
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from holders.cup_lid import CLEARANCE, PARAMS, PITCH, SPEC, WALL, dimensions, holder, pin_centers
+from holders.cup_lid import CLEARANCE, LIP_THICKNESS, PARAMS, PITCH, SPEC, WALL, dimensions, holder, pin_centers
 from holders.registry import all_models
 
 
@@ -48,7 +48,7 @@ def test_presets_watertight_and_envelope(preset, tmp_path):
     assert size.X == pytest.approx(p['width'])
     assert size.Z == pytest.approx(p['plate_height'])
     # Actual depth includes concavity, shoulder gap, lip, AND rear pins.
-    assert size.Y == pytest.approx(p['plate_thickness'] + sag + p['shoulder_height'] + CLEARANCE + WALL + p['pin_length'])
+    assert size.Y == pytest.approx(p['plate_thickness'] + sag + p['shoulder_height'] + CLEARANCE + LIP_THICKNESS + p['pin_length'])
 
 
 def test_mount_engagement_and_through_hole(part):

@@ -19,11 +19,13 @@ Dimension evidence:
   Pins use 0.2 mm loose clearance PER SIDE: 6.0 - 0.4 = 5.6 mm;
   projection is 6.4 - 0.5 = 5.9 mm, with a 0.5 mm lead-in.
 
-The center opening is provisionally a 7.2 mm small-thread bolt clearance,
-NOT a verified Fix Point receiver. The official Fix Point is a slide-on
-connector (https://thangs.com/m/1123334); its head/shank dimensions and
-required seating profile remain to be verified. Do not claim Fix Point
-compatibility or support-free printing until the complete audit is green.
+Sean confirmed a small-thread flat-head through-bolt, not a Fix Point
+receiver. The front head recess is not implemented yet: the official bolt
+listing https://thangs.com/m/974190 shows an octagonal flat seat and does
+not publish a conical head angle or diameter. Verify the intended bolt and
+seat before adding countersink defaults. The existing center opening has
+not been validated against that bolt. The end-standing digital audit passes;
+physical fit and print testing remain outstanding.
 """
 from __future__ import annotations
 
@@ -39,6 +41,7 @@ from holders.registry import ModelSpec, Param, Preset, register
 PITCH = 25.0
 CLEARANCE = 0.3
 WALL = 2.4
+LIP_THICKNESS = 4.0
 SMALL_HOLE_DIAMETER = 6.0
 BOARD_DEPTH = 6.4
 PIN_DIAMETER = SMALL_HOLE_DIAMETER - 0.4
@@ -76,13 +79,20 @@ def dimensions(values: dict) -> dict:
         elif isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or not q.min <= v <= q.max:
             raise ValueError(f'{q.name} must be in [{q.min}, {q.max}]')
     r = p['lid_diameter'] / 2 + CLEARANCE
-    w = 2 * (r + WALL)
+    band = min(p['end_lip_height'], p['shoulder_height'])
+    # Roof the upper channel across its axial gap; extend only this end
+    # by half that span so both 45-degree planes clear the lid.
+    left = -(r + WALL)
+    sag = r - math.sqrt(r*r - (p['plate_height']/2)**2)
+    front = p['plate_thickness'] + sag + p['shoulder_height'] + CLEARANCE
+    right = r + WALL + (front-p['plate_thickness'])/2
+    w = right - left
     spacing = float(p['pin_spacing'])
-    if spacing + p['pin_diameter'] + 2 * WALL > w:
+    if spacing + p['pin_diameter'] + 2 * WALL > 2*(r + WALL):
         raise ValueError('pin_spacing does not fit within this lid cradle')
-    p.update(radius=r, width=w, spacing=spacing,
+    p.update(radius=r, width=w, left=left, right=right, spacing=spacing,
              engagement=p['shoulder_depth'] - CLEARANCE,
-             contact_band=min(p['end_lip_height'], p['shoulder_height']))
+             contact_band=band)
     return p
 
 
@@ -129,35 +139,57 @@ def holder(**values):
     # A shallow cylindrical concavity across the plate's short dimension;
     # its generator is parallel to X, so the front is vertical in print.
     sag = r - math.sqrt(r*r - (h/2)**2)
-    plate = Box(w, t+sag, h, align=(Align.CENTER, Align.MIN, Align.CENTER))
-    bore = Pos(0, t+r, 0) * Rot(0, 90, 0) * Cylinder(r, w+2)
+    plate = Pos((p['left']+p['right'])/2, 0, 0) * Box(
+        w, t+sag, h, align=(Align.CENTER, Align.MIN, Align.CENTER))
+    bore = Pos(0, t+r, 0) * Rot(0, 90, 0) * Cylinder(r, 2*w)
     plate = (plate - bore).clean()
-    bed_edges = [e for e in plate.edges()
-                 if all(abs(v.X + w/2) < 1e-6 for v in e.vertices())]
-    plate = plate.chamfer(p['bed_chamfer'], None, bed_edges)
-
-    # End channels follow the lid's circular perimeter in the wall plane.
-    # Axial gap accommodates the shoulder; radial overlap hooks behind it.
+    # The lower end is a flat bed face. Its circular INSIDE faces point
+    # upward in the print pose; only the old curved outside needed replacing.
     gap = p['shoulder_height'] + CLEARANCE
     front = t + sag + gap
-    outer = Pos(0, (front+WALL)/2, 0) * Rot(90, 0, 0) * Cylinder(r+WALL, front+WALL)
+    band = p['contact_band']
+    lower_blank = Box(r+WALL, front+WALL, band,
+                      align=(Align.MAX, Align.MIN, Align.CENTER))
     inner = Pos(0, (front+WALL)/2, 0) * Rot(90, 0, 0) * Cylinder(r, front+WALL+2)
-    band = Box(w+2, 2*(front+WALL), p['contact_band'])
-    walls = (outer-inner) & band
-    lip_outer = Pos(0, front+WALL/2, 0) * Rot(90, 0, 0) * Cylinder(r+WALL, WALL)
-    lip_inner = Pos(0, front+WALL/2, 0) * Rot(90, 0, 0) * Cylinder(r-p['engagement'], WALL+2)
-    lips = (lip_outer-lip_inner) & band
-    part = plate.fuse(walls, lips).clean()
+    lower_wall = lower_blank - inner
+    lower_lip_blank = Pos(0, front, 0) * Box(
+        r+WALL, WALL, band, align=(Align.MAX, Align.MIN, Align.CENTER))
+    lip_inner = Pos(0, front+WALL/2, 0) * Rot(90, 0, 0) * Cylinder(
+        r-p['engagement'], WALL+2)
+    lower_lip = lower_lip_blank - lip_inner
+
+    # Roof the upper channel across its AXIAL gap. Both 45-degree slopes
+    # remain outside radius r, preserving all shoulder clearance; the roof
+    # apex extends only this end. Extruding across the full contact band
+    # avoids the thin side wedges of a roof across Z.
+    with BuildSketch(Plane.XY.offset(-band/2)) as upper_profile:
+        Polygon((r, 0), (r, t), (r+(front-t)/2, (front+t)/2),
+                (r, front), (p['right'], front), (p['right'], 0), align=None)
+    upper_wall = extrude(upper_profile.sketch, amount=band)
+
+    # The 45-degree retaining wedge is 4 mm deep so its diagonal section
+    # remains substantial. Engagement is maximal at the shoulder-facing
+    # edge and tapers toward the exposed front. No downward circular face.
+    lip_tip = r-p['engagement']
+    with BuildSketch(Plane.XY.offset(-band/2)) as upper_lip_profile:
+        Polygon((lip_tip, front), (lip_tip+LIP_THICKNESS, front+LIP_THICKNESS),
+                (p['right'], front+LIP_THICKNESS), (p['right'], front), align=None)
+    upper_lip = extrude(upper_lip_profile.sketch, amount=band)
+    part = plate.fuse(lower_wall, lower_lip, upper_wall, upper_lip).clean()
+    # Treat the entire fused bed-contact perimeter, including the lower lip.
+    bed_edges = [e for e in part.edges()
+                 if all(abs(v.X-p['left']) < 1e-6 for v in e.vertices())]
+    part = part.chamfer(p['bed_chamfer'], None, bed_edges)
     for x, y, z in pin_centers(values):
         part = part.fuse(Pos(x, y, z) * _pin(p['pin_diameter'], p['pin_length']))
-    part = part - _center_hole(p['fixed_point_hole_diameter'], 2*(front+WALL+1))
+    part = part - _center_hole(p['fixed_point_hole_diameter'], 2*(front+LIP_THICKNESS+1))
     return part.clean()
 
 
 SPEC = register(ModelSpec(
     name='holder_cup_lid', build=lambda values: holder(**values),
     title='Cup lid holder (Multibuild)', category_id='multiboard',
-    description='Curved cradle for an 85.3 mm sippy-cup lid, with shoulder-retaining end channels and two locating pins. Prototype: mount and print validation pending.',
+    description='Curved cradle for an 85.3 mm sippy-cup lid, with shoulder-retaining end channels and two locating pins. Prototype: bolt seat and physical fit validation pending.',
     tags=('holder', 'multiboard', 'cup-lid'), params=PARAMS,
     presets=(Preset(id='sippy_cup_85mm', label='Sippy cup (85.3 mm)', values={}),),
     print_orientation=(1.0, 0.0, 0.0),
