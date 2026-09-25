@@ -382,6 +382,7 @@ def register(spec: ModelSpec) -> ModelSpec:
 def all_models() -> list[ModelSpec]:
     # Import modules that register models (side-effect imports live here so
     # the harness has ONE place that defines "everything buildable").
+    from holders import cup_lid  # noqa: F401
     from holders import smoke  # noqa: F401  (toolchain smoke artifacts)
     try:
         from holders import cylindrical  # noqa: F401  (the PoC holder; lands via its bead)

@@ -173,6 +173,10 @@ export const CATALOG: Record<string, CatalogEntry> = {
  * enforcement and cross-checks the manifest's categoryId against it.
  */
 export const BUILD123D_CATALOG: Record<string, CatalogEntry> = {
+  holder_cup_lid: {
+    categoryId: "multiboard",
+    blurb: "Curved cup-lid cradle with shoulder-retaining end channels and two Multibuild locating pins.",
+  },
   holder_spray_can: {
     categoryId: "multiboard",
     blurb:

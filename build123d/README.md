@@ -239,3 +239,17 @@ blank tile just like a missing GLB.
 
 ## Eval dimensions (vs OpenSCAD)
 agent workability · geometry/output quality (real fillets) · CI fit · preview experience
+
+## EVAL FINDING — Multibuild: no library — primitives with cited dims
+
+The pinned `opengrid` package supplies openGrid/Multiconnect, not Multibuild
+small-hole pins. `holders/cup_lid.py` uses elementary solids for its locating
+pins and center clearance, as authorized in pst-tti3. This exception does not
+permit replacement of the existing library mounts. The module records the
+25 mm pitch, measured 6 mm small-hole throat and 6.4 mm board depth, together
+with sources and the per-side printed clearance.
+
+The cup-lid implementation is a **prototype**, pending the full print audit
+and verification of the center Fix Point interface. See
+[the validation record](docs/cup-lid-validation.md). Its STL is for geometry
+review, not an approved support-free print.
