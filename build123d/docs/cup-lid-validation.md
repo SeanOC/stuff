@@ -1,7 +1,8 @@
 # Cup-lid holder — pst-tti3
 
-The end-standing digital print audit now passes. The front bolt seat is
-unfinished; the STL is for geometry review until that interface is verified.
+The end-standing digital print audit passes with the front countersink.
+Bolt dimensions are **BEST GUESS**, explicitly approved by Sean at 18:43Z
+on pst-tti3. Physical fit remains to be tested in pst-mvno.
 
 ## Geometry and material
 
@@ -16,10 +17,11 @@ The lower channel has a flat bed face. The upper channel's ceiling slopes
 at 45° across its axial gap, with a retaining lip roofed across its width. This preserves
 shoulder clearance. No audit exclusions or threshold changes were used.
 
-Volume, `sippy_cup_85mm`: **19,859.697 → 19,834.554 mm³ (-0.13%)** for this review revision
-(original prototype: 17,807.799 mm³).
-The thicker lip adds only 12 mm³ before edge treatment; the chamfers
-remove slightly more material than the junction blends add. Envelope: **98.5229 × 31.5458 × 28 mm** (XYZ).
+Volume, `sippy_cup_85mm`: **19,834.554 → 19,668.273 mm³ (-0.84%)**
+for the bolt-seat revision (original prototype: 17,807.799 mm³).
+The countersink and larger clearance hole remove material; the strengthened
+lip and junction blends are unchanged. Envelope: **98.5229 × 31.5458 × 28 mm**
+(XYZ).
 The plate spans the capture locations; lips use only their contact band.
 Worst load is a forward pull (+Y); ordinary lid weight (-Z) lies along
 layers when standing on the -X end. Bed perimeter chamfer is 0.4 mm.
@@ -60,20 +62,28 @@ uv run pytest 'tests/test_print_audit.py::test_model_print_audit[holder_cup_lid]
 The STL uses assembly coordinates; rotate +X upward to print standing on
 its -X end. Passing the geometric audit is not a physical print test.
 
-## Bolt seat: source conflict to resolve
+## Bolt seat — BEST GUESS, operator approved
 
-Sean confirmed a **small-thread flat-head through-bolt**, superseding the
-Fix Point receiver interpretation. A front recess must seat its head flush
-with the concave face; the clearance hole must exit the flat back with a
-45° roof toward +X.
+Sean authorized these estimates on pst-tti3 at 18:43Z; they are **not
+published Multibuild spec dimensions**:
 
-The official [9 mm Small Thread, Flat Head, Bolt](https://thangs.com/m/974190)
-listing describes a low-clearance head, but publishes neither head diameter
-nor countersink angle. Its illustration appears to show an octagonal flat
-head with a flat underside, rather than a countersunk cone. Need the actual
-bolt geometry or confirmation of the intended seating shape; do not invent
-spec dimensions or claim that a generic 90° cone fits this part. The front
-seat and requested countersink parameters are **not implemented yet**.
+| Parameter | Default | Range |
+| --- | --- | --- |
+| `bolt_clearance_diameter` | 8.0 mm (~7.6 mm major + 0.4 mm clearance) | 7.6–9 mm |
+| `countersink_diameter` | 13.0 mm | 11–15 mm |
+| `countersink_angle` | 90° included | 90–120° |
+
+The default head depth is 2.5 mm. The cone opens on the concave front (+Y);
+its 13 mm diameter is measured at the center tangent plane Y=6 mm. The
+cone continues through the curved front so it has no cylindrical pocket
+ceiling. A head at that tangent plane is flush at the center and slightly
+recessed at its sides. The shank exits the flat back with a 45° teardrop
+roof toward +X. Angles below 90° are excluded for support-free printing.
+
+Combinations leaving less than 2.4 mm backing behind the cone are rejected:
+the default leaves 3.5 mm; a 4 mm plate needs a smaller/shallower seat.
+Geometry tests probe mouth diameter, seat depth, back exit and roof,
+in addition to the parameter boundaries and full print audit.
 
 The pin dimensions use the [tile generator author's measurements of the
 official remix STEP](https://github.com/asciipip/multiboard-parametric-stacked/blob/master/multiboard_base.scad)
@@ -83,8 +93,8 @@ These are cited measurements, not independently measured official files.
 
 ## Validation
 
-- Full `uv run pytest`: **275 passed, 1 xfailed** in 230 s.
-- Targeted model tests plus registered print audit: **71 passed**.
+- Full `uv run pytest`: **289 passed, 1 xfailed** in 296 s.
+- Targeted model tests plus registered print audit: **85 passed**.
 - `npm test`: **291 passed** on this revision.
 - All registered models exported successfully after channel changes.
 - Manifest regenerated; review render and STL regenerated from revised model.

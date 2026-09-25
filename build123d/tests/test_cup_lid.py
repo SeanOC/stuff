@@ -1,7 +1,7 @@
-"""Geometry contracts for the cup-lid prototype (pst-tti3).
+"""Geometry contracts for the cup-lid holder (pst-tti3).
 
 Passing these checks is not print approval: see docs/cup-lid-validation.md
-for the measured full-part audit and pending bolt seat specification.
+for the measured full-part audit and operator-approved BEST GUESS bolt seat dimensions.
 """
 import math
 import sys
@@ -104,7 +104,10 @@ def test_wide_mount_needs_wide_lid():
 @pytest.mark.parametrize('param', [p for p in PARAMS if p.kind == 'number'], ids=lambda p:p.name)
 @pytest.mark.parametrize('bound', ('min', 'max'))
 def test_individual_parameter_extremes_build(param, bound):
-    solid = holder(**{param.name:getattr(param, bound)})
+    values = {param.name:getattr(param, bound)}
+    if param.name == 'plate_thickness' and bound == 'min':
+        values['countersink_diameter'] = 11
+    solid = holder(**values)
     assert solid.is_valid
     assert len(solid.solids()) == 1
     assert solid.volume > 0
@@ -123,3 +126,26 @@ def test_retaining_lip_load_section(part):
     from tests.print_audit import audit
     result = audit(part, orientation=SPEC.print_orientation, model=SPEC.name)
     assert result.min_wall_mm >= 1.6
+
+
+def test_front_countersink_and_back_exit(part):
+    p = dimensions({})
+    assert p['seat_depth'] == pytest.approx(2.5)
+    assert p['bolt_clearance_diameter'] == 8
+    # Radius 5 is inside the mouth but outside the through-hole.
+    assert not part.is_inside((0, 5.5, 5))
+    assert part.is_inside((0, 4.0, 5))
+    assert part.is_inside((0, 0.1, 5))
+    assert not part.is_inside((0, 0.1, 3.9))
+    assert part.is_inside((0, 0.1, 4.1))
+    # Teardrop roof extends above the circular shank toward print-up +X.
+    assert not part.is_inside((5.0, 1.0, 0))
+    assert part.is_inside((5.8, 1.0, 0))
+    # Nominal head radius is 6.5 at the center tangent plane Y=6.
+    assert not part.is_inside((0, 6.0, 6.4))
+    assert part.is_inside((0, 6.0, 6.6))
+
+
+def test_countersink_requires_plate_backing():
+    with pytest.raises(ValueError, match='plate_thickness'):
+        holder(plate_thickness=4)

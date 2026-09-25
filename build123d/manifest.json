@@ -5,7 +5,7 @@
       "slug": "holder-cup-lid",
       "engine": "build123d",
       "title": "Cup lid holder (Multibuild)",
-      "blurb": "Curved cradle for an 85.3 mm sippy-cup lid, with shoulder-retaining end channels and two locating pins. Prototype: bolt seat and physical fit validation pending.",
+      "blurb": "Curved cradle for an 85.3 mm sippy-cup lid, with shoulder-retaining end channels and two locating pins. Parametric front countersink uses operator-approved best-guess bolt dimensions; physical fit validation pending.",
       "categoryId": "multiboard",
       "params": [
         {
@@ -100,14 +100,34 @@
           ]
         },
         {
-          "name": "fixed_point_hole_diameter",
-          "label": "Center clearance diameter",
+          "name": "bolt_clearance_diameter",
+          "label": "Bolt clearance diameter",
           "unit": "mm",
           "kind": "number",
-          "default": 7.2,
-          "min": 7.2,
+          "default": 8.0,
+          "min": 7.6,
           "max": 9,
           "step": 0.1
+        },
+        {
+          "name": "countersink_diameter",
+          "label": "Countersink diameter",
+          "unit": "mm",
+          "kind": "number",
+          "default": 13.0,
+          "min": 11,
+          "max": 15,
+          "step": 0.1
+        },
+        {
+          "name": "countersink_angle",
+          "label": "Countersink included angle",
+          "unit": "deg",
+          "kind": "number",
+          "default": 90.0,
+          "min": 90,
+          "max": 120,
+          "step": 1
         },
         {
           "name": "bed_chamfer",

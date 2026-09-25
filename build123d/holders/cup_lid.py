@@ -19,20 +19,21 @@ Dimension evidence:
   Pins use 0.2 mm loose clearance PER SIDE: 6.0 - 0.4 = 5.6 mm;
   projection is 6.4 - 0.5 = 5.9 mm, with a 0.5 mm lead-in.
 
-Sean confirmed a small-thread flat-head through-bolt, not a Fix Point
-receiver. The front head recess is not implemented yet: the official bolt
-listing https://thangs.com/m/974190 shows an octagonal flat seat and does
-not publish a conical head angle or diameter. Verify the intended bolt and
-seat before adding countersink defaults. The existing center opening has
-not been validated against that bolt. The end-standing digital audit passes;
-physical fit and print testing remain outstanding.
+BEST GUESS bolt seat — explicitly authorized by Sean, pst-tti3 18:43Z:
+small-thread major diameter approximately 7.6 mm plus 0.4 mm diametral
+clearance gives an 8.0 mm shank opening; head diameter 13.0 mm, included
+angle 90 degrees, nominal head depth 2.5 mm. These are operator-approved
+estimates, NOT published Multibuild specification dimensions. All three
+seat dimensions are ranged parameters for test-print adjustment. The cone
+opens toward the concave front (+Y); its nominal diameter is measured at
+the plate's center tangent plane. Physical bolt fit remains to test.
 """
 from __future__ import annotations
 
 import math
 
 from build123d import (
-    Align, Box, BuildLine, BuildSketch, CenterArc, Cylinder, Line,
+    Align, Box, BuildLine, BuildSketch, CenterArc, Cone, Cylinder, Line,
     Plane, Polygon, Pos, Rot, extrude, make_face,
 )
 
@@ -59,7 +60,9 @@ PARAMS = (
     # Even multiples only: each pin, not just the pair, must be on the
     # 25 mm lattice relative to the center hole. 25/75 mm spacing is wrong.
     Param('pin_spacing', 'enum', '50', choices=('50', '100'), unit='mm', label='Pin spacing'),
-    Param('fixed_point_hole_diameter', 'number', 7.2, min=7.2, max=9, step=0.1, unit='mm', label='Center clearance diameter'),
+    Param('bolt_clearance_diameter', 'number', 8.0, min=7.6, max=9, step=0.1, unit='mm', label='Bolt clearance diameter'),
+    Param('countersink_diameter', 'number', 13.0, min=11, max=15, step=0.1, unit='mm', label='Countersink diameter'),
+    Param('countersink_angle', 'number', 90.0, min=90, max=120, step=1, unit='deg', label='Countersink included angle'),
     Param('bed_chamfer', 'number', 0.4, min=0.3, max=0.5, step=0.1, unit='mm', label='Bed edge chamfer'),
 )
 
@@ -78,6 +81,10 @@ def dimensions(values: dict) -> dict:
                 raise ValueError(f'{q.name} must be one of {q.choices}')
         elif isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or not q.min <= v <= q.max:
             raise ValueError(f'{q.name} must be in [{q.min}, {q.max}]')
+    seat_depth = (p['countersink_diameter']-p['bolt_clearance_diameter']) / (2*math.tan(math.radians(p['countersink_angle']/2)))
+    if p['plate_thickness']-seat_depth < WALL:
+        raise ValueError('plate_thickness must leave 2.4 mm behind the countersink')
+    p['seat_depth'] = seat_depth
     r = p['lid_diameter'] / 2 + CLEARANCE
     band = min(p['end_lip_height'], p['shoulder_height'])
     # Roof the upper channel across its axial gap; extend only this end
@@ -208,14 +215,23 @@ def holder(**values):
     part = part.chamfer(min(0.4, p['bed_chamfer']), None, exposed)
     for x, y, z in pin_centers(values):
         part = part.fuse(Pos(x, y, z) * _pin(p['pin_diameter'], p['pin_length']))
-    part = part - _center_hole(p['fixed_point_hole_diameter'], 2*(front+LIP_THICKNESS+1))
-    return part.clean()
+    part = part - _center_hole(p['bolt_clearance_diameter'], 2*(front+LIP_THICKNESS+1))
+    # Extend the same cone through the curved front, avoiding a cylindrical
+    # counterbore ceiling. A flat head at Y=t is flush at the center and
+    # slightly recessed where the surrounding concavity is deeper.
+    slope = math.tan(math.radians(p['countersink_angle']/2))
+    cone_height = p['seat_depth'] + sag + 1
+    seat = Pos(0, t-p['seat_depth'], 0) * Rot(-90, 0, 0) * Cone(
+        p['bolt_clearance_diameter']/2,
+        p['bolt_clearance_diameter']/2 + cone_height*slope,
+        cone_height, align=(Align.CENTER, Align.CENTER, Align.MIN))
+    return (part-seat).clean()
 
 
 SPEC = register(ModelSpec(
     name='holder_cup_lid', build=lambda values: holder(**values),
     title='Cup lid holder (Multibuild)', category_id='multiboard',
-    description='Curved cradle for an 85.3 mm sippy-cup lid, with shoulder-retaining end channels and two locating pins. Prototype: bolt seat and physical fit validation pending.',
+    description='Curved cradle for an 85.3 mm sippy-cup lid, with shoulder-retaining end channels and two locating pins. Parametric front countersink uses operator-approved best-guess bolt dimensions; physical fit validation pending.',
     tags=('holder', 'multiboard', 'cup-lid'), params=PARAMS,
     presets=(Preset(id='sippy_cup_85mm', label='Sippy cup (85.3 mm)', values={}),),
     print_orientation=(1.0, 0.0, 0.0),
