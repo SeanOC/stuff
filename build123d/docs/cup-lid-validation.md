@@ -108,8 +108,8 @@ verification remains part of the uncompleted dimension acceptance criterion.
 - Full `uv run pytest`: **253 passed, 1 xfailed, 1 failed** in 190 s.
   The failure is `test_model_print_audit[holder_cup_lid]`, reproduced above.
   The later 20 added individual-boundary cases passed in the targeted sweep.
-- Root render-all is running; its unrelated regenerated thumbnails will not
-  be included in this model's change.
+- Root `python3 scripts/render-all.py`: **passed** (28 existing SCAD models).
+  Unrelated regenerated thumbnails were discarded to keep this PR scoped.
 
 The review render uses the same exported mesh, rotated to show the channel
 face. The STL remains in the assembly coordinate frame; the requested print
