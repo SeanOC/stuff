@@ -9,6 +9,14 @@ on pst-tti3. Physical fit remains to be tested in pst-mvno.
 Default `sippy_cup_85mm`: lid 85.3 mm, shoulder height 13 mm and radial
 shoulder depth 4.5 mm. Opening radius 42.95 mm includes 0.3 mm clearance;
 maximum lip engagement is 4.2 mm, contact band 6 mm, axial gap 13.3 mm.
+Shoulder depth is limited to **3.5–10 mm** and lip contact-band height to
+**3–8 mm**: the former 2 mm / 12 mm extrema produced thin retaining-lip
+sections (0.39 / 0.54 mm). Combinations also require half the contact
+band to fit within the radial engagement, so a shallow shoulder cannot be
+combined with an overly tall roof. Every numeric parameter boundary now runs the
+print audit and must satisfy the 1.6 mm load-bearing minimum, in addition
+to solid validity and topology. The 4 mm plate boundary uses an 11 mm
+countersink to respect the existing 2.4 mm backing guard.
 Pins lie at X = ±25 mm relative to the center opening; pair spacing permits
 50/100 mm only, with envelope checks. Each pin has a rounded top, inscribed
 45° lower V and 0.5 mm tip chamfer.
@@ -93,7 +101,11 @@ These are cited measurements, not independently measured official files.
 
 ## Validation
 
-- Full `uv run pytest`: **289 passed, 1 xfailed** in 296 s.
+- Preceding full `uv run pytest`: **289 passed, 1 xfailed** in 296 s.
+- Range correction: **110 model/audit/manifest/preset tests passed**, including
+  print audits at every numeric bound; **1 combination-guard test passed**.
+  The combined 3.5 mm shoulder / 6.4 mm lip boundary also audited at 2.40 mm.
+  Default geometry and artifacts are unchanged (19,668.273 mm³ before/after).
 - Targeted model tests plus registered print audit: **85 passed**.
 - `npm test`: **291 passed** on this revision.
 - All registered models exported successfully after channel changes.

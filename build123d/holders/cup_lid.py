@@ -51,10 +51,10 @@ PIN_LENGTH = BOARD_DEPTH - 0.5
 PARAMS = (
     Param('lid_diameter', 'number', 85.3, min=60, max=130, step=0.1, unit='mm', label='Lid diameter'),
     Param('shoulder_height', 'number', 13.0, min=6, max=25, step=0.1, unit='mm', label='Shoulder height'),
-    Param('shoulder_depth', 'number', 4.5, min=2, max=10, step=0.1, unit='mm', label='Shoulder radial depth'),
+    Param('shoulder_depth', 'number', 4.5, min=3.5, max=10, step=0.1, unit='mm', label='Shoulder radial depth'),
     Param('plate_height', 'number', 28.0, min=20, max=45, step=1, unit='mm', label='Plate height'),
     Param('plate_thickness', 'number', 6.0, min=4, max=10, step=0.1, unit='mm', label='Plate center thickness'),
-    Param('end_lip_height', 'number', 6.0, min=3, max=12, step=0.1, unit='mm', label='Lip contact band height'),
+    Param('end_lip_height', 'number', 6.0, min=3, max=8, step=0.1, unit='mm', label='Lip contact band height'),
     Param('pin_diameter', 'number', PIN_DIAMETER, min=4.8, max=5.8, step=0.1, unit='mm', label='Locating pin diameter'),
     Param('pin_length', 'number', PIN_LENGTH, min=2, max=PIN_LENGTH, step=0.1, unit='mm', label='Locating pin length'),
     # Even multiples only: each pin, not just the pair, must be on the
@@ -87,6 +87,8 @@ def dimensions(values: dict) -> dict:
     p['seat_depth'] = seat_depth
     r = p['lid_diameter'] / 2 + CLEARANCE
     band = min(p['end_lip_height'], p['shoulder_height'])
+    if band/2 > p['shoulder_depth']-CLEARANCE:
+        raise ValueError('end_lip_height must fit the shoulder_depth roof envelope')
     # Roof the upper channel across its axial gap; extend only this end
     # by half that span so both 45-degree planes clear the lid.
     left = -(r + WALL)

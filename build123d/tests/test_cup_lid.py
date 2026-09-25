@@ -111,6 +111,10 @@ def test_individual_parameter_extremes_build(param, bound):
     assert solid.is_valid
     assert len(solid.solids()) == 1
     assert solid.volume > 0
+    from tests.print_audit import audit
+    result = audit(solid, orientation=SPEC.print_orientation, model=SPEC.name)
+    assert result.ok, result.format()
+    assert result.min_wall_mm >= 1.6, result.format()
 
 
 def test_retaining_lip_load_section(part):
@@ -149,3 +153,8 @@ def test_front_countersink_and_back_exit(part):
 def test_countersink_requires_plate_backing():
     with pytest.raises(ValueError, match='plate_thickness'):
         holder(plate_thickness=4)
+
+
+def test_lip_roof_requires_radial_engagement():
+    with pytest.raises(ValueError, match='end_lip_height'):
+        holder(shoulder_depth=3.5, end_lip_height=8)

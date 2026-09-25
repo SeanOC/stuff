@@ -34,7 +34,7 @@
           "unit": "mm",
           "kind": "number",
           "default": 4.5,
-          "min": 2,
+          "min": 3.5,
           "max": 10,
           "step": 0.1
         },
@@ -65,7 +65,7 @@
           "kind": "number",
           "default": 6.0,
           "min": 3,
-          "max": 12,
+          "max": 8,
           "step": 0.1
         },
         {
