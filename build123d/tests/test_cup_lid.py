@@ -1,7 +1,7 @@
 """Geometry contracts for the cup-lid prototype (pst-tti3).
 
 Passing these checks is not print approval: see docs/cup-lid-validation.md
-for the measured full-part audit and unresolved Fix Point interface.
+for the measured full-part audit and pending bolt seat specification.
 """
 import math
 import sys
@@ -108,3 +108,18 @@ def test_individual_parameter_extremes_build(param, bound):
     assert solid.is_valid
     assert len(solid.solids()) == 1
     assert solid.volume > 0
+
+
+def test_retaining_lip_load_section(part):
+    """The tip is a full axial land, not a taper to a thin pull-out edge."""
+    p = dimensions({})
+    sag = p['radius'] - math.sqrt(p['radius']**2 - (p['plate_height']/2)**2)
+    front = p['plate_thickness'] + sag + p['shoulder_height'] + CLEARANCE
+    # Probe close to the engagement tip, where the old wedge was only
+    # 0.3 mm thick. The new 45-degree roof runs across Z, not through Y.
+    x = p['radius'] - p['engagement'] + 0.3
+    for axial in (0.1, 0.8, 1.6, 2.4, 3.2):
+        assert part.is_inside((x, front+axial, 0))
+    from tests.print_audit import audit
+    result = audit(part, orientation=SPEC.print_orientation, model=SPEC.name)
+    assert result.min_wall_mm >= 1.6

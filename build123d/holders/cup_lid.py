@@ -167,19 +167,45 @@ def holder(**values):
                 (r, front), (p['right'], front), (p['right'], 0), align=None)
     upper_wall = extrude(upper_profile.sketch, amount=band)
 
-    # The 45-degree retaining wedge is 4 mm deep so its diagonal section
-    # remains substantial. Engagement is maximal at the shoulder-facing
-    # edge and tapers toward the exposed front. No downward circular face.
+    # Keep a full 4 mm forward-pull section instead of tapering its Y
+    # thickness to zero. Roof the lower edge across Z: two 45-degree
+    # planes meet at the engagement tip, which is a 4 mm-long blunt land.
+    # This preserves the maximum radial engagement without a flat ceiling.
     lip_tip = r-p['engagement']
-    with BuildSketch(Plane.XY.offset(-band/2)) as upper_lip_profile:
-        Polygon((lip_tip, front), (lip_tip+LIP_THICKNESS, front+LIP_THICKNESS),
-                (p['right'], front+LIP_THICKNESS), (p['right'], front), align=None)
-    upper_lip = extrude(upper_lip_profile.sketch, amount=band)
+    lip_plane = Plane(origin=(0, front, 0), x_dir=(1, 0, 0), z_dir=(0, -1, 0))
+    with BuildSketch(lip_plane) as upper_lip_profile:
+        Polygon((lip_tip, 0), (lip_tip+band/2, -band/2),
+                (p['right'], -band/2), (p['right'], band/2),
+                (lip_tip+band/2, band/2), align=None)
+    upper_lip = extrude(upper_lip_profile.sketch, amount=LIP_THICKNESS, dir=(0, 1, 0))
     part = plate.fuse(lower_wall, lower_lip, upper_wall, upper_lip).clean()
+    # Side junctions run parallel to print-up, so their R1 blends do not
+    # create downward curved faces. They spread forward-pull load into the
+    # plate without entering the lid's central shoulder contact band.
+    join_y = t+r-math.sqrt(r*r-(band/2)**2)
+    junctions = [e for e in part.edges()
+                 if e.geom_type.name == 'LINE'
+                 and abs(e.center().Y-join_y) < 1e-5
+                 and abs(abs(e.center().Z)-band/2) < 1e-5]
+    part = part.fillet(1.0, junctions)
     # Treat the entire fused bed-contact perimeter, including the lower lip.
     bed_edges = [e for e in part.edges()
                  if all(abs(v.X-p['left']) < 1e-6 for v in e.vertices())]
     part = part.chamfer(p['bed_chamfer'], None, bed_edges)
+    upper_end = [e for e in part.edges()
+                 if all(abs(v.X-p['right']) < 1e-6 for v in e.vertices())]
+    part = part.chamfer(0.4, None, upper_end)
+    # Break exposed plate rails and front lip rims. Contact faces, the
+    # teardrop fit profile, and the lip's engagement ridge remain datums.
+    exposed = []
+    for e in part.edges():
+        c = e.center()
+        rail = e.geom_type.name == 'LINE' and abs(abs(c.Z)-h/2) < 1e-5 and e.length > w/2
+        lip_front = (abs(c.Y-(front+WALL)) < 1e-5 and c.X < 0
+                     or abs(c.Y-(front+LIP_THICKNESS)) < 1e-5 and c.X > 0)
+        if rail or lip_front:
+            exposed.append(e)
+    part = part.chamfer(min(0.4, p['bed_chamfer']), None, exposed)
     for x, y, z in pin_centers(values):
         part = part.fuse(Pos(x, y, z) * _pin(p['pin_diameter'], p['pin_length']))
     part = part - _center_hole(p['fixed_point_hole_diameter'], 2*(front+LIP_THICKNESS+1))

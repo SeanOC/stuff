@@ -13,17 +13,31 @@ Pins lie at X = ±25 mm relative to the center opening; pair spacing permits
 45° lower V and 0.5 mm tip chamfer.
 
 The lower channel has a flat bed face. The upper channel's ceiling slopes
-at 45° across its axial gap, with a matching retaining wedge. This preserves
+at 45° across its axial gap, with a retaining lip roofed across its width. This preserves
 shoulder clearance. No audit exclusions or threshold changes were used.
 
-Volume, `sippy_cup_85mm`: **17,807.799 → 19,859.697 mm³ (+11.52%)**.
-The increase supplies the sloped upper channel roof, stronger lip wedge,
-and flat lower bed face. Envelope: **98.5229 × 31.5458 × 28 mm** (XYZ).
+Volume, `sippy_cup_85mm`: **19,859.697 → 19,834.554 mm³ (-0.13%)** for this review revision
+(original prototype: 17,807.799 mm³).
+The thicker lip adds only 12 mm³ before edge treatment; the chamfers
+remove slightly more material than the junction blends add. Envelope: **98.5229 × 31.5458 × 28 mm** (XYZ).
 The plate spans the capture locations; lips use only their contact band.
 Worst load is a forward pull (+Y); ordinary lid weight (-Z) lies along
 layers when standing on the -X end. Bed perimeter chamfer is 0.4 mm.
-Nominal walls are 2.4 mm; the audit's thinner sample is on the tapered lip.
-Complete exposed-edge/junction treatment and physical fit remain to review.
+The upper lip now has a full 4 mm section along the forward-pull direction.
+Its underside slopes at 45° across Z, ending in a 4 mm axial land rather
+than thinning to zero along Y. Maximum engagement remains 4.2 mm; this is
+not increased into the 4.5 mm shoulder. A regression test probes near the
+engagement tip through 3.2 mm of material and enforces ≥1.6 mm audit wall.
+The revised whole-part minimum is 2.4 mm.
+
+R1 side-junction fillets blend both end channels into the plate, running
+parallel to print-up so no downward curved surface is added. The upper
+channel roof provides a continuous sloped web into its outer wall; wall/
+plate overlap is the plate thickness (at least 4 mm), exceeding the 2.4 mm
+wall. Exposed plate rails, upper end perimeter and front lip rims have
+0.3–0.4 mm chamfers. Lid-contact faces, pin-fit geometry and engagement
+ridges remain functional datums. The bed perimeter retains 0.3–0.5 mm
+relief. Physical validation is tracked separately in **pst-mvno**.
 
 ## Passing digital print audit
 
@@ -31,7 +45,7 @@ Complete exposed-edge/junction treatment and physical fit remain to review.
 print audit: holder_cup_lid  (up = (1.00, 0.00, 0.00))
   overhang   :  45.0°   (≤ 45°) OK
   bridge     :   0.0 mm (≤ 10 mm) OK
-  min wall   :  1.26 mm (≥ 0.9 mm) OK
+  min wall   :  2.40 mm (≥ 0.9 mm) OK
   dn fillets :     0     (= 0)    OK
   bed chamfer: present   (warn)
   => PASS
@@ -69,9 +83,9 @@ These are cited measurements, not independently measured official files.
 
 ## Validation
 
-- Full `uv run pytest`: **274 passed, 1 xfailed** in 191 s.
-- Targeted model tests plus registered print audit: **70 passed**.
-- `npm test`: **291 passed** on the preceding revision; web code unchanged.
+- Full `uv run pytest`: **275 passed, 1 xfailed** in 230 s.
+- Targeted model tests plus registered print audit: **71 passed**.
+- `npm test`: **291 passed** on this revision.
 - All registered models exported successfully after channel changes.
 - Manifest regenerated; review render and STL regenerated from revised model.
 - Root `python3 scripts/render-all.py`: **28/28 passed** earlier in this PR;
