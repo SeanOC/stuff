@@ -216,7 +216,8 @@ SPEC = register(ModelSpec(
     name='holder_cup_lid', build=lambda values: holder(**values),
     title='Cup lid holder (Multibuild)', category_id='multiboard',
     description='Curved cradle for an 85.3 mm sippy-cup lid, with shoulder-retaining end channels and two locating pins. Prototype: bolt seat and physical fit validation pending.',
-    tags=('holder', 'multiboard', 'cup-lid'), params=PARAMS,
+    # Keep this scaffold out of the app until the verified bolt seat is implemented.
+    tags=('smoke', 'holder', 'multiboard', 'cup-lid'), params=PARAMS,
     presets=(Preset(id='sippy_cup_85mm', label='Sippy cup (85.3 mm)', values={}),),
     print_orientation=(1.0, 0.0, 0.0),
 ))

@@ -2,6 +2,11 @@
 
 The end-standing digital print audit now passes. The front bolt seat is
 unfinished; the STL is for geometry review until that interface is verified.
+The model is registered as a smoke/scaffold model and excluded from the
+production manifest and app catalog. Restore production registration only
+after implementing and testing the verified bolt seat. Geometry, tests,
+and review exports remain available; this registration change leaves the
+default preset volume unchanged at 19,834.554 mm³.
 
 ## Geometry and material
 
