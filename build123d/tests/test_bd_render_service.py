@@ -258,3 +258,16 @@ def test_concurrent_renders_are_bounded_and_all_succeed(base_url):
         t.join(timeout=60)
     assert len(results) == 6
     assert all(status == 200 and magic == b"glTF" for status, magic in results), results
+
+
+def test_cup_lid_pointed_pins_export_watertight(base_url):
+    import io
+    import trimesh
+    status, headers, body = _post(
+        base_url, "/render?format=stl", {"slug": "holder-cup-lid", "params": {}}
+    )
+    assert status == 200, body
+    assert headers["content-type"] == "application/sla"
+    mesh = trimesh.load_mesh(io.BytesIO(body), file_type="stl")
+    assert mesh.is_watertight and mesh.is_winding_consistent
+    assert mesh.volume > 0

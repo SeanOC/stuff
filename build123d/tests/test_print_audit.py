@@ -36,6 +36,7 @@ from build123d import (  # noqa: E402
     Line,
     Plane,
     Pos,
+    Rot,
     extrude,
     make_face,
 )
@@ -455,6 +456,21 @@ def test_empty_part_raises():
 _SPECS = all_models()
 
 
+def _cup_lid_shank_exclusion(values):
+    """Only the approved horizontal shank, exact radius and plate depth.
+
+    No bbox padding and no countersink/pin/edge-treatment exclusions.
+    """
+    from holders.cup_lid import dimensions
+    p = dimensions(values)
+    return Rot(-90, 0, 0) * Cylinder(
+        p['bolt_clearance_diameter']/2, p['plate_thickness'],
+        align=(Align.CENTER, Align.CENTER, Align.MIN))
+
+
+_MODEL_EXCLUSIONS = {'holder_cup_lid': _cup_lid_shank_exclusion}
+
+
 def _audit_model(spec) -> PrintAuditReport:
     """Audit a registered model at its declared print orientation, excluding
     every declared mount's library-cutter envelopes."""
@@ -463,7 +479,9 @@ def _audit_model(spec) -> PrintAuditReport:
     cutters: list = []
     for mount in spec.mounts:
         cutters.extend(resolve_fixtures(spec, mount, values).cutters)
-    return audit(part, spec.print_orientation, cutters=cutters, model=spec.name)
+    exclusion = _MODEL_EXCLUSIONS.get(spec.name)
+    return audit(part, spec.print_orientation, cutters=cutters,
+                 exclusions=[exclusion(values)] if exclusion else (), model=spec.name)
 
 
 @pytest.mark.parametrize("spec", _SPECS, ids=[s.name for s in _SPECS])
@@ -500,3 +518,60 @@ def test_model_print_audit(spec, capsys):
     if gating:
         pytest.fail(reason)
     pytest.xfail(reason)
+
+
+def test_cup_lid_shank_exclusion_is_the_only_miss():
+    from holders.cup_lid import SPEC
+    values = SPEC.resolve_values()
+    part = SPEC.build(values)
+    region = _cup_lid_shank_exclusion(values)
+    raw = audit(part, SPEC.print_orientation, model='cup_lid_unexcluded')
+    assert not raw.ok
+    assert raw.max_overhang_deg > 45
+    assert len(raw.downward_fillets) == 1
+    assert raw.downward_fillets[0].geom_type == 'CYLINDER'
+    assert all(region.is_inside(f.location, tolerance=1e-6) for f in raw.downward_fillets)
+    assert raw.longest_bridge_mm <= 10 and raw.min_wall_mm >= 0.9
+    assert raw.bed_chamfer == 'present'
+    # Independently enumerate steep faces, including planar ones that the
+    # curved-face report cannot name. Each failure must be on the shank.
+    bad_faces = []
+    for face in part.faces():
+        c, ref = _outward_normal(part, face)
+        if max(v.Z for v in face.vertices()) <= part.bounding_box().min.Z+1e-6:
+            continue
+        for _, n in _face_samples(face, _OVERHANG_UV):
+            normal = _signed(n, ref, face.normal_at(c))
+            if normal.Z < -math.sin(math.radians(45.001)):
+                bad_faces.append(face)
+                assert region.is_inside(face.center(), tolerance=1e-6)
+                break
+    assert len(bad_faces) == 1
+    clean = audit(part, SPEC.print_orientation, exclusions=[region], model='cup_lid_shank_only')
+    assert clean.ok, clean.format()
+    assert clean.bed_chamfer == 'present'
+    assert _is_production(SPEC) and PRINT_AUDIT_REQUIRED
+    assert _audit_model(SPEC) == PrintAuditReport(
+        **{**clean.__dict__, 'model': SPEC.name})
+
+    # A real downward fillet outside the shank must still block production.
+    # Fuse an outward block to the upper-right tab and roll its underside.
+    bump = Pos(43, 10, 6) * Box(12, 8, 8)
+    bottom = bump.faces().sort_by(Axis.Z)[0]
+    bump = bump.fillet(1, bottom.edges())
+    damaged = part.fuse(bump).clean()
+    assert len(damaged.solids()) == 1
+    regression = audit(damaged, SPEC.print_orientation, exclusions=[region])
+    assert not regression.ok and regression.downward_fillets
+    assert any(not region.is_inside(f.location) for f in regression.downward_fillets)
+
+
+def test_angle_tolerance_does_not_hide_real_overhang():
+    # The 0.001 degree allowance only absorbs OCP spline approximation of a
+    # nominal 45 degree chamfer. A 45.01 degree face must still be detected
+    # by the curved-face classifier (the summary is rounded to 0.1 degree).
+    from tests.print_audit import _downward_curved_faces
+    from build123d import Cone
+    angle = math.radians(45.01)
+    cone = Pos(0, 0, 1) * Cone(3, 3+5*math.tan(angle), 5)
+    assert _downward_curved_faces(cone, _UP_Z, [], -10)

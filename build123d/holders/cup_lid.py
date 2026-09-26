@@ -1,74 +1,67 @@
-"""Cup-lid cradle for Multibuild, reconstructed from Sean's reference print.
+"""Planar circular-segment cup-lid holder for Multibuild (pst-vks5).
 
-Coordinates: X runs between the locating pins, +Y points away from the
-board, Z is vertical in use. Intended print pose: -X end on the bed (+X
-up), as in reference photo 04. Horizontal pins use a rounded upper half
-and two 45-degree lower flats; a flat TOP alone does not fix an unsupported
-circular underside. The fixed-point clearance hole has a 45-degree roof.
+X joins the pins; +Y is forward from the board; +Z is up. Print STANDING
+on the lower chord, Z=-mount_height/2, without supports. Worst-case forward
+pull (+Y) loads the lips and their continuous R1 junction webs along layers.
+The plate carries lid weight (-Z) in compression. Intended for PLA/PCTG on
+an H2S; the round horizontal bolt shank is the sole approved audit exception.
 
-The worst load is a lid pulled forward (+Y), bending the lips and plate;
-normal lid weight (-Z) runs along the print layers. PLA/PCTG, H2S.
+The fixed 25 mm pitch is one Multibuild Multi Unit. Board dimensions cited
+in docs/cup-lid-validation.md: 7.5 mm mouth tapering to a 6.0 mm throat over
+1.5 mm, total depth 6.4 mm. The rear cones CLEAR that cavity; they provide
+coarse anti-rotation at the mouth rim (default +/-0.2 mm lateral play), not
+chamfer seating. Their bases and the plate back are coplanar. The bolt clamps.
+The 8 mm shank / 12.5 mm head / 90 degree seat are operator-approved BEST
+GUESSES, exposed for the physical fit validation tracked by pst-mvno.
 
-Dimension evidence:
-* https://docs.multibuild.io/beginner-section/core-parts-documentation
-  specifies the 25 mm Multi Unit and small-thread holes.
-* https://github.com/asciipip/multiboard-parametric-stacked/blob/master/multiboard_base.scad
-  lines 51-56 and 87-95 measure the official tile remix STEP
-  (https://than.gs/m/994681): board depth 6.4, small-hole throat diameter
-  6.0, mouth diameter 7.5, thread major diameter 7.0 mm.
-  Pins use 0.2 mm loose clearance PER SIDE: 6.0 - 0.4 = 5.6 mm;
-  projection is 6.4 - 0.5 = 5.9 mm, with a 0.5 mm lead-in.
-
-BEST GUESS bolt seat — explicitly authorized by Sean, pst-tti3 18:43Z:
-small-thread major diameter approximately 7.6 mm plus 0.4 mm diametral
-clearance gives an 8.0 mm shank opening; head diameter 13.0 mm, included
-angle 90 degrees, nominal head depth 2.5 mm. These are operator-approved
-estimates, NOT published Multibuild specification dimensions. All three
-seat dimensions are ranged parameters for test-print adjustment. The cone
-opens toward the concave front (+Y); its nominal diameter is measured at
-the plate's center tangent plane. Physical bolt fit remains to test.
+Functional sharp edges: lip shoulder-contact arc and wall seating arc.
+Cone pin surfaces and countersink are functional. All bed-contact edges
+have 45 degree relief; exposed upper edges have 0.5 mm chamfers. The R1
+junctions follow the near-vertical end arcs, never a downward rolled edge.
 """
 from __future__ import annotations
 
 import math
 
-from build123d import (
-    Align, Box, BuildLine, BuildSketch, CenterArc, Cone, Cylinder, Line,
-    Plane, Polygon, Pos, Rot, extrude, make_face,
-)
-
+from build123d import Align, Axis, Box, BuildSketch, Cone, Cylinder, Plane, Polygon, Pos, Rot, revolve
+from OCP.BRepFilletAPI import BRepFilletAPI_MakeChamfer
 from holders.registry import ModelSpec, Param, Preset, register
 
 PITCH = 25.0
-CLEARANCE = 0.3
-WALL = 2.4
-LIP_THICKNESS = 4.0
-SMALL_HOLE_DIAMETER = 6.0
-BOARD_DEPTH = 6.4
-PIN_DIAMETER = SMALL_HOLE_DIAMETER - 0.4
-PIN_LENGTH = BOARD_DEPTH - 0.5
+JOINT_RADIUS = 1.0
 
-PARAMS = (
-    Param('lid_diameter', 'number', 85.3, min=60, max=130, step=0.1, unit='mm', label='Lid diameter'),
-    Param('shoulder_height', 'number', 13.0, min=6, max=25, step=0.1, unit='mm', label='Shoulder height'),
-    Param('shoulder_depth', 'number', 4.5, min=3.5, max=10, step=0.1, unit='mm', label='Shoulder radial depth'),
-    Param('plate_height', 'number', 28.0, min=20, max=45, step=1, unit='mm', label='Plate height'),
-    Param('plate_thickness', 'number', 6.0, min=4, max=10, step=0.1, unit='mm', label='Plate center thickness'),
-    Param('end_lip_height', 'number', 6.0, min=3, max=8, step=0.1, unit='mm', label='Lip contact band height'),
-    Param('pin_diameter', 'number', PIN_DIAMETER, min=4.8, max=5.8, step=0.1, unit='mm', label='Locating pin diameter'),
-    Param('pin_length', 'number', PIN_LENGTH, min=2, max=PIN_LENGTH, step=0.1, unit='mm', label='Locating pin length'),
-    # Even multiples only: each pin, not just the pair, must be on the
-    # 25 mm lattice relative to the center hole. 25/75 mm spacing is wrong.
-    Param('pin_spacing', 'enum', '50', choices=('50', '100'), unit='mm', label='Pin spacing'),
-    Param('bolt_clearance_diameter', 'number', 8.0, min=7.6, max=9, step=0.1, unit='mm', label='Bolt clearance diameter'),
-    Param('countersink_diameter', 'number', 13.0, min=11, max=15, step=0.1, unit='mm', label='Countersink diameter'),
-    Param('countersink_angle', 'number', 90.0, min=90, max=120, step=1, unit='deg', label='Countersink included angle'),
-    Param('bed_chamfer', 'number', 0.4, min=0.3, max=0.5, step=0.1, unit='mm', label='Bed edge chamfer'),
-)
+PARAMS = tuple(Param(name, 'number', default, min=lo, max=hi, step=step,
+                     unit='deg' if 'angle' in name else 'mm', label=label)
+    for name, lo, hi, step, default, label in (
+        ('lid_diameter', 60, 130, 0.1, 85.3, 'Lid diameter'),
+        ('shoulder_height', 6, 25, 0.5, 13, 'Shoulder height'),
+        ('shoulder_depth', 2, 10, 0.1, 4.5, 'Shoulder radial depth'),
+        ('mount_height', 20, 45, 0.5, 30, 'Mount height'),
+        ('plate_thickness', 5, 8, 0.5, 5, 'Plate thickness'),
+        ('tab_thickness', 2, 5, 0.5, 3, 'Tab thickness'),
+        ('lip_thickness', 2, 5, 0.5, 3, 'Lip thickness'),
+        ('lid_clearance', 0.1, 0.8, 0.05, 0.3, 'Lid clearance'),
+        ('pin_base_diameter', 6.9, 7.3, 0.1, 7.1, 'Pin base diameter'),
+        ('pin_tip_diameter', 0, 0.8, 0.1, 0, 'Pin tip diameter'),
+        ('pin_cone_half_angle', 45, 49, 1, 45, 'Pin cone half-angle'),
+        ('bolt_clearance_diameter', 7.5, 8.5, 0.1, 8, 'Bolt clearance diameter'),
+        ('countersink_diameter', 10.5, 13, 0.5, 12.5, 'Countersink diameter'),
+        ('countersink_angle', 90, 100, 1, 90, 'Countersink included angle'),
+        ('bed_chamfer', 0.3, 0.5, 0.1, 0.4, 'Bed edge chamfer'),
+    ))
+
+
+def pin_length_mm(base_diameter, tip_diameter, half_angle_deg):
+    """Pure cone-length guard, also testable outside the public Param domain."""
+    length = (base_diameter-tip_diameter)/(2*math.tan(math.radians(half_angle_deg)))
+    if length < 2.4 - 1e-9:
+        raise ValueError('pin length below 2.4')
+    if length > 6.0 + 1e-9:
+        raise ValueError('pin length above 6.0')
+    return length
 
 
 def dimensions(values: dict) -> dict:
-    """Derived envelope, shoulder clearance, and exact engagement locations."""
     p = {q.name: q.default for q in PARAMS}
     unknown = values.keys() - p.keys()
     if unknown:
@@ -76,165 +69,102 @@ def dimensions(values: dict) -> dict:
     p.update(values)
     for q in PARAMS:
         v = p[q.name]
-        if q.kind == 'enum':
-            if v not in q.choices:
-                raise ValueError(f'{q.name} must be one of {q.choices}')
-        elif isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or not q.min <= v <= q.max:
+        if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or not q.min <= v <= q.max:
             raise ValueError(f'{q.name} must be in [{q.min}, {q.max}]')
-    seat_depth = (p['countersink_diameter']-p['bolt_clearance_diameter']) / (2*math.tan(math.radians(p['countersink_angle']/2)))
-    if p['plate_thickness']-seat_depth < WALL:
+    reach = p['shoulder_depth']-p['lid_clearance']
+    if reach < 1.6 - 1e-9:
+        raise ValueError('shoulder_depth - lid_clearance must be >= 1.6')
+    if p['countersink_diameter'] <= p['bolt_clearance_diameter'] + 2:
+        raise ValueError('countersink_diameter must exceed bolt_clearance_diameter + 2')
+    seat = (p['countersink_diameter']-p['bolt_clearance_diameter'])/(2*math.tan(math.radians(p['countersink_angle']/2)))
+    if p['plate_thickness']-seat < 2.4 - 1e-9:
         raise ValueError('plate_thickness must leave 2.4 mm behind the countersink')
-    p['seat_depth'] = seat_depth
-    r = p['lid_diameter'] / 2 + CLEARANCE
-    band = min(p['end_lip_height'], p['shoulder_height'])
-    if band/2 > p['shoulder_depth']-CLEARANCE:
-        raise ValueError('end_lip_height must fit the shoulder_depth roof envelope')
-    # Roof the upper channel across its axial gap; extend only this end
-    # by half that span so both 45-degree planes clear the lid.
-    left = -(r + WALL)
-    sag = r - math.sqrt(r*r - (p['plate_height']/2)**2)
-    front = p['plate_thickness'] + sag + p['shoulder_height'] + CLEARANCE
-    right = r + WALL + (front-p['plate_thickness'])/2
-    w = right - left
-    spacing = float(p['pin_spacing'])
-    if spacing + p['pin_diameter'] + 2 * WALL > 2*(r + WALL):
-        raise ValueError('pin_spacing does not fit within this lid cradle')
-    p.update(radius=r, width=w, left=left, right=right, spacing=spacing,
-             engagement=p['shoulder_depth'] - CLEARANCE,
-             contact_band=band)
+    if p['pin_tip_diameter'] >= p['pin_base_diameter']:
+        raise ValueError('pin_tip_diameter must be below pin_base_diameter')
+    length = pin_length_mm(p['pin_base_diameter'], p['pin_tip_diameter'], p['pin_cone_half_angle'])
+    # Difference from the linear board cavity is linear on each interval,
+    # so checking its breakpoints proves clearance over the entire depth.
+    for z in (0, 1.5, length):
+        pin_d = p['pin_base_diameter']-2*z*math.tan(math.radians(p['pin_cone_half_angle']))
+        cavity_d = 7.5-z if z <= 1.5 else 6.0
+        if pin_d > cavity_d-0.2 + 1e-9:
+            raise ValueError('pin must clear board cavity by 0.1 mm per side')
+    inner = p['lid_diameter']/2+p['lid_clearance']
+    p.update(radius=inner+p['tab_thickness'], wall_radius=inner,
+             lip_radius=inner-reach, reach=reach, seat_depth=seat,
+             pin_length=length, lip_bottom=p['plate_thickness']+p['shoulder_height']+p['lid_clearance'])
+    p['lip_top'] = p['lip_bottom']+p['lip_thickness']
     return p
 
 
 def pin_centers(values: dict) -> tuple[tuple[float, float, float], ...]:
-    p = dimensions(values)
-    return ((-p['spacing']/2, 0.0, 0.0), (p['spacing']/2, 0.0, 0.0))
+    dimensions(values)
+    return ((-PITCH, 0.0, 0.0), (PITCH, 0.0, 0.0))
 
 
-def _pin(diameter: float, length: float):
-    """Upper semicircle + inscribed 45-degree lower V, axis -Y.
-
-    The lower flats stay INSIDE the fit circle, unlike an outward teardrop.
-    Their initial ridge is a short cantilever, which needs physical validation.
-    """
-    r = diameter / 2
-    # Local sketch x -> model Z, sketch y -> model X (print up).
-    plane = Plane(origin=(0, 0, 0), x_dir=(0, 0, 1), z_dir=(0, 1, 0))
-    with BuildSketch(plane) as profile:
-        with BuildLine():
-            CenterArc((0, 0), r, 0, 180)
-            Line((-r, 0), (0, -r))
-            Line((0, -r), (r, 0))
-        make_face()
-    pin = extrude(profile.sketch, amount=length, dir=(0, -1, 0))
-    tip = [e for e in pin.edges() if abs(e.center().Y + length) < 1e-6]
-    return pin.chamfer(0.5, None, tip)
+def _pin(p):
+    return Rot(90, 0, 0) * Cone(p['pin_base_diameter']/2, p['pin_tip_diameter']/2,
+                               p['pin_length'], align=(Align.CENTER, Align.CENTER, Align.MIN))
 
 
-def _center_hole(diameter: float, depth: float):
-    """Circular clearance with a tangent 45-degree roof, roof toward +X."""
-    r = diameter / 2
-    cylinder = Rot(90, 0, 0) * Cylinder(r, depth, align=(Align.CENTER, Align.CENTER, Align.CENTER))
-    plane = Plane(origin=(0, 0, 0), x_dir=(0, 0, 1), z_dir=(0, 1, 0))
-    with BuildSketch(plane) as roof:
-        Polygon((-r/math.sqrt(2), r/math.sqrt(2)),
-                (0, r*math.sqrt(2)),
-                (r/math.sqrt(2), r/math.sqrt(2)), align=None)
-    return cylinder.fuse(extrude(roof.sketch, amount=depth/2, both=True))
+def _center_hole(p):
+    shank = Pos(0, -1, 0) * Rot(-90, 0, 0) * Cylinder(
+        p['bolt_clearance_diameter']/2, p['plate_thickness']+2,
+        align=(Align.CENTER, Align.CENTER, Align.MIN))
+    seat = Pos(0, p['plate_thickness']-p['seat_depth'], 0) * Rot(-90, 0, 0) * Cone(
+        p['bolt_clearance_diameter']/2, p['countersink_diameter']/2,
+        p['seat_depth'], align=(Align.CENTER, Align.CENTER, Align.MIN))
+    return shank.fuse(seat)
 
 
 def holder(**values):
     p = dimensions(values)
-    r, w, h, t = p['radius'], p['width'], p['plate_height'], p['plate_thickness']
-    # A shallow cylindrical concavity across the plate's short dimension;
-    # its generator is parallel to X, so the front is vertical in print.
-    sag = r - math.sqrt(r*r - (h/2)**2)
-    plate = Pos((p['left']+p['right'])/2, 0, 0) * Box(
-        w, t+sag, h, align=(Align.CENTER, Align.MIN, Align.CENTER))
-    bore = Pos(0, t+r, 0) * Rot(0, 90, 0) * Cylinder(r, 2*w)
-    plate = (plate - bore).clean()
-    # The lower end is a flat bed face. Its circular INSIDE faces point
-    # upward in the print pose; only the old curved outside needed replacing.
-    gap = p['shoulder_height'] + CLEARANCE
-    front = t + sag + gap
-    band = p['contact_band']
-    lower_blank = Box(r+WALL, front+WALL, band,
-                      align=(Align.MAX, Align.MIN, Align.CENTER))
-    inner = Pos(0, (front+WALL)/2, 0) * Rot(90, 0, 0) * Cylinder(r, front+WALL+2)
-    lower_wall = lower_blank - inner
-    lower_lip_blank = Pos(0, front, 0) * Box(
-        r+WALL, WALL, band, align=(Align.MAX, Align.MIN, Align.CENTER))
-    lip_inner = Pos(0, front+WALL/2, 0) * Rot(90, 0, 0) * Cylinder(
-        r-p['engagement'], WALL+2)
-    lower_lip = lower_lip_blank - lip_inner
-
-    # Roof the upper channel across its AXIAL gap. Both 45-degree slopes
-    # remain outside radius r, preserving all shoulder clearance; the roof
-    # apex extends only this end. Extruding across the full contact band
-    # avoids the thin side wedges of a roof across Z.
-    with BuildSketch(Plane.XY.offset(-band/2)) as upper_profile:
-        Polygon((r, 0), (r, t), (r+(front-t)/2, (front+t)/2),
-                (r, front), (p['right'], front), (p['right'], 0), align=None)
-    upper_wall = extrude(upper_profile.sketch, amount=band)
-
-    # Keep a full 4 mm forward-pull section instead of tapering its Y
-    # thickness to zero. Roof the lower edge across Z: two 45-degree
-    # planes meet at the engagement tip, which is a 4 mm-long blunt land.
-    # This preserves the maximum radial engagement without a flat ceiling.
-    lip_tip = r-p['engagement']
-    lip_plane = Plane(origin=(0, front, 0), x_dir=(1, 0, 0), z_dir=(0, -1, 0))
-    with BuildSketch(lip_plane) as upper_lip_profile:
-        Polygon((lip_tip, 0), (lip_tip+band/2, -band/2),
-                (p['right'], -band/2), (p['right'], band/2),
-                (lip_tip+band/2, band/2), align=None)
-    upper_lip = extrude(upper_lip_profile.sketch, amount=LIP_THICKNESS, dir=(0, 1, 0))
-    part = plate.fuse(lower_wall, lower_lip, upper_wall, upper_lip).clean()
-    # Side junctions run parallel to print-up, so their R1 blends do not
-    # create downward curved faces. They spread forward-pull load into the
-    # plate without entering the lid's central shoulder contact band.
-    join_y = t+r-math.sqrt(r*r-(band/2)**2)
-    junctions = [e for e in part.edges()
-                 if e.geom_type.name == 'LINE'
-                 and abs(e.center().Y-join_y) < 1e-5
-                 and abs(abs(e.center().Z)-band/2) < 1e-5]
-    part = part.fillet(1.0, junctions)
-    # Treat the entire fused bed-contact perimeter, including the lower lip.
-    bed_edges = [e for e in part.edges()
-                 if all(abs(v.X-p['left']) < 1e-6 for v in e.vertices())]
-    part = part.chamfer(p['bed_chamfer'], None, bed_edges)
-    upper_end = [e for e in part.edges()
-                 if all(abs(v.X-p['right']) < 1e-6 for v in e.vertices())]
-    part = part.chamfer(0.4, None, upper_end)
-    # Break exposed plate rails and front lip rims. Contact faces, the
-    # teardrop fit profile, and the lip's engagement ridge remain datums.
-    exposed = []
-    for e in part.edges():
-        c = e.center()
-        rail = e.geom_type.name == 'LINE' and abs(abs(c.Z)-h/2) < 1e-5 and e.length > w/2
-        lip_front = (abs(c.Y-(front+WALL)) < 1e-5 and c.X < 0
-                     or abs(c.Y-(front+LIP_THICKNESS)) < 1e-5 and c.X > 0)
-        if rail or lip_front:
-            exposed.append(e)
-    part = part.chamfer(min(0.4, p['bed_chamfer']), None, exposed)
+    r, ri, rl = p['radius'], p['wall_radius'], p['lip_radius']
+    t, h, bottom, top = p['plate_thickness'], p['mount_height'], p['lip_bottom'], p['lip_top']
+    # A single revolved section is equivalent to overlapping the wall into
+    # the plate by tab_thickness and the lip into the wall by lip_thickness
+    # along Y. No coincident-only fusions. R1 inside blends spread the load.
+    with BuildSketch(Plane.XY) as section:
+        Polygon((0, 0), (r, 0), (r, top), (rl, top), (rl, bottom),
+                (ri, bottom), (ri, t), (0, t), align=None)
+    part = revolve(section.sketch, axis=Axis.Y)
+    joints = [e for e in part.edges() if e.geom_type.name == 'CIRCLE'
+              and abs(e.radius-ri) < 1e-6 and
+              (abs(e.center().Y-t) < 1e-6 or abs(e.center().Y-bottom) < 1e-6)]
+    part = part.fillet(JOINT_RADIUS, joints)
+    part = (part & Box(2*r+2, 2*top+2, h)).clean()
+    # Arcs exposed to handling: rear perimeter and both front lip rims.
+    arcs = [e for e in part.edges() if e.geom_type.name == 'CIRCLE'
+            and (abs(e.center().Y) < 1e-6 or abs(e.center().Y-top) < 1e-6)]
+    part = part.chamfer(0.5, None, arcs)
+    # Treat every edge of both chord faces, including the ends of the walls
+    # and lips. The bottom takes the configurable bed relief instead of 0.5.
+    for z, amount in ((h/2, 0.5), (-h/2, p['bed_chamfer'])):
+        face = next(f for f in part.faces() if f.geom_type.name == 'PLANE'
+                    and abs(f.center().Z-z) < 1e-6 and abs(f.normal_at().Z) > 0.99)
+        # Equal-distance chamfers are NOT 45 degrees where a curved wall
+        # meets the chord obliquely. OCP's distance/angle form pins the
+        # angle to the planar contact face along the entire curved loop.
+        builder = BRepFilletAPI_MakeChamfer(part.wrapped)
+        for edge in face.edges():
+            builder.AddDA(amount, math.pi/4, edge.wrapped, face.wrapped)
+        part = part._make_3d_result(builder.Shape())
+        if not part.is_valid:
+            raise ValueError('invalid chord chamfer')
+    # Construct one finished half and mirror it: independent spline fits
+    # at opposite ends otherwise differ by measurable boolean slivers.
+    half = part & Box(r+1, 2*top+2, h+2, align=(Align.MIN, Align.CENTER, Align.CENTER))
+    part = half.fuse(half.mirror(Plane.YZ)).clean()
     for x, y, z in pin_centers(values):
-        part = part.fuse(Pos(x, y, z) * _pin(p['pin_diameter'], p['pin_length']))
-    part = part - _center_hole(p['bolt_clearance_diameter'], 2*(front+LIP_THICKNESS+1))
-    # Extend the same cone through the curved front, avoiding a cylindrical
-    # counterbore ceiling. A flat head at Y=t is flush at the center and
-    # slightly recessed where the surrounding concavity is deeper.
-    slope = math.tan(math.radians(p['countersink_angle']/2))
-    cone_height = p['seat_depth'] + sag + 1
-    seat = Pos(0, t-p['seat_depth'], 0) * Rot(-90, 0, 0) * Cone(
-        p['bolt_clearance_diameter']/2,
-        p['bolt_clearance_diameter']/2 + cone_height*slope,
-        cone_height, align=(Align.CENTER, Align.CENTER, Align.MIN))
-    return (part-seat).clean()
+        part = part.fuse(Pos(x, y, z) * _pin(p))
+    return (part-_center_hole(p)).clean()
 
 
 SPEC = register(ModelSpec(
     name='holder_cup_lid', build=lambda values: holder(**values),
     title='Cup lid holder (Multibuild)', category_id='multiboard',
-    description='Curved cradle for an 85.3 mm sippy-cup lid, with shoulder-retaining end channels and two locating pins. Parametric front countersink uses operator-approved best-guess bolt dimensions; physical fit validation pending.',
+    description='Planar circular-segment cradle with mirrored arc tabs, inward lips and loose cone locating pins. Standing print; parametric countersink uses best-guess bolt dimensions pending physical validation.',
     tags=('holder', 'multiboard', 'cup-lid'), params=PARAMS,
     presets=(Preset(id='sippy_cup_85mm', label='Sippy cup (85.3 mm)', values={}),),
-    print_orientation=(1.0, 0.0, 0.0),
+    print_orientation=(0.0, 0.0, 1.0),
 ))

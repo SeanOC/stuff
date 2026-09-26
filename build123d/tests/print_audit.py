@@ -60,6 +60,9 @@ from dataclasses import dataclass
 from build123d.topology import Part
 
 # --- thresholds (design-guidelines.md §1) ---------------------------------
+# OCP approximates angle-defined chamfers on curved loops with splines.
+# Their sampled normals differ from 45 degrees by up to ~0.0007 degrees.
+_ANGLE_TOL_DEG = 0.001
 MAX_OVERHANG_DEG = 45.0   # steepest downward face from vertical
 MAX_BRIDGE_MM = 10.0      # longest unsupported flat span
 MIN_WALL_MM = 0.9         # thinnest wall (whole-part floor; load-bearing 1.6 deferred)
@@ -219,9 +222,17 @@ def _bbox_corners(bb):
 
 
 def _in_any_box(x: float, y: float, z: float, boxes) -> bool:
-    for (x0, y0, z0, x1, y1, z1) in boxes:
-        if x0 <= x <= x1 and y0 <= y <= y1 and z0 <= z <= z1:
-            return True
+    for region in boxes:
+        # Explicit exclusions are exact solids with no library bbox margin.
+        # This keeps the approved round shank exception off its countersink
+        # and every other face outside the cylindrical envelope.
+        if hasattr(region, 'is_inside'):
+            if region.is_inside((x, y, z), tolerance=1e-6):
+                return True
+        else:
+            x0, y0, z0, x1, y1, z1 = region
+            if x0 <= x <= x1 and y0 <= y <= y1 and z0 <= z <= z1:
+                return True
     return False
 
 
@@ -360,7 +371,7 @@ def _downward_curved_faces(part, up, boxes, hmin):
             if cdot < -_DOWN_EPS:
                 downward = True
                 worst = max(worst, math.degrees(math.asin(min(1.0, -cdot))))
-        if downward and worst > MAX_OVERHANG_DEG + 1e-6:
+        if downward and worst > MAX_OVERHANG_DEG + _ANGLE_TOL_DEG:
             found.append(
                 DownwardFillet(
                     geom_type=str(face.geom_type).replace("GeomType.", ""),
@@ -558,6 +569,7 @@ def audit(
     orientation: tuple[float, float, float] = (0.0, 0.0, 1.0),
     *,
     cutters=(),
+    exclusions=(),
     model: str = "part",
 ) -> PrintAuditReport:
     """Run the full printability audit (AC 1).
@@ -569,10 +581,12 @@ def audit(
         cutters: registered library cutter solids whose envelopes are excluded
             from the overhang / bridge / fillet checks (the slot profile is
             spec). Typically a model's ``mount_fixtures(...).cutters``.
+        exclusions: explicitly approved exact solid envelopes (no bbox growth).
+            Production callers must regression-test every exception.
         model: a label for the report.
     """
     up = _unit(orientation)
-    boxes = _cutter_boxes(list(cutters))
+    boxes = _cutter_boxes(list(cutters)) + list(exclusions)
     verts = [v for v in part.vertices()]
     if not verts:
         raise ValueError(f"{model}: part has no geometry to audit")
