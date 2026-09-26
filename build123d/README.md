@@ -249,8 +249,10 @@ permit replacement of the existing library mounts. The module records the
 25 mm pitch, measured 6 mm small-hole throat and 6.4 mm board depth, together
 with sources and the per-side printed clearance.
 
-The cup-lid implementation passes the end-standing digital print audit.
-Its front countersink uses Sean's explicitly approved **BEST GUESS** bolt
-dimensions (8 mm clearance, 13 mm head, 90° included angle), exposed as
-ranged parameters. See [the validation record](docs/cup-lid-validation.md).
+The cup-lid v2 prints standing on its lower chord (+Z up). Its production
+audit excludes only the exact horizontal round bolt-shank envelope; the
+self-policing regression proves all other findings still block. The planar
+plate, mirrored end channels and loose cone pins replace the rejected v1.
+Its front countersink uses operator-approved **BEST GUESS** bolt dimensions
+(8 mm clearance, 12.5 mm head, 90° included angle), exposed as ranged parameters. See [the validation record](docs/cup-lid-validation.md).
 Physical bolt/lid fit and PLA/PCTG testing are tracked in pst-mvno.

@@ -34,12 +34,33 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from build123d import export_stl, export_gltf  # noqa: E402
+import trimesh
+
+from build123d import export_stl as _native_export_stl, export_gltf  # noqa: E402
 
 from holders.registry import all_models  # noqa: E402
 from scripts.thumbnail import render_review, render_thumbnail  # noqa: E402
 
 OUT = Path(__file__).resolve().parent.parent / "out"
+
+
+def export_stl(part, path):
+    """Export native geometry, dropping only triangles with repeated vertices.
+
+    OCP emits a collapsed seam triangle at a true cone apex (tip diameter
+    zero). It encloses no volume but makes edge-count manifold checks fail.
+    Remove those triangles after STL vertex welding; do not fill holes,
+    smooth geometry, or remove legitimate small features.
+    """
+    if not _native_export_stl(part, str(path)):
+        raise ValueError(f'STL export failed: {path}')
+    mesh = trimesh.load_mesh(path)
+    f = mesh.faces
+    keep = (f[:, 0] != f[:, 1]) & (f[:, 1] != f[:, 2]) & (f[:, 2] != f[:, 0])
+    if not keep.all():
+        mesh.update_faces(keep)
+        mesh.export(str(path), file_type='stl')
+    return True
 
 
 def export_all() -> int:

@@ -5,7 +5,7 @@
       "slug": "holder-cup-lid",
       "engine": "build123d",
       "title": "Cup lid holder (Multibuild)",
-      "blurb": "Curved cradle for an 85.3 mm sippy-cup lid, with shoulder-retaining end channels and two locating pins. Parametric front countersink uses operator-approved best-guess bolt dimensions; physical fit validation pending.",
+      "blurb": "Planar circular-segment cradle with mirrored arc tabs, inward lips and loose cone locating pins. Standing print; parametric countersink uses best-guess bolt dimensions pending physical validation.",
       "categoryId": "multiboard",
       "params": [
         {
@@ -23,10 +23,10 @@
           "label": "Shoulder height",
           "unit": "mm",
           "kind": "number",
-          "default": 13.0,
+          "default": 13,
           "min": 6,
           "max": 25,
-          "step": 0.1
+          "step": 0.5
         },
         {
           "name": "shoulder_depth",
@@ -34,79 +34,98 @@
           "unit": "mm",
           "kind": "number",
           "default": 4.5,
-          "min": 3.5,
+          "min": 2,
           "max": 10,
           "step": 0.1
         },
         {
-          "name": "plate_height",
-          "label": "Plate height",
+          "name": "mount_height",
+          "label": "Mount height",
           "unit": "mm",
           "kind": "number",
-          "default": 28.0,
+          "default": 30,
           "min": 20,
           "max": 45,
-          "step": 1
+          "step": 0.5
         },
         {
           "name": "plate_thickness",
-          "label": "Plate center thickness",
+          "label": "Plate thickness",
           "unit": "mm",
           "kind": "number",
-          "default": 6.0,
-          "min": 4,
-          "max": 10,
-          "step": 0.1
-        },
-        {
-          "name": "end_lip_height",
-          "label": "Lip contact band height",
-          "unit": "mm",
-          "kind": "number",
-          "default": 6.0,
-          "min": 3,
+          "default": 5,
+          "min": 5,
           "max": 8,
-          "step": 0.1
+          "step": 0.5
         },
         {
-          "name": "pin_diameter",
-          "label": "Locating pin diameter",
+          "name": "tab_thickness",
+          "label": "Tab thickness",
           "unit": "mm",
           "kind": "number",
-          "default": 5.6,
-          "min": 4.8,
-          "max": 5.8,
-          "step": 0.1
-        },
-        {
-          "name": "pin_length",
-          "label": "Locating pin length",
-          "unit": "mm",
-          "kind": "number",
-          "default": 5.9,
+          "default": 3,
           "min": 2,
-          "max": 5.9,
+          "max": 5,
+          "step": 0.5
+        },
+        {
+          "name": "lip_thickness",
+          "label": "Lip thickness",
+          "unit": "mm",
+          "kind": "number",
+          "default": 3,
+          "min": 2,
+          "max": 5,
+          "step": 0.5
+        },
+        {
+          "name": "lid_clearance",
+          "label": "Lid clearance",
+          "unit": "mm",
+          "kind": "number",
+          "default": 0.3,
+          "min": 0.1,
+          "max": 0.8,
+          "step": 0.05
+        },
+        {
+          "name": "pin_base_diameter",
+          "label": "Pin base diameter",
+          "unit": "mm",
+          "kind": "number",
+          "default": 7.1,
+          "min": 6.9,
+          "max": 7.3,
           "step": 0.1
         },
         {
-          "name": "pin_spacing",
-          "label": "Pin spacing",
+          "name": "pin_tip_diameter",
+          "label": "Pin tip diameter",
           "unit": "mm",
-          "kind": "enum",
-          "default": "50",
-          "choices": [
-            "50",
-            "100"
-          ]
+          "kind": "number",
+          "default": 0,
+          "min": 0,
+          "max": 0.8,
+          "step": 0.1
+        },
+        {
+          "name": "pin_cone_half_angle",
+          "label": "Pin cone half-angle",
+          "unit": "deg",
+          "kind": "number",
+          "default": 45,
+          "min": 45,
+          "max": 49,
+          "step": 1
         },
         {
           "name": "bolt_clearance_diameter",
           "label": "Bolt clearance diameter",
           "unit": "mm",
           "kind": "number",
-          "default": 8.0,
-          "min": 7.6,
-          "max": 9,
+          "default": 8,
+          "min": 7.5,
+          "max": 8.5,
           "step": 0.1
         },
         {
@@ -114,19 +133,19 @@
           "label": "Countersink diameter",
           "unit": "mm",
           "kind": "number",
-          "default": 13.0,
-          "min": 11,
-          "max": 15,
-          "step": 0.1
+          "default": 12.5,
+          "min": 10.5,
+          "max": 13,
+          "step": 0.5
         },
         {
           "name": "countersink_angle",
           "label": "Countersink included angle",
           "unit": "deg",
           "kind": "number",
-          "default": 90.0,
+          "default": 90,
           "min": 90,
-          "max": 120,
+          "max": 100,
           "step": 1
         },
         {

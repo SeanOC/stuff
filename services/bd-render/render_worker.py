@@ -62,7 +62,8 @@ def main() -> int:
         return _fail(4, "params must be a JSON object")
 
     # Import inside main so a usage error above doesn't pay the OCP import.
-    from build123d import export_gltf, export_stl
+    from build123d import export_gltf
+    from scripts.export import export_stl
     from holders.registry import all_models
 
     spec = next(
