@@ -1,9 +1,10 @@
-"""Lower circular-segment v2.1 geometry contract for pst-5slt.
+"""Lower circular-segment v2.2 geometry contract for pst-g1rz.
 
 Tests inspect the final BRep/mesh, not just construction metadata. Physical
 bolt/lid fit remains the downstream pst-mvno print experiment.
 """
 import math
+from dataclasses import replace
 import sys
 from pathlib import Path
 
@@ -29,6 +30,10 @@ def test_registered_default():
     assert SPEC.category_id == 'multiboard'
     assert SPEC.presets[0].id == 'sippy_cup_85mm'
     assert SPEC.print_orientation == (0, 0, 1)
+    defaults = SPEC.resolve_values(SPEC.presets[0].values)
+    assert defaults['lid_clearance'] == 0.6
+    assert defaults['countersink_diameter'] == 16
+    assert defaults['plate_thickness'] == 6.5
 
 
 def test_presets_watertight_and_envelope(part, tmp_path):
@@ -158,9 +163,16 @@ def test_bolt_hole_through_and_countersunk(part):
         assert not part.is_inside((0, y, 0))
         assert not part.is_inside((p['bolt_clearance_diameter']/2-0.05, y, 0))
     seat_start = p['plate_thickness']-p['seat_depth']
-    assert seat_start == pytest.approx(2.75)
+    assert seat_start == pytest.approx(2.5)
     for y in (0.5, seat_start-0.1):
         assert part.is_inside((p['bolt_clearance_diameter']/2+0.05, y, 0))
+    # Measure the circular opening at each finished plate face.
+    for y, diameter in ((0, 8), (p['plate_thickness'], 16)):
+        rim = [e for e in part.edges() if e.geom_type.name == 'CIRCLE'
+               and abs(e.center().Y-y) < 1e-6
+               and abs(e.radius-diameter/2) < 0.025]
+        assert len(rim) == 1
+        assert 2*rim[0].radius == pytest.approx(diameter, abs=0.05)
     for fraction in (0.1, 0.5, 0.9):
         y = seat_start+fraction*p['seat_depth']
         radius = p['bolt_clearance_diameter']/2+fraction*(p['countersink_diameter']-p['bolt_clearance_diameter'])/2
@@ -170,6 +182,8 @@ def test_bolt_hole_through_and_countersunk(part):
 
 def test_shoulder_capture(part):
     p = dimensions({})
+    assert p['wall_radius'] == pytest.approx(p['lid_diameter']/2+0.6)
+    assert p['reach'] == pytest.approx(3.9)
     for sign in (-1, 1):
         for z in (0, 5, 10):
             def point(radius, y):
@@ -292,9 +306,11 @@ def test_outside_param_range_raises(name, value):
 @pytest.mark.parametrize('values,message', [
     ({'lid_diameter': 84, 'tab_thickness': 2, 'top_chord_offset': 2, 'mount_height': 30}, 'wall outward lean'),
     ({'top_chord_offset': 2, 'mount_height': 30, 'lid_clearance': 0.1, 'tab_thickness': 2}, 'wall outward lean'),
-    ({'shoulder_depth': 2, 'lid_clearance': 0.8}, '>= 1.6'),
-    ({'bolt_clearance_diameter': 8.5, 'countersink_diameter': 10.5}, 'must exceed'),
-    ({'bolt_clearance_diameter': 7.5, 'countersink_diameter': 13}, 'leave 2.4'),
+    ({'shoulder_depth': 2.2, 'lid_clearance': 0.7}, '>= 1.6'),
+    ({'plate_thickness': 6.0}, 'plate_thickness'),
+    ({'countersink_diameter': 16.5}, 'countersink_diameter'),
+    ({'bolt_clearance_diameter': 7.7}, 'bolt_clearance_diameter'),
+    ({'shoulder_depth': 2.1}, 'shoulder_depth'),
     ({'pin_tip_diameter': 7.1}, 'pin_tip_diameter'),
     ({'pin_base_diameter': 7.4}, 'pin_base_diameter'),
     ({'plate_height': 30}, 'unknown parameters'),
@@ -308,13 +324,34 @@ def test_cross_constraints_raise(values, message):
 
 @pytest.mark.parametrize('values', [
     {'lid_diameter': 84, 'mount_height': 30, 'top_chord_offset': 2},  # tightest specified legal build
-    {'shoulder_depth': 2, 'lid_clearance': 0.4},
-    {'bolt_clearance_diameter': 7.5, 'countersink_diameter': 12.5},
+    {'shoulder_depth': 2.2, 'lid_clearance': 0.6},
+    {'plate_thickness': 6.5, 'bolt_clearance_diameter': 7.8, 'countersink_diameter': 16},
     {'bolt_clearance_diameter': 8, 'countersink_diameter': 13},
     {'pin_base_diameter': 7.3, 'pin_tip_diameter': 0.8, 'pin_cone_half_angle': 49},
 ])
 def test_cross_constraint_accepted_cases(values):
+    p = dimensions(values)
+    if values.get('bolt_clearance_diameter') == 7.8:
+        assert p['plate_thickness']-p['seat_depth'] == pytest.approx(2.4)
+    if values.get('shoulder_depth') == 2.2:
+        assert p['reach'] == pytest.approx(1.6)
     assert holder(**values).is_valid
+
+
+@pytest.mark.parametrize('values,message', [
+    ({'plate_thickness': 6.5, 'countersink_diameter': 17, 'bolt_clearance_diameter': 8}, 'leave 2.4'),
+    ({'plate_thickness': 6.5, 'countersink_diameter': 16, 'bolt_clearance_diameter': 7.5}, 'leave 2.4'),
+    ({'bolt_clearance_diameter': 8.5, 'countersink_diameter': 10.5}, 'must exceed'),
+])
+def test_raw_countersink_cross_constraints_raise(monkeypatch, values, message):
+    # Widen only the test domains to exercise the geometric guards directly;
+    # production rejects these raw values earlier at the public range check.
+    from holders import cup_lid
+    monkeypatch.setattr(cup_lid, 'PARAMS', tuple(
+        replace(q, min=min(q.min, values.get(q.name, q.min)),
+                max=max(q.max, values.get(q.name, q.max))) for q in PARAMS))
+    with pytest.raises(ValueError, match=message):
+        dimensions(values)
 
 
 def test_pin_length_helper():
