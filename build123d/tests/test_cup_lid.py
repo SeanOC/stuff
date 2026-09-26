@@ -1,4 +1,4 @@
-"""Canonical v5 + Revision 7 geometry contract for pst-vks5.
+"""Lower circular-segment v2.1 geometry contract for pst-5slt.
 
 Tests inspect the final BRep/mesh, not just construction metadata. Physical
 bolt/lid fit remains the downstream pst-mvno print experiment.
@@ -39,9 +39,40 @@ def test_presets_watertight_and_envelope(part, tmp_path):
     mesh = trimesh.load(stl, force='mesh')
     assert mesh.is_watertight and mesh.is_winding_consistent
     size = part.bounding_box().size
-    assert size.X == pytest.approx(2*p['radius'])
+    # Chord-edge relief trims the ideal outline slightly.
+    ideal_width = 2*math.sqrt(p['radius']**2-p['top_chord_offset']**2)
+    assert ideal_width-1 < size.X < ideal_width
     assert size.Z == pytest.approx(p['mount_height'])
     assert size.Y == pytest.approx(p['lip_top']+p['pin_length'])
+
+
+def test_lower_segment_outline(part):
+    p = dimensions({})
+    # Recover the circle from the final outer wall, independently of dimensions().
+    walls = [BRepAdaptor_Surface(f.wrapped).Cylinder() for f in part.faces()
+             if f.geom_type.name == 'CYLINDER'
+             and abs(BRepAdaptor_Surface(f.wrapped).Cylinder().Radius()-p['radius']) < 1e-6]
+    assert len(walls) == 2
+    circle_z = walls[0].Location().Z()
+    r = walls[0].Radius()
+    chords = []
+    for normal in (1, -1):
+        face = next(f for f in part.faces() if f.geom_type.name == 'PLANE'
+                    and f.normal_at().Z*normal > 0.99)
+        z = face.center().Z
+        ideal_width = 2*math.sqrt(r*r-(z-circle_z)**2)
+        # The real chord face is inset by the deliberate edge relief.
+        assert ideal_width-2 < face.bounding_box().size.X < ideal_width
+        chords.append((z, ideal_width, face.bounding_box().size.X))
+    assert chords[0][0]-circle_z == pytest.approx(-p['top_chord_offset'], abs=1e-6)
+    assert chords[1][0]-circle_z == pytest.approx(-p['top_chord_offset']-p['mount_height'], abs=1e-6)
+    assert chords[0][1] == pytest.approx(
+        2*math.sqrt(p['radius']**2-p['top_chord_offset']**2), abs=1e-3)
+    assert chords[0][1] > chords[1][1]
+    assert chords[0][2] > chords[1][2]
+    lean = math.degrees(math.atan(abs(chords[1][0]-circle_z)/(chords[1][1]/2)))
+    assert lean == pytest.approx(p['wall_lean_deg'])
+    assert lean <= 45
 
 
 def test_mirror_symmetry(part):
@@ -66,10 +97,10 @@ def test_front_face_planar_inset_grid(part):
     tested = 0
     for x in range(-math.ceil(p['radius']), math.ceil(p['radius'])+1, 2):
         for z in range(-math.ceil(p['mount_height']/2), math.ceil(p['mount_height']/2)+1, 2):
-            radial = math.hypot(x, z)
+            radial = math.hypot(x, z-p['circle_center_z'])
             if (abs(z) < p['mount_height']/2-inset
                     and radial < p['wall_radius']-inset
-                    and radial > p['countersink_diameter']/2+0.2):
+                    and math.hypot(x, z) > p['countersink_diameter']/2+0.2):
                 assert face.is_inside((x, p['plate_thickness'], z))
                 tested += 1
     assert tested > 300
@@ -140,14 +171,33 @@ def test_bolt_hole_through_and_countersunk(part):
 def test_shoulder_capture(part):
     p = dimensions({})
     for sign in (-1, 1):
-        for z in (-10, 0, 10):
+        for z in (0, 5, 10):
             def point(radius, y):
-                return (sign*math.sqrt(radius**2-z**2), y, z)
+                return (sign*math.sqrt(radius**2-(z-p['circle_center_z'])**2), y, z)
             assert part.is_inside(point(p['wall_radius']+0.1, p['plate_thickness']+3))
             assert not part.is_inside(point(p['wall_radius']-0.1, p['plate_thickness']+3))
             assert part.is_inside(point(p['lip_radius']+0.1, p['lip_bottom']+0.1))
             assert not part.is_inside(point(p['lip_radius']-0.1, p['lip_bottom']+0.1))
             assert not part.is_inside(point(p['lip_radius']+0.1, p['lip_bottom']-0.1))
+
+
+def test_lip_end_ramps(part):
+    p = dimensions({})
+    expected_depth = min(p['top_chord_offset']+p['mount_height'],
+                         p['lip_radius']/math.sqrt(2))-p['lip_end_margin']
+    assert p['lip_stop_z'] == pytest.approx(p['circle_center_z']-expected_depth)
+    ramps = [f for f in part.faces() if f.geom_type.name == 'PLANE'
+             and f.center().Y > p['lip_bottom']
+             and abs(f.normal_at().X) == pytest.approx(math.sqrt(0.5), abs=1e-6)
+             and f.normal_at().Z == pytest.approx(-math.sqrt(0.5), abs=1e-6)]
+    assert len(ramps) == 2
+    ramp_x = math.sqrt(p['wall_radius']**2-expected_depth**2)
+    for face in ramps:
+        sign = 1 if face.center().X > 0 else -1
+        assert face.is_inside((sign*ramp_x, p['lip_top']-1, p['lip_stop_z']), tolerance=1e-6)
+        # The R1 junction extends the ramp slightly into the wall, while
+        # retaining clearance from the bed. The inner arc is checked below.
+        assert face.bounding_box().min.Z > -p['mount_height']/2+p['bed_chamfer']
 
 
 def test_bottom_contact_face_and_bed_chamfer(part):
@@ -158,6 +208,14 @@ def test_bottom_contact_face_and_bed_chamfer(part):
     assert len(faces) == 1
     assert part.bounding_box().min.Z == pytest.approx(bottom, abs=1e-6)
     bed = faces[0]
+    # Only plate + full-height walls touch the bed; the lip and its
+    # junction stop above it.
+    for sign in (-1, 1):
+        depth = bottom-p['circle_center_z']
+        x = sign*math.sqrt((p['lip_radius']+p['reach']/2)**2-depth**2)
+        assert not part.is_inside((x, p['lip_bottom']+p['lip_thickness']/2, bottom+0.5))
+        wall_x = sign*math.sqrt((p['wall_radius']+p['tab_thickness']/2)**2-depth**2)
+        assert part.is_inside((wall_x, p['lip_top']-1, bottom+0.5))
     for edge in bed.edges():
         adjacent = [f for f in part.faces() if f != bed and edge in f.edges()]
         assert len(adjacent) == 1
@@ -172,14 +230,14 @@ def test_bottom_contact_face_and_bed_chamfer(part):
 def test_joint_overlaps_solid(part):
     p = dimensions({})
     for sign in (-1, 1):
-        x = sign*(p['wall_radius']+p['tab_thickness']/2)
+        x = sign*math.sqrt((p['wall_radius']+p['tab_thickness']/2)**2-p['circle_center_z']**2)
         # Plate/wall overlap is one tab thickness deep into the plate.
         assert part.is_inside((x, p['plate_thickness']-p['tab_thickness']/2, 0))
         # Lip/wall overlap is one lip thickness along Y.
         assert part.is_inside((x, p['lip_bottom']+p['lip_thickness']/2, 0))
         # Inside R1 blends add solid material in both otherwise-empty corners.
-        assert part.is_inside((sign*(p['wall_radius']-0.2), p['plate_thickness']+0.2, 0))
-        assert part.is_inside((sign*(p['wall_radius']-0.2), p['lip_bottom']-0.2, 0))
+        assert part.is_inside((sign*math.sqrt((p['wall_radius']-0.2)**2-p['circle_center_z']**2), p['plate_thickness']+0.2, 0))
+        assert part.is_inside((sign*math.sqrt((p['wall_radius']-0.2)**2-p['circle_center_z']**2), p['lip_bottom']-0.2, 0))
     blends = [f for f in part.faces() if f.geom_type.name == 'TORUS']
     assert len(blends) == 4
     for f in blends:
@@ -190,8 +248,9 @@ def test_edge_classification(part):
     p = dimensions({})
     # Upper front/back chord edges have a 0.5 mm chamfer.
     for y in (0.25, p['plate_thickness']-0.25):
-        assert any(f.geom_type.name == 'PLANE' and abs(f.center().Y-y) < 0.001
-                   and abs(f.center().Z-(p['mount_height']/2-0.25)) < 0.001
+        assert any(f.geom_type.name == 'PLANE'
+                   and f.is_inside((0, y, p['mount_height']/2-0.25), tolerance=1e-6)
+                   and f.normal_at().Z == pytest.approx(math.sqrt(0.5), abs=1e-6)
                    for f in part.faces())
     shoulder_edges = [e for e in part.edges() if e.geom_type.name == 'CIRCLE'
                       and abs(e.radius-p['lip_radius']) < 1e-6
@@ -206,8 +265,22 @@ def test_edge_classification(part):
 
 @pytest.mark.parametrize('name,value', [(q.name, v) for q in PARAMS for v in (q.min, q.max)])
 def test_param_boundaries_build(name, value):
+    p = dimensions({name: value})
+    assert p['wall_lean_deg'] <= 45
+    assert p['lip_lean_deg'] <= 45
     solid = holder(**{name: value})
     assert solid.is_valid and len(solid.solids()) == 1 and solid.volume > 0
+    # Final outer wall normals also respect the analytic tangent bound.
+    for f in solid.faces():
+        if f.geom_type.name == 'CYLINDER':
+            cylinder = BRepAdaptor_Surface(f.wrapped).Cylinder()
+            if abs(cylinder.Radius()-p['lip_radius']) < 1e-6:
+                assert f.bounding_box().min.Z >= p['lip_stop_z']-1e-6
+                depth = p['circle_center_z']-f.bounding_box().min.Z
+                assert math.degrees(math.asin(depth/p['lip_radius'])) <= 45
+            if abs(cylinder.Radius()-p['radius']) < 1e-6:
+                for _, normal in _samples(f):
+                    assert normal.Z >= -math.sqrt(0.5)-1e-6
 
 
 @pytest.mark.parametrize('name,value', [(q.name, v) for q in PARAMS for v in (q.min-0.01, q.max+0.01)])
@@ -217,6 +290,8 @@ def test_outside_param_range_raises(name, value):
 
 
 @pytest.mark.parametrize('values,message', [
+    ({'lid_diameter': 84, 'tab_thickness': 2, 'top_chord_offset': 2, 'mount_height': 30}, 'wall outward lean'),
+    ({'top_chord_offset': 2, 'mount_height': 30, 'lid_clearance': 0.1, 'tab_thickness': 2}, 'wall outward lean'),
     ({'shoulder_depth': 2, 'lid_clearance': 0.8}, '>= 1.6'),
     ({'bolt_clearance_diameter': 8.5, 'countersink_diameter': 10.5}, 'must exceed'),
     ({'bolt_clearance_diameter': 7.5, 'countersink_diameter': 13}, 'leave 2.4'),
@@ -232,6 +307,7 @@ def test_cross_constraints_raise(values, message):
 
 
 @pytest.mark.parametrize('values', [
+    {'lid_diameter': 84, 'mount_height': 30, 'top_chord_offset': 2},  # tightest specified legal build
     {'shoulder_depth': 2, 'lid_clearance': 0.4},
     {'bolt_clearance_diameter': 7.5, 'countersink_diameter': 12.5},
     {'bolt_clearance_diameter': 8, 'countersink_diameter': 13},

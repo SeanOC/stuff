@@ -1,10 +1,20 @@
-"""Planar circular-segment cup-lid holder for Multibuild (pst-vks5).
+"""Planar circular-segment cup-lid holder for Multibuild (pst-5slt).
 
 X joins the pins; +Y is forward from the board; +Z is up. Print STANDING
 on the lower chord, Z=-mount_height/2, without supports. Worst-case forward
 pull (+Y) loads the lips and their continuous R1 junction webs along layers.
 The plate carries lid weight (-Z) in compression. Intended for PLA/PCTG on
 an H2S; the round horizontal bolt shank is the sole approved audit exception.
+
+The circle centre is at Z=top_chord_offset + mount_height/2; the chords
+are at circle-relative heights -top_chord_offset and
+-top_chord_offset-mount_height. Thus the channels widen continuously upward.
+Pins (+/-25, 0) and bolt hole use the PLATE centre between the chords, not
+the circle centre. Default offset 1.5 mm follows the reviewed parameter
+domain; its bottom tangent leans 43.3 degrees from vertical. The lips stop
+above the bed at the inner-radius 45-degree limit plus lip_end_margin.
+Their 45-degree end ramps rise inward from that stop; full-height walls
+support the lid below the lips.
 
 The fixed 25 mm pitch is one Multibuild Multi Unit. Board dimensions cited
 in docs/cup-lid-validation.md: 7.5 mm mouth tapering to a 6.0 mm throat over
@@ -23,7 +33,7 @@ from __future__ import annotations
 
 import math
 
-from build123d import Align, Axis, Box, BuildSketch, Cone, Cylinder, Plane, Polygon, Pos, Rot, revolve
+from build123d import Align, Axis, Box, BuildSketch, Cone, Cylinder, Plane, Polygon, Pos, Rot, extrude, revolve
 from OCP.BRepFilletAPI import BRepFilletAPI_MakeChamfer
 from holders.registry import ModelSpec, Param, Preset, register
 
@@ -33,10 +43,12 @@ JOINT_RADIUS = 1.0
 PARAMS = tuple(Param(name, 'number', default, min=lo, max=hi, step=step,
                      unit='deg' if 'angle' in name else 'mm', label=label)
     for name, lo, hi, step, default, label in (
-        ('lid_diameter', 60, 130, 0.1, 85.3, 'Lid diameter'),
+        ('lid_diameter', 84, 130, 0.1, 85.3, 'Lid diameter'),
         ('shoulder_height', 6, 25, 0.5, 13, 'Shoulder height'),
         ('shoulder_depth', 2, 10, 0.1, 4.5, 'Shoulder radial depth'),
-        ('mount_height', 20, 45, 0.5, 30, 'Mount height'),
+        ('mount_height', 20, 30, 0.5, 30, 'Mount height'),
+        ('lip_end_margin', 1, 5, 0.5, 2, 'Lip end clearance'),
+        ('top_chord_offset', 0.5, 2.0, 0.5, 1.5, 'Top chord below circle centre'),
         ('plate_thickness', 5, 8, 0.5, 5, 'Plate thickness'),
         ('tab_thickness', 2, 5, 0.5, 3, 'Tab thickness'),
         ('lip_thickness', 2, 5, 0.5, 3, 'Lip thickness'),
@@ -93,6 +105,20 @@ def dimensions(values: dict) -> dict:
     p.update(radius=inner+p['tab_thickness'], wall_radius=inner,
              lip_radius=inner-reach, reach=reach, seat_depth=seat,
              pin_length=length, lip_bottom=p['plate_thickness']+p['shoulder_height']+p['lid_clearance'])
+    b = p['top_chord_offset'] + p['mount_height']
+    r = p['radius']
+    if b > r - 2*p['tab_thickness'] - 1:
+        raise ValueError('bottom chord must leave room: b <= R - 2*tab_thickness - 1')
+    if b > r/math.sqrt(2):
+        raise ValueError('wall outward lean must be <= 45 degrees: b <= R/sqrt(2)')
+    # atan(b / sqrt(R²-b²)) is maximal at the bottom chord.
+    p['wall_lean_deg'] = math.degrees(math.atan(b/math.sqrt(r*r-b*b)))
+    p['circle_center_z'] = p['top_chord_offset'] + p['mount_height']/2
+    lip_depth = min(b, p['lip_radius']/math.sqrt(2)) - p['lip_end_margin']
+    p['lip_stop_z'] = p['circle_center_z'] - lip_depth
+    p['lip_lean_deg'] = math.degrees(math.asin(lip_depth/p['lip_radius']))
+    if p['lip_lean_deg'] > 45:
+        raise ValueError('lip inner-arc lean must be <= 45 degrees')
     p['lip_top'] = p['lip_bottom']+p['lip_thickness']
     return p
 
@@ -128,15 +154,24 @@ def holder(**values):
         Polygon((0, 0), (r, 0), (r, top), (rl, top), (rl, bottom),
                 (ri, bottom), (ri, t), (0, t), align=None)
     part = revolve(section.sketch, axis=Axis.Y)
-    joints = [e for e in part.edges() if e.geom_type.name == 'CIRCLE'
-              and abs(e.radius-ri) < 1e-6 and
-              (abs(e.center().Y-t) < 1e-6 or abs(e.center().Y-bottom) < 1e-6)]
-    part = part.fillet(JOINT_RADIUS, joints)
+    part = Pos(0, 0, p['circle_center_z']) * part
     part = (part & Box(2*r+2, 2*top+2, h)).clean()
-    # Arcs exposed to handling: rear perimeter and both front lip rims.
-    arcs = [e for e in part.edges() if e.geom_type.name == 'CIRCLE'
-            and (abs(e.center().Y) < 1e-6 or abs(e.center().Y-top) < 1e-6)]
-    part = part.chamfer(0.5, None, arcs)
+    # End each lip with a 45-degree ramp into its full-height wall.
+    # The ramp starts at lip_stop_z on the wall and rises inward, keeping
+    # the entire inner lip arc above its own 45-degree tangent limit.
+    stop = p['lip_stop_z']
+    ramp_x = math.sqrt(ri*ri - (stop-p['circle_center_z'])**2)
+    for sign in (-1, 1):
+        with BuildSketch(Plane.XZ) as end_cut:
+            Polygon((0, -h), (sign*(r+1), -h),
+                    (sign*(r+1), stop+ramp_x-(r+1)),
+                    (0, stop+ramp_x), align=None)
+        cutter = extrude(end_cut.sketch, amount=2*top, both=True)
+        # Preserve the full wall and plate. The extra JOINT_RADIUS behind
+        # the lip leaves room for the final junction blend above the ramp.
+        cavity = Pos(0, bottom-JOINT_RADIUS, p['circle_center_z']) * Rot(-90, 0, 0) * Cylinder(
+            ri, top, align=(Align.CENTER, Align.CENTER, Align.MIN))
+        part = (part - (cutter & cavity)).clean()
     # Treat every edge of both chord faces, including the ends of the walls
     # and lips. The bottom takes the configurable bed relief instead of 0.5.
     for z, amount in ((h/2, 0.5), (-h/2, p['bed_chamfer'])):
@@ -145,12 +180,25 @@ def holder(**values):
         # Equal-distance chamfers are NOT 45 degrees where a curved wall
         # meets the chord obliquely. OCP's distance/angle form pins the
         # angle to the planar contact face along the entire curved loop.
+        if z > 0:
+            part = part.chamfer(amount, None, face.edges())
+            continue
         builder = BRepFilletAPI_MakeChamfer(part.wrapped)
         for edge in face.edges():
             builder.AddDA(amount, math.pi/4, edge.wrapped, face.wrapped)
-        part = part._make_3d_result(builder.Shape())
+        part = part._make_3d_result(builder.Shape()).clean().fix()
         if not part.is_valid:
             raise ValueError('invalid chord chamfer')
+    # Arcs exposed to handling: rear perimeter and both front lip rims.
+    arcs = [e for e in part.edges() if e.geom_type.name == 'CIRCLE'
+            and (abs(e.center().Y) < 1e-6 or abs(e.center().Y-top) < 1e-6)]
+    part = part.chamfer(0.5, None, arcs)
+    # Blend after the chord relief: chamfering a pre-existing torus at the
+    # 0.5 mm top-offset boundary creates an invalid OCP face.
+    joints = [e for e in part.edges() if e.geom_type.name == 'CIRCLE'
+              and abs(e.radius-ri) < 1e-6 and
+              (abs(e.center().Y-t) < 1e-6 or abs(e.center().Y-bottom) < 1e-6)]
+    part = part.fillet(JOINT_RADIUS, joints)
     # Construct one finished half and mirror it: independent spline fits
     # at opposite ends otherwise differ by measurable boolean slivers.
     half = part & Box(r+1, 2*top+2, h+2, align=(Align.MIN, Align.CENTER, Align.CENTER))

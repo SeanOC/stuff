@@ -1,17 +1,50 @@
-# Cup-lid holder v2 — pst-vks5
+# Cup-lid holder v2.1 — pst-5slt
 
-Replaces the rejected v1 shape under the same `holder_cup_lid` registry name.
-Implements canonical v5 plus Mayor Revision 7 and its plan-review clarification:
-pin cavity clearance accepts equality at the 7.3 mm base endpoint.
+Revises v2 under the same `holder_cup_lid` registry name so a lid can slide
+into the cradle from above. Implements the reviewed lower-segment domain
+and the mayor's shortened-lip decision in pst-5slt. The inherited pin cavity
+clearance still accepts equality at the 7.3 mm base endpoint.
 Physical PLA/PCTG printing and bolt/lid fit remain tracked in **pst-mvno**.
 
 ## Geometry, orientation and material
 
-The plate is the central circular segment between two parallel chords, with
-an exactly planar front at Y=5 mm. The two end walls and inward lips are
-mirror images across X=0. Defaults: circle diameter 91.9 mm, chord spacing
-30 mm, plate 5 mm, walls/lips 3 mm, shoulder gap 13.3 mm, radial lip reach
-4.2 mm. Envelope: **91.9 × 24.85 × 30 mm** (XYZ, including rear cones).
+The plate is a circular segment entirely below the circle center, with an
+exactly planar front at Y=5 mm. At defaults, the circle center is Z=16.5 mm;
+the top and bottom chords are at Z=15 and Z=-15 mm (circle-relative heights
+-1.5 and -31.5 mm). The mirrored channels widen upward and converge toward
+the bed, matching reference photo 03. The pins and bolt use the plate's
+center between the chords, not the circle center.
+
+Defaults: circle diameter 91.9 mm, chord spacing 30 mm, plate 5 mm,
+walls/lips 3 mm, shoulder gap 13.3 mm, radial lip reach 4.2 mm. The measured
+finished envelope, including rear cones and edge relief, is
+**91.813 × 24.85 × 30 mm** (XYZ).
+
+| Shape parameter | Default | Range | Step |
+| --- | --- | --- | --- |
+| `lid_diameter` | 85.3 mm | 84–130 mm | 0.1 mm |
+| `mount_height` | 30 mm | 20–30 mm | 0.5 mm |
+| `top_chord_offset` | 1.5 mm | 0.5–2 mm | 0.5 mm |
+| `lip_end_margin` | 2 mm | 1–5 mm | 0.5 mm |
+
+The lid-diameter and mount-height ranges supersede v2's 60–130 and 20–45 mm
+ranges. With outer radius `R` and bottom depth
+`b = top_chord_offset + mount_height`, dimensions require both
+`b <= R/sqrt(2)` and `b <= R - 2*tab_thickness - 1`; violations raise
+`ValueError`. The default outer-wall tangent leans **43.277°** from vertical.
+Every individual parameter endpoint builds with the other defaults; some
+combined endpoints are deliberately rejected. For example, lid diameter 84,
+tab thickness 2, offset 2 and mount height 30 mm violate the lean guard;
+the same combination with default 3 mm tabs is accepted.
+
+The walls remain full height. Each lip ends above the bed, using inner lip
+radius `R_lip = R - tab_thickness - (shoulder_depth - lid_clearance)` and
+circle-relative stop height `-min(b, R_lip/sqrt(2)) + lip_end_margin`.
+At defaults, `R_lip=38.75 mm` and the stop is **Z=-8.900 mm** in the plate
+frame, 6.100 mm above the bed. A 45° end ramp rises inward from that stop;
+its R1 junction blends into the wall. The inner lip arc ends above the stop,
+whose conservative tangent bound is **40.957°**. Only plate and walls touch
+the bed; the lips capture the upper arc while the walls support the lid below.
 
 Print standing on the lower chord, **Z=-15 mm with +Z up**. No orientation
 rotation is necessary; translate the STL upward 15 mm to the slicer bed.
@@ -30,15 +63,19 @@ end arcs. All edges bounding the lower chord have 0.4 mm 45° bed relief
 0.5 mm chamfers. Functional shoulder-contact and seating edges stay sharp;
 cone pin surfaces and the countersink remain functional geometry.
 
-The chord chamfers use OCP's distance/angle construction: equal setbacks on
+The bed chamfers use OCP's distance/angle construction: equal setbacks on
 an oblique arc/chord intersection do not make a 45° chamfer. The curved
 chamfer's spline approximation can deviate by under 0.001°; the audit uses
 that numeric allowance and proves a 45.01° curved overhang still fails.
+Upper chord edges use equal-distance chamfers. Junction fillets are applied
+after the chord and exposed-arc relief to avoid an invalid OCP face at the
+0.5 mm top-offset endpoint.
 One finished half is mirrored to avoid independent spline-fit asymmetry.
 
-Default `sippy_cup_85mm` volume: **19,668.273 → 17,016.661 mm³ (-13.48%)**.
-The flat plate and symmetric full-height end channels remove the v1 concave
-slab/asymmetric roof while maintaining 3 mm walls/lips and R1 junctions.
+Default `sippy_cup_85mm` volume, v2 → v2.1:
+**17,016.661 → 16,130.034 mm³ (-5.21%)**.
+The lower segment and shortened lips reduce material while maintaining
+3 mm walls/lips and R1 junctions.
 There are no other cup-lid presets.
 
 ## Pins and board clearance
@@ -85,7 +122,7 @@ its upper curved shank surface is the only accepted print-audit finding.
 ## Digital print audit
 
 Unexcluded default: overhang **72°**, one downward curved face (the shank
-cylinder); bridge **0 mm**, sampled minimum wall **2.67 mm**, bed chamfer
+cylinder); bridge **0 mm**, sampled minimum wall **1.58 mm**, bed chamfer
 present. The reported 72° is the sampled maximum, not an assertion that a
 round hole's analytic ceiling is under 90°.
 
@@ -99,7 +136,7 @@ excluded report passes, and a synthetic downward fillet outside it fails.
 print audit: holder_cup_lid  (up = (0.00, 0.00, 1.00))
   overhang   :  45.0°   (≤ 45°) OK
   bridge     :   0.0 mm (≤ 10 mm) OK
-  min wall   :  2.67 mm (≥ 0.9 mm) OK
+  min wall   :  1.58 mm (≥ 0.9 mm) OK
   dn fillets :     0     (= 0)    OK
   bed chamfer: present   (warn)
   => PASS
@@ -115,11 +152,30 @@ uv run python scripts/export.py
 uv run python scripts/export.py --presets-only out/presets
 ```
 
-The committed review render is the exported GLB viewed from the front:
-rotate its scene 180° about the viewer's Y axis before `render_review`.
+The committed review render faces the lips. In the exported GLB frame, its
+isometric/front view directions are `(1, 1, -1)` and `(0, 0, -1)`, with
+the renderer's usual Y-up vector; the top view is unchanged. These camera
+directions replace the default rear-facing views for this review image.
 The STL keeps the assembly/print coordinate frame above.
 
-Validation on this revision: full `uv run pytest tests/` **306 passed,
-1 expected xfail** (existing openGrid smoke-model spec exemption); `npm test`
-**291 passed**. The Python suite includes the 30-endpoint cup-lid parameter
-sweep, all preset bakes, registered audits and live STL download regression.
+Validation of geometry commit `dd3d1b4` in [PR #114](https://github.com/SeanOC/stuff/pull/114):
+
+- Cup-lid geometry suite: **110 passed**, including all **34 individual
+  parameter endpoints**, lower-segment outline, inner/outer lean, accepted
+  and rejected combinations, lip ramps, bed relief, pins, bolt, and symmetry.
+- Cup-lid print-audit suite: **3 passed**, with the standing orientation and
+  exact shank-only exclusion above. Audit thresholds and exclusions are unchanged.
+- Full CAD coverage: **319 passing tests** across the full run and final
+  cup-lid rerun, with **1 expected xfail** for the existing openGrid smoke
+  model. The first full run found an overly strict new ramp-bound assertion
+  at the R1 blend; the corrected test checks the actual ramp plane and bed
+  clearance, and the subsequent 110-test cup-lid run passed.
+- `npm test`: **291 passed**. The manifest freshness check passed; the
+  regenerated STL is watertight and consistently wound.
+- GitHub checks for build123d models, unit tests, and Playwright passed on
+  that commit. Independent review also reported all 34 endpoints passing
+  the production audit and 141 valid pairwise endpoint combinations building
+  as single valid solids; its fresh STL export matched the committed file.
+
+These are digital checks. Physical PLA/PCTG printability and lid/bolt fit
+still require the downstream **pst-mvno** validation.

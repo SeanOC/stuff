@@ -14,7 +14,7 @@
           "unit": "mm",
           "kind": "number",
           "default": 85.3,
-          "min": 60,
+          "min": 84,
           "max": 130,
           "step": 0.1
         },
@@ -45,7 +45,27 @@
           "kind": "number",
           "default": 30,
           "min": 20,
-          "max": 45,
+          "max": 30,
+          "step": 0.5
+        },
+        {
+          "name": "lip_end_margin",
+          "label": "Lip end clearance",
+          "unit": "mm",
+          "kind": "number",
+          "default": 2,
+          "min": 1,
+          "max": 5,
+          "step": 0.5
+        },
+        {
+          "name": "top_chord_offset",
+          "label": "Top chord below circle centre",
+          "unit": "mm",
+          "kind": "number",
+          "default": 1.5,
+          "min": 0.5,
+          "max": 2.0,
           "step": 0.5
         },
         {
