@@ -11,7 +11,7 @@ are at circle-relative heights -top_chord_offset and
 -top_chord_offset-mount_height. Thus the channels widen continuously upward.
 Pins (+/-25, 0) and bolt hole use the PLATE centre between the chords, not
 the circle centre. Default offset 1.5 mm follows the reviewed parameter
-domain; its bottom tangent leans 43.3 degrees from vertical. The lips stop
+domain; its bottom tangent leans 42.9 degrees from vertical. The lips stop
 above the bed at the inner-radius 45-degree limit plus lip_end_margin.
 Their 45-degree end ramps rise inward from that stop; full-height walls
 support the lid below the lips.
@@ -21,7 +21,7 @@ in docs/cup-lid-validation.md: 7.5 mm mouth tapering to a 6.0 mm throat over
 1.5 mm, total depth 6.4 mm. The rear cones CLEAR that cavity; they provide
 coarse anti-rotation at the mouth rim (default +/-0.2 mm lateral play), not
 chamfer seating. Their bases and the plate back are coplanar. The bolt clamps.
-The 8 mm shank / 12.5 mm head / 90 degree seat are operator-approved BEST
+The 8 mm shank / 16 mm head / 90 degree seat are operator-approved BEST
 GUESSES, exposed for the physical fit validation tracked by pst-mvno.
 
 Functional sharp edges: lip shoulder-contact arc and wall seating arc.
@@ -45,19 +45,19 @@ PARAMS = tuple(Param(name, 'number', default, min=lo, max=hi, step=step,
     for name, lo, hi, step, default, label in (
         ('lid_diameter', 84, 130, 0.1, 85.3, 'Lid diameter'),
         ('shoulder_height', 6, 25, 0.5, 13, 'Shoulder height'),
-        ('shoulder_depth', 2, 10, 0.1, 4.5, 'Shoulder radial depth'),
+        ('shoulder_depth', 2.2, 10, 0.1, 4.5, 'Shoulder radial depth'),
         ('mount_height', 20, 30, 0.5, 30, 'Mount height'),
         ('lip_end_margin', 1, 5, 0.5, 2, 'Lip end clearance'),
         ('top_chord_offset', 0.5, 2.0, 0.5, 1.5, 'Top chord below circle centre'),
-        ('plate_thickness', 5, 8, 0.5, 5, 'Plate thickness'),
+        ('plate_thickness', 6.5, 9, 0.5, 6.5, 'Plate thickness'),
         ('tab_thickness', 2, 5, 0.5, 3, 'Tab thickness'),
         ('lip_thickness', 2, 5, 0.5, 3, 'Lip thickness'),
-        ('lid_clearance', 0.1, 0.8, 0.05, 0.3, 'Lid clearance'),
+        ('lid_clearance', 0.1, 0.8, 0.05, 0.6, 'Lid clearance'),
         ('pin_base_diameter', 6.9, 7.3, 0.1, 7.1, 'Pin base diameter'),
         ('pin_tip_diameter', 0, 0.8, 0.1, 0, 'Pin tip diameter'),
         ('pin_cone_half_angle', 45, 49, 1, 45, 'Pin cone half-angle'),
-        ('bolt_clearance_diameter', 7.5, 8.5, 0.1, 8, 'Bolt clearance diameter'),
-        ('countersink_diameter', 10.5, 13, 0.5, 12.5, 'Countersink diameter'),
+        ('bolt_clearance_diameter', 7.8, 8.5, 0.1, 8, 'Bolt clearance diameter'),
+        ('countersink_diameter', 12, 16, 0.5, 16, 'Countersink diameter'),
         ('countersink_angle', 90, 100, 1, 90, 'Countersink included angle'),
         ('bed_chamfer', 0.3, 0.5, 0.1, 0.4, 'Bed edge chamfer'),
     ))

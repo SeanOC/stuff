@@ -1,24 +1,25 @@
-# Cup-lid holder v2.1 — pst-5slt
+# Cup-lid holder v2.2 — pst-g1rz
 
-Revises v2 under the same `holder_cup_lid` registry name so a lid can slide
-into the cradle from above. Implements the reviewed lower-segment domain
-and the mayor's shortened-lip decision in pst-5slt. The inherited pin cavity
-clearance still accepts equality at the 7.3 mm base endpoint.
-Physical PLA/PCTG printing and bolt/lid fit remain tracked in **pst-mvno**.
+Revises v2.1 (main `d44f1d3`, PR #114) after Sean's successful support-free
+test print: increase radial lid clearance from 0.3 to 0.6 mm and enlarge
+the countersink from 12.5 to 16 mm. The plate grows from 5 to 6.5 mm to
+preserve at least 2.4 mm backing. The inherited pin cavity clearance still
+accepts equality at the 7.3 mm base endpoint. Physical PLA/PCTG printing and
+bolt/lid fit with the new STL remain tracked in **pst-mvno**.
 
 ## Geometry, orientation and material
 
 The plate is a circular segment entirely below the circle center, with an
-exactly planar front at Y=5 mm. At defaults, the circle center is Z=16.5 mm;
+exactly planar front at Y=6.5 mm. At defaults, the circle center is Z=16.5 mm;
 the top and bottom chords are at Z=15 and Z=-15 mm (circle-relative heights
 -1.5 and -31.5 mm). The mirrored channels widen upward and converge toward
 the bed, matching reference photo 03. The pins and bolt use the plate's
 center between the chords, not the circle center.
 
-Defaults: circle diameter 91.9 mm, chord spacing 30 mm, plate 5 mm,
-walls/lips 3 mm, shoulder gap 13.3 mm, radial lip reach 4.2 mm. The measured
+Defaults: circle diameter 92.5 mm, chord spacing 30 mm, plate 6.5 mm,
+walls/lips 3 mm, shoulder gap 13.6 mm, radial lip reach 3.9 mm. The measured
 finished envelope, including rear cones and edge relief, is
-**91.813 × 24.85 × 30 mm** (XYZ).
+**92.413 × 26.65 × 30 mm** (XYZ).
 
 | Shape parameter | Default | Range | Step |
 | --- | --- | --- | --- |
@@ -26,12 +27,15 @@ finished envelope, including rear cones and edge relief, is
 | `mount_height` | 30 mm | 20–30 mm | 0.5 mm |
 | `top_chord_offset` | 1.5 mm | 0.5–2 mm | 0.5 mm |
 | `lip_end_margin` | 2 mm | 1–5 mm | 0.5 mm |
+| `lid_clearance` | 0.6 mm | 0.1–0.8 mm | 0.05 mm |
+| `shoulder_depth` | 4.5 mm | 2.2–10 mm | 0.1 mm |
+| `plate_thickness` | 6.5 mm | 6.5–9 mm | 0.5 mm |
 
 The lid-diameter and mount-height ranges supersede v2's 60–130 and 20–45 mm
 ranges. With outer radius `R` and bottom depth
 `b = top_chord_offset + mount_height`, dimensions require both
 `b <= R/sqrt(2)` and `b <= R - 2*tab_thickness - 1`; violations raise
-`ValueError`. The default outer-wall tangent leans **43.277°** from vertical.
+`ValueError`. The default outer-wall tangent leans **42.928°** from vertical.
 Every individual parameter endpoint builds with the other defaults; some
 combined endpoints are deliberately rejected. For example, lid diameter 84,
 tab thickness 2, offset 2 and mount height 30 mm violate the lean guard;
@@ -40,10 +44,10 @@ the same combination with default 3 mm tabs is accepted.
 The walls remain full height. Each lip ends above the bed, using inner lip
 radius `R_lip = R - tab_thickness - (shoulder_depth - lid_clearance)` and
 circle-relative stop height `-min(b, R_lip/sqrt(2)) + lip_end_margin`.
-At defaults, `R_lip=38.75 mm` and the stop is **Z=-8.900 mm** in the plate
-frame, 6.100 mm above the bed. A 45° end ramp rises inward from that stop;
+At defaults, `R_lip=39.35 mm` and the stop is **Z=-9.325 mm** in the plate
+frame, 5.675 mm above the bed. A 45° end ramp rises inward from that stop;
 its R1 junction blends into the wall. The inner lip arc ends above the stop,
-whose conservative tangent bound is **40.957°**. Only plate and walls touch
+whose conservative tangent bound is **41.017°**. Only plate and walls touch
 the bed; the lips capture the upper arc while the walls support the lid below.
 
 Print standing on the lower chord, **Z=-15 mm with +Z up**. No orientation
@@ -72,10 +76,11 @@ after the chord and exposed-arc relief to avoid an invalid OCP face at the
 0.5 mm top-offset endpoint.
 One finished half is mirrored to avoid independent spline-fit asymmetry.
 
-Default `sippy_cup_85mm` volume, v2 → v2.1:
-**17,016.661 → 16,130.034 mm³ (-5.21%)**.
-The lower segment and shortened lips reduce material while maintaining
-3 mm walls/lips and R1 junctions.
+Default `sippy_cup_85mm` volume, actual main `d44f1d3` v2.1 → v2.2:
+**16,130.034 → 19,781.621 mm³ (+22.64%)**.
+The 1.5 mm thicker plate preserves backing behind the larger countersink;
+the extra lid clearance also grows the outer diameter by 0.6 mm. These fit
+changes justify the increase. Walls/lips remain 3 mm with R1 junctions.
 There are no other cup-lid presets.
 
 ## Pins and board clearance
@@ -109,25 +114,28 @@ or tip blunting is performed.
 
 | Parameter | Default | Range |
 | --- | --- | --- |
-| `bolt_clearance_diameter` | 8 mm | 7.5–8.5 mm |
-| `countersink_diameter` | 12.5 mm | 10.5–13 mm |
+| `bolt_clearance_diameter` | 8 mm | 7.8–8.5 mm |
+| `countersink_diameter` | 16 mm | 12–16 mm |
 | `countersink_angle` | 90° included | 90–100° |
 
 These are **BEST GUESS** fit dimensions, not published Multibuild bolt specs.
-The front countersink has depth 2.25 mm, leaving 2.75 mm plate backing.
+The front countersink has depth 4 mm, leaving 2.5 mm plate backing.
 Combinations leaving less than 2.4 mm backing or no more than 2 mm diametral
-head/shank difference raise `ValueError`. The hole is round and horizontal;
+head/shank difference raise `ValueError`. At the 7.8 mm shank endpoint,
+backing is exactly 2.4 mm and is accepted by the existing 1e-9 tolerance.
+The shoulder-depth minimum rises to 2.2 mm so its default-clearance reach
+is exactly 1.6 mm; combining that minimum with 0.7 mm clearance is rejected. The hole is round and horizontal;
 its upper curved shank surface is the only accepted print-audit finding.
 
 ## Digital print audit
 
 Unexcluded default: overhang **72°**, one downward curved face (the shank
-cylinder); bridge **0 mm**, sampled minimum wall **1.58 mm**, bed chamfer
+cylinder); bridge **0 mm**, sampled minimum wall **1.60 mm**, bed chamfer
 present. The reported 72° is the sampled maximum, not an assertion that a
 round hole's analytic ceiling is under 90°.
 
 The production gate remains enabled. Its sole exception is the exact
-shank cylinder, Ø8 mm from Y=0 to Y=5 mm, with **no bounding-box margin**.
+shank cylinder, Ø8 mm from Y=0 to Y=6.5 mm, with **no bounding-box margin**.
 The countersink, pins and all edge treatments remain audited. A dedicated
 test proves every unexcluded failing face lies in that cylinder, the
 excluded report passes, and a synthetic downward fillet outside it fails.
@@ -136,7 +144,7 @@ excluded report passes, and a synthetic downward fillet outside it fails.
 print audit: holder_cup_lid  (up = (0.00, 0.00, 1.00))
   overhang   :  45.0°   (≤ 45°) OK
   bridge     :   0.0 mm (≤ 10 mm) OK
-  min wall   :  1.58 mm (≥ 0.9 mm) OK
+  min wall   :  1.60 mm (≥ 0.9 mm) OK
   dn fillets :     0     (= 0)    OK
   bed chamfer: present   (warn)
   => PASS
@@ -158,24 +166,18 @@ the renderer's usual Y-up vector; the top view is unchanged. These camera
 directions replace the default rear-facing views for this review image.
 The STL keeps the assembly/print coordinate frame above.
 
-Validation of geometry commit `dd3d1b4` in [PR #114](https://github.com/SeanOC/stuff/pull/114):
+Validation for pst-g1rz:
 
-- Cup-lid geometry suite: **110 passed**, including all **34 individual
-  parameter endpoints**, lower-segment outline, inner/outer lean, accepted
-  and rejected combinations, lip ramps, bed relief, pins, bolt, and symmetry.
-- Cup-lid print-audit suite: **3 passed**, with the standing orientation and
-  exact shank-only exclusion above. Audit thresholds and exclusions are unchanged.
-- Full CAD coverage: **319 passing tests** across the full run and final
-  cup-lid rerun, with **1 expected xfail** for the existing openGrid smoke
-  model. The first full run found an overly strict new ramp-bound assertion
-  at the R1 blend; the corrected test checks the actual ramp plane and bed
-  clearance, and the subsequent 110-test cup-lid run passed.
-- `npm test`: **291 passed**. The manifest freshness check passed; the
-  regenerated STL is watertight and consistently wound.
-- GitHub checks for build123d models, unit tests, and Playwright passed on
-  that commit. Independent review also reported all 34 endpoints passing
-  the production audit and 141 valid pairwise endpoint combinations building
-  as single valid solids; its fresh STL export matched the committed file.
+- Cup-lid geometry and print-audit suites: **118 passed**, including all
+  **34 individual parameter endpoints**, exact 16 mm front/8 mm rear hole
+  openings, 2.4 mm backing and 1.6 mm reach boundaries, lip ramps, bed relief,
+  pins, edge classification and symmetry. No endpoint needed further narrowing.
+- The raw 17 mm countersink and 7.5 mm shank backing failures are tested
+  with test-only widened parameter domains, so they reach the geometric
+  guard. Public range rejection is tested separately.
+- Toolchain and manifest suites: **30 passed**.
+- `npm test`: **291 passed**. Regenerated STL is watertight and consistently
+  wound. Manifest regenerated from the updated defaults and ranges.
 
 These are digital checks. Physical PLA/PCTG printability and lid/bolt fit
 still require the downstream **pst-mvno** validation.

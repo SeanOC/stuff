@@ -34,7 +34,7 @@
           "unit": "mm",
           "kind": "number",
           "default": 4.5,
-          "min": 2,
+          "min": 2.2,
           "max": 10,
           "step": 0.1
         },
@@ -73,9 +73,9 @@
           "label": "Plate thickness",
           "unit": "mm",
           "kind": "number",
-          "default": 5,
-          "min": 5,
-          "max": 8,
+          "default": 6.5,
+          "min": 6.5,
+          "max": 9,
           "step": 0.5
         },
         {
@@ -103,7 +103,7 @@
           "label": "Lid clearance",
           "unit": "mm",
           "kind": "number",
-          "default": 0.3,
+          "default": 0.6,
           "min": 0.1,
           "max": 0.8,
           "step": 0.05
@@ -144,7 +144,7 @@
           "unit": "mm",
           "kind": "number",
           "default": 8,
-          "min": 7.5,
+          "min": 7.8,
           "max": 8.5,
           "step": 0.1
         },
@@ -153,9 +153,9 @@
           "label": "Countersink diameter",
           "unit": "mm",
           "kind": "number",
-          "default": 12.5,
-          "min": 10.5,
-          "max": 13,
+          "default": 16,
+          "min": 12,
+          "max": 16,
           "step": 0.5
         },
         {
