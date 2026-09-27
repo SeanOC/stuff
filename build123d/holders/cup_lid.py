@@ -18,11 +18,11 @@ support the lid below the lips.
 
 The fixed 25 mm pitch is one Multibuild Multi Unit. Board dimensions cited
 in docs/cup-lid-validation.md: 7.5 mm mouth tapering to a 6.0 mm throat over
-1.5 mm, total depth 6.4 mm. The rear cones CLEAR that cavity; they provide
-coarse anti-rotation at the mouth rim (default +/-0.2 mm lateral play), not
-chamfer seating. Their bases and the plate back are coplanar. The bolt clamps.
-The 8 mm shank / 16 mm head / 90 degree seat are operator-approved BEST
-GUESSES, exposed for the physical fit validation tracked by pst-mvno.
+1.5 mm, total depth 6.4 mm. The rear cones engage the mouth with a tunable
+per-side fit (default 0.1 mm interference). Their bases and the plate back
+are coplanar. The bolt clamps. The seat follows Sean's measured head:
+16 to 12 mm taper over 2.1 mm, recessed 0.2 mm, with a flat shoulder to
+the 8 mm shank. Physical fit validation remains tracked by pst-mvno.
 
 Functional sharp edges: lip shoulder-contact arc and wall seating arc.
 Cone pin surfaces and countersink are functional. All bed-contact edges
@@ -38,6 +38,7 @@ from OCP.BRepFilletAPI import BRepFilletAPI_MakeChamfer
 from holders.registry import ModelSpec, Param, Preset, register
 
 PITCH = 25.0
+MOUTH = 7.5
 JOINT_RADIUS = 1.0
 
 PARAMS = tuple(Param(name, 'number', default, min=lo, max=hi, step=step,
@@ -49,16 +50,19 @@ PARAMS = tuple(Param(name, 'number', default, min=lo, max=hi, step=step,
         ('mount_height', 20, 30, 0.5, 30, 'Mount height'),
         ('lip_end_margin', 1, 5, 0.5, 2, 'Lip end clearance'),
         ('top_chord_offset', 0.5, 2.0, 0.5, 1.5, 'Top chord below circle centre'),
-        ('plate_thickness', 6.5, 9, 0.5, 6.5, 'Plate thickness'),
+        ('plate_thickness', 5, 9, 0.5, 5, 'Plate thickness'),
         ('tab_thickness', 2, 5, 0.5, 3, 'Tab thickness'),
         ('lip_thickness', 2, 5, 0.5, 3, 'Lip thickness'),
         ('lid_clearance', 0.1, 0.8, 0.05, 0.6, 'Lid clearance'),
-        ('pin_base_diameter', 6.9, 7.3, 0.1, 7.1, 'Pin base diameter'),
+        ('pin_fit', -0.2, 0.3, 0.05, 0.1, 'Pin fit per side (+ interference)'),
         ('pin_tip_diameter', 0, 0.8, 0.1, 0, 'Pin tip diameter'),
         ('pin_cone_half_angle', 45, 49, 1, 45, 'Pin cone half-angle'),
         ('bolt_clearance_diameter', 7.8, 8.5, 0.1, 8, 'Bolt clearance diameter'),
-        ('countersink_diameter', 12, 16, 0.5, 16, 'Countersink diameter'),
-        ('countersink_angle', 90, 100, 1, 90, 'Countersink included angle'),
+        ('head_top_diameter', 15, 18, 0.5, 16, 'Head top diameter'),
+        ('head_bottom_diameter', 10, 14, 0.5, 12, 'Head bottom diameter'),
+        ('head_thickness', 1.8, 2.4, 0.1, 2.1, 'Head thickness'),
+        ('head_clearance', 0, 0.4, 0.05, 0.2, 'Head clearance per side'),
+        ('head_recess', 0, 0.5, 0.1, 0.2, 'Head recess'),
         ('bed_chamfer', 0.3, 0.5, 0.1, 0.4, 'Bed edge chamfer'),
     ))
 
@@ -86,21 +90,28 @@ def dimensions(values: dict) -> dict:
     reach = p['shoulder_depth']-p['lid_clearance']
     if reach < 1.6 - 1e-9:
         raise ValueError('shoulder_depth - lid_clearance must be >= 1.6')
-    if p['countersink_diameter'] <= p['bolt_clearance_diameter'] + 2:
-        raise ValueError('countersink_diameter must exceed bolt_clearance_diameter + 2')
-    seat = (p['countersink_diameter']-p['bolt_clearance_diameter'])/(2*math.tan(math.radians(p['countersink_angle']/2)))
+    seat_bottom = p['head_bottom_diameter'] + 2*p['head_clearance']
+    if seat_bottom - p['bolt_clearance_diameter'] < 2.0 - 1e-9:
+        raise ValueError('head shoulder must be >= 1 mm per side')
+    if p['head_top_diameter'] <= p['head_bottom_diameter']:
+        raise ValueError('head_top_diameter must exceed head_bottom_diameter')
+    slope = (p['head_top_diameter']-p['head_bottom_diameter'])/(2*p['head_thickness'])
+    seat = p['head_thickness'] + p['head_recess']
+    p.update(seat_bottom_diameter=seat_bottom,
+             seat_face_diameter=seat_bottom+2*seat*slope,
+             pin_base_diameter=MOUTH+2*p['pin_fit'])
     if p['plate_thickness']-seat < 2.4 - 1e-9:
         raise ValueError('plate_thickness must leave 2.4 mm behind the countersink')
     if p['pin_tip_diameter'] >= p['pin_base_diameter']:
         raise ValueError('pin_tip_diameter must be below pin_base_diameter')
     length = pin_length_mm(p['pin_base_diameter'], p['pin_tip_diameter'], p['pin_cone_half_angle'])
     # Difference from the linear board cavity is linear on each interval,
-    # so checking its breakpoints proves clearance over the entire depth.
+    # so checking its breakpoints bounds interference over the entire depth.
     for z in (0, 1.5, length):
         pin_d = p['pin_base_diameter']-2*z*math.tan(math.radians(p['pin_cone_half_angle']))
-        cavity_d = 7.5-z if z <= 1.5 else 6.0
-        if pin_d > cavity_d-0.2 + 1e-9:
-            raise ValueError('pin must clear board cavity by 0.1 mm per side')
+        cavity_d = MOUTH-z if z <= 1.5 else 6.0
+        if pin_d > cavity_d+2*p['pin_fit'] + 1e-9:
+            raise ValueError('pin exceeds requested board cavity interference')
     inner = p['lid_diameter']/2+p['lid_clearance']
     p.update(radius=inner+p['tab_thickness'], wall_radius=inner,
              lip_radius=inner-reach, reach=reach, seat_depth=seat,
@@ -138,7 +149,7 @@ def _center_hole(p):
         p['bolt_clearance_diameter']/2, p['plate_thickness']+2,
         align=(Align.CENTER, Align.CENTER, Align.MIN))
     seat = Pos(0, p['plate_thickness']-p['seat_depth'], 0) * Rot(-90, 0, 0) * Cone(
-        p['bolt_clearance_diameter']/2, p['countersink_diameter']/2,
+        p['seat_bottom_diameter']/2, p['seat_face_diameter']/2,
         p['seat_depth'], align=(Align.CENTER, Align.CENTER, Align.MIN))
     return shank.fuse(seat)
 
@@ -211,7 +222,7 @@ def holder(**values):
 SPEC = register(ModelSpec(
     name='holder_cup_lid', build=lambda values: holder(**values),
     title='Cup lid holder (Multibuild)', category_id='multiboard',
-    description='Planar circular-segment cradle with mirrored arc tabs, inward lips and loose cone locating pins. Standing print; parametric countersink uses best-guess bolt dimensions pending physical validation.',
+    description='Planar circular-segment cradle with mirrored arc tabs, inward lips and cone locating pins with adjustable interference. Standing print; recessed tapered seat and flat shoulder match the measured bolt head, pending physical validation.',
     tags=('holder', 'multiboard', 'cup-lid'), params=PARAMS,
     presets=(Preset(id='sippy_cup_85mm', label='Sippy cup (85.3 mm)', values={}),),
     print_orientation=(0.0, 0.0, 1.0),

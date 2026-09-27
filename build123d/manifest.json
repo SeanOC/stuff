@@ -5,7 +5,7 @@
       "slug": "holder-cup-lid",
       "engine": "build123d",
       "title": "Cup lid holder (Multibuild)",
-      "blurb": "Planar circular-segment cradle with mirrored arc tabs, inward lips and loose cone locating pins. Standing print; parametric countersink uses best-guess bolt dimensions pending physical validation.",
+      "blurb": "Planar circular-segment cradle with mirrored arc tabs, inward lips and cone locating pins with adjustable interference. Standing print; recessed tapered seat and flat shoulder match the measured bolt head, pending physical validation.",
       "categoryId": "multiboard",
       "params": [
         {
@@ -73,8 +73,8 @@
           "label": "Plate thickness",
           "unit": "mm",
           "kind": "number",
-          "default": 6.5,
-          "min": 6.5,
+          "default": 5,
+          "min": 5,
           "max": 9,
           "step": 0.5
         },
@@ -109,14 +109,14 @@
           "step": 0.05
         },
         {
-          "name": "pin_base_diameter",
-          "label": "Pin base diameter",
+          "name": "pin_fit",
+          "label": "Pin fit per side (+ interference)",
           "unit": "mm",
           "kind": "number",
-          "default": 7.1,
-          "min": 6.9,
-          "max": 7.3,
-          "step": 0.1
+          "default": 0.1,
+          "min": -0.2,
+          "max": 0.3,
+          "step": 0.05
         },
         {
           "name": "pin_tip_diameter",
@@ -149,24 +149,54 @@
           "step": 0.1
         },
         {
-          "name": "countersink_diameter",
-          "label": "Countersink diameter",
+          "name": "head_top_diameter",
+          "label": "Head top diameter",
           "unit": "mm",
           "kind": "number",
           "default": 16,
-          "min": 12,
-          "max": 16,
+          "min": 15,
+          "max": 18,
           "step": 0.5
         },
         {
-          "name": "countersink_angle",
-          "label": "Countersink included angle",
-          "unit": "deg",
+          "name": "head_bottom_diameter",
+          "label": "Head bottom diameter",
+          "unit": "mm",
           "kind": "number",
-          "default": 90,
-          "min": 90,
-          "max": 100,
-          "step": 1
+          "default": 12,
+          "min": 10,
+          "max": 14,
+          "step": 0.5
+        },
+        {
+          "name": "head_thickness",
+          "label": "Head thickness",
+          "unit": "mm",
+          "kind": "number",
+          "default": 2.1,
+          "min": 1.8,
+          "max": 2.4,
+          "step": 0.1
+        },
+        {
+          "name": "head_clearance",
+          "label": "Head clearance per side",
+          "unit": "mm",
+          "kind": "number",
+          "default": 0.2,
+          "min": 0,
+          "max": 0.4,
+          "step": 0.05
+        },
+        {
+          "name": "head_recess",
+          "label": "Head recess",
+          "unit": "mm",
+          "kind": "number",
+          "default": 0.2,
+          "min": 0,
+          "max": 0.5,
+          "step": 0.1
         },
         {
           "name": "bed_chamfer",

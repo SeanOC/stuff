@@ -1,4 +1,4 @@
-"""Lower circular-segment v2.2 geometry contract for pst-g1rz.
+"""Lower circular-segment v2.3 geometry contract for pst-rlnc.
 
 Tests inspect the final BRep/mesh, not just construction metadata. Physical
 bolt/lid fit remains the downstream pst-mvno print experiment.
@@ -32,8 +32,15 @@ def test_registered_default():
     assert SPEC.print_orientation == (0, 0, 1)
     defaults = SPEC.resolve_values(SPEC.presets[0].values)
     assert defaults['lid_clearance'] == 0.6
-    assert defaults['countersink_diameter'] == 16
-    assert defaults['plate_thickness'] == 6.5
+    assert defaults['head_top_diameter'] == 16
+    assert defaults['head_bottom_diameter'] == 12
+    assert defaults['head_thickness'] == 2.1
+    assert defaults['head_clearance'] == 0.2
+    assert defaults['head_recess'] == 0.2
+    assert defaults['pin_fit'] == 0.1
+    assert defaults['plate_thickness'] == 5
+    assert dimensions({})['pin_base_diameter'] == pytest.approx(7.7)
+    assert not {'pin_base_diameter', 'countersink_diameter', 'countersink_angle'} & defaults.keys()
 
 
 def test_presets_watertight_and_envelope(part, tmp_path):
@@ -105,7 +112,7 @@ def test_front_face_planar_inset_grid(part):
             radial = math.hypot(x, z-p['circle_center_z'])
             if (abs(z) < p['mount_height']/2-inset
                     and radial < p['wall_radius']-inset
-                    and math.hypot(x, z) > p['countersink_diameter']/2+0.2):
+                    and math.hypot(x, z) > p['seat_face_diameter']/2+0.2):
                 assert face.is_inside((x, p['plate_thickness'], z))
                 tested += 1
     assert tested > 300
@@ -141,19 +148,30 @@ def test_pins_are_cones_at_25mm(values):
     assert len(back) == 1  # cone bases share the board-flush back plane
 
 
-@pytest.mark.parametrize('base', [6.9, 7.1, 7.3])
+@pytest.mark.parametrize('fit', [-0.2, 0.1, 0.3])
 @pytest.mark.parametrize('tip', [0, 0.8])
 @pytest.mark.parametrize('angle', [45, 49])
-def test_pin_clears_board_cavity(base, tip, angle):
-    p = dimensions(dict(pin_base_diameter=base, pin_tip_diameter=tip, pin_cone_half_angle=angle))
+def test_pin_engages_board_cavity(fit, tip, angle):
+    p = dimensions(dict(pin_fit=fit, pin_tip_diameter=tip, pin_cone_half_angle=angle))
+    base = p['pin_base_diameter']
+    assert base == pytest.approx(7.5+2*fit)
     assert 2.4 <= p['pin_length'] <= 6.0
     depths = [i*0.05 for i in range(math.ceil(p['pin_length']/0.05))]+[p['pin_length']]
     for z in depths:
         cavity_d = 7.5-z if z <= 1.5 else 6.0
         cone_d = base-2*z*math.tan(math.radians(angle))
-        # Reviewer clarification: equality at base=7.3 means exactly
-        # 0.1 mm clearance per side and is explicitly accepted.
-        assert cone_d <= cavity_d-0.2+1e-9
+        assert cone_d <= cavity_d+2*fit+1e-9
+
+
+@pytest.mark.parametrize('fit,base', [(-0.2, 7.1), (-0.1, 7.3)])
+def test_old_pin_geometry(fit, base):
+    p = dimensions({'pin_fit': fit})
+    assert p['pin_base_diameter'] == pytest.approx(base)
+    assert p['pin_length'] == pytest.approx(base/2)
+    solid = holder(pin_fit=fit)
+    cones = [f for f in solid.faces() if f.geom_type.name == 'CONE' and f.center().Y < 0]
+    assert len(cones) == 2
+    assert all(f.bounding_box().size.X == pytest.approx(base) for f in cones)
 
 
 def test_bolt_hole_through_and_countersunk(part):
@@ -163,19 +181,26 @@ def test_bolt_hole_through_and_countersunk(part):
         assert not part.is_inside((0, y, 0))
         assert not part.is_inside((p['bolt_clearance_diameter']/2-0.05, y, 0))
     seat_start = p['plate_thickness']-p['seat_depth']
-    assert seat_start == pytest.approx(2.5)
+    assert seat_start == pytest.approx(2.7)
     for y in (0.5, seat_start-0.1):
         assert part.is_inside((p['bolt_clearance_diameter']/2+0.05, y, 0))
     # Measure the circular opening at each finished plate face.
-    for y, diameter in ((0, 8), (p['plate_thickness'], 16)):
+    for y, diameter in ((0, 8), (p['plate_thickness'], 16.78095238), (seat_start, 12.4), (seat_start, 8)):
         rim = [e for e in part.edges() if e.geom_type.name == 'CIRCLE'
                and abs(e.center().Y-y) < 1e-6
                and abs(e.radius-diameter/2) < 0.025]
         assert len(rim) == 1
         assert 2*rim[0].radius == pytest.approx(diameter, abs=0.05)
+    shoulder = [f for f in part.faces() if f.geom_type.name == 'PLANE'
+                and abs(f.center().Y-seat_start) < 1e-6 and f.normal_at().Y > 0.99]
+    assert len(shoulder) == 1
+    assert shoulder[0].area == pytest.approx(math.pi*(6.2**2-4**2))
+    for radius in (4.05, 5, 6.15):
+        assert part.is_inside((radius, seat_start-0.01, 0))
+        assert not part.is_inside((radius, seat_start+0.01, 0))
     for fraction in (0.1, 0.5, 0.9):
         y = seat_start+fraction*p['seat_depth']
-        radius = p['bolt_clearance_diameter']/2+fraction*(p['countersink_diameter']-p['bolt_clearance_diameter'])/2
+        radius = 6.2+fraction*(16.78095238-12.4)/2
         assert not part.is_inside((radius-0.05, y, 0))
         assert part.is_inside((radius+0.05, y, 0))
 
@@ -307,12 +332,14 @@ def test_outside_param_range_raises(name, value):
     ({'lid_diameter': 84, 'tab_thickness': 2, 'top_chord_offset': 2, 'mount_height': 30}, 'wall outward lean'),
     ({'top_chord_offset': 2, 'mount_height': 30, 'lid_clearance': 0.1, 'tab_thickness': 2}, 'wall outward lean'),
     ({'shoulder_depth': 2.2, 'lid_clearance': 0.7}, '>= 1.6'),
-    ({'plate_thickness': 6.0}, 'plate_thickness'),
-    ({'countersink_diameter': 16.5}, 'countersink_diameter'),
+    ({'head_thickness': 2.4, 'head_recess': 0.5}, 'leave 2.4'),
+    ({'head_bottom_diameter': 10, 'head_clearance': 0, 'bolt_clearance_diameter': 8.5}, 'head shoulder'),
+    ({'countersink_diameter': 16}, 'unknown parameters'),
+    ({'countersink_angle': 90}, 'unknown parameters'),
     ({'bolt_clearance_diameter': 7.7}, 'bolt_clearance_diameter'),
     ({'shoulder_depth': 2.1}, 'shoulder_depth'),
     ({'pin_tip_diameter': 7.1}, 'pin_tip_diameter'),
-    ({'pin_base_diameter': 7.4}, 'pin_base_diameter'),
+    ({'pin_base_diameter': 7.7}, 'unknown parameters'),
     ({'plate_height': 30}, 'unknown parameters'),
     ({'lid_diameter': float('nan')}, 'lid_diameter'),
     ({'lid_diameter': True}, 'lid_diameter'),
@@ -325,13 +352,13 @@ def test_cross_constraints_raise(values, message):
 @pytest.mark.parametrize('values', [
     {'lid_diameter': 84, 'mount_height': 30, 'top_chord_offset': 2},  # tightest specified legal build
     {'shoulder_depth': 2.2, 'lid_clearance': 0.6},
-    {'plate_thickness': 6.5, 'bolt_clearance_diameter': 7.8, 'countersink_diameter': 16},
-    {'bolt_clearance_diameter': 8, 'countersink_diameter': 13},
-    {'pin_base_diameter': 7.3, 'pin_tip_diameter': 0.8, 'pin_cone_half_angle': 49},
+    {'head_thickness': 2.4, 'head_recess': 0.2},
+    {'bolt_clearance_diameter': 8, 'head_bottom_diameter': 10, 'head_clearance': 0},
+    {'pin_fit': -0.1, 'pin_tip_diameter': 0.8, 'pin_cone_half_angle': 49},
 ])
 def test_cross_constraint_accepted_cases(values):
     p = dimensions(values)
-    if values.get('bolt_clearance_diameter') == 7.8:
+    if values.get('head_thickness') == 2.4:
         assert p['plate_thickness']-p['seat_depth'] == pytest.approx(2.4)
     if values.get('shoulder_depth') == 2.2:
         assert p['reach'] == pytest.approx(1.6)
@@ -339,9 +366,11 @@ def test_cross_constraint_accepted_cases(values):
 
 
 @pytest.mark.parametrize('values,message', [
-    ({'plate_thickness': 6.5, 'countersink_diameter': 17, 'bolt_clearance_diameter': 8}, 'leave 2.4'),
-    ({'plate_thickness': 6.5, 'countersink_diameter': 16, 'bolt_clearance_diameter': 7.5}, 'leave 2.4'),
-    ({'bolt_clearance_diameter': 8.5, 'countersink_diameter': 10.5}, 'must exceed'),
+    ({'head_thickness': 3}, 'leave 2.4'),
+    ({'head_recess': 0.6}, 'leave 2.4'),
+    ({'head_bottom_diameter': 9}, 'head shoulder'),
+    ({'head_top_diameter': 12}, 'must exceed'),
+    ({'head_top_diameter': 11}, 'must exceed'),
 ])
 def test_raw_countersink_cross_constraints_raise(monkeypatch, values, message):
     # Widen only the test domains to exercise the geometric guards directly;
