@@ -54,7 +54,7 @@ check; the MIT Python library does not establish rights in every referenced CAD 
 | [C] Large-hole envelope | Octagon: across flats 23.4 at mouths, 21.4 centrally; central band height 2.4 | [SCAD] L68–83,218–224,270–280; these are not circular thread diameters |
 | [C] Large-hole thread | Trapezoidal helix: outer Ø22.6, inner Ø21.4; axial widths 0.5 outer / 1.583 inner; pitch 2.5 | [SCAD] L85–94; `multihole_threads` L228–233 extends helix past the 6.4 board before boolean operations |
 | [U] Production thread fit | Above is a reconstructed **female hole**, not a qualified male Multibolt/T-bolt spec. Starts, flank rounding, lead-in, male fit allowance and current official tolerances remain unverified | [SCAD] L85–94,285 onward; [Core] §5 gives compatibility, not a thread drawing |
-| [C] Small-hole envelope | Mouth Ø7.5, throat Ø6, central band 2.9; threaded rather than a plain conical bore | [SCAD] L96–104,237–265 |
+| [C] Small-hole envelope | Mouth Ø7.5, throat Ø6, central band 2.9; threaded rather than a plain conical bore | [SCAD] L96–104,237–265; [cup-lid reconciliation](cup-lid-validation.md#cavity-provenance-and-conservative-approximation--pst-akdj) |
 | [V] Small-hole taper depth | (6.4−2.9)/2 = **1.75** at each face; throat from depth 1.75 to 4.65 | Arithmetic from [SCAD] L270–280; [U] physical agreement pending STEP/print check |
 | [C] Small-hole thread | Pitch 3, outer Ø7, inner Ø6; axial widths 0.77 / 2.5 | [SCAD] L100–104,257–265 |
 | [V] Grid phase / edges | Large centers `(25i+12.5,25j+12.5)`; small centers `(25i+25,25j+25)` where present. First large center is 12.5 from the nominal cell boundary, not every scalloped outer edge | [SCAD] L135–162,167–193; arithmetic on source coordinates |
@@ -62,11 +62,11 @@ check; the MIT Python library does not establish rights in every referenced CAD 
 | [C] Joining | Official installation uses Dual Snaps; offset snap mounts give 6.25 wall offset | [Mounting], “Installation Steps”, L46–50; [Core] §2.2 L88 |
 | [U] Seam collision / clearances | Nominal lattice continuity does not prove clearance past snap heads, pillars, teeth or a misaligned installed seam. No official global fit allowance found | [Mounting] steps/images and [Core] connection descriptions; need installed hardware envelope and chosen tile variant |
 
-[V] The existing [cup-lid validation](cup-lid-validation.md#pins-and-board-engagement)
-(L95–108)
-uses a simplified 1.5 mm taper and cylindrical remainder. That disagrees with
-its cited source above; follow-up **pst-akdj** owns reconciliation. Do not
-promote that fixture into the new library or silently revise the cup-lid here.
+The [cup-lid reconciliation](cup-lid-validation.md#cavity-provenance-and-conservative-approximation--pst-akdj)
+(**pst-akdj**) retains the simplified 1.5 mm taper as a conservative guard,
+with a profile inequality test and Sean's 2026-09-27 v2.3 physical-fit result.
+It does not promote that fixture to an official cavity measurement or a
+shared-library profile; official STEP measurements remain [U].
 
 ## 3. Fixed-point mounts and retention
 

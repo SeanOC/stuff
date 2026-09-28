@@ -1,7 +1,7 @@
 """Lower circular-segment v2.3 geometry contract for pst-rlnc.
 
 Tests inspect the final BRep/mesh, not just construction metadata. Physical
-bolt/lid fit remains the downstream pst-mvno print experiment.
+bolt/lid fit was confirmed by Sean on 2026-09-27 (pst-mvno).
 """
 import math
 from dataclasses import replace
@@ -14,7 +14,7 @@ from build123d import Plane
 from OCP.BRepAdaptor import BRepAdaptor_Surface
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from holders.cup_lid import PARAMS, PITCH, SPEC, dimensions, holder, pin_centers, pin_length_mm
+from holders.cup_lid import MOUTH, PARAMS, PITCH, SPEC, dimensions, holder, pin_centers, pin_length_mm
 from scripts.export import export_stl
 from holders.registry import all_models
 
@@ -146,6 +146,28 @@ def test_pins_are_cones_at_25mm(values):
     back = [f for f in solid.faces() if f.geom_type.name == 'PLANE'
             and f.normal_at().Y < -0.99 and abs(f.center().Y) < 1e-6]
     assert len(back) == 1  # cone bases share the board-flush back plane
+
+
+def _scad_cavity_d(z):
+    """Ideal symmetric base void; the thread only enlarges it.
+
+    asciipip/multiboard-parametric-stacked @ 4db5f07, multiboard_base.scad
+    raw lines 61, 96-104, 249-253, 270-282; see cup-lid-validation.md.
+    """
+    height, thick_height = 6.4, 2.9
+    mouth, throat = 7.5, 6.0
+    taper_depth = (height-thick_height)/2
+    assert 0 <= z <= height
+    face_depth = min(z, height-z)
+    return throat + (mouth-throat)*max(0, 1-face_depth/taper_depth)
+
+
+@pytest.mark.parametrize('z', [0, 0.5, 1.0, 1.5, 1.75, 2.0, 4.05, 4.65, 5.0, 6.4])
+def test_cavity_approximation_is_conservative(z):
+    # Same cavity fixture as dimensions(); compare with independent source
+    # arithmetic, including both breakpoints and the maximum pin reach.
+    cavity_d = MOUTH-z if z <= 1.5 else 6.0
+    assert cavity_d <= _scad_cavity_d(z) + 1e-9
 
 
 @pytest.mark.parametrize('fit', [-0.2, 0.1, 0.3])

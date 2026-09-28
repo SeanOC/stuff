@@ -246,8 +246,9 @@ The pinned `opengrid` package supplies openGrid/Multiconnect, not Multibuild
 small-hole pins. `holders/cup_lid.py` uses elementary solids for its locating
 pins and center clearance, as authorized in pst-tti3. This exception does not
 permit replacement of the existing library mounts. The module records the
-25 mm pitch, measured 6 mm small-hole throat and 6.4 mm board depth, together
-with sources and the per-side printed clearance.
+25 mm pitch and a conservative cavity approximation;
+[the reconciliation](docs/cup-lid-validation.md#cavity-provenance-and-conservative-approximation--pst-akdj)
+distinguishes cited dimensions from Sean's 2026-09-27 v2.3 print validation.
 
 The cup-lid v2.1 prints standing on its lower chord (+Z up). Its production
 audit excludes only the exact horizontal round bolt-shank envelope; the
