@@ -16,13 +16,13 @@ above the bed at the inner-radius 45-degree limit plus lip_end_margin.
 Their 45-degree end ramps rise inward from that stop; full-height walls
 support the lid below the lips.
 
-The fixed 25 mm pitch is one Multibuild Multi Unit. Board dimensions cited
-in docs/cup-lid-validation.md: 7.5 mm mouth tapering to a 6.0 mm throat over
-1.5 mm, total depth 6.4 mm. The rear cones engage the mouth with a tunable
-per-side fit (default 0.1 mm interference). Their bases and the plate back
+The fixed 25 mm pitch is one Multibuild Multi Unit. The guard uses a
+simplified cavity: 7.5 mm mouth tapering to 6.0 mm over 1.5 mm, then
+cylindrical to 6.4 mm; see docs/cup-lid-validation.md for provenance.
+The rear cones engage the mouth with a tunable per-side fit (default 0.1 mm interference). Their bases and the plate back
 are coplanar. The bolt clamps. The seat follows Sean's measured head:
 16 to 12 mm taper over 2.1 mm, recessed 0.2 mm, with a flat shoulder to
-the 8 mm shank. Physical fit validation remains tracked by pst-mvno.
+the 8 mm shank. Sean confirmed physical fit on 2026-09-27 (pst-mvno, v2.3).
 
 Functional sharp edges: lip shoulder-contact arc and wall seating arc.
 Cone pin surfaces and countersink are functional. All bed-contact edges
@@ -37,6 +37,10 @@ from build123d import Align, Axis, Box, BuildSketch, Cone, Cylinder, Plane, Poly
 from OCP.BRepFilletAPI import BRepFilletAPI_MakeChamfer
 from holders.registry import ModelSpec, Param, Preset, register
 
+# Cited pitch/mouth; the single-sided 1.5 mm taper in dimensions() is a
+# conservative approximation, not the source's symmetric 1.75 mm taper.
+# See docs/cup-lid-validation.md, "Cavity provenance and conservative
+# approximation" (pst-akdj), for the profile inequality and physical fit.
 PITCH = 25.0
 MOUTH = 7.5
 JOINT_RADIUS = 1.0
@@ -105,7 +109,8 @@ def dimensions(values: dict) -> dict:
     if p['pin_tip_diameter'] >= p['pin_base_diameter']:
         raise ValueError('pin_tip_diameter must be below pin_base_diameter')
     length = pin_length_mm(p['pin_base_diameter'], p['pin_tip_diameter'], p['pin_cone_half_angle'])
-    # Difference from the linear board cavity is linear on each interval,
+    # Use the simplified single-sided cavity documented above.
+    # Difference from this conservative cavity is linear on each interval,
     # so checking its breakpoints bounds interference over the entire depth.
     for z in (0, 1.5, length):
         pin_d = p['pin_base_diameter']-2*z*math.tan(math.radians(p['pin_cone_half_angle']))
