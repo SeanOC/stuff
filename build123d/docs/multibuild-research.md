@@ -62,7 +62,8 @@ check; the MIT Python library does not establish rights in every referenced CAD 
 | [C] Joining | Official installation uses Dual Snaps; offset snap mounts give 6.25 wall offset | [Mounting], “Installation Steps”, L46–50; [Core] §2.2 L88 |
 | [U] Seam collision / clearances | Nominal lattice continuity does not prove clearance past snap heads, pillars, teeth or a misaligned installed seam. No official global fit allowance found | [Mounting] steps/images and [Core] connection descriptions; need installed hardware envelope and chosen tile variant |
 
-The existing [cup-lid validation](cup-lid-validation.md#pins-and-board-engagement)
+[V] The existing [cup-lid validation](cup-lid-validation.md#pins-and-board-engagement)
+(L95–108)
 uses a simplified 1.5 mm taper and cylindrical remainder. That disagrees with
 its cited source above; follow-up **pst-akdj** owns reconciliation. Do not
 promote that fixture into the new library or silently revise the cup-lid here.
