@@ -49,6 +49,10 @@ def test_dockerfile_copies_registered_model_packages(monkeypatch):
         # Keep regular and namespace packages (scripts has no __init__.py),
         # excluding the virtualenv and pytest's top-level test modules.
         package = relative.parts[0]
+        # Full-suite collection also imports helpers as tests.mount_contracts
+        # and tests.print_audit; these are not service runtime dependencies.
+        if package == "tests":
+            continue
         if len(relative.parts) > 1 and module.__name__.split(".")[0] == package:
             imported_packages.add(package)
 
