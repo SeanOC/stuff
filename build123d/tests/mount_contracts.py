@@ -52,7 +52,7 @@ import importlib
 import math
 from typing import Callable
 
-from build123d import Align, Box, Pos
+from build123d import Align, Axis, Box, Pos, Solid
 from build123d.topology import Part
 from opengrid.multiconnect import RoundHead
 
@@ -336,7 +336,23 @@ def verify_multiconnect_channel(part: Part, fx: MountFixtures) -> None:
         high = max(s.position.Z for s in seats)
         sweep(low * RoundHead(), (0, 0, high-low.position.Z))
         assert part.bounding_box().max.Z - bb.max.Z >= 2.4 - 1e-7, 'channel needs a closed top cap'
-        assert part.bounding_box().max.Y - bb.max.Y >= 2.4 - 1e-7, 'channel needs >=2.4 mm backing'
+        # Extrude the actual pocket-back faces through the required backing.
+        # This covers the spine, openings and seats locally; unrelated material
+        # elsewhere on the model cannot conceal a thin wall behind a channel.
+        back_faces = [f for f in cutter.faces().filter_by(Axis.Y)
+                      if abs(f.center().Y-bb.max.Y) < 1e-7]
+        assert back_faces, 'channel must expose pocket-back faces for backing check'
+        # The first 0.5 mm may have the required bed-edge relief. Above it,
+        # the whole footprint must have continuous backing, not just its centre.
+        floor = max(bb.min.Z, part.bounding_box().min.Z + .5)
+        region = Pos(x, bb.max.Y+1.2, (floor+bb.max.Z)/2) * Box(
+            bb.size.X+2, 2.4, bb.max.Z-floor)
+        for face in back_faces:
+            backing = Solid.extrude(face, (0, 2.4, 0)).intersect(region)
+            assert backing is not None, 'channel backing probe is empty'
+            for probe in backing.solids():
+                missing = probe.volume - _residual_vol(part, probe)
+                assert missing < 1e-5, f'channel needs >=2.4 mm local backing: {missing:.3f} mm^3 missing'
         # A head trying to ride through the upper end must hit actual material,
         # even when some unrelated geometry makes the global bbox taller.
         top_head = Pos(0, 0, bb.max.Z-low.position.Z) * (low * RoundHead())

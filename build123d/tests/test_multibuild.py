@@ -236,7 +236,7 @@ def test_channel_demo_contract_and_audit(channel_demo, tmp_path):
         assert all(_residual_vol(plate,Pos(0,0,float(dz))*loc*RoundHead()) < 2 for loc in fx.seat_locs)
 
 
-@pytest.mark.parametrize('defect', ['sealed_entry', 'blocked_channel', 'open_top'])
+@pytest.mark.parametrize('defect', ['sealed_entry', 'blocked_channel', 'open_top', 'thin_backing'])
 def test_channel_contract_detects_broken_paths(channel_demo, defect):
     fx = demo.mount_fixtures(demo.CHANNEL_MOUNT,{})
     part = channel_demo
@@ -244,6 +244,15 @@ def test_channel_contract_detects_broken_paths(channel_demo, defect):
         part += Pos(-12.5,.25,12.5)*Box(23,.5,23)
     elif defect == 'blocked_channel':
         part += Pos(-12.5,2,32)*Box(21,4,.5)
+    elif defect == 'thin_backing':
+        for x in (-12.5,12.5):
+            part -= Pos(x,POCKET_DEPTH+1,0)*Box(
+                22,3,demo.CHANNEL_LENGTH,align=(Align.CENTER,Align.MIN,Align.MIN))
+        assert part.is_valid and len(part.solids()) == 1
+        assert part.bounding_box().max.Y == pytest.approx(7)
+        with pytest.raises(AssertionError, match='local backing'):
+            CONTRACTS[demo.CHANNEL_MOUNT](part,fx)
+        return
     else:
         part -= Pos(-12.5,3,87.5)*Box(21,6,26)
     with pytest.raises(AssertionError):

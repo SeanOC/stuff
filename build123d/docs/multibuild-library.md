@@ -188,8 +188,12 @@ The bead's `7 = POCKET_DEPTH + 2.4` arithmetic is inconsistent with the pinned
 corresponding `onramp_locs` (head poses, one per seat). Its contract reuses
 seat clearance, normal capture and depth-profile checks, then samples entry
 along +Y and travel along +Z at ≤0.5 mm intervals, including endpoints. It
-also samples the full 12.5..50 mm span and checks backing and actual top
-material. Deliberately sealed entries, blocked channels and open caps fail.
+also samples the full 12.5..50 mm span and checks actual top material. Backing
+is checked by extruding each pocket-back face 2.4 mm into the consumer and
+requiring that entire local volume to be solid, covering the spine, on-ramp
+and seat regions. Only the first 0.5 mm at the bed is excluded for edge
+relief. Deliberately sealed entries, blocked channels, open caps and 1 mm
+local backing (despite an unchanged 7 mm overall depth) fail.
 This verifies geometry, not release force, creep or loaded physical retention.
 
 The production print audit passes with the existing library-pocket exception:
