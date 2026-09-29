@@ -285,7 +285,10 @@ still apply; the wider ramp sections should not be described as uniformly
 The tests deliberately retain the production audit and exposed-edge gate.
 The nominal upper guide section tapers to a knife edge: a 0.4 mm crest
 trim leaves a very narrow top land. The default audit detects thin guide
-material near the crest/end faces. A proposed 1.6 mm crest needs a revised
+material near the crest/end faces. At the default apex the trimmed crest
+is only `(4.0 − 0.5) * 0.4 / 15 = 0.093 mm` wide. The 70 mm spool /
+1.5 mm clearance / 30 mm guide corner narrows it to 0.0067 mm.
+A proposed 1.6 mm crest needs a revised
 lead-in section, including its behavior when clearance leaves less than
 1.6 mm of horizontal run. No such revision is assumed here.
 
