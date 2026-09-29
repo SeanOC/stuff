@@ -14,7 +14,9 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import socket
+import sys
 import threading
 import urllib.error
 import urllib.request
@@ -26,6 +28,35 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SERVER_PATH = REPO_ROOT / "services" / "bd-render" / "server.py"
+
+
+def test_dockerfile_copies_registered_model_packages():
+    """Every local package loaded by the registry must ship in the image."""
+    from holders.registry import all_models
+
+    all_models()
+    build_root = REPO_ROOT / "build123d"
+    imported_packages = set()
+    for module in list(sys.modules.values()):
+        filename = getattr(module, "__file__", None)
+        if not filename:
+            continue
+        try:
+            relative = Path(filename).resolve().relative_to(build_root)
+        except ValueError:
+            continue
+        # Keep regular and namespace packages (scripts has no __init__.py),
+        # excluding the virtualenv and pytest's top-level test modules.
+        package = relative.parts[0]
+        if len(relative.parts) > 1 and module.__name__.split(".")[0] == package:
+            imported_packages.add(package)
+
+    dockerfile = (SERVER_PATH.parent / "Dockerfile").read_text()
+    copied_packages = set(re.findall(
+        r"^COPY\s+build123d/(\w+)/?\s+\./\1/?\s*$", dockerfile, re.MULTILINE
+    ))
+    missing = imported_packages - copied_packages
+    assert not missing, f"bd-render image is missing local packages: {sorted(missing)}"
 
 
 def _load_server():
@@ -99,9 +130,12 @@ def test_render_glb_default_format(base_url):
     assert len(body) > 1000
 
 
-def test_render_stl_format(base_url):
+@pytest.mark.parametrize("slug", [
+    "holder-spray-can", "holder-cup-lid", "holder-bottle-500ml", "holder-spool-cradle",
+])
+def test_render_stl_format(base_url, slug):
     status, headers, body = _post(
-        base_url, "/render?format=stl", {"slug": "holder-spray-can", "params": {}}
+        base_url, "/render?format=stl", {"slug": slug, "params": {}}
     )
     assert status == 200, body
     assert headers["content-type"] == "application/sla"
