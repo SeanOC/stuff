@@ -71,3 +71,12 @@ def test_request_payload_shape(tmp_path):
     assert kinds == {"text", "image_url"}
     img = next(c for c in content if c["type"] == "image_url")
     assert img["image_url"]["url"].startswith("data:image/png;base64,")
+
+
+def test_rubric_for_multibuild_demo():
+    from types import SimpleNamespace
+    from multibuild.demo_plate import MOUNT
+    rubric, mounts = rr._rubric_for('demo', {'demo': SimpleNamespace(mounts=(MOUNT,))})
+    assert mounts == [MOUNT]
+    assert rubric == rr.RUBRICS['multiconnect-slot'][:2]
+    assert any('DOWN' in line for line in rubric)

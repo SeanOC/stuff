@@ -35,6 +35,9 @@ the slot aperture).
   and vertical edges only. (Library mount cutters are excluded: their profile
   is the spec.)
 
+Multibuild exception (Sean, 2026-09-28): Multiconnect slot pockets may require
+supports when printed standing; this does not waive bed-edge chamfers.
+
 **Walls, features, holes**
 - Minimum wall: **0.9 mm** (two extrusion widths); use **≥ 1.6 mm** for
   anything load-bearing and **≥ 2.4 mm** for a mount plate backing.
@@ -130,6 +133,10 @@ spec fixes.
   "light" (one slot, short travel) to "robust" (two/three slots, full travel).
 - New params mirror the existing `Param` contract (`holders/registry.py`)
   so the web UI and `/api/bd-render` pick them up unchanged.
+
+For Multibuild mounts, use the [multibuild library](multibuild-library.md):
+board pitch is fixed at 25 mm, with the pinned Multiconnect head/profile and
+clearances unchanged and a flush back-face datum.
 
 ## 6. Reviewer checklist (stuff-codex-reviewer)
 

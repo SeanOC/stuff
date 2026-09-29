@@ -293,6 +293,7 @@ def verify_multiconnect_slot(part: Part, fx: MountFixtures) -> None:
 # mount type -> contract. Every KNOWN_MOUNTS entry must appear here.
 CONTRACTS: dict[str, Callable[[Part, MountFixtures], None]] = {
     "multiconnect-slot": verify_multiconnect_slot,
+    "multibuild-multiconnect-slot": verify_multiconnect_slot,
 }
 
 _uncovered = KNOWN_MOUNTS - CONTRACTS.keys()
