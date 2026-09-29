@@ -233,6 +233,12 @@ def test_mount_tunables_appear_in_param_list():
     for spec in all_models():
         if not spec.mounts:
             continue
+        if spec.name == "holder_spool_cradle":
+            # pst-ir0v rev 5: approved fixed two-seat, 25 mm Multibuild mount.
+            # Its permitted configuration is pinned in test_spool_cradle.py.
+            assert spec.mounts == ("multibuild-multiconnect-slot",)
+            assert not expected.keys() & spec.param_names()
+            continue
         by_name = {p.name: p for p in spec.params}
         for name, (lo, hi, kind) in expected.items():
             assert name in by_name, f"{spec.name} missing mount param {name}"
