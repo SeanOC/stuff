@@ -14,13 +14,20 @@ dependencies = [
     # Pinned to a commit for reproducibility (BOSL2-pin discipline).
     "opengrid",
     "trimesh>=4.0",          # GLB load + smooth normals for the thumbnail rasteriser; test mesh checks
+    "shapely>=2.0",          # capped review sections
+    "mapbox-earcut",         # cap polygon triangulation
     "numpy>=1.26",           # pure-numpy software thumbnail rasteriser (scripts/thumbnail.py)
     "pillow>=10.0",          # PNG encode for the thumbnail rasteriser
     "pytest>=8.0",
+    "networkx>=3.7",        # section loop nesting in trimesh
+    "rtree>=1.4.1",         # nested section polygon containment
 ]
 
 [tool.uv.sources]
 opengrid = { git = "https://makerrepo.com/r/fangpenlin/opengrid.git", rev = "eea2b4154a10d2909e5edece567cbe0563aaf955" }
+
+[dependency-groups]
+dev = ["pytest-regressions>=2.5"]
 
 [tool.pytest.ini_options]
 # `upstream` tests need the private reference mirror on disk (reference/FETCH.md).

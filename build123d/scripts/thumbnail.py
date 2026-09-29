@@ -30,10 +30,45 @@ bakes headless on Vercel".
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 import trimesh
+
+
+@dataclass(frozen=True)
+class PlaneSpec:
+    """Section plane in the model's Z-up millimetre frame."""
+
+    origin: tuple[float, float, float]
+    normal: tuple[float, float, float]
+    label: str
+
+
+@dataclass(frozen=True)
+class ReviewContext:
+    slug: str
+    print_orientation: tuple[float, float, float]
+    sections: tuple[PlaneSpec, ...]
+    mounts: tuple[str, ...]
+
+    def __post_init__(self):
+        if not self.sections:
+            raise ValueError("review context requires at least one resolved section")
+
+
+def model_to_glb_point(p: tuple[float, float, float]) -> np.ndarray:
+    """OCP glTF export maps Z-up mm to Y-up metres."""
+    x, y, z = p
+    return np.array((x / 1000, z / 1000, -y / 1000))
+
+
+def model_to_glb_vector(v: tuple[float, float, float]) -> np.ndarray:
+    """Rotate a model-frame direction into GLB space without scaling."""
+    x, y, z = v
+    return np.array((x, z, -y), dtype=float)
+
 
 # --- Look, pinned so thumbnails are reproducible across CI and local runs.
 # Camera is an orthographic iso view down the +X+Y+Z diagonal with +Y up —
@@ -75,6 +110,7 @@ def _render_view(
     view_dir: np.ndarray,
     world_up: np.ndarray,
     res: int,
+    face_colors: np.ndarray | None = None,
 ) -> np.ndarray:
     """Rasterise a single view to an (res, res, 4) float RGBA array [0,1].
 
@@ -120,13 +156,14 @@ def _render_view(
     facing = face_n @ to_eye  # > 0 ⇒ front side toward eye
     keep = facing > 0
     f = f[keep]
+    colors = None if face_colors is None else np.asarray(face_colors)[keep]
 
     hi_i = hi
     rgb = np.zeros((hi_i, hi_i, 3), float)
     alpha = np.zeros((hi_i, hi_i), bool)
     zbuf = np.full((hi_i, hi_i), np.inf)
 
-    for tri in f:
+    for face_index, tri in enumerate(f):
         i0, i1, i2 = tri
         x0, y0 = px[i0], py[i0]
         x1, y1 = px[i1], py[i1]
@@ -167,7 +204,7 @@ def _render_view(
         if rows.size == 0:
             continue
         zbuf[rows, cols] = d
-        rgb[rows, cols] = shade[:, None] * color[None, :]
+        rgb[rows, cols] = shade[:, None] * (color if colors is None else colors[face_index])[None, :]
         alpha[rows, cols] = True
 
     # Box-downsample the supersampled buffers to the output resolution.
@@ -236,13 +273,41 @@ def render_thumbnail(glb_path: Path, png_path: Path) -> None:
     )
 
 
-def render_review(glb_path: Path, png_path: Path, *, res: int = _RES) -> None:
-    """Three-view (iso/front/top) review sheet from a baked GLB.
+def _section_mesh(mesh: trimesh.Trimesh, plane: PlaneSpec) -> trimesh.Trimesh:
+    # trimesh keeps the positive half: negate the normal to retain -normal.
+    return trimesh.intersections.slice_mesh_plane(
+        mesh, -model_to_glb_vector(plane.normal),
+        model_to_glb_point(plane.origin), cap=True,
+    )
 
-    The dev/CI review artifact written by export.py's default export-all
-    mode. Same software rasteriser as the gallery thumbnail, just three
-    stacked views — so no mplot3d/plot_trisurf anywhere in the pipeline.
-    """
+
+def _section_tile(mesh, plane, color, res):
+    cut = _section_mesh(mesh, plane)
+    if not len(cut.faces):
+        raise ValueError(f"section {plane.label!r} does not intersect the mesh")
+    origin = model_to_glb_point(plane.origin)
+    normal = model_to_glb_vector(plane.normal)
+    normal /= np.linalg.norm(normal)
+    distances = (cut.vertices - origin) @ normal
+    cap = np.all(np.abs(distances[cut.faces]) < 1e-8, axis=1)
+    colors = np.tile(color, (len(cut.faces), 1))
+    colors[cap] = (0.95, 0.55, 0.22)
+    return _render_view(
+        cut.vertices, cut.faces, cut.vertex_normals, color=color,
+        face_colors=colors, view_dir=normal, world_up=_WORLD_UP, res=res,
+    )
+
+
+def _underside_tile(mesh, orientation, color, res):
+    return _render_view(
+        mesh.vertices, mesh.faces, mesh.vertex_normals, color=color,
+        view_dir=-model_to_glb_vector(orientation), world_up=_WORLD_UP, res=res,
+    )
+
+
+def render_review(glb_path: Path, png_path: Path, *,
+                  ctx: ReviewContext | None = None, res: int = _RES) -> None:
+    """Five labelled review views; legacy callers retain their three-view sheet."""
     from PIL import Image
 
     scene = trimesh.load(str(glb_path), force="scene")
@@ -256,5 +321,23 @@ def render_review(glb_path: Path, png_path: Path, *, res: int = _RES) -> None:
             color=col, view_dir=view_dir, world_up=world_up, res=res,
         )
         tiles.append((rgba * 255.0 + 0.5).astype(np.uint8))
+    if ctx is not None:
+        for rgba in (
+            _section_tile(mesh, ctx.sections[0], col, res),
+            _underside_tile(mesh, ctx.print_orientation, col, res),
+        ):
+            tiles.append((rgba * 255.0 + 0.5).astype(np.uint8))
+        from PIL import ImageDraw
+        sheet = Image.new("RGB", (5 * res, res + 48), "white")
+        draw = ImageDraw.Draw(sheet)
+        for i, (label, tile) in enumerate(zip(
+            ("ISO", "FRONT", "TOP", "SECTION", "UNDERSIDE"), tiles
+        )):
+            img = Image.fromarray(tile)
+            sheet.paste(img, (i * res, 28), img)
+            draw.text((i * res + 8, 8), label, fill="black")
+        draw.text((8, res + 30), f"{ctx.slug} | SECTION: {ctx.sections[0].label}", fill="black")
+        sheet.save(png_path)
+        return
     strip = np.concatenate(tiles, axis=1)  # side by side: iso | front | top
     Image.fromarray(strip, mode="RGBA").save(png_path)

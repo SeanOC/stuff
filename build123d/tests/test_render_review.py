@@ -80,3 +80,22 @@ def test_rubric_for_multibuild_demo():
     assert mounts == [MOUNT]
     assert rubric == rr.RUBRICS['multiconnect-slot'][:2]
     assert any('DOWN' in line for line in rubric)
+
+
+def test_review_stem_preserves_model_rubric():
+    from pathlib import Path
+    by_slug = rr._models_by_slug()
+    for spec in rr.all_models():
+        stem = Path(f"{spec.name}.png").stem
+        rubric, mounts = rr._rubric_for(stem, by_slug)
+        assert mounts == list(spec.mounts)
+        for mount in mounts:
+            assert all(q in rubric for q in rr.RUBRICS[mount])
+
+
+def test_tile_rubric_lockstep():
+    assert rr.PROMPT_VERSION == "4"
+    prompt = rr._build_prompt("fixture", rr._GENERIC_RUBRIC, [])
+    assert "five views (iso, front, top, section, underside)" in prompt
+    assert "SECTION: is every load-bearing member ≥ 1.6 mm and connected at both ends? any free-ending arm?" in prompt
+    assert "UNDERSIDE: any downward horizontal face outside the mount pockets? any bridge that looks > 10 mm?" in prompt
