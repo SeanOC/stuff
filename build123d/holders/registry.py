@@ -21,12 +21,14 @@ baking, which cover app-listed models only.
 """
 from __future__ import annotations
 
+import importlib
 import math
 import re
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
 from build123d import Location, Part
+from scripts.thumbnail import PlaneSpec
 
 # URL-safe id: alphanumeric start, then alphanumerics, '-', '_'. Used for
 # model slugs and preset ids (both end up in file paths / URL segments).
@@ -233,6 +235,8 @@ class ModelSpec:
     # the audit at that orientation (design-guidelines §6 items 1–3).
     print_orientation: tuple[float, float, float] = (0.0, 0.0, 1.0)
 
+    review_sections: tuple[PlaneSpec, ...] = ()
+
     @property
     def slug(self) -> str:
         # Same rule as lib/models/discover.ts stemToSlug.
@@ -281,6 +285,32 @@ class ModelSpec:
                     )
             values[name] = value
         return values
+
+
+def resolve_mount_fixtures(
+    spec: ModelSpec, mount_type: str, values: dict
+) -> MountFixtures | None:
+    """Fetch a model's ``mount_fixtures`` hook and build fixtures for one mount.
+
+    Fails loudly if a model tagged with a mount does not expose the hook or
+    returns geometry-free fixtures (a mislabeled or unbuilt mount).
+    """
+    if not spec.mounts:
+        return None
+    module = importlib.import_module(spec.build.__module__)
+    hook = getattr(module, "mount_fixtures", None)
+    if hook is None:
+        raise AssertionError(
+            f"{spec.name}: declares mount {mount_type!r} but its module "
+            f"{module.__name__} has no mount_fixtures(mount_type, values) hook"
+        )
+    fx = hook(mount_type, values)
+    if not fx.cutters or not fx.seat_locs:
+        raise AssertionError(
+            f"{spec.name}: mount_fixtures({mount_type!r}) returned no cutters "
+            "or seats — the mount is not actually present"
+        )
+    return fx
 
 
 _REGISTRY: dict[str, ModelSpec] = {}
@@ -346,6 +376,14 @@ def _validate_spec(spec: ModelSpec) -> str | None:
         if mount in seen_mounts:
             return f"{spec.name}: duplicate mount type {mount!r}"
         seen_mounts.add(mount)
+    for plane in spec.review_sections:
+        for vector in (plane.origin, plane.normal):
+            if len(vector) != 3 or not all(_is_number(c) and math.isfinite(c) for c in vector):
+                return f"{spec.name}: section plane needs finite 3D origin and normal"
+        if math.sqrt(sum(c*c for c in plane.normal)) < 1e-9:
+            return f"{spec.name}: section normal must be non-zero"
+        if not plane.label.strip():
+            return f"{spec.name}: section label must be non-empty"
     orient = spec.print_orientation
     if (
         not isinstance(orient, tuple)

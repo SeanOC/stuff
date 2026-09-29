@@ -143,7 +143,7 @@ clearances unchanged and a flush back-face datum.
 For any PR touching `build123d/holders/**`, check and cite the file/line:
 
 1. Declared print orientation present; no downward face steeper than 45°
-   without a stated reason; no bridge > 10 mm.
+   without a stated reason; no bridge > 10 mm. Cite the UNDERSIDE review tile.
 2. No downward-facing fillets; plate-contact edges chamfered.
 3. Walls ≥ 0.9 mm (≥ 1.6 mm load-bearing); features ≥ 1.8 mm; holes ≥ Ø2.
 4. User-exposed non-functional edges treated (fillet/chamfer); functional

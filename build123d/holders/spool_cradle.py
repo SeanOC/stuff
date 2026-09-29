@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import math
 from build123d import Align, Axis, Box, BuildSketch, Cone, Edge, Face, Plane, Polygon, Pos, Rot, Solid, Vector, Wire, extrude
-from holders.registry import ModelSpec, MountFixtures, Param, Preset, register
+from holders.registry import ModelSpec, MountFixtures, PlaneSpec, Param, Preset, register
 from multibuild.constants import PITCH
 from multibuild.multiconnect import POCKET_DEPTH, channel_cutter
 
@@ -468,12 +468,17 @@ def holder(**values):
     return part.clean()
 
 
+# Static review plane uses the default plate + clearance + spool radius.
+_DEFAULT_SECTION_Y = 7 + 3 + 200 / 2
+
 SPEC = register(ModelSpec(
     name='holder_spool_cradle', build=lambda values: holder(**values),
     title='Spool cradle (Multibuild)', category_id='multiboard',
     description='Single spool bookshelf cradle with wide inboard saddle rails, outboard placement guides (omitted when reach is less than 2.4 mm plus saddle clearance), closed truss webs and two full-height Multiconnect channels. Flange-rim support; standing PETG/PCTG print with support allowed only in the mount pockets.',
     tags=('holder', 'multiboard', 'spool'), params=PARAMS,
     mounts=(MOUNT,), print_orientation=(0, 0, 1),
+    review_sections=(PlaneSpec((0, _DEFAULT_SECTION_Y, 0), (1, 0, 0),
+                              'mid-plane through saddle + truss'),),
     presets=(
         Preset('bambu_reusable_200', 'Bambu reusable 200 mm',
                {'spool_width': 67, 'flange_height': 8, 'flange_rim_width': 3}),
