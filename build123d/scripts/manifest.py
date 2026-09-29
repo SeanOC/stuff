@@ -139,6 +139,8 @@ def build_manifest(specs: list[ModelSpec] | None = None) -> dict[str, Any]:
     if specs is None:
         specs = all_models()
     app_listed = [s for s in specs if not s.is_smoke]
+    # Registry insertion order depends on which holder modules imported first.
+    app_listed.sort(key=lambda s: (s.category_id, s.slug))
     return {"schemaVersion": SCHEMA_VERSION, "models": [spec_to_json(s) for s in app_listed]}
 
 

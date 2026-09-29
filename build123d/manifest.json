@@ -2,6 +2,143 @@
   "schemaVersion": 1,
   "models": [
     {
+      "slug": "holder-bottle-500ml",
+      "engine": "build123d",
+      "title": "500ml bottle holder",
+      "blurb": "open-front C-ring holder, 500ml bottle (d=73, collar h=50), Multiconnect slot back plate",
+      "categoryId": "multiboard",
+      "params": [
+        {
+          "name": "d",
+          "label": "Cylinder diameter",
+          "group": "geometry",
+          "unit": "mm",
+          "kind": "number",
+          "default": 73.0,
+          "min": 30.0,
+          "max": 120.0,
+          "step": 1.0
+        },
+        {
+          "name": "h",
+          "label": "Collar height",
+          "group": "geometry",
+          "unit": "mm",
+          "kind": "number",
+          "default": 50.0,
+          "min": 20.0,
+          "max": 120.0,
+          "step": 1.0
+        },
+        {
+          "name": "wall",
+          "label": "Wall thickness",
+          "group": "geometry",
+          "unit": "mm",
+          "kind": "number",
+          "default": 2.4,
+          "min": 1.6,
+          "max": 4.0,
+          "step": 0.1
+        },
+        {
+          "name": "opening_deg",
+          "label": "Opening arc",
+          "group": "geometry",
+          "unit": "deg",
+          "kind": "number",
+          "default": 90.0,
+          "min": 60.0,
+          "max": 120.0,
+          "step": 5.0
+        },
+        {
+          "name": "floor_thickness",
+          "label": "Floor thickness",
+          "group": "geometry",
+          "unit": "mm",
+          "kind": "number",
+          "default": 4.8,
+          "min": 1.6,
+          "max": 10.0,
+          "step": 0.2
+        },
+        {
+          "name": "slot_count",
+          "label": "Slot count",
+          "group": "mount",
+          "kind": "integer",
+          "default": 1,
+          "min": 1,
+          "max": 3,
+          "step": 1
+        },
+        {
+          "name": "slot_travel",
+          "label": "Slot travel",
+          "group": "mount",
+          "unit": "mm",
+          "kind": "number",
+          "default": 28.0,
+          "min": 12.0,
+          "max": 45.0,
+          "step": 1.0
+        },
+        {
+          "name": "snap_notches",
+          "label": "Snap notches",
+          "group": "mount",
+          "kind": "boolean",
+          "default": true
+        },
+        {
+          "name": "plate_margin",
+          "label": "Plate margin",
+          "group": "mount",
+          "unit": "mm",
+          "kind": "number",
+          "default": 3.0,
+          "min": 2.0,
+          "max": 6.0,
+          "step": 0.5
+        }
+      ],
+      "presets": [
+        {
+          "id": "bottle_500ml",
+          "label": "500ml bottle (d=73, h=50)",
+          "values": {
+            "d": 73.0,
+            "h": 50.0
+          }
+        },
+        {
+          "id": "bottle_500ml_light",
+          "label": "500ml bottle \u2014 light mount (1 slot, no notch)",
+          "values": {
+            "d": 73.0,
+            "h": 50.0,
+            "slot_count": 1,
+            "slot_travel": 12.0,
+            "snap_notches": false,
+            "plate_margin": 2.0
+          }
+        },
+        {
+          "id": "bottle_500ml_robust",
+          "label": "500ml bottle \u2014 robust mount (2 slots, full travel)",
+          "values": {
+            "d": 73.0,
+            "h": 50.0,
+            "slot_count": 2,
+            "slot_travel": 45.0,
+            "snap_notches": true,
+            "plate_margin": 3.0
+          }
+        }
+      ]
+    },
+    {
       "slug": "holder-cup-lid",
       "engine": "build123d",
       "title": "Cup lid holder (Multibuild)",
@@ -218,6 +355,125 @@
       ]
     },
     {
+      "slug": "holder-spool-cradle",
+      "engine": "build123d",
+      "title": "Spool cradle (Multibuild)",
+      "blurb": "Single spool bookshelf cradle on two flush snap-in Multiconnect slots. Flange-rim support; standing PETG/PCTG print with support allowed only in the mount pockets.",
+      "categoryId": "multiboard",
+      "params": [
+        {
+          "name": "spool_diameter",
+          "label": "Spool diameter",
+          "unit": "mm",
+          "kind": "number",
+          "default": 200,
+          "min": 190,
+          "max": 205,
+          "step": 0.5
+        },
+        {
+          "name": "spool_width",
+          "label": "Spool width",
+          "unit": "mm",
+          "kind": "number",
+          "default": 66,
+          "min": 50,
+          "max": 70,
+          "step": 0.5
+        },
+        {
+          "name": "flange_height",
+          "label": "Flange above winding",
+          "unit": "mm",
+          "kind": "number",
+          "default": 8,
+          "min": 4,
+          "max": 15,
+          "step": 0.5
+        },
+        {
+          "name": "flange_rim_width",
+          "label": "Flange rim width",
+          "unit": "mm",
+          "kind": "number",
+          "default": 3,
+          "min": 1.5,
+          "max": 6,
+          "step": 0.5
+        },
+        {
+          "name": "cradle_angle",
+          "label": "V half angle from vertical",
+          "unit": "deg",
+          "kind": "number",
+          "default": 40,
+          "min": 25,
+          "max": 45,
+          "step": 1
+        },
+        {
+          "name": "lip_height",
+          "label": "Front rise above contact",
+          "unit": "mm",
+          "kind": "number",
+          "default": 5,
+          "min": 0,
+          "max": 15,
+          "step": 0.5
+        },
+        {
+          "name": "plate_width",
+          "label": "Mount plate width",
+          "unit": "mm",
+          "kind": "number",
+          "default": 70,
+          "min": 68,
+          "max": 70,
+          "step": 0.5
+        },
+        {
+          "name": "plate_thickness",
+          "label": "Mount plate thickness",
+          "unit": "mm",
+          "kind": "number",
+          "default": 7,
+          "min": 6.6,
+          "max": 9,
+          "step": 0.1
+        },
+        {
+          "name": "wall_clearance",
+          "label": "Spool clearance from plate",
+          "unit": "mm",
+          "kind": "number",
+          "default": 3,
+          "min": 3,
+          "max": 6,
+          "step": 0.5
+        }
+      ],
+      "presets": [
+        {
+          "id": "bambu_reusable_200",
+          "label": "Bambu reusable 200 mm",
+          "values": {
+            "spool_width": 67,
+            "flange_height": 8,
+            "flange_rim_width": 3
+          }
+        },
+        {
+          "id": "ams_generic_200",
+          "label": "AMS generic 200 mm",
+          "values": {
+            "spool_width": 66,
+            "flange_height": 8,
+            "flange_rim_width": 3
+          }
+        }
+      ]
+    },
+    {
       "slug": "holder-spray-can",
       "engine": "build123d",
       "title": "Spray can holder",
@@ -350,262 +606,6 @@
             "slot_travel": 45.0,
             "snap_notches": true,
             "plate_margin": 3.0
-          }
-        }
-      ]
-    },
-    {
-      "slug": "holder-bottle-500ml",
-      "engine": "build123d",
-      "title": "500ml bottle holder",
-      "blurb": "open-front C-ring holder, 500ml bottle (d=73, collar h=50), Multiconnect slot back plate",
-      "categoryId": "multiboard",
-      "params": [
-        {
-          "name": "d",
-          "label": "Cylinder diameter",
-          "group": "geometry",
-          "unit": "mm",
-          "kind": "number",
-          "default": 73.0,
-          "min": 30.0,
-          "max": 120.0,
-          "step": 1.0
-        },
-        {
-          "name": "h",
-          "label": "Collar height",
-          "group": "geometry",
-          "unit": "mm",
-          "kind": "number",
-          "default": 50.0,
-          "min": 20.0,
-          "max": 120.0,
-          "step": 1.0
-        },
-        {
-          "name": "wall",
-          "label": "Wall thickness",
-          "group": "geometry",
-          "unit": "mm",
-          "kind": "number",
-          "default": 2.4,
-          "min": 1.6,
-          "max": 4.0,
-          "step": 0.1
-        },
-        {
-          "name": "opening_deg",
-          "label": "Opening arc",
-          "group": "geometry",
-          "unit": "deg",
-          "kind": "number",
-          "default": 90.0,
-          "min": 60.0,
-          "max": 120.0,
-          "step": 5.0
-        },
-        {
-          "name": "floor_thickness",
-          "label": "Floor thickness",
-          "group": "geometry",
-          "unit": "mm",
-          "kind": "number",
-          "default": 4.8,
-          "min": 1.6,
-          "max": 10.0,
-          "step": 0.2
-        },
-        {
-          "name": "slot_count",
-          "label": "Slot count",
-          "group": "mount",
-          "kind": "integer",
-          "default": 1,
-          "min": 1,
-          "max": 3,
-          "step": 1
-        },
-        {
-          "name": "slot_travel",
-          "label": "Slot travel",
-          "group": "mount",
-          "unit": "mm",
-          "kind": "number",
-          "default": 28.0,
-          "min": 12.0,
-          "max": 45.0,
-          "step": 1.0
-        },
-        {
-          "name": "snap_notches",
-          "label": "Snap notches",
-          "group": "mount",
-          "kind": "boolean",
-          "default": true
-        },
-        {
-          "name": "plate_margin",
-          "label": "Plate margin",
-          "group": "mount",
-          "unit": "mm",
-          "kind": "number",
-          "default": 3.0,
-          "min": 2.0,
-          "max": 6.0,
-          "step": 0.5
-        }
-      ],
-      "presets": [
-        {
-          "id": "bottle_500ml",
-          "label": "500ml bottle (d=73, h=50)",
-          "values": {
-            "d": 73.0,
-            "h": 50.0
-          }
-        },
-        {
-          "id": "bottle_500ml_light",
-          "label": "500ml bottle \u2014 light mount (1 slot, no notch)",
-          "values": {
-            "d": 73.0,
-            "h": 50.0,
-            "slot_count": 1,
-            "slot_travel": 12.0,
-            "snap_notches": false,
-            "plate_margin": 2.0
-          }
-        },
-        {
-          "id": "bottle_500ml_robust",
-          "label": "500ml bottle \u2014 robust mount (2 slots, full travel)",
-          "values": {
-            "d": 73.0,
-            "h": 50.0,
-            "slot_count": 2,
-            "slot_travel": 45.0,
-            "snap_notches": true,
-            "plate_margin": 3.0
-          }
-        }
-      ]
-    },
-    {
-      "slug": "holder-spool-cradle",
-      "engine": "build123d",
-      "title": "Spool cradle (Multibuild)",
-      "blurb": "Single spool bookshelf cradle on two flush snap-in Multiconnect slots. Flange-rim support; standing PETG/PCTG print with support allowed only in the mount pockets.",
-      "categoryId": "multiboard",
-      "params": [
-        {
-          "name": "spool_diameter",
-          "label": "Spool diameter",
-          "unit": "mm",
-          "kind": "number",
-          "default": 200,
-          "min": 190,
-          "max": 205,
-          "step": 0.5
-        },
-        {
-          "name": "spool_width",
-          "label": "Spool width",
-          "unit": "mm",
-          "kind": "number",
-          "default": 66,
-          "min": 50,
-          "max": 70,
-          "step": 0.5
-        },
-        {
-          "name": "flange_height",
-          "label": "Flange above winding",
-          "unit": "mm",
-          "kind": "number",
-          "default": 8,
-          "min": 4,
-          "max": 15,
-          "step": 0.5
-        },
-        {
-          "name": "flange_rim_width",
-          "label": "Flange rim width",
-          "unit": "mm",
-          "kind": "number",
-          "default": 3,
-          "min": 1.5,
-          "max": 6,
-          "step": 0.5
-        },
-        {
-          "name": "cradle_angle",
-          "label": "V half angle from vertical",
-          "unit": "deg",
-          "kind": "number",
-          "default": 40,
-          "min": 25,
-          "max": 45,
-          "step": 1
-        },
-        {
-          "name": "lip_height",
-          "label": "Front rise above contact",
-          "unit": "mm",
-          "kind": "number",
-          "default": 5,
-          "min": 0,
-          "max": 15,
-          "step": 0.5
-        },
-        {
-          "name": "plate_width",
-          "label": "Mount plate width",
-          "unit": "mm",
-          "kind": "number",
-          "default": 70,
-          "min": 68,
-          "max": 70,
-          "step": 0.5
-        },
-        {
-          "name": "plate_thickness",
-          "label": "Mount plate thickness",
-          "unit": "mm",
-          "kind": "number",
-          "default": 7,
-          "min": 6.6,
-          "max": 9,
-          "step": 0.1
-        },
-        {
-          "name": "wall_clearance",
-          "label": "Spool clearance from plate",
-          "unit": "mm",
-          "kind": "number",
-          "default": 3,
-          "min": 3,
-          "max": 6,
-          "step": 0.5
-        }
-      ],
-      "presets": [
-        {
-          "id": "bambu_reusable_200",
-          "label": "Bambu reusable 200 mm",
-          "values": {
-            "spool_width": 67,
-            "flange_height": 8,
-            "flange_rim_width": 3
-          }
-        },
-        {
-          "id": "ams_generic_200",
-          "label": "AMS generic 200 mm",
-          "values": {
-            "spool_width": 66,
-            "flange_height": 8,
-            "flange_rim_width": 3
           }
         }
       ]
