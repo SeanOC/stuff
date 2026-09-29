@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from build123d import Align, Axis, Box, Pos, Compound, Vector
 from opengrid import constants as oc
 from opengrid.multiconnect import RoundHead, RoundHeadCutter, SlotCutter
-from multibuild import SmallHoleConePin, LargeHoleThreadCutter, FixPointCutter
+from multibuild import SmallHoleConePin, LargeHoleThreadCutter, FixPointCutter, channel_cutter
 from multibuild import constants as c
 from multibuild import demo_plate as demo
 from multibuild.multiconnect import POCKET_DEPTH, slot_cutter
@@ -156,3 +156,117 @@ def test_demo_is_not_registered():
 @pytest.mark.parametrize('stub', [LargeHoleThreadCutter,FixPointCutter])
 def test_deferred(stub):
     with pytest.raises(NotImplementedError,match='multibuild-research.md'): stub()
+
+
+@pytest.mark.parametrize('length', [25, 50, 75, 100])
+def test_channel_profile_matches_short_slot(length):
+    channel = channel_cutter(length, onramps=(), seats=())
+    slot = slot_cutter(length)
+    bb = channel.bounding_box()
+    assert channel.is_valid and len(channel.solids()) == 1
+    assert (bb.min.Z, bb.max.Z) == pytest.approx((0, length))
+    assert (bb.min.Y, bb.max.Y) == pytest.approx((0, POCKET_DEPTH))
+    for y in (.2, 1, 2, 3, 3.8):
+        probe = Pos(0, y, length/2)*Box(30, .01, .1)
+        actual = channel.intersect(probe)
+        expected = (Pos(0, 0, length)*slot).intersect(probe)
+        assert Compound(actual).volume == pytest.approx(Compound(expected).volume, abs=1e-7)
+        assert Compound(actual).bounding_box().size.X == pytest.approx(Compound(expected).bounding_box().size.X)
+
+
+@pytest.mark.parametrize('kwargs', [
+    dict(length=0), dict(length=-25), dict(length=28), dict(length=float('nan')),
+    dict(length=float('inf')), dict(drop=0), dict(drop=25), dict(drop=30),
+    dict(drop=float('nan')), dict(onramps=(0,)), dict(onramps=(75,)),
+    dict(onramps=(10,)), dict(onramps=(65,)), dict(onramps=(12.5, 30)),
+    dict(onramps=(12.5, 12.5)), dict(onramps=(float('nan'),)),
+    dict(seats=(26,)), dict(seats=(25,25)), dict(seats=(75,)),
+    dict(seats=(float('inf'),)), dict(seats=(50,), onramps=(12.5,)),
+])
+def test_invalid_channel(kwargs):
+    params = dict(length=75, onramps=(12.5, 37.5), seats=(25, 50), drop=12.5)
+    params.update(kwargs)
+    with pytest.raises(ValueError):
+        channel_cutter(**params)
+
+
+@pytest.fixture(scope='module')
+def channel_demo():
+    return demo.channel_plate()
+
+
+def test_channel_centres_and_snap_features():
+    from build123d import Rot
+    from opengrid.multiconnect import SlotOpeningCutter
+    channel = channel_cutter(75, onramps=demo.ONRAMPS, seats=demo.SEATS)
+    assert channel.is_valid and len(channel.solids()) == 1
+    assert (channel.bounding_box().min.Z, channel.bounding_box().max.Z) == pytest.approx((0,75))
+    spine = channel_cutter(75, onramps=(), seats=())
+    for z in (12.5, 37.5):
+        opening = Pos(0,POCKET_DEPTH,z)*Rot(90,0,0)*SlotOpeningCutter()
+        assert (opening-channel).volume == pytest.approx(0, abs=1e-7)
+        assert channel.is_inside((10.5,.1,z))
+    assert not channel.is_inside((10.5,.1,62.5))
+    for z in (25,50):
+        # Retained snap material has exactly the pinned library shape,
+        # except where the required neighbouring on-ramp intersects it.
+        notch = Pos(0,0,z)*(slot_cutter(snap=False)-slot_cutter(snap=True))
+        retained = notch-channel
+        assert retained.volume > 0
+        assert (retained-spine).volume == pytest.approx(0, abs=1e-7)
+
+
+def test_channel_demo_contract_and_audit(channel_demo, tmp_path):
+    plate = channel_demo
+    fx = demo.mount_fixtures(demo.CHANNEL_MOUNT,{})
+    assert plate.is_valid and len(plate.solids()) == 1
+    assert tuple(plate.bounding_box().size) == pytest.approx((70,7,100))
+    assert [loc.position.Z for loc in fx.onramp_locs] == [12.5,37.5,12.5,37.5]
+    assert [loc.position.Z for loc in fx.seat_locs] == [25,50,25,50]
+    CONTRACTS[demo.CHANNEL_MOUNT](plate,fx)
+    stl = tmp_path/'channel.stl'
+    export_stl(plate,str(stl))
+    assert trimesh.load(stl).is_watertight
+    report = audit(plate,demo.PRINT_ORIENTATION,cutters=fx.cutters)
+    assert report.ok, report.format()
+    assert report.bed_chamfer == 'present'
+    assert not audit(plate,demo.PRINT_ORIENTATION).ok
+    # Four board heads move together through the one-unit insertion sequence.
+    for dz in np.linspace(-12.5,0,26):
+        assert all(_residual_vol(plate,Pos(0,0,float(dz))*loc*RoundHead()) < 2 for loc in fx.seat_locs)
+
+
+@pytest.mark.parametrize('defect', ['sealed_entry', 'blocked_channel', 'open_top', 'thin_backing'])
+def test_channel_contract_detects_broken_paths(channel_demo, defect):
+    fx = demo.mount_fixtures(demo.CHANNEL_MOUNT,{})
+    part = channel_demo
+    if defect == 'sealed_entry':
+        part += Pos(-12.5,.25,12.5)*Box(23,.5,23)
+    elif defect == 'blocked_channel':
+        part += Pos(-12.5,2,32)*Box(21,4,.5)
+    elif defect == 'thin_backing':
+        for x in (-12.5,12.5):
+            part -= Pos(x,POCKET_DEPTH+1,0)*Box(
+                22,3,demo.CHANNEL_LENGTH,align=(Align.CENTER,Align.MIN,Align.MIN))
+        assert part.is_valid and len(part.solids()) == 1
+        assert part.bounding_box().max.Y == pytest.approx(7)
+        with pytest.raises(AssertionError, match='local backing'):
+            CONTRACTS[demo.CHANNEL_MOUNT](part,fx)
+        return
+    else:
+        part -= Pos(-12.5,3,87.5)*Box(21,6,26)
+    with pytest.raises(AssertionError):
+        CONTRACTS[demo.CHANNEL_MOUNT](part,fx)
+
+
+def test_slot_demo_volume_unchanged(plate):
+    assert plate.volume == pytest.approx(44255.325, abs=.001)
+
+
+def test_channel_100_uses_explicit_centres():
+    channel = channel_cutter(100, onramps=(12.5,37.5,62.5), seats=(25,50,75))
+    assert channel.bounding_box().max.Z == pytest.approx(100)
+    for z in (12.5,37.5,62.5):
+        assert channel.is_inside((10.5,.1,z))
+    # The library never generates the next row implicitly.
+    assert not channel.is_inside((10.5,.1,87.5))

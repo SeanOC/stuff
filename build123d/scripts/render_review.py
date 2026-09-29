@@ -46,7 +46,7 @@ DEFAULT_MODEL = "qwen/qwen3-vl-235b-a22b-instruct"  # vision model (inx assess.t
 # Bump when the rubric text or prompt scaffold in _build_prompt/RUBRICS changes,
 # so a summary is traceable to the exact wording that produced it. Reported in
 # the Markdown header alongside the model id (bead pst-ae3v, AC 2).
-PROMPT_VERSION = "2"
+PROMPT_VERSION = "3"
 
 # Mount-type -> the checklist a reviewer applies to the render. Keyed by the
 # same names as registry.KNOWN_MOUNTS so a new mount contract can add its rubric
@@ -65,6 +65,11 @@ RUBRICS: dict[str, list[str]] = {
 
 # Same insertion contract; the demo has no cylinder collar.
 RUBRICS["multibuild-multiconnect-slot"] = RUBRICS["multiconnect-slot"][:2]
+RUBRICS["multibuild-multiconnect-channel"] = [
+    "Do the continuous channels have round head-entry on-ramps below each seat?",
+    "Is there solid material closing the channel tops and backing the pockets?",
+    "Do the channels retain a narrow lip between the on-ramps?",
+]
 
 _GENERIC_RUBRIC = [
     "Does this look like a sane, printable holder with no obviously broken, "

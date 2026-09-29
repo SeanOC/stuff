@@ -49,9 +49,10 @@ Adding a new mount contract
 from __future__ import annotations
 
 import importlib
+import math
 from typing import Callable
 
-from build123d import Align, Box, Pos
+from build123d import Align, Axis, Box, Pos, Solid
 from build123d.topology import Part
 from opengrid.multiconnect import RoundHead
 
@@ -290,10 +291,82 @@ def verify_multiconnect_slot(part: Part, fx: MountFixtures) -> None:
     assert_profile(part, fx)
 
 
+def verify_multiconnect_channel(part: Part, fx: MountFixtures) -> None:
+    """Normal entry, sub-pitch drop, full channel travel and closed top.
+
+    Sample paths at <=0.5 mm, including both endpoints. Each on-ramp pose
+    corresponds to a seat; channels are matched by their X centre.
+    """
+    from multibuild.constants import PITCH
+    _require_z_entry(fx)
+    _require_y_face(fx)
+    assert fx.cutters and fx.seat_locs, 'channel fixtures must not be empty'
+    assert len(fx.onramp_locs) == len(fx.seat_locs), 'one on-ramp pose per seat required'
+    assert_seat_clearance(part, fx)
+    assert_retention(part, fx)
+
+    def sweep(head, delta):
+        steps = max(1, math.ceil(max(abs(v) for v in delta) / .5))
+        for i in range(steps + 1):
+            pose = Pos(*(v * i / steps for v in delta)) * head
+            residual = _residual_vol(part, pose)
+            assert residual < _TRAVEL_TOL, f'channel path blocked: {residual:.3f} mm^3 at step {i}/{steps}'
+
+    for seat, ramp in zip(fx.seat_locs, fx.onramp_locs):
+        a, b = seat.position, ramp.position
+        assert abs(a.X-b.X) < 1e-7 and abs(a.Y-b.Y) < 1e-7, 'on-ramp must be directly below seat'
+        assert 0 < a.Z-b.Z < PITCH, 'seat drop must be less than one pitch'
+        head = ramp * RoundHead()
+        # Entire head starts outside the board-facing surface.
+        distance = head.bounding_box().max.Y - part.bounding_box().min.Y + 1
+        sweep(Pos(0, -distance, 0) * head, (0, distance, 0))
+        sweep(head, (0, 0, a.Z-b.Z))
+
+    matched_seats = 0
+    for cutter in fx.cutters:
+        bb = cutter.bounding_box()
+        x = (bb.min.X + bb.max.X) / 2
+        pairs = [(s, r) for s, r in zip(fx.seat_locs, fx.onramp_locs) if abs(s.position.X-x) < 1e-7]
+        assert pairs, 'every channel needs seat and entry fixtures'
+        matched_seats += len(pairs)
+        seats, ramps = zip(*pairs)
+        # Existing helper expects one cutter per seat; expand only this view.
+        assert_profile(part, MountFixtures([cutter] * len(seats), list(seats)))
+        low = min(ramps, key=lambda r: r.position.Z)
+        high = max(s.position.Z for s in seats)
+        sweep(low * RoundHead(), (0, 0, high-low.position.Z))
+        assert part.bounding_box().max.Z - bb.max.Z >= 2.4 - 1e-7, 'channel needs a closed top cap'
+        # Extrude the actual pocket-back faces through the required backing.
+        # This covers the spine, openings and seats locally; unrelated material
+        # elsewhere on the model cannot conceal a thin wall behind a channel.
+        back_faces = [f for f in cutter.faces().filter_by(Axis.Y)
+                      if abs(f.center().Y-bb.max.Y) < 1e-7]
+        assert back_faces, 'channel must expose pocket-back faces for backing check'
+        # The first 0.5 mm may have the required bed-edge relief. Above it,
+        # the whole footprint must have continuous backing, not just its centre.
+        floor = max(bb.min.Z, part.bounding_box().min.Z + .5)
+        region = Pos(x, bb.max.Y+1.2, (floor+bb.max.Z)/2) * Box(
+            bb.size.X+2, 2.4, bb.max.Z-floor)
+        for face in back_faces:
+            backing = Solid.extrude(face, (0, 2.4, 0)).intersect(region)
+            assert backing is not None, 'channel backing probe is empty'
+            for probe in backing.solids():
+                missing = probe.volume - _residual_vol(part, probe)
+                assert missing < 1e-5, f'channel needs >=2.4 mm local backing: {missing:.3f} mm^3 missing'
+        # A head trying to ride through the upper end must hit actual material,
+        # even when some unrelated geometry makes the global bbox taller.
+        top_head = Pos(0, 0, bb.max.Z-low.position.Z) * (low * RoundHead())
+        assert _residual_vol(part, top_head) > _RETENTION_MIN, 'head can exit through channel top'
+        above = Pos(x, bb.max.Y-2, bb.max.Z+1.2) * Box(4, 2, 2.4)
+        assert _residual_vol(part, above) >= above.volume - _EMPTY_VOL, 'channel top is not enclosed'
+    assert matched_seats == len(fx.seat_locs), 'seat does not match exactly one channel'
+
+
 # mount type -> contract. Every KNOWN_MOUNTS entry must appear here.
 CONTRACTS: dict[str, Callable[[Part, MountFixtures], None]] = {
     "multiconnect-slot": verify_multiconnect_slot,
     "multibuild-multiconnect-slot": verify_multiconnect_slot,
+    "multibuild-multiconnect-channel": verify_multiconnect_channel,
 }
 
 _uncovered = KNOWN_MOUNTS - CONTRACTS.keys()

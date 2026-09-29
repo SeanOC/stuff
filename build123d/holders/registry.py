@@ -37,7 +37,7 @@ SAFE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
 # module asserts full coverage at import). A model tagged with an unknown
 # mount fails loudly at registration (see _validate_spec). Add a new mount
 # type here AND its contract together.
-KNOWN_MOUNTS: frozenset[str] = frozenset({"multiconnect-slot", "multibuild-multiconnect-slot"})
+KNOWN_MOUNTS: frozenset[str] = frozenset({"multiconnect-slot", "multibuild-multiconnect-slot", "multibuild-multiconnect-channel"})
 
 # Mirrors MODEL_CATEGORIES ids in lib/models/catalog.ts (app catalog
 # contract). Keep in sync when a category is added there.
@@ -184,6 +184,9 @@ class MountFixtures:
     seat_locs: list[Location]
     entry_axis: tuple[float, float, float] = (0.0, 0.0, 1.0)
     face_normal: tuple[float, float, float] = (0.0, -1.0, 0.0)
+    # Continuous channels: one head-entry pose per seat, in matching order.
+    # cutters contains one negative per channel (which may hold many seats).
+    onramp_locs: list[Location] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
