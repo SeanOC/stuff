@@ -48,7 +48,6 @@ Adding a new mount contract
 """
 from __future__ import annotations
 
-import importlib
 import math
 from typing import Callable
 
@@ -57,6 +56,8 @@ from build123d.topology import Part
 from opengrid.multiconnect import RoundHead
 
 from holders.registry import KNOWN_MOUNTS, ModelSpec, MountFixtures
+# Compatibility name for existing contract callers.
+from holders.registry import resolve_mount_fixtures as resolve_fixtures
 
 # Boolean intersections around coincident faces are noisy; every check uses an
 # explicit tolerance, never an exact-zero comparison (plan-review guidance).
@@ -374,30 +375,6 @@ assert not _uncovered, (
     f"mount types declared in registry.KNOWN_MOUNTS but missing a contract "
     f"here: {sorted(_uncovered)}"
 )
-
-
-def resolve_fixtures(
-    spec: ModelSpec, mount_type: str, values: dict
-) -> MountFixtures:
-    """Fetch a model's ``mount_fixtures`` hook and build fixtures for one mount.
-
-    Fails loudly if a model tagged with a mount does not expose the hook or
-    returns geometry-free fixtures (a mislabeled or unbuilt mount).
-    """
-    module = importlib.import_module(spec.build.__module__)
-    hook = getattr(module, "mount_fixtures", None)
-    if hook is None:
-        raise AssertionError(
-            f"{spec.name}: declares mount {mount_type!r} but its module "
-            f"{module.__name__} has no mount_fixtures(mount_type, values) hook"
-        )
-    fx = hook(mount_type, values)
-    if not fx.cutters or not fx.seat_locs:
-        raise AssertionError(
-            f"{spec.name}: mount_fixtures({mount_type!r}) returned no cutters "
-            "or seats — the mount is not actually present"
-        )
-    return fx
 
 
 def verify(spec: ModelSpec, mount_type: str, values: dict) -> None:

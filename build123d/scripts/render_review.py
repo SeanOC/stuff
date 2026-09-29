@@ -2,7 +2,7 @@
 
 This is the *advisory* companion to the deterministic mount contracts
 (tests/mount_contracts.py, Layer 1). The contracts gate; this never does.
-It sends each model's 3-view render plus a mount-type rubric to a vision
+It sends each model's five-view render plus a mount-type rubric to a vision
 model via OpenRouter and prints a Markdown summary (a human still decides).
 
 Design constraints (plan review pst-swsu, point 3):
@@ -46,7 +46,7 @@ DEFAULT_MODEL = "qwen/qwen3-vl-235b-a22b-instruct"  # vision model (inx assess.t
 # Bump when the rubric text or prompt scaffold in _build_prompt/RUBRICS changes,
 # so a summary is traceable to the exact wording that produced it. Reported in
 # the Markdown header alongside the model id (bead pst-ae3v, AC 2).
-PROMPT_VERSION = "3"
+PROMPT_VERSION = "4"
 
 # Mount-type -> the checklist a reviewer applies to the render. Keyed by the
 # same names as registry.KNOWN_MOUNTS so a new mount contract can add its rubric
@@ -69,6 +69,11 @@ RUBRICS["multibuild-multiconnect-channel"] = [
     "Do the continuous channels have round head-entry on-ramps below each seat?",
     "Is there solid material closing the channel tops and backing the pockets?",
     "Do the channels retain a narrow lip between the on-ramps?",
+]
+
+TILE_RUBRIC = [
+    "SECTION: is every load-bearing member ≥ 1.6 mm and connected at both ends? any free-ending arm?",
+    "UNDERSIDE: any downward horizontal face outside the mount pockets? any bridge that looks > 10 mm?",
 ]
 
 _GENERIC_RUBRIC = [
@@ -104,10 +109,10 @@ def _build_prompt(slug: str, rubric: list[str], mounts: list[str]) -> str:
         if mounts
         else ""
     )
-    checklist = "\n".join(f"{i + 1}. {q}" for i, q in enumerate(rubric))
+    checklist = "\n".join(f"{i + 1}. {q}" for i, q in enumerate(rubric + TILE_RUBRIC))
     return (
         f"You are reviewing orthographic + iso renders of a 3D-printed part "
-        f"'{slug}'. {mount_note}The image tiles three views (iso, front, top).\n\n"
+        f"'{slug}'. {mount_note}The image tiles five views (iso, front, top, section, underside).\n\n"
         f"Answer each check YES / NO / UNSURE with one sentence of reasoning:\n"
         f"{checklist}\n\n"
         f"End with a one-line overall note. This is an advisory sanity check, "
