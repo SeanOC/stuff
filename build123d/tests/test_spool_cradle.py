@@ -1,20 +1,17 @@
-"""Spool contact, mount, load section and endpoint regressions for pst-ir0v."""
+"""Spool contact, mount, load section and endpoint regressions for spool cradle v2 (pst-zkd6)."""
 import math
 import sys
 from pathlib import Path
 
 import pytest
 import trimesh
-from build123d import Align, Axis, Box, Compound, Cylinder, Plane, Pos, Rot, section
-from OCP.BRepGProp import BRepGProp
-from OCP.GProp import GProp_GProps
-from OCP.gp import gp_Ax1, gp_Dir
+from build123d import Axis, Cylinder, Plane, Pos, Rot, section
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from holders.registry import all_models
 all_models()  # Preserve the manifest emitter's registration order.
-from holders.spool_cradle import (APEX_HEIGHT, MOUNT, PARAMS, SPEC, WEB, SEAT_Z, dimensions,
-                                   holder, mount_fixtures)
+from holders.spool_cradle import (APEX_HEIGHT, MOUNT, PARAMS, SPEC, WEB, CHORD, dimensions,
+                                   holder, mount_fixtures, truss_openings)
 from multibuild.constants import PITCH, large_hole_center, small_hole_center
 from multibuild.multiconnect import POCKET_DEPTH
 from scripts.export import export_stl
@@ -34,14 +31,17 @@ def winding(p):
 
 def assert_contacts(part,p):
     assert part.distance_to(winding(p)) > 0.5
-    # Both tangent lines must land on both flange rims in the finished BRep.
-    # Just below is material, just above is air; no winding bears the load.
+    # The analytic saddle is R + clearance at each angular sample, on
+    # both rim lands. Probe the finished BRep on either side of its surface.
     land = min(WEB, p['flange_rim_width'])/2
     for sign in (-1,1):
         x = sign*(p['spool_width']/2-land)
-        for y in (p['rear_y'],p['front_y']):
-            assert part.is_inside((x,y,p['contact_z']-.01))
-            assert not part.is_inside((x,y,p['contact_z']+.01))
+        for fraction in (-.9, -.5, 0, .5, .9):
+            theta = fraction*(math.pi/2-math.radians(p['cradle_angle']))
+            y = p['center_y']+p['saddle_radius']*math.sin(theta)
+            z = p['center_z']-p['saddle_radius']*math.cos(theta)
+            assert part.is_inside((x,y,z-.01))
+            assert not part.is_inside((x,y,z+.01))
     # Circular flange envelopes do not intersect the holder.
     for sign in (-1,1):
         flange=Pos(sign*(p['spool_width']/2-p['flange_rim_width']/2),
@@ -96,16 +96,7 @@ def test_endpoints(values):
     assert part.is_valid and len(part.solids()) == 1
     assert p['plate_thickness']-POCKET_DEPTH >= 2.4
     assert_contacts(part,p)
-    # The V waist, rather than the tall root, controls arm bending.
-    waist_s=2*WEB*(APEX_HEIGHT-.8)**2/6
-    assert 30*(p['front_y']-p['center_y'])/waist_s < 45/3
-    # Inspect a section away from ribs/blends: both webs are perimeters only.
-    y=p['center_y']
-    cross=section(part,section_by=Plane(origin=(0,y,0),x_dir=(1,0,0),z_dir=(0,1,0)))
-    assert len(cross.faces()) == 2
-    for f in cross.faces():
-        assert 1.6 <= f.bounding_box().size.X <= 2.4+1e-6
-        assert f.bounding_box().size.Z == pytest.approx(APEX_HEIGHT)
+    assert_truss_sections(part,p)
 
 
 @pytest.mark.parametrize('param',PARAMS,ids=lambda p:p.name)
@@ -115,54 +106,75 @@ def test_reject_out_of_range(param):
 
 
 @pytest.mark.parametrize('cadence',(75,100))
-def test_three_holder_alignment(part,cadence):
-    # Z translation seats the local 24 mm row on a 12.5+25j large-hole row.
+def test_three_holder_channel_alignment(part,cadence):
+    p=dimensions()
     origin_x,_=small_hole_center(0,0)
-    _,seat_z=large_hole_center(0,1)
-    placed=[Pos(origin_x+i*cadence,0,seat_z-SEAT_Z)*part for i in range(3)]
+    offset_z=12.5-p['seat_rows'][0]
+    placed=[Pos(origin_x+i*cadence,0,offset_z)*part for i in range(3)]
     gaps=[]
+    rows=[]
     for a,b in zip(placed,placed[1:]):
         overlap = a & b
         assert overlap is None or abs(overlap.volume) < 1e-6
         gaps.append(b.bounding_box().min.X-a.bounding_box().max.X)
     assert gaps == pytest.approx([cadence-70]*2)
     for i in range(3):
-        for seat in mount_fixtures(MOUNT,{}).seat_locs:
+        fx=mount_fixtures(MOUNT,{})
+        rows.append([r.position.Z+offset_z for r in fx.onramp_locs])
+        for seat in fx.seat_locs:
             x=seat.position.X+origin_x+i*cadence
-            assert (x,seat_z) == pytest.approx(large_hole_center(round((x-12.5)/PITCH),1))
+            z=seat.position.Z+offset_z
+            assert (x,z) == pytest.approx(large_hole_center(round((x-12.5)/PITCH),round((z-12.5)/PITCH)))
+    assert rows[0] == rows[1] == rows[2]
 
 
-def test_mount_contract_and_backing():
-    # Exactly the approved mount range; simultaneous entry along two channels.
-    for values in ({},{'plate_width':68,'plate_thickness':6.6}):
-        fx=mount_fixtures(MOUNT,values)
-        assert len(fx.cutters) == len(fx.seat_locs) == 2
-        assert [s.position.X for s in fx.seat_locs] == [-12.5,12.5]
-        assert [s.position.Z for s in fx.seat_locs] == [24,24]
-        verify(SPEC,MOUNT,SPEC.resolve_values(values))
+@pytest.mark.parametrize('values',[p.values for p in SPEC.presets]+[{'plate_width':68,'plate_thickness':6.6}])
+def test_mount_contract_and_backing(values):
+    p=dimensions(values)
+    fx=mount_fixtures(MOUNT,values)
+    assert len(fx.cutters) == 2
+    assert len(fx.seat_locs) == 2*len(p['seat_rows'])
+    assert p['plate_height']-p['channel_length'] == pytest.approx(p['plate_thickness']-POCKET_DEPTH)
+    assert p['plate_thickness']-POCKET_DEPTH >= 2.4
+    # Registered contract probes every actual pocket-back face locally,
+    # every entry/drop, the entire low-to-high path, retention and closed top.
+    verify(SPEC,MOUNT,SPEC.resolve_values(values))
 
 
-def test_actual_root_section_modulus(part):
-    p=dimensions()
-    # Y=t+2 avoids the R1 blend: the two real web sections carry bending
-    # about X. OCP area inertia includes the final bed chamfers.
-    y=p['plate_thickness']+2
-    cross=section(part,section_by=Plane(origin=(0,y,0),x_dir=(1,0,0),z_dir=(0,1,0)))
-    cross=Compound(children=[f for f in cross.faces()
-                    if abs(f.center().X) > p['root_inner']-1])
-    assert len(cross.faces()) == 2
-    props=GProp_GProps()
-    BRepGProp.SurfaceProperties_s(cross.wrapped,props)
-    center=props.CentreOfMass()
-    inertia=props.MomentOfInertia(gp_Ax1(center,gp_Dir(1,0,0)))
-    bb=cross.bounding_box()
-    modulus=inertia/max(center.Z()-bb.min.Z,bb.max.Z-center.Z())
-    # Conservative rectangular core wholly inside the chamfered section.
-    h=p['root_height']-2/math.tan(math.radians(p['cradle_angle']))-.8
-    core_modulus=2*WEB*h*h/6
-    assert modulus >= core_modulus
-    assert 30*(p['front_y']-y)/core_modulus < 45/3
-    assert 15000 < modulus < 16000
+def assert_truss_sections(part,p):
+    # Measured sections through every opening: two bottom chords plus two
+    # upper load members. Use their actual chamfered area, conservatively
+    # projected by 45 degrees for the inclined tension/compression members.
+    span=p['front_y']-p['plate_thickness']
+    force=15*math.hypot(span,p['contact_z'])/p['contact_z']
+    areas=[]
+    for tri in truss_openings(p):
+        y=tri[2][0]
+        cross=section(part,section_by=Plane(origin=(0,y,0),x_dir=(1,0,0),z_dir=(0,1,0)))
+        assert len(cross.faces()) == 4
+        for face in cross.faces():
+            assert 1.6 <= face.bounding_box().size.X <= WEB+1e-6
+            area=face.area/math.sqrt(2)
+            assert force/area < 45/3
+            areas.append(area)
+    return force,min(areas)
+
+
+@pytest.mark.parametrize('preset',SPEC.presets,ids=lambda p:p.id)
+def test_truss_and_panel_hand_calc(preset):
+    p=dimensions(preset.values)
+    part=holder(**preset.values)
+    force,area=assert_truss_sections(part,p)
+    # Section normal to panel tension (X). The panel is distinct from both
+    # flange webs at X=0; its complete actual cross-section carries spread.
+    cross=section(part,section_by=Plane.YZ)
+    panel=[f for f in cross.faces() if f.center().Y > p['end_y']-.1]
+    assert len(panel)==1
+    panel_area=panel[0].area
+    spread=30/math.tan(math.radians(p['cradle_angle']))
+    assert spread/panel_area < 45/3
+    print(preset.id,'member force/area/stress',force,area,force/area,
+          'panel force/area/stress',spread,panel_area,spread/panel_area)
 
 
 def test_production_print_audit(part):
@@ -175,42 +187,57 @@ def test_production_print_audit(part):
     assert len(fx.cutters) == 2
 
 
-@pytest.mark.parametrize('values', ({}, {'plate_width':68,'plate_thickness':6.6,
-    'spool_diameter':205,'wall_clearance':6,'cradle_angle':25}))
-def test_plate_shell_and_rib_section(values):
-    p=dimensions(values)
-    part=holder(**values)
-    t=p['plate_thickness']
-    w=p['plate_width']
-    # Non-overlapping conservative rectangles in the actual XY section at
-    # the seat. Whole cutter envelopes are omitted from the rear skin.
-    # No infill is counted; the two 2.4 mm ribs are solid perimeters.
-    rectangles=[] # x0,x1,y0,y1
-    for lo,hi in ((-w/2+.5,-22.65),(-2.35,2.35),(22.65,w/2-.5)):
-        rectangles.append((lo,hi,0,1.2))
-    rectangles.append((-w/2+.5,w/2-.5,t-1.2,t))
-    for lo,hi in ((-w/2,-w/2+1.2),(w/2-1.2,w/2)):
-        rectangles.append((lo,hi,1.2,t-1.2))
-    for x in (-12.5,12.5):
-        rectangles.append((x-1.2,x+1.2,t,t+14.5))
-    for x0,x1,y0,y1 in rectangles:
-        probe=Pos(x0,y0,SEAT_Z)*Box(x1-x0,y1-y0,.1,
-                align=(Align.MIN,Align.MIN,Align.MIN))
-        residual=probe-part
-        assert residual is None or residual.volume < 1e-6
-    area=sum((x1-x0)*(y1-y0) for x0,x1,y0,y1 in rectangles)
-    centroid=sum((x1-x0)*(y1-y0)*(y0+y1)/2
-                 for x0,x1,y0,y1 in rectangles)/area
-    inertia=sum((x1-x0)*(y1-y0)**3/12 +
-                (x1-x0)*(y1-y0)*((y0+y1)/2-centroid)**2
-                for x0,x1,y0,y1 in rectangles)
-    # Use the ACTUAL outermost fibre, including the last 0.5 mm of rib tip
-    # not counted in the conservative moment of inertia.
-    modulus=inertia/max(centroid,t+15-centroid)
-    stress=30*p['front_y']/modulus
-    print('plate',values,'S=',modulus,'stress=',stress)
-    assert modulus > 425
-    assert stress < 45/3
+def test_plate_shell_and_rib_section(part):
+    p=dimensions()
+    assert_truss_sections(part,p)
+    # Front tie is a thin upright perimeter wall, continuous from the bed
+    # to the contact height across the full spool width.
+    for x in (-p['spool_width']/2+WEB/2,0,p['spool_width']/2-WEB/2):
+        for z in (1,p['contact_z']/2,p['contact_z']-.5):
+            assert part.is_inside((x,p['end_y']+WEB/2,z))
+    cross=section(part,section_by=Plane.YZ)
+    front=[f for f in cross.faces() if f.center().Y > p['end_y']-.1][0]
+    assert front.bounding_box().size.Y == pytest.approx(WEB)
+    assert front.bounding_box().size.Z >= p['contact_z']
+
+
+def test_web_closure(part):
+    p=dimensions()
+    # Actual web section contains three closed triangular holes. Every hole
+    # has a lower chord and two returning members, with no free profile end.
+    cross=section(part,section_by=Plane(origin=(p['rail_inner']+WEB/2,0,0),x_dir=(0,1,0),z_dir=(1,0,0)))
+    assert len(cross.faces())==1
+    holes=cross.faces()[0].inner_wires()
+    assert len(holes)==3
+    for wire in holes:
+        degree={}
+        for edge in wire.edges():
+            for vertex in edge.vertices():
+                key=tuple(round(v,5) for v in vertex)
+                degree[key]=degree.get(key,0)+1
+        assert degree and set(degree.values())=={2}
+    # Material immediately below every opening links both web ends to plate.
+    for y in (p['plate_thickness']+1,p['center_y'],p['end_y']):
+        assert part.is_inside((p['rail_inner']+WEB/2,y,CHORD/2))
+
+
+def test_arc_contact(part):
+    p=dimensions()
+    assert p['saddle_radius']==p['radius']+p['saddle_clearance']
+    assert_contacts(part,p)
+
+
+def test_no_bridge_over_10mm(part):
+    p=dimensions()
+    # A front wall is present at every height below the saddle. A tie only
+    # at contact height would fail these probes and form a >60 mm bridge.
+    for x in (-20,0,20):
+        for z in (1,p['contact_z']/2):
+            assert part.is_inside((x,p['end_y']+WEB/2,z))
+    for triangle in truss_openings(p):
+        a,b,c=triangle
+        assert abs((c[1]-a[1])/(c[0]-a[0]))==pytest.approx(1)
+        assert abs((c[1]-b[1])/(c[0]-b[0]))==pytest.approx(1)
 
 
 def test_bed_edges_and_edge_classes(part):
@@ -235,20 +262,24 @@ def test_bed_edges_and_edge_classes(part):
                b.min.Z-.5 <= c.Z <= b.max.Z+.5 for b in cutters):
             counts['mount']+=1
             continue
-        # The untouched tangent planes are the reason these edges are sharp.
-        if abs(c.Z-(APEX_HEIGHT+abs(c.Y-p['center_y'])/math.tan(math.radians(p['cradle_angle'])))) < 1e-5:
-            counts['contact']+=1
-            continue
+        # Analytic circular saddle boundaries are functional rim contacts;
+        # R1 cylinders are structural junction blends.
         if any(f.geom_type.name == 'CYLINDER' for f in faces):
             counts['blend']+=1
             continue
-        # Concave cap-to-web boundaries terminate the vertical R1 rib
-        # blends. These are interior structural corners, not outer rims.
-        rib_ys=(p['center_y']-35,p['center_y']+35)
-        if abs(abs(c.X)-p['rail_inner']) < 1e-6 and any(
-                abs(c.Y-y) <= WEB/2+1 and
-                abs(c.Z-(APEX_HEIGHT+abs(y-p['center_y'])/math.tan(math.radians(p['cradle_angle']))-12)) <= 1.5+1e-6
-                for y in rib_ys):
+        # Straight saddle extensions at either end preserve the tangent lip
+        # and root envelope. These terminate the functional contact profile.
+        rear_z=p['contact_z']+(p['rear_y']-c.Y)/math.tan(math.radians(p['cradle_angle']))
+        front_z=p['contact_z']+(c.Y-p['front_y'])/math.tan(math.radians(p['cradle_angle']))
+        if ((c.Y <= p['rear_y'] and abs(c.Z-rear_z)<1e-5) or
+            (p['front_y'] <= c.Y <= p['end_y'] and abs(c.Z-front_z)<1e-5)):
+            counts['contact']+=1
+            continue
+        # Internal triangular corners preserve the specified 45-degree
+        # ceilings. Their exterior rims are chamfered separately.
+        if e.bounding_box().size.X > 1 and any(
+                abs(c.Y-y)<1e-6 and abs(c.Z-z)<1e-6
+                for triangle in truss_openings(p) for y,z in triangle):
             counts['internal_cap']+=1
             continue
         normals=[f.normal_at(c) for f in faces]

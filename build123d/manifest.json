@@ -358,7 +358,7 @@
       "slug": "holder-spool-cradle",
       "engine": "build123d",
       "title": "Spool cradle (Multibuild)",
-      "blurb": "Single spool bookshelf cradle on two flush snap-in Multiconnect slots. Flange-rim support; standing PETG/PCTG print with support allowed only in the mount pockets.",
+      "blurb": "Single spool bookshelf cradle with arc saddles, closed truss webs and two full-height Multiconnect channels. Flange-rim support; standing PETG/PCTG print with support allowed only in the mount pockets.",
       "categoryId": "multiboard",
       "params": [
         {
@@ -403,13 +403,23 @@
         },
         {
           "name": "cradle_angle",
-          "label": "V half angle from vertical",
+          "label": "Saddle included half-angle",
           "unit": "deg",
           "kind": "number",
           "default": 40,
           "min": 25,
           "max": 45,
           "step": 1
+        },
+        {
+          "name": "saddle_clearance",
+          "label": "Saddle radial clearance",
+          "unit": "mm",
+          "kind": "number",
+          "default": 0.5,
+          "min": 0.25,
+          "max": 1.5,
+          "step": 0.25
         },
         {
           "name": "lip_height",

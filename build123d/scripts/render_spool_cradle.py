@@ -1,4 +1,4 @@
-"""Regenerate pst-ir0v's front/side/75 mm row review sheet and preset STLs.
+"""Regenerate v2's front/section/75 mm row review sheet and preset STLs.
 
 Run from the repo root:
   uv run --project build123d python build123d/scripts/render_spool_cradle.py
@@ -12,7 +12,8 @@ from PIL import Image, ImageDraw
 
 ROOT=Path(__file__).resolve().parent.parent
 sys.path.insert(0,str(ROOT))
-from holders.spool_cradle import SPEC, holder
+from holders.spool_cradle import SPEC, holder, dimensions
+from build123d import Align, Box, Pos
 from scripts.export import export_stl
 from scripts.thumbnail import _render_view
 
@@ -24,6 +25,15 @@ def render():
     path=directory/'holder_spool_cradle.stl'
     export_stl(part,path)
     mesh=trimesh.load_mesh(path)
+    p=dimensions()
+    # Cut through the near flange web so the panel cannot obscure its truss.
+    cut=Pos(p['rail_inner']+1.2, -1, -1)*Box(100,400,400,
+        align=(Align.MIN,Align.MIN,Align.MIN))
+    section_part=part-cut
+    section_path=directory/'holder_spool_cradle_section.stl'
+    export_stl(section_part,section_path)
+    section_mesh=trimesh.load_mesh(section_path)
+    section_path.unlink()
     rows=[]
     for i in range(3):
         instance=mesh.copy()
@@ -31,7 +41,7 @@ def render():
         rows.append(instance)
     row=trimesh.util.concatenate(rows)
     panels=[('Front (+Y): 70 mm plate',mesh,(0,1,0)),
-            ('Side (+X): flange-contact V',mesh,(1,0,0)),
+            ('Side section (+X): arc saddle / closed truss',section_mesh,(1,0,0)),
             ('Three holders: 75 mm cadence / 5 mm plate gaps',row,(1,2,1.2))]
     sheet=Image.new('RGB',(1800,670),'white')
     draw=ImageDraw.Draw(sheet)
