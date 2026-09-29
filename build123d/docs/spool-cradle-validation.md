@@ -369,3 +369,48 @@ The 75 original cradle checks pass, and the three new boundary cases pass.
 Web tests: **291 passed**. All three regenerated exports are watertight
 single bodies at 74 mm overall width; preset volumes remain unchanged from
 rev 5. The four-view render was regenerated and inspected.
+
+
+### Review round 5: rear guide bevel at maximum clearance
+
+The combined input `spool_width=66, saddle_clearance=1.5, cradle_angle=45`
+exposed a construction failure: the rear-edge group requested a 0.375 mm
+bevel while the guide's already-finished inner rim left only 0.2 mm of
+horizontal land at its upper endpoint. Saddle clearance does not measure
+that local land.
+
+The two inner guide edges are now selected separately. Their bevel is
+limited to half the shortest adjacent horizontal edge run, capped by the
+existing rear bevel. The cap/web rear edges use the same local bound: the
+previous larger bevel also left a 0.87 mm cap section at the 25° corner.
+A second geometric bound limits the vertical reach of any rear bevel to
+0.4 mm using `bevel <= 0.4 * tan(cradle_angle)`. This prevents the same
+cap thinning on the wide-guide 25° corner (initially measured at 0.85 mm).
+All rear edges remain finished. Short sloping intersections at the feet of these bevels are finished using
+a bevel limited by their own edge lengths. This preserves the exposed-edge
+gate without a parameter-specific fallback or an exception to that gate.
+
+The new corner sweep combines 1.5 mm saddle clearance, enabled guides on
+50 mm and 66 mm spools, and both cradle-angle endpoints (25° and 45°).
+It checks construction, single-body validity, cadence and spool clearance;
+the exact reported reproducer also runs the full exposed-edge classifier.
+Each of the four corners runs the physical print audit.
+
+The default and Bambu preset geometry is unchanged by this fix: measured
+volumes remain 105,923.164 mm³ and 104,255.752 mm³ respectively (zero change
+from rev 6); the tracked preset exports and render remain current.
+
+Additional exposed-edge findings away from this rear-edge fix are tracked
+in `pst-qzx6d`. On the preceding commit `4b7efed`, the wide-guide cases
+(width 50 mm, clearance 1.5 mm, angles 25°/45°) already fail the full edge
+classifier. The 25° front cap/panel and relief terminations also need that
+separate follow-up. No classifier exemptions were added for these findings.
+
+
+Round-5 validation: all **86 cradle checks** pass across the existing
+78-case run and the eight new corner checks. The final geometry rerun
+passes all 73 non-audit checks; the affected angle/clearance endpoints,
+threshold audits and guide-omitted audit were rechecked after the bevel
+bounds changed. All 13 physical audit cases pass. Manifest tests: **24
+passed**. Web tests: **291 passed**. No audit limits, samples or functional
+edge exemptions were relaxed.

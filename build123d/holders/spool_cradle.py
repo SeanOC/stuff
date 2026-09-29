@@ -335,7 +335,53 @@ def holder(**values):
                   if any(abs(e.center().X-c.X) < 1e-6 and abs(e.center().Y-c.Y) < 1e-6
                          for c in rear_datums)]
     narrow_guide = p['guide_enabled'] and p['guide_reach']-p['saddle_clearance'] < WEB+.4
-    part = part.chamfer(min(0.4, p['saddle_clearance']/(4 if narrow_guide else 2)), None, rear_edges)
+    # The rear contact tangent falls by cot(angle) per millimetre of Y.
+    # Bound the bevel's vertical reach to the nominal 0.4 mm edge relief,
+    # so shallow-angle cap corners retain their full section below it.
+    rear_bevel = min(0.4, p['saddle_clearance']/(4 if narrow_guide else 2),
+                     BED_CHAMFER*math.tan(math.radians(p['cradle_angle'])))
+    guide_inner = [e for e in rear_edges if narrow_guide and
+                   abs(abs(e.center().X)-foot) < 1e-6]
+    if guide_inner:
+        # The inner guide's pre-finished rim leaves a short land at each
+        # endpoint. Clearance does not measure that land: at 45 degrees a
+        # 1.5 mm clearance still leaves only a 0.2 mm horizontal rim land.
+        # Limit its bevel to half the actual adjacent horizontal edge runs.
+        runs = []
+        all_edges = part.edges()
+        for edge in guide_inner:
+            for vertex in edge.vertices():
+                point = vertex.center()
+                for adjacent in all_edges:
+                    if adjacent == edge or not any(
+                            (v.center()-point).length < 1e-6 for v in adjacent.vertices()):
+                        continue
+                    run = max(math.hypot(v.X-point.X, v.Y-point.Y)
+                              for v in adjacent.vertices())
+                    if run > 1e-6:
+                        runs.append(run)
+        guide_bevel = min(rear_bevel, min(runs)/2)
+        other_rear = [e for e in rear_edges if e not in guide_inner]
+        # Use the same land bound on the cap/web rear edges: a larger
+        # clearance-scaled bevel also thins the cap at the 25-degree corner.
+        part = part.chamfer(guide_bevel, None, other_rear)
+        guide_inner = [e for e in part.edges().filter_by(Axis.Z)
+                       if abs(abs(e.center().X)-foot) < 1e-6
+                       and abs(e.center().Y-p['rear_y']) < 1e-6]
+        part = part.chamfer(guide_bevel, None, guide_inner)
+        # Finish the short sloping intersections at the feet of those rear
+        # bevels, where the guide and web meet the relieved contact surface.
+        feet = [e for e in part.edges() if e.geom_type.name == 'LINE'
+                and e.bounding_box().size.X < 1e-6
+                and e.bounding_box().size.Y > 1e-6
+                and abs(e.center().Y-p['rear_y']) < rear_bevel+.2
+                and p['contact_z']-1 < e.center().Z < p['contact_z']
+                and any(abs(abs(e.center().X)-x) < 1e-6
+                        for x in (foot, p['spool_width']/2))]
+        if feet:
+            part = part.chamfer(min(guide_bevel, min(e.length for e in feet)/4), None, feet)
+    else:
+        part = part.chamfer(rear_bevel, None, rear_edges)
     # Finish each void with the same mitred profile used by the added block.
     # The original void and chord remain through the 1.6 mm web core.
     rim_cuts = []

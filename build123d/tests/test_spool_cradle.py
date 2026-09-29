@@ -451,3 +451,30 @@ def test_guide_threshold(reach, enabled):
     fx = mount_fixtures(MOUNT, values)
     report = audit(model, SPEC.print_orientation, cutters=fx.cutters, model=SPEC.name)
     assert report.ok, report.format()
+
+
+@pytest.fixture(scope='module', params=[
+    dict(spool_width=width, saddle_clearance=1.5, cradle_angle=angle)
+    for width in (66, 50) for angle in (45, 25)
+], ids=['narrow-45-reproducer', 'narrow-25', 'wide-45', 'wide-25'])
+def max_clearance_guide(request):
+    values = request.param
+    return values, holder(**values)
+
+
+def test_max_clearance_guide_corner(max_clearance_guide):
+    values, model = max_clearance_guide
+    p = dimensions(values)
+    assert p['guide_enabled']
+    assert model.is_valid and len(model.solids()) == 1
+    assert_cadence(model, p)
+    assert_contacts(model, p)
+    if values['spool_width'] == 66 and values['cradle_angle'] == 45:
+        assert_finished_edges(model, p)
+
+
+def test_max_clearance_guide_print_audit(max_clearance_guide):
+    values, model = max_clearance_guide
+    fx = mount_fixtures(MOUNT, values)
+    report = audit(model, SPEC.print_orientation, cutters=fx.cutters, model=SPEC.name)
+    assert report.ok, report.format()
