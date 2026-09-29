@@ -77,9 +77,9 @@ def dimensions(values=None):
              guide_outer=CADENCE/2-p['guide_gap'],
              guide_reach=CADENCE/2-p['guide_gap']-p['spool_width']/2,
              exposed_rim=2*r*math.sin(a)-p['lip_height']-p['guide_height'])
-    # Reserve WEB for the finished crest and 0.4 mm for its outer bevel.
-    # If that land cannot fit beyond the flange, omit the guide AND ramp.
-    p['guide_enabled'] = p['guide_reach']-p['saddle_clearance'] > WEB+0.4
+    # Rev 6 reserves a WEB-wide guide before edge finishing. At the
+    # threshold the lead-in is vertical; rim bevels leave a 1.8 mm land.
+    p['guide_enabled'] = p['guide_reach']+1e-9 >= WEB+p['saddle_clearance']
     return p
 
 
@@ -171,10 +171,12 @@ def placement_aids(p):
         root = saddle_curtain(p, xi, xo, end_extension=WEB)
         root -= saddle_curtain(p, xi, xo, -reach-WEB, 0,
                                floor=-1000, end_extension=WEB)
-        # A 2.8 mm blank leaves a 2.4 mm crest after the outer bevel.
-        crest = xo-WEB-.4
-        guide = guide_top(p, foot, crest, 0, p['guide_height'])
-        guide = guide.fuse(guide_top(p, crest, xo, p['guide_height'], p['guide_height']))
+        # Preserve the 2.4 mm finished crest wherever it fits. Rev 6 keeps
+        # narrower guides down to a 2.4 mm blank (1.8 mm after rim bevels).
+        crest = max(foot, xo-WEB-.4)
+        guide = guide_top(p, crest, xo, p['guide_height'], p['guide_height'])
+        if crest-foot > 1e-8:
+            guide = guide.fuse(guide_top(p, foot, crest, 0, p['guide_height']))
         guide -= saddle_curtain(p, foot, xo, foot-xw-reach, 0, floor=-1000, end_extension=WEB)
         guide = guide.fuse(root).clean()
         upper_ends = [e for e in guide.edges()
@@ -193,6 +195,18 @@ def placement_aids(p):
             if c.Z > base+p['guide_height']/2:
                 crest_edges.append(e)
         guide = guide.chamfer(.4,None,crest_edges)
+        if crest-foot <= 1e-8:
+            inner_edges = []
+            for e in guide.edges():
+                c = e.center()
+                if abs(e.bounding_box().min.X-foot)>1e-6 or abs(e.bounding_box().max.X-foot)>1e-6:
+                    continue
+                base = (p['center_z']-math.sqrt(p['saddle_radius']**2-(c.Y-p['center_y'])**2)
+                        if c.Y <= p['front_y'] else p['contact_z']+
+                        (c.Y-p['front_y'])*(p['panel_height']-p['contact_z'])/(p['end_y']-p['front_y']))
+                if c.Z > base+p['guide_height']/2:
+                    inner_edges.append(e)
+            guide = guide.chamfer(.2, None, inner_edges)
         cap = cap.fuse(guide).clean()
     for triangle in truss_openings(p):
         cap -= truss_relief(p, triangle, deep=True)
@@ -320,7 +334,8 @@ def holder(**values):
     rear_edges = [e for e in part.edges().filter_by(Axis.Z)
                   if any(abs(e.center().X-c.X) < 1e-6 and abs(e.center().Y-c.Y) < 1e-6
                          for c in rear_datums)]
-    part = part.chamfer(min(0.4, p['saddle_clearance']/2), None, rear_edges)
+    narrow_guide = p['guide_enabled'] and p['guide_reach']-p['saddle_clearance'] < WEB+.4
+    part = part.chamfer(min(0.4, p['saddle_clearance']/(4 if narrow_guide else 2)), None, rear_edges)
     # Finish each void with the same mitred profile used by the added block.
     # The original void and chord remain through the 1.6 mm web core.
     rim_cuts = []
@@ -333,17 +348,46 @@ def holder(**values):
     z = p['panel_height']
     back_edges = [e for e in part.edges() if abs(e.center().Y-end-WEB)<1e-6
                   and e.bounding_box().size.Y<1e-6 and e.center().Z>=z-1e-6]
-    part = part.chamfer(.4, None, back_edges)
+    # The vertical threshold guide meets the panel across a short clearance
+    # land; a smaller end bevel avoids crossing that land.
+    if narrow_guide:
+        adjacency = {}
+        for face in part.faces():
+            for edge in face.edges():
+                adjacency.setdefault(edge, []).append(face)
+        back_edges = [e for e in back_edges if len(adjacency[e]) == 2 and
+                      adjacency[e][0].normal_at(e.center()).dot(
+                          adjacency[e][1].normal_at(e.center())) < .01]
+    part = part.chamfer(.2 if narrow_guide else .4, None, back_edges)
     front_edges = [e for e in part.edges() if e.geom_type.name == 'LINE'
                    and abs(e.center().Y-end)<1e-6 and abs(e.center().Z-z)<1e-6
                    and abs(e.center().X)<p['cap_inner']-1 and e.length>10]
     part = part.chamfer(.4, None, front_edges)
+    if not p['guide_enabled']:
+        panel_rims = [e for e in part.edges()
+                      if abs(abs(e.center().X)-p['spool_width']/2) < 1e-6
+                      and abs(e.center().Z-z) < 1e-6
+                      and e.bounding_box().size.Y > 1
+                      and e.center().Y > end]
+        part = part.chamfer(.4, None, panel_rims)
     ramp_ends = [e for e in part.edges() if abs(e.center().Y-end-WEB)<1e-6
                  and e.bounding_box().size.Y<1e-6
                  and e.bounding_box().size.X>1 and e.bounding_box().size.Z>1
                  and e.center().Z<z]
     if ramp_ends:
         part = part.chamfer(.4,None,ramp_ends)
+    if narrow_guide:
+        adjacency = {}
+        for face in part.faces():
+            for edge in face.edges():
+                adjacency.setdefault(edge, []).append(face)
+        ends = [e for e in part.edges()
+                if abs(e.center().X) >= foot-1e-6 and e.center().Y >= end
+                and len(adjacency[e]) == 2
+                and adjacency[e][0].normal_at(e.center()).dot(
+                    adjacency[e][1].normal_at(e.center())) < .01]
+        if ends:
+            part = part.chamfer(.1, None, ends)
     bottom = part.faces().filter_by(Axis.Z).sort_by(Axis.Z)[0]
     part = part.chamfer(BED_CHAMFER, None, bottom.edges())
     cutters = mount_fixtures(MOUNT, values).cutters
@@ -357,6 +401,7 @@ def holder(**values):
     bounds = [c.bounding_box() for c in cutters]
     edges = [e for e in bottom.edges() if BED_CHAMFER+1e-6 < e.center().Y <= POCKET_DEPTH+1e-6
              and any(b.min.X-1e-6 <= e.center().X <= b.max.X+1e-6 for b in bounds)]
+    bed_cuts = []
     for edge in edges:
         a, b = edge.vertices()
         start, end = Vector(a), Vector(b)
@@ -368,18 +413,19 @@ def holder(**values):
             start, start+inward*BED_CHAMFER,
             start+Vector(0, 0, BED_CHAMFER), start,
         ]))
-        part -= Solid.extrude(triangle, tangent*edge.length)
-    for edge in edges:
-        for vertex in edge.vertices():
-            part -= Pos(vertex.X, vertex.Y, 0)*Cone(BED_CHAMFER, 0, BED_CHAMFER,
-                    align=(Align.CENTER, Align.CENTER, Align.MIN))
+        bed_cuts.append(Solid.extrude(triangle, tangent*edge.length))
+    vertices = {(v.X, v.Y) for edge in edges for v in edge.vertices()}
+    for x, y in sorted(vertices):
+        bed_cuts.append(Pos(x, y, 0)*Cone(BED_CHAMFER, 0, BED_CHAMFER,
+                    align=(Align.CENTER, Align.CENTER, Align.MIN)))
+    part = part.cut(*bed_cuts)
     return part.clean()
 
 
 SPEC = register(ModelSpec(
     name='holder_spool_cradle', build=lambda values: holder(**values),
     title='Spool cradle (Multibuild)', category_id='multiboard',
-    description='Single spool bookshelf cradle with wide inboard saddle rails, outboard placement guides, closed truss webs and two full-height Multiconnect channels. Flange-rim support; standing PETG/PCTG print with support allowed only in the mount pockets.',
+    description='Single spool bookshelf cradle with wide inboard saddle rails, outboard placement guides (omitted when reach is less than 2.4 mm plus saddle clearance), closed truss webs and two full-height Multiconnect channels. Flange-rim support; standing PETG/PCTG print with support allowed only in the mount pockets.',
     tags=('holder', 'multiboard', 'spool'), params=PARAMS,
     mounts=(MOUNT,), print_orientation=(0, 0, 1),
     presets=(

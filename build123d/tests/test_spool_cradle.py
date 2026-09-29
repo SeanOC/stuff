@@ -266,11 +266,14 @@ def test_no_bridge_over_10mm(part):
 
 
 def test_bed_edges_and_edge_classes(part):
-    p=dimensions()
+    assert_finished_edges(part, dimensions())
+
+
+def assert_finished_edges(part, p):
     # Final BRep classes: functional slot/contact edges, R1 junctions,
     # eased exterior edges, and edges between coplanar/tangent faces.
     counts={'mount':0,'contact':0,'blend':0,'internal_cap':0,'eased':0,'tangent':0}
-    cutters=[c.bounding_box() for c in mount_fixtures(MOUNT,{}).cutters]
+    cutters=[c.bounding_box() for c in mount_fixtures(MOUNT, {k: p[k] for k in SPEC.param_names()}).cutters]
     adjacency={}
     for f in part.faces():
         for e in f.edges(): adjacency.setdefault(e,[]).append(f)
@@ -351,7 +354,7 @@ def test_guide_geometry(values):
     assert_cadence(model, p)
     assert_contacts(model, p)
     assert math.degrees(math.atan(p['guide_reach']/p['guide_height'])) <= 45
-    assert p['guide_enabled'] == (p['guide_reach']-p['saddle_clearance'] > WEB+.4)
+    assert p['guide_enabled'] == (p['guide_reach']+1e-9 >= WEB+p['saddle_clearance'])
     y, z = p['center_y'], APEX_HEIGHT
     xw = p['spool_width']/2
     for sign in (-1, 1):
@@ -424,3 +427,27 @@ def test_rail_cap_overhang(values):
 def test_overall_width_within_cadence(values):
     p = dimensions(values)
     assert_cadence(holder(**values), p)
+
+
+@pytest.mark.parametrize('reach, enabled', [(2.9, True), (2.85, False), (3.0, True)])
+def test_guide_threshold(reach, enabled):
+    values = dict(spool_width=2*(CADENCE/2-.5-reach))
+    p = dimensions(values)
+    assert p['guide_enabled'] is enabled
+    model = holder(**values)
+    assert model.is_valid and len(model.solids()) == 1
+    assert_cadence(model, p)
+    assert_contacts(model, p)
+    assert_finished_edges(model, p)
+    for sign in (-1, 1):
+        if enabled:
+            crest_point = (sign*(p['guide_outer']-1), p['center_y'],
+                           APEX_HEIGHT+p['guide_height'])
+            faces = [f for f in model.faces() if f.is_inside(crest_point, tolerance=1e-5)]
+            assert any(f.bounding_box().size.X >= WEB-.6-1e-5 for f in faces)
+        point = (sign*(p['guide_outer']-1), p['center_y'],
+                 APEX_HEIGHT+p['guide_height']-1)
+        assert model.is_inside(point) is enabled
+    fx = mount_fixtures(MOUNT, values)
+    report = audit(model, SPEC.print_orientation, cutters=fx.cutters, model=SPEC.name)
+    assert report.ok, report.format()

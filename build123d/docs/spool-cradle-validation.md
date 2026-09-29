@@ -240,9 +240,16 @@ Its horizontal run is therefore `guide_reach − saddle_clearance − 2.8 mm`.
 The outboard envelope in the table is not a measured placement tolerance:
 the flat crest and clearance consume part of that envelope.
 
-A guide and its entire outboard ramp are omitted when this run is not
-positive. This includes rev 4's `reach < 1.6 mm` case and also the wide-spool
-settings where the rev 5 crest cannot fit outside the flange. The unchanged
+Rev 6 sets guide and outboard-ramp omission at
+`guide_reach < WEB + saddle_clearance` (2.9 mm with default clearance).
+At equality the lead-in face is vertical. Between this threshold and the
+full-crest threshold, the blank crest fills the available width and its
+0.4 mm outer bevel leaves a 2.0–2.4 mm land. The vertical inner rim
+receives a further 0.2 mm bevel, leaving at least 1.8 mm of flat crest. This interprets the
+rev 6 threshold as superseding rev 5's 2.4 mm *finished* land at these
+narrow settings; it retains a 2.4 mm blank and exceeds the 1.6 mm structural
+minimum and meets the 1.8 mm standalone-feature minimum. Default and Bambu crests stay unchanged at 2.4 mm finished.
+The 70 mm endpoint omits both guide and ramp. The unchanged
 mount plate may then set the overall width, still within `75 − 2*guide_gap`.
 
 The underside runs from `(Xw, Zs − reach)` to `(Xo, Zs)` at 45° and continues
@@ -315,7 +322,8 @@ have these results on the final rev 5 solid:
 All report bed relief present. Only the two registered library pockets are
 excluded. The minimum-wall floor, overhang limits and exposed-edge
 exemptions are unchanged. The additional corner omits the guide and ramp;
-geometry tests also measure the 2.4 mm crest on enabled guides.
+geometry tests measure the 2.4 mm finished crest on the original enabled
+guide cases. Rev 6 adds the narrow-guide boundary cases described above.
 
 The original 74 CAD tests plus the added crest-clearance regression were
 run locally across five groups covering the entire 75-test suite. These
@@ -328,3 +336,36 @@ inspected, including the 75 mm holder row and −X view.
 
 The earlier v2 measurements above remain the baseline. CAD checks do not
 replace the physical print check in pst-m9xt.
+
+
+### Rev 6 audit runtime
+
+Bed-relief wedges and unique corner cones are subtracted in one operation,
+instead of rebuilding the whole body for every edge and repeated vertex.
+After this change, a profiled default run took 74.96 seconds: construction
+was 2.86 seconds and the unchanged physical audit was 71.80 seconds.
+Point-inside queries account for 64.83 seconds, chiefly wall-thickness
+sampling over the channel, truss, cap and guide faces. Construction alone
+cannot remove the remaining gap to 60 seconds. Following the authorized
+fallback, this model has a 120-second budget (CI previously measured
+93.2 seconds); all other models retain the 60-second budget. Physical
+thresholds, sampling and mount exclusions are unchanged.
+
+The rev 6 boundary regression builds reach 2.90 mm (present), 2.85 mm
+(absent), and 3.00 mm (present). All three pass the physical print audit,
+flange/winding-clearance checks, cadence limit, and the unchanged exposed-edge
+classifier. Near the threshold, the rear relief uses a smaller bevel to
+retain wall thickness, the vertical inner crest gets a 0.2 mm bevel, and
+the guide/panel end intersections get 0.1–0.2 mm finishing bevels. The
+guide-omitted panel's exposed side rims get a 0.4 mm chamfer.
+
+The complete non-cradle suite passes: 426 passed, one expected smoke-model
+failure. The cradle's registry budget check took 74.35 seconds (120-second
+model budget); its separate production audit passed in 76.86 seconds.
+
+Final rev 6 validation covers the full build123d suite in complementary
+runs: **426 + 75 + 3 = 504 passed**, with one expected smoke-model failure.
+The 75 original cradle checks pass, and the three new boundary cases pass.
+Web tests: **291 passed**. All three regenerated exports are watertight
+single bodies at 74 mm overall width; preset volumes remain unchanged from
+rev 5. The four-view render was regenerated and inspected.

@@ -358,7 +358,7 @@
       "slug": "holder-spool-cradle",
       "engine": "build123d",
       "title": "Spool cradle (Multibuild)",
-      "blurb": "Single spool bookshelf cradle with wide inboard saddle rails, outboard placement guides, closed truss webs and two full-height Multiconnect channels. Flange-rim support; standing PETG/PCTG print with support allowed only in the mount pockets.",
+      "blurb": "Single spool bookshelf cradle with wide inboard saddle rails, outboard placement guides (omitted when reach is less than 2.4 mm plus saddle clearance), closed truss webs and two full-height Multiconnect channels. Flange-rim support; standing PETG/PCTG print with support allowed only in the mount pockets.",
       "categoryId": "multiboard",
       "params": [
         {
