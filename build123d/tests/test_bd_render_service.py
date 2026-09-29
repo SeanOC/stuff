@@ -30,12 +30,13 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 SERVER_PATH = REPO_ROOT / "services" / "bd-render" / "server.py"
 
 
-def test_dockerfile_copies_registered_model_packages():
+def test_dockerfile_copies_registered_model_packages(monkeypatch):
     """Every local package loaded by the registry must ship in the image."""
+    build_root = REPO_ROOT / "build123d"
+    monkeypatch.syspath_prepend(str(build_root))
     from holders.registry import all_models
 
     all_models()
-    build_root = REPO_ROOT / "build123d"
     imported_packages = set()
     for module in list(sys.modules.values()):
         filename = getattr(module, "__file__", None)
