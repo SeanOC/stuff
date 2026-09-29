@@ -1,7 +1,8 @@
 # Spool cradle validation — pst-zkd6 / pst-tskv
 
-The v2.1 exports are review prototypes. The production print and exposed-edge
-audits are not yet passing; see the v2.1 review status below.
+The v2.1 placement aids follow pst-tskv rev 5: finite guide crests, supported
+cap transitions, and the existing standing print orientation. See the v2.1
+validation results below; physical spool measurements remain in pst-m9xt.
 
 One spool per holder; X is its axis along the board, +Y faces the user,
 and +Z is up. Print standing on Z=0 in PETG/PCTG, three walls and 15%
@@ -225,27 +226,44 @@ The guide's vertical outer face is at `±(75/2 − guide_gap)`. Thus enabled
 guides occupy 74 mm at defaults and leave 1 mm between holders on the
 75 mm cadence. The cap adds no outboard width.
 
-| Spool width | Nominal lead-in reach per side | Default overall width |
-| --- | ---: | ---: |
-| Generic AMS, 66 mm | 4.0 mm | 74 mm |
-| Bambu reusable, 67 mm | 3.5 mm | 74 mm |
-| Wide endpoint, 70 mm | 2.0 mm | 74 mm |
-| Narrow endpoint, 50 mm | 12.0 mm | 74 mm |
+| Spool width | Outboard envelope per side | Sloping lead-in run | Default overall width |
+| --- | ---: | ---: | ---: |
+| Generic AMS, 66 mm | 4.0 mm | 0.7 mm | 74 mm |
+| Bambu reusable, 67 mm | 3.5 mm | 0.2 mm | 74 mm |
+| Wide endpoint, 70 mm | 2.0 mm available; guide omitted | — | 70 mm |
+| Narrow endpoint, 50 mm | 12.0 mm | 8.7 mm | 74 mm |
 
-The inner face begins at the flange outer face plus `saddle_clearance`.
-Consequently the sloped face's horizontal run is `guide_reach −
-saddle_clearance`; the table gives the nominal capture envelope, not a
-measured placement tolerance. Guides are omitted when `guide_reach < 1.6 mm`.
-The unchanged mount plate may then set the overall width, still within
-`75 − 2*guide_gap`.
+Rev 5 replaces the knife edge with a **2.4 mm flat crest**. The blank crest
+is 2.8 mm wide; its outer 0.4 mm chamfer leaves the full 2.4 mm land.
+The inner face starts at the flange outer face plus `saddle_clearance`.
+Its horizontal run is therefore `guide_reach − saddle_clearance − 2.8 mm`.
+The outboard envelope in the table is not a measured placement tolerance:
+the flat crest and clearance consume part of that envelope.
 
-Rev 4 authorizes an underside ramp from `(Xw, Zs − reach)` to `(Xo, Zs)`.
-The implementation carries that 45° ramp inward through a full web thickness
-so the guide has a solid connection below the clearance land. Oblique
-extrusion of an analytic arc preserves vertical guide heights and 45° XZ
-sections; a rotating sweep would change both. The truss openings are cut
-through the added material too. The original mount cutters, plate, panel,
-and truss layout are retained.
+A guide and its entire outboard ramp are omitted when this run is not
+positive. This includes rev 4's `reach < 1.6 mm` case and also the wide-spool
+settings where the rev 5 crest cannot fit outside the flange. The unchanged
+mount plate may then set the overall width, still within `75 − 2*guide_gap`.
+
+The underside runs from `(Xw, Zs − reach)` to `(Xo, Zs)` at 45° and continues
+inward through a full web thickness. The cap, root and guide form one solid
+block. Analytic curtain cuts form its underside chamfers without separate
+pointed ribs. The cap retains a 2.4 mm radial inner land. Its panel junction
+has an additional inclined transition and R1 vertical blend.
+
+The guide has flat end lands so its rising profile cannot feather into the
+vertical end faces. It continues across the front panel's 2.4 mm thickness,
+letting the panel and guide share one finished end face. The nominal height
+is retained along the central arc; the flat end lands are locally lower.
+Oblique extrusion of the analytic arc preserves the 45° XZ underside;
+a rotating sweep would change that section.
+
+The three original truss openings and their 1.6 mm core remain. Outside the
+web, relief reaches below each opening so it leaves no thin cap tails at the
+opening floor. Its 1.6 mm lateral runouts return to the original roof apex,
+avoiding new sharp ridges. Exposed guide, panel and relief ends are checked
+on the finished solid by the unchanged edge-class gate. The mount cutters,
+plate, panel and truss layout are retained.
 
 At default diameter and cradle angle, the front exposed rim is
 `2*R*sin(angle) − lip_height − guide_height = 108.56 mm`. At the maximum
@@ -266,59 +284,47 @@ the BRep audit in the standing orientation; only the two registered mount
 pockets are excluded. These CAD artifacts do not replace the physical print
 check in pst-m9xt.
 
-| Preset | v2 volume (mm³) | v2.1 prototype volume (mm³) | Added material |
+| Preset | v2 volume (mm³) | v2.1 volume (mm³) | Added material |
 | --- | ---: | ---: | ---: |
-| `bambu_reusable_200` | 72,798.919 | 97,437.789 | 24,638.870 (+33.85%) |
-| `ams_generic_200` | 72,672.428 | 99,089.824 | 26,417.396 (+36.35%) |
+| `bambu_reusable_200` | 72,798.919 | 104,255.752 | 31,456.833 (+43.21%) |
+| `ams_generic_200` | 72,672.428 | 105,923.164 | 33,250.736 (+45.75%) |
 
 These are measured CAD `part.volume` values, including the support ramps
 and junction blends. The increase buys a 10 mm nominal placement land
-instead of the 2.4 mm web edge, plus outboard lead-in guides. The narrower
+instead of the 2.4 mm web edge, plus outboard lead-in guides with printable
+2.4 mm crests and supported end lands. The narrower
 generic spool has the larger guide reach, so it adds more guide material.
 The mount plate and truss layout do not grow. Three-wall slicer settings
 still apply; the wider ramp sections should not be described as uniformly
 2.4 mm walls.
 
-### Review status
+### Validation results
 
-**This v2.1 implementation is a review prototype, not cleared for printing.**
-The tests deliberately retain the production audit and exposed-edge gate.
-The nominal upper guide section tapers to a knife edge: a 0.4 mm crest
-trim leaves a very narrow top land. The default audit detects thin guide
-material near the crest/end faces. At the default apex the trimmed crest
-is only `(4.0 − 0.5) * 0.4 / 15 = 0.093 mm` wide. The 70 mm spool /
-1.5 mm clearance / 30 mm guide corner narrows it to 0.0067 mm.
-A proposed 1.6 mm crest needs a revised
-lead-in section, including its behavior when clearance leaves less than
-1.6 mm of horizontal run. No such revision is assumed here.
+The five required production audits and the additional narrow-crest corner
+have these results on the final rev 5 solid:
 
-The remaining edge gate also identifies guide-end edges and relief
-terminations that need finishing. R1 vertical gussets connect the added
-members to the panel; narrow guides use a 0.4 mm outer-corner chamfer when
-OCCT cannot construct the R1 round. The audit failures must be resolved
-before replacing the v2 print-check target or treating these exports as
-production artifacts. The earlier v2 results above describe the baseline,
-not a passing result for this prototype.
+| Case | Sampled minimum wall | Maximum overhang | Bridge | Downward fillets |
+| --- | ---: | ---: | ---: | ---: |
+| Default / generic | 1.18 mm | 45° | 0 mm | 0 |
+| Bambu preset | 1.02 mm | 45° | 0 mm | 0 |
+| Original combined corner | 1.02 mm | 45° | 0 mm | 0 |
+| Maximum reach / minimum height | 1.18 mm | 45° | 0 mm | 0 |
+| Guides and ramps omitted | 1.18 mm | 45° | 0 mm | 0 |
+| 70 mm spool / 1.5 mm clearance / 30 mm height | 1.10 mm | 45° | 0 mm | 0 |
 
-### Final prototype checks
+All report bed relief present. Only the two registered library pockets are
+excluded. The minimum-wall floor, overhang limits and exposed-edge
+exemptions are unchanged. The additional corner omits the guide and ramp;
+geometry tests also measure the 2.4 mm crest on enabled guides.
 
-The 74 CAD tests were covered in four focused runs: 68 pass and six fail
-(five production print audits plus the exposed-edge audit). The passing
-checks cover meshes, all parameter endpoints, flange/winding clearance,
-actual cap/ramp probes, 75 mm placement, truss sections, and mount contracts.
-Web tests: 291 pass. Manifest tests: 24 pass.
+The original 74 CAD tests plus the added crest-clearance regression were
+run locally across five groups covering the entire 75-test suite. These
+include meshes, every numeric endpoint, flange/winding clearance, actual
+cap/ramp probes, crest width, guide/ramp omission, 75 mm placement, truss
+sections, the unchanged exposed-edge gate and mount contracts.
+Web tests: **291 pass**. Manifest tests: **24 pass**. All three regenerated
+STLs are watertight single bodies and 74 mm wide. The four-view render was
+inspected, including the 75 mm holder row and −X view.
 
-| Print-audit case | Sampled minimum wall (mm) | Result |
-| --- | ---: | --- |
-| Default | 0.68 | Fail |
-| Bambu preset | 0.51 | Fail |
-| Original combined print corner | 0.11 | Fail |
-| Maximum reach / minimum guide height / widest cap | 0.23 | Fail |
-| Widest cap, guides omitted | 0.10 | Fail |
-
-All five cases report 45° maximum overhang, zero bridge span, no downward
-fillets, and present bed relief. The guide-omitted case also exposes thin
-cap/panel and cap/void transitions: changing the crest alone will not clear
-all failures. Those transitions and the exposed-edge findings remain
-implementation work. The unchanged audit gates are the acceptance criteria;
-the draft PR must remain unmerged until they pass.
+The earlier v2 measurements above remain the baseline. CAD checks do not
+replace the physical print check in pst-m9xt.

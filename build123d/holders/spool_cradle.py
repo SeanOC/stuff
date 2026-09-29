@@ -77,30 +77,60 @@ def dimensions(values=None):
              guide_outer=CADENCE/2-p['guide_gap'],
              guide_reach=CADENCE/2-p['guide_gap']-p['spool_width']/2,
              exposed_rim=2*r*math.sin(a)-p['lip_height']-p['guide_height'])
-    p['guide_enabled'] = p['guide_reach'] >= 1.6
+    # Reserve WEB for the finished crest and 0.4 mm for its outer bevel.
+    # If that land cannot fit beyond the flange, omit the guide AND ramp.
+    p['guide_enabled'] = p['guide_reach']-p['saddle_clearance'] > WEB+0.4
     return p
 
 
 def saddle_curtain(p, x0, x1, dz0=0, dz1=0, floor=-100, radial_depth=0,
-                   end_extension=0):
+                   end_extension=0, tail_drop=0):
     """Solid below the exact saddle, translated vertically across X.
 
     Oblique extrusion keeps XZ ramp sections at 45 degrees while retaining
     the circular YZ profile. A rotating pipe would change those sections.
-    The tangent extension carries the aids all the way to the front lip.
+    The tangent extension carries the aids to the front lip. tail_drop adds
+    the inclined cap/panel junction within its last millimetre.
     """
     rear, front, end = p['rear_y'], p['front_y'], p['end_y']
     rs = p['saddle_radius']+radial_depth
     z = p['center_z']-math.sqrt(rs**2-(rear-p['center_y'])**2)+dz0
     tip = p['panel_height']+z-p['contact_z']
     a, b = (x0, rear, z), (x0, front, z)
-    c = (x0, end, tip)
+    c = (x0, end, tip-tail_drop)
+    lead = [(x0,end-1,tip-(tip-z)/(end-front))] if tail_drop else []
     tail = [(x0, end+end_extension, tip)] if end_extension else []
     points = [c, *tail, (x0, end+end_extension, floor), (x0, rear, floor), a]
     wire = Wire([Edge.make_three_point_arc(a, (x0, p['center_y'], APEX_HEIGHT-radial_depth+dz0), b),
-                 Edge.make_line(b, c),
+                 *(Edge.make_line(u,v) for u,v in zip([b,*lead,c],[*lead,c])),
                  *(Edge.make_line(u, v) for u, v in zip(points, points[1:]))])
     return Solid.extrude(Face(wire), (x1-x0, 0, dz1-dz0))
+
+
+def guide_top(p, x0, x1, h0, h1):
+    """Flat end lands keep the rising guide from feathering at its ends.
+
+    Continue the front land across the panel so both share one end face.
+    The central contact-length arc remains analytic.
+    """
+    rear, front, end = p['rear_y'], p['front_y'], p['end_y']
+    start, stop = rear+WEB, end-WEB
+    arc_end = min(front, stop)
+    def z(y):
+        if y <= front:
+            return p['center_z']-math.sqrt(p['saddle_radius']**2-(y-p['center_y'])**2)+h0
+        return p['contact_z']+(y-front)*(p['panel_height']-p['contact_z'])/(end-front)+h0
+    a, b = (x0,rear,z(start)), (x0,start,z(start))
+    c = (x0,arc_end,z(arc_end))
+    edges = [Edge.make_line(a,b), Edge.make_three_point_arc(b,
+        (x0,p['center_y'],z(p['center_y'])),c)]
+    if stop > front:
+        d=(x0,stop,z(stop))
+        edges.append(Edge.make_line(c,d))
+        c=d
+    tail=[c,(x0,end+WEB,z(stop)),(x0,end+WEB,-100),(x0,rear,-100),a]
+    edges.extend(Edge.make_line(u,v) for u,v in zip(tail,tail[1:]))
+    return Solid.extrude(Face(Wire(edges)),(x1-x0,0,h1-h0))
 
 
 def vertical_gusset(x, y, sx, sy):
@@ -116,43 +146,78 @@ def vertical_gusset(x, y, sx, sy):
 def placement_aids(p):
     """Right-hand cap and guide; the left side is its mirror.
 
-    Both ramps overlap the existing web by WEB. Preserve the truss voids
-    when a ramp reaches below an opening roof at an extreme parameter set.
+    Both underside chamfers retain full-WEB overlap with the standing web.
+    Cut the block below each void roof before fusion, so a deep cap cannot
+    leave a thin tail beneath an opening floor. The baseline web supplies
+    the unchanged bed chord and 1.6 mm core.
     """
     xi, xw = p['rail_inner'], p['spool_width']/2
     cap = saddle_curtain(p, p['cap_inner'], xw, .01, .01)
-    cap -= saddle_curtain(p, p['cap_inner'], xw, 0, -p['rail_width'], floor=-1000, radial_depth=WEB)
+    cap -= saddle_curtain(p, p['cap_inner'], xw, 0, -p['rail_width'],
+                          floor=-1000, radial_depth=WEB, tail_drop=math.sqrt(2))
     # An explicit vertical R1 gusset avoids OCCT's failed rolling fillet at
     # the short cap/panel junction. Its underside continues the 45° ramp.
     inner = p['cap_inner']
     blend = vertical_gusset(inner, p['end_y'], -1, -1)
     blend &= saddle_curtain(p, inner-JOINT_RADIUS, inner, .01, .01)
     blend -= saddle_curtain(p, inner-JOINT_RADIUS, inner, JOINT_RADIUS, 0,
-                            floor=-1000, radial_depth=WEB)
+                            floor=-1000, radial_depth=WEB, tail_drop=math.sqrt(2))
     cap = cap.fuse(blend)
     if p['guide_enabled']:
         xo, reach = p['guide_outer'], p['guide_reach']
         foot = xw+p['saddle_clearance']
         # The below-saddle root joins the ramp to a full wall of the web;
         # the lead-in starts outboard of the flange by saddle_clearance.
-        root = saddle_curtain(p, xi, foot, .01, .01)
-        root -= saddle_curtain(p, xi, foot, -reach-WEB, foot-xw-reach, floor=-1000)
-        guide = saddle_curtain(p, foot, xo, 0, p['guide_height'])
-        guide -= saddle_curtain(p, foot, xo, foot-xw-reach, 0, floor=-1000)
-        # Trim the sharp crest by 0.4 mm along its upright outer edge.
-        guide &= saddle_curtain(p, foot, xo, p['guide_height']-0.4,
-                                p['guide_height']-0.4)
-        blend = vertical_gusset(xw, p['end_y'], 1, 1)
-        blend &= saddle_curtain(p, xw, xw+JOINT_RADIUS,
-                                end_extension=JOINT_RADIUS)
-        blend -= saddle_curtain(p, xw, xw+JOINT_RADIUS, -reach, -reach+JOINT_RADIUS,
-                                floor=-1000, end_extension=JOINT_RADIUS)
-        cap = cap.fuse(root, guide, blend).clean()
+        root = saddle_curtain(p, xi, xo, end_extension=WEB)
+        root -= saddle_curtain(p, xi, xo, -reach-WEB, 0,
+                               floor=-1000, end_extension=WEB)
+        # A 2.8 mm blank leaves a 2.4 mm crest after the outer bevel.
+        crest = xo-WEB-.4
+        guide = guide_top(p, foot, crest, 0, p['guide_height'])
+        guide = guide.fuse(guide_top(p, crest, xo, p['guide_height'], p['guide_height']))
+        guide -= saddle_curtain(p, foot, xo, foot-xw-reach, 0, floor=-1000, end_extension=WEB)
+        guide = guide.fuse(root).clean()
+        upper_ends = [e for e in guide.edges()
+                      if e.geom_type.name == 'LINE' and e.bounding_box().size.X > 1e-6
+                      and abs(e.center().Y-p['rear_y']) < 1e-6
+                      and e.center().Z > p['contact_z']]
+        guide = guide.chamfer(.4, None, upper_ends)
+        crest_edges = []
+        for e in guide.edges():
+            c=e.center()
+            if abs(e.bounding_box().min.X-xo)>1e-6 or abs(e.bounding_box().max.X-xo)>1e-6:
+                continue
+            base=(p['center_z']-math.sqrt(p['saddle_radius']**2-(c.Y-p['center_y'])**2)
+                  if c.Y <= p['front_y'] else p['contact_z']+
+                  (c.Y-p['front_y'])*(p['panel_height']-p['contact_z'])/(p['end_y']-p['front_y']))
+            if c.Z > base+p['guide_height']/2:
+                crest_edges.append(e)
+        guide = guide.chamfer(.4,None,crest_edges)
+        cap = cap.fuse(guide).clean()
     for triangle in truss_openings(p):
-        with BuildSketch(Plane.YZ) as opening:
-            Polygon(*triangle, align=None)
-        cap -= extrude(opening.sketch, amount=CADENCE, both=True)
+        cap -= truss_relief(p, triangle, deep=True)
     return cap.clean()
+
+
+def truss_relief(p, triangle, deep=False):
+    """Mitred rim relief; the original apex continues outside the web.
+
+    The 1.6 mm outer runouts avoid a sharp crease where the relief meets
+    the cap underside. Deep cutters remove only the added cap/guide tails;
+    the final shallow cutter preserves the original chord through the web.
+    """
+    y,z=triangle[2]
+    xi=p['rail_inner']
+    wires=[]
+    for x,offset in ((p['cap_inner']-2,0),(xi-1.6,0),(xi,.4),
+                     (xi+.4,0),(xi+WEB-.4,0),(xi+WEB,.4),
+                     (xi+WEB+1.6,0),(CADENCE/2+1,0)):
+        roof=z+offset*math.sqrt(2)
+        floor=-100 if deep else CHORD-offset
+        half=roof-floor
+        vertices=[(x,y-half,floor),(x,y+half,floor),(x,y,roof)]
+        wires.append(Wire.make_polygon([*vertices,vertices[0]]))
+    return Solid.make_loft(wires,ruled=True)
 
 
 def mount_fixtures(mount_type, values):
@@ -234,12 +299,7 @@ def holder(**values):
     if p['guide_enabled']:
         guide_ends = [e for e in part.edges().filter_by(Axis.Z)
                       if abs(abs(e.center().X)-p['guide_outer']) < 1e-6]
-        try:
-            part = part.fillet(JOINT_RADIUS, guide_ends)
-        except ValueError:
-            # Narrow endpoint guides cannot accommodate the R1 rolling
-            # blend through the crest; retain a chamfered vertical corner.
-            part = part.chamfer(0.4, None, guide_ends)
+        part = part.chamfer(0.4, None, guide_ends)
     # Ease exposed vertical edges. Functional circular rim-contact edges and
     # library mount geometry remain exact. No downward-facing fillets.
     adjacency = {}
@@ -254,54 +314,36 @@ def holder(**values):
                  adjacency[e][0].normal_at(e.center()).dot(
                      adjacency[e][1].normal_at(e.center())) < (
                          .01 if abs(e.center().X) > p['spool_width']/2+1e-6 else .99)]
-    base_verticals = [e for e in verticals if abs(e.center().Y-p['rear_y']) > 1e-6]
+    base_verticals = [e for e in verticals if e.length > 1 and abs(e.center().Y-p['rear_y']) > 1e-6]
     rear_datums = [e.center() for e in verticals if abs(e.center().Y-p['rear_y']) <= 1e-6]
     part = part.chamfer(0.4, None, base_verticals)
     rear_edges = [e for e in part.edges().filter_by(Axis.Z)
                   if any(abs(e.center().X-c.X) < 1e-6 and abs(e.center().Y-c.Y) < 1e-6
                          for c in rear_datums)]
     part = part.chamfer(min(0.4, p['saddle_clearance']/2), None, rear_edges)
-    # Loft the rim relief as one mitred triangular cutter. This preserves
-    # the original void through the 1.6 mm web core and carries its 0.4 mm
-    # relief through any cap/ramp material outside the web faces.
+    # Finish each void with the same mitred profile used by the added block.
+    # The original void and chord remain through the 1.6 mm web core.
     rim_cuts = []
     for triangle in truss_openings(p):
-        y, z = triangle[2]
-        half = (triangle[1][0]-triangle[0][0])/2
-        expanded = ((y-half-0.4*(1+math.sqrt(2)), CHORD-0.4),
-                    (y+half+0.4*(1+math.sqrt(2)), CHORD-0.4),
-                    (y, z+0.4*math.sqrt(2)))
-        wires = []
-        for x, points in ((p['cap_inner']-2, expanded), (xi, expanded),
-                          (xi+0.4, triangle), (xi+WEB-0.4, triangle),
-                          (xi+WEB, expanded), (CADENCE/2+1, expanded)):
-            vertices = [(x, yy, zz) for yy, zz in points]
-            wires.append(Wire.make_polygon([*vertices, vertices[0]]))
-        cutter = Solid.make_loft(wires, ruled=True)
+        cutter = truss_relief(p, triangle)
         rim_cuts.extend((cutter, cutter.mirror(Plane.YZ)))
     part = part.cut(*rim_cuts).clean()
     top = part.faces().filter_by(Axis.Z).sort_by(Axis.Z)[-1]
     part = part.chamfer(0.4, None, top.edges())
-    panel_rims = [e for e in part.edges() if e.bounding_box().size.Z < 1e-6
-                  and abs(e.center().Z-p['panel_height']) < 1e-6
-                  and ((e.center().Y > end+1e-6 and e.geom_type.name == 'LINE') or
-                       (e.length > 10 and abs(e.center().X) < p['cap_inner']-1))]
-    adjacency = {}
-    for face in part.faces():
-        for edge in face.edges():
-            adjacency.setdefault(edge, []).append(face)
-    panel_cuts = []
-    for edge in panel_rims:
-        f1, f2 = adjacency[edge]
-        n1, n2 = f1.normal_at(edge.center()), f2.normal_at(edge.center())
-        cosine = n1.dot(n2)
-        if abs(cosine) > .999:
-            continue
-        d1, d2 = (-n2+n1*cosine).normalized(), (-n1+n2*cosine).normalized()
-        a, b = (Vector(v) for v in edge.vertices())
-        bevel = Face(Wire.make_polygon([a, a+d1*0.4, a+d2*0.4, a]))
-        panel_cuts.append(Solid.extrude(bevel, b-a))
-    part = part.cut(*panel_cuts).clean()
+    z = p['panel_height']
+    back_edges = [e for e in part.edges() if abs(e.center().Y-end-WEB)<1e-6
+                  and e.bounding_box().size.Y<1e-6 and e.center().Z>=z-1e-6]
+    part = part.chamfer(.4, None, back_edges)
+    front_edges = [e for e in part.edges() if e.geom_type.name == 'LINE'
+                   and abs(e.center().Y-end)<1e-6 and abs(e.center().Z-z)<1e-6
+                   and abs(e.center().X)<p['cap_inner']-1 and e.length>10]
+    part = part.chamfer(.4, None, front_edges)
+    ramp_ends = [e for e in part.edges() if abs(e.center().Y-end-WEB)<1e-6
+                 and e.bounding_box().size.Y<1e-6
+                 and e.bounding_box().size.X>1 and e.bounding_box().size.Z>1
+                 and e.center().Z<z]
+    if ramp_ends:
+        part = part.chamfer(.4,None,ramp_ends)
     bottom = part.faces().filter_by(Axis.Z).sort_by(Axis.Z)[0]
     part = part.chamfer(BED_CHAMFER, None, bottom.edges())
     cutters = mount_fixtures(MOUNT, values).cutters

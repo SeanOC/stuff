@@ -187,9 +187,10 @@ PRINT_CORNER = dict(spool_diameter=205, spool_width=70, flange_height=4,
 
 @pytest.mark.parametrize('values', [{}, SPEC.presets[0].values, PRINT_CORNER,
     dict(spool_width=50, guide_gap=.5, guide_height=12, rail_width=14, flange_height=4),
-    dict(spool_width=70, guide_gap=2, guide_height=30, rail_width=14, flange_height=4)],
+    dict(spool_width=70, guide_gap=2, guide_height=30, rail_width=14, flange_height=4),
+    dict(spool_width=70, guide_gap=.5, guide_height=30, rail_width=6, saddle_clearance=1.5)],
     ids=['default', 'bambu-shallow-root', 'diagonal-root-corner',
-         'maximum-reach-minimum-height', 'guides-omitted'])
+         'maximum-reach-minimum-height', 'guides-omitted', 'insufficient-crest-room'])
 def test_production_print_audit(values):
     part=holder(**values)
     assert part.is_valid and len(part.solids()) == 1
@@ -350,7 +351,7 @@ def test_guide_geometry(values):
     assert_cadence(model, p)
     assert_contacts(model, p)
     assert math.degrees(math.atan(p['guide_reach']/p['guide_height'])) <= 45
-    assert p['guide_enabled'] == (p['guide_reach'] >= 1.6)
+    assert p['guide_enabled'] == (p['guide_reach']-p['saddle_clearance'] > WEB+.4)
     y, z = p['center_y'], APEX_HEIGHT
     xw = p['spool_width']/2
     for sign in (-1, 1):
@@ -358,13 +359,21 @@ def test_guide_geometry(values):
             # The lead-in starts clear of the flange and rises outboard.
             foot = xw+p['saddle_clearance']
             for fraction in (.25, .5, .75):
-                x = foot+(p['guide_outer']-foot)*fraction
+                x = foot+(p['guide_outer']-WEB-.4-foot)*fraction
                 top = z+p['guide_height']*fraction
                 assert model.is_inside((sign*x, y, top-.05))
                 assert not model.is_inside((sign*x, y, top+.05))
+            for fraction in (.25, .5, .75):
+                crest_x = p['guide_outer']-WEB*fraction
+                assert model.is_inside((sign*crest_x,y,z+p['guide_height']-.05))
+                assert not model.is_inside((sign*crest_x,y,z+p['guide_height']+.05))
+            crest_point = (sign*(p['guide_outer']-WEB/2-.4), y, z+p['guide_height'])
+            crest_faces = [f for f in model.faces() if f.is_inside(crest_point, tolerance=1e-5)]
+            assert any(f.bounding_box().size.X >= WEB-1e-5 for f in crest_faces)
             assert not model.is_inside((sign*(xw+p['saddle_clearance']/2), y, z+.1))
         else:
             assert not model.is_inside((sign*(xw+.2), y, z+1))
+            assert not model.is_inside((sign*(xw+.2), y, z-1))
     if not values:
         assert p['exposed_rim'] >= 20
 
