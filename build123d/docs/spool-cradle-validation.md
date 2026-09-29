@@ -299,3 +299,26 @@ OCCT cannot construct the R1 round. The audit failures must be resolved
 before replacing the v2 print-check target or treating these exports as
 production artifacts. The earlier v2 results above describe the baseline,
 not a passing result for this prototype.
+
+### Final prototype checks
+
+The 74 CAD tests were covered in four focused runs: 68 pass and six fail
+(five production print audits plus the exposed-edge audit). The passing
+checks cover meshes, all parameter endpoints, flange/winding clearance,
+actual cap/ramp probes, 75 mm placement, truss sections, and mount contracts.
+Web tests: 291 pass. Manifest tests: 24 pass.
+
+| Print-audit case | Sampled minimum wall (mm) | Result |
+| --- | ---: | --- |
+| Default | 0.68 | Fail |
+| Bambu preset | 0.51 | Fail |
+| Original combined print corner | 0.11 | Fail |
+| Maximum reach / minimum guide height / widest cap | 0.23 | Fail |
+| Widest cap, guides omitted | 0.10 | Fail |
+
+All five cases report 45° maximum overhang, zero bridge span, no downward
+fillets, and present bed relief. The guide-omitted case also exposes thin
+cap/panel and cap/void transitions: changing the crest alone will not clear
+all failures. Those transitions and the exposed-edge findings remain
+implementation work. The unchanged audit gates are the acceptance criteria;
+the draft PR must remain unmerged until they pass.
