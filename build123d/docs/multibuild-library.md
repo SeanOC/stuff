@@ -104,3 +104,102 @@ allowance drift, watertightness, simultaneous insertion, normal capture,
 and the production print audit. **Only the Multiconnect slot pockets** may
 require supports in the standing orientation (Sean's accepted exception).
 The rest passes the PLA/PCTG audit; the bed relief remains mandatory.
+
+## Continuous channel with on-ramps
+
+`channel_cutter(length, *, onramps, seats, drop=PITCH/2)` makes one continuous
+T-channel negative from the pinned library primitives. Tall plates need heads
+engaged at multiple board rows: a short bottom-entry slot leaves the upper plate
+unsupported. The short `slot_cutter` API and registered holders are unchanged.
+
+The channel uses **Z=0 at its lower end**, with the spine spanning `0..length`.
+This differs from the short slot's seat-at-zero, negative-Z travel. X is across
+the plate; the back face is Y=0, material +Y. Place it with
+`Pos(x, 0, z_bottom)`. Heads enter along +Y at an on-ramp, then move +Z as the
+consumer drops. The head pose remains `Pos(x, POCKET_DEPTH, z)*Rot(90,0,0)`.
+
+```python
+from multibuild import channel_cutter
+negative = channel_cutter(75, onramps=(12.5, 37.5), seats=(25, 50))
+```
+
+Length must be a positive multiple of 25 mm. Positions are caller-supplied
+absolute centres, with no implicit phase or pitch generation. Full openings
+and snap exclusions must lie strictly inside the spine; centres at either end
+are invalid. On-ramps are at least 25 mm apart. Each seat equals one on-ramp
+plus `drop`, with **0 < drop < 25 mm**. Duplicate seats are invalid. Empty
+sequences permit a plain spine for cross-section checks. Consumers supply at
+least 2.4 mm backing and close the top with material; an unseated head must
+hit that cap instead of riding out upward.
+
+### Channel provenance
+
+The primary authority remains David D's official
+[v2 modelling files](https://www.printables.com/model/1008622-multiconnect-for-multiboard-v2-modeling-files).
+Direct retrieval failed during this implementation; no official STEP equality
+or physical fit is claimed. The secondary reference is the parametric
+Multiconnect back used by Underware in QuackWorks, pinned at
+`e0c1cb7ec78dd9e9a8476ed739bd3402074354f3`:
+[Underware_Hooks.scad](https://github.com/AndyLevesque/QuackWorks/blob/e0c1cb7ec78dd9e9a8476ed739bd3402074354f3/Underware/Underware_Hooks.scad)
+and [multiconnectSlotDesign.scad](https://github.com/AndyLevesque/QuackWorks/blob/e0c1cb7ec78dd9e9a8476ed739bd3402074354f3/Modules/multiconnectSlotDesign.scad).
+These are dimensional references only; no SCAD geometry is ported or bundled.
+The bead calls this the BlackjackDuck library; that attribution was not
+established from these files (the Underware header credits Xavier Detant,
+David D and Dontic), so author identity remains [U].
+
+| Value / decision | Status and exact source locator |
+| --- | --- |
+| On-ramp spacing 25 mm | [V] `multiconnectSlotDesign.scad` L12,24,92–95: `distanceBetweenSlots=25`, `onRampEveryXSlots=1`, centre at `-y*distanceBetweenSlots` |
+| Half-pitch phase / default drop 12.5 mm | [V] `Underware_Hooks.scad` L73–74,319,362–366: `onRampHalfOffset=true`, `distanceOffset=distanceBetweenSlots/2`, centre `-y*distanceBetweenSlots+distanceOffset` relative to the upper seat |
+| Repeat snap seats on every selected board row | [U] explicit pst-iftb rev 2 requirement; secondary source has one upper snap seat and repeated entries, not proof of this exact repeated-seat assembly |
+| Snap/dimple distinction | [V] `Underware_Hooks.scad` L339–357 v2 side triangles gated by `slotQuickRelease`; L368–374 v1 central dimple. This adapter uses the pinned Python v2 snap geometry, not a v1 dimple |
+| Exact snap placement | [V] pinned Python `SnapInSlotCutter`, `multiconnect.py` L260–330: triangle offset 0.795, base 8, inset 0.6; paired head centres 0 and −0.795. Translated relative to each seat, without scaling |
+| Profile and allowance | [V] pinned Python `SlotCutter` L225–258: 20/15 widths with +0.3 allowance; 1+2.5+0.5 heights with the existing axial allowances. `RoundHeadCutter` fixes `POCKET_DEPTH=4.15` |
+| On-ramp shape | [V] pinned Python `SlotOpeningCutter` L335–375: radii 10.15/11, depth 4.15. Retained unchanged; secondary SCAD frustum dimensions are not substituted |
+| Official profile/phase/dimple equality | [U] official v2 files unavailable; defaults above are implementation/source evidence, not measured official geometry |
+
+The snap exclusions are the difference between library `SlotCutter` and
+`SnapInSlotCutter`. Subtracting that difference from the spine retains the
+snap material; adding a snap cutter to a full spine would erase it. The
+on-ramp unions trim these exclusions wherever the library openings overlap.
+Booleans run in the native library frame before one final rotation. The demo
+places two copies of one constructed cutter, preserving common curved-edge
+geometry for consistent STL tessellation; it does not rebuild each instance.
+
+### Demo, material and verification
+
+`demo_plate.channel_plate()` is unregistered: 70 X × 100 Z × 7 Y mm, channels
+at x=±12.5, spine Z=0..75, on-ramps Z=12.5/37.5, seats Z=25/50, drop 12.5.
+Z=62.5 is deliberately not an entry. The plate closes the spine with 25 mm
+above it; four heads engage simultaneously. All bed-contact edges have the
+existing 0.4 mm relief. Other outer edge treatment follows the existing demo;
+this is an unregistered mounting test coupon with no service-load rating.
+
+| Geometry | Before → after volume (mm³) | Material reason |
+| --- | --- | --- |
+| Channel demo | N/A (new part) → 37,197.459 | Explicit 7 mm plate leaves 2.85 mm backing behind the 4.15 mm pocket; no extra rear slab |
+| Existing slot demo | 44,255.325 → 44,255.325 | Unchanged geometry |
+
+The bead's `7 = POCKET_DEPTH + 2.4` arithmetic is inconsistent with the pinned
+4.15 mm pocket. The demo preserves its explicit 7 mm dimension and exceeds the
+2.4 mm minimum by 0.45 mm; it does not redefine `POCKET_DEPTH`.
+
+`multibuild-multiconnect-channel` fixtures provide channel cutters, seats and
+corresponding `onramp_locs` (head poses, one per seat). Its contract reuses
+seat clearance, normal capture and depth-profile checks, then samples entry
+along +Y and travel along +Z at ≤0.5 mm intervals, including endpoints. It
+also samples the full 12.5..50 mm span and checks backing and actual top
+material. Deliberately sealed entries, blocked channels and open caps fail.
+This verifies geometry, not release force, creep or loaded physical retention.
+
+The production print audit passes with the existing library-pocket exception:
+45° maximum non-exempt overhang, 0 mm bridge, 2.85 mm minimum wall, no downward
+fillets, bed chamfer present. Standing +Z in PLA/PCTG uses the same pocket
+exception as the short slot; there is no new support exception.
+
+![Channel mount face and longitudinal section through the on-ramps](renders/channel_plate.png)
+
+Regenerate the render and audit with
+`uv run --project build123d python build123d/scripts/render_channel_plate.py`.
+Run geometry and regression checks with
+`uv run --project build123d pytest build123d/tests/test_multibuild.py`.
