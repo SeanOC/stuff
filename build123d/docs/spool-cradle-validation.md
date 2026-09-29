@@ -1,4 +1,7 @@
-# Spool cradle v2 validation — pst-zkd6
+# Spool cradle validation — pst-zkd6 / pst-tskv
+
+The v2.1 exports are review prototypes. The production print and exposed-edge
+audits are not yet passing; see the v2.1 review status below.
 
 One spool per holder; X is its axis along the board, +Y faces the user,
 and +Z is up. Print standing on Z=0 in PETG/PCTG, three walls and 15%
@@ -205,3 +208,91 @@ uv run --project build123d python build123d/scripts/manifest.py
 uv run --project build123d python build123d/scripts/render_spool_cradle.py
 npm test
 ```
+
+## v2.1 — placement aids (pst-tskv)
+
+The saddle lands widen **inboard** from each flange's outer face. `rail_width`
+is 10 mm by default (6–14 mm). Their contact surface remains the exact
+`R + saddle_clearance` arc. The inner edge has a 2.4 mm radial section;
+a 45° XZ transition returns the overhang to the standing web. The winding
+clearance checks include the widest rail, narrowest spool, smallest flange
+height, and narrowest rim together.
+
+The guides sit **outboard** of the flange, so their raised faces stay away
+from the winding. `guide_height` is 15 mm by default (12–30 mm).
+`guide_gap` is the half-gap to the next holder, 0.5 mm by default (0.5–2 mm).
+The guide's vertical outer face is at `±(75/2 − guide_gap)`. Thus enabled
+guides occupy 74 mm at defaults and leave 1 mm between holders on the
+75 mm cadence. The cap adds no outboard width.
+
+| Spool width | Nominal lead-in reach per side | Default overall width |
+| --- | ---: | ---: |
+| Generic AMS, 66 mm | 4.0 mm | 74 mm |
+| Bambu reusable, 67 mm | 3.5 mm | 74 mm |
+| Wide endpoint, 70 mm | 2.0 mm | 74 mm |
+| Narrow endpoint, 50 mm | 12.0 mm | 74 mm |
+
+The inner face begins at the flange outer face plus `saddle_clearance`.
+Consequently the sloped face's horizontal run is `guide_reach −
+saddle_clearance`; the table gives the nominal capture envelope, not a
+measured placement tolerance. Guides are omitted when `guide_reach < 1.6 mm`.
+The unchanged mount plate may then set the overall width, still within
+`75 − 2*guide_gap`.
+
+Rev 4 authorizes an underside ramp from `(Xw, Zs − reach)` to `(Xo, Zs)`.
+The implementation carries that 45° ramp inward through a full web thickness
+so the guide has a solid connection below the clearance land. Oblique
+extrusion of an analytic arc preserves vertical guide heights and 45° XZ
+sections; a rotating sweep would change both. The truss openings are cut
+through the added material too. The original mount cutters, plate, panel,
+and truss layout are retained.
+
+At default diameter and cradle angle, the front exposed rim is
+`2*R*sin(angle) − lip_height − guide_height = 108.56 mm`. At the maximum
+30 mm guide height it is 93.56 mm, above the 20 mm grip requirement.
+The guides bound sideways placement; removal is up and forward.
+
+### Added section and print review
+
+The original 30 N downward front-rim load and PETG/PCTG basis still apply.
+The caps add material to the rail section. Tests measure the finished upper
+members and bed chords and retain the 15 MPa working limit; the new guide
+is not credited as necessary to carry that load. The panel and library
+mount contract retain their v2 checks.
+
+The revised review sheet includes front, side section, three-holder row,
+and the requested −X end view. The widened caps and guide ramps must pass
+the BRep audit in the standing orientation; only the two registered mount
+pockets are excluded. These CAD artifacts do not replace the physical print
+check in pst-m9xt.
+
+| Preset | v2 volume (mm³) | v2.1 prototype volume (mm³) | Added material |
+| --- | ---: | ---: | ---: |
+| `bambu_reusable_200` | 72,798.919 | 97,437.789 | 24,638.870 (+33.85%) |
+| `ams_generic_200` | 72,672.428 | 99,089.824 | 26,417.396 (+36.35%) |
+
+These are measured CAD `part.volume` values, including the support ramps
+and junction blends. The increase buys a 10 mm nominal placement land
+instead of the 2.4 mm web edge, plus outboard lead-in guides. The narrower
+generic spool has the larger guide reach, so it adds more guide material.
+The mount plate and truss layout do not grow. Three-wall slicer settings
+still apply; the wider ramp sections should not be described as uniformly
+2.4 mm walls.
+
+### Review status
+
+**This v2.1 implementation is a review prototype, not cleared for printing.**
+The tests deliberately retain the production audit and exposed-edge gate.
+The nominal upper guide section tapers to a knife edge: a 0.4 mm crest
+trim leaves a very narrow top land. The default audit detects thin guide
+material near the crest/end faces. A proposed 1.6 mm crest needs a revised
+lead-in section, including its behavior when clearance leaves less than
+1.6 mm of horizontal run. No such revision is assumed here.
+
+The remaining edge gate also identifies guide-end edges and relief
+terminations that need finishing. R1 vertical gussets connect the added
+members to the panel; narrow guides use a 0.4 mm outer-corner chamfer when
+OCCT cannot construct the R1 round. The audit failures must be resolved
+before replacing the v2 print-check target or treating these exports as
+production artifacts. The earlier v2 results above describe the baseline,
+not a passing result for this prototype.

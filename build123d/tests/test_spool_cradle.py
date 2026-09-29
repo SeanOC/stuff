@@ -1,4 +1,4 @@
-"""Spool contact, mount, load section and endpoint regressions for spool cradle v2 (pst-zkd6)."""
+"""Spool contact, placement aids, mount and print regressions (pst-tskv)."""
 import math
 import sys
 from pathlib import Path
@@ -10,7 +10,7 @@ from build123d import Axis, Cylinder, Plane, Pos, Rot, section
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from holders.registry import all_models
 all_models()  # Preserve the manifest emitter's registration order.
-from holders.spool_cradle import (APEX_HEIGHT, MOUNT, PARAMS, SPEC, WEB, CHORD, dimensions,
+from holders.spool_cradle import (APEX_HEIGHT, CADENCE, MOUNT, PARAMS, SPEC, WEB, CHORD, dimensions,
                                    holder, mount_fixtures, truss_openings)
 from multibuild.constants import PITCH, large_hole_center, small_hole_center
 from multibuild.multiconnect import POCKET_DEPTH
@@ -77,7 +77,7 @@ def test_presets_mesh_and_envelope(preset,tmp_path):
     assert mesh.is_watertight and mesh.is_winding_consistent
     assert len(mesh.split()) == 1
     bb=part.bounding_box()
-    assert bb.size.X == pytest.approx(p['plate_width'])
+    assert bb.size.X == pytest.approx(CADENCE-2*p['guide_gap'])
     assert bb.min.Z == pytest.approx(0,abs=1e-6)
     assert bb.size.X < 340 and bb.size.Y < 320 and bb.size.Z < 340
     assert_contacts(part,p)
@@ -97,6 +97,7 @@ def test_endpoints(values):
     assert p['plate_thickness']-POCKET_DEPTH >= 2.4
     assert_contacts(part,p)
     assert_truss_sections(part,p)
+    assert_cadence(part,p)
 
 
 @pytest.mark.parametrize('param',PARAMS,ids=lambda p:p.name)
@@ -111,13 +112,14 @@ def test_three_holder_channel_alignment(part,cadence):
     origin_x,_=small_hole_center(0,0)
     offset_z=12.5-p['seat_rows'][0]
     placed=[Pos(origin_x+i*cadence,0,offset_z)*part for i in range(3)]
+    assert part.bounding_box().size.X <= CADENCE-1+1e-6
     gaps=[]
     rows=[]
     for a,b in zip(placed,placed[1:]):
         overlap = a & b
         assert overlap is None or abs(overlap.volume) < 1e-6
         gaps.append(b.bounding_box().min.X-a.bounding_box().max.X)
-    assert gaps == pytest.approx([cadence-70]*2)
+    assert gaps == pytest.approx([cadence-part.bounding_box().size.X]*2)
     for i in range(3):
         fx=mount_fixtures(MOUNT,{})
         rows.append([r.position.Z+offset_z for r in fx.onramp_locs])
@@ -153,7 +155,7 @@ def assert_truss_sections(part,p):
         cross=section(part,section_by=Plane(origin=(0,y,0),x_dir=(1,0,0),z_dir=(0,1,0)))
         assert len(cross.faces()) == 4
         for face in cross.faces():
-            assert 1.6 <= face.bounding_box().size.X <= WEB+1e-6
+            assert 1.6 <= face.bounding_box().size.X <= p['rail_width']+p['guide_reach']+1e-6
             area=face.area/math.sqrt(2)
             assert force/area < 45/3
             areas.append(area)
@@ -183,8 +185,11 @@ PRINT_CORNER = dict(spool_diameter=205, spool_width=70, flange_height=4,
                     wall_clearance=6)
 
 
-@pytest.mark.parametrize('values', [{}, SPEC.presets[0].values, PRINT_CORNER],
-                         ids=['default', 'bambu-shallow-root', 'diagonal-root-corner'])
+@pytest.mark.parametrize('values', [{}, SPEC.presets[0].values, PRINT_CORNER,
+    dict(spool_width=50, guide_gap=.5, guide_height=12, rail_width=14, flange_height=4),
+    dict(spool_width=70, guide_gap=2, guide_height=30, rail_width=14, flange_height=4)],
+    ids=['default', 'bambu-shallow-root', 'diagonal-root-corner',
+         'maximum-reach-minimum-height', 'guides-omitted'])
 def test_production_print_audit(values):
     part=holder(**values)
     assert part.is_valid and len(part.solids()) == 1
@@ -236,6 +241,14 @@ def test_arc_contact(part):
     p=dimensions()
     assert p['saddle_radius']==p['radius']+p['saddle_clearance']
     assert_contacts(part,p)
+    for x in (p['cap_inner']+.5, p['spool_width']/2-.5):
+        for fraction in (-.8, 0, .8):
+            theta = fraction*(math.pi/2-math.radians(p['cradle_angle']))
+            y = p['center_y']+p['saddle_radius']*math.sin(theta)
+            z = p['center_z']-p['saddle_radius']*math.cos(theta)
+            for sign in (-1, 1):
+                assert part.is_inside((sign*x,y,z-.01))
+                assert not part.is_inside((sign*x,y,z+.01))
 
 
 def test_no_bridge_over_10mm(part):
@@ -302,3 +315,103 @@ def test_bed_edges_and_edge_classes(part):
             assert angle < 90-1e-3, (tuple(c),angle)
             counts['eased']+=1
     assert all(counts[k] > 0 for k in ('mount','contact','blend','eased'))
+
+
+def saddle_z(p, y):
+    if y <= p['front_y']:
+        return p['center_z']-math.sqrt(p['saddle_radius']**2-(y-p['center_y'])**2)
+    return p['contact_z']+(p['panel_height']-p['contact_z'])*(y-p['front_y'])/(p['end_y']-p['front_y'])
+
+
+PLACEMENT_CORNERS = [
+    {},
+    dict(spool_width=50, guide_gap=.5, guide_height=12, rail_width=14,
+         flange_height=4, flange_rim_width=1.5),
+    dict(spool_width=70, guide_gap=2, guide_height=30, rail_width=14,
+         flange_height=4),
+    dict(spool_width=70, guide_gap=.5, guide_height=30, rail_width=6,
+         saddle_clearance=1.5),
+]
+
+
+def assert_cadence(part, p):
+    width = part.bounding_box().size.X
+    assert width <= CADENCE-2*p['guide_gap']+1e-6
+    assert width <= 74+1e-6
+    if p['guide_enabled']:
+        assert width == pytest.approx(CADENCE-2*p['guide_gap'], abs=1e-6)
+
+
+@pytest.mark.parametrize('values', PLACEMENT_CORNERS)
+def test_guide_geometry(values):
+    p = dimensions(values)
+    model = holder(**values)
+    assert model.is_valid and len(model.solids()) == 1
+    assert_cadence(model, p)
+    assert_contacts(model, p)
+    assert math.degrees(math.atan(p['guide_reach']/p['guide_height'])) <= 45
+    assert p['guide_enabled'] == (p['guide_reach'] >= 1.6)
+    y, z = p['center_y'], APEX_HEIGHT
+    xw = p['spool_width']/2
+    for sign in (-1, 1):
+        if p['guide_enabled']:
+            # The lead-in starts clear of the flange and rises outboard.
+            foot = xw+p['saddle_clearance']
+            for fraction in (.25, .5, .75):
+                x = foot+(p['guide_outer']-foot)*fraction
+                top = z+p['guide_height']*fraction
+                assert model.is_inside((sign*x, y, top-.05))
+                assert not model.is_inside((sign*x, y, top+.05))
+            assert not model.is_inside((sign*(xw+p['saddle_clearance']/2), y, z+.1))
+        else:
+            assert not model.is_inside((sign*(xw+.2), y, z+1))
+    if not values:
+        assert p['exposed_rim'] >= 20
+
+
+@pytest.mark.parametrize('values', PLACEMENT_CORNERS)
+def test_guide_underside_ramp(values):
+    p = dimensions(values)
+    if not p['guide_enabled']:
+        return
+    model = holder(**values)
+    xw, reach = p['spool_width']/2, p['guide_reach']
+    for y in (p['rear_y']+1, p['center_y'], p['end_y']-1):
+        for fraction in (.25, .5, .75):
+            x = xw+reach*fraction
+            bottom = saddle_z(p,y)-reach+reach*fraction
+            for sign in (-1, 1):
+                assert model.is_inside((sign*x, y, bottom+.05))
+                assert not model.is_inside((sign*x, y, bottom-.05))
+                faces = [f for f in model.faces()
+                         if f.is_inside((sign*x, y, bottom), tolerance=1e-5)]
+                assert faces
+                assert any(-math.sqrt(.5)-1e-5 <= f.normal_at((sign*x,y,bottom)).Z < 0
+                           for f in faces)
+
+
+@pytest.mark.parametrize('values', [{}, {'rail_width':14, 'spool_width':50, 'flange_height':4}])
+def test_rail_cap_overhang(values):
+    p = dimensions(values)
+    model = holder(**values)
+    y = p['center_y']
+    for sign in (-1, 1):
+        for reach in (.5, p['cap_reach']/2, p['cap_reach']-.5):
+            x = p['cap_inner']+reach
+            bottom = APEX_HEIGHT-WEB-reach
+            assert model.is_inside((sign*x,y,APEX_HEIGHT-.05))
+            assert not model.is_inside((sign*x,y,APEX_HEIGHT+.05))
+            assert model.is_inside((sign*x,y,bottom+.05))
+            assert not model.is_inside((sign*x,y,bottom-.05))
+            faces = [f for f in model.faces()
+                     if f.is_inside((sign*x,y,bottom), tolerance=1e-5)]
+            assert any(f.normal_at((sign*x,y,bottom)).Z == pytest.approx(-math.sqrt(.5),abs=1e-5)
+                       for f in faces)
+        assert not model.is_inside((sign*(p['cap_inner']-.05),y,APEX_HEIGHT-.1))
+    assert_contacts(model,p)
+
+
+@pytest.mark.parametrize('values', PLACEMENT_CORNERS)
+def test_overall_width_within_cadence(values):
+    p = dimensions(values)
+    assert_cadence(holder(**values), p)
