@@ -21,3 +21,10 @@ dependencies = [
 
 [tool.uv.sources]
 opengrid = { git = "https://makerrepo.com/r/fangpenlin/opengrid.git", rev = "eea2b4154a10d2909e5edece567cbe0563aaf955" }
+
+[tool.pytest.ini_options]
+# `upstream` tests need the private reference mirror on disk (reference/FETCH.md).
+# Deselected by default so PR CI stays offline; the trusted push-to-main
+# reference-measure workflow runs `pytest -m upstream` (a later -m overrides this).
+markers = ["upstream: needs build123d/reference/upstream/ pulled from the private GCS mirror"]
+addopts = "-m 'not upstream'"
