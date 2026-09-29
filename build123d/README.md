@@ -259,3 +259,11 @@ support the lid below them. Loose cone pins remain centered on the plate.
 Its front countersink uses operator-approved **BEST GUESS** bolt dimensions
 (8 mm clearance, 12.5 mm head, 90° included angle), exposed as ranged parameters. See [the validation record](docs/cup-lid-validation.md).
 Physical bolt/lid fit and PLA/PCTG testing are tracked in pst-mvno.
+
+## Multibuild compatibility library
+
+[`multibuild/`](multibuild/) adapts the pinned Multiconnect cutters to 25 mm
+travel increments and a flush back-face datum. It includes provenance-tagged
+board constants and an optional cone alignment pin; thread and Fix-Point
+cutters are explicitly deferred. See the [API and evidence](docs/multibuild-library.md).
+The demo plate is test-only and is not registered or exported.
