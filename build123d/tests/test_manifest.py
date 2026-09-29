@@ -13,6 +13,7 @@ EnumParam.choices, Preset {id, label, values}) — the app ingests the
 manifest verbatim.
 """
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -72,6 +73,24 @@ def test_emitter_is_deterministic():
     assert manifest_text() == manifest_text()
     # Round-trip through JSON must be stable (no float/int churn).
     assert json.loads(json.dumps(build_manifest())) == build_manifest()
+
+
+def test_manifest_order_independent_of_import_order():
+    """A fresh interpreter imports holders in reverse of all_models()."""
+    result = subprocess.run(
+        [sys.executable, "-c", "\n".join([
+            # Also exercise revisions before spool_cradle was registered.
+            "from importlib.util import find_spec",
+            "if find_spec('holders.spool_cradle'): from holders import spool_cradle",
+            "from holders import cylindrical, smoke, cup_lid",
+            "from scripts.manifest import manifest_text",
+            "print(manifest_text(), end='')",
+        ])],
+        cwd=MANIFEST_PATH.parent,
+        capture_output=True,
+        check=True,
+    )
+    assert result.stdout == MANIFEST_PATH.read_bytes()
 
 
 # --------------------------------------------------------------------------
