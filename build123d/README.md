@@ -267,3 +267,16 @@ travel increments and a flush back-face datum. It includes provenance-tagged
 board constants and an optional cone alignment pin; thread and Fix-Point
 cutters are explicitly deferred. See the [API and evidence](docs/multibuild-library.md).
 The demo plate is test-only and is not registered or exported.
+
+## Multibuild spool cradle
+
+| Model | Presets | Mount / print |
+| --- | --- | --- |
+| `holder_spool_cradle` | `bambu_reusable_200`, `ams_generic_200` | Two flush snap-in slots, 25 mm pitch; standing PETG/PCTG print. Slot pockets are the sole support exception. |
+
+The single-spool bookshelf cradle supports the flange rims on ribbed V
+webs and fits 75 or 100 mm horizontal cadence. It uses the operator-approved
+fixed two-seat mount configuration. [Validation](docs/spool-cradle-validation.md)
+includes the dimension provenance, winding-clearance tests, 30 N section
+calculations, material volumes, edge audit, row render and STL downloads.
+Flange dimensions remain preset assumptions pending the physical print check.

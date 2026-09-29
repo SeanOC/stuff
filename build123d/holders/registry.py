@@ -388,4 +388,5 @@ def all_models() -> list[ModelSpec]:
         from holders import cylindrical  # noqa: F401  (the PoC holder; lands via its bead)
     except ImportError:
         pass
+    from holders import spool_cradle  # noqa: F401
     return list(_REGISTRY.values())

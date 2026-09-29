@@ -490,6 +490,125 @@
           }
         }
       ]
+    },
+    {
+      "slug": "holder-spool-cradle",
+      "engine": "build123d",
+      "title": "Spool cradle (Multibuild)",
+      "blurb": "Single spool bookshelf cradle on two flush snap-in Multiconnect slots. Flange-rim support; standing PETG/PCTG print with support allowed only in the mount pockets.",
+      "categoryId": "multiboard",
+      "params": [
+        {
+          "name": "spool_diameter",
+          "label": "Spool diameter",
+          "unit": "mm",
+          "kind": "number",
+          "default": 200,
+          "min": 190,
+          "max": 205,
+          "step": 0.5
+        },
+        {
+          "name": "spool_width",
+          "label": "Spool width",
+          "unit": "mm",
+          "kind": "number",
+          "default": 66,
+          "min": 50,
+          "max": 70,
+          "step": 0.5
+        },
+        {
+          "name": "flange_height",
+          "label": "Flange above winding",
+          "unit": "mm",
+          "kind": "number",
+          "default": 8,
+          "min": 4,
+          "max": 15,
+          "step": 0.5
+        },
+        {
+          "name": "flange_rim_width",
+          "label": "Flange rim width",
+          "unit": "mm",
+          "kind": "number",
+          "default": 3,
+          "min": 1.5,
+          "max": 6,
+          "step": 0.5
+        },
+        {
+          "name": "cradle_angle",
+          "label": "V half angle from vertical",
+          "unit": "deg",
+          "kind": "number",
+          "default": 40,
+          "min": 25,
+          "max": 45,
+          "step": 1
+        },
+        {
+          "name": "lip_height",
+          "label": "Front rise above contact",
+          "unit": "mm",
+          "kind": "number",
+          "default": 5,
+          "min": 0,
+          "max": 15,
+          "step": 0.5
+        },
+        {
+          "name": "plate_width",
+          "label": "Mount plate width",
+          "unit": "mm",
+          "kind": "number",
+          "default": 70,
+          "min": 68,
+          "max": 70,
+          "step": 0.5
+        },
+        {
+          "name": "plate_thickness",
+          "label": "Mount plate thickness",
+          "unit": "mm",
+          "kind": "number",
+          "default": 7,
+          "min": 6.6,
+          "max": 9,
+          "step": 0.1
+        },
+        {
+          "name": "wall_clearance",
+          "label": "Spool clearance from plate",
+          "unit": "mm",
+          "kind": "number",
+          "default": 3,
+          "min": 3,
+          "max": 6,
+          "step": 0.5
+        }
+      ],
+      "presets": [
+        {
+          "id": "bambu_reusable_200",
+          "label": "Bambu reusable 200 mm",
+          "values": {
+            "spool_width": 67,
+            "flange_height": 8,
+            "flange_rim_width": 3
+          }
+        },
+        {
+          "id": "ams_generic_200",
+          "label": "AMS generic 200 mm",
+          "values": {
+            "spool_width": 66,
+            "flange_height": 8,
+            "flange_rim_width": 3
+          }
+        }
+      ]
     }
   ]
 }
