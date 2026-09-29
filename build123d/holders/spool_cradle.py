@@ -30,7 +30,7 @@ PARAMS = tuple(Param(name, 'number', default, min=lo, max=hi, step=step,
         ('spool_width', 66, 50, 70, 0.5, 'Spool width'),
         ('flange_height', 8, 4, 15, 0.5, 'Flange above winding'),
         ('flange_rim_width', 3, 1.5, 6, 0.5, 'Flange rim width'),
-        ('cradle_angle', 40, 25, 45, 1, 'Saddle included half-angle'),
+        ('cradle_angle', 40, 25, 45, 1, 'Contact tangent angle from vertical'),
         ('saddle_clearance', 0.5, 0.25, 1.5, 0.25, 'Saddle radial clearance'),
         ('lip_height', 5, 0, 15, 0.5, 'Front rise above contact'),
         ('plate_width', 70, 68, 70, 0.5, 'Mount plate width'),
@@ -121,10 +121,14 @@ def holder(**values):
             Polygon(*triangle, align=None)
         blank -= extrude(opening.sketch, amount=p['spool_width']+1, both=True)
     ri, xi = p['root_inner'], p['rail_inner']
+    # Keep the lateral root flare at <=1:2 and at least one wall long.
+    # A fixed 12 mm run leaves a thin tip where the diagonal transition
+    # meets the saddle at wide-spool/narrow-plate parameter corners.
+    transition_length = max(WEB, 2*abs(xi-ri))
     with BuildSketch(Plane.XY) as footprint:
         Polygon((ri, start), (ri+WEB, start), (ri+WEB, t),
-                (xi+WEB, t+12), (xi+WEB, end+WEB), (xi, end+WEB),
-                (xi, t+12), (ri, t), align=None)
+                (xi+WEB, t+transition_length), (xi+WEB, end+WEB), (xi, end+WEB),
+                (xi, t+transition_length), (ri, t), align=None)
     rail = blank & extrude(footprint.sketch, amount=p['plate_height']+100)
     plate = Box(p['plate_width'], t, p['plate_height'],
                 align=(Align.CENTER, Align.MIN, Align.MIN))

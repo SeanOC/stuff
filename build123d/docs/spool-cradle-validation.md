@@ -31,7 +31,7 @@ standing orientation and pending flange measurements are preserved.
 | Bambu reusable envelope | Ø200 × 67 mm | [Bambu's reusable-spool listing](https://au.store.bambulab.com/products/bambu-reusable-spool) lists **packing size** 200 × 200 × 67 mm; [the community dimensional report](https://forum.bambulab.com/t/bambu-spool-dimensions/123480/2) separately reports an approximate Ø200 × 67 mm spool. This is nominal sizing, not a toleranced manufacturer drawing. |
 | Flange height above full winding | 8; 4–15 mm | Operator-specified default in pst-ir0v canonical rev 5. No published full-winding diameter was established. Both presets explicitly retain 8 mm. |
 | Axial flange rim land | 3; 1.5–6 mm | Operator-specified default in pst-ir0v canonical rev 5. No published rim-land measurement was established. Both presets explicitly retain 3 mm. |
-| Saddle angle (same v1 contact rays) | 40°; 25–45° | Approved design domain. |
+| Contact tangent angle from vertical (v1 rays) | 40°; 25–45° | Approved design domain. |
 | Front rise above saddle endpoint | 5; 0–15 mm | Approved adjustable access gesture; 0 preserves the front tangent edge for lift-out. |
 | Plate | 70 × 102.85 × 7 mm at defaults | Width 68–70; thickness 6.6–9 mm. Height follows the channel spine plus its backing thickness. |
 | Board pitch / cutter depth | 25 / 4.15 mm | [Pinned library and provenance](multibuild-library.md). |
@@ -50,7 +50,7 @@ plate thickness `t`, and wall clearance `c`:
 - Saddle centre: `(Y,Z) = (t+c+R, 18+Rs)`.
 - Arc endpoints: `Y = centreY ± Rs*cos(a)`, `Z = centreZ − Rs*sin(a)`.
   This preserves the v1 endpoint rays; the angular span is `180° − 2a`.
-  The UI calls the retained parameter “Saddle included half-angle”.
+  The UI calls the retained parameter “Contact tangent angle from vertical”.
 - Front panel begins beyond the front endpoint by
   `max(1.5 mm, lip_height*tan(a))`; its height is endpoint Z + lip height.
   The minimum landing allows an R1 junction even at zero lip rise.
@@ -69,8 +69,9 @@ Each 2.4 mm flange web contains three triangular openings with 45° roofs.
 A continuous 6 mm bed chord returns to the plate. The material above and
 between openings closes the load paths; no arm tip terminates unsupported.
 Both web/panel interfaces overlap by one full wall. R1 vertical blends join
-webs to the plate and panel. Narrow-plate/wide-spool roots retain the v1
-12 mm transition so their plate margins remain usable.
+webs to the plate and panel. Narrow-plate/wide-spool roots retain their plate
+margins. Their transition length is `max(2.4 mm, 2 × lateral offset)`, limiting the flare to a 1:2
+slope and avoiding the thin tip left by a fixed 12 mm transition.
 
 ## Mount and row spacing
 
@@ -166,7 +167,7 @@ photos were supplied.
 
 | Preset | v1 volume (mm³) | v2 volume (mm³) | Change |
 | --- | ---: | ---: | ---: |
-| `bambu_reusable_200` | 134,709.073 | 72,831.851 | −45.93% |
+| `bambu_reusable_200` | 134,709.073 | 72,798.919 | −45.96% |
 | `ams_generic_200` | 134,696.164 | 72,672.428 | −46.05% |
 
 The lower arc envelope, shorter plate, removal of mount/transverse ribs,
@@ -178,12 +179,23 @@ minimum projected actual section of **9.956 mm²**: **5.252 MPa**, below
 15 MPa. The actual panel section is **141.040 mm²**, giving **0.253 MPa**
 under **35.753 N** spreading force.
 
-The production audit reports **45.0°** maximum overhang, **0 mm** bridge,
+The default production audit reports **45.0°** maximum overhang, **0 mm** bridge,
 **2.40 mm** minimum wall, **zero** downward fillets, and present bed relief.
-All 47 spool-cradle tests pass. The suite checks watertight connected meshes, all numeric endpoints,
+All 49 spool-cradle tests pass. The suite checks watertight connected meshes,
+all numeric endpoints,
 clearance, truss closure, actual sections, board alignment, bed edges, and
 the registered mount contract for both presets and minimum backing.
+The combined print-audit corner (Ø205 × 70 mm spool, 4 mm flange height,
+1.5 mm rim, 25° contact tangent, 0.25 mm saddle clearance, 15 mm lip,
+68 × 6.6 mm plate and 6 mm wall clearance) passes with **2.15 mm** minimum
+wall, **45°** overhang and no bridges or downward fillets. Its root transition
+uses the bounded 1:2 flare described above.
+The Bambu preset with its shallower flare is also audited: **2.35 mm**
+minimum wall, with the other print checks passing.
+This regression catches the thin transition missed by the default audit.
+
 Web-app validation: 291 tests pass; manifest validation: 24 tests pass.
+The shared mount-parameter assertion also passes with the v2 channel type.
 
 ## Reproduce
 

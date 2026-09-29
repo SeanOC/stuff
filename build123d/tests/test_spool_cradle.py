@@ -177,8 +177,19 @@ def test_truss_and_panel_hand_calc(preset):
           'panel force/area/stress',spread,panel_area,spread/panel_area)
 
 
-def test_production_print_audit(part):
-    fx=mount_fixtures(MOUNT,{})
+PRINT_CORNER = dict(spool_diameter=205, spool_width=70, flange_height=4,
+                    flange_rim_width=1.5, cradle_angle=25, saddle_clearance=.25,
+                    lip_height=15, plate_width=68, plate_thickness=6.6,
+                    wall_clearance=6)
+
+
+@pytest.mark.parametrize('values', [{}, SPEC.presets[0].values, PRINT_CORNER],
+                         ids=['default', 'bambu-shallow-root', 'diagonal-root-corner'])
+def test_production_print_audit(values):
+    part=holder(**values)
+    assert part.is_valid and len(part.solids()) == 1
+    assert_contacts(part, dimensions(values))
+    fx=mount_fixtures(MOUNT,values)
     report=audit(part,SPEC.print_orientation,cutters=fx.cutters,model=SPEC.name)
     print(report.format())
     assert report.ok,report.format()

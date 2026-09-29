@@ -403,7 +403,7 @@
         },
         {
           "name": "cradle_angle",
-          "label": "Saddle included half-angle",
+          "label": "Contact tangent angle from vertical",
           "unit": "deg",
           "kind": "number",
           "default": 40,
