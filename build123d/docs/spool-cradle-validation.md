@@ -293,8 +293,8 @@ check in pst-m9xt.
 
 | Preset | v2 volume (mm³) | v2.1 volume (mm³) | Added material |
 | --- | ---: | ---: | ---: |
-| `bambu_reusable_200` | 72,798.919 | 104,255.752 | 31,456.833 (+43.21%) |
-| `ams_generic_200` | 72,672.428 | 105,923.164 | 33,250.736 (+45.75%) |
+| `bambu_reusable_200` | 72,798.919 | 104,215.208 | 31,416.289 (+43.16%) |
+| `ams_generic_200` | 72,672.428 | 105,882.620 | 33,210.192 (+45.70%) |
 
 These are measured CAD `part.volume` values, including the support ramps
 and junction blends. The increase buys a 10 mm nominal placement land
@@ -400,8 +400,8 @@ The default and Bambu preset geometry is unchanged by this fix: measured
 volumes remain 105,923.164 mm³ and 104,255.752 mm³ respectively (zero change
 from rev 6); the tracked preset exports and render remain current.
 
-Additional exposed-edge findings away from this rear-edge fix are tracked
-in `pst-qzx6d`. On the preceding commit `4b7efed`, the wide-guide cases
+Additional exposed-edge findings away from this rear-edge fix were first
+tracked in `pst-qzx6d`; review round 6 below fixes them on this branch. On the preceding commit `4b7efed`, the wide-guide cases
 (width 50 mm, clearance 1.5 mm, angles 25°/45°) already fail the full edge
 classifier. The 25° front cap/panel and relief terminations also need that
 separate follow-up. No classifier exemptions were added for these findings.
@@ -414,3 +414,55 @@ threshold audits and guide-omitted audit were rechecked after the bevel
 bounds changed. All 13 physical audit cases pass. Manifest tests: **24
 passed**. Web tests: **291 passed**. No audit limits, samples or functional
 edge exemptions were relaxed.
+
+
+### Review round 6: shallow-angle and wide-rail exposed edges (pst-7q2kz)
+
+The round-5 corner sweep built all four maximum-clearance corners but ran
+the exposed-edge classifier only on the 66 mm / 45° reproducer. That
+condition is removed, so every corner now runs the unchanged classifier.
+Three of the four failed. A wider sweep with the classifier unchanged (32
+cases: presets, all four corners, widths 50–70 at 25°/33°/45°, rail
+widths 6 and 14, guide height/gap and lip endpoints, minimum flange)
+also failed at rail width 14. There were five geometric causes. All are
+fixed in geometry; the classifier and its exemptions are byte-identical.
+
+1. **Cap/panel groove at shallow angles.** The cap underside's last
+   millimetre dropped a fixed √2 mm. That only falls toward the panel
+   while the lip slope is below √2 (angle ≳ 35°). At 25° it still rose,
+   leaving a 63° groove at the panel face (117° edge). The drop is now
+   `max(√2, lip_slope + 0.2)`, so the last millimetre always falls at
+   least 0.2 mm. Preset angles (40°) keep √2.
+2. **Rear bevel feet on wide guides.** The short sloping intersections at
+   the feet of the rear bevels were finished only on narrow guides. They
+   are now finished whenever a guide is present (90° edges at
+   x = ±spool_width/2 on 50 mm spools).
+3. **Outboard relief runout vs guide root.** The relief roof fell 0.57 mm
+   over 1.6 mm outboard of the web. That tilted it against the guide
+   root's 45° underside, giving a 90.1° rim at 50 mm / 25°. The runout now
+   tapers across the whole root to `CADENCE/2 + 1`.
+4. **Inboard relief runout vs cap underside.** This is the same effect
+   inboard: a 91.1° rim at rail width 14. The short flat run left a
+   0.13 mm apex-ridge fragment at 25°, below the classifier's 1 mm ridge
+   length. The runout now tapers from the cap's inboard end to the web
+   face, so no flat ridge fragment remains.
+5. **Deep cap tail at rail width 14.** A 14 mm rail's cap underside dips
+   below the middle opening's floor. The deep cutter used to grow toward
+   the web, so it met the web's inner face in a 91.7° crevice. The deep
+   cutter (applied only to the added cap/guide before fusion) now grows
+   inboard, so that corner opens. The final shallow cutter and its
+   0.4 mm web-rim mitre are unchanged.
+
+A new fast regression runs the classifier on the five previously failing
+non-corner combinations. Preset geometry changes slightly because the
+inboard taper and deep cutter trim a little more cap around each opening:
+
+| Preset | Rev 6 volume (mm³) | Round 6 volume (mm³) | Change |
+| --- | ---: | ---: | ---: |
+| `bambu_reusable_200` | 104,255.752 | 104,215.208 | −40.544 (−0.04%) |
+| `ams_generic_200` | 105,923.164 | 105,882.620 | −40.544 (−0.04%) |
+
+The three exports are regenerated as watertight single bodies, 74 mm
+wide. The four-view render and review tile are regenerated. The X=0
+section golden is unchanged.
+

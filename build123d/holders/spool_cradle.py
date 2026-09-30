@@ -80,6 +80,11 @@ def dimensions(values=None):
     # Rev 6 reserves a WEB-wide guide before edge finishing. At the
     # threshold the lead-in is vertical; rim bevels leave a 1.8 mm land.
     p['guide_enabled'] = p['guide_reach']+1e-9 >= WEB+p['saddle_clearance']
+    # The cap underside's last millimetre must fall toward the panel, else
+    # a steep lip (shallow cradle_angle) leaves an acute groove at the
+    # panel face. sqrt(2) is the original drop; 0.2 mm is the minimum fall.
+    lip_slope = (p['panel_height']-contact_z)/(end-front)
+    p['tail_drop'] = max(math.sqrt(2), lip_slope+.2)
     return p
 
 
@@ -154,14 +159,14 @@ def placement_aids(p):
     xi, xw = p['rail_inner'], p['spool_width']/2
     cap = saddle_curtain(p, p['cap_inner'], xw, .01, .01)
     cap -= saddle_curtain(p, p['cap_inner'], xw, 0, -p['rail_width'],
-                          floor=-1000, radial_depth=WEB, tail_drop=math.sqrt(2))
+                          floor=-1000, radial_depth=WEB, tail_drop=p['tail_drop'])
     # An explicit vertical R1 gusset avoids OCCT's failed rolling fillet at
     # the short cap/panel junction. Its underside continues the 45° ramp.
     inner = p['cap_inner']
     blend = vertical_gusset(inner, p['end_y'], -1, -1)
     blend &= saddle_curtain(p, inner-JOINT_RADIUS, inner, .01, .01)
     blend -= saddle_curtain(p, inner-JOINT_RADIUS, inner, JOINT_RADIUS, 0,
-                            floor=-1000, radial_depth=WEB, tail_drop=math.sqrt(2))
+                            floor=-1000, radial_depth=WEB, tail_drop=p['tail_drop'])
     cap = cap.fuse(blend)
     if p['guide_enabled']:
         xo, reach = p['guide_outer'], p['guide_reach']
@@ -216,16 +221,19 @@ def placement_aids(p):
 def truss_relief(p, triangle, deep=False):
     """Mitred rim relief; the original apex continues outside the web.
 
-    The 1.6 mm outer runouts avoid a sharp crease where the relief meets
-    the cap underside. Deep cutters remove only the added cap/guide tails;
-    the final shallow cutter preserves the original chord through the web.
+    Runouts taper across the whole cap and guide root: a short steep taper
+    turns the relief roof against the 45-degree cap/root undersides and
+    leaves a sharp crease. The deep cutter, which removes only the added
+    cap/guide tails, grows inboard so a deep cap tail meets the web face
+    at an open corner. The final shallow cutter preserves the original
+    chord through the web.
     """
     y,z=triangle[2]
     xi=p['rail_inner']
     wires=[]
-    for x,offset in ((p['cap_inner']-2,0),(xi-1.6,0),(xi,.4),
+    for x,offset in ((p['cap_inner']-2,.8 if deep else 0),(xi,.4),
                      (xi+.4,0),(xi+WEB-.4,0),(xi+WEB,.4),
-                     (xi+WEB+1.6,0),(CADENCE/2+1,0)):
+                     (CADENCE/2+1,0)):
         roof=z+offset*math.sqrt(2)
         floor=-100 if deep else CHORD-offset
         half=roof-floor
@@ -369,6 +377,10 @@ def holder(**values):
                        if abs(abs(e.center().X)-foot) < 1e-6
                        and abs(e.center().Y-p['rear_y']) < 1e-6]
         part = part.chamfer(guide_bevel, None, guide_inner)
+    else:
+        part = part.chamfer(rear_bevel, None, rear_edges)
+        guide_bevel = rear_bevel
+    if p['guide_enabled']:
         # Finish the short sloping intersections at the feet of those rear
         # bevels, where the guide and web meet the relieved contact surface.
         feet = [e for e in part.edges() if e.geom_type.name == 'LINE'
@@ -380,8 +392,6 @@ def holder(**values):
                         for x in (foot, p['spool_width']/2))]
         if feet:
             part = part.chamfer(min(guide_bevel, min(e.length for e in feet)/4), None, feet)
-    else:
-        part = part.chamfer(rear_bevel, None, rear_edges)
     # Finish each void with the same mitred profile used by the added block.
     # The original void and chord remain through the 1.6 mm web core.
     rim_cuts = []

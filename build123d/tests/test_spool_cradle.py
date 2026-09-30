@@ -469,8 +469,25 @@ def test_max_clearance_guide_corner(max_clearance_guide):
     assert model.is_valid and len(model.solids()) == 1
     assert_cadence(model, p)
     assert_contacts(model, p)
-    if values['spool_width'] == 66 and values['cradle_angle'] == 45:
-        assert_finished_edges(model, p)
+    assert_finished_edges(model, p)
+
+
+# pst-7q2kz B1: shallow angles steepen the lip and saddle ends, and wide
+# rails push the cap tail below the opening floors. Edge gate only; the
+# max-clearance corners above carry the physical audit.
+@pytest.mark.parametrize('values', [
+    dict(spool_width=50, cradle_angle=25),
+    dict(spool_width=70, cradle_angle=25),
+    dict(spool_width=50, cradle_angle=45, rail_width=14),
+    dict(spool_width=66, cradle_angle=25, rail_width=14),
+    dict(spool_width=50, cradle_angle=25, flange_height=4, rail_width=14,
+         saddle_clearance=1.5),
+], ids=['wide-25', 'omitted-25', 'wide-45-rail14', 'narrow-25-rail14',
+        'wide-25-rail14-min-flange'])
+def test_shallow_angle_and_wide_rail_edges(values):
+    model = holder(**values)
+    assert model.is_valid and len(model.solids()) == 1
+    assert_finished_edges(model, dimensions(values))
 
 
 def test_max_clearance_guide_print_audit(max_clearance_guide):
