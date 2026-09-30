@@ -23,38 +23,24 @@ from tests.mount_contracts import CONTRACTS, _residual_vol
 from tests.print_audit import audit
 
 
-# pst-ff71: [V] only when measured from an official file (locator = committed
-# artefact); disagreeing cited values stay [C] until their follow-up beads.
-MEASURED_V = {'PITCH', 'SMALL_HOLE_THROAT_D'}
-LARGE_V = {'mouth_across_flats', 'central_across_flats', 'helix_inner_d',
-           'helix_outer_width', 'helix_pitch'}
-
-
+# pst-ozpae: every value is [V], measured from an official file (locator =
+# committed artefact). test_reference_provenance re-derives each value.
 def _check_tag(p):
-    assert p.status in 'VCU' and p.source and p.locator
-    if p.status == 'V':
-        assert p.locator.startswith('reference/measured/') and p.locator.endswith('.json')
-        assert (ROOT / p.locator).is_file()
-    else:
-        assert not p.locator.startswith('reference/')
+    assert p.status == 'V' and p.source
+    assert p.locator.startswith('reference/measured/') and p.locator.endswith('.json')
+    assert (ROOT / p.locator).is_file()
 
 
 def test_provenance_and_grid():
-    expected = dict(PITCH=25, TILE_THICKNESS=6.4, SMALL_HOLE_MOUTH_D=7.5,
-                    SMALL_HOLE_THROAT_D=6, SMALL_HOLE_THROAT_BAND=2.9,
-                    SMALL_HOLE_TAPER_DEPTH=1.75)
-    for name, value in expected.items():
-        assert getattr(c, name) == c.PROVENANCE[name].value
-        assert getattr(c, name) == pytest.approx(value)
-        assert c.PROVENANCE[name].status == ('V' if name in MEASURED_V else 'C')
-        _check_tag(c.PROVENANCE[name])
-    assert {k: v.value for k, v in c.LARGE_HOLE_PROFILE.items()} == dict(
-        mouth_across_flats=23.4, central_across_flats=21.4, band_height=2.4,
-        helix_outer_d=22.6, helix_inner_d=21.4, helix_outer_width=.5,
-        helix_inner_width=1.583, helix_pitch=2.5)
-    for k, v in c.LARGE_HOLE_PROFILE.items():
-        assert v.status == ('V' if k in LARGE_V else 'C')
-        _check_tag(v)
+    for name, p in c.PROVENANCE.items():
+        assert getattr(c, name) == p.value
+        _check_tag(p)
+    for p in c.LARGE_HOLE_PROFILE.values():
+        _check_tag(p)
+    # Derived stays derived: roots are thickness and the per-face tapers.
+    assert c.SMALL_HOLE_TAPER_DEPTH == pytest.approx((c.SMALL_HOLE_MOUTH_D - c.SMALL_HOLE_THROAT_D) / 2)
+    assert c.LARGE_HOLE_PROFILE['band_height'].value == pytest.approx(
+        c.TILE_THICKNESS - 2 * c.LARGE_HOLE_TAPER_DEPTH)
     status, _, locators = c.GRID_PHASE_PROVENANCE
     assert status == 'V'
     assert all((ROOT / loc).is_file() for loc in locators.split(' + '))
@@ -73,12 +59,14 @@ def test_regenerated_tile(cells):
     mid = section(t, section_by=Plane.XY.offset(thickness/2), mode=Mode.PRIVATE)
     holes = sorted((round(w.bounding_box().center().X, 3), round(w.bounding_box().center().Y, 3),
                     round(w.bounding_box().size.X, 3)) for f in mid.faces() for w in f.inner_wires())
-    large = [(*c.large_hole_center(i, j), 21.4) for i in range(nx) for j in range(ny)]
-    small = [(*c.small_hole_center(i, j), 6.0) for i in range(nx-1) for j in range(ny-1)]
+    central = c.LARGE_HOLE_PROFILE['central_across_flats'].value
+    large = [(*c.large_hole_center(i, j), central) for i in range(nx) for j in range(ny)]
+    small = [(*c.small_hole_center(i, j), c.SMALL_HOLE_THROAT_D) for i in range(nx-1) for j in range(ny-1)]
     assert holes == sorted(large + small)
     mouth = section(t, section_by=Plane.XY.offset(1e-3), mode=Mode.PRIVATE)
     widths = sorted(round(w.bounding_box().size.X, 2) for f in mouth.faces() for w in f.inner_wires())
-    assert widths == sorted([23.4]*len(large) + [8.0]*len(small))
+    mouth = c.LARGE_HOLE_PROFILE['mouth_across_flats'].value
+    assert widths == sorted([mouth]*len(large) + [c.SMALL_HOLE_MOUTH_D]*len(small))
 
 
 def test_regenerated_tile_profile_is_measured_and_licensed():
@@ -91,25 +79,27 @@ def test_regenerated_tile_profile_is_measured_and_licensed():
 
 
 @pytest.mark.parametrize('fit', [-.3, 0, .3])
-@pytest.mark.parametrize('angle', [30, 45, 60])
+@pytest.mark.parametrize('angle', [45, 50, 60])
 def test_pin_containment(fit, angle):
+    # The measured bore wall is 45°, so only pins at least that steep fit.
     pin = SmallHoleConePin(fit, 1.8, angle)
-    base = 7.5 + 2*fit
+    base = c.SMALL_HOLE_MOUTH_D + 2*fit
     assert pin.base_diameter == base
     assert pin.length == pytest.approx((base-1.8)/(2*math.tan(math.radians(angle))))
     assert pin.bounding_box().size.X == pytest.approx(base)
     assert pin.bounding_box().size.Z == pytest.approx(pin.length)
     for z in [*np.arange(0, pin.length, .05), pin.length]:
-        # Sourced symmetric envelope; no inferred thread surface.
-        depth_from_face = min(z, 6.4-z)
-        cavity = 7.5 - 1.5 * min(depth_from_face/1.75, 1)
+        # Measured symmetric envelope; the thread only enlarges it.
+        depth_from_face = min(z, c.TILE_THICKNESS-z)
+        drop = c.SMALL_HOLE_MOUTH_D - c.SMALL_HOLE_THROAT_D
+        cavity = c.SMALL_HOLE_MOUTH_D - drop * min(depth_from_face/c.SMALL_HOLE_TAPER_DEPTH, 1)
         pin_d = base - 2*z*math.tan(math.radians(angle))
         assert pin_d <= cavity + 2*fit + 1e-9
     assert pin.is_valid and len(pin.solids()) == 1
 
 
-@pytest.mark.parametrize('args', [(.31,1.8,45),(-.31,1.8,45),(0,7.5,45),
-    (0,8,45),(0,0,45),(0,1.8,29),(0,1.8,61),(float('nan'),1.8,45)])
+@pytest.mark.parametrize('args', [(.31,1.8,45),(-.31,1.8,45),(0,c.SMALL_HOLE_MOUTH_D,45),
+    (0,0,45),(0,1.8,44),(0,1.8,61),(float('nan'),1.8,45)])
 def test_invalid_pin(args):
     with pytest.raises(ValueError): SmallHoleConePin(*args)
 

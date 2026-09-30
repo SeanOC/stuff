@@ -42,11 +42,13 @@ preset inherits insertion, seating and capture checks. See
 
 `SmallHoleConePin` is optional alignment geometry, independent of the cup-lid
 fixture. Positive fit means **interference per side**: base diameter is
-7.5 + 2×fit. Fit is −0.3…+0.3 mm, half-angle 30…60°, and the positive tip
-must be smaller than the base. Length is `(base-tip)/(2*tan(half_angle))`.
-Base is at Z=0, tip at +Z. The conservative cavity inequality includes
-2×fit; it does not claim the pin clears the unexpanded mouth with positive
-interference. Consumers must choose a printable tip (at least 1.8 mm) and
+8.0 + 2×fit (`SMALL_HOLE_MOUTH_D`). Fit is −0.3…+0.3 mm, half-angle 45…60°,
+and the positive tip must be smaller than the base. The 45° floor follows
+the measured bore: its wall is a 45° chamfer, so a shallower cone cannot be
+contained (pst-ozpae). Length is `(base-tip)/(2*tan(half_angle))`.
+Base is at Z=0, tip at +Z. The containment inequality against the measured
+bore includes 2×fit; it does not claim the pin clears the unexpanded mouth
+with positive interference. Consumers must choose a printable tip (at least 1.8 mm) and
 validate physical fit.
 
 ## Regenerated tile
@@ -71,22 +73,24 @@ The rule is [design-guidelines §7](design-guidelines.md#7-provenance), and
 [research §2–3](multibuild-research.md#2-board-dimensions-and-seam-rules).
 `constants.PROVENANCE` accompanies every scalar; `LARGE_HOLE_PROFILE`
 contains value/status/source/locator records for each field. A [V] locator is
-the measurement JSON. A cited value that a measurement contradicts stays
-unchanged and [C], with a `# measured` comment and a follow-up bead.
+the measurement JSON. Every board constant is now [V]: pst-ozpae adopted
+the measured values, each with an `# adopted … by pst-ozpae` comment giving
+the cited number it replaced. Derived values (band height, taper depths)
+are computed from their roots, never typed.
 
 | Primitive | Value (mm) | Status and source locator |
 | --- | --- | --- |
 | Grid pitch | 25 | [V] `mb-large-octagon-hole-positive.json` |
-| Tile thickness | 6.4 | [C] SCAD L56–61; measured 6.2 → pst-rs70f |
-| Small mouth / throat / band | 7.5 / 6 / 2.9 | throat [V] `mb-small-thread-negative.json`; mouth, band [C] SCAD L96–104,237–265; measured 8.0 / 4.2 → pst-az4hh, pst-hav1h |
-| Taper depth per face | 1.75 | [C] arithmetic (6.4−2.9)/2, SCAD L270–280; measured 1.0 → pst-3spc5 |
-| Large octagon mouth / central flats, band | 23.4 / 21.4, 2.4 | flats [V] `mb-multihole-negative.json`; band [C] SCAD L68–83,218–224,270–280, measured 2.2 → pst-kooqt |
-| Large helix outer / inner diameter | 22.6 / 21.4 | inner [V] `mb-multihole-negative.json`; outer [C] SCAD L85–94,228–233, measured 22.5 → pst-23uzq |
-| Helix outer / inner axial width, pitch | 0.5 / 1.583, 2.5 | 0.5 and 2.5 [V] `mb-multihole-negative.json`; 1.583 [C] SCAD L85–94,228–233, measured 1.6 → pst-x5vo8 |
+| Tile thickness | 6.2 | [V] `mb-large-octagon-hole-positive.json` (levels 0 / 6.2; cited 6.4, SCAD L56–61) |
+| Small mouth / throat | 8.0 / 6 | [V] `mb-small-thread-negative.json` (cited mouth 7.5, SCAD L96–104). No throat band: the official hole is a 45° chamfer from mouth to throat on each face, then the thread (cited band 2.9, SCAD L237–265, removed) |
+| Small taper depth per face | 1.0 | [V] `mb-small-thread-negative.json`; derived (mouth − throat)/2 at 45° (cited 1.75, SCAD L270–280) |
+| Large octagon mouth / central flats, taper per face, band | 23.4 / 21.4, 2.0, 2.2 | [V] `mb-multihole-negative.json`; band derived 6.2 − 2×2.0 (cited 2.4, SCAD L68–83,218–224,270–280) |
+| Large helix outer / inner diameter | 22.5 / 21.4 | [V] `mb-multihole-negative.json` (cited outer 22.6, SCAD L85–94,228–233) |
+| Helix outer / inner axial width, pitch | 0.5 / 1.6, 2.5 | [V] `mb-multihole-negative.json`; 45° flanks (cited inner 1.583, SCAD L85–94,228–233) |
 | Large grid phase | (25i+12.5, 25j+12.5) | [V] `mb-large-octagon-hole-positive.json` + `mb-small-thread-hole-positive.json` |
 | Small grid phase, where holes exist | (25i+25, 25j+25) | [V] same files |
 | Head and cutter allowances above | pinned Python implementation | [V] equal to the official v2 files, `mc-v2-round*.json`, `mc-v2-slot-negative.json`; Python constants L11–15; multiconnect L62–108,188–254 |
-| Small-hole thread (not implemented) | pitch 3, outer/inner Ø7/6, axial widths 0.77/2.5 | Ø7/6 and 2.5 [V] `mb-small-thread-negative.json`; pitch and 0.77 [C] SCAD L100–104,257–265, measured 3.125 / 0.625 → pst-gvdrx, pst-5lum5 |
+| Small-hole thread (not implemented) | pitch 3.125, outer/inner Ø7/6, axial widths 0.625/2.5 | [V] `mb-small-thread-negative.json` (cited pitch 3 and 0.77, SCAD L100–104,257–265) |
 | Tile edges | Core teeth on two sides, side on one, corner on neither; tooth-side size cells×25+8 | [C] SCAD README, Usage / Tile Stack Sizing |
 | Joining and wall offset | Dual Snaps; offset snap mounts 6.25 | [C] Mounting L46–50; Core §2.2 L88 |
 | Installed seam clearance | no global allowance established | [U] Mounting steps/images; Core connections |

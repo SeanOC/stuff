@@ -1,7 +1,9 @@
 """Optional alignment pin, independent of the cup-lid fixture.
 
-Positive fit is interference PER SIDE. This uses the cited cavity envelope,
-not its unresolved thread; physical compatibility is not certified.
+Positive fit is interference PER SIDE. This uses the measured small-hole
+envelope (Ø8 mouth, 45° chamfer to the Ø6 thread minor), not its thread;
+physical compatibility is not certified. The half-angle floor is 45° because
+the bore wall is 45°: a shallower cone cannot be contained (pst-ozpae).
 """
 from math import isfinite, radians, tan
 from build123d import Align, Cone
@@ -16,8 +18,8 @@ class SmallHoleConePin(Cone):
         base = SMALL_HOLE_MOUTH_D + 2 * fit_per_side
         if not -0.3 <= fit_per_side <= 0.3:
             raise ValueError('fit_per_side must be in [-0.3, 0.3]')
-        if not 30 <= half_angle <= 60:
-            raise ValueError('half_angle must be in [30, 60]')
+        if not 45 <= half_angle <= 60:
+            raise ValueError('half_angle must be in [45, 60]')
         if not 0 < tip_diameter < base:
             raise ValueError('tip_diameter must be positive and smaller than base')
         self.base_diameter = base

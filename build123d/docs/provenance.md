@@ -60,7 +60,7 @@ PR:
 - manifest coverage, sha256, FK resolution and entry completeness
 - that no upstream original is committed
 - that every [V] value re-derives from these JSON files
-- that every contradicted [C] value keeps its cited number and follow-up bead
+- that every MultiBuild constant is [V] and equals its measured value
 
 The trusted workflow's `upstream` run regenerates each JSON and SVG
 byte-for-byte from the mirror. DXF bytes embed save timestamps, so only
@@ -77,25 +77,29 @@ the exact `levels` (planar faces normal to the axis) and the section edges.
 | --- | --- | --- | --- | --- |
 | Grid pitch | 25 | 25 | 0 | **confirmed** → `PITCH` [V] |
 | Grid phase (small = large + 12.5, 12.5) | SCAD arithmetic | same | 0 | **confirmed** → `GRID_PHASE_PROVENANCE` [V] |
-| Tile thickness | 6.4 | 6.2 | −0.2 | changed → pst-rs70f |
+| Tile thickness | 6.4 | 6.2 | −0.2 | **adopted** → `TILE_THICKNESS` [V] (pst-ozpae) |
 | Large octagon mouth / central across flats | 23.4 / 21.4 | 23.4 / 21.4 | 0 | **confirmed** [V] |
-| Large octagon band height | 2.4 | 2.2 | −0.2 | changed → pst-kooqt (taper 2.0 per face confirmed) |
-| Large helix outer / inner Ø | 22.6 / 21.4 | 22.5 / 21.4 | −0.1 / 0 | outer changed → pst-23uzq; inner **confirmed** |
+| Large octagon taper depth per face | 2.0 | 2.0 | 0 | **confirmed** → `LARGE_HOLE_TAPER_DEPTH` [V] |
+| Large octagon band height | 2.4 | 2.2 | −0.2 | **adopted**, derived: `TILE_THICKNESS − 2·LARGE_HOLE_TAPER_DEPTH` (pst-ozpae) |
+| Large helix outer / inner Ø | 22.6 / 21.4 | 22.5 / 21.4 | −0.1 / 0 | outer **adopted** (pst-ozpae); inner **confirmed** [V] |
 | Large helix outer width / pitch | 0.5 / 2.5 | 0.5 / 2.5 | 0 | **confirmed** [V] (single start, right hand, 45° flanks) |
-| Large helix inner (base) width | 1.583 | 1.6 | +0.017 | changed → pst-x5vo8 |
-| Small-hole mouth Ø | 7.5 | 8.0 | +0.5 | changed → pst-az4hh (consumer: `SmallHoleConePin`) |
+| Large helix inner (base) width | 1.583 | 1.6 | +0.017 | **adopted** (pst-ozpae; 45° flanks: pitch 2.5 − inner vertical extent 0.9) |
+| Small-hole mouth Ø | 7.5 | 8.0 | +0.5 | **adopted** → `SMALL_HOLE_MOUTH_D` [V] (pst-ozpae; consumers `SmallHoleConePin`, `holder_cup_lid`) |
 | Small-hole throat Ø | 6 | 6.0 | 0 | **confirmed** → `SMALL_HOLE_THROAT_D` [V] |
-| Small-hole throat band | 2.9 | 4.2 | +1.3 | changed → pst-hav1h (official = 45° chamfer, then thread) |
-| Small-hole taper depth per face | 1.75 | 1.0 | −0.75 | changed → pst-3spc5 |
-| Small thread pitch | 3 | 3.125 | +0.125 | changed (docs only) → pst-gvdrx |
+| Small-hole throat band | 2.9 | — | — | **removed** (pst-ozpae): the official hole is a 45° chamfer, then the thread; no plain band exists (6.2 − 2·1.0 = 4.2 is thread length) |
+| Small-hole taper depth per face | 1.75 | 1.0 | −0.75 | **adopted**, derived: `(SMALL_HOLE_MOUTH_D − SMALL_HOLE_THROAT_D) / 2` at 45° (pst-ozpae) |
+| Small thread pitch | 3 | 3.125 | +0.125 | **adopted** (docs only; pst-ozpae) |
 | Small thread outer Ø / inner Ø | 7 / 6 | 7.0 / 6.0 | 0 | **confirmed** |
-| Small thread axial widths outer / inner | 0.77 / 2.5 | 0.625 / 2.5 | −0.145 / 0 | outer changed (docs only) → pst-5lum5 |
+| Small thread axial widths outer / inner | 0.77 / 2.5 | 0.625 / 2.5 | −0.145 / 0 | outer **adopted** (docs only; pst-ozpae) |
 
-"Changed" means the official file contradicts the cited value. The constant
-is **not** changed in the measuring PR. Each follow-up bead decides whether
-to adopt the measured value or justify keeping the cited one. The
-regenerated tile (`multibuild/tile.py`, `TILE_PROFILE`) already uses the
-measured values.
+pst-ff71 measured these without changing any constant; pst-ozpae adopted
+every contradicted value in one PR (it consolidates the per-value beads
+pst-rs70f, pst-kooqt, pst-23uzq, pst-x5vo8, pst-az4hh, pst-hav1h, pst-3spc5,
+pst-gvdrx, pst-5lum5 and pst-oogqr). `multibuild/constants.py` now holds no
+[C] value, and the regenerated tile (`multibuild/tile.py`, `TILE_PROFILE`)
+references those constants instead of copying them. Shipped-holder fit
+consequences: [cup-lid-validation.md](cup-lid-validation.md#pins-and-board-engagement) and
+[spool-cradle-validation.md](spool-cradle-validation.md).
 
 **Multiconnect.** The official v2 head and negative equal the pinned
 `opengrid` library profile exactly:

@@ -13,25 +13,20 @@ Envelope only: the octagon and small-hole bores are the thread MINOR
 diameters, the helical grooves are omitted, and the tile edges are plain
 (no teeth or snap features). Nothing threads into this tile.
 
-``TILE_PROFILE`` holds the measured values. Where they disagree with the
-cited values in ``constants`` (thickness, small-hole mouth and taper), the
-constants stay unchanged until their follow-up beads resolve (research §2).
+``TILE_PROFILE`` names the measured [V] records in ``constants`` that the
+tile is built from; it holds no values of its own.
 """
 from build123d import Align, Box, Cone, Cylinder, Part, Pos, RegularPolygon, Plane, loft
-from .constants import PITCH, Provenance, large_hole_center, small_hole_center
+from .constants import LARGE_HOLE_PROFILE, PITCH, PROVENANCE, large_hole_center, small_hole_center
 
-_LARGE = 'multibuild-tile-components/large-octagon-hole-positive-.step'
-_MULTI = 'multibuild-tile-components/multihole-negative-.step'
-_SMALL = 'multibuild-tile-components/small-thread-negative-.step'
-_M = 'reference/measured/'
 TILE_PROFILE = {
-    'thickness': Provenance(6.2, 'V', _LARGE, _M + 'mb-large-octagon-hole-positive.json'),
-    'large_mouth_across_flats': Provenance(23.4, 'V', _MULTI, _M + 'mb-multihole-negative.json'),
-    'large_central_across_flats': Provenance(21.4, 'V', _MULTI, _M + 'mb-multihole-negative.json'),
-    'large_taper_depth': Provenance(2.0, 'V', _MULTI, _M + 'mb-multihole-negative.json'),
-    'small_mouth_d': Provenance(8.0, 'V', _SMALL, _M + 'mb-small-thread-negative.json'),
-    'small_throat_d': Provenance(6.0, 'V', _SMALL, _M + 'mb-small-thread-negative.json'),
-    'small_taper_depth': Provenance(1.0, 'V', _SMALL, _M + 'mb-small-thread-negative.json'),
+    'thickness': PROVENANCE['TILE_THICKNESS'],
+    'large_mouth_across_flats': LARGE_HOLE_PROFILE['mouth_across_flats'],
+    'large_central_across_flats': LARGE_HOLE_PROFILE['central_across_flats'],
+    'large_taper_depth': PROVENANCE['LARGE_HOLE_TAPER_DEPTH'],
+    'small_mouth_d': PROVENANCE['SMALL_HOLE_MOUTH_D'],
+    'small_throat_d': PROVENANCE['SMALL_HOLE_THROAT_D'],
+    'small_taper_depth': PROVENANCE['SMALL_HOLE_TAPER_DEPTH'],
 }
 
 

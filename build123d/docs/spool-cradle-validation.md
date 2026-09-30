@@ -466,3 +466,20 @@ The three exports are regenerated as watertight single bodies, 74 mm
 wide. The four-view render and review tile are regenerated. The X=0
 section golden is unchanged.
 
+
+## Measured MultiBuild constants (pst-ozpae)
+
+pst-ozpae adopted the measured MultiBuild board constants (tile thickness
+6.2, small-hole mouth Ø8, large-hole band and helix values; see
+[provenance.md](provenance.md#measured-vs-cited-values-multibuild)). The
+cradle imports only `PITCH` from `multibuild.constants`, directly and via
+`multibuild.multiconnect`, and pitch is unchanged at 25 mm. Its geometry is
+therefore unchanged. `part.volume` before and after:
+
+| Preset | Before (mm³) | After (mm³) |
+| --- | ---: | ---: |
+| `bambu_reusable_200` | 104,215.208 | 104,215.208 |
+| `ams_generic_200` | 105,882.620 | 105,882.620 |
+
+No fit changes, so no re-print is implied. The print audit is re-run and
+still passes.
