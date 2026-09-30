@@ -61,3 +61,8 @@ services/render/dist/
 
 # build123d preset-bake uv cache (scripts/bake-bd-presets.sh, pst-0um9)
 .uv-cache/
+
+# build123d reference mirror: pulled from the private GCS bucket, never committed (pst-m9k6)
+build123d/reference/upstream/
+# google-github-actions/auth credential file
+gha-creds-*.json
