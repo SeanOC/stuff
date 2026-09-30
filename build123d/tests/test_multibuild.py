@@ -8,17 +8,35 @@ import numpy as np
 import pytest
 import trimesh
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from build123d import Align, Axis, Box, Pos, Compound, Vector
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+from build123d import Align, Axis, Box, Pos, Compound, Vector, Mode, Plane, section
 from opengrid import constants as oc
 from opengrid.multiconnect import RoundHead, RoundHeadCutter, SlotCutter
 from multibuild import SmallHoleConePin, LargeHoleThreadCutter, FixPointCutter, channel_cutter
 from multibuild import constants as c
 from multibuild import demo_plate as demo
+from multibuild import tile
 from multibuild.multiconnect import POCKET_DEPTH, slot_cutter
 from scripts.export import export_stl
 from tests.mount_contracts import CONTRACTS, _residual_vol
 from tests.print_audit import audit
+
+
+# pst-ff71: [V] only when measured from an official file (locator = committed
+# artefact); disagreeing cited values stay [C] until their follow-up beads.
+MEASURED_V = {'PITCH', 'SMALL_HOLE_THROAT_D'}
+LARGE_V = {'mouth_across_flats', 'central_across_flats', 'helix_inner_d',
+           'helix_outer_width', 'helix_pitch'}
+
+
+def _check_tag(p):
+    assert p.status in 'VCU' and p.source and p.locator
+    if p.status == 'V':
+        assert p.locator.startswith('reference/measured/') and p.locator.endswith('.json')
+        assert (ROOT / p.locator).is_file()
+    else:
+        assert not p.locator.startswith('reference/')
 
 
 def test_provenance_and_grid():
@@ -28,17 +46,48 @@ def test_provenance_and_grid():
     for name, value in expected.items():
         assert getattr(c, name) == c.PROVENANCE[name].value
         assert getattr(c, name) == pytest.approx(value)
-        assert c.PROVENANCE[name].status == ('V' if name.endswith('DEPTH') else 'C')
-        assert c.PROVENANCE[name].source and c.PROVENANCE[name].locator
+        assert c.PROVENANCE[name].status == ('V' if name in MEASURED_V else 'C')
+        _check_tag(c.PROVENANCE[name])
     assert {k: v.value for k, v in c.LARGE_HOLE_PROFILE.items()} == dict(
         mouth_across_flats=23.4, central_across_flats=21.4, band_height=2.4,
         helix_outer_d=22.6, helix_inner_d=21.4, helix_outer_width=.5,
         helix_inner_width=1.583, helix_pitch=2.5)
-    assert all(v.status == 'C' and v.source and v.locator for v in c.LARGE_HOLE_PROFILE.values())
-    assert c.GRID_PHASE_PROVENANCE[0] == 'V'
+    for k, v in c.LARGE_HOLE_PROFILE.items():
+        assert v.status == ('V' if k in LARGE_V else 'C')
+        _check_tag(v)
+    status, _, locators = c.GRID_PHASE_PROVENANCE
+    assert status == 'V'
+    assert all((ROOT / loc).is_file() for loc in locators.split(' + '))
     for i, j in [(0, 0), (-1, 2), (3, -4)]:
         assert c.large_hole_center(i, j) == (25*i+12.5, 25*j+12.5)
         assert c.small_hole_center(i, j) == (25*i+25, 25*j+25)
+
+
+@pytest.mark.parametrize('cells', [(2, 2), (3, 1), (1, 1)])
+def test_regenerated_tile(cells):
+    nx, ny = cells
+    t = tile.tile(cells)
+    thickness = tile.TILE_PROFILE['thickness'].value
+    assert t.is_valid and len(t.solids()) == 1
+    assert tuple(t.bounding_box().size) == pytest.approx((25*nx, 25*ny, thickness))
+    mid = section(t, section_by=Plane.XY.offset(thickness/2), mode=Mode.PRIVATE)
+    holes = sorted((round(w.bounding_box().center().X, 3), round(w.bounding_box().center().Y, 3),
+                    round(w.bounding_box().size.X, 3)) for f in mid.faces() for w in f.inner_wires())
+    large = [(*c.large_hole_center(i, j), 21.4) for i in range(nx) for j in range(ny)]
+    small = [(*c.small_hole_center(i, j), 6.0) for i in range(nx-1) for j in range(ny-1)]
+    assert holes == sorted(large + small)
+    mouth = section(t, section_by=Plane.XY.offset(1e-3), mode=Mode.PRIVATE)
+    widths = sorted(round(w.bounding_box().size.X, 2) for f in mouth.faces() for w in f.inner_wires())
+    assert widths == sorted([23.4]*len(large) + [8.0]*len(small))
+
+
+def test_regenerated_tile_profile_is_measured_and_licensed():
+    assert all(p.status == 'V' and (ROOT / p.locator).is_file() for p in tile.TILE_PROFILE.values())
+    head = Path(tile.__file__).read_text(encoding='utf-8').splitlines()[:3]
+    assert 'Multiboard Licence' in head[0] and 'NOT covered by' in head[1]
+    assert (Path(tile.__file__).parent / 'LICENSE-MULTIBOARD.md').is_file()
+    with pytest.raises(ValueError):
+        tile.tile((0, 2))
 
 
 @pytest.mark.parametrize('fit', [-.3, 0, .3])

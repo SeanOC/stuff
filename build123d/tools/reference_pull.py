@@ -174,7 +174,7 @@ def validate_sources(records: list[dict]) -> None:
 
 def load_sources(path: Path = MANIFEST) -> list[dict]:
     """Load + fully validate the source manifest; returns its source records."""
-    data = json.loads(Path(path).read_text())
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
     if not isinstance(data, dict) or data.get("schema") != SCHEMA:
         raise ManifestError(f"manifest: schema: must be {SCHEMA}")
     records = data.get("sources")
