@@ -159,6 +159,42 @@ For any PR touching `build123d/holders/**`, check and cite the file/line:
 A miss on 1–3 or 7 is blocking; 4–6 and 8 are blocking when the PR claims
 to address them and otherwise a required follow-up bead.
 
+## 7. Provenance
+
+Provenance is tracked for every dimension and every committed external
+geometry. Tag each interface dimension (in code *and* docs) with one of:
+
+- **[V] — measured.** Measured from an official file (with the measurement
+  artefact cited) or from a physical print. For a file, `source` is its
+  `source_file_id` in `reference/source-manifest.json`. `locator` is the
+  committed measurement under `reference/measured/`. That artefact's
+  manifest entry pins the exact file version, `(source_file_id,
+  source_sha256)`. Arithmetic on cited numbers is **not** [V]; it inherits
+  the tag of its inputs.
+- **[C] — cited.** A claim from documentation, a drawing, or another
+  project's source. It is cited with a source key and line/section locator
+  (`docs/multibuild-research.md`).
+- **[U] — unresolved.** Nobody has established it yet. Say what evidence would
+  resolve it.
+
+When a measurement disagrees with a cited value that a model depends on, do
+not change the value silently. It stays [C], and the code carries a
+`# measured <value>` comment and a follow-up bead. The delta is recorded in
+the research tables.
+
+**Licences.** Multiboard/MultiBuild-licensed files may be used directly for
+non-commercial purposes (Sean 2026-09-29). Their licence (revocable,
+non-commercial, remixes under the same terms, attribution) is copied next to
+the artefact. Multiconnect connector STEPs are CC BY-NC-SA and modelling files
+are CC BY 4.0. openGrid is CC BY 4.0 and Gridfinity is MIT.
+
+**Upstream originals are never committed.** They live in the private mirror
+(`reference/FETCH.md`). What is committed is our measured output (JSON plus
+DXF/SVG sections, made with `tools/measure_step.py --record`) and geometry
+regenerated from measured values (`multibuild/tile.py`, carved out of the
+repository's MIT licence). See [provenance.md](provenance.md) for the licence
+table, the committed artefacts and the measure/record workflow.
+
 ---
 
 Sources for the numbers: [Hydra Research design rules](https://www.hydraresearch3d.com/design-rules),

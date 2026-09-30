@@ -78,7 +78,10 @@ action writes, is gitignored.
      and it is embedded in the bucket path
      `<group>/<sha256>/<filename>`. A changed checksum appends a version and
      moves `current`. Nothing is ever removed.
-2. **The artefact manifest (pst-ff71): committed measured profiles.** Each
+2. **[`reference/artifact-manifest.json`](artifact-manifest.json) (pst-ff71):
+   committed measured profiles.** It is owned by `tools/measure_step.py
+   --record` and covers exactly the files in `reference/measured/`; see
+   [docs/provenance.md](../docs/provenance.md). Each
    committed artefact records the exact upstream version it was measured
    from, as the foreign key **`(source_file_id, source_sha256)`**. Because
    versions are never removed, an old artefact's FK keeps resolving after the

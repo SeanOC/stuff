@@ -97,6 +97,16 @@ matrix.
 - Bundled libraries keep their own licenses:
   [`libs/BOSL2/LICENSE`](libs/BOSL2/LICENSE) (BSD-2-Clause) and
   [`libs/QuackWorks/LICENSE`](libs/QuackWorks/LICENSE) (CC BY-NC-SA 4.0).
+- **MultiBuild-derived files are excluded from the MIT grant.**
+  [`build123d/multibuild/tile.py`](build123d/multibuild/tile.py) and the
+  MultiBuild-derived reference artefacts in `build123d/reference/`
+  (`build123d/reference/measured/mb-*`) are remixes of Multiboard LTD's
+  MultiBuild designs. They are licensed only under the non-commercial
+  Multiboard Licence; see
+  [`build123d/multibuild/LICENSE-MULTIBOARD.md`](build123d/multibuild/LICENSE-MULTIBOARD.md).
+  Other measured artefacts carry their source licence (for example CC BY
+  4.0), recorded per file in
+  [`build123d/reference/artifact-manifest.json`](build123d/reference/artifact-manifest.json).
 
 ---
 

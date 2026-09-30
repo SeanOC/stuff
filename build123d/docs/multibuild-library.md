@@ -49,32 +49,50 @@ Base is at Z=0, tip at +Z. The conservative cavity inequality includes
 interference. Consumers must choose a printable tip (at least 1.8 mm) and
 validate physical fit.
 
+## Regenerated tile
+
+`multibuild.tile.tile(cells=(2, 2)) -> Part` builds a MultiBuild tile from
+**measured** values (`TILE_PROFILE`, every entry [V]). The corner is at the
+origin and the tile spans Z = 0..6.2. Large octagon holes sit at the cell
+centres, and small holes at the interior lattice points. It is an envelope
+fixture for installed-part review renders: bores are at the thread minor
+diameters, with no helices or edge teeth, and it is not a registered model.
+It is a remix under the Multiboard Licence, **not MIT**
+([LICENSE-MULTIBOARD.md](../multibuild/LICENSE-MULTIBOARD.md)).
+
 ## Provenance
 
-[C] cited claim; [V] checked source arithmetic/implementation; [U] unresolved.
-None certifies measured official hardware. Source keys below resolve in
+[V] measured from an official file (committed artefact under
+`reference/measured/`) or a physical print; [C] cited claim, including
+another project's source and arithmetic on cited numbers; [U] unresolved.
+The rule is [design-guidelines §7](design-guidelines.md#7-provenance), and
+[provenance.md](provenance.md) lists the measured artefacts and deltas.
+[C] source keys resolve in
 [research §2–3](multibuild-research.md#2-board-dimensions-and-seam-rules).
 `constants.PROVENANCE` accompanies every scalar; `LARGE_HOLE_PROFILE`
-contains value/status/source/locator records for each field.
+contains value/status/source/locator records for each field. A [V] locator is
+the measurement JSON. A cited value that a measurement contradicts stays
+unchanged and [C], with a `# measured` comment and a follow-up bead.
 
 | Primitive | Value (mm) | Status and source locator |
 | --- | --- | --- |
-| Grid pitch | 25 | [C] Core, Measurement System; §1 L29,42 |
-| Tile thickness | 6.4 | [C] SCAD L56–61 |
-| Small mouth / throat / band | 7.5 / 6 / 2.9 | [C] SCAD L96–104,237–265 |
-| Taper depth per face | 1.75 | [V] arithmetic (6.4−2.9)/2, SCAD L270–280 |
-| Large octagon mouth / central flats, band | 23.4 / 21.4, 2.4 | [C] SCAD L68–83,218–224,270–280 |
-| Large helix outer / inner diameter | 22.6 / 21.4 | [C] SCAD L85–94,228–233 |
-| Helix outer / inner axial width, pitch | 0.5 / 1.583, 2.5 | [C] SCAD L85–94,228–233 |
-| Large grid phase | (25i+12.5, 25j+12.5) | [V] SCAD L135–162,167–193 |
-| Small grid phase, where holes exist | (25i+25, 25j+25) | [V] same coordinate arithmetic |
-| Head and cutter allowances above | pinned Python implementation | [V] Python constants L11–15; multiconnect L62–108,188–254 |
-| Small-hole thread (not implemented) | pitch 3, outer/inner Ø7/6, axial widths 0.77/2.5 | [C] SCAD L100–104,257–265 |
+| Grid pitch | 25 | [V] `mb-large-octagon-hole-positive.json` |
+| Tile thickness | 6.4 | [C] SCAD L56–61; measured 6.2 → pst-rs70f |
+| Small mouth / throat / band | 7.5 / 6 / 2.9 | throat [V] `mb-small-thread-negative.json`; mouth, band [C] SCAD L96–104,237–265; measured 8.0 / 4.2 → pst-az4hh, pst-hav1h |
+| Taper depth per face | 1.75 | [C] arithmetic (6.4−2.9)/2, SCAD L270–280; measured 1.0 → pst-3spc5 |
+| Large octagon mouth / central flats, band | 23.4 / 21.4, 2.4 | flats [V] `mb-multihole-negative.json`; band [C] SCAD L68–83,218–224,270–280, measured 2.2 → pst-kooqt |
+| Large helix outer / inner diameter | 22.6 / 21.4 | inner [V] `mb-multihole-negative.json`; outer [C] SCAD L85–94,228–233, measured 22.5 → pst-23uzq |
+| Helix outer / inner axial width, pitch | 0.5 / 1.583, 2.5 | 0.5 and 2.5 [V] `mb-multihole-negative.json`; 1.583 [C] SCAD L85–94,228–233, measured 1.6 → pst-x5vo8 |
+| Large grid phase | (25i+12.5, 25j+12.5) | [V] `mb-large-octagon-hole-positive.json` + `mb-small-thread-hole-positive.json` |
+| Small grid phase, where holes exist | (25i+25, 25j+25) | [V] same files |
+| Head and cutter allowances above | pinned Python implementation | [V] equal to the official v2 files, `mc-v2-round*.json`, `mc-v2-slot-negative.json`; Python constants L11–15; multiconnect L62–108,188–254 |
+| Small-hole thread (not implemented) | pitch 3, outer/inner Ø7/6, axial widths 0.77/2.5 | Ø7/6 and 2.5 [V] `mb-small-thread-negative.json`; pitch and 0.77 [C] SCAD L100–104,257–265, measured 3.125 / 0.625 → pst-gvdrx, pst-5lum5 |
 | Tile edges | Core teeth on two sides, side on one, corner on neither; tooth-side size cells×25+8 | [C] SCAD README, Usage / Tile Stack Sizing |
 | Joining and wall offset | Dual Snaps; offset snap mounts 6.25 | [C] Mounting L46–50; Core §2.2 L88 |
 | Installed seam clearance | no global allowance established | [U] Mounting steps/images; Core connections |
-| Snap seat details | head spacing 0.795, triangle base 8, inset 0.6 | [V] Python multiconnect L260–332; spacing is not board pitch |
-| Official head equality / production thread fit | unqualified | [U] research §2–3 |
+| Snap seat details | head spacing 0.795, triangle base 8, inset 0.6 | [C] Python multiconnect L260–332; spacing is not board pitch |
+| Official head equality | head and negative equal the v2 modelling files | [V] `mc-v2-*.json` (research §3) |
+| Production thread fit | unqualified | [U] research §2–3 |
 | Fix-Point variants | Regular mates with hole; Lite with Rail and is 1 mm thinner | [C] Core §11 L238–251 |
 | Fix-Point profile / release force | not established | [U] Core §11; sliding removal alone proves no force threshold |
 

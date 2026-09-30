@@ -87,9 +87,13 @@ already exist (mayor, 2026-09-29):
 The move itself matches the workflow's own path filter, so the activating push
 to `main` triggers the first run. That run pulls every source in
 `source-manifest.json` (210 at the time of writing) and runs
-`pytest -m upstream`. The only upstream test so far is
-`test_every_manifest_source_is_present_and_verified`, so the run is green
-exactly when every source verifies.
+`pytest -m upstream`. The upstream tests are:
+
+- `test_every_manifest_source_is_present_and_verified`
+- pst-ff71's `test_runs_under_30s_on_every_measurable_source`, which covers
+  every STEP/STL source
+- `test_artifacts_regenerate`, which rebuilds the committed
+  `reference/measured/` JSON/SVG from the mirror
 
 **No `bd123.yml` change is needed.** The spec proposed adding
 `-m 'not upstream'` to bd123's pytest line. Instead, `build123d/pyproject.toml`

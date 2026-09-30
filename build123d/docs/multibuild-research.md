@@ -4,12 +4,17 @@ Research date: 2026-09-28. Scope: library groundwork for the wall spool cradle;
 no geometry implemented. **Recommend a thin `multibuild` adapter around the
 pinned Multiconnect cutters, plus separately validated board primitives.**
 
-**Evidence:** [V] independently checked source arithmetic/implementation;
-[C] cited author/specification claim, not independently measured hardware;
-[U] unresolved, including where the inspected source does not establish a fact.
-A [V] code value does **not** certify official-part or printed compatibility.
+**Evidence** ([design-guidelines §7](design-guidelines.md#7-provenance), pst-ff71):
+[V] measured from an official file (the committed measurement in
+`reference/measured/` is cited; see [provenance.md](provenance.md)) or a
+physical print; [C] cited claim (documentation, drawings, or another
+project's source, including arithmetic on cited numbers); [U] unresolved.
 Dimensions below are mm. Source keys link to URLs; locators identify exact
-sections or source lines. No official STEP was measured in this research.
+sections or source lines. The 2026-09-28 research measured no official file.
+pst-ff71 (2026-09-29) measured the official MultiBuild tile-component and
+Multiconnect v2 files. The "Measured" notes below give the confirmed values,
+the changed values and the deltas. A changed value keeps its cited number
+in code until its follow-up bead decides.
 
 ## 1. System, names, catalogue and publication
 
@@ -49,15 +54,15 @@ check; the MIT Python library does not establish rights in every referenced CAD 
 
 | Fact and status | Value / limit | Exact evidence |
 | --- | --- | --- |
-| [C] Grid pitch | 25 | [Core], “Measurement System” and §1, lines 29,42 |
-| [C] Board thickness | 6.4, from an author's official-remix measurements | [SCAD], `multiboard_base.scad` L56–61; cited original [tile remix](https://than.gs/m/994681) uploaded 2024-01-19 |
-| [C] Large-hole envelope | Octagon: across flats 23.4 at mouths, 21.4 centrally; central band height 2.4 | [SCAD] L68–83,218–224,270–280; these are not circular thread diameters |
-| [C] Large-hole thread | Trapezoidal helix: outer Ø22.6, inner Ø21.4; axial widths 0.5 outer / 1.583 inner; pitch 2.5 | [SCAD] L85–94; `multihole_threads` L228–233 extends helix past the 6.4 board before boolean operations |
+| [V] Grid pitch | 25 (confirms [C] [Core], “Measurement System” and §1, lines 29,42) | tile cell 25 × 25: `reference/measured/mb-large-octagon-hole-positive.json` |
+| [C] Board thickness | 6.4, from an author's official-remix measurements. **Measured [V] 6.2 (Δ −0.2)** in the official tile-component cells → pst-rs70f | [SCAD], `multiboard_base.scad` L56–61; cited original [tile remix](https://than.gs/m/994681) uploaded 2024-01-19; measured: planar levels 0 / 6.2 in `mb-large-octagon-hole-positive.json` |
+| [V] Large-hole envelope | Octagon: across flats 23.4 at mouths, 21.4 centrally ([V], confirms [SCAD]); 2.0 taper per face. Central band [C] 2.4, **measured 2.2 (Δ −0.2)** → pst-kooqt | [SCAD] L68–83,218–224,270–280; measured: `mb-multihole-negative.json` (XZ section). These are not circular thread diameters |
+| [V] Large-hole thread | Female helix, single start, right hand, 45° flanks: inner Ø21.4, outer axial width 0.5, pitch 2.5 ([V], confirm [SCAD]). Outer Ø [C] 22.6, **measured 22.5 (Δ −0.1)** → pst-23uzq; inner (base) width [C] 1.583, **measured 1.6 (Δ +0.017)** → pst-x5vo8 | [SCAD] L85–94; `multihole_threads` L228–233; measured: `mb-multihole-negative.json` |
 | [U] Production thread fit | Above is a reconstructed **female hole**, not a qualified male Multibolt/T-bolt spec. Starts, flank rounding, lead-in, male fit allowance and current official tolerances remain unverified | [SCAD] L85–94,285 onward; [Core] §5 gives compatibility, not a thread drawing |
-| [C] Small-hole envelope | Mouth Ø7.5, throat Ø6, central band 2.9; threaded rather than a plain conical bore | [SCAD] L96–104,237–265; [cup-lid reconciliation](cup-lid-validation.md#cavity-provenance-and-conservative-approximation--pst-akdj) |
-| [V] Small-hole taper depth | (6.4−2.9)/2 = **1.75** at each face; throat from depth 1.75 to 4.65 | Arithmetic from [SCAD] L270–280; [U] physical agreement pending STEP/print check |
-| [C] Small-hole thread | Pitch 3, outer Ø7, inner Ø6; axial widths 0.77 / 2.5 | [SCAD] L100–104,257–265 |
-| [V] Grid phase / edges | Large centers `(25i+12.5,25j+12.5)`; small centers `(25i+25,25j+25)` where present. First large center is 12.5 from the nominal cell boundary, not every scalloped outer edge | [SCAD] L135–162,167–193; arithmetic on source coordinates |
+| [C] Small-hole envelope | Mouth Ø7.5, throat Ø6, central band 2.9; threaded rather than a plain conical bore. **Measured:** throat Ø6.0 confirmed [V]; mouth **Ø8.0 (Δ +0.5)** → pst-az4hh; the official hole is a 45° Ø8→Ø6 chamfer then thread, so the "band" is **4.2 (Δ +1.3)** → pst-hav1h | [SCAD] L96–104,237–265; [cup-lid reconciliation](cup-lid-validation.md#cavity-provenance-and-conservative-approximation--pst-akdj); measured: `mb-small-thread-negative.json` |
+| [C] Small-hole taper depth | (6.4−2.9)/2 = **1.75** at each face (arithmetic on cited values, hence [C]). **Measured 1.0 (Δ −0.75)** → pst-3spc5 | Arithmetic from [SCAD] L270–280; measured: `mb-small-thread-negative.json` |
+| [C] Small-hole thread | Pitch 3, outer Ø7, inner Ø6; axial widths 0.77 / 2.5. **Measured:** Ø7 / Ø6 and the 2.5 base width confirmed [V]; pitch **3.125 (Δ +0.125)** → pst-gvdrx; outer width **0.625 (Δ −0.145)** → pst-5lum5. The male thread is Ø6.75 / Ø5.75 at the same pitch | [SCAD] L100–104,257–265; measured: `mb-small-thread-negative.json`, `mb-small-vertical-12-5mm-positive.json` |
+| [V] Grid phase / edges | Large centers `(25i+12.5,25j+12.5)`; small centers `(25i+25,25j+25)` where present. First large center is 12.5 from the nominal cell boundary, not every scalloped outer edge | Measured: large cell centred on (0, 0), small-hole cell on (12.5, 12.5) in the tile-component files (`mb-large-octagon-hole-positive.json`, `mb-small-thread-hole-positive.json`); confirms [SCAD] L135–162,167–193 |
 | [C] Tile edge variants | Core has projecting peg-hole teeth on two sides; side on one; corner on neither. Tooth-side bounding size is cell count ×25 +8 | [SCAD README] “Usage” / “Tile Stack Sizing”; not an 8 mm gap between tiles |
 | [C] Joining | Official installation uses Dual Snaps; offset snap mounts give 6.25 wall offset | [Mounting], “Installation Steps”, L46–50; [Core] §2.2 L88 |
 | [U] Seam collision / clearances | Nominal lattice continuity does not prove clearance past snap heads, pillars, teeth or a misaligned installed seam. No official global fit allowance found | [Mounting] steps/images and [Core] connection descriptions; need installed hardware envelope and chosen tile variant |
@@ -73,17 +78,17 @@ shared-library profile; official STEP measurements remain [U].
 | Fact and status | Finding and exact evidence |
 | --- | --- |
 | [U] Threaded Multiconnect on MultiBoard | Candidate is David D's raised connector [model 1074671](https://www.printables.com/model/1074671-multiconnect-generic-connector-for-multiboard-v2), with the board-threaded base and round accessory head. Direct page fetch failed; exact large-thread variant, stand-off and revisions need confirmation from its files. [openGrid] “Highlighted models” identifies raised/flush variants, not their dimensions. |
-| [V] Pinned library head | [Python] `constants.py` L11–15: radii 10 / 7.5; axial heights 1 + 2.5 taper + 0.5 = 4. `multiconnect.py` L62–108 builds that round profile. |
-| [V] Cutter profile / clearance | [Python] `multiconnect.py` L188–219,225–254: radial allowance 0.15; slot full-width allowance 0.3; bottom-height +0.212132034, top-height −0.062132034; derived depth 4.15. These are library allowances, not verified official MultiBuild tolerances. |
-| [U] Official profile equality | [openGrid organization](https://github.com/openGrid-3D/) recommends changing generator grid size for Multiconnect compatibility; that supports reuse in principle, not dimensional equality of every revision. Compare the selected head/negative in David D's [v2 modelling files](https://www.printables.com/model/1008622-multiconnect-for-multiboard-v2-modeling-files) with the above. Fetch failed; no STEP equality claimed. |
-| [V] Slot travel vs spacing | [Python] `constants.py` L4,17 defaults length to 28; `Slot` accepts length (`multiconnect.py` L17–24). Board head-center locations instead use integer multiples of 25 ([Core] §1); that placement is independent of entry travel. A same-row centered array is `x=(i−(count−1)/2)*25`. |
-| [V] Snap-in variant | [Python] `SnapInSlotCutter` L260–332 combines slot, triangular exclusions and paired head cutters: local `head_spacing=0.795`, triangle base 8, inset 0.6. This spacing is a seat detail, **not board pitch**. `SnapInSlot` L119–160 also scales asymmetric notch positions by length / length-reference (default reference 28). |
+| [V] Pinned library head | [Python] `constants.py` L11–15: radii 10 / 7.5; axial heights 1 + 2.5 taper + 0.5 = 4. `multiconnect.py` L62–108 builds that round profile. Measured equal to the official v2 head: `reference/measured/mc-v2-round.json`. |
+| [V] Cutter profile / clearance | [Python] `multiconnect.py` L188–219,225–254: radial allowance 0.15; slot full-width allowance 0.3; bottom-height +0.212132034, top-height −0.062132034; derived depth 4.15. Measured equal to the official v2 negatives (r 10.15 / 7.65, bands 1.2121 / 0.4379, depth 4.15, slot 20.3 wide): `mc-v2-round-negative.json`, `mc-v2-slot-negative.json`. These are Multiconnect's own allowances; no MultiBuild-specific tolerance is implied. |
+| [V] Official profile equality | Measured (pst-ff71): David D's [v2 modelling files](https://www.printables.com/model/1008622-multiconnect-for-multiboard-v2-modeling-files) head (r 10 / 7.5; 1 + 2.5 + 0.5) and negative (+0.15 radial; bands 1.2121 / 0.4379; depth 4.15) **equal** the pinned library above. The official dimension PDFs agree [C]. One official slot segment is 25 long (board pitch); the library's 28 default is the openGrid unit. Evidence: `reference/measured/mc-v2-*.json`. This does not cover every connector revision. |
+| [C] Slot travel vs spacing | [Python] `constants.py` L4,17 defaults length to 28; `Slot` accepts length (`multiconnect.py` L17–24). Board head-center locations instead use integer multiples of 25 ([Core] §1); that placement is independent of entry travel. A same-row centered array is `x=(i−(count−1)/2)*25`. |
+| [C] Snap-in variant | [Python] `SnapInSlotCutter` L260–332 combines slot, triangular exclusions and paired head cutters: local `head_spacing=0.795`, triangle base 8, inset 0.6. This spacing is a seat detail, **not board pitch**. `SnapInSlot` L119–160 also scales asymmetric notch positions by length / length-reference (default reference 28). |
 | [C] Fix-Point alternative | Regular mates with a hole; Lite with a Rail and is 1 mm thinner. Installation/removal is sliding; tile anchoring can use threads or bolt-locking ([Core] §11, L238–251). Do not treat all Multipoints as push-in snap pegs. |
 | [U] Fix-Point geometry / bump retention | Head cross-section, neck, negative, detent and release force were not established by [Core] §11. Need selected official remix files. The description of slide removal does not prove upward-bump resistance. |
-| [V]/[U] Existing holders / likely intent | Repo `holders/cylindrical.py` imports Multiconnect cutters and uses openGrid spacing ([local source](../holders/cylindrical.py), L91–95,135–175). Multiconnect is therefore the leading hypothesis for those holders. Sean's physical mounts remain [U]: “slide on to fixed points” also describes Fix-Points per [Core] §11. |
+| [C]/[U] Existing holders / likely intent | Repo `holders/cylindrical.py` imports Multiconnect cutters and uses openGrid spacing ([local source](../holders/cylindrical.py), L91–95,135–175). Multiconnect is therefore the leading hypothesis for those holders. Sean's physical mounts remain [U]: “slide on to fixed points” also describes Fix-Points per [Core] §11. |
 
 **Design recommendation:** prioritize a positive anti-lift feature or validated
-snap retention for the spool cradle. [V] The current [mount contract](../tests/mount_contracts.py)
+snap retention for the spool cradle. [C] The current [mount contract](../tests/mount_contracts.py)
 L230–289 checks normal pull-off capture and dovetail direction; [U] it does not
 measure upward release force, creep or impact. Neither system is proven
 bump-proof by this research. Multiconnect needs pitch-aware placement and
@@ -143,8 +148,10 @@ physical PETG/PCTG bump/creep trials before claiming retention performance.
 - Which tile variant, wall offset and seam hardware must the holder clear?
 - What loaded spool mass, bump direction and acceptable removal action define
   retention? Is a release tab or locking bolt acceptable?
-- Obtain the selected official remix STEP files for thread, head and Fix-Point
-  measurements; resolve the small-hole discrepancy in pst-akdj.
+- ~~Obtain the selected official remix STEP files~~: mirrored and measured
+  by pst-ff71 ([provenance.md](provenance.md)). Fix-Point and snap files are
+  mirrored but not yet measured. The small-hole discrepancy (pst-akdj) is
+  now quantified: mouth Ø8, 45° to Ø6 at 1.0 (pst-az4hh, pst-3spc5).
 - Is the site serving free remix downloads only, or commercial/paid content?
   Confirm licence treatment for the actual derived assets before publication.
 
