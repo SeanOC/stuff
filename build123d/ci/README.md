@@ -59,3 +59,40 @@ job's **Summary** page shows the `## Advisory render review` section, which
 names the exact model id and prompt version it used. AC 4's live dry run cannot
 be performed by the worker (it can neither merge the workflow nor add the
 secret) — it is the first thing to confirm after activation.
+
+---
+
+# Staged workflow — trusted reference-mirror measurement (pst-m9k6)
+
+`reference-measure.yml` is the trusted push-to-main workflow for the private
+upstream reference mirror (see `build123d/reference/FETCH.md`). The worker
+policy forbids adding it under `.github/workflows/`, so it is staged here and
+stays inert until an operator activates it.
+
+## Activate (operator)
+
+```bash
+uvx --from actionlint-py==1.7.12.25 actionlint build123d/ci/reference-measure.yml   # exits 0
+git mv build123d/ci/reference-measure.yml .github/workflows/reference-measure.yml
+git commit -m "ops(reference-measure): activate trusted reference-mirror workflow (pst-m9k6)"
+```
+
+The file needs no edits when it moves. Its header comment still says STAGED,
+so you can delete those first four lines as part of the move. Prerequisites
+already exist (mayor, 2026-09-29):
+
+- the repo variables `GCP_WIF_PROVIDER` and `GCP_REFERENCE_READER_SA`
+- the read-only SA's WIF binding to `repo:SeanOC/stuff:ref:refs/heads/main`
+
+The move itself matches the workflow's own path filter, so the activating push
+to `main` triggers the first run. That run pulls every source in
+`source-manifest.json` (210 at the time of writing) and runs
+`pytest -m upstream`. The only upstream test so far is
+`test_every_manifest_source_is_present_and_verified`, so the run is green
+exactly when every source verifies.
+
+**No `bd123.yml` change is needed.** The spec proposed adding
+`-m 'not upstream'` to bd123's pytest line. Instead, `build123d/pyproject.toml`
+now sets `addopts = "-m 'not upstream'"`, which deselects those tests in PR CI
+and for plain local `pytest`. The trusted workflow's explicit `-m upstream`
+wins because the last `-m` on the command line takes precedence.
