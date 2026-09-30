@@ -1,0 +1,3785 @@
+{
+  "schema": 2,
+  "sources": [
+    {
+      "source_file_id": "multibuild-fix-point-slots/fix-point-slot-negative.step",
+      "source_group_id": "multibuild-fix-point-slots",
+      "filename": "Fix Point Slot - Negative.step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "975b44647bfe6e13e5e3cd9d232872c5c20670859d9728f7992448dd1cced86a",
+      "versions": [
+        {
+          "sha256": "975b44647bfe6e13e5e3cd9d232872c5c20670859d9728f7992448dd1cced86a",
+          "size": 45023,
+          "gcs": "gs://stuff-reference-upstream/multibuild-fix-point-slots/975b44647bfe6e13e5e3cd9d232872c5c20670859d9728f7992448dd1cced86a/Fix Point Slot - Negative.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-fix-point-slots/fix-point-slot-with-magnet-hole-horizontal-negative.step",
+      "source_group_id": "multibuild-fix-point-slots",
+      "filename": "Fix Point Slot with Magnet Hole - Horizontal, Negative.step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "37b99977bf09777d45c98138f5ffcf3352d659c0fb720a60c72a99b35e3b6b84",
+      "versions": [
+        {
+          "sha256": "37b99977bf09777d45c98138f5ffcf3352d659c0fb720a60c72a99b35e3b6b84",
+          "size": 67396,
+          "gcs": "gs://stuff-reference-upstream/multibuild-fix-point-slots/37b99977bf09777d45c98138f5ffcf3352d659c0fb720a60c72a99b35e3b6b84/Fix Point Slot with Magnet Hole - Horizontal, Negative.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-fix-point-slots/fix-point-slot-with-magnet-hole-vertical-negative.step",
+      "source_group_id": "multibuild-fix-point-slots",
+      "filename": "Fix Point Slot with Magnet Hole - Vertical, Negative.step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "47ad7431c1dfd79ffaffb2f1f85a90ff1051c2f3bb562260ae994704bbf398f8",
+      "versions": [
+        {
+          "sha256": "47ad7431c1dfd79ffaffb2f1f85a90ff1051c2f3bb562260ae994704bbf398f8",
+          "size": 67937,
+          "gcs": "gs://stuff-reference-upstream/multibuild-fix-point-slots/47ad7431c1dfd79ffaffb2f1f85a90ff1051c2f3bb562260ae994704bbf398f8/Fix Point Slot with Magnet Hole - Vertical, Negative.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-fix-point-slots/fix-point-slots-step-remixing-files.zip",
+      "source_group_id": "multibuild-fix-point-slots",
+      "filename": "Fix_Point_Slots_-_STEP_Remixing_Files.zip",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "9c43e141553dbf837bdee63c02554b5b6ddaaed49dcfe0d27e12a9a40fe5da09",
+      "versions": [
+        {
+          "sha256": "9c43e141553dbf837bdee63c02554b5b6ddaaed49dcfe0d27e12a9a40fe5da09",
+          "size": 36344,
+          "gcs": "gs://stuff-reference-upstream/multibuild-fix-point-slots/9c43e141553dbf837bdee63c02554b5b6ddaaed49dcfe0d27e12a9a40fe5da09/Fix_Point_Slots_-_STEP_Remixing_Files.zip",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-fix-points/fix-point-horizontal-negative.step",
+      "source_group_id": "multibuild-fix-points",
+      "filename": "Fix Point - Horizontal, Negative.step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "3bc116ea01aff8df716747bae3c94bf19aaddc64832700a4900625e1b4e865d0",
+      "versions": [
+        {
+          "sha256": "3bc116ea01aff8df716747bae3c94bf19aaddc64832700a4900625e1b4e865d0",
+          "size": 40492,
+          "gcs": "gs://stuff-reference-upstream/multibuild-fix-points/3bc116ea01aff8df716747bae3c94bf19aaddc64832700a4900625e1b4e865d0/Fix Point - Horizontal, Negative.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-fix-points/fix-point-negative.step",
+      "source_group_id": "multibuild-fix-points",
+      "filename": "Fix Point - Negative.step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "3d2da041521a518530ebaf687374b64434795194fae3e46477dca3610bf91c8e",
+      "versions": [
+        {
+          "sha256": "3d2da041521a518530ebaf687374b64434795194fae3e46477dca3610bf91c8e",
+          "size": 19801,
+          "gcs": "gs://stuff-reference-upstream/multibuild-fix-points/3d2da041521a518530ebaf687374b64434795194fae3e46477dca3610bf91c8e/Fix Point - Negative.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-fix-points/fix-point-positive.step",
+      "source_group_id": "multibuild-fix-points",
+      "filename": "Fix Point - Positive.step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "28739a5cbef3a7ea1122d1f6b8f021b15bca3e24ac84bfcf76d6068f86e9829a",
+      "versions": [
+        {
+          "sha256": "28739a5cbef3a7ea1122d1f6b8f021b15bca3e24ac84bfcf76d6068f86e9829a",
+          "size": 38886,
+          "gcs": "gs://stuff-reference-upstream/multibuild-fix-points/28739a5cbef3a7ea1122d1f6b8f021b15bca3e24ac84bfcf76d6068f86e9829a/Fix Point - Positive.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-fix-points/fix-point-twist-hole-negative.step",
+      "source_group_id": "multibuild-fix-points",
+      "filename": "Fix Point Twist Hole - Negative.step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "a20a1dd8bb4f2cc68e3d0e61d5bf57436d7b7e160a97a24524670558ae622fa9",
+      "versions": [
+        {
+          "sha256": "a20a1dd8bb4f2cc68e3d0e61d5bf57436d7b7e160a97a24524670558ae622fa9",
+          "size": 25549,
+          "gcs": "gs://stuff-reference-upstream/multibuild-fix-points/a20a1dd8bb4f2cc68e3d0e61d5bf57436d7b7e160a97a24524670558ae622fa9/Fix Point Twist Hole - Negative.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-fix-points/fix-point-with-turn-slot-positive.step",
+      "source_group_id": "multibuild-fix-points",
+      "filename": "Fix Point with Turn Slot - Positive.step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "1f6a7cd77044a215f7af2367c3a3d4c9f9ef7134bdffa6263b39ba7bf4a58c2e",
+      "versions": [
+        {
+          "sha256": "1f6a7cd77044a215f7af2367c3a3d4c9f9ef7134bdffa6263b39ba7bf4a58c2e",
+          "size": 41842,
+          "gcs": "gs://stuff-reference-upstream/multibuild-fix-points/1f6a7cd77044a215f7af2367c3a3d4c9f9ef7134bdffa6263b39ba7bf4a58c2e/Fix Point with Turn Slot - Positive.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-fix-points/fix-points-step-remixing-files.zip",
+      "source_group_id": "multibuild-fix-points",
+      "filename": "Fix_Points_-_STEP_Remixing_Files.zip",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "45cd6643cd88ea7cd95d57f59e3c3adc462d285ffe0b78e619a35d70791ef9e5",
+      "versions": [
+        {
+          "sha256": "45cd6643cd88ea7cd95d57f59e3c3adc462d285ffe0b78e619a35d70791ef9e5",
+          "size": 58268,
+          "gcs": "gs://stuff-reference-upstream/multibuild-fix-points/45cd6643cd88ea7cd95d57f59e3c3adc462d285ffe0b78e619a35d70791ef9e5/Fix_Points_-_STEP_Remixing_Files.zip",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-fix-points/lite-fix-point-horizontal-negative.step",
+      "source_group_id": "multibuild-fix-points",
+      "filename": "Lite Fix Point - Horizontal, Negative.step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "b7d7f119e4921d2354d3116da4093118ca4fa0184161b0c82d141e52e6375256",
+      "versions": [
+        {
+          "sha256": "b7d7f119e4921d2354d3116da4093118ca4fa0184161b0c82d141e52e6375256",
+          "size": 40402,
+          "gcs": "gs://stuff-reference-upstream/multibuild-fix-points/b7d7f119e4921d2354d3116da4093118ca4fa0184161b0c82d141e52e6375256/Lite Fix Point - Horizontal, Negative.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-fix-points/lite-fix-point-negative.step",
+      "source_group_id": "multibuild-fix-points",
+      "filename": "Lite Fix Point - Negative.step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "b2552d6c4cf568695056920c119be00f8c78df3d40f696e3da6015825c73bb4a",
+      "versions": [
+        {
+          "sha256": "b2552d6c4cf568695056920c119be00f8c78df3d40f696e3da6015825c73bb4a",
+          "size": 19564,
+          "gcs": "gs://stuff-reference-upstream/multibuild-fix-points/b2552d6c4cf568695056920c119be00f8c78df3d40f696e3da6015825c73bb4a/Lite Fix Point - Negative.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-fix-points/lite-fix-point-positive.step",
+      "source_group_id": "multibuild-fix-points",
+      "filename": "Lite Fix Point - Positive.step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "3f3dd246c1c82323a8f918c285c3c07bc08f29197b918a92f9ed4f4ba5360bb1",
+      "versions": [
+        {
+          "sha256": "3f3dd246c1c82323a8f918c285c3c07bc08f29197b918a92f9ed4f4ba5360bb1",
+          "size": 13772,
+          "gcs": "gs://stuff-reference-upstream/multibuild-fix-points/3f3dd246c1c82323a8f918c285c3c07bc08f29197b918a92f9ed4f4ba5360bb1/Lite Fix Point - Positive.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-fix-points/lite-fix-point-with-turn-slot-positive.step",
+      "source_group_id": "multibuild-fix-points",
+      "filename": "Lite Fix Point with Turn Slot - Positive.step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "ac0e3b5f6d7e4486e107bb53524894e4c2eb6b2c8bae9a60f098724aecd5aeba",
+      "versions": [
+        {
+          "sha256": "ac0e3b5f6d7e4486e107bb53524894e4c2eb6b2c8bae9a60f098724aecd5aeba",
+          "size": 16809,
+          "gcs": "gs://stuff-reference-upstream/multibuild-fix-points/ac0e3b5f6d7e4486e107bb53524894e4c2eb6b2c8bae9a60f098724aecd5aeba/Lite Fix Point with Turn Slot - Positive.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/100mm-small-hole-negative-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "100mm - Small Hole (Negative).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "db8c8cebee30dfb17613104684fc623b396083f94d0e899c98101b1262a7bdeb",
+      "versions": [
+        {
+          "sha256": "db8c8cebee30dfb17613104684fc623b396083f94d0e899c98101b1262a7bdeb",
+          "size": 22535,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/db8c8cebee30dfb17613104684fc623b396083f94d0e899c98101b1262a7bdeb/100mm - Small Hole (Negative).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/100mm-small-horizontal-0deg-chamfered-negative-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "100mm - Small Horizontal 0deg Chamfered (Negative).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "9a3d5be10754a71b030e5cfbe2f7b32374230718d74980e415f35d812701ee95",
+      "versions": [
+        {
+          "sha256": "9a3d5be10754a71b030e5cfbe2f7b32374230718d74980e415f35d812701ee95",
+          "size": 2922645,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/9a3d5be10754a71b030e5cfbe2f7b32374230718d74980e415f35d812701ee95/100mm - Small Horizontal 0deg Chamfered (Negative).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/100mm-small-horizontal-0deg-negative-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "100mm - Small Horizontal 0deg (Negative).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "e422f0359b4eb44fb4f89bd32ddb9178312ced9379974453df276e12a5230b6c",
+      "versions": [
+        {
+          "sha256": "e422f0359b4eb44fb4f89bd32ddb9178312ced9379974453df276e12a5230b6c",
+          "size": 2943407,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/e422f0359b4eb44fb4f89bd32ddb9178312ced9379974453df276e12a5230b6c/100mm - Small Horizontal 0deg (Negative).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/100mm-small-horizontal-0deg-positive-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "100mm - Small Horizontal 0deg (Positive).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "a434c23ccb2f78c801d1c92b410d9068f99bfc2e514344234f8f6e60b71d148a",
+      "versions": [
+        {
+          "sha256": "a434c23ccb2f78c801d1c92b410d9068f99bfc2e514344234f8f6e60b71d148a",
+          "size": 1646631,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/a434c23ccb2f78c801d1c92b410d9068f99bfc2e514344234f8f6e60b71d148a/100mm - Small Horizontal 0deg (Positive).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/100mm-small-horizontal-90deg-chamfered-negative-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "100mm - Small Horizontal 90deg Chamfered (Negative).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "451f9a7423f5f01d5bde72e13dba1ee4bd4278fe3a386af23edcc734984b44d3",
+      "versions": [
+        {
+          "sha256": "451f9a7423f5f01d5bde72e13dba1ee4bd4278fe3a386af23edcc734984b44d3",
+          "size": 2911814,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/451f9a7423f5f01d5bde72e13dba1ee4bd4278fe3a386af23edcc734984b44d3/100mm - Small Horizontal 90deg Chamfered (Negative).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/100mm-small-horizontal-90deg-negative-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "100mm - Small Horizontal 90deg (Negative).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "d7bbf68848e3acd8f7d06a572ff8f87fc58964e9b763c014675d887e6a05b760",
+      "versions": [
+        {
+          "sha256": "d7bbf68848e3acd8f7d06a572ff8f87fc58964e9b763c014675d887e6a05b760",
+          "size": 2922861,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/d7bbf68848e3acd8f7d06a572ff8f87fc58964e9b763c014675d887e6a05b760/100mm - Small Horizontal 90deg (Negative).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/100mm-small-horizontal-90deg-positive-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "100mm - Small Horizontal 90deg (Positive).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "0440cc23551d7994b0dc42d89f5e951438065ea9c2510c28c0f5ead0ebff67fd",
+      "versions": [
+        {
+          "sha256": "0440cc23551d7994b0dc42d89f5e951438065ea9c2510c28c0f5ead0ebff67fd",
+          "size": 1673602,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/0440cc23551d7994b0dc42d89f5e951438065ea9c2510c28c0f5ead0ebff67fd/100mm - Small Horizontal 90deg (Positive).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/100mm-small-vertical-chamfered-negative-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "100mm - Small Vertical Chamfered (Negative).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "68e60f2ffaae7efe4ec16e68d65d6e36e27f5cf0162217b3c57286ba895bfe78",
+      "versions": [
+        {
+          "sha256": "68e60f2ffaae7efe4ec16e68d65d6e36e27f5cf0162217b3c57286ba895bfe78",
+          "size": 744609,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/68e60f2ffaae7efe4ec16e68d65d6e36e27f5cf0162217b3c57286ba895bfe78/100mm - Small Vertical Chamfered (Negative).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/100mm-small-vertical-negative-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "100mm - Small Vertical (Negative).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "880a1527b0c6c1dc0273c6c8aa9a9c4230d7c7ca8fb63078122173aba02f3f4c",
+      "versions": [
+        {
+          "sha256": "880a1527b0c6c1dc0273c6c8aa9a9c4230d7c7ca8fb63078122173aba02f3f4c",
+          "size": 749484,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/880a1527b0c6c1dc0273c6c8aa9a9c4230d7c7ca8fb63078122173aba02f3f4c/100mm - Small Vertical (Negative).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/100mm-small-vertical-positive-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "100mm - Small Vertical (Positive).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "812317018dcb2b7b6e2bf74c87dd6edd90f697ad5dfb243ed6ff16347e60eca7",
+      "versions": [
+        {
+          "sha256": "812317018dcb2b7b6e2bf74c87dd6edd90f697ad5dfb243ed6ff16347e60eca7",
+          "size": 743821,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/812317018dcb2b7b6e2bf74c87dd6edd90f697ad5dfb243ed6ff16347e60eca7/100mm - Small Vertical (Positive).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/12.5mm-small-hole-negative-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "12.5mm - Small Hole (Negative).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "16ace72b169c730ab33b4330b7d756fad44c07456cc13778ae5e755ee6825a37",
+      "versions": [
+        {
+          "sha256": "16ace72b169c730ab33b4330b7d756fad44c07456cc13778ae5e755ee6825a37",
+          "size": 22539,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/16ace72b169c730ab33b4330b7d756fad44c07456cc13778ae5e755ee6825a37/12.5mm - Small Hole (Negative).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/12.5mm-small-horizontal-0deg-chamfered-negative-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "12.5mm - Small Horizontal 0deg Chamfered (Negative).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "9f10baf36b677520e3052aec5abf38a62af480ca2b23c1a8522c7c7e69ddb537",
+      "versions": [
+        {
+          "sha256": "9f10baf36b677520e3052aec5abf38a62af480ca2b23c1a8522c7c7e69ddb537",
+          "size": 317550,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/9f10baf36b677520e3052aec5abf38a62af480ca2b23c1a8522c7c7e69ddb537/12.5mm - Small Horizontal 0deg Chamfered (Negative).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/12.5mm-small-horizontal-0deg-negative-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "12.5mm - Small Horizontal 0deg (Negative).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "b3cff8593c840f35e4f514f5d7806e45586d34f5122a1d6325f0707bcaa85b13",
+      "versions": [
+        {
+          "sha256": "b3cff8593c840f35e4f514f5d7806e45586d34f5122a1d6325f0707bcaa85b13",
+          "size": 333647,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/b3cff8593c840f35e4f514f5d7806e45586d34f5122a1d6325f0707bcaa85b13/12.5mm - Small Horizontal 0deg (Negative).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/12.5mm-small-horizontal-0deg-positive-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "12.5mm - Small Horizontal 0deg (Positive).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "9a90b7321be6dacf7d21ac176533a8d7ca9ae76d8eb918674eae6e5aa708ce1a",
+      "versions": [
+        {
+          "sha256": "9a90b7321be6dacf7d21ac176533a8d7ca9ae76d8eb918674eae6e5aa708ce1a",
+          "size": 259561,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/9a90b7321be6dacf7d21ac176533a8d7ca9ae76d8eb918674eae6e5aa708ce1a/12.5mm - Small Horizontal 0deg (Positive).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/12.5mm-small-horizontal-90deg-chamfered-negative-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "12.5mm - Small Horizontal 90deg Chamfered (Negative).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "6c7b9271eadc6bbbc8f8a972d04b873190eb429b8a2b0965b3295d195d78ae1c",
+      "versions": [
+        {
+          "sha256": "6c7b9271eadc6bbbc8f8a972d04b873190eb429b8a2b0965b3295d195d78ae1c",
+          "size": 317913,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/6c7b9271eadc6bbbc8f8a972d04b873190eb429b8a2b0965b3295d195d78ae1c/12.5mm - Small Horizontal 90deg Chamfered (Negative).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/12.5mm-small-horizontal-90deg-negative-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "12.5mm - Small Horizontal 90deg (Negative).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "59b3cb732667424ae30f01fef7bcff7ff95d30b055c4ac527781e469a4ec176e",
+      "versions": [
+        {
+          "sha256": "59b3cb732667424ae30f01fef7bcff7ff95d30b055c4ac527781e469a4ec176e",
+          "size": 332454,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/59b3cb732667424ae30f01fef7bcff7ff95d30b055c4ac527781e469a4ec176e/12.5mm - Small Horizontal 90deg (Negative).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/12.5mm-small-horizontal-90deg-positive-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "12.5mm - Small Horizontal 90deg (Positive).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "903cf29193b2a52492f23ddcbf8b3e981e503be7145413f436ebe247fef3cb66",
+      "versions": [
+        {
+          "sha256": "903cf29193b2a52492f23ddcbf8b3e981e503be7145413f436ebe247fef3cb66",
+          "size": 255250,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/903cf29193b2a52492f23ddcbf8b3e981e503be7145413f436ebe247fef3cb66/12.5mm - Small Horizontal 90deg (Positive).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/12.5mm-small-vertical-chamfered-negative-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "12.5mm - Small Vertical Chamfered (Negative).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "62062263683793c3e2e308d4daa4a44dedfe19584a7eb4afc0e27533c74783dc",
+      "versions": [
+        {
+          "sha256": "62062263683793c3e2e308d4daa4a44dedfe19584a7eb4afc0e27533c74783dc",
+          "size": 161424,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/62062263683793c3e2e308d4daa4a44dedfe19584a7eb4afc0e27533c74783dc/12.5mm - Small Vertical Chamfered (Negative).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/12.5mm-small-vertical-negative-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "12.5mm - Small Vertical (Negative).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "77f5ce55f22fe38c6944cb5a15f6cbce25c136258058ca3d1417c2091c521aa4",
+      "versions": [
+        {
+          "sha256": "77f5ce55f22fe38c6944cb5a15f6cbce25c136258058ca3d1417c2091c521aa4",
+          "size": 159704,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/77f5ce55f22fe38c6944cb5a15f6cbce25c136258058ca3d1417c2091c521aa4/12.5mm - Small Vertical (Negative).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/12.5mm-small-vertical-positive-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "12.5mm - Small Vertical (Positive).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "8f87cd8d41161963250b1739163a5c4434d887dd94226b2e5aeef806b7a2df78",
+      "versions": [
+        {
+          "sha256": "8f87cd8d41161963250b1739163a5c4434d887dd94226b2e5aeef806b7a2df78",
+          "size": 159767,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/8f87cd8d41161963250b1739163a5c4434d887dd94226b2e5aeef806b7a2df78/12.5mm - Small Vertical (Positive).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/25mm-small-hole-negative-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "25mm - Small Hole (Negative).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "94f72b21348cf38756c8d23a440b35787e61b336cf0c54555421720e11bf8371",
+      "versions": [
+        {
+          "sha256": "94f72b21348cf38756c8d23a440b35787e61b336cf0c54555421720e11bf8371",
+          "size": 22532,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/94f72b21348cf38756c8d23a440b35787e61b336cf0c54555421720e11bf8371/25mm - Small Hole (Negative).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/25mm-small-horizontal-0deg-chamfered-negative-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "25mm - Small Horizontal 0deg Chamfered (Negative).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "7a1f3551b5b7d11e76f10ff3132b2cf2769542758184d5be8ebb8920c1eab525",
+      "versions": [
+        {
+          "sha256": "7a1f3551b5b7d11e76f10ff3132b2cf2769542758184d5be8ebb8920c1eab525",
+          "size": 649636,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/7a1f3551b5b7d11e76f10ff3132b2cf2769542758184d5be8ebb8920c1eab525/25mm - Small Horizontal 0deg Chamfered (Negative).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/25mm-small-horizontal-0deg-negative-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "25mm - Small Horizontal 0deg (Negative).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "b884a589cbd36b5c920eb4dee9b36942f9e0cb87cc727dfac8740d8f49b202c4",
+      "versions": [
+        {
+          "sha256": "b884a589cbd36b5c920eb4dee9b36942f9e0cb87cc727dfac8740d8f49b202c4",
+          "size": 663630,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/b884a589cbd36b5c920eb4dee9b36942f9e0cb87cc727dfac8740d8f49b202c4/25mm - Small Horizontal 0deg (Negative).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/25mm-small-horizontal-0deg-positive-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "25mm - Small Horizontal 0deg (Positive).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "759ea5563fb74096d77092f45aa4fae57fd1ec472fdcd1efbde3f6281eb52c00",
+      "versions": [
+        {
+          "sha256": "759ea5563fb74096d77092f45aa4fae57fd1ec472fdcd1efbde3f6281eb52c00",
+          "size": 458690,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/759ea5563fb74096d77092f45aa4fae57fd1ec472fdcd1efbde3f6281eb52c00/25mm - Small Horizontal 0deg (Positive).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/25mm-small-horizontal-90deg-chamfered-negative-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "25mm - Small Horizontal 90deg Chamfered (Negative).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "1938074c676a7141a76ae4910fd39f77cbec77b0e30867256ed5b8fb479be6b4",
+      "versions": [
+        {
+          "sha256": "1938074c676a7141a76ae4910fd39f77cbec77b0e30867256ed5b8fb479be6b4",
+          "size": 633739,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/1938074c676a7141a76ae4910fd39f77cbec77b0e30867256ed5b8fb479be6b4/25mm - Small Horizontal 90deg Chamfered (Negative).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/25mm-small-horizontal-90deg-negative-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "25mm - Small Horizontal 90deg (Negative).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "90ca4848ae5dab000fc42915440fdda41e13160602e5047501db74844c024071",
+      "versions": [
+        {
+          "sha256": "90ca4848ae5dab000fc42915440fdda41e13160602e5047501db74844c024071",
+          "size": 648295,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/90ca4848ae5dab000fc42915440fdda41e13160602e5047501db74844c024071/25mm - Small Horizontal 90deg (Negative).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/25mm-small-horizontal-90deg-positive-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "25mm - Small Horizontal 90deg (Positive).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "ef3a4b72a6fce9e12d822142a2d1b3e93bb029ff6bfb5dfa41b2effaad760729",
+      "versions": [
+        {
+          "sha256": "ef3a4b72a6fce9e12d822142a2d1b3e93bb029ff6bfb5dfa41b2effaad760729",
+          "size": 455380,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/ef3a4b72a6fce9e12d822142a2d1b3e93bb029ff6bfb5dfa41b2effaad760729/25mm - Small Horizontal 90deg (Positive).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/25mm-small-vertical-chamfered-negative-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "25mm - Small Vertical Chamfered (Negative).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "940e7d563f737f0dd029564cde0a9ba3f1790fbb40507c0317c22aa683fb8ab3",
+      "versions": [
+        {
+          "sha256": "940e7d563f737f0dd029564cde0a9ba3f1790fbb40507c0317c22aa683fb8ab3",
+          "size": 229055,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/940e7d563f737f0dd029564cde0a9ba3f1790fbb40507c0317c22aa683fb8ab3/25mm - Small Vertical Chamfered (Negative).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/25mm-small-vertical-negative-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "25mm - Small Vertical (Negative).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "a65eb05974b954f0a5c038e6ea2f7e3a8f36fdc0cc1e572102c2b20f985643b4",
+      "versions": [
+        {
+          "sha256": "a65eb05974b954f0a5c038e6ea2f7e3a8f36fdc0cc1e572102c2b20f985643b4",
+          "size": 248546,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/a65eb05974b954f0a5c038e6ea2f7e3a8f36fdc0cc1e572102c2b20f985643b4/25mm - Small Vertical (Negative).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/25mm-small-vertical-positive-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "25mm - Small Vertical (Positive).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "d221f08fb3d2e39262ec356d2666b802909143f6c0ef5ba50fdb673f2fc820d3",
+      "versions": [
+        {
+          "sha256": "d221f08fb3d2e39262ec356d2666b802909143f6c0ef5ba50fdb673f2fc820d3",
+          "size": 244022,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/d221f08fb3d2e39262ec356d2666b802909143f6c0ef5ba50fdb673f2fc820d3/25mm - Small Vertical (Positive).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/50mm-small-hole-negative-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "50mm - Small Hole (Negative).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "db3ff826f8f556e7abf74889f21c9aa2bf8d47d108f9bc53174bd6313102f507",
+      "versions": [
+        {
+          "sha256": "db3ff826f8f556e7abf74889f21c9aa2bf8d47d108f9bc53174bd6313102f507",
+          "size": 22532,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/db3ff826f8f556e7abf74889f21c9aa2bf8d47d108f9bc53174bd6313102f507/50mm - Small Hole (Negative).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/50mm-small-horizontal-0deg-chamfered-negative-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "50mm - Small Horizontal 0deg Chamfered (Negative).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "e442c5d86d8118f88ef504cdccf5d8fdb023e9074385f701bebd42326d471094",
+      "versions": [
+        {
+          "sha256": "e442c5d86d8118f88ef504cdccf5d8fdb023e9074385f701bebd42326d471094",
+          "size": 1388859,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/e442c5d86d8118f88ef504cdccf5d8fdb023e9074385f701bebd42326d471094/50mm - Small Horizontal 0deg Chamfered (Negative).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/50mm-small-horizontal-0deg-negative-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "50mm - Small Horizontal 0deg (Negative).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "7b4dc8501cf2e6b4e03b6ec6b03cbfc1edd078ca5700ca1c0cf000909b84543d",
+      "versions": [
+        {
+          "sha256": "7b4dc8501cf2e6b4e03b6ec6b03cbfc1edd078ca5700ca1c0cf000909b84543d",
+          "size": 1410559,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/7b4dc8501cf2e6b4e03b6ec6b03cbfc1edd078ca5700ca1c0cf000909b84543d/50mm - Small Horizontal 0deg (Negative).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/50mm-small-horizontal-0deg-positive-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "50mm - Small Horizontal 0deg (Positive).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "455abf8f4bd3b8715000724afd415ce06fdd52d36639d3eb05217a51dd0dae88",
+      "versions": [
+        {
+          "sha256": "455abf8f4bd3b8715000724afd415ce06fdd52d36639d3eb05217a51dd0dae88",
+          "size": 850648,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/455abf8f4bd3b8715000724afd415ce06fdd52d36639d3eb05217a51dd0dae88/50mm - Small Horizontal 0deg (Positive).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/50mm-small-horizontal-90deg-chamfered-negative-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "50mm - Small Horizontal 90deg Chamfered (Negative).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "d87aa3968e780f7d71749b7ad35b5e4a43444ceffd6a143f8b2c7cde941f090e",
+      "versions": [
+        {
+          "sha256": "d87aa3968e780f7d71749b7ad35b5e4a43444ceffd6a143f8b2c7cde941f090e",
+          "size": 1348952,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/d87aa3968e780f7d71749b7ad35b5e4a43444ceffd6a143f8b2c7cde941f090e/50mm - Small Horizontal 90deg Chamfered (Negative).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/50mm-small-horizontal-90deg-negative-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "50mm - Small Horizontal 90deg (Negative).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "c3cdd847f3fb5e96c15f1aead97a1438cf2b1ed78948e9f3d6b82fd79b1bfc36",
+      "versions": [
+        {
+          "sha256": "c3cdd847f3fb5e96c15f1aead97a1438cf2b1ed78948e9f3d6b82fd79b1bfc36",
+          "size": 1363451,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/c3cdd847f3fb5e96c15f1aead97a1438cf2b1ed78948e9f3d6b82fd79b1bfc36/50mm - Small Horizontal 90deg (Negative).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/50mm-small-horizontal-90deg-positive-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "50mm - Small Horizontal 90deg (Positive).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "cec781e8fda1d9fef55cd76c8fbbc0fbf4564c560365ab462b7d5e8db4289f10",
+      "versions": [
+        {
+          "sha256": "cec781e8fda1d9fef55cd76c8fbbc0fbf4564c560365ab462b7d5e8db4289f10",
+          "size": 854810,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/cec781e8fda1d9fef55cd76c8fbbc0fbf4564c560365ab462b7d5e8db4289f10/50mm - Small Horizontal 90deg (Positive).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/50mm-small-vertical-chamfered-negative-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "50mm - Small Vertical Chamfered (Negative).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "c4486d3024251829bcf4d14091e1d1971d119d4638604a88ea13c64b3753b7f1",
+      "versions": [
+        {
+          "sha256": "c4486d3024251829bcf4d14091e1d1971d119d4638604a88ea13c64b3753b7f1",
+          "size": 407921,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/c4486d3024251829bcf4d14091e1d1971d119d4638604a88ea13c64b3753b7f1/50mm - Small Vertical Chamfered (Negative).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/50mm-small-vertical-negative-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "50mm - Small Vertical (Negative).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "85d0191d7b476c97caaf02578fd31781ba9c2ed88bc70f95421ac8da24a8d40c",
+      "versions": [
+        {
+          "sha256": "85d0191d7b476c97caaf02578fd31781ba9c2ed88bc70f95421ac8da24a8d40c",
+          "size": 420520,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/85d0191d7b476c97caaf02578fd31781ba9c2ed88bc70f95421ac8da24a8d40c/50mm - Small Vertical (Negative).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/50mm-small-vertical-positive-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "50mm - Small Vertical (Positive).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "5b3aaf0a37d79a2dcea05a27e31a057a699a13259e7e68be40ffacdd2fed0720",
+      "versions": [
+        {
+          "sha256": "5b3aaf0a37d79a2dcea05a27e31a057a699a13259e7e68be40ffacdd2fed0720",
+          "size": 411941,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/5b3aaf0a37d79a2dcea05a27e31a057a699a13259e7e68be40ffacdd2fed0720/50mm - Small Vertical (Positive).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/bottom-chamfer-small-horizontal-0deg-chamfered-negative-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "Bottom Chamfer - Small Horizontal 0deg Chamfered (Negative).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "52645e57522231c0f0b7158814bc36ba88464ec59b6c4f1933fc4141f17cd6e0",
+      "versions": [
+        {
+          "sha256": "52645e57522231c0f0b7158814bc36ba88464ec59b6c4f1933fc4141f17cd6e0",
+          "size": 17180,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/52645e57522231c0f0b7158814bc36ba88464ec59b6c4f1933fc4141f17cd6e0/Bottom Chamfer - Small Horizontal 0deg Chamfered (Negative).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/bottom-chamfer-small-horizontal-90deg-chamfered-negative-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "Bottom Chamfer - Small Horizontal 90deg Chamfered (Negative).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "8856cc63279c25065712944ee4ba9d081bb6b53aabb5b15b9912d84fb370a543",
+      "versions": [
+        {
+          "sha256": "8856cc63279c25065712944ee4ba9d081bb6b53aabb5b15b9912d84fb370a543",
+          "size": 17186,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/8856cc63279c25065712944ee4ba9d081bb6b53aabb5b15b9912d84fb370a543/Bottom Chamfer - Small Horizontal 90deg Chamfered (Negative).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/bottom-chamfer-small-vertical-chamfered-negative-.step",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "Bottom Chamfer - Small Vertical Chamfered (Negative).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "26f9c72e939cbb4466eb621885ac2c61f8620acaf621504d1a0d33bf258ec0b2",
+      "versions": [
+        {
+          "sha256": "26f9c72e939cbb4466eb621885ac2c61f8620acaf621504d1a0d33bf258ec0b2",
+          "size": 17768,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/26f9c72e939cbb4466eb621885ac2c61f8620acaf621504d1a0d33bf258ec0b2/Bottom Chamfer - Small Vertical Chamfered (Negative).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-small-threads/small-threads-step-multiboard-remixing-files.zip",
+      "source_group_id": "multibuild-small-threads",
+      "filename": "Small_Threads_-_STEP_Multiboard_Remixing_Files.zip",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "459f1de0d98512c12672e52288e8f007f8b7dc3ea8b6bbef2ec181da1e7317d3",
+      "versions": [
+        {
+          "sha256": "459f1de0d98512c12672e52288e8f007f8b7dc3ea8b6bbef2ec181da1e7317d3",
+          "size": 8501447,
+          "gcs": "gs://stuff-reference-upstream/multibuild-small-threads/459f1de0d98512c12672e52288e8f007f8b7dc3ea8b6bbef2ec181da1e7317d3/Small_Threads_-_STEP_Multiboard_Remixing_Files.zip",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-snaps/blank-snap-directional-raised.step",
+      "source_group_id": "multibuild-snaps",
+      "filename": "Blank Snap Directional - Raised.step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "d0f1f80e0c8ac2bb62c7d4070ac4915eb3a829bf2a6d07dbd4ccfbf372071b06",
+      "versions": [
+        {
+          "sha256": "d0f1f80e0c8ac2bb62c7d4070ac4915eb3a829bf2a6d07dbd4ccfbf372071b06",
+          "size": 125088,
+          "gcs": "gs://stuff-reference-upstream/multibuild-snaps/d0f1f80e0c8ac2bb62c7d4070ac4915eb3a829bf2a6d07dbd4ccfbf372071b06/Blank Snap Directional - Raised.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-snaps/blank-snap-directional.step",
+      "source_group_id": "multibuild-snaps",
+      "filename": "Blank Snap Directional.step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "133b17ebac218be66bdc66fccf6153199b74a23074acd262f36c6b58f8f42e29",
+      "versions": [
+        {
+          "sha256": "133b17ebac218be66bdc66fccf6153199b74a23074acd262f36c6b58f8f42e29",
+          "size": 121056,
+          "gcs": "gs://stuff-reference-upstream/multibuild-snaps/133b17ebac218be66bdc66fccf6153199b74a23074acd262f36c6b58f8f42e29/Blank Snap Directional.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-snaps/blank-snap-hook-raised.step",
+      "source_group_id": "multibuild-snaps",
+      "filename": "Blank Snap Hook - Raised.step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "269443e611ade5868a42eb8b3a01c5381c008d2e546e895c54322a194fb27884",
+      "versions": [
+        {
+          "sha256": "269443e611ade5868a42eb8b3a01c5381c008d2e546e895c54322a194fb27884",
+          "size": 167452,
+          "gcs": "gs://stuff-reference-upstream/multibuild-snaps/269443e611ade5868a42eb8b3a01c5381c008d2e546e895c54322a194fb27884/Blank Snap Hook - Raised.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-snaps/blank-snap-hook.step",
+      "source_group_id": "multibuild-snaps",
+      "filename": "Blank Snap Hook.step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "90d337ce992076568a54e7548642df2becbcd5f3ba5fb088c4eeec36d8bccc05",
+      "versions": [
+        {
+          "sha256": "90d337ce992076568a54e7548642df2becbcd5f3ba5fb088c4eeec36d8bccc05",
+          "size": 163103,
+          "gcs": "gs://stuff-reference-upstream/multibuild-snaps/90d337ce992076568a54e7548642df2becbcd5f3ba5fb088c4eeec36d8bccc05/Blank Snap Hook.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-snaps/blank-snap-standard-raised.step",
+      "source_group_id": "multibuild-snaps",
+      "filename": "Blank Snap Standard - Raised.step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "9614fc4526cae10f197034ac425d90383ef3f1c0bda1efba699eb936604d437c",
+      "versions": [
+        {
+          "sha256": "9614fc4526cae10f197034ac425d90383ef3f1c0bda1efba699eb936604d437c",
+          "size": 141338,
+          "gcs": "gs://stuff-reference-upstream/multibuild-snaps/9614fc4526cae10f197034ac425d90383ef3f1c0bda1efba699eb936604d437c/Blank Snap Standard - Raised.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-snaps/blank-snap-standard.step",
+      "source_group_id": "multibuild-snaps",
+      "filename": "Blank Snap Standard.step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "0599e5e6702a85ddc8f7afe861276a6ac8dd3a2d3cacae958f81022283a1813b",
+      "versions": [
+        {
+          "sha256": "0599e5e6702a85ddc8f7afe861276a6ac8dd3a2d3cacae958f81022283a1813b",
+          "size": 137428,
+          "gcs": "gs://stuff-reference-upstream/multibuild-snaps/0599e5e6702a85ddc8f7afe861276a6ac8dd3a2d3cacae958f81022283a1813b/Blank Snap Standard.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-snaps/snaps-step-multiboard-remixing-files.zip",
+      "source_group_id": "multibuild-snaps",
+      "filename": "Snaps_-_STEP_Multiboard_Remixing_Files.zip",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "b333512e5dd5d5faa9eec2d354f7f9dde018a51afed0f1cff9fbb60305336c7f",
+      "versions": [
+        {
+          "sha256": "b333512e5dd5d5faa9eec2d354f7f9dde018a51afed0f1cff9fbb60305336c7f",
+          "size": 159460,
+          "gcs": "gs://stuff-reference-upstream/multibuild-snaps/b333512e5dd5d5faa9eec2d354f7f9dde018a51afed0f1cff9fbb60305336c7f/Snaps_-_STEP_Multiboard_Remixing_Files.zip",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-tile-components/large-octagon-hole-positive-.step",
+      "source_group_id": "multibuild-tile-components",
+      "filename": "Large Octagon Hole (Positive).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "7f2b3657b5dfecdc847f67d69bffa1f25a89fd06bf5b41d31a7c4c86aadc0bda",
+      "versions": [
+        {
+          "sha256": "7f2b3657b5dfecdc847f67d69bffa1f25a89fd06bf5b41d31a7c4c86aadc0bda",
+          "size": 279382,
+          "gcs": "gs://stuff-reference-upstream/multibuild-tile-components/7f2b3657b5dfecdc847f67d69bffa1f25a89fd06bf5b41d31a7c4c86aadc0bda/Large Octagon Hole (Positive).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-tile-components/large-octagon-hole-with-side-holes-positive-.step",
+      "source_group_id": "multibuild-tile-components",
+      "filename": "Large Octagon Hole with side holes (Positive).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "9b549ac060b5e682dd106514ec88bafab5db92a9c22481a7d5c08f2c5733769e",
+      "versions": [
+        {
+          "sha256": "9b549ac060b5e682dd106514ec88bafab5db92a9c22481a7d5c08f2c5733769e",
+          "size": 371252,
+          "gcs": "gs://stuff-reference-upstream/multibuild-tile-components/9b549ac060b5e682dd106514ec88bafab5db92a9c22481a7d5c08f2c5733769e/Large Octagon Hole with side holes (Positive).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-tile-components/multihole-negative-.step",
+      "source_group_id": "multibuild-tile-components",
+      "filename": "Multihole (Negative).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "9002b5ecc3b09186f17019b4effb8daf52934c97ae2dc153384759e2fea22194",
+      "versions": [
+        {
+          "sha256": "9002b5ecc3b09186f17019b4effb8daf52934c97ae2dc153384759e2fea22194",
+          "size": 283874,
+          "gcs": "gs://stuff-reference-upstream/multibuild-tile-components/9002b5ecc3b09186f17019b4effb8daf52934c97ae2dc153384759e2fea22194/Multihole (Negative).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-tile-components/small-thread-hole-positive-.step",
+      "source_group_id": "multibuild-tile-components",
+      "filename": "Small Thread Hole (Positive).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "3f17ca93837219ee069e68227a9ddb8118505abcdeaff51eb2e579c3bec8ee02",
+      "versions": [
+        {
+          "sha256": "3f17ca93837219ee069e68227a9ddb8118505abcdeaff51eb2e579c3bec8ee02",
+          "size": 108634,
+          "gcs": "gs://stuff-reference-upstream/multibuild-tile-components/3f17ca93837219ee069e68227a9ddb8118505abcdeaff51eb2e579c3bec8ee02/Small Thread Hole (Positive).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-tile-components/small-thread-hole-with-side-bumps-positive-.step",
+      "source_group_id": "multibuild-tile-components",
+      "filename": "Small Thread Hole with side bumps (Positive).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "5678e62056749ca9d7f316fea4e6634778addc4a4bcf9572200fb1cb6ac37836",
+      "versions": [
+        {
+          "sha256": "5678e62056749ca9d7f316fea4e6634778addc4a4bcf9572200fb1cb6ac37836",
+          "size": 154321,
+          "gcs": "gs://stuff-reference-upstream/multibuild-tile-components/5678e62056749ca9d7f316fea4e6634778addc4a4bcf9572200fb1cb6ac37836/Small Thread Hole with side bumps (Positive).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-tile-components/small-thread-negative-.step",
+      "source_group_id": "multibuild-tile-components",
+      "filename": "Small Thread (Negative).step",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "e2b4f9b2f9bd3d78661acc148d7333b1a75d0e9db32813633eaf1a68cb61b519",
+      "versions": [
+        {
+          "sha256": "e2b4f9b2f9bd3d78661acc148d7333b1a75d0e9db32813633eaf1a68cb61b519",
+          "size": 118305,
+          "gcs": "gs://stuff-reference-upstream/multibuild-tile-components/e2b4f9b2f9bd3d78661acc148d7333b1a75d0e9db32813633eaf1a68cb61b519/Small Thread (Negative).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multibuild-tile-components/tile-components-step-multiboard-remixing-files.zip",
+      "source_group_id": "multibuild-tile-components",
+      "filename": "Tile_Components_-_STEP_Multiboard_Remixing_Files.zip",
+      "upstream_file_id": null,
+      "url": "https://multibuild.io/parts/remixing-files",
+      "licence": "Multiboard Licence (non-commercial)",
+      "access": "bucket",
+      "current": "939679649264273fa8b2553b512b5259b925ed398a469b6d65d2df6e652d8479",
+      "versions": [
+        {
+          "sha256": "939679649264273fa8b2553b512b5259b925ed398a469b6d65d2df6e652d8479",
+          "size": 352465,
+          "gcs": "gs://stuff-reference-upstream/multibuild-tile-components/939679649264273fa8b2553b512b5259b925ed398a469b6d65d2df6e652d8479/Tile_Components_-_STEP_Multiboard_Remixing_Files.zip",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-flush-connector-v2/flush-big-coin-slot-foldable.step",
+      "source_group_id": "multiconnect-flush-connector-v2",
+      "filename": "Flush Big, Coin Slot, Foldable.step",
+      "upstream_file_id": "4840102",
+      "url": "https://www.printables.com/model/1160115",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "98b2aafa01582383af6609ed044caf6d770b4be819a3299509f05f551e85b0aa",
+      "versions": [
+        {
+          "sha256": "98b2aafa01582383af6609ed044caf6d770b4be819a3299509f05f551e85b0aa",
+          "size": 297017,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-flush-connector-v2/98b2aafa01582383af6609ed044caf6d770b4be819a3299509f05f551e85b0aa/Flush Big, Coin Slot, Foldable.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-flush-connector-v2/flush-big-coin-slot-foldable.stl",
+      "source_group_id": "multiconnect-flush-connector-v2",
+      "filename": "Flush Big, Coin Slot, Foldable.stl",
+      "upstream_file_id": "4840092",
+      "url": "https://www.printables.com/model/1160115",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "b9208b69dc326cc6c609ed555a9b4ecdd7368a35a066433d8b2e670cb132f758",
+      "versions": [
+        {
+          "sha256": "b9208b69dc326cc6c609ed555a9b4ecdd7368a35a066433d8b2e670cb132f758",
+          "size": 564684,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-flush-connector-v2/b9208b69dc326cc6c609ed555a9b4ecdd7368a35a066433d8b2e670cb132f758/Flush Big, Coin Slot, Foldable.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-flush-connector-v2/flush-big-coin-slot.step",
+      "source_group_id": "multiconnect-flush-connector-v2",
+      "filename": "Flush Big, Coin Slot.step",
+      "upstream_file_id": "4840103",
+      "url": "https://www.printables.com/model/1160115",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "d12ebcda8966dcfed6e9c17579e3a599f79922fcd720b6fc2946b135063cb646",
+      "versions": [
+        {
+          "sha256": "d12ebcda8966dcfed6e9c17579e3a599f79922fcd720b6fc2946b135063cb646",
+          "size": 239472,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-flush-connector-v2/d12ebcda8966dcfed6e9c17579e3a599f79922fcd720b6fc2946b135063cb646/Flush Big, Coin Slot.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-flush-connector-v2/flush-big-coin-slot.stl",
+      "source_group_id": "multiconnect-flush-connector-v2",
+      "filename": "Flush Big, Coin Slot.stl",
+      "upstream_file_id": "4840093",
+      "url": "https://www.printables.com/model/1160115",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "c5f63fb07a4b6712c1677188d2fae6751be3aca4fba4d9ddc1d148221b2456d5",
+      "versions": [
+        {
+          "sha256": "c5f63fb07a4b6712c1677188d2fae6751be3aca4fba4d9ddc1d148221b2456d5",
+          "size": 628484,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-flush-connector-v2/c5f63fb07a4b6712c1677188d2fae6751be3aca4fba4d9ddc1d148221b2456d5/Flush Big, Coin Slot.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-flush-connector-v2/flush-big-dot.step",
+      "source_group_id": "multiconnect-flush-connector-v2",
+      "filename": "Flush Big, Dot.step",
+      "upstream_file_id": "4840096",
+      "url": "https://www.printables.com/model/1160115",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "83d1bcf5ad818e8ea6c6fc4b2148aa9a4f4b9923e20d2de120d48e574971b875",
+      "versions": [
+        {
+          "sha256": "83d1bcf5ad818e8ea6c6fc4b2148aa9a4f4b9923e20d2de120d48e574971b875",
+          "size": 228037,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-flush-connector-v2/83d1bcf5ad818e8ea6c6fc4b2148aa9a4f4b9923e20d2de120d48e574971b875/Flush Big, Dot.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-flush-connector-v2/flush-big-dot.stl",
+      "source_group_id": "multiconnect-flush-connector-v2",
+      "filename": "Flush Big, Dot.stl",
+      "upstream_file_id": "4840095",
+      "url": "https://www.printables.com/model/1160115",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "5507cf9b21951826ddaf38879f549b4537813d667638306de90cc0d1b05b53c5",
+      "versions": [
+        {
+          "sha256": "5507cf9b21951826ddaf38879f549b4537813d667638306de90cc0d1b05b53c5",
+          "size": 644184,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-flush-connector-v2/5507cf9b21951826ddaf38879f549b4537813d667638306de90cc0d1b05b53c5/Flush Big, Dot.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-flush-connector-v2/flush-big-hex-6mm-.step",
+      "source_group_id": "multiconnect-flush-connector-v2",
+      "filename": "Flush Big, Hex (6mm).step",
+      "upstream_file_id": "4840100",
+      "url": "https://www.printables.com/model/1160115",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "17e776137672dc7597c7124592999346371908a28c94bab59f44799f9567d110",
+      "versions": [
+        {
+          "sha256": "17e776137672dc7597c7124592999346371908a28c94bab59f44799f9567d110",
+          "size": 235352,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-flush-connector-v2/17e776137672dc7597c7124592999346371908a28c94bab59f44799f9567d110/Flush Big, Hex (6mm).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-flush-connector-v2/flush-big-hex-6mm-.stl",
+      "source_group_id": "multiconnect-flush-connector-v2",
+      "filename": "Flush Big, Hex (6mm).stl",
+      "upstream_file_id": "4840094",
+      "url": "https://www.printables.com/model/1160115",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "601f20ff2f69baacbc1e027d7c10c44c4a168551c273bb5b9b1e306a79a9b1a1",
+      "versions": [
+        {
+          "sha256": "601f20ff2f69baacbc1e027d7c10c44c4a168551c273bb5b9b1e306a79a9b1a1",
+          "size": 620084,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-flush-connector-v2/601f20ff2f69baacbc1e027d7c10c44c4a168551c273bb5b9b1e306a79a9b1a1/Flush Big, Hex (6mm).stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-flush-connector-v2/flush-small-coin-slot-foldable.step",
+      "source_group_id": "multiconnect-flush-connector-v2",
+      "filename": "Flush Small, Coin Slot , Foldable.step",
+      "upstream_file_id": "4840101",
+      "url": "https://www.printables.com/model/1160115",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "bf649194e6eaef176ac5b8fc94437915adaa67e24fe929357e57a57d7d098e8d",
+      "versions": [
+        {
+          "sha256": "bf649194e6eaef176ac5b8fc94437915adaa67e24fe929357e57a57d7d098e8d",
+          "size": 293625,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-flush-connector-v2/bf649194e6eaef176ac5b8fc94437915adaa67e24fe929357e57a57d7d098e8d/Flush Small, Coin Slot , Foldable.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-flush-connector-v2/flush-small-coin-slot-foldable.stl",
+      "source_group_id": "multiconnect-flush-connector-v2",
+      "filename": "Flush Small, Coin Slot , Foldable.stl",
+      "upstream_file_id": "4840088",
+      "url": "https://www.printables.com/model/1160115",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "770b945d8bcefcaa2194e9b76d62f9b766a4a89463162f65c6868b20de78ccf1",
+      "versions": [
+        {
+          "sha256": "770b945d8bcefcaa2194e9b76d62f9b766a4a89463162f65c6868b20de78ccf1",
+          "size": 416384,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-flush-connector-v2/770b945d8bcefcaa2194e9b76d62f9b766a4a89463162f65c6868b20de78ccf1/Flush Small, Coin Slot , Foldable.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-flush-connector-v2/flush-small-coin-slot.step",
+      "source_group_id": "multiconnect-flush-connector-v2",
+      "filename": "Flush Small, Coin Slot.step",
+      "upstream_file_id": "4840097",
+      "url": "https://www.printables.com/model/1160115",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "264835110e09f304739b1c2fc6260d06ac78e283149affe4df84d92cb1d1704b",
+      "versions": [
+        {
+          "sha256": "264835110e09f304739b1c2fc6260d06ac78e283149affe4df84d92cb1d1704b",
+          "size": 193813,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-flush-connector-v2/264835110e09f304739b1c2fc6260d06ac78e283149affe4df84d92cb1d1704b/Flush Small, Coin Slot.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-flush-connector-v2/flush-small-coin-slot.stl",
+      "source_group_id": "multiconnect-flush-connector-v2",
+      "filename": "Flush Small, Coin Slot.stl",
+      "upstream_file_id": "4840089",
+      "url": "https://www.printables.com/model/1160115",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "4c3103998183331d3e3c8f139f3c37240534701271af23245b878475bfdb7394",
+      "versions": [
+        {
+          "sha256": "4c3103998183331d3e3c8f139f3c37240534701271af23245b878475bfdb7394",
+          "size": 484684,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-flush-connector-v2/4c3103998183331d3e3c8f139f3c37240534701271af23245b878475bfdb7394/Flush Small, Coin Slot.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-flush-connector-v2/flush-small-dot.step",
+      "source_group_id": "multiconnect-flush-connector-v2",
+      "filename": "Flush Small, Dot.step",
+      "upstream_file_id": "4840098",
+      "url": "https://www.printables.com/model/1160115",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "480a308509231c4d87aedf113f9f82a50a112ad38103c537d26ce7bf2940601e",
+      "versions": [
+        {
+          "sha256": "480a308509231c4d87aedf113f9f82a50a112ad38103c537d26ce7bf2940601e",
+          "size": 182410,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-flush-connector-v2/480a308509231c4d87aedf113f9f82a50a112ad38103c537d26ce7bf2940601e/Flush Small, Dot.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-flush-connector-v2/flush-small-dot.stl",
+      "source_group_id": "multiconnect-flush-connector-v2",
+      "filename": "Flush Small, Dot.stl",
+      "upstream_file_id": "4840091",
+      "url": "https://www.printables.com/model/1160115",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "bdf01dc76a2d0ab999b1bc8188d27555fe8a3251efd1950f9f5e8938a1a86e73",
+      "versions": [
+        {
+          "sha256": "bdf01dc76a2d0ab999b1bc8188d27555fe8a3251efd1950f9f5e8938a1a86e73",
+          "size": 500384,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-flush-connector-v2/bdf01dc76a2d0ab999b1bc8188d27555fe8a3251efd1950f9f5e8938a1a86e73/Flush Small, Dot.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-flush-connector-v2/flush-small-hex-6mm-.step",
+      "source_group_id": "multiconnect-flush-connector-v2",
+      "filename": "Flush Small, Hex (6mm).step",
+      "upstream_file_id": "4840099",
+      "url": "https://www.printables.com/model/1160115",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "18ad7ec3eb3a8dcdde13869af7cf32e2f6fcfa004aa9ab2c9878200b27e8162a",
+      "versions": [
+        {
+          "sha256": "18ad7ec3eb3a8dcdde13869af7cf32e2f6fcfa004aa9ab2c9878200b27e8162a",
+          "size": 189809,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-flush-connector-v2/18ad7ec3eb3a8dcdde13869af7cf32e2f6fcfa004aa9ab2c9878200b27e8162a/Flush Small, Hex (6mm).step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-flush-connector-v2/flush-small-hex-6mm-.stl",
+      "source_group_id": "multiconnect-flush-connector-v2",
+      "filename": "Flush Small, Hex (6mm).stl",
+      "upstream_file_id": "4840090",
+      "url": "https://www.printables.com/model/1160115",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "223f089e7a9cd55bdf62f85a1e092dba60348b4200c1c432b32d82b1956cfb6b",
+      "versions": [
+        {
+          "sha256": "223f089e7a9cd55bdf62f85a1e092dba60348b4200c1c432b32d82b1956cfb6b",
+          "size": 476284,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-flush-connector-v2/223f089e7a9cd55bdf62f85a1e092dba60348b4200c1c432b32d82b1956cfb6b/Flush Small, Hex (6mm).stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-big-screw-connector-for-multitool.step",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard big screw Connector for multitool.step",
+      "upstream_file_id": "3042104",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "c3abed3e3d577cb566c36aed1ab4ffa720b275fd29f9f64c8e8aa78b14c55107",
+      "versions": [
+        {
+          "sha256": "c3abed3e3d577cb566c36aed1ab4ffa720b275fd29f9f64c8e8aa78b14c55107",
+          "size": 418950,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/c3abed3e3d577cb566c36aed1ab4ffa720b275fd29f9f64c8e8aa78b14c55107/Multiconnect - Board connectors_Multiboard big screw Connector for multitool.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-big-screw-connector-for-multitool.stl",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard big screw Connector for multitool.stl",
+      "upstream_file_id": "3042074",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "ba9f037ed12b78ebf393d654cdc6f8f814efe8de7887c159b1cb22eec594d1e7",
+      "versions": [
+        {
+          "sha256": "ba9f037ed12b78ebf393d654cdc6f8f814efe8de7887c159b1cb22eec594d1e7",
+          "size": 591784,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/ba9f037ed12b78ebf393d654cdc6f8f814efe8de7887c159b1cb22eec594d1e7/Multiconnect - Board connectors_Multiboard big screw Connector for multitool.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-big-screw-connector.step",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard big screw Connector.step",
+      "upstream_file_id": "3042105",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "14410db71f2424eaa97030f0f398871644ee0194b3507d763e6a44d2095df34e",
+      "versions": [
+        {
+          "sha256": "14410db71f2424eaa97030f0f398871644ee0194b3507d763e6a44d2095df34e",
+          "size": 396281,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/14410db71f2424eaa97030f0f398871644ee0194b3507d763e6a44d2095df34e/Multiconnect - Board connectors_Multiboard big screw Connector.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-big-screw-connector.stl",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard big screw Connector.stl",
+      "upstream_file_id": "3042072",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "c615c74d22d82e92a4e1d55cbac0ed02322d40fbf758bb17a3a7957ed9e0f7b8",
+      "versions": [
+        {
+          "sha256": "c615c74d22d82e92a4e1d55cbac0ed02322d40fbf758bb17a3a7957ed9e0f7b8",
+          "size": 576784,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/c615c74d22d82e92a4e1d55cbac0ed02322d40fbf758bb17a3a7957ed9e0f7b8/Multiconnect - Board connectors_Multiboard big screw Connector.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-big-thread-connector-for-multitool-laying-down.step",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard big thread connector for multitool laying down.step",
+      "upstream_file_id": "3126799",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "8c6636cf43a8926f85a678f802cd77fd7f07be605f34a5131f3c3688bbd4385a",
+      "versions": [
+        {
+          "sha256": "8c6636cf43a8926f85a678f802cd77fd7f07be605f34a5131f3c3688bbd4385a",
+          "size": 544467,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/8c6636cf43a8926f85a678f802cd77fd7f07be605f34a5131f3c3688bbd4385a/Multiconnect - Board connectors_Multiboard big thread connector for multitool laying down.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-big-thread-connector-for-multitool-laying-down.stl",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard big thread connector for multitool laying down.stl",
+      "upstream_file_id": "3126798",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "49fa225cc69ac0d734b34f31494d793da2abe9ca749f65da0e50d26a75215d35",
+      "versions": [
+        {
+          "sha256": "49fa225cc69ac0d734b34f31494d793da2abe9ca749f65da0e50d26a75215d35",
+          "size": 661184,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/49fa225cc69ac0d734b34f31494d793da2abe9ca749f65da0e50d26a75215d35/Multiconnect - Board connectors_Multiboard big thread connector for multitool laying down.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-big-thread-connector-for-multitool.step",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard big thread connector for multitool.step",
+      "upstream_file_id": "3096938",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "1e77ba2e91c4dbeca30cd199093a6e5da70a9acb584e02f8118d619d22fac0b5",
+      "versions": [
+        {
+          "sha256": "1e77ba2e91c4dbeca30cd199093a6e5da70a9acb584e02f8118d619d22fac0b5",
+          "size": 563725,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/1e77ba2e91c4dbeca30cd199093a6e5da70a9acb584e02f8118d619d22fac0b5/Multiconnect - Board connectors_Multiboard big thread connector for multitool.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-big-thread-connector-for-multitool.stl",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard big thread connector for multitool.stl",
+      "upstream_file_id": "3096926",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "3bfa83caac52a8145af7b8a89779885f0a5fbc571c47c0bca3328b678de2f99c",
+      "versions": [
+        {
+          "sha256": "3bfa83caac52a8145af7b8a89779885f0a5fbc571c47c0bca3328b678de2f99c",
+          "size": 861184,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/3bfa83caac52a8145af7b8a89779885f0a5fbc571c47c0bca3328b678de2f99c/Multiconnect - Board connectors_Multiboard big thread connector for multitool.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-big-thread-connector.step",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard big thread connector.step",
+      "upstream_file_id": "3096939",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "ac00a8930e9d4908e861c9755d69b994bdb172dbb29a594c4336cd848d4fb797",
+      "versions": [
+        {
+          "sha256": "ac00a8930e9d4908e861c9755d69b994bdb172dbb29a594c4336cd848d4fb797",
+          "size": 547551,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/ac00a8930e9d4908e861c9755d69b994bdb172dbb29a594c4336cd848d4fb797/Multiconnect - Board connectors_Multiboard big thread connector.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-big-thread-connector.stl",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard big thread connector.stl",
+      "upstream_file_id": "3096928",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "422fb6b08faa28c3afcfc47582e7c8999cedc3d355eb1d05b2e7628d74768514",
+      "versions": [
+        {
+          "sha256": "422fb6b08faa28c3afcfc47582e7c8999cedc3d355eb1d05b2e7628d74768514",
+          "size": 858784,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/422fb6b08faa28c3afcfc47582e7c8999cedc3d355eb1d05b2e7628d74768514/Multiconnect - Board connectors_Multiboard big thread connector.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-mid-screw-connector-for-multitool.step",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard mid screw Connector for multitool.step",
+      "upstream_file_id": "3042100",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "588cc9b53f6b05bd3989852194cc7525c701d196bdb3ba1337c7b6f0addb8f63",
+      "versions": [
+        {
+          "sha256": "588cc9b53f6b05bd3989852194cc7525c701d196bdb3ba1337c7b6f0addb8f63",
+          "size": 433093,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/588cc9b53f6b05bd3989852194cc7525c701d196bdb3ba1337c7b6f0addb8f63/Multiconnect - Board connectors_Multiboard mid screw Connector for multitool.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-mid-screw-connector-for-multitool.stl",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard mid screw Connector for multitool.stl",
+      "upstream_file_id": "3042070",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "1d9fd2ba21b53838912114faf95414ba6e1fa8e6ae89656a9e34fe594c5cdd59",
+      "versions": [
+        {
+          "sha256": "1d9fd2ba21b53838912114faf95414ba6e1fa8e6ae89656a9e34fe594c5cdd59",
+          "size": 838784,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/1d9fd2ba21b53838912114faf95414ba6e1fa8e6ae89656a9e34fe594c5cdd59/Multiconnect - Board connectors_Multiboard mid screw Connector for multitool.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-mid-screw-connector.step",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard mid screw Connector.step",
+      "upstream_file_id": "3042101",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "bf5864eeb83d7e0c756150b97ae45a0dae7d4b55116a3827c47222b34845fe22",
+      "versions": [
+        {
+          "sha256": "bf5864eeb83d7e0c756150b97ae45a0dae7d4b55116a3827c47222b34845fe22",
+          "size": 412074,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/bf5864eeb83d7e0c756150b97ae45a0dae7d4b55116a3827c47222b34845fe22/Multiconnect - Board connectors_Multiboard mid screw Connector.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-mid-screw-connector.stl",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard mid screw Connector.stl",
+      "upstream_file_id": "3042069",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "8c31a1dfd54bc8ae9c3b1b85d1dfe0ca66a3a5cc4eeafc5ad409bfd170db9f7a",
+      "versions": [
+        {
+          "sha256": "8c31a1dfd54bc8ae9c3b1b85d1dfe0ca66a3a5cc4eeafc5ad409bfd170db9f7a",
+          "size": 836384,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/8c31a1dfd54bc8ae9c3b1b85d1dfe0ca66a3a5cc4eeafc5ad409bfd170db9f7a/Multiconnect - Board connectors_Multiboard mid screw Connector.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-mid-thread-connector-for-multitool.step",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard mid thread connector for multitool.step",
+      "upstream_file_id": "3096936",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "74fac0314740f93998195828ae357c7a4968ce547aabdd765bac6c66b28314e0",
+      "versions": [
+        {
+          "sha256": "74fac0314740f93998195828ae357c7a4968ce547aabdd765bac6c66b28314e0",
+          "size": 386797,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/74fac0314740f93998195828ae357c7a4968ce547aabdd765bac6c66b28314e0/Multiconnect - Board connectors_Multiboard mid thread connector for multitool.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-mid-thread-connector-for-multitool.stl",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard mid thread connector for multitool.stl",
+      "upstream_file_id": "3096929",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "ccc406236fa27f216cf782d069194b2a58d9da3dcb8fc7640ec7e8e7bbc82d42",
+      "versions": [
+        {
+          "sha256": "ccc406236fa27f216cf782d069194b2a58d9da3dcb8fc7640ec7e8e7bbc82d42",
+          "size": 699984,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/ccc406236fa27f216cf782d069194b2a58d9da3dcb8fc7640ec7e8e7bbc82d42/Multiconnect - Board connectors_Multiboard mid thread connector for multitool.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-mid-thread-connector.step",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard mid thread connector.step",
+      "upstream_file_id": "3096937",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "a2921e2e69ab2c5cc4bd808c86282f91ae6a603e7c6e3f4027f520c6295820ce",
+      "versions": [
+        {
+          "sha256": "a2921e2e69ab2c5cc4bd808c86282f91ae6a603e7c6e3f4027f520c6295820ce",
+          "size": 370001,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/a2921e2e69ab2c5cc4bd808c86282f91ae6a603e7c6e3f4027f520c6295820ce/Multiconnect - Board connectors_Multiboard mid thread connector.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-mid-thread-connector.stl",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard mid thread connector.stl",
+      "upstream_file_id": "3096930",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "95384c8d3ef6feb09e848c94587704d156396b9dc82286d88f574b4d52e25a03",
+      "versions": [
+        {
+          "sha256": "95384c8d3ef6feb09e848c94587704d156396b9dc82286d88f574b4d52e25a03",
+          "size": 697584,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/95384c8d3ef6feb09e848c94587704d156396b9dc82286d88f574b4d52e25a03/Multiconnect - Board connectors_Multiboard mid thread connector.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-push-fit-connector-laying-down.step",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard push fit connector laying down.step",
+      "upstream_file_id": "3124683",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "14a5f5a854f450743e29b7063e9d8042844ba37d00905bb0f3c0f64c33175641",
+      "versions": [
+        {
+          "sha256": "14a5f5a854f450743e29b7063e9d8042844ba37d00905bb0f3c0f64c33175641",
+          "size": 55245,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/14a5f5a854f450743e29b7063e9d8042844ba37d00905bb0f3c0f64c33175641/Multiconnect - Board connectors_Multiboard push fit connector laying down.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-push-fit-connector-laying-down.stl",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard push fit connector laying down.stl",
+      "upstream_file_id": "3124680",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "c794815d773270dacb3c584200e835d6d28793258013981aa7e82415edd08d35",
+      "versions": [
+        {
+          "sha256": "c794815d773270dacb3c584200e835d6d28793258013981aa7e82415edd08d35",
+          "size": 75384,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/c794815d773270dacb3c584200e835d6d28793258013981aa7e82415edd08d35/Multiconnect - Board connectors_Multiboard push fit connector laying down.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-push-fit-connector.step",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard push fit connector.step",
+      "upstream_file_id": "3096943",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "99704872020918796ea8b480469129502c8d84879c915a7078eda9bedb6bef79",
+      "versions": [
+        {
+          "sha256": "99704872020918796ea8b480469129502c8d84879c915a7078eda9bedb6bef79",
+          "size": 35006,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/99704872020918796ea8b480469129502c8d84879c915a7078eda9bedb6bef79/Multiconnect - Board connectors_Multiboard push fit connector.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-push-fit-connector.stl",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard push fit connector.stl",
+      "upstream_file_id": "3096935",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "885e23f40183ad25bd6421e057491d804ed5ce1506b19df6b202977be6a4af60",
+      "versions": [
+        {
+          "sha256": "885e23f40183ad25bd6421e057491d804ed5ce1506b19df6b202977be6a4af60",
+          "size": 79884,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/885e23f40183ad25bd6421e057491d804ed5ce1506b19df6b202977be6a4af60/Multiconnect - Board connectors_Multiboard push fit connector.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-small-hole-pressure-push-connector-2x.step",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard small hole pressure push Connector 2x.step",
+      "upstream_file_id": "3252950",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "2726086d858f2c6ff76f6528eed4db6dbe7571cc8f0ad34eff7b3974e130c2f8",
+      "versions": [
+        {
+          "sha256": "2726086d858f2c6ff76f6528eed4db6dbe7571cc8f0ad34eff7b3974e130c2f8",
+          "size": 118015,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/2726086d858f2c6ff76f6528eed4db6dbe7571cc8f0ad34eff7b3974e130c2f8/Multiconnect - Board connectors_Multiboard small hole pressure push Connector 2x.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-small-hole-pressure-push-connector-2x.stl",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard small hole pressure push Connector 2x.stl",
+      "upstream_file_id": "3252946",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "f09d82eaa78bbe328f9495acb26b2f507cb4af00582a01ee4ad42ef3dc4ef792",
+      "versions": [
+        {
+          "sha256": "f09d82eaa78bbe328f9495acb26b2f507cb4af00582a01ee4ad42ef3dc4ef792",
+          "size": 183884,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/f09d82eaa78bbe328f9495acb26b2f507cb4af00582a01ee4ad42ef3dc4ef792/Multiconnect - Board connectors_Multiboard small hole pressure push Connector 2x.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-small-hole-pressure-push-connector-3x.step",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard small hole pressure push Connector 3x.step",
+      "upstream_file_id": "3252951",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "eaa971810d1df6f9bf302f5d8df246d7f7d39a4b2bd575b4a61279c057219078",
+      "versions": [
+        {
+          "sha256": "eaa971810d1df6f9bf302f5d8df246d7f7d39a4b2bd575b4a61279c057219078",
+          "size": 184696,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/eaa971810d1df6f9bf302f5d8df246d7f7d39a4b2bd575b4a61279c057219078/Multiconnect - Board connectors_Multiboard small hole pressure push Connector 3x.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-small-hole-pressure-push-connector-3x.stl",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard small hole pressure push Connector 3x.stl",
+      "upstream_file_id": "3252947",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "91ef91d49f187af4aba9d0d209b7925af9cac0521f543302458d69a49b3901ce",
+      "versions": [
+        {
+          "sha256": "91ef91d49f187af4aba9d0d209b7925af9cac0521f543302458d69a49b3901ce",
+          "size": 292084,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/91ef91d49f187af4aba9d0d209b7925af9cac0521f543302458d69a49b3901ce/Multiconnect - Board connectors_Multiboard small hole pressure push Connector 3x.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-small-hole-pressure-push-lock.step",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard small hole pressure push Lock.step",
+      "upstream_file_id": "3252952",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "bef746ca6eb3dadad78c90ddff56bddd15de486791952a6f61f67ff7360e9148",
+      "versions": [
+        {
+          "sha256": "bef746ca6eb3dadad78c90ddff56bddd15de486791952a6f61f67ff7360e9148",
+          "size": 10751,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/bef746ca6eb3dadad78c90ddff56bddd15de486791952a6f61f67ff7360e9148/Multiconnect - Board connectors_Multiboard small hole pressure push Lock.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-small-hole-pressure-push-lock.stl",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard small hole pressure push Lock.stl",
+      "upstream_file_id": "3252948",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "c356311d4e2b730b1fcf4b8eed826db32d27a92c77966d1778d335b20e9386a3",
+      "versions": [
+        {
+          "sha256": "c356311d4e2b730b1fcf4b8eed826db32d27a92c77966d1778d335b20e9386a3",
+          "size": 13284,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/c356311d4e2b730b1fcf4b8eed826db32d27a92c77966d1778d335b20e9386a3/Multiconnect - Board connectors_Multiboard small hole pressure push Lock.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-small-hole-pressure-push-plug.step",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard small hole pressure push Plug.step",
+      "upstream_file_id": "3252953",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "9169127eaff5480a7af6a9dad9072bb0738f70ca8327830ee36654ae81ced2ed",
+      "versions": [
+        {
+          "sha256": "9169127eaff5480a7af6a9dad9072bb0738f70ca8327830ee36654ae81ced2ed",
+          "size": 70863,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/9169127eaff5480a7af6a9dad9072bb0738f70ca8327830ee36654ae81ced2ed/Multiconnect - Board connectors_Multiboard small hole pressure push Plug.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-small-hole-pressure-push-plug.stl",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard small hole pressure push Plug.stl",
+      "upstream_file_id": "3252949",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "a201eeec7801de97d7a8c944f210e116244a925a283c5a66ec61c39be4a6ca79",
+      "versions": [
+        {
+          "sha256": "a201eeec7801de97d7a8c944f210e116244a925a283c5a66ec61c39be4a6ca79",
+          "size": 92884,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/a201eeec7801de97d7a8c944f210e116244a925a283c5a66ec61c39be4a6ca79/Multiconnect - Board connectors_Multiboard small hole pressure push Plug.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-small-screw-connector-for-multitool.step",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard small screw Connector for multitool.step",
+      "upstream_file_id": "3042106",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "0940e33dbdae88e1e127fdb63f66bde40768a3d3f1771bf6b23bd21c3ee24407",
+      "versions": [
+        {
+          "sha256": "0940e33dbdae88e1e127fdb63f66bde40768a3d3f1771bf6b23bd21c3ee24407",
+          "size": 324060,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/0940e33dbdae88e1e127fdb63f66bde40768a3d3f1771bf6b23bd21c3ee24407/Multiconnect - Board connectors_Multiboard small screw Connector for multitool.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-small-screw-connector-for-multitool.stl",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard small screw Connector for multitool.stl",
+      "upstream_file_id": "3042073",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "88912f7fe034dea787537f64cc1bfb15b202397ff35009ab199df25eefc175a6",
+      "versions": [
+        {
+          "sha256": "88912f7fe034dea787537f64cc1bfb15b202397ff35009ab199df25eefc175a6",
+          "size": 576984,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/88912f7fe034dea787537f64cc1bfb15b202397ff35009ab199df25eefc175a6/Multiconnect - Board connectors_Multiboard small screw Connector for multitool.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-small-screw-connector.step",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard small screw Connector.step",
+      "upstream_file_id": "3042107",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "eec40e6f73df7486bb8996d920655667186345bebea86babd2685b60a32f33a3",
+      "versions": [
+        {
+          "sha256": "eec40e6f73df7486bb8996d920655667186345bebea86babd2685b60a32f33a3",
+          "size": 304373,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/eec40e6f73df7486bb8996d920655667186345bebea86babd2685b60a32f33a3/Multiconnect - Board connectors_Multiboard small screw Connector.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-small-screw-connector.stl",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard small screw Connector.stl",
+      "upstream_file_id": "3042068",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "83e2a1203efb5ff68479246bae6bbc7089da63111dc9b28e2434d1c0d25a2bd9",
+      "versions": [
+        {
+          "sha256": "83e2a1203efb5ff68479246bae6bbc7089da63111dc9b28e2434d1c0d25a2bd9",
+          "size": 574584,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/83e2a1203efb5ff68479246bae6bbc7089da63111dc9b28e2434d1c0d25a2bd9/Multiconnect - Board connectors_Multiboard small screw Connector.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-small-thread-connector-for-multitool.step",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard small thread connector for multitool.step",
+      "upstream_file_id": "3096940",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "762bee9843dca584cd7a580cc8a821e83b3fbc270eae7c23268a7f05496c0c9d",
+      "versions": [
+        {
+          "sha256": "762bee9843dca584cd7a580cc8a821e83b3fbc270eae7c23268a7f05496c0c9d",
+          "size": 262631,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/762bee9843dca584cd7a580cc8a821e83b3fbc270eae7c23268a7f05496c0c9d/Multiconnect - Board connectors_Multiboard small thread connector for multitool.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-small-thread-connector-for-multitool.stl",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard small thread connector for multitool.stl",
+      "upstream_file_id": "3096931",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "cfce5eb3536fc63f8bf6513cc09739161695183f5e6b830ffa9e4614b4cc8cf4",
+      "versions": [
+        {
+          "sha256": "cfce5eb3536fc63f8bf6513cc09739161695183f5e6b830ffa9e4614b4cc8cf4",
+          "size": 541584,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/cfce5eb3536fc63f8bf6513cc09739161695183f5e6b830ffa9e4614b4cc8cf4/Multiconnect - Board connectors_Multiboard small thread connector for multitool.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-small-thread-connector.step",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard small thread connector.step",
+      "upstream_file_id": "3096941",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "b32fbdaf8cef958b8ec0865918ffa14ba9b26fcd637f1e3f69db331a0f85a599",
+      "versions": [
+        {
+          "sha256": "b32fbdaf8cef958b8ec0865918ffa14ba9b26fcd637f1e3f69db331a0f85a599",
+          "size": 245912,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/b32fbdaf8cef958b8ec0865918ffa14ba9b26fcd637f1e3f69db331a0f85a599/Multiconnect - Board connectors_Multiboard small thread connector.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-small-thread-connector.stl",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard small thread connector.stl",
+      "upstream_file_id": "3096933",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "8e0b1583ba4b318c23b3e2541e207ae15ec891346bded4877e57ac80b191c449",
+      "versions": [
+        {
+          "sha256": "8e0b1583ba4b318c23b3e2541e207ae15ec891346bded4877e57ac80b191c449",
+          "size": 539184,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/8e0b1583ba4b318c23b3e2541e207ae15ec891346bded4877e57ac80b191c449/Multiconnect - Board connectors_Multiboard small thread connector.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-snap-connector.step",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard snap connector.step",
+      "upstream_file_id": "3096942",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "0849a258c84e9ff5a7e9069f3509ebbe1df6d3e5d13ee131e8fe8005a4425019",
+      "versions": [
+        {
+          "sha256": "0849a258c84e9ff5a7e9069f3509ebbe1df6d3e5d13ee131e8fe8005a4425019",
+          "size": 106643,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/0849a258c84e9ff5a7e9069f3509ebbe1df6d3e5d13ee131e8fe8005a4425019/Multiconnect - Board connectors_Multiboard snap connector.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-snap-connector.stl",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard snap connector.stl",
+      "upstream_file_id": "3096934",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "b9afd2177935189e7d39de26f68aa1935d5eb3a688e04c881f341155c4cb6a73",
+      "versions": [
+        {
+          "sha256": "b9afd2177935189e7d39de26f68aa1935d5eb3a688e04c881f341155c4cb6a73",
+          "size": 101484,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/b9afd2177935189e7d39de26f68aa1935d5eb3a688e04c881f341155c4cb6a73/Multiconnect - Board connectors_Multiboard snap connector.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-stronger-mid-screw-connector-for-multitool.step",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard stronger mid screw Connector for multitool.step",
+      "upstream_file_id": "3042102",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "d52abbeca161f82588dc5d11e9e9cb05b249235b7183c639b232e4e5b6b855ad",
+      "versions": [
+        {
+          "sha256": "d52abbeca161f82588dc5d11e9e9cb05b249235b7183c639b232e4e5b6b855ad",
+          "size": 432271,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/d52abbeca161f82588dc5d11e9e9cb05b249235b7183c639b232e4e5b6b855ad/Multiconnect - Board connectors_Multiboard stronger mid screw Connector for multitool.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-generic-connector-v1/multiconnect-board-connectors-multiboard-stronger-mid-screw-connector-for-multitool.stl",
+      "source_group_id": "multiconnect-generic-connector-v1",
+      "filename": "Multiconnect - Board connectors_Multiboard stronger mid screw Connector for multitool.stl",
+      "upstream_file_id": "3042071",
+      "url": "https://www.printables.com/model/716558",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "9a744d7604f33508532bd0185b70b925210c6c175d1e019bfa2424c7274e4dc7",
+      "versions": [
+        {
+          "sha256": "9a744d7604f33508532bd0185b70b925210c6c175d1e019bfa2424c7274e4dc7",
+          "size": 753284,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-generic-connector-v1/9a744d7604f33508532bd0185b70b925210c6c175d1e019bfa2424c7274e4dc7/Multiconnect - Board connectors_Multiboard stronger mid screw Connector for multitool.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/example-1x-embed-back.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "EXAMPLE 1x Embed Back.stl",
+      "upstream_file_id": "5502201",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "63319ba187b3334f6006a2e3c207a08c2e325074143be3c22b52b359a6f880da",
+      "versions": [
+        {
+          "sha256": "63319ba187b3334f6006a2e3c207a08c2e325074143be3c22b52b359a6f880da",
+          "size": 99084,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/63319ba187b3334f6006a2e3c207a08c2e325074143be3c22b52b359a6f880da/EXAMPLE 1x Embed Back.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/example-1x-snap-in-embed-back.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "EXAMPLE 1x Snap In Embed Back.stl",
+      "upstream_file_id": "5502200",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "0b954dc3c72315df500b85975b4fe92236e599a9c032af705a142d8a581b538b",
+      "versions": [
+        {
+          "sha256": "0b954dc3c72315df500b85975b4fe92236e599a9c032af705a142d8a581b538b",
+          "size": 62284,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/0b954dc3c72315df500b85975b4fe92236e599a9c032af705a142d8a581b538b/EXAMPLE 1x Snap In Embed Back.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/example-2x-embed-back.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "EXAMPLE 2x Embed Back.stl",
+      "upstream_file_id": "5502203",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "e2dcd06f0462ad6dab3b735cf00fde1b1fbce5239d41ed9b7e462a548f3b8b86",
+      "versions": [
+        {
+          "sha256": "e2dcd06f0462ad6dab3b735cf00fde1b1fbce5239d41ed9b7e462a548f3b8b86",
+          "size": 204184,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/e2dcd06f0462ad6dab3b735cf00fde1b1fbce5239d41ed9b7e462a548f3b8b86/EXAMPLE 2x Embed Back.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/example-2x-snap-in-embed-back.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "EXAMPLE 2x Snap In Embed Back.stl",
+      "upstream_file_id": "5502199",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "8e5a8dbe63960d2d2f8f84636be934cc14a29808146593ea7da49f790a78f81a",
+      "versions": [
+        {
+          "sha256": "8e5a8dbe63960d2d2f8f84636be934cc14a29808146593ea7da49f790a78f81a",
+          "size": 172984,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/8e5a8dbe63960d2d2f8f84636be934cc14a29808146593ea7da49f790a78f81a/EXAMPLE 2x Snap In Embed Back.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/example-4x-back.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "EXAMPLE 4x Back.stl",
+      "upstream_file_id": "5502205",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "51fe830c15cec0d9d9b859254e67b6dfd9197a0838fca025bc898590bfee06e0",
+      "versions": [
+        {
+          "sha256": "51fe830c15cec0d9d9b859254e67b6dfd9197a0838fca025bc898590bfee06e0",
+          "size": 82884,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/51fe830c15cec0d9d9b859254e67b6dfd9197a0838fca025bc898590bfee06e0/EXAMPLE 4x Back.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/example-4x-quick-connect-back.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "EXAMPLE 4x Quick Connect Back.stl",
+      "upstream_file_id": "5502202",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "9fa3195ec4269fd92cd1c97972ecd31e8d9d6489aa2fbb900455a6d2fe47ff31",
+      "versions": [
+        {
+          "sha256": "9fa3195ec4269fd92cd1c97972ecd31e8d9d6489aa2fbb900455a6d2fe47ff31",
+          "size": 414384,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/9fa3195ec4269fd92cd1c97972ecd31e8d9d6489aa2fbb900455a6d2fe47ff31/EXAMPLE 4x Quick Connect Back.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/example-4x-snap-in-back.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "EXAMPLE 4x Snap In Back.stl",
+      "upstream_file_id": "5502198",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "17e576771f9cb035b4f4cdb541c564179bf8de1a1f8ce2909e0d9cec0f4f1b27",
+      "versions": [
+        {
+          "sha256": "17e576771f9cb035b4f4cdb541c564179bf8de1a1f8ce2909e0d9cec0f4f1b27",
+          "size": 93284,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/17e576771f9cb035b4f4cdb541c564179bf8de1a1f8ce2909e0d9cec0f4f1b27/EXAMPLE 4x Snap In Back.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/example-4x-snap-in-quick-connect-back.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "EXAMPLE 4x Snap In Quick Connect Back.stl",
+      "upstream_file_id": "5502204",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "4f26f05c0b079dff3ef94d736cd0fe5abf40831f407c912a7eaa5934359c121c",
+      "versions": [
+        {
+          "sha256": "4f26f05c0b079dff3ef94d736cd0fe5abf40831f407c912a7eaa5934359c121c",
+          "size": 381584,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/4f26f05c0b079dff3ef94d736cd0fe5abf40831f407c912a7eaa5934359c121c/EXAMPLE 4x Snap In Quick Connect Back.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-back-slot-dimensions.pdf",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect - Back slot dimensions.pdf",
+      "upstream_file_id": "92458",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "b4c94846c60fb56f9f48f6776b9a9703a275debfcd8293146523974783316b47",
+      "versions": [
+        {
+          "sha256": "b4c94846c60fb56f9f48f6776b9a9703a275debfcd8293146523974783316b47",
+          "size": 50237,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/b4c94846c60fb56f9f48f6776b9a9703a275debfcd8293146523974783316b47/Multiconnect - Back slot dimensions.pdf",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-connector-dimensions.pdf",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect - Connector dimensions.pdf",
+      "upstream_file_id": "92457",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "ebc0b88b6adc2232eb6201040c2a1d56e6f01f30e75c8f62abd0d25c9f729ca7",
+      "versions": [
+        {
+          "sha256": "ebc0b88b6adc2232eb6201040c2a1d56e6f01f30e75c8f62abd0d25c9f729ca7",
+          "size": 33734,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/ebc0b88b6adc2232eb6201040c2a1d56e6f01f30e75c8f62abd0d25c9f729ca7/Multiconnect - Connector dimensions.pdf",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-embed-back-end.step",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_Embed Back End.step",
+      "upstream_file_id": "4218825",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "17d9515efea152298dfa92fdbde9ffd6d4ff63d7e61cca03535bb491f2b3d5a3",
+      "versions": [
+        {
+          "sha256": "17d9515efea152298dfa92fdbde9ffd6d4ff63d7e61cca03535bb491f2b3d5a3",
+          "size": 10637,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/17d9515efea152298dfa92fdbde9ffd6d4ff63d7e61cca03535bb491f2b3d5a3/Multiconnect v2_Embed Back End.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-embed-back-end.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_Embed Back End.stl",
+      "upstream_file_id": "4218808",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "e0875a27613099a24fd8260b005007c0e698e10e6afbe32d42e51aed6d35be13",
+      "versions": [
+        {
+          "sha256": "e0875a27613099a24fd8260b005007c0e698e10e6afbe32d42e51aed6d35be13",
+          "size": 14684,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/e0875a27613099a24fd8260b005007c0e698e10e6afbe32d42e51aed6d35be13/Multiconnect v2_Embed Back End.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-example-1x-embed-back.step",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_EXAMPLE 1x Embed Back.step",
+      "upstream_file_id": "4218860",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "4cbd1bf578ef14f22036d0869e3e13eb9c4e8e99f18da48df35d70df2b8f74d2",
+      "versions": [
+        {
+          "sha256": "4cbd1bf578ef14f22036d0869e3e13eb9c4e8e99f18da48df35d70df2b8f74d2",
+          "size": 69665,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/4cbd1bf578ef14f22036d0869e3e13eb9c4e8e99f18da48df35d70df2b8f74d2/Multiconnect v2_EXAMPLE 1x Embed Back.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-example-1x-embed-back.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_EXAMPLE 1x Embed Back.stl",
+      "upstream_file_id": "4218844",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "55a1d1793c3bb612379f0c9c528320d1e86c3c48bd201289691d3c66bde1203a",
+      "versions": [
+        {
+          "sha256": "55a1d1793c3bb612379f0c9c528320d1e86c3c48bd201289691d3c66bde1203a",
+          "size": 105684,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/55a1d1793c3bb612379f0c9c528320d1e86c3c48bd201289691d3c66bde1203a/Multiconnect v2_EXAMPLE 1x Embed Back.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-example-1x-snap-in-embed-back.step",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_EXAMPLE 1x Snap In Embed Back.step",
+      "upstream_file_id": "4218859",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "b33a8f42026421ec61656b4fb0be2d8f59fc4cce1f71de464ca9a0f4c211e52a",
+      "versions": [
+        {
+          "sha256": "b33a8f42026421ec61656b4fb0be2d8f59fc4cce1f71de464ca9a0f4c211e52a",
+          "size": 38706,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/b33a8f42026421ec61656b4fb0be2d8f59fc4cce1f71de464ca9a0f4c211e52a/Multiconnect v2_EXAMPLE 1x Snap In Embed Back.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-example-1x-snap-in-embed-back.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_EXAMPLE 1x Snap In Embed Back.stl",
+      "upstream_file_id": "4218843",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "74e5b5379b188e53422dbe767dcc3f1da63b8b59dc49e8d74cd52e942441b994",
+      "versions": [
+        {
+          "sha256": "74e5b5379b188e53422dbe767dcc3f1da63b8b59dc49e8d74cd52e942441b994",
+          "size": 65584,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/74e5b5379b188e53422dbe767dcc3f1da63b8b59dc49e8d74cd52e942441b994/Multiconnect v2_EXAMPLE 1x Snap In Embed Back.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-example-2x-embed-back.step",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_EXAMPLE 2x Embed Back.step",
+      "upstream_file_id": "4218864",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "d924c50d653b51a15ea6c276e0d43a31caa1477403400b7f50afaafe94bbc5d2",
+      "versions": [
+        {
+          "sha256": "d924c50d653b51a15ea6c276e0d43a31caa1477403400b7f50afaafe94bbc5d2",
+          "size": 162232,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/d924c50d653b51a15ea6c276e0d43a31caa1477403400b7f50afaafe94bbc5d2/Multiconnect v2_EXAMPLE 2x Embed Back.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-example-2x-embed-back.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_EXAMPLE 2x Embed Back.stl",
+      "upstream_file_id": "4218845",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "2642259fb88bc3a3c831aa590aaaaa9865721a3a524008f583700fb56800da59",
+      "versions": [
+        {
+          "sha256": "2642259fb88bc3a3c831aa590aaaaa9865721a3a524008f583700fb56800da59",
+          "size": 235984,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/2642259fb88bc3a3c831aa590aaaaa9865721a3a524008f583700fb56800da59/Multiconnect v2_EXAMPLE 2x Embed Back.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-example-2x-snap-in-embed-back.step",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_EXAMPLE 2x Snap In Embed Back.step",
+      "upstream_file_id": "4218861",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "049578ddd07c0e94fff80cd67ec6693a1bde183e6c5e22ae1b8e03080b6086d9",
+      "versions": [
+        {
+          "sha256": "049578ddd07c0e94fff80cd67ec6693a1bde183e6c5e22ae1b8e03080b6086d9",
+          "size": 131176,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/049578ddd07c0e94fff80cd67ec6693a1bde183e6c5e22ae1b8e03080b6086d9/Multiconnect v2_EXAMPLE 2x Snap In Embed Back.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-example-2x-snap-in-embed-back.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_EXAMPLE 2x Snap In Embed Back.stl",
+      "upstream_file_id": "4218849",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "302dc7876a83845dc552d87c76850afbfcbc98577edefc9f525d4451adc1456b",
+      "versions": [
+        {
+          "sha256": "302dc7876a83845dc552d87c76850afbfcbc98577edefc9f525d4451adc1456b",
+          "size": 195884,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/302dc7876a83845dc552d87c76850afbfcbc98577edefc9f525d4451adc1456b/Multiconnect v2_EXAMPLE 2x Snap In Embed Back.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-example-4x-back.step",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_EXAMPLE 4x Back.step",
+      "upstream_file_id": "4218858",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "c91c112a80957a56a80b565883cd3f9795843cef254177036da0d1dc4d204db2",
+      "versions": [
+        {
+          "sha256": "c91c112a80957a56a80b565883cd3f9795843cef254177036da0d1dc4d204db2",
+          "size": 109656,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/c91c112a80957a56a80b565883cd3f9795843cef254177036da0d1dc4d204db2/Multiconnect v2_EXAMPLE 4x Back.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-example-4x-back.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_EXAMPLE 4x Back.stl",
+      "upstream_file_id": "4218846",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "d21ef2983eab3d765931726c568a35c9faf22b76318d19ecd1f200a8b64b6ad7",
+      "versions": [
+        {
+          "sha256": "d21ef2983eab3d765931726c568a35c9faf22b76318d19ecd1f200a8b64b6ad7",
+          "size": 97684,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/d21ef2983eab3d765931726c568a35c9faf22b76318d19ecd1f200a8b64b6ad7/Multiconnect v2_EXAMPLE 4x Back.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-example-4x-quick-connect-back.step",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_EXAMPLE 4x Quick Connect Back.step",
+      "upstream_file_id": "4218862",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "64a5bd4b75e7c700002862353ace962efca69b1d1fbc1c747c0abf5e411cb698",
+      "versions": [
+        {
+          "sha256": "64a5bd4b75e7c700002862353ace962efca69b1d1fbc1c747c0abf5e411cb698",
+          "size": 339079,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/64a5bd4b75e7c700002862353ace962efca69b1d1fbc1c747c0abf5e411cb698/Multiconnect v2_EXAMPLE 4x Quick Connect Back.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-example-4x-quick-connect-back.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_EXAMPLE 4x Quick Connect Back.stl",
+      "upstream_file_id": "4218848",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "f3c041f1f16594231c302150b4bca9a35c72e4742ae7518789fdc0838dd37c0a",
+      "versions": [
+        {
+          "sha256": "f3c041f1f16594231c302150b4bca9a35c72e4742ae7518789fdc0838dd37c0a",
+          "size": 481984,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/f3c041f1f16594231c302150b4bca9a35c72e4742ae7518789fdc0838dd37c0a/Multiconnect v2_EXAMPLE 4x Quick Connect Back.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-example-4x-snap-in-back.step",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_EXAMPLE 4x Snap In Back.step",
+      "upstream_file_id": "4218863",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "328d73207324599f95b4a92458f0135ce422dc1499a3b269858b764282c32f3e",
+      "versions": [
+        {
+          "sha256": "328d73207324599f95b4a92458f0135ce422dc1499a3b269858b764282c32f3e",
+          "size": 116295,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/328d73207324599f95b4a92458f0135ce422dc1499a3b269858b764282c32f3e/Multiconnect v2_EXAMPLE 4x Snap In Back.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-example-4x-snap-in-back.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_EXAMPLE 4x Snap In Back.stl",
+      "upstream_file_id": "4218841",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "2b9f333c739edbdabbd194ec2b6a417be3aca614d2cee1c365befa7b9293ba1c",
+      "versions": [
+        {
+          "sha256": "2b9f333c739edbdabbd194ec2b6a417be3aca614d2cee1c365befa7b9293ba1c",
+          "size": 109384,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/2b9f333c739edbdabbd194ec2b6a417be3aca614d2cee1c365befa7b9293ba1c/Multiconnect v2_EXAMPLE 4x Snap In Back.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-example-4x-snap-in-quick-connect-back.step",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_EXAMPLE 4x Snap In Quick Connect Back.step",
+      "upstream_file_id": "4218865",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "6c7ecf4b067a0f925e4194e5a429ace9d8ca271635b1bc5d789fa5151d40481b",
+      "versions": [
+        {
+          "sha256": "6c7ecf4b067a0f925e4194e5a429ace9d8ca271635b1bc5d789fa5151d40481b",
+          "size": 307989,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/6c7ecf4b067a0f925e4194e5a429ace9d8ca271635b1bc5d789fa5151d40481b/Multiconnect v2_EXAMPLE 4x Snap In Quick Connect Back.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-example-4x-snap-in-quick-connect-back.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_EXAMPLE 4x Snap In Quick Connect Back.stl",
+      "upstream_file_id": "4218850",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "3db01b0f0a408d3533c44ecda9df89ca0af8a129dc22c0c7446290f7c44e0687",
+      "versions": [
+        {
+          "sha256": "3db01b0f0a408d3533c44ecda9df89ca0af8a129dc22c0c7446290f7c44e0687",
+          "size": 441884,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/3db01b0f0a408d3533c44ecda9df89ca0af8a129dc22c0c7446290f7c44e0687/Multiconnect v2_EXAMPLE 4x Snap In Quick Connect Back.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-example-round.step",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_EXAMPLE Round.step",
+      "upstream_file_id": "4218857",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "eca458b815ac45e3c493cf02713ec931ad1a19d0715122614a6b031a5a347f14",
+      "versions": [
+        {
+          "sha256": "eca458b815ac45e3c493cf02713ec931ad1a19d0715122614a6b031a5a347f14",
+          "size": 9745,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/eca458b815ac45e3c493cf02713ec931ad1a19d0715122614a6b031a5a347f14/Multiconnect v2_EXAMPLE Round.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-example-round.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_EXAMPLE Round.stl",
+      "upstream_file_id": "4218842",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "62cbc72897d5e59ce8095891d288948f5ae22c44cf6626d250452faf99a6e776",
+      "versions": [
+        {
+          "sha256": "62cbc72897d5e59ce8095891d288948f5ae22c44cf6626d250452faf99a6e776",
+          "size": 88984,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/62cbc72897d5e59ce8095891d288948f5ae22c44cf6626d250452faf99a6e776/Multiconnect v2_EXAMPLE Round.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-example-snap-in-slot.step",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_EXAMPLE Snap In Slot.step",
+      "upstream_file_id": "4218856",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "2764e61c2707e2382f4b41703aa12037507e3d22e53829f66fef38115d310b35",
+      "versions": [
+        {
+          "sha256": "2764e61c2707e2382f4b41703aa12037507e3d22e53829f66fef38115d310b35",
+          "size": 30758,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/2764e61c2707e2382f4b41703aa12037507e3d22e53829f66fef38115d310b35/Multiconnect v2_EXAMPLE Snap In Slot.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-example-snap-in-slot.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_EXAMPLE Snap In Slot.stl",
+      "upstream_file_id": "4218847",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "e986c60daca84283387e701df39da2c6f72485d0224c499541a2a2532fcd6332",
+      "versions": [
+        {
+          "sha256": "e986c60daca84283387e701df39da2c6f72485d0224c499541a2a2532fcd6332",
+          "size": 101284,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/e986c60daca84283387e701df39da2c6f72485d0224c499541a2a2532fcd6332/Multiconnect v2_EXAMPLE Snap In Slot.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-half-round-negative.step",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_Half Round Negative.step",
+      "upstream_file_id": "4218827",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "b14583bc705863d706fe81002ec6f3c223893b5e3d8311345440cad519ce1ecc",
+      "versions": [
+        {
+          "sha256": "b14583bc705863d706fe81002ec6f3c223893b5e3d8311345440cad519ce1ecc",
+          "size": 8652,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/b14583bc705863d706fe81002ec6f3c223893b5e3d8311345440cad519ce1ecc/Multiconnect v2_Half Round Negative.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-half-round-negative.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_Half Round Negative.stl",
+      "upstream_file_id": "4218815",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "ad094486ba17792f1f39fdee9dcaf79a0302ad62b4a425bbb6728f4ba04e98d8",
+      "versions": [
+        {
+          "sha256": "ad094486ba17792f1f39fdee9dcaf79a0302ad62b4a425bbb6728f4ba04e98d8",
+          "size": 35084,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/ad094486ba17792f1f39fdee9dcaf79a0302ad62b4a425bbb6728f4ba04e98d8/Multiconnect v2_Half Round Negative.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-half-round.step",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_Half Round.step",
+      "upstream_file_id": "4218826",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "ff6139eaa29ca65644c12d89f71dd3c52059a02f43e3c403f520c161cae79684",
+      "versions": [
+        {
+          "sha256": "ff6139eaa29ca65644c12d89f71dd3c52059a02f43e3c403f520c161cae79684",
+          "size": 10856,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/ff6139eaa29ca65644c12d89f71dd3c52059a02f43e3c403f520c161cae79684/Multiconnect v2_Half Round.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-half-round.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_Half Round.stl",
+      "upstream_file_id": "4218805",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "2a4eefb1a30efe701be3004ad9b9176fb9068d90f769d038503d22d4a67eb3e3",
+      "versions": [
+        {
+          "sha256": "2a4eefb1a30efe701be3004ad9b9176fb9068d90f769d038503d22d4a67eb3e3",
+          "size": 47884,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/2a4eefb1a30efe701be3004ad9b9176fb9068d90f769d038503d22d4a67eb3e3/Multiconnect v2_Half Round.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-opening-raw-slot-back.step",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_Opening Raw Slot Back.step",
+      "upstream_file_id": "4218839",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "cc2b90344d0aae2999569ca9549d40193d267a4491d3fee59290afaab58490de",
+      "versions": [
+        {
+          "sha256": "cc2b90344d0aae2999569ca9549d40193d267a4491d3fee59290afaab58490de",
+          "size": 59156,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/cc2b90344d0aae2999569ca9549d40193d267a4491d3fee59290afaab58490de/Multiconnect v2_Opening Raw Slot Back.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-opening-raw-slot-back.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_Opening Raw Slot Back.stl",
+      "upstream_file_id": "4218821",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "cbbb414e89216ebcd6493fd7eb283c084027a01f6bda0e58a32870e2651ccd7c",
+      "versions": [
+        {
+          "sha256": "cbbb414e89216ebcd6493fd7eb283c084027a01f6bda0e58a32870e2651ccd7c",
+          "size": 66284,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/cbbb414e89216ebcd6493fd7eb283c084027a01f6bda0e58a32870e2651ccd7c/Multiconnect v2_Opening Raw Slot Back.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-quick-connect-slot-back.step",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_Quick Connect Slot Back.step",
+      "upstream_file_id": "4218835",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "be498b21a1b9d1c3d5acdcc14ebaf20bfbf399871d0c7e217896ce40188f4f26",
+      "versions": [
+        {
+          "sha256": "be498b21a1b9d1c3d5acdcc14ebaf20bfbf399871d0c7e217896ce40188f4f26",
+          "size": 91111,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/be498b21a1b9d1c3d5acdcc14ebaf20bfbf399871d0c7e217896ce40188f4f26/Multiconnect v2_Quick Connect Slot Back.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-quick-connect-slot-back.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_Quick Connect Slot Back.stl",
+      "upstream_file_id": "4218807",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "c84c522ae9b3143e73ef878b5792c6a37c38bbe35b54f65b8f1182cf77577fa1",
+      "versions": [
+        {
+          "sha256": "c84c522ae9b3143e73ef878b5792c6a37c38bbe35b54f65b8f1182cf77577fa1",
+          "size": 130384,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/c84c522ae9b3143e73ef878b5792c6a37c38bbe35b54f65b8f1182cf77577fa1/Multiconnect v2_Quick Connect Slot Back.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-quick-connect-top-back.step",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_Quick Connect Top Back.step",
+      "upstream_file_id": "4218837",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "413f5dde43eac0793c4eaf97a96fd7989d39e94a7c7d80fb94531b1b1cf99562",
+      "versions": [
+        {
+          "sha256": "413f5dde43eac0793c4eaf97a96fd7989d39e94a7c7d80fb94531b1b1cf99562",
+          "size": 60509,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/413f5dde43eac0793c4eaf97a96fd7989d39e94a7c7d80fb94531b1b1cf99562/Multiconnect v2_Quick Connect Top Back.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-quick-connect-top-back.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_Quick Connect Top Back.stl",
+      "upstream_file_id": "4218822",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "ebe44d5de06d26e7e50c18c49bedac17626489897363e85fea6a8bef4d4bde0e",
+      "versions": [
+        {
+          "sha256": "ebe44d5de06d26e7e50c18c49bedac17626489897363e85fea6a8bef4d4bde0e",
+          "size": 91084,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/ebe44d5de06d26e7e50c18c49bedac17626489897363e85fea6a8bef4d4bde0e/Multiconnect v2_Quick Connect Top Back.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-raw-slot-back.step",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_Raw Slot Back.step",
+      "upstream_file_id": "4218832",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "45913af8de511d13564cd8b338375895fdea6dbf683655ed8150a1d88363e347",
+      "versions": [
+        {
+          "sha256": "45913af8de511d13564cd8b338375895fdea6dbf683655ed8150a1d88363e347",
+          "size": 17874,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/45913af8de511d13564cd8b338375895fdea6dbf683655ed8150a1d88363e347/Multiconnect v2_Raw Slot Back.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-raw-slot-back.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_Raw Slot Back.stl",
+      "upstream_file_id": "4218814",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "b80f1115ac750902106da2b294f80a1b7f1396b78da45f29f0000f5915e8cdac",
+      "versions": [
+        {
+          "sha256": "b80f1115ac750902106da2b294f80a1b7f1396b78da45f29f0000f5915e8cdac",
+          "size": 2284,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/b80f1115ac750902106da2b294f80a1b7f1396b78da45f29f0000f5915e8cdac/Multiconnect v2_Raw Slot Back.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-round-negative.step",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_Round Negative.step",
+      "upstream_file_id": "4218834",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "d7aeac464ddbe2416853cbccbba1aae84078d2c64eaa4bf7e9a2b4a58c8cdfed",
+      "versions": [
+        {
+          "sha256": "d7aeac464ddbe2416853cbccbba1aae84078d2c64eaa4bf7e9a2b4a58c8cdfed",
+          "size": 7467,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/d7aeac464ddbe2416853cbccbba1aae84078d2c64eaa4bf7e9a2b4a58c8cdfed/Multiconnect v2_Round Negative.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-round-negative.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_Round Negative.stl",
+      "upstream_file_id": "4218798",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "fef01fa66b802bff92185f0895f8ff4d41db781f94448a061f159b0200b85d6e",
+      "versions": [
+        {
+          "sha256": "fef01fa66b802bff92185f0895f8ff4d41db781f94448a061f159b0200b85d6e",
+          "size": 64284,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/fef01fa66b802bff92185f0895f8ff4d41db781f94448a061f159b0200b85d6e/Multiconnect v2_Round Negative.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-round.step",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_Round.step",
+      "upstream_file_id": "4218828",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "812554b8d9d90400474b47aed69f31821f93d475e6be3d15032f6ebd64592063",
+      "versions": [
+        {
+          "sha256": "812554b8d9d90400474b47aed69f31821f93d475e6be3d15032f6ebd64592063",
+          "size": 8848,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/812554b8d9d90400474b47aed69f31821f93d475e6be3d15032f6ebd64592063/Multiconnect v2_Round.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-round.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_Round.stl",
+      "upstream_file_id": "4218803",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "5327183f868b54eb8792c7d4c96261f84c7774fb38884614fdc83965a070870b",
+      "versions": [
+        {
+          "sha256": "5327183f868b54eb8792c7d4c96261f84c7774fb38884614fdc83965a070870b",
+          "size": 89484,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/5327183f868b54eb8792c7d4c96261f84c7774fb38884614fdc83965a070870b/Multiconnect v2_Round.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-slot-negative.step",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_Slot Negative.step",
+      "upstream_file_id": "4218833",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "e2ac8462e8d75fc6e56dfc41f532dc6fec92cb5b744d2ff1ac143b430567aa0e",
+      "versions": [
+        {
+          "sha256": "e2ac8462e8d75fc6e56dfc41f532dc6fec92cb5b744d2ff1ac143b430567aa0e",
+          "size": 13313,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/e2ac8462e8d75fc6e56dfc41f532dc6fec92cb5b744d2ff1ac143b430567aa0e/Multiconnect v2_Slot Negative.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-slot-negative.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_Slot Negative.stl",
+      "upstream_file_id": "4218797",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "ad7660d0968294fbe096bc3c307ce4308fad031c26de10d4d58ae415ac49655f",
+      "versions": [
+        {
+          "sha256": "ad7660d0968294fbe096bc3c307ce4308fad031c26de10d4d58ae415ac49655f",
+          "size": 1484,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/ad7660d0968294fbe096bc3c307ce4308fad031c26de10d4d58ae415ac49655f/Multiconnect v2_Slot Negative.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-slot-opening.step",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_Slot Opening.step",
+      "upstream_file_id": "4218838",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "33c0b8e13c02aa7c99ac73a48554fe84a86261e3933e4da6bbfdfd80f3dac3cb",
+      "versions": [
+        {
+          "sha256": "33c0b8e13c02aa7c99ac73a48554fe84a86261e3933e4da6bbfdfd80f3dac3cb",
+          "size": 4832,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/33c0b8e13c02aa7c99ac73a48554fe84a86261e3933e4da6bbfdfd80f3dac3cb/Multiconnect v2_Slot Opening.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-slot-opening.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_Slot Opening.stl",
+      "upstream_file_id": "4218820",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "a37925931477f122d1765c869345f961600d14ade699dc7c6558534b18898fcd",
+      "versions": [
+        {
+          "sha256": "a37925931477f122d1765c869345f961600d14ade699dc7c6558534b18898fcd",
+          "size": 26484,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/a37925931477f122d1765c869345f961600d14ade699dc7c6558534b18898fcd/Multiconnect v2_Slot Opening.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-slot.step",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_Slot.step",
+      "upstream_file_id": "4218831",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "23b89b27be7a665162b257946157c062a60fc4ed3548844689a596bb80b6724e",
+      "versions": [
+        {
+          "sha256": "23b89b27be7a665162b257946157c062a60fc4ed3548844689a596bb80b6724e",
+          "size": 15289,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/23b89b27be7a665162b257946157c062a60fc4ed3548844689a596bb80b6724e/Multiconnect v2_Slot.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-slot.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_Slot.stl",
+      "upstream_file_id": "4218806",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "80b5e32d2a11719fb862ae217dad6ab61c9c1a8ba1b8745406cec078d54d07d8",
+      "versions": [
+        {
+          "sha256": "80b5e32d2a11719fb862ae217dad6ab61c9c1a8ba1b8745406cec078d54d07d8",
+          "size": 14284,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/80b5e32d2a11719fb862ae217dad6ab61c9c1a8ba1b8745406cec078d54d07d8/Multiconnect v2_Slot.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-snap-in-quick-connect-top-back.step",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_Snap In Quick Connect Top Back.step",
+      "upstream_file_id": "4218836",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "154bafc9f50313e5adf677cf8bbe955870cd6508d2197ab9dc94573ebe14907b",
+      "versions": [
+        {
+          "sha256": "154bafc9f50313e5adf677cf8bbe955870cd6508d2197ab9dc94573ebe14907b",
+          "size": 30604,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/154bafc9f50313e5adf677cf8bbe955870cd6508d2197ab9dc94573ebe14907b/Multiconnect v2_Snap In Quick Connect Top Back.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-snap-in-quick-connect-top-back.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_Snap In Quick Connect Top Back.stl",
+      "upstream_file_id": "4218801",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "826027ffb9a51dbb03a66b9c33fb0b620a1070c70cbf2b8646ff268775cac208",
+      "versions": [
+        {
+          "sha256": "826027ffb9a51dbb03a66b9c33fb0b620a1070c70cbf2b8646ff268775cac208",
+          "size": 50984,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/826027ffb9a51dbb03a66b9c33fb0b620a1070c70cbf2b8646ff268775cac208/Multiconnect v2_Snap In Quick Connect Top Back.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-snap-in-slot-negative.step",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_Snap In Slot Negative.step",
+      "upstream_file_id": "4348875",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "7db6c137fa633894482cb45ff9f7ff7287e2310db9120e75e35ebcb120e2f254",
+      "versions": [
+        {
+          "sha256": "7db6c137fa633894482cb45ff9f7ff7287e2310db9120e75e35ebcb120e2f254",
+          "size": 20884,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/7db6c137fa633894482cb45ff9f7ff7287e2310db9120e75e35ebcb120e2f254/Multiconnect v2_Snap In Slot Negative.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-snap-in-slot-negative.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_Snap In Slot Negative.stl",
+      "upstream_file_id": "4348873",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "d541718cbc21316c699382716f84db00efc5663b903e5163309bad6016e507da",
+      "versions": [
+        {
+          "sha256": "d541718cbc21316c699382716f84db00efc5663b903e5163309bad6016e507da",
+          "size": 37684,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/d541718cbc21316c699382716f84db00efc5663b903e5163309bad6016e507da/Multiconnect v2_Snap In Slot Negative.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-snap-in-slot.step",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_Snap In Slot.step",
+      "upstream_file_id": "4218830",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "f4a121d6565c0a5f9a6930b24a5a46b957eb80f8f83218cb45a459bb82adddc1",
+      "versions": [
+        {
+          "sha256": "f4a121d6565c0a5f9a6930b24a5a46b957eb80f8f83218cb45a459bb82adddc1",
+          "size": 28235,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/f4a121d6565c0a5f9a6930b24a5a46b957eb80f8f83218cb45a459bb82adddc1/Multiconnect v2_Snap In Slot.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-snap-in-slot.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_Snap In Slot.stl",
+      "upstream_file_id": "4218819",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "1331a7614bfc43b71b213efde6c0eaccd1f24903e17d875db52e0b63a11fae5d",
+      "versions": [
+        {
+          "sha256": "1331a7614bfc43b71b213efde6c0eaccd1f24903e17d875db52e0b63a11fae5d",
+          "size": 75984,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/1331a7614bfc43b71b213efde6c0eaccd1f24903e17d875db52e0b63a11fae5d/Multiconnect v2_Snap In Slot.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-snap-in-top-back.step",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_Snap In Top Back.step",
+      "upstream_file_id": "4218829",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "6cdc420bb085decc52401787ccd13f2ba88c8bf4a4942eb21dae56c8d5db7422",
+      "versions": [
+        {
+          "sha256": "6cdc420bb085decc52401787ccd13f2ba88c8bf4a4942eb21dae56c8d5db7422",
+          "size": 25376,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/6cdc420bb085decc52401787ccd13f2ba88c8bf4a4942eb21dae56c8d5db7422/Multiconnect v2_Snap In Top Back.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-snap-in-top-back.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_Snap In Top Back.stl",
+      "upstream_file_id": "4218800",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "7429f42fa16c40662ed6baa4124c1827dd60e708694c221561ea22f667682991",
+      "versions": [
+        {
+          "sha256": "7429f42fa16c40662ed6baa4124c1827dd60e708694c221561ea22f667682991",
+          "size": 38784,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/7429f42fa16c40662ed6baa4124c1827dd60e708694c221561ea22f667682991/Multiconnect v2_Snap In Top Back.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-top-back.step",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_Top Back.step",
+      "upstream_file_id": "4218840",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "5b39d2dfc098f305541db313e84da0465ec548cb0a14e79a98b93091a429594c",
+      "versions": [
+        {
+          "sha256": "5b39d2dfc098f305541db313e84da0465ec548cb0a14e79a98b93091a429594c",
+          "size": 19209,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/5b39d2dfc098f305541db313e84da0465ec548cb0a14e79a98b93091a429594c/Multiconnect v2_Top Back.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multiconnect-v2-modeling-files/multiconnect-v2-top-back.stl",
+      "source_group_id": "multiconnect-v2-modeling-files",
+      "filename": "Multiconnect v2_Top Back.stl",
+      "upstream_file_id": "4218804",
+      "url": "https://www.printables.com/model/1008622",
+      "licence": "Creative Commons — Attribution",
+      "access": "bucket",
+      "current": "76fbc098b3979afb5e31a0b2706ded6a5d060f2b5c3b1f8497bcdcc5490426c7",
+      "versions": [
+        {
+          "sha256": "76fbc098b3979afb5e31a0b2706ded6a5d060f2b5c3b1f8497bcdcc5490426c7",
+          "size": 27084,
+          "gcs": "gs://stuff-reference-upstream/multiconnect-v2-modeling-files/76fbc098b3979afb5e31a0b2706ded6a5d060f2b5c3b1f8497bcdcc5490426c7/Multiconnect v2_Top Back.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multipoint-to-multiconnect-adapter/multipoint-to-multiconnect-1x-quick-connect.step",
+      "source_group_id": "multipoint-to-multiconnect-adapter",
+      "filename": "Multipoint to Multiconnect_1x Quick Connect.step",
+      "upstream_file_id": "4286012",
+      "url": "https://www.printables.com/model/1024741",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "99880ca197f6d67609d57d733f576309b8a599bec411c38f13212363f410f8bf",
+      "versions": [
+        {
+          "sha256": "99880ca197f6d67609d57d733f576309b8a599bec411c38f13212363f410f8bf",
+          "size": 43035,
+          "gcs": "gs://stuff-reference-upstream/multipoint-to-multiconnect-adapter/99880ca197f6d67609d57d733f576309b8a599bec411c38f13212363f410f8bf/Multipoint to Multiconnect_1x Quick Connect.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multipoint-to-multiconnect-adapter/multipoint-to-multiconnect-1x-quick-connect.stl",
+      "source_group_id": "multipoint-to-multiconnect-adapter",
+      "filename": "Multipoint to Multiconnect_1x Quick Connect.stl",
+      "upstream_file_id": "4286004",
+      "url": "https://www.printables.com/model/1024741",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "c3c86c4e68914a7ea1836dd1bf3ba0024080e5156b9c2de367cc2891bbbb746d",
+      "versions": [
+        {
+          "sha256": "c3c86c4e68914a7ea1836dd1bf3ba0024080e5156b9c2de367cc2891bbbb746d",
+          "size": 108784,
+          "gcs": "gs://stuff-reference-upstream/multipoint-to-multiconnect-adapter/c3c86c4e68914a7ea1836dd1bf3ba0024080e5156b9c2de367cc2891bbbb746d/Multipoint to Multiconnect_1x Quick Connect.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multipoint-to-multiconnect-adapter/multipoint-to-multiconnect-1x.step",
+      "source_group_id": "multipoint-to-multiconnect-adapter",
+      "filename": "Multipoint to Multiconnect_1x.step",
+      "upstream_file_id": "4286013",
+      "url": "https://www.printables.com/model/1024741",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "3a802db258b5ee92155574c02eec30b974ca7948654897e45e088569d0f6fd55",
+      "versions": [
+        {
+          "sha256": "3a802db258b5ee92155574c02eec30b974ca7948654897e45e088569d0f6fd55",
+          "size": 38161,
+          "gcs": "gs://stuff-reference-upstream/multipoint-to-multiconnect-adapter/3a802db258b5ee92155574c02eec30b974ca7948654897e45e088569d0f6fd55/Multipoint to Multiconnect_1x.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multipoint-to-multiconnect-adapter/multipoint-to-multiconnect-1x.stl",
+      "source_group_id": "multipoint-to-multiconnect-adapter",
+      "filename": "Multipoint to Multiconnect_1x.stl",
+      "upstream_file_id": "4286002",
+      "url": "https://www.printables.com/model/1024741",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "52fb522fb8b6d1425802be87e53bbdec05707e295bd38bf4eef9535040fe5504",
+      "versions": [
+        {
+          "sha256": "52fb522fb8b6d1425802be87e53bbdec05707e295bd38bf4eef9535040fe5504",
+          "size": 96984,
+          "gcs": "gs://stuff-reference-upstream/multipoint-to-multiconnect-adapter/52fb522fb8b6d1425802be87e53bbdec05707e295bd38bf4eef9535040fe5504/Multipoint to Multiconnect_1x.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multipoint-to-multiconnect-adapter/multipoint-to-multiconnect-2x-quick-connect.step",
+      "source_group_id": "multipoint-to-multiconnect-adapter",
+      "filename": "Multipoint to Multiconnect_2x Quick Connect.step",
+      "upstream_file_id": "4286016",
+      "url": "https://www.printables.com/model/1024741",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "169112f8cc0f7f73d4467b3ade0e97d4da5edc63130ca0ffa935148b89e7b0e6",
+      "versions": [
+        {
+          "sha256": "169112f8cc0f7f73d4467b3ade0e97d4da5edc63130ca0ffa935148b89e7b0e6",
+          "size": 68700,
+          "gcs": "gs://stuff-reference-upstream/multipoint-to-multiconnect-adapter/169112f8cc0f7f73d4467b3ade0e97d4da5edc63130ca0ffa935148b89e7b0e6/Multipoint to Multiconnect_2x Quick Connect.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multipoint-to-multiconnect-adapter/multipoint-to-multiconnect-2x-quick-connect.stl",
+      "source_group_id": "multipoint-to-multiconnect-adapter",
+      "filename": "Multipoint to Multiconnect_2x Quick Connect.stl",
+      "upstream_file_id": "4286006",
+      "url": "https://www.printables.com/model/1024741",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "ba6da088f8f64c7aed210b46e7c20ca87d613b8563c0183b22a07e8cd5daf334",
+      "versions": [
+        {
+          "sha256": "ba6da088f8f64c7aed210b46e7c20ca87d613b8563c0183b22a07e8cd5daf334",
+          "size": 119784,
+          "gcs": "gs://stuff-reference-upstream/multipoint-to-multiconnect-adapter/ba6da088f8f64c7aed210b46e7c20ca87d613b8563c0183b22a07e8cd5daf334/Multipoint to Multiconnect_2x Quick Connect.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multipoint-to-multiconnect-adapter/multipoint-to-multiconnect-2x.step",
+      "source_group_id": "multipoint-to-multiconnect-adapter",
+      "filename": "Multipoint to Multiconnect_2x.step",
+      "upstream_file_id": "4286014",
+      "url": "https://www.printables.com/model/1024741",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "9c2ead430fce0bd79ef3ef436083e922b6b23781e5c614758a44f9084dd8c554",
+      "versions": [
+        {
+          "sha256": "9c2ead430fce0bd79ef3ef436083e922b6b23781e5c614758a44f9084dd8c554",
+          "size": 38233,
+          "gcs": "gs://stuff-reference-upstream/multipoint-to-multiconnect-adapter/9c2ead430fce0bd79ef3ef436083e922b6b23781e5c614758a44f9084dd8c554/Multipoint to Multiconnect_2x.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multipoint-to-multiconnect-adapter/multipoint-to-multiconnect-2x.stl",
+      "source_group_id": "multipoint-to-multiconnect-adapter",
+      "filename": "Multipoint to Multiconnect_2x.stl",
+      "upstream_file_id": "4286008",
+      "url": "https://www.printables.com/model/1024741",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "c4f3aaa3d21ae8ff25450f7815874887b8c95e1a3e5d1b7fc3e77de0b79358a8",
+      "versions": [
+        {
+          "sha256": "c4f3aaa3d21ae8ff25450f7815874887b8c95e1a3e5d1b7fc3e77de0b79358a8",
+          "size": 96984,
+          "gcs": "gs://stuff-reference-upstream/multipoint-to-multiconnect-adapter/c4f3aaa3d21ae8ff25450f7815874887b8c95e1a3e5d1b7fc3e77de0b79358a8/Multipoint to Multiconnect_2x.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multipoint-to-multiconnect-adapter/multipoint-to-multiconnect-3x-quick-connect.step",
+      "source_group_id": "multipoint-to-multiconnect-adapter",
+      "filename": "Multipoint to Multiconnect_3x Quick Connect.step",
+      "upstream_file_id": "4286015",
+      "url": "https://www.printables.com/model/1024741",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "fcb0ca7e96bfec43ae344cbb81cb1910c07b5448ac23acd34d09bafb0dc13f30",
+      "versions": [
+        {
+          "sha256": "fcb0ca7e96bfec43ae344cbb81cb1910c07b5448ac23acd34d09bafb0dc13f30",
+          "size": 94283,
+          "gcs": "gs://stuff-reference-upstream/multipoint-to-multiconnect-adapter/fcb0ca7e96bfec43ae344cbb81cb1910c07b5448ac23acd34d09bafb0dc13f30/Multipoint to Multiconnect_3x Quick Connect.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multipoint-to-multiconnect-adapter/multipoint-to-multiconnect-3x-quick-connect.stl",
+      "source_group_id": "multipoint-to-multiconnect-adapter",
+      "filename": "Multipoint to Multiconnect_3x Quick Connect.stl",
+      "upstream_file_id": "4286007",
+      "url": "https://www.printables.com/model/1024741",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "4eff0bd4b4d07ec34708d019680453c5e75523a2b1ee02d41ff908f252e0b94f",
+      "versions": [
+        {
+          "sha256": "4eff0bd4b4d07ec34708d019680453c5e75523a2b1ee02d41ff908f252e0b94f",
+          "size": 135784,
+          "gcs": "gs://stuff-reference-upstream/multipoint-to-multiconnect-adapter/4eff0bd4b4d07ec34708d019680453c5e75523a2b1ee02d41ff908f252e0b94f/Multipoint to Multiconnect_3x Quick Connect.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multipoint-to-multiconnect-adapter/multipoint-to-multiconnect-3x.step",
+      "source_group_id": "multipoint-to-multiconnect-adapter",
+      "filename": "Multipoint to Multiconnect_3x.step",
+      "upstream_file_id": "4286011",
+      "url": "https://www.printables.com/model/1024741",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "a35f489b4900549e034f4f98bf86f13609b17956da7a3b01f7434085f1a06602",
+      "versions": [
+        {
+          "sha256": "a35f489b4900549e034f4f98bf86f13609b17956da7a3b01f7434085f1a06602",
+          "size": 38233,
+          "gcs": "gs://stuff-reference-upstream/multipoint-to-multiconnect-adapter/a35f489b4900549e034f4f98bf86f13609b17956da7a3b01f7434085f1a06602/Multipoint to Multiconnect_3x.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multipoint-to-multiconnect-adapter/multipoint-to-multiconnect-3x.stl",
+      "source_group_id": "multipoint-to-multiconnect-adapter",
+      "filename": "Multipoint to Multiconnect_3x.stl",
+      "upstream_file_id": "4286003",
+      "url": "https://www.printables.com/model/1024741",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "6663b446d60c9385ddadfb175560d137f3546459be21feae7ea62aabb1d6927a",
+      "versions": [
+        {
+          "sha256": "6663b446d60c9385ddadfb175560d137f3546459be21feae7ea62aabb1d6927a",
+          "size": 96984,
+          "gcs": "gs://stuff-reference-upstream/multipoint-to-multiconnect-adapter/6663b446d60c9385ddadfb175560d137f3546459be21feae7ea62aabb1d6927a/Multipoint to Multiconnect_3x.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multipoint-to-multiconnect-adapter/multipoint-to-multiconnect-4x-quick-connect.step",
+      "source_group_id": "multipoint-to-multiconnect-adapter",
+      "filename": "Multipoint to Multiconnect_4x Quick Connect.step",
+      "upstream_file_id": "4286018",
+      "url": "https://www.printables.com/model/1024741",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "2438075f769737c449318f9b68a192d19fc326646948d9db4799f3213cd394d0",
+      "versions": [
+        {
+          "sha256": "2438075f769737c449318f9b68a192d19fc326646948d9db4799f3213cd394d0",
+          "size": 119867,
+          "gcs": "gs://stuff-reference-upstream/multipoint-to-multiconnect-adapter/2438075f769737c449318f9b68a192d19fc326646948d9db4799f3213cd394d0/Multipoint to Multiconnect_4x Quick Connect.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multipoint-to-multiconnect-adapter/multipoint-to-multiconnect-4x-quick-connect.stl",
+      "source_group_id": "multipoint-to-multiconnect-adapter",
+      "filename": "Multipoint to Multiconnect_4x Quick Connect.stl",
+      "upstream_file_id": "4286009",
+      "url": "https://www.printables.com/model/1024741",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "df09f094c8fcb070c46eb6fe41922fc8c437461320dd049c7ee5a27d5f7046a6",
+      "versions": [
+        {
+          "sha256": "df09f094c8fcb070c46eb6fe41922fc8c437461320dd049c7ee5a27d5f7046a6",
+          "size": 151784,
+          "gcs": "gs://stuff-reference-upstream/multipoint-to-multiconnect-adapter/df09f094c8fcb070c46eb6fe41922fc8c437461320dd049c7ee5a27d5f7046a6/Multipoint to Multiconnect_4x Quick Connect.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multipoint-to-multiconnect-adapter/multipoint-to-multiconnect-4x.step",
+      "source_group_id": "multipoint-to-multiconnect-adapter",
+      "filename": "Multipoint to Multiconnect_4x.step",
+      "upstream_file_id": "4286017",
+      "url": "https://www.printables.com/model/1024741",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "3fdaeda9713e264f6711dcf186ff45d13f64355b4349403d6cea9b48d595e8fc",
+      "versions": [
+        {
+          "sha256": "3fdaeda9713e264f6711dcf186ff45d13f64355b4349403d6cea9b48d595e8fc",
+          "size": 38231,
+          "gcs": "gs://stuff-reference-upstream/multipoint-to-multiconnect-adapter/3fdaeda9713e264f6711dcf186ff45d13f64355b4349403d6cea9b48d595e8fc/Multipoint to Multiconnect_4x.step",
+          "published_on": "2026-09-29"
+        }
+      ]
+    },
+    {
+      "source_file_id": "multipoint-to-multiconnect-adapter/multipoint-to-multiconnect-4x.stl",
+      "source_group_id": "multipoint-to-multiconnect-adapter",
+      "filename": "Multipoint to Multiconnect_4x.stl",
+      "upstream_file_id": "4286005",
+      "url": "https://www.printables.com/model/1024741",
+      "licence": "Creative Commons — Attribution  — Noncommercial  —  Share Alike",
+      "access": "bucket",
+      "current": "eb6c37f16c008d1cb51ea0ac84d39681ff3794ddbccf2b877db12ba492d8a2fb",
+      "versions": [
+        {
+          "sha256": "eb6c37f16c008d1cb51ea0ac84d39681ff3794ddbccf2b877db12ba492d8a2fb",
+          "size": 96984,
+          "gcs": "gs://stuff-reference-upstream/multipoint-to-multiconnect-adapter/eb6c37f16c008d1cb51ea0ac84d39681ff3794ddbccf2b877db12ba492d8a2fb/Multipoint to Multiconnect_4x.stl",
+          "published_on": "2026-09-29"
+        }
+      ]
+    }
+  ]
+}

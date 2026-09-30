@@ -1,0 +1,55 @@
+# STAGED WORKFLOW (pst-m9k6) — inert here. The stuff/worker policy forbids the
+# agent editing .github/workflows/, so an operator activates it with:
+#   git mv build123d/ci/reference-measure.yml .github/workflows/reference-measure.yml
+# See build123d/ci/README.md.
+#
+# TRUSTED reference-mirror workflow: pulls the private upstream reference files
+# (build123d/reference/source-manifest.json) and runs the `upstream`-marked
+# tests against them. Runs ONLY on push to main / manual dispatch — never on
+# pull_request: the reader SA's WIF binding is pinned to the OIDC subject
+# repo:SeanOC/stuff:ref:refs/heads/main, and PR CI (bd123.yml) stays offline
+# (pyproject addopts deselect the `upstream` marker there).
+name: reference-measure
+on:
+  push:
+    branches: [main]
+    paths:
+      - "build123d/reference/**"
+      - "build123d/tools/**"
+      - "build123d/multibuild/**"
+      - "build123d/tests/**"
+      - "build123d/pyproject.toml"
+      - "build123d/uv.lock"
+      - ".github/workflows/reference-measure.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: reference-measure
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  # Mint the GitHub OIDC token that WIF exchanges for the bucket-only reader SA.
+  id-token: write
+
+jobs:
+  measure:
+    name: pull reference mirror + upstream tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults: { run: { working-directory: build123d } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: sync env (pinned via uv.lock)
+        run: uv sync --frozen
+      - name: Authenticate to GCP (keyless, GitHub OIDC -> WIF, read-only reader SA)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_REFERENCE_READER_SA }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: pull + sha256-verify every source (current versions)
+        run: uv run tools/reference_pull.py
+      - name: upstream tests
+        run: uv run pytest -m upstream
