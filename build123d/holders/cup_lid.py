@@ -16,10 +16,12 @@ above the bed at the inner-radius 45-degree limit plus lip_end_margin.
 Their 45-degree end ramps rise inward from that stop; full-height walls
 support the lid below the lips.
 
-The fixed 25 mm pitch is one Multibuild Multi Unit. The guard uses a
-simplified cavity: 7.5 mm mouth tapering to 6.0 mm over 1.5 mm, then
-cylindrical to 6.4 mm; see docs/cup-lid-validation.md for provenance.
-The rear cones engage the mouth with a tunable per-side fit (default 0.1 mm interference). Their bases and the plate back
+The fixed 25 mm pitch is one Multibuild Multi Unit. The guard uses the
+measured small-hole bore from multibuild.constants: Ø8 mouth, 45° chamfer
+to the Ø6 thread minor at 1 mm depth; see docs/cup-lid-validation.md.
+The rear cones engage the mouth with a tunable per-side fit. The default
+-0.15 mm (clearance) is the Ø7.7 pin Sean validated in v2.3, re-expressed
+against the measured Ø8 mouth (pst-ozpae). Their bases and the plate back
 are coplanar. The bolt clamps. The seat follows Sean's measured head:
 16 to 12 mm taper over 2.1 mm, recessed 0.2 mm, with a flat shoulder to
 the 8 mm shank. Sean confirmed physical fit on 2026-09-27 (pst-mvno, v2.3).
@@ -36,13 +38,8 @@ import math
 from build123d import Align, Axis, Box, BuildSketch, Cone, Cylinder, Plane, Polygon, Pos, Rot, extrude, revolve
 from OCP.BRepFilletAPI import BRepFilletAPI_MakeChamfer
 from holders.registry import ModelSpec, Param, Preset, register
+from multibuild.constants import PITCH, SMALL_HOLE_MOUTH_D as MOUTH, SMALL_HOLE_TAPER_DEPTH, SMALL_HOLE_THROAT_D
 
-# Cited pitch/mouth; the single-sided 1.5 mm taper in dimensions() is a
-# conservative approximation, not the source's symmetric 1.75 mm taper.
-# See docs/cup-lid-validation.md, "Cavity provenance and conservative
-# approximation" (pst-akdj), for the profile inequality and physical fit.
-PITCH = 25.0
-MOUTH = 7.5
 JOINT_RADIUS = 1.0
 
 PARAMS = tuple(Param(name, 'number', default, min=lo, max=hi, step=step,
@@ -58,7 +55,7 @@ PARAMS = tuple(Param(name, 'number', default, min=lo, max=hi, step=step,
         ('tab_thickness', 2, 5, 0.5, 3, 'Tab thickness'),
         ('lip_thickness', 2, 5, 0.5, 3, 'Lip thickness'),
         ('lid_clearance', 0.1, 0.8, 0.05, 0.6, 'Lid clearance'),
-        ('pin_fit', -0.2, 0.3, 0.05, 0.1, 'Pin fit per side (+ interference)'),
+        ('pin_fit', -0.2, 0.3, 0.05, -0.15, 'Pin fit per side (+ interference)'),
         ('pin_tip_diameter', 0, 0.8, 0.1, 0, 'Pin tip diameter'),
         ('pin_cone_half_angle', 45, 49, 1, 45, 'Pin cone half-angle'),
         ('bolt_clearance_diameter', 7.8, 8.5, 0.1, 8, 'Bolt clearance diameter'),
@@ -69,6 +66,12 @@ PARAMS = tuple(Param(name, 'number', default, min=lo, max=hi, step=step,
         ('head_recess', 0, 0.5, 0.1, 0.2, 'Head recess'),
         ('bed_chamfer', 0.3, 0.5, 0.1, 0.4, 'Bed edge chamfer'),
     ))
+
+
+def board_cavity_d(depth):
+    """Measured small-hole bore diameter at ``depth`` into the board face."""
+    run = (MOUTH-SMALL_HOLE_THROAT_D)*min(depth/SMALL_HOLE_TAPER_DEPTH, 1)
+    return MOUTH-run
 
 
 def pin_length_mm(base_diameter, tip_diameter, half_angle_deg):
@@ -109,13 +112,11 @@ def dimensions(values: dict) -> dict:
     if p['pin_tip_diameter'] >= p['pin_base_diameter']:
         raise ValueError('pin_tip_diameter must be below pin_base_diameter')
     length = pin_length_mm(p['pin_base_diameter'], p['pin_tip_diameter'], p['pin_cone_half_angle'])
-    # Use the simplified single-sided cavity documented above.
-    # Difference from this conservative cavity is linear on each interval,
-    # so checking its breakpoints bounds interference over the entire depth.
-    for z in (0, 1.5, length):
+    # Difference from the measured bore is linear on each interval, so
+    # checking its breakpoints bounds interference over the entire depth.
+    for z in (0, SMALL_HOLE_TAPER_DEPTH, length):
         pin_d = p['pin_base_diameter']-2*z*math.tan(math.radians(p['pin_cone_half_angle']))
-        cavity_d = MOUTH-z if z <= 1.5 else 6.0
-        if pin_d > cavity_d+2*p['pin_fit'] + 1e-9:
+        if pin_d > board_cavity_d(z)+2*p['pin_fit'] + 1e-9:
             raise ValueError('pin exceeds requested board cavity interference')
     inner = p['lid_diameter']/2+p['lid_clearance']
     p.update(radius=inner+p['tab_thickness'], wall_radius=inner,

@@ -3,6 +3,7 @@
 Tests inspect the final BRep/mesh, not just construction metadata. Physical
 bolt/lid fit was confirmed by Sean on 2026-09-27 (pst-mvno).
 """
+import json
 import math
 from dataclasses import replace
 import sys
@@ -13,8 +14,9 @@ import trimesh
 from build123d import Plane
 from OCP.BRepAdaptor import BRepAdaptor_Surface
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from holders.cup_lid import MOUTH, PARAMS, PITCH, SPEC, dimensions, holder, pin_centers, pin_length_mm
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+from holders.cup_lid import MOUTH, PARAMS, PITCH, SPEC, board_cavity_d, dimensions, holder, pin_centers, pin_length_mm
 from scripts.export import export_stl
 from holders.registry import all_models
 
@@ -37,7 +39,7 @@ def test_registered_default():
     assert defaults['head_thickness'] == 2.1
     assert defaults['head_clearance'] == 0.2
     assert defaults['head_recess'] == 0.2
-    assert defaults['pin_fit'] == 0.1
+    assert defaults['pin_fit'] == -0.15
     assert defaults['plate_thickness'] == 5
     assert dimensions({})['pin_base_diameter'] == pytest.approx(7.7)
     assert not {'pin_base_diameter', 'countersink_diameter', 'countersink_angle'} & defaults.keys()
@@ -148,45 +150,48 @@ def test_pins_are_cones_at_25mm(values):
     assert len(back) == 1  # cone bases share the board-flush back plane
 
 
-def _scad_cavity_d(z):
-    """Ideal symmetric base void; the thread only enlarges it.
-
-    asciipip/multiboard-parametric-stacked @ 4db5f07, multiboard_base.scad
-    raw lines 61, 96-104, 249-253, 270-282; see cup-lid-validation.md.
+def _measured_bore_d(z):
+    """Official small-hole bore at depth z from the mouth face, read from the
+    committed measurement, independent of multibuild.constants: the straight
+    45° edge leaving the mouth (v=0), then the thread minor at its end. The
+    thread only enlarges this void. See cup-lid-validation.md (pst-ozpae).
     """
-    height, thick_height = 6.4, 2.9
-    mouth, throat = 7.5, 6.0
-    taper_depth = (height-thick_height)/2
-    assert 0 <= z <= height
-    face_depth = min(z, height-z)
-    return throat + (mouth-throat)*max(0, 1-face_depth/taper_depth)
+    m = json.loads((ROOT/'reference/measured/mb-small-thread-negative.json').read_text(encoding='utf-8'))
+    mouth = m['bbox']['size'][0]/2
+    [((u0, _), (u1, v1))] = [(e['start'], e['end']) for e in m['section']['edges']
+                           if e['type'] == 'LINE' and e['start'] == [mouth, 0.0] and e['end'][1] > 0]
+    assert 0 <= z <= max(m['levels'])-v1  # before the far face's chamfer
+    return 2*(u0+(u1-u0)*min(z/v1, 1))
 
 
-@pytest.mark.parametrize('z', [0, 0.5, 1.0, 1.5, 1.75, 2.0, 4.05, 4.65, 5.0, 6.4])
-def test_cavity_approximation_is_conservative(z):
-    # Same cavity fixture as dimensions(); compare with independent source
-    # arithmetic, including both breakpoints and the maximum pin reach.
-    cavity_d = MOUTH-z if z <= 1.5 else 6.0
-    assert cavity_d <= _scad_cavity_d(z) + 1e-9
+_MAX_REACH = dimensions(dict(pin_fit=0.3, pin_tip_diameter=0, pin_cone_half_angle=45))['pin_length']
 
 
-@pytest.mark.parametrize('fit', [-0.2, 0.1, 0.3])
+@pytest.mark.parametrize('z', [0, 0.5, 1.0, 1.5, 2.0, 3.85, _MAX_REACH])
+def test_cavity_guard_is_measured_bore(z):
+    # dimensions() guards against board_cavity_d; compare it with the
+    # official section, including the chamfer end and the maximum pin reach.
+    assert board_cavity_d(z) == pytest.approx(_measured_bore_d(z), abs=1e-9)
+
+
+@pytest.mark.parametrize('fit', [-0.2, -0.15, 0.1, 0.3])
 @pytest.mark.parametrize('tip', [0, 0.8])
 @pytest.mark.parametrize('angle', [45, 49])
 def test_pin_engages_board_cavity(fit, tip, angle):
     p = dimensions(dict(pin_fit=fit, pin_tip_diameter=tip, pin_cone_half_angle=angle))
     base = p['pin_base_diameter']
-    assert base == pytest.approx(7.5+2*fit)
+    assert base == pytest.approx(MOUTH+2*fit)
     assert 2.4 <= p['pin_length'] <= 6.0
     depths = [i*0.05 for i in range(math.ceil(p['pin_length']/0.05))]+[p['pin_length']]
     for z in depths:
-        cavity_d = 7.5-z if z <= 1.5 else 6.0
         cone_d = base-2*z*math.tan(math.radians(angle))
-        assert cone_d <= cavity_d+2*fit+1e-9
+        assert cone_d <= _measured_bore_d(z)+2*fit+1e-9
 
 
-@pytest.mark.parametrize('fit,base', [(-0.2, 7.1), (-0.1, 7.3)])
-def test_old_pin_geometry(fit, base):
+@pytest.mark.parametrize('fit,base', [(-0.2, 7.6), (-0.15, 7.7)])
+def test_validated_pin_geometry(fit, base):
+    # -0.15 is the Ø7.7 v2.3 pin Sean validated (pst-mvno), re-expressed
+    # against the measured Ø8 mouth; -0.2 is the loosest allowed pin.
     p = dimensions({'pin_fit': fit})
     assert p['pin_base_diameter'] == pytest.approx(base)
     assert p['pin_length'] == pytest.approx(base/2)

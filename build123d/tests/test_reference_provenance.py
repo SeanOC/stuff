@@ -11,6 +11,7 @@ from the mirrored originals.
 
 import datetime
 import json
+import re
 import shlex
 import subprocess
 import sys
@@ -25,6 +26,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tools"))
 
 import measure_step as ms  # noqa: E402
+from holders import cup_lid  # noqa: E402
 from multibuild import constants as c  # noqa: E402
 from multibuild import tile  # noqa: E402
 from multibuild.multiconnect import POCKET_DEPTH  # noqa: E402
@@ -152,7 +154,6 @@ def _derived():
         "TILE_THICKNESS": thickness,
         "SMALL_HOLE_MOUTH_D": 2 * s_mouth_u,
         "SMALL_HOLE_THROAT_D": 2 * s_throat_u,
-        "SMALL_HOLE_THROAT_BAND": thickness - 2 * s_taper,
         "SMALL_HOLE_TAPER_DEPTH": s_taper,
         "mouth_across_flats": 2 * mouth_u,
         "central_across_flats": 2 * inner,
@@ -162,7 +163,7 @@ def _derived():
         "helix_outer_width": mv[outer][0][1] - mv[outer][0][0],
         "helix_inner_width": large_pitch - (mv[inner][0][1] - mv[inner][0][0]),
         "helix_pitch": large_pitch,
-        "large_taper_depth": large_taper,
+        "LARGE_HOLE_TAPER_DEPTH": large_taper,
         "small_thread_major_d": 2 * max(sv),
         "small_thread_pitch": _pitch(sv[max(sv)]),
         "small_thread_outer_width": sv[max(sv)][0][1] - sv[max(sv)][0][0],
@@ -170,48 +171,53 @@ def _derived():
     }
 
 
-# Cited [C] values the official files contradict: measured value + follow-up bead.
-DISAGREEMENTS = {
-    "TILE_THICKNESS": (6.2, "pst-rs70f"),
-    "SMALL_HOLE_MOUTH_D": (8.0, "pst-az4hh"),
-    "SMALL_HOLE_THROAT_BAND": (4.2, "pst-hav1h"),
-    "SMALL_HOLE_TAPER_DEPTH": (1.0, "pst-3spc5"),
-    "band_height": (2.2, "pst-kooqt"),
-    "helix_outer_d": (22.5, "pst-23uzq"),
-    "helix_inner_width": (1.6, "pst-x5vo8"),
-}
-
-
 def _all_tags():
     return {**c.PROVENANCE, **c.LARGE_HOLE_PROFILE}
 
 
-def test_confirmed_values_match_artifacts():
+def test_constants_are_measured_values():
+    """pst-ozpae adopted every measured value: no [C] tag remains."""
     derived = _derived()
     for key, p in _all_tags().items():
-        if p.status == "V":
-            assert derived[key] == pytest.approx(p.value, abs=2e-3), key
-    for key, p in tile.TILE_PROFILE.items():
-        name = {"thickness": "TILE_THICKNESS", "large_mouth_across_flats": "mouth_across_flats",
-                "large_central_across_flats": "central_across_flats", "small_mouth_d": "SMALL_HOLE_MOUTH_D",
-                "small_throat_d": "SMALL_HOLE_THROAT_D", "small_taper_depth": "SMALL_HOLE_TAPER_DEPTH"}.get(key, key)
-        assert derived[name] == pytest.approx(p.value, abs=2e-3), key
-
-
-def test_disagreements_are_recorded_not_applied():
-    derived = _derived()
-    tags = _all_tags()
-    assert {k for k, p in tags.items() if p.status == "C"} == set(DISAGREEMENTS)
-    source = (ROOT / "multibuild" / "constants.py").read_text(encoding="utf-8")
-    for key, (measured, bead) in DISAGREEMENTS.items():
-        assert derived[key] == pytest.approx(measured, abs=2e-3), key
-        assert tags[key].value != pytest.approx(measured, abs=2e-3), f"{key} was changed"
-        assert f"measured {measured:g}" in source and bead in source, key
-    # Doc-only small-thread values (no constant yet): pst-gvdrx, pst-5lum5.
+        assert p.status == "V", key
+        assert (ROOT / p.locator).is_file(), key
+        assert derived[key] == pytest.approx(p.value, abs=2e-3), key
+    # Doc-only small-thread values (no constant; research §2, library.md).
     assert derived["small_thread_pitch"] == pytest.approx(3.125, abs=1e-3)
     assert derived["small_male_pitch"] == pytest.approx(3.125, abs=1e-3)
     assert derived["small_thread_outer_width"] == pytest.approx(0.625, abs=1e-3)
     assert derived["small_thread_major_d"] == pytest.approx(7.0, abs=1e-3)
+
+
+# pst-ozpae invariant 3: the MultiBuild consumers read multibuild.constants.
+TILE_SOURCES = {
+    "thickness": c.PROVENANCE["TILE_THICKNESS"],
+    "large_mouth_across_flats": c.LARGE_HOLE_PROFILE["mouth_across_flats"],
+    "large_central_across_flats": c.LARGE_HOLE_PROFILE["central_across_flats"],
+    "large_taper_depth": c.PROVENANCE["LARGE_HOLE_TAPER_DEPTH"],
+    "small_mouth_d": c.PROVENANCE["SMALL_HOLE_MOUTH_D"],
+    "small_throat_d": c.PROVENANCE["SMALL_HOLE_THROAT_D"],
+    "small_taper_depth": c.PROVENANCE["SMALL_HOLE_TAPER_DEPTH"],
+}
+CONSUMERS = ("multibuild/tile.py", "holders/cup_lid.py", "tests/test_multibuild.py", "tests/test_cup_lid.py")
+# Replaced cited values: thickness, mouth, band, taper, helix outer Ø / inner
+# width. 2.4 (old band) is omitted: it collides with the cup-lid backing rule.
+SUPERSEDED = re.compile(r"(?<![\d.])(6\.4|7\.5|2\.9|1\.75|22\.6|1\.583)(?!\d)")
+
+
+def test_tile_profile_is_the_constants():
+    assert tile.TILE_PROFILE.keys() == TILE_SOURCES.keys()
+    for key, p in TILE_SOURCES.items():
+        assert tile.TILE_PROFILE[key] is p, key
+
+
+def test_consumers_hold_no_superseded_copies():
+    assert cup_lid.MOUTH is c.SMALL_HOLE_MOUTH_D and cup_lid.PITCH is c.PITCH
+    for rel in CONSUMERS:
+        for n, line in enumerate((ROOT / rel).read_text(encoding="utf-8").splitlines(), 1):
+            if "MULTICONNECT_ROUND_HEAD_" in line:  # opengrid library head radius 7.5
+                continue
+            assert not SUPERSEDED.search(line), f"{rel}:{n}: {line.strip()}"
 
 
 def test_grid_phase_from_artifacts():
