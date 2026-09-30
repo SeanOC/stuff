@@ -55,23 +55,23 @@ check; the MIT Python library does not establish rights in every referenced CAD 
 | Fact and status | Value / limit | Exact evidence |
 | --- | --- | --- |
 | [V] Grid pitch | 25 (confirms [C] [Core], “Measurement System” and §1, lines 29,42) | tile cell 25 × 25: `reference/measured/mb-large-octagon-hole-positive.json` |
-| [C] Board thickness | 6.4, from an author's official-remix measurements. **Measured [V] 6.2 (Δ −0.2)** in the official tile-component cells → pst-rs70f | [SCAD], `multiboard_base.scad` L56–61; cited original [tile remix](https://than.gs/m/994681) uploaded 2024-01-19; measured: planar levels 0 / 6.2 in `mb-large-octagon-hole-positive.json` |
-| [V] Large-hole envelope | Octagon: across flats 23.4 at mouths, 21.4 centrally ([V], confirms [SCAD]); 2.0 taper per face. Central band [C] 2.4, **measured 2.2 (Δ −0.2)** → pst-kooqt | [SCAD] L68–83,218–224,270–280; measured: `mb-multihole-negative.json` (XZ section). These are not circular thread diameters |
-| [V] Large-hole thread | Female helix, single start, right hand, 45° flanks: inner Ø21.4, outer axial width 0.5, pitch 2.5 ([V], confirm [SCAD]). Outer Ø [C] 22.6, **measured 22.5 (Δ −0.1)** → pst-23uzq; inner (base) width [C] 1.583, **measured 1.6 (Δ +0.017)** → pst-x5vo8 | [SCAD] L85–94; `multihole_threads` L228–233; measured: `mb-multihole-negative.json` |
+| [V] Board thickness | **6.2**, adopted by pst-ozpae (cited [C] 6.4 from an author's official-remix measurements, Δ −0.2) | measured: planar levels 0 / 6.2 in `mb-large-octagon-hole-positive.json`; cited: [SCAD], `multiboard_base.scad` L56–61, original [tile remix](https://than.gs/m/994681) uploaded 2024-01-19 |
+| [V] Large-hole envelope | Octagon: across flats 23.4 at mouths, 21.4 centrally (confirms [SCAD]); 2.0 taper per face (`LARGE_HOLE_TAPER_DEPTH`). Central band **2.2** = 6.2 − 2×2.0, derived, adopted by pst-ozpae (cited [C] 2.4, Δ −0.2) | measured: `mb-multihole-negative.json` (XZ section); cited: [SCAD] L68–83,218–224,270–280. These are not circular thread diameters |
+| [V] Large-hole thread | Female helix, single start, right hand, 45° flanks: inner Ø21.4, outer axial width 0.5, pitch 2.5 (confirm [SCAD]). Outer Ø **22.5** (cited 22.6, Δ −0.1) and inner (base) width **1.6** = pitch − 0.9 inner vertical extent (cited 1.583, Δ +0.017), adopted by pst-ozpae | measured: `mb-multihole-negative.json`; cited: [SCAD] L85–94, `multihole_threads` L228–233 |
 | [U] Production thread fit | Above is a reconstructed **female hole**, not a qualified male Multibolt/T-bolt spec. Starts, flank rounding, lead-in, male fit allowance and current official tolerances remain unverified | [SCAD] L85–94,285 onward; [Core] §5 gives compatibility, not a thread drawing |
-| [C] Small-hole envelope | Mouth Ø7.5, throat Ø6, central band 2.9; threaded rather than a plain conical bore. **Measured:** throat Ø6.0 confirmed [V]; mouth **Ø8.0 (Δ +0.5)** → pst-az4hh; the official hole is a 45° Ø8→Ø6 chamfer then thread, so the "band" is **4.2 (Δ +1.3)** → pst-hav1h | [SCAD] L96–104,237–265; [cup-lid reconciliation](cup-lid-validation.md#cavity-provenance-and-conservative-approximation--pst-akdj); measured: `mb-small-thread-negative.json` |
-| [C] Small-hole taper depth | (6.4−2.9)/2 = **1.75** at each face (arithmetic on cited values, hence [C]). **Measured 1.0 (Δ −0.75)** → pst-3spc5 | Arithmetic from [SCAD] L270–280; measured: `mb-small-thread-negative.json` |
-| [C] Small-hole thread | Pitch 3, outer Ø7, inner Ø6; axial widths 0.77 / 2.5. **Measured:** Ø7 / Ø6 and the 2.5 base width confirmed [V]; pitch **3.125 (Δ +0.125)** → pst-gvdrx; outer width **0.625 (Δ −0.145)** → pst-5lum5. The male thread is Ø6.75 / Ø5.75 at the same pitch | [SCAD] L100–104,257–265; measured: `mb-small-thread-negative.json`, `mb-small-vertical-12-5mm-positive.json` |
+| [V] Small-hole envelope | Mouth **Ø8.0** (cited [C] 7.5, Δ +0.5), throat Ø6 (confirms [SCAD]); a 45° Ø8→Ø6 chamfer on each face, then the thread. There is no plain central band: the cited 2.9 band is removed, not re-valued (6.2 − 2×1.0 = 4.2 is thread length). Adopted by pst-ozpae | measured: `mb-small-thread-negative.json`; cited: [SCAD] L96–104,237–265; [cup-lid reconciliation](cup-lid-validation.md#cavity-provenance--measured-bore-pst-ozpae) |
+| [V] Small-hole taper depth | **1.0** at each face = (mouth − throat)/2 at 45°, derived; adopted by pst-ozpae (cited [C] (6.4−2.9)/2 = 1.75, Δ −0.75) | measured: `mb-small-thread-negative.json` (section edge [4,0]→[3,1]); cited: arithmetic from [SCAD] L270–280 |
+| [V] Small-hole thread | Pitch **3.125** (cited 3, Δ +0.125), outer Ø7, inner Ø6; axial widths **0.625** (cited 0.77, Δ −0.145) / 2.5. Adopted (docs only; no builder yet) by pst-ozpae. The male thread is Ø6.75 / Ø5.75 at the same pitch | measured: `mb-small-thread-negative.json`, `mb-small-vertical-12-5mm-positive.json`; cited: [SCAD] L100–104,257–265 |
 | [V] Grid phase / edges | Large centers `(25i+12.5,25j+12.5)`; small centers `(25i+25,25j+25)` where present. First large center is 12.5 from the nominal cell boundary, not every scalloped outer edge | Measured: large cell centred on (0, 0), small-hole cell on (12.5, 12.5) in the tile-component files (`mb-large-octagon-hole-positive.json`, `mb-small-thread-hole-positive.json`); confirms [SCAD] L135–162,167–193 |
 | [C] Tile edge variants | Core has projecting peg-hole teeth on two sides; side on one; corner on neither. Tooth-side bounding size is cell count ×25 +8 | [SCAD README] “Usage” / “Tile Stack Sizing”; not an 8 mm gap between tiles |
 | [C] Joining | Official installation uses Dual Snaps; offset snap mounts give 6.25 wall offset | [Mounting], “Installation Steps”, L46–50; [Core] §2.2 L88 |
 | [U] Seam collision / clearances | Nominal lattice continuity does not prove clearance past snap heads, pillars, teeth or a misaligned installed seam. No official global fit allowance found | [Mounting] steps/images and [Core] connection descriptions; need installed hardware envelope and chosen tile variant |
 
-The [cup-lid reconciliation](cup-lid-validation.md#cavity-provenance-and-conservative-approximation--pst-akdj)
-(**pst-akdj**) retains the simplified 1.5 mm taper as a conservative guard,
-with a profile inequality test and Sean's 2026-09-27 v2.3 physical-fit result.
-It does not promote that fixture to an official cavity measurement or a
-shared-library profile; official STEP measurements remain [U].
+The [cup-lid reconciliation](cup-lid-validation.md#cavity-provenance--measured-bore-pst-ozpae)
+(**pst-akdj**) kept a simplified 1.5 mm taper as a conservative guard.
+pst-ozpae replaced it with the measured bore from `multibuild.constants`;
+Sean's 2026-09-27 v2.3 physical-fit result still holds because the default
+pin geometry is unchanged (see the cup-lid validation doc).
 
 ## 3. Fixed-point mounts and retention
 
@@ -126,7 +126,7 @@ system-specific; do not port `base.py` by changing pitch.
 
 | Surface | Contract / acceptance |
 | --- | --- |
-| `multibuild.constants` | `PITCH=25`; provisional `TILE_THICKNESS=6.4`, `SMALL_HOLE_MOUTH_D=7.5`, `SMALL_HOLE_THROAT_D=6`, `SMALL_HOLE_THROAT_HEIGHT=2.9`, `LARGE_HOLE_PROFILE` carrying the §2 fields **and provenance**. Resolve [U] fields before claiming official compatibility. No user pitch/profile controls. |
+| `multibuild.constants` | `PITCH=25`, `TILE_THICKNESS=6.2`, `SMALL_HOLE_MOUTH_D=8.0`, `SMALL_HOLE_THROAT_D=6`, derived `SMALL_HOLE_TAPER_DEPTH`, `LARGE_HOLE_TAPER_DEPTH=2.0`, `LARGE_HOLE_PROFILE` carrying the §2 fields **and provenance** (all [V] since pst-ozpae; the proposed throat height was dropped). Resolve [U] fields before claiming official compatibility. No user pitch/profile controls. |
 | `SmallHoleConePin(fit_per_side, tip_diameter, half_angle)` | Separate alignment pin from the threaded-hole cutter. Derive length and base from mouth plus fit; intersect/sweep against the sourced full cavity. Do not inherit cup-lid fit defaults without validation. |
 | `LargeHoleThreadCutter(depth, profile)` | Female negative combining octagon, mouth relief and trapezoidal helix. Explicit right/left hand, starts, phase and runout in a validated profile record; no assumed ISO metric thread. Gate production on official STEP comparison. A male connector builder needs separate male fit data. |
 | `MulticonnectSlotCutter(travel, snap_notches)` | Compose pinned head/slot cutters, explicit travel injection, unchanged profile/clearances. Board-facing datum and insertion axis documented; pocket wide internally. A separate `mount_locations(count, grid_step=1)` uses integer pitch multiples. |
@@ -151,7 +151,7 @@ physical PETG/PCTG bump/creep trials before claiming retention performance.
 - ~~Obtain the selected official remix STEP files~~: mirrored and measured
   by pst-ff71 ([provenance.md](provenance.md)). Fix-Point and snap files are
   mirrored but not yet measured. The small-hole discrepancy (pst-akdj) is
-  now quantified: mouth Ø8, 45° to Ø6 at 1.0 (pst-az4hh, pst-3spc5).
+  now quantified and adopted: mouth Ø8, 45° to Ø6 at 1.0 (pst-ozpae).
 - Is the site serving free remix downloads only, or commercial/paid content?
   Confirm licence treatment for the actual derived assets before publication.
 

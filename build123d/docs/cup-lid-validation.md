@@ -2,8 +2,9 @@
 
 Revises v2.2 (main `1a70f46`, PR #115) after Sean's print feedback:
 the pins need more engagement and the seat must match his measured bolt
-head. Pin fit now defaults to 0.1 mm interference per side (derived base
-Ø7.7 mm). The tapered seat ends at a flat shoulder, 2.3 mm below the front.
+head. The pins are Ø7.7 mm (default `pin_fit` −0.15: 0.15 mm per side
+clearance against the measured Ø8 mouth, pst-ozpae; originally labelled
+0.1 mm interference against the cited Ø7.5). The tapered seat ends at a flat shoulder, 2.3 mm below the front.
 The plate returns to 5 mm with 2.7 mm backing. Sean confirmed the v2.3 print and fit on 2026-09-27; see the
 physical-validation record below (**pst-mvno**, closed).
 
@@ -84,81 +85,74 @@ There are no other cup-lid presets.
 
 ## Pins and board engagement
 
-Pins are true cones at exactly X=±25 mm, Y=Z=0; 25 mm is a fixed Multibuild
-pitch. Defaults: base Ø7.7, tip Ø0, half-angle 45°, derived length 3.85 mm.
-The sole base control is `pin_fit`: −0.2…0.3 mm per side, step 0.05,
-positive for interference. Base diameter is derived as `7.5 + 2*pin_fit`,
-giving Ø7.1…8.1 mm. Tip diameter remains 0–0.8 mm and half-angle 45–49°.
+Pins are true cones at exactly X=±25 mm, Y=Z=0; 25 mm is the fixed Multibuild
+pitch (`multibuild.constants.PITCH`). Defaults: base Ø7.7, tip Ø0,
+half-angle 45°, derived length 3.85 mm. The sole base control is `pin_fit`:
+−0.2…0.3 mm per side, step 0.05, positive for interference. Base diameter
+is derived as `SMALL_HOLE_MOUTH_D + 2*pin_fit` = `8.0 + 2*pin_fit`, giving
+Ø7.6…8.6 mm. Tip diameter remains 0–0.8 mm and half-angle 45–49°.
 The pure `pin_length_mm` helper enforces 2.4–6 mm projection; the actual
-endpoint combinations span 2.738…4.05 mm.
+endpoint combinations span 2.956…4.3 mm.
 
-The cones engage the board mouth at positive fit. Their bases remain at the
-plate back, Y=0; the center bolt clamps. Here `z` means depth into the board
-from the mouth, not the holder's vertical Z axis.
+The cone bases remain at the plate back, Y=0; the center bolt clamps. Here
+`z` means depth into the board from the mouth, not the holder's vertical Z
+axis.
 
-### Cavity provenance and conservative approximation — pst-akdj
+### Cavity provenance — measured bore (pst-ozpae)
 
-Evidence labels: **[C]** cited reconstruction; **[U]** unverified official
-profile or approximation; **[V]** reported physical validation.
+[V] The guard now uses the official small-hole bore measured by pst-ff71
+(`reference/measured/mb-small-thread-negative.json`, XZ section) through
+`multibuild.constants`: a **Ø8.0 mouth with a 45° chamfer to the Ø6.0
+thread minor at 1.0 mm depth** on each face, then the thread. The thread
+only enlarges that void, so `board_cavity_d(z) = 8 − 2·min(z, 1)` is the
+bore envelope the cone must fit. `dimensions()` checks its breakpoints
+(0, 1.0 and the pin length); the difference to the cone is linear between
+them.
 
-[C] The pinned [SCAD reconstruction][cup-scad] derives dimensions from the
-author's official-remix measurements ([lines 56–61][cup-scad-dims]):
-25 mm pitch and 6.4 mm height. [Lines 96–104][cup-scad-small] define a
-Ø7.5 mouth, Ø6 throat, 2.9 mm central band and thread (pitch 3, outer Ø7,
-inner Ø6, axial widths 0.77/2.5 mm). The [symmetric base][cup-scad-taper]
-has `(6.4−2.9)/2 = 1.75 mm` tapers: throat at depths 1.75–4.65, then an
-exit flare to Ø7.5 at 6.4. The [threaded cutter][cup-scad-thread] unions the
-base and helix; the thread only enlarges the base void.
-These are raw-file/GitHub line numbers, including blank lines; browser text
-extraction can renumber them (height appears as L56 there, but raw L61).
+| Depth z (mm) | Measured bore Ø (mm) | Old guard Ø, pst-akdj (mm) |
+| --- | --- | --- |
+| 0 | 8.0 | 7.5 |
+| 1.0 | 6.0 | 6.5 |
+| 1.5 | 6.0 | 6.0 |
+| 4.3 (maximum pin length) | 6.0 | 6.0 |
 
-[U] The cup-lid guard deliberately retains a **simplified single-sided
-Ø7.5 → Ø6 taper over 1.5 mm**, then Ø6 through depth 6.4 mm.
-It is not a measured official cavity. For the ideal SCAD base profile,
-`scad_cavity_d(z) = 7.5 − (1.5/1.75)*z` through 1.75 mm, then 6 through
-4.65 mm. The guard reaches its throat sooner, so
-`guard_cavity_d(z) <= scad_cavity_d(z)` throughout the cone's reach:
+The old guard (Ø7.5 → Ø6 over 1.5 mm, from the cited [SCAD
+reconstruction][cup-scad]) was a conservative stand-in while the official
+file was inaccessible. It was **not** conservative against the real bore:
+at z = 1.0 it allowed Ø6.5 where the bore is Ø6.0. The measured mouth is
+0.5 mm wider, so every pin that label called "+0.1 interference" was really
+0.15 mm per side of clearance.
 
-| Depth z (mm) | Guard diameter (mm) | SCAD base diameter (mm) | Inequality |
-| --- | --- | --- | --- |
-| 0 | 7.5 | 7.5 | 7.5 ≤ 7.5 |
-| 1.5 | 6 | 6.214286 | 6 ≤ 6.214286 |
-| 1.75 | 6 | 6 | 6 ≤ 6 |
-| 4.05 (maximum pin length) | 6 | 6 | 6 ≤ 6 |
+Tests: `test_cavity_guard_is_measured_bore` compares `board_cavity_d` with
+the section edge read straight from the JSON (not from the constants) at
+the chamfer end and the maximum reach. `test_pin_engages_board_cavity`
+sweeps the full pin length at 0.05 mm for fit {−0.2, −0.15, 0.1, 0.3} ×
+tip {0, 0.8} × half-angle {45, 49}, requiring
+`pin_d(z) <= measured_bore_d(z) + 2*pin_fit`. `test_validated_pin_geometry`
+pins the −0.15 default to Ø7.7 and −0.2 to Ø7.6. Passing the removed
+`pin_base_diameter` parameter raises an unknown-parameter error.
 
-Both profiles are piecewise linear: their difference is nonnegative at
-each breakpoint and constant from 1.75 through 4.05 mm. With the same
-per-side fit allowance, satisfying the smaller guard also satisfies the
-SCAD profile. The cone contacts the mouth rim at `z=0`; its diameter falls
-faster than either cavity, so the deeper throat does not change engagement.
-This bounds nominal interference; it does not establish official dimensions
-or manufacturing tolerances.
+### Pin fit against the measured bore
 
-Tests sweep the full pin length at 0.05 mm intervals for fit
-{−0.2, 0.1, 0.3} × tip {0, 0.8} × half-angle {45, 49}, requiring
-`pin_d(z) <= guard_cavity_d(z) + 2*pin_fit`. The additional conservative
-approximation test covers the taper breakpoints and maximum 4.05 mm reach.
-The −0.2 fit reproduces the old default Ø7.1 pin; −0.1 reproduces the old
-maximum Ø7.3 pin. These are pin-only regression fixtures.
-Passing the removed `pin_base_diameter` parameter raises an unknown-parameter error.
+The shipped print does not change. The default `pin_fit` moved from 0.1 to
+**−0.15** so the default pin stays **Ø7.7 / 3.85 mm**, exactly the v2.3 pin
+Sean validated. Against the measured Ø8 mouth it is **0.15 mm per side
+clearance**. It was labelled 0.1 mm interference, but that was measured
+against the SCAD arithmetic. Default-preset volume is unchanged:
+**16,085.415 → 16,085.415 mm³**.
+
+Alternative for Sean: `pin_fit = 0.1` gives Ø8.2 / 4.1 mm, a true 0.1 mm
+per-side interference against the measured mouth. That is a new part and
+needs a re-print.
 
 [V] **Physical validation, 2026-09-27:** Sean reported that v2.3
 ([PR #116](https://github.com/SeanOC/stuff/pull/116), main `b589d2d5`)
-“prints great”. **pst-mvno** closed at 19:50Z with pins engaging at
-+0.1 mm per side, no supports, lid fit and bolt-seat fit confirmed.
-This validates that print's fit, not an independent cavity measurement.
-
-[U] The [official remix STEP](https://than.gs/m/994681) remains inaccessible
-to an unattended worker behind a Cloudflare challenge; no official file was
-measured here. If Sean supplies it, a follow-up will record its filename and
-SHA-256 and add measured values. Geometry remains unchanged in this
-reconciliation because the conservative guard and physical fit agree.
+“prints great”. **pst-mvno** closed at 19:50Z with pins engaging, no
+supports, lid fit and bolt-seat fit confirmed. That print's pin is the
+Ø7.7 default above. Its "+0.1 mm per side" label is superseded by the
+measured 0.15 mm clearance; the physical result is not.
 
 [cup-scad]: https://github.com/asciipip/multiboard-parametric-stacked/blob/4db5f07abb4653193014eb1bba761011bc29eb87/multiboard_base.scad
-[cup-scad-dims]: https://github.com/asciipip/multiboard-parametric-stacked/blob/4db5f07abb4653193014eb1bba761011bc29eb87/multiboard_base.scad#L56-L61
-[cup-scad-small]: https://github.com/asciipip/multiboard-parametric-stacked/blob/4db5f07abb4653193014eb1bba761011bc29eb87/multiboard_base.scad#L96-L104
-[cup-scad-thread]: https://github.com/asciipip/multiboard-parametric-stacked/blob/4db5f07abb4653193014eb1bba761011bc29eb87/multiboard_base.scad#L237-L267
-[cup-scad-taper]: https://github.com/asciipip/multiboard-parametric-stacked/blob/4db5f07abb4653193014eb1bba761011bc29eb87/multiboard_base.scad#L270-L282
 
 A true zero-diameter cone tip exposes an OCP STL-export artifact: one
 collapsed triangle with repeated vertices per pin. The shared STL exporter
