@@ -79,7 +79,7 @@ unchanged and [C], with a `# measured` comment and a follow-up bead.
 | Grid pitch | 25 | [V] `mb-large-octagon-hole-positive.json` |
 | Tile thickness | 6.4 | [C] SCAD L56–61; measured 6.2 → pst-rs70f |
 | Small mouth / throat / band | 7.5 / 6 / 2.9 | throat [V] `mb-small-thread-negative.json`; mouth, band [C] SCAD L96–104,237–265; measured 8.0 / 4.2 → pst-az4hh, pst-hav1h |
-| Taper depth per face | 1.75 | [C] arithmetic (6.4−2.9)/2, SCAD L270–280; measured 1.0 → pst-3spc5 |
+| Taper depth per face | 1.0 | [V] `mb-small-thread-negative.json` (45° Ø8→Ø6 chamfer; adopted pst-3spc5, was [C] 1.75 = (6.4−2.9)/2) |
 | Large octagon mouth / central flats, band | 23.4 / 21.4, 2.4 | flats [V] `mb-multihole-negative.json`; band [C] SCAD L68–83,218–224,270–280, measured 2.2 → pst-kooqt |
 | Large helix outer / inner diameter | 22.6 / 21.4 | inner [V] `mb-multihole-negative.json`; outer [C] SCAD L85–94,228–233, measured 22.5 → pst-23uzq |
 | Helix outer / inner axial width, pitch | 0.5 / 1.583, 2.5 | 0.5 and 2.5 [V] `mb-multihole-negative.json`; 1.583 [C] SCAD L85–94,228–233, measured 1.6 → pst-x5vo8 |

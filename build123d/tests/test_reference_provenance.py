@@ -175,7 +175,6 @@ DISAGREEMENTS = {
     "TILE_THICKNESS": (6.2, "pst-rs70f"),
     "SMALL_HOLE_MOUTH_D": (8.0, "pst-az4hh"),
     "SMALL_HOLE_THROAT_BAND": (4.2, "pst-hav1h"),
-    "SMALL_HOLE_TAPER_DEPTH": (1.0, "pst-3spc5"),
     "band_height": (2.2, "pst-kooqt"),
     "helix_outer_d": (22.5, "pst-23uzq"),
     "helix_inner_width": (1.6, "pst-x5vo8"),

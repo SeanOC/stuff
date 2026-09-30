@@ -23,7 +23,9 @@ TILE_THICKNESS = 6.4
 SMALL_HOLE_MOUTH_D = 7.5
 SMALL_HOLE_THROAT_D = 6.0
 SMALL_HOLE_THROAT_BAND = 2.9
-SMALL_HOLE_TAPER_DEPTH = (TILE_THICKNESS - SMALL_HOLE_THROAT_BAND) / 2
+# 45° Ø8→Ø6 chamfer depth, measured directly (pst-3spc5); no longer
+# (TILE_THICKNESS - SMALL_HOLE_THROAT_BAND) / 2 while those two stay cited.
+SMALL_HOLE_TAPER_DEPTH = 1.0
 _M = 'reference/measured/'
 _LARGE_CELL = 'multibuild-tile-components/large-octagon-hole-positive-.step'
 _MULTIHOLE = 'multibuild-tile-components/multihole-negative-.step'
@@ -38,8 +40,7 @@ PROVENANCE = {
     'SMALL_HOLE_THROAT_D': Provenance(SMALL_HOLE_THROAT_D, 'V', _SMALL_NEG, _M + 'mb-small-thread-negative.json'),
     # measured 4.2 (Δ +1.3): pst-hav1h
     'SMALL_HOLE_THROAT_BAND': Provenance(SMALL_HOLE_THROAT_BAND, 'C', 'SCAD', 'L96–104,237–265'),
-    # arithmetic on cited values; measured 1.0 (Δ -0.75): pst-3spc5
-    'SMALL_HOLE_TAPER_DEPTH': Provenance(SMALL_HOLE_TAPER_DEPTH, 'C', 'SCAD', 'Arithmetic, L270–280'),
+    'SMALL_HOLE_TAPER_DEPTH': Provenance(SMALL_HOLE_TAPER_DEPTH, 'V', _SMALL_NEG, _M + 'mb-small-thread-negative.json'),
 }
 LARGE_HOLE_PROFILE = {
     'mouth_across_flats': Provenance(23.4, 'V', _MULTIHOLE, _M + 'mb-multihole-negative.json'),

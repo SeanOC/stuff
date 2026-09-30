@@ -14,7 +14,7 @@ diameters, the helical grooves are omitted, and the tile edges are plain
 (no teeth or snap features). Nothing threads into this tile.
 
 ``TILE_PROFILE`` holds the measured values. Where they disagree with the
-cited values in ``constants`` (thickness, small-hole mouth and taper), the
+cited values in ``constants`` (thickness and small-hole mouth), the
 constants stay unchanged until their follow-up beads resolve (research §2).
 """
 from build123d import Align, Box, Cone, Cylinder, Part, Pos, RegularPolygon, Plane, loft

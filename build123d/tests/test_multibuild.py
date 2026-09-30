@@ -25,7 +25,7 @@ from tests.print_audit import audit
 
 # pst-ff71: [V] only when measured from an official file (locator = committed
 # artefact); disagreeing cited values stay [C] until their follow-up beads.
-MEASURED_V = {'PITCH', 'SMALL_HOLE_THROAT_D'}
+MEASURED_V = {'PITCH', 'SMALL_HOLE_THROAT_D', 'SMALL_HOLE_TAPER_DEPTH'}
 LARGE_V = {'mouth_across_flats', 'central_across_flats', 'helix_inner_d',
            'helix_outer_width', 'helix_pitch'}
 
@@ -42,7 +42,7 @@ def _check_tag(p):
 def test_provenance_and_grid():
     expected = dict(PITCH=25, TILE_THICKNESS=6.4, SMALL_HOLE_MOUTH_D=7.5,
                     SMALL_HOLE_THROAT_D=6, SMALL_HOLE_THROAT_BAND=2.9,
-                    SMALL_HOLE_TAPER_DEPTH=1.75)
+                    SMALL_HOLE_TAPER_DEPTH=1.0)
     for name, value in expected.items():
         assert getattr(c, name) == c.PROVENANCE[name].value
         assert getattr(c, name) == pytest.approx(value)

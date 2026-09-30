@@ -86,7 +86,7 @@ the exact `levels` (planar faces normal to the axis) and the section edges.
 | Small-hole mouth Ø | 7.5 | 8.0 | +0.5 | changed → pst-az4hh (consumer: `SmallHoleConePin`) |
 | Small-hole throat Ø | 6 | 6.0 | 0 | **confirmed** → `SMALL_HOLE_THROAT_D` [V] |
 | Small-hole throat band | 2.9 | 4.2 | +1.3 | changed → pst-hav1h (official = 45° chamfer, then thread) |
-| Small-hole taper depth per face | 1.75 | 1.0 | −0.75 | changed → pst-3spc5 |
+| Small-hole taper depth per face | 1.75 | 1.0 | −0.75 | **adopted** → `SMALL_HOLE_TAPER_DEPTH` [V] (pst-3spc5) |
 | Small thread pitch | 3 | 3.125 | +0.125 | changed (docs only) → pst-gvdrx |
 | Small thread outer Ø / inner Ø | 7 / 6 | 7.0 / 6.0 | 0 | **confirmed** |
 | Small thread axial widths outer / inner | 0.77 / 2.5 | 0.625 / 2.5 | −0.145 / 0 | outer changed (docs only) → pst-5lum5 |
