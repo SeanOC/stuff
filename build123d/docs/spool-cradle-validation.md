@@ -657,10 +657,15 @@ misses.
 | `ams_generic_200` | 105,882.620 | 105,881.681 | −0.939 (−0.00%) |
 | `bambu_reusable_200_points` | 108,936.692 | 108,935.833 | −0.859 (−0.00%) |
 | `ams_generic_200_points` | 110,604.104 | 110,603.165 | −0.939 (−0.00%) |
+| `bambu_reusable_200_openconnect` | 136,367.214 | 136,365.583 | −1.631 (−0.00%) |
+| `ams_generic_200_openconnect` | 138,726.436 | 138,724.716 | −1.720 (−0.00%) |
 
 The land removes the unbacked knife; the net change is under 1 mm³ per
-preset. The five exports and the four-view render are
-regenerated.
+preset at the 75 mm cadence and under 2 mm³ at the 84 mm openConnect
+cadence, where the wider guide root carries a longer land. The openConnect
+"before" values come from main after pst-pwtnq (#132), measured
+when this branch merged it. The exports, the four-view render and the
+openConnect review sheet are regenerated.
 
 
 ## openConnect slots: `mount_style='openconnect'` (pst-pwtnq)
@@ -793,14 +798,13 @@ unchanged by it.
   at every cadence, trimmed by the outboard land cutter. OCCT therefore no
   longer chamfers that corner, and the merge keeps pst-dkqef's
   unconditional wedge in place of the fallback.
-- **Rear knife (w70 / c1.5 / a25, 0.71 mm).** This is pst-dkqef's
-  unbacked knife: the saddle tangent meets the vertical rear face. Here it
-  sits on the outboard strip, at x = ±36.96 just outboard of the guide
-  foot, where the guide's lead-in starts behind its rear end. At 75 mm
-  this corner has no guide. It is the same body defect that the channel
-  and points corners pin, so the openConnect test pins it the same way:
-  the wall must be the only failure, at 0.71 mm. A pst-dkqef fix breaks
-  the pin, and the pin is then removed.
+- **Rear knife (w70 / c1.5 / a25, 0.71 mm).** This was pst-dkqef's
+  unbacked knife: the saddle tangent met the vertical rear face on the
+  outboard strip, at x = ±36.96 just outboard of the guide foot. This
+  change shipped it as a pinned wall failure. pst-dkqef's outboard rear
+  land, merged after it, removes the knife at the 84 mm cadence as well
+  (min wall 0.983 mm). The pin is gone, so all 14 openConnect cases must
+  now audit `ok`.
 
 ### Volumes
 

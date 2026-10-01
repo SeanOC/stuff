@@ -782,14 +782,6 @@ OC_AUDIT_CASES = [p.values for p in OC_PRESETS] + [
     for w in (50, 66, 70) for c in (.25, 1.5) for a in (25, 45)]
 
 
-# pst-dkqef's rear knife (saddle tangent meeting the vertical rear face where
-# nothing backs it) shows here on the outboard strip [spool_width/2, foot]:
-# 0.71 mm at x=+-36.96, y=rear_y. At 75 mm cadence this corner has no guide.
-# Pinned to the wall failure alone, so fixing the knife fails this pin and
-# removes it, as with REAR_SLAB.
-OC_KNIFE = dict(spool_width=70, saddle_clearance=1.5, cradle_angle=25)
-
-
 @pytest.mark.parametrize('values', OC_AUDIT_CASES,
                          ids=[p.id for p in OC_PRESETS]+[
                              f"w{v['spool_width']}-c{v['saddle_clearance']}-a{v['cradle_angle']}"
@@ -804,9 +796,5 @@ def test_openconnect_print_audit_and_edges(values):
     fx = mount_fixtures(OC_MOUNT, values)
     assert len(fx.cutters) == 4
     report = audit(model, SPEC.print_orientation, cutters=fx.cutters, model=SPEC.name)
-    if {k: values.get(k) for k in OC_KNIFE} == OC_KNIFE:
-        assert [f.split()[0] for f in report.failures()] == ['wall'], report.format()
-        assert report.min_wall_mm == pytest.approx(.71, abs=.02), report.format()
-    else:
-        assert report.ok, report.format()
+    assert report.ok, report.format()
     assert report.bed_chamfer == 'present'
