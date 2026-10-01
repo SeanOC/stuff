@@ -225,6 +225,11 @@ def placement_aids(p):
         root = saddle_curtain(p, xi, xo, end_extension=WEB)
         root -= saddle_curtain(p, xi, xo, -reach-WEB, 0,
                                floor=-1000, end_extension=WEB)
+        if root.bounding_box().min.Z < 0:
+            # A wide reach (84 mm openGrid cadence, narrow spool) sinks the
+            # 45-degree underside below the bed at the saddle apex. That
+            # tail lies inside the rail, so trimming it at Z=0 adds nothing.
+            root -= Box(400, 400, 200, align=(Align.CENTER, Align.CENTER, Align.MAX))
         # Preserve the 2.4 mm finished crest wherever it fits. Rev 6 keeps
         # narrower guides down to a 2.4 mm blank (1.8 mm after rim bevels).
         crest = max(foot, xo-WEB-.4)
@@ -265,6 +270,26 @@ def placement_aids(p):
     for triangle in truss_openings(p):
         cap -= truss_relief(p, triangle, deep=True)
     return cap.clean()
+
+
+def rear_corner_wedge(p, bevel):
+    """Explicit bevel for the right concave rail/guide-root rear corner.
+
+    The hypotenuse joins the rail's outer face to the root's rear face. The
+    top follows the rear contact tangent, so it continues the rail top. The
+    underside rises at 45 degrees in X like the root's underside, and also
+    rises toward the plate. A small overlap goes into the rail and root.
+    """
+    xw, rear, top = p['spool_width']/2, p['rear_y'], p['contact_z']
+    slope = 1/math.tan(math.radians(p['cradle_angle']))
+    z0, overlap = top-p['guide_reach'], .1
+    outline = [(xw-overlap, rear-bevel), (xw, rear-bevel), (xw+bevel, rear),
+               (xw+bevel, rear+overlap), (xw-overlap, rear+overlap)]
+    def ring(z):
+        points = [(x, y, z(x, y)) for x, y in outline]
+        return Wire.make_polygon([*points, points[0]])
+    return Solid.make_loft([ring(lambda x, y: z0+(x-xw)+(rear-y)/2),
+                            ring(lambda x, y: top+(rear-y)*slope)], ruled=True)
 
 
 def truss_relief(p, triangle, deep=False):
@@ -470,7 +495,18 @@ def holder(**values):
                        and abs(e.center().Y-p['rear_y']) < 1e-6]
         part = part.chamfer(guide_bevel, None, guide_inner)
     else:
-        part = part.chamfer(rear_bevel, None, rear_edges)
+        try:
+            part = part.chamfer(rear_bevel, None, rear_edges)
+        except ValueError:
+            # OCCT's chamfer builder fails on the concave rail/guide-root
+            # corner for some root depths (non-monotonic in reach: the 84 mm
+            # cadence hits it, 75 mm never has). Only that formerly raising
+            # case builds the same 45-degree bevel as an explicit wedge.
+            concave = [e for e in rear_edges if p['guide_enabled']
+                       and abs(abs(e.center().X)-p['spool_width']/2) < 1e-6]
+            part = part.chamfer(rear_bevel, None, [e for e in rear_edges if e not in concave])
+            wedge = rear_corner_wedge(p, rear_bevel)
+            part = part.fuse(wedge, wedge.mirror(Plane.YZ)).clean()
         guide_bevel = rear_bevel
     if p['guide_enabled']:
         # Finish the short sloping intersections at the feet of those rear
