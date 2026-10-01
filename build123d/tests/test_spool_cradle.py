@@ -11,11 +11,14 @@ from build123d import Axis, Box, Cylinder, Plane, Pos, Rot, section
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from holders.registry import all_models
 all_models()  # Preserve the manifest emitter's registration order.
-from holders.spool_cradle import (APEX_HEIGHT, CADENCE, MOUNT, PARAMS, POINT_ROW_SPACING, SPEC, WEB,
-                                   CHORD, dimensions, holder, mount_fixtures, point_bottoms,
-                                   truss_openings)
+from holders.spool_cradle import (APEX_HEIGHT, MOUNT, OC_MOUNT, OC_SLOT_TOP, PARAMS,
+                                   POINT_ROW_SPACING, SPEC, WEB, CHORD, check_plate,
+                                   dimensions, holder, mount_fixtures, mount_for_values,
+                                   point_bottoms, truss_openings)
 from multibuild.constants import PITCH, large_hole_center, small_hole_center
 from multibuild.multiconnect import POCKET_DEPTH, point_length
+from openconnect import constants as oc
+from openconnect.slot import slot_cutter
 from scripts.export import export_stl
 from tests.mount_contracts import verify
 from tests import print_audit as pa
@@ -63,9 +66,11 @@ def assert_contacts(part,p):
 def test_registered_default(part):
     assert SPEC in all_models()
     assert SPEC.print_orientation == (0,0,1)
-    assert SPEC.mounts == (MOUNT,)
+    assert SPEC.mounts == (MOUNT, OC_MOUNT)
     assert [p.id for p in SPEC.presets] == ['bambu_reusable_200','ams_generic_200',
-                                            'bambu_reusable_200_points','ams_generic_200_points']
+                                            'bambu_reusable_200_points','ams_generic_200_points',
+                                            'bambu_reusable_200_openconnect',
+                                            'ams_generic_200_openconnect']
     assert not {'slot_count','slot_travel','snap_notches','pitch'} & SPEC.param_names()
     assert_contacts(part,dimensions())
 
@@ -81,7 +86,7 @@ def test_presets_mesh_and_envelope(preset,tmp_path):
     assert mesh.is_watertight and mesh.is_winding_consistent
     assert len(mesh.split()) == 1
     bb=part.bounding_box()
-    assert bb.size.X == pytest.approx(CADENCE-2*p['guide_gap'])
+    assert bb.size.X == pytest.approx(p['cadence']-2*p['guide_gap'])
     assert bb.min.Z == pytest.approx(0,abs=1e-6)
     assert bb.size.X < 340 and bb.size.Y < 320 and bb.size.Z < 340
     assert_contacts(part,p)
@@ -89,11 +94,25 @@ def test_presets_mesh_and_envelope(preset,tmp_path):
 
 NUMERIC=[q for q in PARAMS if q.kind == 'number']
 STYLE=next(q for q in PARAMS if q.name == 'mount_style')
-CASES=[({q.name:v},f'{q.name}={v}') for q in NUMERIC for v in (q.min,q.max)]
+# Param endpoints at the default style. The plate ranges cover every style,
+# so the cells below a Multiboard style's floor are EXPECTED-INVALID there:
+# they must raise, and are swept valid under openconnect instead.
+ENDPOINTS=[{q.name:v} for q in NUMERIC for v in (q.min,q.max)]
+STYLE_INVALID=[v for v in ENDPOINTS if v in ({'plate_width':82},{'plate_thickness':5.1})]
+CASES=[(v,'-'.join(f'{k}={x}' for k,x in v.items())) for v in ENDPOINTS if v not in STYLE_INVALID]
 CASES += [({STYLE.name:v},f'{STYLE.name}={v}') for v in STYLE.choices]
+CASES += [({**v,'mount_style':'openconnect'},f'openconnect-{k}={x}')
+          for v in ENDPOINTS for k,x in v.items() if k.startswith('plate_')]
 CASES += [({'spool_width':70,'plate_width':68,'flange_rim_width':1.5,
             'flange_height':4,'spool_diameter':205,'cradle_angle':25,'lip_height':0},
            'narrow-plate-wide-spool')]
+
+
+def test_style_invalid_endpoints_are_rejected():
+    assert len(STYLE_INVALID) == 2
+    for values in STYLE_INVALID:
+        with pytest.raises(ValueError, match="mount_style='channel' needs plate_"):
+            dimensions(values)
 
 
 @pytest.mark.parametrize('values',[v for v,_ in CASES],ids=[n for _,n in CASES])
@@ -101,7 +120,7 @@ def test_endpoints(values):
     p=dimensions(values)
     part=holder(**values)
     assert part.is_valid and len(part.solids()) == 1
-    assert p['plate_thickness']-POCKET_DEPTH >= 2.4
+    assert p['plate_thickness']-p['pocket_depth'] >= 2.4-1e-9
     assert_contacts(part,p)
     assert_truss_sections(part,p)
     assert_cadence(part,p)
@@ -124,7 +143,7 @@ def test_three_holder_channel_alignment(part,cadence):
     origin_x,_=small_hole_center(0,0)
     offset_z=12.5-p['seat_rows'][0]
     placed=[Pos(origin_x+i*cadence,0,offset_z)*part for i in range(3)]
-    assert part.bounding_box().size.X <= CADENCE-1+1e-6
+    assert part.bounding_box().size.X <= p['cadence']-1+1e-6
     gaps=[]
     rows=[]
     for a,b in zip(placed,placed[1:]):
@@ -144,20 +163,25 @@ def test_three_holder_channel_alignment(part,cadence):
 
 @pytest.mark.parametrize('values',[p.values for p in SPEC.presets]+[
     {'plate_width':68,'plate_thickness':6.6},
-    {'plate_width':68,'plate_thickness':6.6,'mount_style':'points'}])
+    {'plate_width':68,'plate_thickness':6.6,'mount_style':'points'},
+    {'plate_width':82,'plate_thickness':5.1,'mount_style':'openconnect'}])
 def test_mount_contract_and_backing(values):
     p=dimensions(values)
-    fx=mount_fixtures(MOUNT,values)
-    if p['mount_style'] == 'points':
-        assert len(fx.cutters) == len(fx.seat_locs) == len(fx.onramp_locs) == 4
-    else:
+    mount=mount_for_values(p)
+    absent=OC_MOUNT if mount == MOUNT else MOUNT
+    assert mount_fixtures(absent,values) is None
+    fx=mount_fixtures(mount,values)
+    if p['mount_style'] == 'channel':
         assert len(fx.cutters) == 2
         assert len(fx.seat_locs) == 2*len(p['seat_rows'])
-    assert p['plate_height']-p['channel_length'] == pytest.approx(p['plate_thickness']-POCKET_DEPTH)
-    assert p['plate_thickness']-POCKET_DEPTH >= 2.4
+    else:
+        assert len(fx.cutters) == len(fx.seat_locs) == len(fx.onramp_locs) == 4
+    assert p['plate_height']-p['channel_length'] == pytest.approx(p['plate_thickness']-p['pocket_depth'])
+    assert p['plate_thickness']-p['pocket_depth'] >= 2.4-1e-9
     # Registered contract probes every actual pocket-back face locally,
     # every entry/drop, the entire low-to-high path, retention and closed top.
-    verify(SPEC,MOUNT,SPEC.resolve_values(values))
+    assert verify(SPEC,mount,SPEC.resolve_values(values))
+    assert not verify(SPEC,absent,SPEC.resolve_values(values))
 
 
 def assert_truss_sections(part,p):
@@ -294,7 +318,8 @@ def assert_finished_edges(part, p):
     # Final BRep classes: functional slot/contact edges, R1 junctions,
     # eased exterior edges, and edges between coplanar/tangent faces.
     counts={'mount':0,'contact':0,'blend':0,'internal_cap':0,'eased':0,'tangent':0}
-    cutters=[c.bounding_box() for c in mount_fixtures(MOUNT, {k: p[k] for k in SPEC.param_names()}).cutters]
+    cutters=[c.bounding_box() for c in mount_fixtures(
+        mount_for_values(p), {k: p[k] for k in SPEC.param_names()}).cutters]
     adjacency={}
     for f in part.faces():
         for e in f.edges(): adjacency.setdefault(e,[]).append(f)
@@ -361,10 +386,10 @@ PLACEMENT_CORNERS = [
 
 def assert_cadence(part, p):
     width = part.bounding_box().size.X
-    assert width <= CADENCE-2*p['guide_gap']+1e-6
-    assert width <= 74+1e-6
+    assert width <= p['cadence']-2*p['guide_gap']+1e-6
+    assert width <= p['cadence']-1+1e-6
     if p['guide_enabled']:
-        assert width == pytest.approx(CADENCE-2*p['guide_gap'], abs=1e-6)
+        assert width == pytest.approx(p['cadence']-2*p['guide_gap'], abs=1e-6)
 
 
 @pytest.mark.parametrize('values', PLACEMENT_CORNERS)
@@ -452,7 +477,7 @@ def test_overall_width_within_cadence(values):
 
 @pytest.mark.parametrize('reach, enabled', [(2.9, True), (2.85, False), (3.0, True)])
 def test_guide_threshold(reach, enabled):
-    values = dict(spool_width=2*(CADENCE/2-.5-reach))
+    values = dict(spool_width=2*(dimensions()['cadence']/2-.5-reach))
     p = dimensions(values)
     assert p['guide_enabled'] is enabled
     model = holder(**values)
@@ -555,7 +580,8 @@ POINTS_PRESETS = [p for p in SPEC.presets if p.values.get('mount_style') == 'poi
 
 
 def test_every_mount_style_has_a_preset():
-    # Coverage lives here, not in registry._validate_spec: it stays cheap.
+    # Mount coverage is registry._validate_spec's (mount_for_values); this
+    # pins every style, including the two that share the channel mount.
     styles = {p.values.get('mount_style', STYLE.default) for p in SPEC.presets}
     assert styles == set(STYLE.choices)
     assert len(POINTS_PRESETS) == 2
@@ -654,4 +680,133 @@ def test_points_print_audit_and_edges(values):
     assert len(fx.cutters) == 4
     report = audit(model, SPEC.print_orientation, cutters=fx.cutters, model=SPEC.name)
     assert report.ok, report.format()
+    assert report.bed_chamfer == 'present'
+
+
+# pst-pwtnq: mount_style='openconnect' — four openConnect slots, same body.
+OC_PRESETS = [p for p in SPEC.presets if p.values.get('mount_style') == 'openconnect']
+
+
+def test_grid_follows_the_style():
+    for style, pitch, cadence, depth in (('channel', PITCH, 75, POCKET_DEPTH),
+                                         ('points', PITCH, 75, POCKET_DEPTH),
+                                         ('openconnect', 28, 84, 2.7)):
+        p = dimensions({'mount_style': style})
+        assert (p['pitch'], p['cadence']) == (pitch, cadence)
+        assert p['pocket_depth'] == pytest.approx(depth)
+        assert p['guide_outer'] == pytest.approx(cadence/2-p['guide_gap'])
+        assert p['guide_reach'] == pytest.approx(cadence/2-p['guide_gap']-p['spool_width']/2)
+        assert p['channel_length'] % pitch == pytest.approx(0)
+    assert len(OC_PRESETS) == 2
+    for preset in OC_PRESETS:
+        assert preset.values['plate_width'] == 82 and preset.values['plate_thickness'] == 5.5
+
+
+@pytest.mark.parametrize('style', ('channel', 'points'))
+def test_multiboard_plate_floors(style):
+    dimensions({'mount_style': style, 'plate_width': 70, 'plate_thickness': 6.55})
+    with pytest.raises(ValueError, match=rf"mount_style='{style}' needs plate_width <= 70 mm"):
+        dimensions({'mount_style': style, 'plate_width': 70.5})
+    with pytest.raises(ValueError, match=rf"mount_style='{style}' needs plate_thickness >= 6.55 mm"):
+        dimensions({'mount_style': style, 'plate_thickness': 6.5})
+
+
+def test_openconnect_plate_floors():
+    # Both floors equal the shared range bounds, so resolve_values rejects a
+    # violation first; check_plate is the style rule itself.
+    values = SPEC.resolve_values({'mount_style': 'openconnect'})
+    check_plate({**values, 'plate_width': 82, 'plate_thickness': 5.1})
+    with pytest.raises(ValueError, match=r"mount_style='openconnect' needs plate_width <= 82 mm"):
+        check_plate({**values, 'plate_width': 82.5})
+    with pytest.raises(ValueError, match=r"mount_style='openconnect' needs plate_thickness >= 5.1 mm"):
+        check_plate({**values, 'plate_thickness': 5.0})
+    for name, value in (('plate_width', 82.5), ('plate_thickness', 5.0)):
+        with pytest.raises(ValueError):
+            dimensions({'mount_style': 'openconnect', name: value})
+
+
+def test_openconnect_slot_top_is_the_cutter_roof():
+    # OCCT bounding boxes overshoot by ~1e-7.
+    assert OC_SLOT_TOP == pytest.approx(slot_cutter().bounding_box().max.Z, abs=1e-6)
+
+
+@pytest.fixture(scope='module', params=OC_PRESETS, ids=lambda p: p.id)
+def oc_model(request):
+    values = request.param.values
+    return values, holder(**values)
+
+
+def test_openconnect_layout(oc_model):
+    values, model = oc_model
+    p = dimensions(values)
+    fx = mount_fixtures(OC_MOUNT, values)
+    assert mount_fixtures(MOUNT, values) is None
+    assert len(fx.cutters) == len(fx.seat_locs) == len(fx.onramp_locs) == 4
+    seats = [s.position for s in fx.seat_locs]
+    assert sorted({round(s.X, 6) for s in seats}) == [-14, 14]
+    lower, upper = sorted({round(s.Z, 6) for s in seats})
+    assert upper-lower == pytest.approx(oc.TILE_SIZE)
+    boxes = [c.bounding_box() for c in fx.cutters]
+    # Upper roof WEB below the plate top; lower slots well above the bed.
+    assert p['plate_height']-max(b.max.Z for b in boxes) == pytest.approx(WEB)
+    assert min(b.min.Z for b in boxes) >= WEB+.5
+    assert all(-p['plate_width']/2+2.4 <= b.min.X and b.max.X <= p['plate_width']/2-2.4
+               for b in boxes)
+    # One push-in, shift and downward slide seats all four heads at once.
+    moves = {tuple(round(v, 6) for v in s.position-r.position)
+             for s, r in zip(fx.seat_locs, fx.onramp_locs)}
+    assert moves == {(oc.ONRAMP_SHIFT, 0, oc.MOVE_DISTANCE)}
+    assert p['plate_thickness']-p['pocket_depth'] == pytest.approx(2.8)
+    assert model.bounding_box().size.X == pytest.approx(84-2*p['guide_gap'])
+
+
+def test_openconnect_truss_returns_to_backing(oc_model):
+    values, model = oc_model
+    p = dimensions(values)
+    assert_truss_sections(model, p)
+    boxes = [c.bounding_box() for c in mount_fixtures(OC_MOUNT, values).cutters]
+    for tri in truss_openings(p):
+        cross = section(model, section_by=Plane(origin=(0, tri[2][0], 0), x_dir=(1, 0, 0), z_dir=(0, 1, 0)))
+        for face in cross.faces():
+            assert not any(face.bounding_box().overlaps(b) for b in boxes)
+    for sign in (-1, 1):
+        x = sign*(p['root_inner']+WEB/2)
+        for z in (CHORD/2, p['contact_z']/2):
+            assert model.is_inside((x, p['plate_thickness']-WEB/2, z))
+            assert model.is_inside((x, p['pocket_depth']+.1, z))
+
+
+OC_PLATE = dict(mount_style='openconnect', plate_width=82, plate_thickness=5.5)
+OC_AUDIT_CASES = [p.values for p in OC_PRESETS] + [
+    dict(spool_width=w, saddle_clearance=c, cradle_angle=a, **OC_PLATE)
+    for w in (50, 66, 70) for c in (.25, 1.5) for a in (25, 45)]
+
+
+# pst-dkqef's rear knife (saddle tangent meeting the vertical rear face where
+# nothing backs it) shows here on the outboard strip [spool_width/2, foot]:
+# 0.71 mm at x=+-36.96, y=rear_y. At 75 mm cadence this corner has no guide.
+# Pinned to the wall failure alone, so fixing the knife fails this pin and
+# removes it, as with REAR_SLAB.
+OC_KNIFE = dict(spool_width=70, saddle_clearance=1.5, cradle_angle=25)
+
+
+@pytest.mark.parametrize('values', OC_AUDIT_CASES,
+                         ids=[p.id for p in OC_PRESETS]+[
+                             f"w{v['spool_width']}-c{v['saddle_clearance']}-a{v['cradle_angle']}"
+                             for v in OC_AUDIT_CASES[len(OC_PRESETS):]])
+def test_openconnect_print_audit_and_edges(values):
+    model = holder(**values)
+    assert model.is_valid and len(model.solids()) == 1
+    p = dimensions(values)
+    assert_contacts(model, p)
+    assert_cadence(model, p)
+    assert_finished_edges(model, p)
+    fx = mount_fixtures(OC_MOUNT, values)
+    assert len(fx.cutters) == 4
+    report = audit(model, SPEC.print_orientation, cutters=fx.cutters, model=SPEC.name)
+    if {k: values.get(k) for k in OC_KNIFE} == OC_KNIFE:
+        assert [f.split()[0] for f in report.failures()] == ['wall'], report.format()
+        assert report.min_wall_mm == pytest.approx(.71, abs=.02), report.format()
+    else:
+        assert report.ok, report.format()
     assert report.bed_chamfer == 'present'

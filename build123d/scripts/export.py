@@ -77,8 +77,10 @@ def review_context(spec, values, part) -> ReviewContext:
     """Resolve model-frame planes before passing context to the GLB renderer."""
     sections = spec.review_sections
     if not sections:
-        if spec.mounts:
-            fixtures = resolve_mount_fixtures(spec, spec.mounts[0], values)
+        # The first declared mount present under these values (pst-pwtnq).
+        fixtures = next((fx for fx in (resolve_mount_fixtures(spec, m, values)
+                                       for m in spec.mounts) if fx is not None), None)
+        if fixtures is not None:
             normal = tuple(np.cross(fixtures.face_normal, fixtures.entry_axis))
             origin = tuple(fixtures.seat_locs[0].position)
             plane = PlaneSpec(origin, normal, "mount plane through first seat")

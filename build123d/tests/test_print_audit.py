@@ -483,7 +483,9 @@ def _audit_model(spec) -> PrintAuditReport:
     part = spec.build(values)
     cutters: list = []
     for mount in spec.mounts:
-        cutters.extend(resolve_fixtures(spec, mount, values).cutters)
+        fx = resolve_fixtures(spec, mount, values)
+        if fx is not None:  # None: this mount is absent under these values
+            cutters.extend(fx.cutters)
     exclusion = _MODEL_EXCLUSIONS.get(spec.name)
     return audit(part, spec.print_orientation, cutters=cutters,
                  exclusions=[exclusion(values)] if exclusion else (), model=spec.name)

@@ -471,12 +471,18 @@ assert not _uncovered, (
 )
 
 
-def verify(spec: ModelSpec, mount_type: str, values: dict) -> None:
-    """Top-level entry: resolve fixtures then run the mount's contract."""
+def verify(spec: ModelSpec, mount_type: str, values: dict) -> bool:
+    """Top-level entry: resolve fixtures then run the mount's contract.
+
+    Returns False, checking nothing, when the mount is absent under
+    ``values`` (registry.ModelSpec.mount_for_values); True once verified."""
     if mount_type not in CONTRACTS:
         raise AssertionError(
             f"{spec.name}: no contract for mount {mount_type!r} "
             f"(known contracts: {sorted(CONTRACTS)})"
         )
     fx = resolve_fixtures(spec, mount_type, values)
+    if fx is None:
+        return False
     CONTRACTS[mount_type](spec.build(values), fx)
+    return True

@@ -358,7 +358,7 @@
       "slug": "holder-spool-cradle",
       "engine": "build123d",
       "title": "Spool cradle (Multibuild)",
-      "blurb": "Single spool bookshelf cradle with wide inboard saddle rails, outboard placement guides (omitted when reach is less than 2.4 mm plus saddle clearance), closed truss webs and a Multiconnect mount: two full-height channels (mount_style channel) or four discrete point pockets in two rows 50 mm apart (mount_style points). Flange-rim support; standing PETG/PCTG print with support allowed only in the mount pockets.",
+      "blurb": "Single spool bookshelf cradle with wide inboard saddle rails, outboard placement guides (omitted when reach is less than 2.4 mm plus saddle clearance) and closed truss webs, in three mount styles: two full-height Multiconnect channels (channel), four discrete Multiconnect point pockets in two rows 50 mm apart (points), or four openConnect slots for an openGrid wall on the 28 mm tile pitch and 84 mm cadence (openconnect). Flange-rim support; standing PETG/PCTG print with support allowed only in the mount pockets.",
       "categoryId": "multiboard",
       "params": [
         {
@@ -438,7 +438,7 @@
           "kind": "number",
           "default": 70,
           "min": 68,
-          "max": 70,
+          "max": 82,
           "step": 0.5
         },
         {
@@ -447,7 +447,7 @@
           "unit": "mm",
           "kind": "number",
           "default": 7,
-          "min": 6.6,
+          "min": 5.1,
           "max": 9,
           "step": 0.1
         },
@@ -498,7 +498,8 @@
           "default": "channel",
           "choices": [
             "channel",
-            "points"
+            "points",
+            "openconnect"
           ]
         }
       ],
@@ -539,6 +540,30 @@
             "flange_height": 8,
             "flange_rim_width": 3,
             "mount_style": "points"
+          }
+        },
+        {
+          "id": "bambu_reusable_200_openconnect",
+          "label": "Bambu reusable 200 mm, openConnect",
+          "values": {
+            "spool_width": 67,
+            "flange_height": 8,
+            "flange_rim_width": 3,
+            "mount_style": "openconnect",
+            "plate_width": 82,
+            "plate_thickness": 5.5
+          }
+        },
+        {
+          "id": "ams_generic_200_openconnect",
+          "label": "AMS generic 200 mm, openConnect",
+          "values": {
+            "spool_width": 66,
+            "flange_height": 8,
+            "flange_rim_width": 3,
+            "mount_style": "openconnect",
+            "plate_width": 82,
+            "plate_thickness": 5.5
           }
         }
       ]

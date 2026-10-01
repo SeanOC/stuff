@@ -10,6 +10,9 @@ the caps and outboard lead-in guides in the standing pose.
 Fixed two-channel mount and 25 mm board pitch are operator-approved.
 mount_style='points' swaps the channels for four discrete point pockets
 (2 columns x 2 rows 50 mm apart, solid plate between); the body is the same.
+mount_style='openconnect' carries four openConnect slots for an openGrid
+wall (28 mm tiles, 84 mm holder cadence, 2 columns x 2 rows 28 mm apart);
+the body is the same, only the grid and the plate floors change.
 """
 from __future__ import annotations
 
@@ -18,14 +21,26 @@ from build123d import Align, Axis, Box, BuildSketch, Cone, Edge, Face, Plane, Po
 from holders.registry import ModelSpec, MountFixtures, PlaneSpec, Param, Preset, register
 from multibuild.constants import PITCH
 from multibuild.multiconnect import POCKET_DEPTH, POINT_ONRAMP, channel_cutter, point_cutter, point_length
+from openconnect import constants as oc
+from openconnect.slot import POCKET_DEPTH as OC_POCKET_DEPTH, onramp_location, seat_location, slot_cutter
 
 MOUNT = 'multibuild-multiconnect-channel'
+OC_MOUNT = 'openconnect-slot'
 WEB = 2.4
 APEX_HEIGHT = 18.0
 JOINT_RADIUS = 1.0
 BED_CHAMFER = 0.4
 CHORD = 6.0
-CADENCE = 75.0
+# Per style: board pitch, holder cadence (three pitches), pocket depth and
+# the gap a maximum-width plate leaves at that cadence. pitch and cadence are
+# resolved into dimensions(); nothing below reads a module-level grid.
+GRIDS = {
+    'channel': (PITCH, 3*PITCH, POCKET_DEPTH, 5.0),
+    'points': (PITCH, 3*PITCH, POCKET_DEPTH, 5.0),
+    'openconnect': (oc.TILE_SIZE, 3*oc.TILE_SIZE, OC_POCKET_DEPTH, 2.0),
+}
+# openConnect slot roof above its seat: the clearance-grown flange outline.
+OC_SLOT_TOP = oc.HEAD_WIDTH/2+oc.BACK_POS_OFFSET+oc.SIDE_CLEARANCE  # 9.0
 
 PARAMS = tuple(Param(name, 'number', default, min=lo, max=hi, step=step,
                     unit='deg' if name == 'cradle_angle' else 'mm', label=label)
@@ -37,21 +52,43 @@ PARAMS = tuple(Param(name, 'number', default, min=lo, max=hi, step=step,
         ('cradle_angle', 40, 25, 45, 1, 'Contact tangent angle from vertical'),
         ('saddle_clearance', 0.5, 0.25, 1.5, 0.25, 'Saddle radial clearance'),
         ('lip_height', 5, 0, 15, 0.5, 'Front rise above contact'),
-        ('plate_width', 70, 68, 70, 0.5, 'Mount plate width'),
-        ('plate_thickness', 7, 6.6, 9, 0.1, 'Mount plate thickness'),
+        ('plate_width', 70, 68, 82, 0.5, 'Mount plate width'),
+        ('plate_thickness', 7, 5.1, 9, 0.1, 'Mount plate thickness'),
         ('wall_clearance', 3, 3, 6, 0.5, 'Spool clearance from plate'),
         ('rail_width', 10, 6, 14, 0.5, 'Saddle rail width, inboard'),
         ('guide_height', 15, 12, 30, 1, 'Guide height above rail'),
         ('guide_gap', 0.5, 0.5, 2, 0.25, 'Half-gap to the neighbouring holder'),
-    )) + (Param('mount_style', 'enum', 'channel', choices=('channel', 'points'),
-                label='Mount style'),)
+    )) + (Param('mount_style', 'enum', 'channel',
+                choices=('channel', 'points', 'openconnect'), label='Mount style'),)
 POINT_ROW_SPACING = 2*PITCH  # Two board rows: the pockets stay discrete.
+
+
+def mount_for_values(values):
+    """The one declared mount present under these resolved values."""
+    return OC_MOUNT if values['mount_style'] == 'openconnect' else MOUNT
+
+
+def check_plate(p):
+    """Style floors: the plate fits the style's cadence and backs its pocket.
+
+    The shared plate_width / plate_thickness ranges cover every style, so a
+    style-invalid combination is rejected here with the floor it violates.
+    """
+    _, cadence, depth, gap = GRIDS[p['mount_style']]
+    if p['plate_width'] > cadence-gap+1e-9:
+        raise ValueError(f"mount_style={p['mount_style']!r} needs plate_width <= "
+                         f'{cadence-gap:g} mm (cadence {cadence:g} - {gap:g} mm gap)')
+    if p['plate_thickness']-depth < WEB-1e-9:
+        raise ValueError(f"mount_style={p['mount_style']!r} needs plate_thickness >= "
+                         f'{depth+WEB:g} mm ({depth:g} mm pocket + {WEB:g} mm backing)')
 
 
 def dimensions(values=None):
     p = SPEC.resolve_values(values)
     if not all(math.isfinite(v) for v in p.values() if not isinstance(v, str)):
         raise ValueError('parameters must be finite')
+    check_plate(p)
+    pitch, cadence, depth, _ = GRIDS[p['mount_style']]
     r = p['spool_diameter']/2
     a = math.radians(p['cradle_angle'])
     cy = p['plate_thickness'] + p['wall_clearance'] + r
@@ -64,11 +101,17 @@ def dimensions(values=None):
     # when lip_height=0; the lip rise itself remains exactly the input.
     end = front+max(JOINT_RADIUS+0.5, p['lip_height']*math.tan(a))
     root_h = contact_z+(rear-p['plate_thickness'])/math.tan(a)
-    length = math.ceil(root_h/PITCH)*PITCH
-    backing = p['plate_thickness']-POCKET_DEPTH
-    ramps = tuple(PITCH/2+i*PITCH for i in range(int(length/PITCH)-1))
-    rows = tuple(z+PITCH/2 for z in ramps)
-    p.update(radius=r, saddle_radius=rs, center_y=cy, center_z=cz,
+    length = math.ceil(root_h/pitch)*pitch
+    backing = p['plate_thickness']-depth
+    if p['mount_style'] == 'openconnect':
+        # Upper slot roof WEB below the plate top; lower row one tile down.
+        upper = length+backing-WEB-OC_SLOT_TOP
+        rows = (upper-pitch, upper)
+        ramps = tuple(z-oc.MOVE_DISTANCE for z in rows)
+    else:
+        ramps = tuple(pitch/2+i*pitch for i in range(int(length/pitch)-1))
+        rows = tuple(z+pitch/2 for z in ramps)
+    p.update(pitch=pitch, cadence=cadence, pocket_depth=depth, radius=r, saddle_radius=rs, center_y=cy, center_z=cz,
              rear_y=rear, front_y=front, contact_z=contact_z, end_y=end,
              plate_height=length+backing, root_height=root_h,
              channel_length=length, onramps=ramps, seat_rows=rows,
@@ -80,12 +123,15 @@ def dimensions(values=None):
         p['point_bottoms'] = point_bottoms(length)
     p.update(cap_inner=p['spool_width']/2-p['rail_width'],
              cap_reach=p['rail_width']-WEB,
-             guide_outer=CADENCE/2-p['guide_gap'],
-             guide_reach=CADENCE/2-p['guide_gap']-p['spool_width']/2,
+             guide_outer=cadence/2-p['guide_gap'],
+             guide_reach=cadence/2-p['guide_gap']-p['spool_width']/2,
              exposed_rim=2*r*math.sin(a)-p['lip_height']-p['guide_height'])
     # Rev 6 reserves a WEB-wide guide before edge finishing. At the
     # threshold the lead-in is vertical; rim bevels leave a 1.8 mm land.
     p['guide_enabled'] = p['guide_reach']+1e-9 >= WEB+p['saddle_clearance']
+    # A wide reach (84 mm openGrid cadence, narrow spool) sinks the root's
+    # 45-degree underside below the bed at the saddle apex.
+    p['root_to_bed'] = p['guide_enabled'] and p['guide_reach']+WEB > APEX_HEIGHT
     # The cap underside's last millimetre must fall toward the panel, else
     # a steep lip (shallow cradle_angle) leaves an acute groove at the
     # panel face. sqrt(2) is the original drop; 0.2 mm is the minimum fall.
@@ -244,6 +290,9 @@ def placement_aids(p):
         root -= saddle_curtain(p, xi, xo, -reach-WEB, 0,
                                floor=-1000, end_extension=WEB)
         root -= rear_land_cutter(p)
+        if p['root_to_bed']:
+            # The below-bed tail lies inside the rail: trimming it adds nothing.
+            root -= Box(400, 400, 200, align=(Align.CENTER, Align.CENTER, Align.MAX))
         # Preserve the 2.4 mm finished crest wherever it fits. Rev 6 keeps
         # narrower guides down to a 2.4 mm blank (1.8 mm after rim bevels).
         crest = max(foot, xo-WEB-.4)
@@ -302,10 +351,14 @@ def truss_relief(p, triangle, deep=False):
     """
     y,z=triangle[2]
     xi=p['rail_inner']
+    # A root reaching the bed is cut down to the bed chord, so the deep
+    # cutter's flanks meet the web's outer face: widen them outboard there
+    # to keep that concave corner below 90 degrees.
+    outboard=.6 if deep and p['root_to_bed'] else 0
     wires=[]
     for x,offset in ((p['cap_inner']-2,.8 if deep else 0),(xi,.4),
                      (xi+.4,0),(xi+WEB-.4,0),(xi+WEB,.4),
-                     (CADENCE/2+1,0)):
+                     (p['cadence']/2+1,outboard)):
         roof=z+offset*math.sqrt(2)
         floor=-100 if deep else CHORD-offset
         half=roof-floor
@@ -334,9 +387,23 @@ def point_bottoms(channel_length):
 
 
 def mount_fixtures(mount_type, values):
-    if mount_type != MOUNT:
+    """Fixtures for the selected style's mount; None for the other mount."""
+    if mount_type not in (MOUNT, OC_MOUNT):
         raise ValueError(f'unsupported mount: {mount_type}')
     p = dimensions(values)
+    if mount_type != mount_for_values(p):
+        return None
+    if p['mount_style'] == 'openconnect':
+        # Both columns on adjacent tile centres; every slot has the same
+        # on-ramp offset, so one push-in, shift and downward slide seats all.
+        slots = [(x, z) for z in p['seat_rows'] for x in (-p['pitch']/2, p['pitch']/2)]
+        cutter = slot_cutter()
+        return MountFixtures(
+            cutters=[Pos(x, 0, z)*cutter for x, z in slots],
+            seat_locs=[seat_location(x, z) for x, z in slots],
+            onramp_locs=[onramp_location(x, z) for x, z in slots],
+            entry_axis=(0, 0, 1), face_normal=(0, -1, 0),
+        )
     if p['mount_style'] == 'points':
         pocket = point_cutter()
         xs, bottoms = (-PITCH/2, PITCH/2), p['point_bottoms']
@@ -554,7 +621,7 @@ def holder(**values):
             part = part.chamfer(.1, None, ends)
     bottom = part.faces().filter_by(Axis.Z).sort_by(Axis.Z)[0]
     part = part.chamfer(BED_CHAMFER, None, bottom.edges())
-    cutters = mount_fixtures(MOUNT, values).cutters
+    cutters = mount_fixtures(mount_for_values(p), values).cutters
     for cutter in cutters:
         part -= cutter
     # The library profile is left intact above the 0.4 mm bed relief.
@@ -563,7 +630,7 @@ def holder(**values):
     bottom = part.faces().filter_by(Axis.Z).sort_by(Axis.Z)[0]
     unrelieved = part
     bounds = [c.bounding_box() for c in cutters]
-    edges = [e for e in bottom.edges() if BED_CHAMFER+1e-6 < e.center().Y <= POCKET_DEPTH+1e-6
+    edges = [e for e in bottom.edges() if BED_CHAMFER+1e-6 < e.center().Y <= p['pocket_depth']+1e-6
              and any(b.min.X-1e-6 <= e.center().X <= b.max.X+1e-6 for b in bounds)]
     bed_cuts = []
     for edge in edges:
@@ -592,9 +659,10 @@ _DEFAULT_SECTION_Y = 7 + 3 + 200 / 2
 SPEC = register(ModelSpec(
     name='holder_spool_cradle', build=lambda values: holder(**values),
     title='Spool cradle (Multibuild)', category_id='multiboard',
-    description='Single spool bookshelf cradle with wide inboard saddle rails, outboard placement guides (omitted when reach is less than 2.4 mm plus saddle clearance), closed truss webs and a Multiconnect mount: two full-height channels (mount_style channel) or four discrete point pockets in two rows 50 mm apart (mount_style points). Flange-rim support; standing PETG/PCTG print with support allowed only in the mount pockets.',
-    tags=('holder', 'multiboard', 'spool', 'multiconnect-channel', 'multiconnect-points'), params=PARAMS,
-    mounts=(MOUNT,), print_orientation=(0, 0, 1),
+    description='Single spool bookshelf cradle with wide inboard saddle rails, outboard placement guides (omitted when reach is less than 2.4 mm plus saddle clearance) and closed truss webs, in three mount styles: two full-height Multiconnect channels (channel), four discrete Multiconnect point pockets in two rows 50 mm apart (points), or four openConnect slots for an openGrid wall on the 28 mm tile pitch and 84 mm cadence (openconnect). Flange-rim support; standing PETG/PCTG print with support allowed only in the mount pockets.',
+    tags=('holder', 'multiboard', 'opengrid', 'spool', 'multiconnect-channel',
+          'multiconnect-points', 'openconnect'), params=PARAMS,
+    mounts=(MOUNT, OC_MOUNT), mount_for_values=mount_for_values, print_orientation=(0, 0, 1),
     review_sections=(PlaneSpec((0, _DEFAULT_SECTION_Y, 0), (1, 0, 0),
                               'mid-plane through saddle + truss'),),
     presets=(
@@ -608,5 +676,11 @@ SPEC = register(ModelSpec(
         Preset('ams_generic_200_points', 'AMS generic 200 mm, point pockets',
                {'spool_width': 66, 'flange_height': 8, 'flange_rim_width': 3,
                 'mount_style': 'points'}),
+        Preset('bambu_reusable_200_openconnect', 'Bambu reusable 200 mm, openConnect',
+               {'spool_width': 67, 'flange_height': 8, 'flange_rim_width': 3,
+                'mount_style': 'openconnect', 'plate_width': 82, 'plate_thickness': 5.5}),
+        Preset('ams_generic_200_openconnect', 'AMS generic 200 mm, openConnect',
+               {'spool_width': 66, 'flange_height': 8, 'flange_rim_width': 3,
+                'mount_style': 'openconnect', 'plate_width': 82, 'plate_thickness': 5.5}),
     ),
 ))
