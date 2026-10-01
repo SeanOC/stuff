@@ -102,20 +102,20 @@ def _face_slab(part: Part, *, bottom: bool) -> Part:
     return Pos(cx, cy, z) * Box(sx, sy, _SLAB, align=_CENTER3)
 
 
-def _require_z_entry(fx: MountFixtures) -> None:
+def _require_z_entry(fx: MountFixtures, mount: str = "multiconnect-slot") -> None:
     ax = tuple(round(a, 6) for a in fx.entry_axis)
     if ax != (0.0, 0.0, 1.0):
         raise AssertionError(
-            f"multiconnect-slot contract currently assumes entry_axis=(0,0,1), "
+            f"{mount} contract currently assumes entry_axis=(0,0,1), "
             f"got {fx.entry_axis} — generalize the face/travel probes to extend it"
         )
 
 
-def _require_y_face(fx: MountFixtures) -> None:
+def _require_y_face(fx: MountFixtures, mount: str = "multiconnect-slot") -> None:
     ax = tuple(round(a, 6) for a in fx.face_normal)
     if ax != (0.0, -1.0, 0.0):
         raise AssertionError(
-            f"multiconnect-slot contract currently assumes face_normal=(0,-1,0), "
+            f"{mount} contract currently assumes face_normal=(0,-1,0), "
             f"got {fx.face_normal} — generalize the retention/profile probes to extend it"
         )
 
@@ -379,8 +379,8 @@ def verify_openconnect_slot(part: Part, fx: MountFixtures) -> None:
     """
     from openconnect import head as oc_head
     from openconnect.constants import HEAD_WIDTH
-    _require_z_entry(fx)
-    _require_y_face(fx)
+    _require_z_entry(fx, "openconnect-slot")
+    _require_y_face(fx, "openconnect-slot")
     assert fx.cutters and fx.seat_locs, 'openconnect fixtures must not be empty'
     assert len(fx.cutters) == len(fx.seat_locs) == len(fx.onramp_locs), \
         'one cutter, seat and on-ramp pose per slot required'

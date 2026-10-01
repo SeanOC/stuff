@@ -46,7 +46,7 @@ DEFAULT_MODEL = "qwen/qwen3-vl-235b-a22b-instruct"  # vision model (inx assess.t
 # Bump when the rubric text or prompt scaffold in _build_prompt/RUBRICS changes,
 # so a summary is traceable to the exact wording that produced it. Reported in
 # the Markdown header alongside the model id (bead pst-ae3v, AC 2).
-PROMPT_VERSION = "4"
+PROMPT_VERSION = "5"
 
 # Mount-type -> the checklist a reviewer applies to the render. Keyed by the
 # same names as registry.KNOWN_MOUNTS so a new mount contract can add its rubric
