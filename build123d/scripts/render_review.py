@@ -70,6 +70,13 @@ RUBRICS["multibuild-multiconnect-channel"] = [
     "Is there solid material closing the channel tops and backing the pockets?",
     "Do the channels retain a narrow lip between the on-ramps?",
 ]
+RUBRICS["openconnect-slot"] = [
+    "Does each openConnect slot open on the BACK (wall-facing) face, with an "
+    "on-ramp mouth BELOW a closed seat?",
+    "Is there at least 2.4 mm of solid backing behind each 2.7 mm pocket?",
+    "Could a head pushed into the on-ramp slide UP to the seat without "
+    "passing through solid material?",
+]
 
 TILE_RUBRIC = [
     "SECTION: is every load-bearing member ≥ 1.6 mm and connected at both ends? any free-ending arm?",

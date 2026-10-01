@@ -1,0 +1,107 @@
+/*
+Licensed Creative Commons Attribution 4.0 International
+
+Created by mitufy. https://github.com/mitufy
+
+openConnect is a connector system designed for openGrid. https://www.printables.com/model/1559478-openconnect-opengrids-own-connector-system
+openGrid is created by David D: https://www.printables.com/model/1214361-opengrid-walldesk-mounting-framework-and-ecosystem.
+Inspired by David's multiConnect: https://www.printables.com/model/1008622-multiconnect-for-multiboard-v2-modeling-files.
+*/
+
+/* [Plate Settings] */
+//Size can be inputted in either grids or millimeters. 1 grid = 28mm.
+plate_size_unit = "mm"; //[grid:Grid Count, mm:Millimeter]
+plate_horizontal_size = 84;
+plate_vertical_size = 56;
+//Set this to 0 if your model already has a wall and you don't want to thicken it. Does not affect Negative slots.
+plate_extra_thickness = 0.5;
+plate_corner_rounding = "None"; //["None", "Chamfer", "Fillet"]
+plate_corner_rounding_size = 0;
+
+/* [Slot Settings] */
+//"Standard" to add to models. "Negative" to subtract from models. "Vase Mode" to add to specific models designed for vase mode.
+slot_type = "slot"; //[slot:Standard, negslot:Negative, vase:Vase Mode]
+//For vase mode slots. This value should match the slicer's linewidth setting when printing in vase mode.
+vase_linewidth = 0.6;
+//Adding locking mechanism to more slots makes the fit tighter, but also more difficult to install.
+slot_lock_distribution = "Corners"; //["All", "Staggered", "Corners", "Top Corners", "None"]
+//Entry ramp direction can matter in tight spaces. When printing the slots on the side, place the locking mechanism side closer to the print bed.
+slot_entryramp_flip = false;
+//"All" is the default and means a slot is generated for every openGrid tile.
+slot_position = "All"; //["All", "Staggered", "Edge Rows", "Edge Columns", "Corners"]
+
+/* [Advanced Settings] */
+//Slot alignment applies when the plate size is in millimeters and not divisible by 28.
+plate_slot_horizontal_alignment = "Center"; //["Center", "Left", "Right"]
+plate_slot_vertical_alignment = "Center"; //["Center", "Top", "Bottom"]
+//Manually offset the horizontal position of the slots. Use this if you want more precise control than offered by plate_slot_horizontal_alignment.
+plate_slot_horizontal_offset = 0; //0.1
+//Manually offset the vertical position of the slots. Use this if you want more precise control than offered by plate_slot_vertical_alignment.
+plate_slot_vertical_offset = 0; //0.1
+//Increase clearances if the slots feel too tight.
+slot_side_clearance = 0.1; //0.01
+slot_depth_clearance = 0.1; //0.01
+//Ensures minimum feature width for printing. "Both" is default for compatibility, though only one (or none) may be needed depending on orientation.
+slot_edge_feature_widen = "Both"; //[Both, Top, Side, None]
+//Minimum width for bridges under slot_edge_feature_widen. Default is suitable for 0.4mm nozzles, consider increasing when using a larger nozzle.
+slot_edge_bridge_min_width = 0.8; //0.01
+//Minimum width for walls under slot_edge_feature_widen. Default is suitable for 0.4mm nozzles, consider increasing when using a larger nozzle.
+slot_edge_wall_min_width = 0.6; //0.01
+
+/* [Hidden] */
+$fa = 1;
+$fs = 0.4;
+include <lib/opengrid_base.scad>
+use <lib/openconnect_lib.scad>
+
+slot_cfg = ocslot_cfg(
+  edge_feature=slot_edge_feature_widen,
+  edge_bridge_min_w=slot_edge_bridge_min_width,
+  edge_wall_min_w=slot_edge_wall_min_width,
+  side_clearance=slot_side_clearance,
+  depth_clearance=slot_depth_clearance,
+  vase_linewidth=vase_linewidth,
+  vase_overhang_angle=45
+);
+slot_total_height = struct_val(slot_cfg, "total_height");
+
+slot_lock_side = "Left";
+final_plate_width = max(1, plate_size_unit == "mm" ? plate_horizontal_size : plate_horizontal_size * OG_TILE_SIZE);
+final_plate_h_grids = max(1, plate_size_unit == "mm" ? floor(plate_horizontal_size / OG_TILE_SIZE) : plate_horizontal_size);
+final_plate_height = max(1, plate_size_unit == "mm" ? plate_vertical_size : plate_vertical_size * OG_TILE_SIZE);
+final_plate_v_grids = max(1, plate_size_unit == "mm" ? floor(plate_vertical_size / OG_TILE_SIZE) : plate_vertical_size);
+final_plate_thickness = slot_type == "negslot" ? EPS : max(EPS, slot_type == "vase" ? plate_extra_thickness : slot_total_height + plate_extra_thickness);
+final_plate_horizontal_alignment =
+  plate_slot_horizontal_alignment == "Left" ? LEFT
+  : plate_slot_horizontal_alignment == "Right" ? RIGHT : CENTER;
+final_plate_vertical_alignment =
+  plate_slot_vertical_alignment == "Top" ? BACK
+  : plate_slot_vertical_alignment == "Bottom" ? FRONT : CENTER;
+final_plate_alignment = final_plate_horizontal_alignment + final_plate_vertical_alignment;
+
+//BEGIN generation
+down(final_plate_thickness == EPS ? EPS : 0) diff()
+    hide("hidden") tag(final_plate_thickness == EPS ? "hidden" : "")
+        cuboid([final_plate_width, final_plate_height, final_plate_thickness], anchor=BOTTOM + FRONT + LEFT) {
+          if (plate_corner_rounding != "None" && plate_corner_rounding_size > 0)
+            edge_mask("Z") {
+              if (plate_corner_rounding == "Chamfer")
+                chamfer_edge_mask(chamfer=plate_corner_rounding_size);
+              if (plate_corner_rounding == "Fillet")
+                rounding_edge_mask(r=plate_corner_rounding_size);
+            }
+          if (slot_type == "slot")
+            right(plate_slot_horizontal_offset) back(plate_slot_vertical_offset)
+                attach(TOP, TOP, align=final_plate_alignment, inside=true)
+                  tag("remove") openconnect_slot_grid(slot_cfg=slot_cfg, slot_type="slot", horizontal_grids=final_plate_h_grids, vertical_grids=final_plate_v_grids, slot_position=slot_position, slot_lock_distribution=slot_lock_distribution, slot_lock_side=slot_lock_side, slot_entryramp_flip=slot_entryramp_flip, excess_thickness=EPS);
+          else if (slot_type == "negslot")
+            right(plate_slot_horizontal_offset) back(plate_slot_vertical_offset)
+                attach(TOP, BOTTOM, align=final_plate_alignment)
+                  tag("") openconnect_slot_grid(slot_cfg=slot_cfg, slot_type="slot", horizontal_grids=final_plate_h_grids, vertical_grids=final_plate_v_grids, slot_position=slot_position, slot_lock_distribution=slot_lock_distribution, slot_lock_side=slot_lock_side, slot_entryramp_flip=slot_entryramp_flip, excess_thickness=0);
+          else if (slot_type == "vase")
+            right(plate_slot_horizontal_offset) back(plate_slot_vertical_offset)
+                attach(TOP, BOTTOM, align=final_plate_alignment)
+                  tag("") openconnect_slot_grid(slot_cfg=slot_cfg, slot_type="vase", horizontal_grids=final_plate_h_grids, vertical_grids=final_plate_v_grids, slot_position=slot_position, slot_lock_distribution=slot_lock_distribution, slot_lock_side=slot_lock_side, slot_entryramp_flip=slot_entryramp_flip, excess_thickness=0);
+        }
+
+//END generation

@@ -39,7 +39,7 @@ SAFE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
 # module asserts full coverage at import). A model tagged with an unknown
 # mount fails loudly at registration (see _validate_spec). Add a new mount
 # type here AND its contract together.
-KNOWN_MOUNTS: frozenset[str] = frozenset({"multiconnect-slot", "multibuild-multiconnect-slot", "multibuild-multiconnect-channel"})
+KNOWN_MOUNTS: frozenset[str] = frozenset({"multiconnect-slot", "multibuild-multiconnect-slot", "multibuild-multiconnect-channel", "openconnect-slot"})
 
 # Mirrors MODEL_CATEGORIES ids in lib/models/catalog.ts (app catalog
 # contract). Keep in sync when a category is added there.
