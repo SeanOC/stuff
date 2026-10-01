@@ -571,103 +571,6 @@ The pocket ceilings are the same library slot ends as the channel top, so
 the standing print needs support only inside the pockets.
 
 
-## Outboard rear land (pst-dkqef)
-
-### Defect
-
-The saddle's rear end was a knife wherever nothing backed it. The saddle
-tangent (cradle_angle from vertical) met the vertical rear face at
-y = rear_y in a 25–45° edge. The rail is backed: behind its rear contact
-it continues the tangent plane down to the plate. The outboard strip
-between the rail and the guide foot, and the guide root under the guide's
-low rear land, were not backed.
-
-The print audit marches walls from UV 0.3/0.5/0.7 on each face only, so it
-saw the knife only when a short face put a sample near the edge. That
-happened at 66 / 0.25 / 25 (0.705 mm) and, unswept, at 66 / 0.5 / 25
-(0.656 mm) and 67 / 0.25 / 25 (0.603 mm). A dense probe (19 × 19 UV,
-outboard rear corner only) measures **0.020–0.034 mm** on main at all
-three, and at both shipped presets. The inboard cap's rear end has the same
-unbacked knife; that is a separate follow-up.
-
-### Fix
-
-`rear_land_cutter()` cuts the guide root before the guide fuses, so the
-guide refills wherever it stands above the cut:
-
-1. A flat land at the saddle height WEB/2 behind rear_y, with a 0.4 × 45°
-   rear chamfer.
-2. Mirrored 30° ramps rise 0.4 mm to the rail's outer face and to the
-   guide's lead-in. A flat land meets either wall at ≥ 90°, which the
-   finished-edge gate rejects. Where the gap is narrow the two ramps form
-   a 60° V.
-3. A 45° stage keeps the floor 0.1 mm above the guide's 45° underside, so
-   no notch opens below the guide.
-
-Two OCCT chamfer failures moved with the new geometry:
-
-- The guide's rear-end chamfer now runs on the guide blank before its
-  underside is cut. After the fuse, the lead-in's rear edge ends on the
-  land and the chamfer failed non-monotonically across inset and slope.
-  On the cut blank, the guide foot is 0.24 mm thick at the Bambu preset.
-  The root buries the chamfer's lower end below the land.
-- The concave rail/guide-root rear corner is now an explicit 45° wedge
-  (`rear_corner_wedge()`), trimmed by the same land cutter. It replaces the
-  vertical chamfer there, which failed for some root depths.
-
-### Validation
-
-Each of these cases builds as one valid solid and passes the finished-edge
-classes and contacts, and every one passes the print audit:
-
-- Both presets of each style.
-- The 12-corner grid above in channel style.
-- The production audit corners.
-- 66 / 0.5 / 25, 67 / 0.25 / 25, and 64, 65 and 68 × 0.25/0.5 × 25.
-
-Minimum walls are 0.98–1.39 mm. The target corner reads 1.019 mm in both
-styles. The dense probe reads ≥ 1.3 mm on the outboard rear corner in
-all seven probed cases (both presets, the three knife corners, 50 / 0.25 /
-25 and 66 / 1.5 / 45).
-
-A 240-case build-plus-edges grid matches main exactly. It covers widths
-50–70 (15 values), clearances 0.25/0.5/1/1.5 and angles 25/33/40/45. The
-only failures, 68 and 68.5 / 0.25 / 40, fail identically on main, in the
-inboard cap's rear chamfer. They go to the cap follow-up.
-
-New tests:
-
-- 66 / 0.25 / 25 as `rear-land-corner` in `test_production_print_audit`.
-  It replaces the channel `xfail` twin, and the points grid drops its
-  `xfail`.
-- Four land-junction edge cases.
-- `test_outboard_rear_end_has_no_knife`, a dense probe that fails on main
-  at both cases (~16 s each).
-
-A 12-case channel print-audit grid was considered and left out. It would
-add about 8–9 min of CI (~42 s per case). The points grid already audits
-the same 12 body corners, and the knife probe covers what UV sampling
-misses.
-
-### Volumes
-
-| Preset | Before (mm³) | After (mm³) | Change |
-| --- | ---: | ---: | ---: |
-| `bambu_reusable_200` | 104,215.208 | 104,214.349 | −0.859 (−0.00%) |
-| `ams_generic_200` | 105,882.620 | 105,881.681 | −0.939 (−0.00%) |
-| `bambu_reusable_200_points` | 108,936.692 | 108,935.833 | −0.859 (−0.00%) |
-| `ams_generic_200_points` | 110,604.104 | 110,603.165 | −0.939 (−0.00%) |
-| `bambu_reusable_200_openconnect` | 136,367.214 | 136,365.583 | −1.631 (−0.00%) |
-| `ams_generic_200_openconnect` | 138,726.436 | 138,724.716 | −1.720 (−0.00%) |
-
-The land removes the unbacked knife; the net change is under 1 mm³ per
-preset at the 75 mm cadence and under 2 mm³ at the 84 mm openConnect
-cadence, where the wider guide root carries a longer land. The openConnect
-"before" values come from main after pst-pwtnq (#132), measured
-when this branch merged it. The exports, the four-view render and the
-openConnect review sheet are regenerated.
-
-
 ## openConnect slots: `mount_style='openconnect'` (pst-pwtnq)
 
 `mount_style` gains a third value, `openconnect`, for an openGrid wall.
@@ -828,3 +731,99 @@ channel presets. Measured on the Bambu preset:
   The plate is 82 × 5.5 × 114.8 mm, against 70 × 7 × 102.85. It keeps solid
   material where the channel style cuts two full-height channels. The four
   pockets remove 4,043 mm³.
+
+## Outboard rear land (pst-dkqef)
+
+### Defect
+
+The saddle's rear end was a knife wherever nothing backed it. The saddle
+tangent (cradle_angle from vertical) met the vertical rear face at
+y = rear_y in a 25–45° edge. The rail is backed: behind its rear contact
+it continues the tangent plane down to the plate. The outboard strip
+between the rail and the guide foot, and the guide root under the guide's
+low rear land, were not backed.
+
+The print audit marches walls from UV 0.3/0.5/0.7 on each face only, so it
+saw the knife only when a short face put a sample near the edge. That
+happened at 66 / 0.25 / 25 (0.705 mm) and, unswept, at 66 / 0.5 / 25
+(0.656 mm) and 67 / 0.25 / 25 (0.603 mm). A dense probe (19 × 19 UV,
+outboard rear corner only) measures **0.020–0.034 mm** on main at all
+three, and at both shipped presets. The inboard cap's rear end has the same
+unbacked knife; that is a separate follow-up.
+
+### Fix
+
+`rear_land_cutter()` cuts the guide root before the guide fuses, so the
+guide refills wherever it stands above the cut:
+
+1. A flat land at the saddle height WEB/2 behind rear_y, with a 0.4 × 45°
+   rear chamfer.
+2. Mirrored 30° ramps rise 0.4 mm to the rail's outer face and to the
+   guide's lead-in. A flat land meets either wall at ≥ 90°, which the
+   finished-edge gate rejects. Where the gap is narrow the two ramps form
+   a 60° V.
+3. A 45° stage keeps the floor 0.1 mm above the guide's 45° underside, so
+   no notch opens below the guide.
+
+Two OCCT chamfer failures moved with the new geometry:
+
+- The guide's rear-end chamfer now runs on the guide blank before its
+  underside is cut. After the fuse, the lead-in's rear edge ends on the
+  land and the chamfer failed non-monotonically across inset and slope.
+  On the cut blank, the guide foot is 0.24 mm thick at the Bambu preset.
+  The root buries the chamfer's lower end below the land.
+- The concave rail/guide-root rear corner is now an explicit 45° wedge
+  (`rear_corner_wedge()`), trimmed by the same land cutter. It replaces the
+  vertical chamfer there, which failed for some root depths.
+
+### Validation
+
+Each of these cases builds as one valid solid and passes the finished-edge
+classes and contacts, and every one passes the print audit:
+
+- Both presets of each style.
+- The 12-corner grid above in channel style.
+- The production audit corners.
+- 66 / 0.5 / 25, 67 / 0.25 / 25, and 64, 65 and 68 × 0.25/0.5 × 25.
+
+Minimum walls are 0.98–1.39 mm. The target corner reads 1.019 mm in both
+styles. The dense probe reads ≥ 1.3 mm on the outboard rear corner in
+all seven probed cases (both presets, the three knife corners, 50 / 0.25 /
+25 and 66 / 1.5 / 45).
+
+A 240-case build-plus-edges grid matches main exactly. It covers widths
+50–70 (15 values), clearances 0.25/0.5/1/1.5 and angles 25/33/40/45. The
+only failures, 68 and 68.5 / 0.25 / 40, fail identically on main, in the
+inboard cap's rear chamfer. They go to the cap follow-up.
+
+New tests:
+
+- 66 / 0.25 / 25 as `rear-land-corner` in `test_production_print_audit`.
+  It replaces the channel `xfail` twin, and the points grid drops its
+  `xfail`.
+- Four land-junction edge cases.
+- `test_outboard_rear_end_has_no_knife`, a dense probe that fails on main
+  at both cases (~16 s each).
+
+A 12-case channel print-audit grid was considered and left out. It would
+add about 8–9 min of CI (~42 s per case). The points grid already audits
+the same 12 body corners, and the knife probe covers what UV sampling
+misses.
+
+### Volumes
+
+| Preset | Before (mm³) | After (mm³) | Change |
+| --- | ---: | ---: | ---: |
+| `bambu_reusable_200` | 104,215.208 | 104,214.349 | −0.859 (−0.00%) |
+| `ams_generic_200` | 105,882.620 | 105,881.681 | −0.939 (−0.00%) |
+| `bambu_reusable_200_points` | 108,936.692 | 108,935.833 | −0.859 (−0.00%) |
+| `ams_generic_200_points` | 110,604.104 | 110,603.165 | −0.939 (−0.00%) |
+| `bambu_reusable_200_openconnect` | 136,367.214 | 136,365.583 | −1.631 (−0.00%) |
+| `ams_generic_200_openconnect` | 138,726.436 | 138,724.716 | −1.720 (−0.00%) |
+
+The land removes the unbacked knife; the net change is under 1 mm³ per
+preset at the 75 mm cadence and under 2 mm³ at the 84 mm openConnect
+cadence, where the wider guide root carries a longer land. The openConnect
+"before" values come from main after pst-pwtnq (#132), measured
+when this branch merged it. The exports, the four-view render and the
+openConnect review sheet are regenerated.
