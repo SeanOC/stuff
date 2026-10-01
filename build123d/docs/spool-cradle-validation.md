@@ -803,10 +803,11 @@ of plate at default thickness. Gravity bears on the lip's top end. Release
 force is [U] (research §3). Fix Points have no detent, so a hard upward bump
 can lift the holder 6 mm and off, as with any Fix Point accessory.
 
-**Printability.** In the standing print every pocket surface is at most a
-45° overhang. The only ceiling is the flat top of the deep octagon, a
-7.04 mm bridge. The pockets are therefore support-free, unlike the
-Multiconnect segments.
+**Printability.** The print audit excludes the slot cutters as library
+geometry, as for the other styles. Run without that exclusion, the audit
+reports a 90° downward face inside the pockets. The 3.2 mm-deep slots may
+still need support in the standing print; that is the same allowance the
+model header already grants the mount pockets.
 
 ### Volumes
 
