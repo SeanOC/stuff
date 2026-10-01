@@ -487,6 +487,9 @@ still passes.
 
 ## Point pockets: `mount_style='points'` (pst-93yd5)
 
+> **Superseded by pst-7shtl** ([below](#points--fix-point-slots-what-changed-and-why-pst-7shtl)):
+> the pockets are now MultiBuild Fix Point slots, not Multiconnect segments.
+
 `mount_style` is an enum param, `channel` (default) or `points`. Default
 geometry and both channel presets are unchanged. `points` replaces the two
 full-height channels with four discrete Multiconnect pockets: columns at
@@ -736,3 +739,93 @@ channel presets. Measured on the Bambu preset:
   The plate is 82 × 5.5 × 114.8 mm, against 70 × 7 × 102.85. It keeps solid
   material where the channel style cuts two full-height channels. The four
   pockets remove 4,043 mm³.
+
+
+## points → Fix-Point slots: what changed and why (pst-7shtl)
+
+**Why.** pst-93yd5 cut `points` as 35.15 mm Multiconnect channel segments
+(`point_cutter`). A `points` holder hangs on MultiBuild **Fix Points**
+installed in the board, so that was the aliasing
+[multibuild-research.md](multibuild-research.md) forbids (Sean 2026-10-01:
+"use the cutouts in this zip"). The pockets are now the official **Fix
+Point Slot** negative, re-derived from the measured remixing file
+(`multibuild/fixpoint.py`, [provenance](provenance.md)). `point_cutter`,
+`point_length` and `POINT_ONRAMP` are deleted (no other consumer).
+
+**Slot.** 17 × 23.4 × 3.2 mm. The head enters a well (octagon, inradius
+8.5) 6 mm below its seat, then slides up 6 mm. At the seat, an octagon lip
+(inradius 6.0 at the face, 0.4 mm land, then 45° out to 8.5 at 2.9 mm deep)
+closes over the head's 45° flare (r 5.87 → 8.0). The radial clearance on
+the flare is 0.18 mm. The rebuilt slot and head equal the official files
+to 0.003 % volume (`tests/test_fixpoint.py -m upstream`).
+
+**Orientation.** Lip end **up** (+Z). Lowering the holder onto the board
+carries each head from its well up under its lip, so gravity seats it. The
+back view, with the pockets in orange,
+[`renders/holder_spool_cradle_points_back.png`](renders/holder_spool_cradle_points_back.png),
+shows each opening as the wide well below and the 12 mm lip mouth above.
+
+**Layout.** Columns at x = ±12.5 (one board pitch apart). Rows are kept
+**50 mm** apart (`POINT_ROW_SPACING`). Rows 25 apart would fit, but they
+would leave only a 1.6 mm web between a lower slot's lip and the next
+well, so 50 stays. The upper slot's lip end stops where the channel spine
+would, under the closed cap (`point_seats`). The lower well keeps the
+2.9 mm floor above the bed relief. The plate floor for `points` drops from
+6.55 to **5.6 mm** (3.2 pocket + 2.4 backing). The cap grows by 0.95 mm, so
+the plate is 103.8 mm tall at a 100 mm channel length.
+
+| Channel length | Lower slot Z | Upper slot Z | Seats Z | Wells Z | Solid between |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 100 (both presets) | 26.6–50.0 | 76.6–100.0 | 41.5, 91.5 | 35.5, 85.5 | 26.6 mm |
+| 125 (e.g. 25° cradle) | 51.6–75.0 | 101.6–125.0 | 66.5, 116.5 | 60.5, 110.5 | 26.6 mm |
+
+**Mount type.** `points` now declares its own `multibuild-fixpoint-slot`
+(`mount_for_values`). Its contract (`tests/mount_contracts.py`) uses the
+measured head as the fixture. It checks, per slot:
+
+- the seated head is clear
+- the head is held when pulled 0.5, 1 and 2 mm off the wall
+- the slot is closed 1 mm past the seat (≈20 mm³ foul)
+- the path from wholly outside the back face, into the well and up to the
+  seat, is clear
+- the lip is narrower than the head at the face and wider behind it
+- the backing is at least 2.4 mm
+- no two pockets fuse (≥ 0.9 mm apart)
+
+The `channel` and `openconnect` styles are unchanged. Their preset STLs
+regenerate byte-identical.
+
+**Load path.** The worst case is the same 30 N down at the front rim. The
+moment pulls the upper heads straight off the wall and the lower ones into
+it. The upper lips take the pull-off on their 45° faces: the root is 2.5 mm
+of PETG/PCTG behind a 0.4 mm land (the official profile), backed by ≥ 3.8 mm
+of plate at default thickness. Gravity bears on the lip's top end. Release
+force is [U] (research §3). Fix Points have no detent, so a hard upward bump
+can lift the holder 6 mm and off, as with any Fix Point accessory.
+
+**Printability.** In the standing print every pocket surface is at most a
+45° overhang. The only ceiling is the flat top of the deep octagon, a
+7.04 mm bridge. The pockets are therefore support-free, unlike the
+Multiconnect segments.
+
+### Volumes
+
+| Preset | mount_style | Volume (mm³) |
+| --- | --- | ---: |
+| `bambu_reusable_200` | channel | 104,215.208 |
+| `ams_generic_200` | channel | 105,882.620 |
+| `bambu_reusable_200_points` | points (Fix Point) | 116,558.913 |
+| `ams_generic_200_points` | points (Fix Point) | 118,226.326 |
+| `bambu_reusable_200_openconnect` | openconnect | 136,367.214 |
+| `ams_generic_200_openconnect` | openconnect | 138,726.436 |
+
+Both points presets are **+7,622.221 mm³ (+7.0 %)** heavier than before
+(108,936.692 / 110,604.104). That is all pocket size:
+
+- each Fix Point slot removes 979.568 mm³, against 2,768.824 mm³ for the
+  Multiconnect segment (4 × 1,789.256 = 7,157.0 mm³)
+- the closed cap is 0.95 mm taller (≈465 mm³)
+
+The plate outline and body are unchanged. The slot is the official
+envelope, so nothing is oversized.
+

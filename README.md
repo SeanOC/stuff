@@ -100,7 +100,9 @@ matrix.
 - Vendored reference files under `assets/` keep their source licence and
   attribution (CC BY 4.0; see each directory's `NOTICE`).
 - **MultiBuild-derived files are excluded from the MIT grant.**
-  [`build123d/multibuild/tile.py`](build123d/multibuild/tile.py) and the
+  [`build123d/multibuild/tile.py`](build123d/multibuild/tile.py),
+  [`build123d/multibuild/fixpoint.py`](build123d/multibuild/fixpoint.py) (with
+  the spool cradle's `points` presets built from it) and the
   MultiBuild-derived reference artefacts in `build123d/reference/`
   (`build123d/reference/measured/mb-*`) are remixes of Multiboard LTD's
   MultiBuild designs. They are licensed only under the non-commercial
