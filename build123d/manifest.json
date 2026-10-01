@@ -358,7 +358,7 @@
       "slug": "holder-spool-cradle",
       "engine": "build123d",
       "title": "Spool cradle (Multibuild)",
-      "blurb": "Single spool bookshelf cradle with wide inboard saddle rails, outboard placement guides (omitted when reach is less than 2.4 mm plus saddle clearance), closed truss webs and two full-height Multiconnect channels. Flange-rim support; standing PETG/PCTG print with support allowed only in the mount pockets.",
+      "blurb": "Single spool bookshelf cradle with wide inboard saddle rails, outboard placement guides (omitted when reach is less than 2.4 mm plus saddle clearance), closed truss webs and a Multiconnect mount: two full-height channels (mount_style channel) or four discrete point pockets in two rows 50 mm apart (mount_style points). Flange-rim support; standing PETG/PCTG print with support allowed only in the mount pockets.",
       "categoryId": "multiboard",
       "params": [
         {
@@ -490,6 +490,16 @@
           "min": 0.5,
           "max": 2,
           "step": 0.25
+        },
+        {
+          "name": "mount_style",
+          "label": "Mount style",
+          "kind": "enum",
+          "default": "channel",
+          "choices": [
+            "channel",
+            "points"
+          ]
         }
       ],
       "presets": [
@@ -509,6 +519,26 @@
             "spool_width": 66,
             "flange_height": 8,
             "flange_rim_width": 3
+          }
+        },
+        {
+          "id": "bambu_reusable_200_points",
+          "label": "Bambu reusable 200 mm, point pockets",
+          "values": {
+            "spool_width": 67,
+            "flange_height": 8,
+            "flange_rim_width": 3,
+            "mount_style": "points"
+          }
+        },
+        {
+          "id": "ams_generic_200_points",
+          "label": "AMS generic 200 mm, point pockets",
+          "values": {
+            "spool_width": 66,
+            "flange_height": 8,
+            "flange_rim_width": 3,
+            "mount_style": "points"
           }
         }
       ]

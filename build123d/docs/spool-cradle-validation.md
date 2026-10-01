@@ -560,9 +560,15 @@ pockets, which is the purpose of the style.
 
 ### Print audit
 
-Both points presets and the 12 corners spool_width 50/66/70 × saddle
-clearance 0.25/1.5 × cradle angle 25/45 pass the print audit and the
-finished-edge classes. The only accepted exception is the mount pockets
-(the four cutters). The pocket ceilings are the same library slot ends as
+Both points presets and 11 of the 12 corners spool_width 50/66/70 ×
+saddle clearance 0.25/1.5 × cradle angle 25/45 pass the print audit and
+the finished-edge classes. The only accepted exception is the mount
+pockets (the four cutters). The twelfth corner (66 / 0.25 / 25) fails the
+wall check, 0.70 mm < 0.9 mm, in **both** styles. The cause is a thin
+slab at the saddle's rear end (y ≈ rear_y, z 72–76, |x| 30.6–35.8), well
+away from any pocket. The channel print audit never swept this corner, so
+the defect is older than this change. Saddle geometry is out of this
+change's scope. A strict `xfail` pins the corner in both styles until
+pst-dkqef fixes it. The pocket ceilings are the same library slot ends as
 the channel top, so the standing print needs support only inside the
 pockets.
