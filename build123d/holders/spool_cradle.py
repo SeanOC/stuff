@@ -129,6 +129,9 @@ def dimensions(values=None):
     # Rev 6 reserves a WEB-wide guide before edge finishing. At the
     # threshold the lead-in is vertical; rim bevels leave a 1.8 mm land.
     p['guide_enabled'] = p['guide_reach']+1e-9 >= WEB+p['saddle_clearance']
+    # A wide reach (84 mm openGrid cadence, narrow spool) sinks the root's
+    # 45-degree underside below the bed at the saddle apex.
+    p['root_to_bed'] = p['guide_enabled'] and p['guide_reach']+WEB > APEX_HEIGHT
     # The cap underside's last millimetre must fall toward the panel, else
     # a steep lip (shallow cradle_angle) leaves an acute groove at the
     # panel face. sqrt(2) is the original drop; 0.2 mm is the minimum fall.
@@ -225,10 +228,8 @@ def placement_aids(p):
         root = saddle_curtain(p, xi, xo, end_extension=WEB)
         root -= saddle_curtain(p, xi, xo, -reach-WEB, 0,
                                floor=-1000, end_extension=WEB)
-        if root.bounding_box().min.Z < 0:
-            # A wide reach (84 mm openGrid cadence, narrow spool) sinks the
-            # 45-degree underside below the bed at the saddle apex. That
-            # tail lies inside the rail, so trimming it at Z=0 adds nothing.
+        if p['root_to_bed']:
+            # The below-bed tail lies inside the rail: trimming it adds nothing.
             root -= Box(400, 400, 200, align=(Align.CENTER, Align.CENTER, Align.MAX))
         # Preserve the 2.4 mm finished crest wherever it fits. Rev 6 keeps
         # narrower guides down to a 2.4 mm blank (1.8 mm after rim bevels).
@@ -272,24 +273,43 @@ def placement_aids(p):
     return cap.clean()
 
 
-def rear_corner_wedge(p, bevel):
+def rear_land(part, p):
+    """Plane of the right root's rear land, if the guide's 0.4 mm upper-end
+    chamfer left one between the rail's outer face and the guide foot."""
+    xw, rear, top = p['spool_width']/2, p['rear_y'], p['contact_z']
+    for face in part.faces():
+        box = face.bounding_box()
+        if (face.geom_type.name == 'PLANE' and abs(box.min.X-xw) < 1e-6
+                and abs(box.min.Y-rear) < 1e-6 and box.max.Y < rear+1
+                and top-1 < box.min.Z and box.max.Z < top):
+            return Plane(face.center(), z_dir=face.normal_at(face.center()))
+    return None
+
+
+def rear_corner_wedge(p, bevel, land=None):
     """Explicit bevel for the right concave rail/guide-root rear corner.
 
-    The hypotenuse joins the rail's outer face to the root's rear face. The
-    top follows the rear contact tangent, so it continues the rail top. The
-    underside rises at 45 degrees in X like the root's underside, and also
-    rises toward the plate. A small overlap goes into the rail and root.
+    The hypotenuse joins the rail's outer face to the root's rear face, which
+    the wedge's rear face lies on. The underside rises at 45 degrees in X like
+    the root's underside, and also rises toward the plate. The top continues
+    the root's rear land where the guide left one (as OCCT's chamfer of the
+    same corner ends at the 75 mm cadence), else the rear contact tangent.
+    It overlaps the rail slightly in X.
     """
     xw, rear, top = p['spool_width']/2, p['rear_y'], p['contact_z']
     slope = 1/math.tan(math.radians(p['cradle_angle']))
     z0, overlap = top-p['guide_reach'], .1
     outline = [(xw-overlap, rear-bevel), (xw, rear-bevel), (xw+bevel, rear),
-               (xw+bevel, rear+overlap), (xw-overlap, rear+overlap)]
+               (xw-overlap, rear)]
+    if land is None:
+        roof = lambda x, y: top+(rear-y)*slope
+    else:
+        o, n = land.origin, land.z_dir
+        roof = lambda x, y: o.Z-(n.X*(x-o.X)+n.Y*(y-o.Y))/n.Z
     def ring(z):
         points = [(x, y, z(x, y)) for x, y in outline]
         return Wire.make_polygon([*points, points[0]])
-    return Solid.make_loft([ring(lambda x, y: z0+(x-xw)+(rear-y)/2),
-                            ring(lambda x, y: top+(rear-y)*slope)], ruled=True)
+    return Solid.make_loft([ring(lambda x, y: z0+(x-xw)+(rear-y)/2), ring(roof)], ruled=True)
 
 
 def truss_relief(p, triangle, deep=False):
@@ -304,10 +324,14 @@ def truss_relief(p, triangle, deep=False):
     """
     y,z=triangle[2]
     xi=p['rail_inner']
+    # A root reaching the bed is cut down to the bed chord, so the deep
+    # cutter's flanks meet the web's outer face: widen them outboard there
+    # to keep that concave corner below 90 degrees.
+    outboard=.6 if deep and p['root_to_bed'] else 0
     wires=[]
     for x,offset in ((p['cap_inner']-2,.8 if deep else 0),(xi,.4),
                      (xi+.4,0),(xi+WEB-.4,0),(xi+WEB,.4),
-                     (p['cadence']/2+1,0)):
+                     (p['cadence']/2+1,outboard)):
         roof=z+offset*math.sqrt(2)
         floor=-100 if deep else CHORD-offset
         half=roof-floor
@@ -505,7 +529,7 @@ def holder(**values):
             concave = [e for e in rear_edges if p['guide_enabled']
                        and abs(abs(e.center().X)-p['spool_width']/2) < 1e-6]
             part = part.chamfer(rear_bevel, None, [e for e in rear_edges if e not in concave])
-            wedge = rear_corner_wedge(p, rear_bevel)
+            wedge = rear_corner_wedge(p, rear_bevel, rear_land(part, p))
             part = part.fuse(wedge, wedge.mirror(Plane.YZ)).clean()
         guide_bevel = rear_bevel
     if p['guide_enabled']:

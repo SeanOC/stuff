@@ -678,6 +678,42 @@ wall pivot), against 75 mm for the channel's top seat row. No pull-out
 rating is claimed for openConnect heads. The physical validation bead
 **pst-m9xt** still applies.
 
+### Corner sweep at 84 mm cadence
+
+The print audit and the edge-class gate run on both presets and on the
+v2.1 corners (spool_width 50/66/70 × saddle_clearance 0.25/1.5 ×
+cradle_angle 25/45) with an 82 × 5.5 plate. The wider cadence opens two
+guide regimes that 75 mm never builds. Each fix below is gated on its own
+regime, so the Multiboard presets and the openConnect presets are
+unchanged by it.
+
+- **Root to the bed (w50, reach 16.5).** The guide root's 45° underside
+  is reach + WEB = 18.9 mm deep at the rail's inner face, more than the
+  18 mm saddle apex. `root_to_bed` (reach + WEB > APEX_HEIGHT) clips the
+  root at Z = 0; the clipped tail lies inside the rail. The deep truss
+  reliefs then cut the root down to the bed chord, so their 45° flanks
+  meet the web's outer face. Under `root_to_bed` the deep cutter widens
+  outboard (offset 0.4 → 0.6 mm across the root), which keeps that
+  concave corner at about 89.4° instead of 91.3°.
+- **OCCT rear-corner chamfer (w50).** The rear bevel of the concave
+  rail-outer-face / guide-root-rear-face corner fails in OCCT for some
+  root depths. The failure does not depend monotonically on cadence, and
+  any chamfer length fails once it does. Only where that chamfer raises,
+  `rear_corner_wedge` builds the same bevel explicitly: a 45° hypotenuse,
+  a 45° underside like the root's, and a top that continues the root's
+  rear land. The rear land is the 0.4 mm upper-end chamfer of the guide
+  root. OCCT's chamfer of the same corner ends at that land at 75 mm. The
+  existing feet chamfer then eases the rail-face / land line, as it does
+  at 75 mm.
+- **Rear knife (w70 / c1.5 / a25, 0.71 mm).** This is pst-dkqef's
+  unbacked knife: the saddle tangent meets the vertical rear face. Here it
+  sits on the outboard strip, at x = ±36.96 just outboard of the guide
+  foot, where the guide's lead-in starts behind its rear end. At 75 mm
+  this corner has no guide. It is the same body defect that the channel
+  and points corners pin, so the openConnect test pins it the same way:
+  the wall must be the only failure, at 0.71 mm. A pst-dkqef fix breaks
+  the pin, and the pin is then removed.
+
 ### Volumes
 
 | Preset | mount_style | Volume (mm³) |
