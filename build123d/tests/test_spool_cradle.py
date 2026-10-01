@@ -18,6 +18,7 @@ from multibuild.constants import PITCH, large_hole_center, small_hole_center
 from multibuild.multiconnect import POCKET_DEPTH, point_length
 from scripts.export import export_stl
 from tests.mount_contracts import verify
+from tests import print_audit as pa
 from tests.print_audit import audit
 
 
@@ -195,6 +196,8 @@ def test_truss_and_panel_hand_calc(preset):
           'panel force/area/stress',spread,panel_area,spread/panel_area)
 
 
+# pst-dkqef: the unbacked rear knife read 0.70 mm here in both mount styles.
+REAR_LAND_CORNER = dict(spool_width=66, saddle_clearance=.25, cradle_angle=25)
 PRINT_CORNER = dict(spool_diameter=205, spool_width=70, flange_height=4,
                     flange_rim_width=1.5, cradle_angle=25, saddle_clearance=.25,
                     lip_height=15, plate_width=68, plate_thickness=6.6,
@@ -204,9 +207,11 @@ PRINT_CORNER = dict(spool_diameter=205, spool_width=70, flange_height=4,
 @pytest.mark.parametrize('values', [{}, SPEC.presets[0].values, PRINT_CORNER,
     dict(spool_width=50, guide_gap=.5, guide_height=12, rail_width=14, flange_height=4),
     dict(spool_width=70, guide_gap=2, guide_height=30, rail_width=14, flange_height=4),
-    dict(spool_width=70, guide_gap=.5, guide_height=30, rail_width=6, saddle_clearance=1.5)],
+    dict(spool_width=70, guide_gap=.5, guide_height=30, rail_width=6, saddle_clearance=1.5),
+    REAR_LAND_CORNER],
     ids=['default', 'bambu-shallow-root', 'diagonal-root-corner',
-         'maximum-reach-minimum-height', 'guides-omitted', 'insufficient-crest-room'])
+         'maximum-reach-minimum-height', 'guides-omitted', 'insufficient-crest-room',
+         'rear-land-corner'])
 def test_production_print_audit(values):
     part=holder(**values)
     assert part.is_valid and len(part.solids()) == 1
@@ -498,12 +503,44 @@ def test_max_clearance_guide_corner(max_clearance_guide):
     dict(spool_width=66, cradle_angle=25, rail_width=14),
     dict(spool_width=50, cradle_angle=25, flange_height=4, rail_width=14,
          saddle_clearance=1.5),
+    REAR_LAND_CORNER,
+    dict(spool_width=68, saddle_clearance=.25, cradle_angle=25),
+    dict(spool_width=66, saddle_clearance=1.5, cradle_angle=45),
+    dict(spool_width=50, saddle_clearance=.25, cradle_angle=45),
 ], ids=['wide-25', 'omitted-25', 'wide-45-rail14', 'narrow-25-rail14',
-        'wide-25-rail14-min-flange'])
+        'wide-25-rail14-min-flange', 'rear-land-lead-in', 'rear-land-narrow-v',
+        'rear-land-vertical-lead-in', 'rear-land-wide-45'])
 def test_shallow_angle_and_wide_rail_edges(values):
     model = holder(**values)
     assert model.is_valid and len(model.solids()) == 1
     assert_finished_edges(model, dimensions(values))
+
+
+@pytest.mark.parametrize('values', [{}, REAR_LAND_CORNER], ids=['default', 'rear-land-corner'])
+def test_outboard_rear_end_has_no_knife(values):
+    # pst-dkqef: the print audit samples each face at UV 0.3/0.5/0.7 only,
+    # so it saw the saddle's unbacked rear knife (~0.02 mm, including both
+    # presets) only by luck. Probe a denser grid over the outboard rear end.
+    p = dimensions(values)
+    part = holder(**values)
+    xw, rear, top = p['spool_width']/2, p['rear_y'], p['contact_z']
+    lo, hi = (xw-.2, rear-.5, top-3), (p['guide_outer'], rear+2, top+.5)
+    def near(b):
+        return all(a <= y and x <= c for a, x, y, c in zip(lo, (b.min.X, b.min.Y, b.min.Z),
+                                                            (b.max.X, b.max.Y, b.max.Z), hi))
+    uv = tuple(i/10 for i in range(1, 10))
+    thin = []
+    for face in part.faces():
+        if not near(face.bounding_box()):
+            continue
+        c, n = pa._outward_normal(part, face)
+        for point, normal in pa._face_samples(face, uv):
+            if not all(a <= v <= b for a, v, b in zip(lo, point, hi)):
+                continue
+            s = pa._signed(normal, n, face.normal_at(c))
+            if part.is_inside(point-s*.02) and not part.is_inside(point-s*pa.MIN_WALL_MM):
+                thin.append(tuple(round(v, 2) for v in point))
+    assert not thin, thin[:5]
 
 
 def test_max_clearance_guide_print_audit(max_clearance_guide):
