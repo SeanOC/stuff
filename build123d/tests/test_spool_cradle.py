@@ -604,20 +604,7 @@ POINTS_AUDIT_CASES = [p.values for p in POINTS_PRESETS] + [
     for w in (50, 66, 70) for c in (.25, 1.5) for a in (25, 45)]
 
 
-# Pre-existing body defect, both styles: a 0.70 mm slab at the saddle rear
-# end (y ~ rear_y, z 72-76). Saddle geometry is out of pst-93yd5 scope;
-# strict, so the pst-dkqef geometry fix flips these to XPASS.
-REAR_SLAB = dict(spool_width=66, saddle_clearance=.25, cradle_angle=25)
-REAR_SLAB_XFAIL = pytest.mark.xfail(strict=True, raises=AssertionError,
-                                    reason='pst-dkqef: 0.70 mm rear saddle slab')
-
-
-def _points_case(values):
-    corner = {k: values.get(k) for k in REAR_SLAB} == REAR_SLAB
-    return pytest.param(values, marks=REAR_SLAB_XFAIL if corner else ())
-
-
-@pytest.mark.parametrize('values', [_points_case(v) for v in POINTS_AUDIT_CASES],
+@pytest.mark.parametrize('values', POINTS_AUDIT_CASES,
                          ids=[p.id for p in POINTS_PRESETS]+[
                              f"w{v['spool_width']}-c{v['saddle_clearance']}-a{v['cradle_angle']}"
                              for v in POINTS_AUDIT_CASES[len(POINTS_PRESETS):]])
@@ -631,12 +618,3 @@ def test_points_print_audit_and_edges(values):
     report = audit(model, SPEC.print_orientation, cutters=fx.cutters, model=SPEC.name)
     assert report.ok, report.format()
     assert report.bed_chamfer == 'present'
-
-
-@REAR_SLAB_XFAIL
-def test_channel_rear_slab_corner_print_audit():
-    # The channel twin of the REAR_SLAB points case: the defect is the body's.
-    model = holder(**REAR_SLAB)
-    fx = mount_fixtures(MOUNT, REAR_SLAB)
-    report = audit(model, SPEC.print_orientation, cutters=fx.cutters, model=SPEC.name)
-    assert report.ok, report.format()

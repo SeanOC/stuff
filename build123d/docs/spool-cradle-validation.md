@@ -568,7 +568,7 @@ wall check, 0.70 mm < 0.9 mm, in **both** styles. The cause is a thin
 slab at the saddle's rear end (y ≈ rear_y, z 72–76, |x| 30.6–35.8), well
 away from any pocket. The channel print audit never swept this corner, so
 the defect is older than this change. Saddle geometry is out of this
-change's scope. A strict `xfail` pins the corner in both styles until
-pst-dkqef fixes it. The pocket ceilings are the same library slot ends as
+change's scope. A strict `xfail` pinned the corner in both styles until
+pst-dkqef fixed it (see the outboard rear land below). The pocket ceilings are the same library slot ends as
 the channel top, so the standing print needs support only inside the
 pockets.

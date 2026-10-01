@@ -154,6 +154,35 @@ def vertical_gusset(x, y, sx, sy):
         Edge.make_three_point_arc(a, mid, b), Edge.make_line(b, corner)])), (0, 0, 400))
 
 
+def rear_land_cutter(p):
+    """Flat land on the outboard root's rear end (right-hand side).
+
+    Unbacked, the root's rear end is a cradle_angle knife where the saddle
+    meets its vertical end face. The rail behind its own rear contact
+    continues the tangent plane, so it needs no land. A WEB/2 land with a
+    0.4 mm rear chamfer replaces the knife beside the rail. Cut before the
+    guide fuses, so the guide refills wherever it stands above the land.
+    The 30-degree ramp meets the rail's outer face. The 45-degree ramp
+    stays above the guide underside, so no notch opens below the guide.
+    """
+    rear, xw, xo = p['rear_y'], p['spool_width']/2, p['guide_outer']
+    land_y = rear+WEB/2
+    z = p['center_z']-math.sqrt(p['saddle_radius']**2-(land_y-p['center_y'])**2)
+    bevel, top = .4, p['contact_z']+20
+    # At y=rear_y the guide underside is contact_z-(xo-x); keep 0.1 mm above.
+    rise_x = xo-(p['contact_z']-z)-bevel-.1
+    ramp, slope = .4, math.tan(math.radians(30))
+    x0, length = xw-5, xo-xw+10
+    def stage(offset, dz):
+        face = Face(Wire.make_polygon([
+            (x0, rear-1, z-bevel-1+offset), (x0, rear+bevel, z+offset),
+            (x0, land_y+1, z+offset), (x0, land_y+1, top+offset),
+            (x0, rear-1, top+offset)], close=True))
+        return Solid.extrude(face, (length, 0, dz))
+    return (stage(0, 0) & stage((xw+ramp/slope-x0)*slope, -length*slope)
+            & stage(x0-rise_x, length))
+
+
 def placement_aids(p):
     """Right-hand cap and guide; the left side is its mirror.
 
@@ -182,6 +211,7 @@ def placement_aids(p):
         root = saddle_curtain(p, xi, xo, end_extension=WEB)
         root -= saddle_curtain(p, xi, xo, -reach-WEB, 0,
                                floor=-1000, end_extension=WEB)
+        root -= rear_land_cutter(p)
         # Preserve the 2.4 mm finished crest wherever it fits. Rev 6 keeps
         # narrower guides down to a 2.4 mm blank (1.8 mm after rim bevels).
         crest = max(foot, xo-WEB-.4)
@@ -189,12 +219,15 @@ def placement_aids(p):
         if crest-foot > 1e-8:
             guide = guide.fuse(guide_top(p, foot, crest, 0, p['guide_height']))
         guide -= saddle_curtain(p, foot, xo, foot-xw-reach, 0, floor=-1000, end_extension=WEB)
-        guide = guide.fuse(root).clean()
+        # Finish the rear land edges before the root fuses: the rear land
+        # exposes the lead-in's edge down to the land, where OCCT cannot
+        # close a chamfer against the land ramp.
         upper_ends = [e for e in guide.edges()
                       if e.geom_type.name == 'LINE' and e.bounding_box().size.X > 1e-6
                       and abs(e.center().Y-p['rear_y']) < 1e-6
                       and e.center().Z > p['contact_z']]
         guide = guide.chamfer(.4, None, upper_ends)
+        guide = guide.fuse(root).clean()
         crest_edges = []
         for e in guide.edges():
             c=e.center()
