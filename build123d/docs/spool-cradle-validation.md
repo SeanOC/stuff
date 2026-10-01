@@ -572,3 +572,167 @@ change's scope. A strict `xfail` pins the corner in both styles until
 pst-dkqef fixes it. The pocket ceilings are the same library slot ends as
 the channel top, so the standing print needs support only inside the
 pockets.
+
+
+## openConnect slots: `mount_style='openconnect'` (pst-pwtnq)
+
+`mount_style` gains a third value, `openconnect`, for an openGrid wall.
+The body (saddle, rail caps, guides, truss webs, front panel) is the same
+v2.1 body. Only the grid and the mount pockets change. `channel` stays the
+default, and the four Multiboard presets are byte-identical (volumes below).
+
+### Grid follows the style
+
+The module no longer has a fixed `CADENCE`. `dimensions()` resolves the
+grid from `mount_style` (`GRIDS`):
+
+| Style | Pitch | Holder cadence | Pocket depth | Max plate width | Min plate thickness |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `channel`, `points` | 25 | 75 | 4.15 | 70 (75 − 5 gap) | 6.55 (4.15 + 2.4) |
+| `openconnect` | 28 | 84 | 2.7 | 82 (84 − 2 gap) | 5.1 (2.7 + 2.4) |
+
+The shared ranges widen to `plate_width` 68–82 and `plate_thickness`
+5.1–9 (defaults unchanged, 70 and 7). `check_plate()` raises a
+`ValueError` that names the violated floor, for example
+`mount_style='channel' needs plate_width <= 70 mm (cadence 75 - 5 mm gap)`.
+The Multiboard thickness check uses the physical floor, 6.55 mm (≥2.4 mm
+backing). The old range minimum was that floor rounded up to the 0.1 step,
+6.6. The openConnect floors equal the range bounds, so for them
+`resolve_values` rejects a violation first.
+
+`guide_outer` / `guide_reach` and the guide-omission threshold keep their
+form and read the resolved cadence. At 84 mm, `guide_outer` = 42 − guide_gap,
+so the guides reach 4.5 mm further out per side than at 75. At
+`guide_gap` 0.5 the holder is 83 mm wide, leaving a 1 mm gap at 84 mm
+cadence. Channel length (the plate's grid length) is the root height rounded
+up to a 28 mm multiple.
+
+**Param sweep.** `test_endpoints` sweeps every numeric range end at the
+default style. Two cells are below the channel floors: `plate_width=82` and
+`plate_thickness=5.1`. They are declared **expected-invalid**: a test
+requires each to raise. Both are also swept as valid cells under
+`openconnect`, together with the other plate range ends (68 and 9).
+
+### Slots and rows
+
+There are four `openconnect.slot_cutter()` slots (pst-qnekl port, snap
+nub on, 0.1/0.1 clearance). Columns are at x = ±14, adjacent tile centres.
+The two seat rows are one 28 mm tile apart. The upper slot roof
+(`OC_SLOT_TOP` = 9.0 mm above the seat) is exactly WEB = 2.4 mm below the
+plate top, which keeps the upper heads as high as the plate allows.
+
+| Grid length | Plate height (t = 5.5) | Seats Z | On-ramps Z | Slot Z extents | Cases |
+| ---: | ---: | --- | --- | --- | --- |
+| 112 | 114.8 | 75.4, 103.4 | 64.8, 92.8 | 62.2–84.4, 90.2–112.4 | both presets, every 25° corner |
+| 84 | 86.8 | 47.4, 75.4 | 36.8, 64.8 | 34.2–56.4, 62.2–84.4 | every 45° corner |
+
+Each slot spans x −13.0…+8.6 about its axis, because the on-ramp leans to
+−X. The webs are 5.8 mm between rows and 6.4 mm between columns. The plate
+margin at the 82 mm presets is 14.0 mm (left) and 18.4 mm (right). The
+lowest slot floor is ≥34 mm above the bed, so the bed edge is solid
+everywhere. Backing is plate thickness − 2.7: 2.8 mm at the presets and
+2.4 mm at the 5.1 mm minimum.
+
+Installation: each head pushes in along +Y at its on-ramp, the holder
+shifts 2.2 mm along X, then drops 10.6 mm. All four slots have the same
+on-ramp offset (2.2, 0, 10.6), so one motion seats all four heads. A test
+pins this. The registered `openconnect-slot` contract (pst-qnekl) runs on
+both presets and on the 82 × 5.1 minimum-backing corner. It checks seat
+clearance, pull-off retention, the end stop past the seat, the
+push/shift/slide path, the dovetail, and 2.4 mm backing behind every pocket
+floor.
+
+### One model, two mount types
+
+`mounts = ('multibuild-multiconnect-channel', 'openconnect-slot')`. This is
+the first model with two mount types, and `mount_style` selects exactly one.
+`ModelSpec.mount_for_values(values)` names the mount present. The module's
+`mount_fixtures` hook returns **None** for the other mount.
+`registry.resolve_mount_fixtures` returns None for an absent mount, and
+raises if the hook and `mount_for_values` disagree. Every consumer skips an
+absent (mount, values) pair:
+
+- `mount_contracts.verify` returns False. `test_model_mount_contract`
+  requires at least one verified pair per mount.
+- `test_print_audit._audit_model` excludes only the present mount's cutters.
+- `scripts/export.py::review_context` uses the first mount present under
+  the values, not `mounts[0]`. For this model it is not reached, because the
+  model declares a static review section. `test_review_sheet` follows the
+  same rule.
+
+Coverage is a data-only check in `registry._validate_spec`. When a model
+sets `mount_for_values`, the mounts its presets select must equal the
+declared mounts. A declared mount that no preset selects fails
+registration, and so does a selection that is not declared. Single-mount
+models leave it None and are unaffected.
+
+### Load path
+
+The truss webs meet the plate at |x| = root_inner…root_inner + 2.4, with
+root_inner = min(spool_width, plate_width − 4)/2 − 2.4. That is 30.6–33.0 mm
+at a 66 mm spool and 31.1–33.5 mm at 67 mm, clear of every slot (|x| ≤ 27).
+Their roots start at y = t − 2.4 = 3.1, behind the 2.7 mm pockets. The
+truss-section test runs on both openConnect presets and checks that no web
+section meets a pocket. The upper heads sit 103.4 mm above the bed edge (the
+wall pivot), against 75 mm for the channel's top seat row. No pull-out
+rating is claimed for openConnect heads. The physical validation bead
+**pst-m9xt** still applies.
+
+### Corner sweep at 84 mm cadence
+
+The print audit and the edge-class gate run on both presets and on the
+v2.1 corners (spool_width 50/66/70 × saddle_clearance 0.25/1.5 ×
+cradle_angle 25/45) with an 82 × 5.5 plate. The wider cadence opens two
+guide regimes that 75 mm never builds. Each fix below is gated on its own
+regime, so the Multiboard presets and the openConnect presets are
+unchanged by it.
+
+- **Root to the bed (w50, reach 16.5).** The guide root's 45° underside
+  is reach + WEB = 18.9 mm deep at the rail's inner face, more than the
+  18 mm saddle apex. `root_to_bed` (reach + WEB > APEX_HEIGHT) clips the
+  root at Z = 0; the clipped tail lies inside the rail. The deep truss
+  reliefs then cut the root down to the bed chord, so their 45° flanks
+  meet the web's outer face. Under `root_to_bed` the deep cutter widens
+  outboard (offset 0.4 → 0.6 mm across the root), which keeps that
+  concave corner at about 89.4° instead of 91.3°.
+- **OCCT rear-corner chamfer (w50).** The rear bevel of the concave
+  rail-outer-face / guide-root-rear-face corner fails in OCCT for some
+  root depths. The failure does not depend monotonically on cadence, and
+  any chamfer length fails once it does. Only where that chamfer raises,
+  `rear_corner_wedge` builds the same bevel explicitly: a 45° hypotenuse,
+  a 45° underside like the root's, and a top that continues the root's
+  rear land. The rear land is the 0.4 mm upper-end chamfer of the guide
+  root. OCCT's chamfer of the same corner ends at that land at 75 mm. The
+  existing feet chamfer then eases the rail-face / land line, as it does
+  at 75 mm.
+- **Rear knife (w70 / c1.5 / a25, 0.71 mm).** This is pst-dkqef's
+  unbacked knife: the saddle tangent meets the vertical rear face. Here it
+  sits on the outboard strip, at x = ±36.96 just outboard of the guide
+  foot, where the guide's lead-in starts behind its rear end. At 75 mm
+  this corner has no guide. It is the same body defect that the channel
+  and points corners pin, so the openConnect test pins it the same way:
+  the wall must be the only failure, at 0.71 mm. A pst-dkqef fix breaks
+  the pin, and the pin is then removed.
+
+### Volumes
+
+| Preset | mount_style | Volume (mm³) |
+| --- | --- | ---: |
+| `bambu_reusable_200` | channel | 104,215.208 |
+| `ams_generic_200` | channel | 105,882.620 |
+| `bambu_reusable_200_points` | points | 108,936.692 |
+| `ams_generic_200_points` | points | 110,604.104 |
+| `bambu_reusable_200_openconnect` | openconnect | 136,367.214 |
+| `ams_generic_200_openconnect` | openconnect | 138,726.436 |
+
+The openConnect presets are 32,152 mm³ (+31%) heavier than the matching
+channel presets. Measured on the Bambu preset:
+
+- **+19,012 mm³ from the wider guides.** This is the same preset rebuilt
+  with the guide cadence held at 75. The guides fill to the resolved 84 mm
+  cadence, as INVARIANT 2 requires. Their reach grows from 3.5 to 8.0 mm
+  per side at a 67 mm spool.
+- **The remaining ~13.1k mm³ is the taller, wider plate and its pockets.**
+  The plate is 82 × 5.5 × 114.8 mm, against 70 × 7 × 102.85. It keeps solid
+  material where the channel style cuts two full-height channels. The four
+  pockets remove 4,043 mm³.

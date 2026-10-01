@@ -222,6 +222,14 @@ class ModelSpec:
     # verification for free. A model declaring a mount must expose a
     # ``mount_fixtures(mount_type, values)`` hook in its module.
     mounts: tuple[str, ...] = ()
+    # Optional, for a model whose params select ONE of several declared
+    # mounts (pst-pwtnq): mount_for_values(resolved values) -> the mount type
+    # present under those values. Every other declared mount is absent there:
+    # its ``mount_fixtures`` hook returns None and every consumer of
+    # resolve_mount_fixtures skips that (mount, values) pair. Data only (no
+    # geometry), so _validate_spec can check that some preset selects each
+    # declared mount. None = every declared mount is always present.
+    mount_for_values: Callable[[dict[str, Any]], str] | None = None
     # Print orientation: the unit vector, IN THIS MODEL'S OWN COORDINATE
     # FRAME, that points UP (away from the build plate) in the declared
     # print pose. The default ``(0, 0, 1)`` means "printed as modelled, +Z
@@ -292,8 +300,11 @@ def resolve_mount_fixtures(
 ) -> MountFixtures | None:
     """Fetch a model's ``mount_fixtures`` hook and build fixtures for one mount.
 
-    Fails loudly if a model tagged with a mount does not expose the hook or
-    returns geometry-free fixtures (a mislabeled or unbuilt mount).
+    Returns None when the model has no mounts, or when ``mount_type`` is
+    absent under ``values`` (see ``ModelSpec.mount_for_values``); every
+    consumer skips that (mount, values) pair. Fails loudly if a model tagged
+    with a mount does not expose the hook, returns geometry-free fixtures (a
+    mislabeled or unbuilt mount), or disagrees with mount_for_values.
     """
     if not spec.mounts:
         return None
@@ -304,8 +315,17 @@ def resolve_mount_fixtures(
             f"{spec.name}: declares mount {mount_type!r} but its module "
             f"{module.__name__} has no mount_fixtures(mount_type, values) hook"
         )
+    present = (spec.mount_for_values is None
+               or spec.mount_for_values(spec.resolve_values(values)) == mount_type)
     fx = hook(mount_type, values)
-    if not fx.cutters or not fx.seat_locs:
+    if not present:
+        if fx is not None:
+            raise AssertionError(
+                f"{spec.name}: mount_fixtures({mount_type!r}) returned fixtures "
+                "for a mount that mount_for_values says is absent"
+            )
+        return None
+    if fx is None or not fx.cutters or not fx.seat_locs:
         raise AssertionError(
             f"{spec.name}: mount_fixtures({mount_type!r}) returned no cutters "
             "or seats — the mount is not actually present"
@@ -376,6 +396,15 @@ def _validate_spec(spec: ModelSpec) -> str | None:
         if mount in seen_mounts:
             return f"{spec.name}: duplicate mount type {mount!r}"
         seen_mounts.add(mount)
+    if spec.mount_for_values is not None:
+        selected = {spec.mount_for_values(spec.resolve_values(p.values))
+                    for p in spec.presets}
+        if selected != seen_mounts:
+            return (
+                f"{spec.name}: presets select mounts {sorted(selected)} but the "
+                f"model declares {sorted(seen_mounts)} — every declared mount "
+                "needs a preset that selects it, and only declared mounts"
+            )
     for plane in spec.review_sections:
         for vector in (plane.origin, plane.normal):
             if len(vector) != 3 or not all(_is_number(c) and math.isfinite(c) for c in vector):
