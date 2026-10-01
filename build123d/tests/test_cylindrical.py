@@ -236,7 +236,7 @@ def test_mount_tunables_appear_in_param_list():
         if spec.name == "holder_spool_cradle":
             # pst-zkd6: approved fixed two-channel, 25 mm Multibuild mount.
             # Its permitted configuration is pinned in test_spool_cradle.py.
-            assert spec.mounts == ("multibuild-multiconnect-channel",)
+            assert spec.mounts == ("multibuild-multiconnect-channel", "openconnect-slot")
             assert not expected.keys() & spec.param_names()
             continue
         by_name = {p.name: p for p in spec.params}

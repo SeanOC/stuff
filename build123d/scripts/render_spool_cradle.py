@@ -1,4 +1,5 @@
-"""Regenerate v2.1 placement-aid views, 75 mm row and preset STLs.
+"""Regenerate v2.1 placement-aid views, 75 mm row, preset STLs and the
+openConnect preset's review sheet.
 
 Run from the repo root:
   uv run --project build123d python build123d/scripts/render_spool_cradle.py
@@ -12,10 +13,12 @@ from PIL import Image, ImageDraw
 
 ROOT=Path(__file__).resolve().parent.parent
 sys.path.insert(0,str(ROOT))
-from holders.spool_cradle import CADENCE, SPEC, holder, dimensions
-from build123d import Align, Box, Pos
-from scripts.export import export_stl
-from scripts.thumbnail import _render_view
+from holders.spool_cradle import SPEC, holder, dimensions
+from build123d import Align, Box, Pos, export_gltf
+from scripts.export import export_stl, section_svg
+from scripts.thumbnail import ReviewContext, _render_view, render_review
+
+REVIEW_PRESET='bambu_reusable_200_openconnect'
 
 
 def render():
@@ -37,7 +40,7 @@ def render():
     rows=[]
     for i in range(3):
         instance=mesh.copy()
-        instance.apply_translation([i*CADENCE,0,0])
+        instance.apply_translation([i*p['cadence'],0,0])
         rows.append(instance)
     row=trimesh.util.concatenate(rows)
     panels=[('Front (+Y): widened rails and lead-in guides',mesh,(0,1,0)),
@@ -60,6 +63,21 @@ def render():
         model=holder(**preset.values)
         export_stl(model,directory/f'holder_spool_cradle_{preset.id}.stl')
         print(f'{preset.id}: {model.volume:.3f} mm^3')
+        if preset.id == REVIEW_PRESET:
+            review(model)
+
+
+def review(model):
+    """Five-tile review sheet and analytic section for the openConnect preset."""
+    renders=ROOT/'docs/renders'
+    glb=ROOT/'out/holder_spool_cradle_openconnect.glb'
+    glb.parent.mkdir(exist_ok=True)
+    export_gltf(model,str(glb),binary=True)
+    ctx=ReviewContext(f'{SPEC.slug}-openconnect',SPEC.print_orientation,
+                      SPEC.review_sections,('openconnect-slot',))
+    render_review(glb,renders/'review'/f'{ctx.slug}.png',ctx=ctx)
+    (renders/'sections'/f'{ctx.slug}.svg').write_text(
+        section_svg(model,ctx.sections[0]),encoding='utf-8')
 
 
 if __name__ == '__main__':

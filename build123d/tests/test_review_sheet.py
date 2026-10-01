@@ -83,9 +83,19 @@ def test_resolve_mount_fixtures_unmounted():
     assert resolve_mount_fixtures(spec, "", spec.resolve_values()) is None
 
 
+def test_resolve_mount_fixtures_absent_style():
+    # holder_spool_cradle selects one of its two mounts per mount_style.
+    spec = spool_cradle.SPEC
+    oc = spec.resolve_values({"mount_style": "openconnect"})
+    assert resolve_mount_fixtures(spec, "openconnect-slot", spec.resolve_values()) is None
+    assert resolve_mount_fixtures(spec, "multibuild-multiconnect-channel", oc) is None
+    assert resolve_mount_fixtures(spec, "openconnect-slot", oc).cutters
+
+
 def test_default_plane_mounted_model(parts):
     spec = next(s for s in SPECS if s.mounts and not s.review_sections)
-    fx = resolve_mount_fixtures(spec, spec.mounts[0], spec.resolve_values())
+    fx = next(f for f in (resolve_mount_fixtures(spec, m, spec.resolve_values())
+                          for m in spec.mounts) if f is not None)
     ctx = review_context(spec, spec.resolve_values(), parts[spec.slug])
     assert len(ctx.sections) == 1
     assert ctx.sections[0].origin == tuple(fx.seat_locs[0].position)

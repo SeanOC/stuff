@@ -53,10 +53,10 @@ def test_some_model_declares_a_mount():
 )
 def test_model_mount_contract(spec, mount):
     """Every mount on every registered model must satisfy its contract, at
-    default params and at each registered preset."""
-    verify(spec, mount, spec.resolve_values())
-    for preset in spec.presets:
-        verify(spec, mount, spec.resolve_values(preset.values))
+    default params and at each registered preset where it is present."""
+    checked = [verify(spec, mount, spec.resolve_values(values))
+               for values in [{}, *(p.values for p in spec.presets)]]
+    assert any(checked), f"{spec.name}: {mount} is absent at defaults and every preset"
 
 
 # AC 3: the contract must hold over the whole robustness grid — every
@@ -103,10 +103,14 @@ def test_mount_contract_over_robustness_grid(spec, mount, n, travel, notch):
 def test_resolve_fixtures_are_library_geometry():
     """Fixtures a model hands the contract are real, positioned library parts."""
     for spec, mount in _MOUNTED:
-        fx = resolve_fixtures(spec, mount, spec.resolve_values())
-        assert fx.cutters and fx.seat_locs
-        for cutter in fx.cutters:
-            assert cutter.volume > 100.0, "cutter is a real pocket solid"
+        fixtures = [resolve_fixtures(spec, mount, spec.resolve_values(values))
+                    for values in [{}, *(p.values for p in spec.presets)]]
+        fixtures = [fx for fx in fixtures if fx is not None]
+        assert fixtures, f"{spec.name}: {mount} is never present"
+        for fx in fixtures:
+            assert fx.cutters and fx.seat_locs
+            for cutter in fx.cutters:
+                assert cutter.volume > 100.0, "cutter is a real pocket solid"
 
 
 def _sealed_pocket_fixture():
@@ -189,3 +193,27 @@ def test_negative_inverted_pocket_still_passes_a_through_d():
     _or(part, fx)
     _sc(part, fx)
     _et(part, fx)
+
+
+# pst-pwtnq: a mount may be absent under some values (mount_for_values).
+def test_mount_coverage_needs_a_selecting_preset():
+    from dataclasses import replace
+    from holders.registry import _validate_spec
+    from holders.spool_cradle import SPEC
+    assert _validate_spec(SPEC) is None
+    channel_only = replace(SPEC, presets=tuple(
+        p for p in SPEC.presets if p.values.get("mount_style") != "openconnect"))
+    assert "needs a preset that selects it" in _validate_spec(channel_only)
+    undeclared = replace(SPEC, mounts=("multibuild-multiconnect-channel",))
+    assert "needs a preset that selects it" in _validate_spec(undeclared)
+
+
+def test_mount_selection_must_agree_with_the_hook():
+    from dataclasses import replace
+    from holders.spool_cradle import SPEC
+    values = SPEC.resolve_values()
+    liar = replace(SPEC, mount_for_values=lambda v: "openconnect-slot")
+    with pytest.raises(AssertionError, match="returned no cutters"):
+        resolve_fixtures(liar, "openconnect-slot", values)
+    with pytest.raises(AssertionError, match="says is absent"):
+        resolve_fixtures(liar, "multibuild-multiconnect-channel", values)
