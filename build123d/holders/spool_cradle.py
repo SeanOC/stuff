@@ -219,6 +219,7 @@ def rear_land_cutter(p):
     z, bevel, top = saddle(land_y), .4, p['contact_z']+20
     # The lead-in rises from the guide's rear land to the crest; find where
     # it crosses the land; the guide ramp reaches 0.4 mm above it there.
+    # guide_height is bounded to 12-30 mm by its Param, so never zero.
     crest = max(foot, p['guide_outer']-WEB-.4)
     wall = foot+(z-saddle(rear+WEB))*(crest-foot)/p['guide_height']
     x0, length = xw-5, p['guide_outer']-xw+10
