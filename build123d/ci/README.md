@@ -13,6 +13,11 @@ eyeballs the exported `out/*.png` renders and appends a Markdown summary to the
 job step summary. It **never gates**: the script always exits `0`, the `bd123`
 job is not a required status check, and the step carries `continue-on-error`.
 
+Rebased by pst-mxfqk onto the current workflow (xdist test step, job
+`timeout-minutes`, no separate preset bake step): still byte-identical to
+`.github/workflows/bd123.yml` apart from the ADDED step. pst-ae3v is closed but
+this step was never activated, so the proposal stays.
+
 ## Activate (operator, needs elevated access)
 
 1. **Copy the proposed workflow into place** (the only change is the added

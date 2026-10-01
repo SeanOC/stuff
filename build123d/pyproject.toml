@@ -31,7 +31,7 @@ dependencies = [
 opengrid = { git = "https://makerrepo.com/r/fangpenlin/opengrid.git", rev = "eea2b4154a10d2909e5edece567cbe0563aaf955" }
 
 [dependency-groups]
-dev = ["pytest-regressions>=2.5"]
+dev = ["pytest-regressions>=2.5", "pytest-xdist>=3.6"]
 
 [tool.pytest.ini_options]
 # `upstream` tests need the private reference mirror on disk (reference/FETCH.md).

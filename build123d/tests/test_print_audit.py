@@ -476,9 +476,27 @@ def _cup_lid_shank_exclusion(values):
 _MODEL_EXCLUSIONS = {'holder_cup_lid': _cup_lid_shank_exclusion}
 
 
+# pst-mxfqk: spec.name -> (report, seconds). Both registry tests below need the
+# same build + audit; doing it once per process halves the suite's audit time.
+_AUDITS: dict[str, tuple[PrintAuditReport, float]] = {}
+
+
 def _audit_model(spec) -> PrintAuditReport:
     """Audit a registered model at its declared print orientation, excluding
-    every declared mount's library-cutter envelopes."""
+    every declared mount's library-cutter envelopes. Memoised per model."""
+    return _timed_audit(spec)[0]
+
+
+def _timed_audit(spec) -> tuple[PrintAuditReport, float]:
+    """(report, wall seconds of the first build + audit) for ``spec``."""
+    if spec.name not in _AUDITS:
+        start = time.time()
+        report = _build_and_audit(spec)
+        _AUDITS[spec.name] = (report, time.time() - start)
+    return _AUDITS[spec.name]
+
+
+def _build_and_audit(spec) -> PrintAuditReport:
     values = spec.resolve_values()
     part = spec.build(values)
     cutters: list = []
@@ -493,10 +511,9 @@ def _audit_model(spec) -> PrintAuditReport:
 
 @pytest.mark.parametrize("spec", _SPECS, ids=[s.name for s in _SPECS])
 def test_model_audit_produces_report_within_budget(spec):
-    """Every registered model yields a report within its documented budget."""
-    start = time.time()
-    report = _audit_model(spec)
-    elapsed = time.time() - start
+    """Every registered model yields a report within its documented budget
+    (the elapsed time of its one build + audit, whichever test ran it first)."""
+    report, elapsed = _timed_audit(spec)
     assert isinstance(report, PrintAuditReport)
     assert report.orientation == tuple(round(o, 6) for o in
                                        _unit(spec.print_orientation))
