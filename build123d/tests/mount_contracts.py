@@ -43,7 +43,9 @@ Adding a new mount contract
 2. Write ``def verify_<mount>(part, fx): ...`` here (raise AssertionError on
    violation) and register it in ``CONTRACTS``. The import-time coverage
    assertion below fails loudly if a known mount has no contract.
-3. In each model that carries it, tag ``mounts=(...)`` and implement the
+3. Add its advisory rubric to ``scripts/render_review.py::RUBRICS``
+   (tests/test_render_review.py requires one per known mount).
+4. In each model that carries it, tag ``mounts=(...)`` and implement the
    ``mount_fixtures`` hook.
 """
 from __future__ import annotations
@@ -75,6 +77,8 @@ _SURFACE_IN = 0.4     # mm: depth just inside the mount face for the surface wid
 _DEEP_IN = 3.75       # mm: depth near the pocket back for the deep width probe
 _FLANK_OFFSET = 1.5   # mm: how far beyond the slot's X-extent the plate must
                       #     still be solid (into the plate's own side margin)
+_OC_END_STOP_MIN = 5.0  # mm^3: an openConnect head pushed 1 mm past its seat must
+                        #     foul more than its whole lock nub (1.42 mm^3) could
 
 _CENTER3 = (Align.CENTER, Align.CENTER, Align.CENTER)
 
@@ -98,20 +102,20 @@ def _face_slab(part: Part, *, bottom: bool) -> Part:
     return Pos(cx, cy, z) * Box(sx, sy, _SLAB, align=_CENTER3)
 
 
-def _require_z_entry(fx: MountFixtures) -> None:
+def _require_z_entry(fx: MountFixtures, mount: str = "multiconnect-slot") -> None:
     ax = tuple(round(a, 6) for a in fx.entry_axis)
     if ax != (0.0, 0.0, 1.0):
         raise AssertionError(
-            f"multiconnect-slot contract currently assumes entry_axis=(0,0,1), "
+            f"{mount} contract currently assumes entry_axis=(0,0,1), "
             f"got {fx.entry_axis} — generalize the face/travel probes to extend it"
         )
 
 
-def _require_y_face(fx: MountFixtures) -> None:
+def _require_y_face(fx: MountFixtures, mount: str = "multiconnect-slot") -> None:
     ax = tuple(round(a, 6) for a in fx.face_normal)
     if ax != (0.0, -1.0, 0.0):
         raise AssertionError(
-            f"multiconnect-slot contract currently assumes face_normal=(0,-1,0), "
+            f"{mount} contract currently assumes face_normal=(0,-1,0), "
             f"got {fx.face_normal} — generalize the retention/profile probes to extend it"
         )
 
@@ -363,11 +367,77 @@ def verify_multiconnect_channel(part: Part, fx: MountFixtures) -> None:
     assert matched_seats == len(fx.seat_locs), 'seat does not match exactly one channel'
 
 
+def verify_openconnect_slot(part: Part, fx: MountFixtures) -> None:
+    """openConnect: push in through the on-ramp, shift onto the slot axis,
+    slide +Z to a closed seat; pull-off retained; >=2.4 mm backing.
+
+    Fixtures: ``seat_locs`` / ``onramp_locs`` place the openConnect head
+    (``openconnect.head()``, not the Multiconnect RoundHead) fully inserted
+    at the seat and at the on-ramp. The on-ramp pose sits below the seat and
+    may be offset in X (the author's ramp is 2.2 mm to -X); the head is
+    pushed in along +Y there, moved across in X, then slid up in Z.
+    """
+    from openconnect import head as oc_head
+    from openconnect.constants import HEAD_WIDTH
+    _require_z_entry(fx, "openconnect-slot")
+    _require_y_face(fx, "openconnect-slot")
+    assert fx.cutters and fx.seat_locs, 'openconnect fixtures must not be empty'
+    assert len(fx.cutters) == len(fx.seat_locs) == len(fx.onramp_locs), \
+        'one cutter, seat and on-ramp pose per slot required'
+    fixture = oc_head()
+
+    def sweep(head, delta, step):
+        steps = max(1, math.ceil(max(abs(v) for v in delta) / step))
+        for i in range(steps + 1):
+            pose = Pos(*(v * i / steps for v in delta)) * head
+            residual = _residual_vol(part, pose)
+            assert residual < _TRAVEL_TOL, (
+                f'openconnect entry path blocked: {residual:.3f} mm^3 at step {i}/{steps} '
+                f'of {tuple(round(v, 2) for v in delta)}')
+
+    face_y = part.bounding_box().min.Y
+    for cutter, seat, ramp in zip(fx.cutters, fx.seat_locs, fx.onramp_locs):
+        a, b = seat.position, ramp.position
+        assert abs(a.Y - b.Y) < 1e-7, 'on-ramp and seat poses must share the insertion depth'
+        assert a.Z > b.Z, 'the on-ramp must be below the seat (heads ride +Z)'
+        seated = seat * fixture
+        r = _residual_vol(part, seated)
+        assert r < _EMPTY_VOL, f'seated openConnect head fouls the model ({r:.3f} mm^3)'
+        for dist in _PULL_DISTS:
+            r = _residual_vol(part, Pos(0, -dist, 0) * seated)
+            assert r > _RETENTION_MIN, (
+                f'seated openConnect head pulls off the wall at {dist} mm ({r:.3f} mm^3)')
+        r = _residual_vol(part, Pos(0, 0, 1.0) * seated)
+        assert r > _OC_END_STOP_MIN, f'slot is open past the seat ({r:.3f} mm^3 at +1 mm)'
+        # Entire head starts outside the board-facing surface.
+        head = ramp * fixture
+        out = head.bounding_box().max.Y - face_y + 0.5
+        sweep(Pos(0, -out, 0) * head, (0, out, 0), 0.25)
+        sweep(head, (a.X - b.X, 0, 0), 0.25)
+        sweep(Pos(a.X - b.X, 0, 0) * head, (0, 0, a.Z - b.Z), 0.5)
+        # Dovetail: the mouth is narrower than the head flange, the pocket wider.
+        surface = _cutter_x_width(cutter, face_y + 0.2, a.Z)
+        bb = cutter.bounding_box()
+        deep = _cutter_x_width(cutter, bb.max.Y - 0.3, a.Z)
+        assert 0 < surface < HEAD_WIDTH <= deep, (
+            f'openconnect pocket is not retentive: {surface:.2f} mm at the face, '
+            f'{deep:.2f} mm deep (flange {HEAD_WIDTH})')
+        back_faces = [f for f in cutter.faces().filter_by(Axis.Y)
+                      if abs(f.center().Y - bb.max.Y) < 1e-7]
+        assert back_faces, 'openconnect cutter must expose pocket-back faces'
+        for face in back_faces:
+            probe = Solid.extrude(face, (0, 2.4, 0))
+            missing = probe.volume - _residual_vol(part, probe)
+            assert missing < 1e-3, (
+                f'openconnect slot needs >=2.4 mm backing: {missing:.3f} mm^3 missing')
+
+
 # mount type -> contract. Every KNOWN_MOUNTS entry must appear here.
 CONTRACTS: dict[str, Callable[[Part, MountFixtures], None]] = {
     "multiconnect-slot": verify_multiconnect_slot,
     "multibuild-multiconnect-slot": verify_multiconnect_slot,
     "multibuild-multiconnect-channel": verify_multiconnect_channel,
+    "openconnect-slot": verify_openconnect_slot,
 }
 
 _uncovered = KNOWN_MOUNTS - CONTRACTS.keys()

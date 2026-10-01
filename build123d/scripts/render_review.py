@@ -46,7 +46,7 @@ DEFAULT_MODEL = "qwen/qwen3-vl-235b-a22b-instruct"  # vision model (inx assess.t
 # Bump when the rubric text or prompt scaffold in _build_prompt/RUBRICS changes,
 # so a summary is traceable to the exact wording that produced it. Reported in
 # the Markdown header alongside the model id (bead pst-ae3v, AC 2).
-PROMPT_VERSION = "4"
+PROMPT_VERSION = "5"
 
 # Mount-type -> the checklist a reviewer applies to the render. Keyed by the
 # same names as registry.KNOWN_MOUNTS so a new mount contract can add its rubric
@@ -69,6 +69,13 @@ RUBRICS["multibuild-multiconnect-channel"] = [
     "Do the continuous channels have round head-entry on-ramps below each seat?",
     "Is there solid material closing the channel tops and backing the pockets?",
     "Do the channels retain a narrow lip between the on-ramps?",
+]
+RUBRICS["openconnect-slot"] = [
+    "Does each openConnect slot open on the BACK (wall-facing) face, with an "
+    "on-ramp mouth BELOW a closed seat?",
+    "Is there at least 2.4 mm of solid backing behind each 2.7 mm pocket?",
+    "Could a head pushed into the on-ramp slide UP to the seat without "
+    "passing through solid material?",
 ]
 
 TILE_RUBRIC = [

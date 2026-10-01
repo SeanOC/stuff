@@ -3,6 +3,10 @@
 # HARD RULE: mount geometry (openGrid / Multiconnect) comes ONLY from the
 # opengrid library (fangpenlin, MakerRepo) or other existing build123d
 # ecosystem libraries. No home-grown or SCAD-ported mount geometry.
+# Exception (Sean 2026-10-01): openConnect is ported from the author's own
+# CC BY 4.0 OpenSCAD (mitufy/opengrid-projects @04e2277a71c5) because no
+# build123d library ships it; the port is pinned by commit and mesh-verified
+# against the author's rendered plate (openconnect/ tests).
 [project]
 name = "stuff-bd"
 version = "0.1.0"

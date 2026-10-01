@@ -1,0 +1,76 @@
+openConnect — vendored author OpenSCAD source + reference renders
+==================================================================
+
+Files:      lib/opengrid_base.scad, lib/openconnect_lib.scad,
+            lib/opengrid_threads_lib.scad, openconnect_plate.scad (upstream,
+            verbatim); mesh/openconnect_plate_one_slot.stl,
+            mesh/openconnect_head.stl (renders of the upstream source);
+            mesh/openconnect_head.scad (this repo's small render wrapper,
+            not upstream)
+Work:       openConnect, openGrid's connector system
+Author:     mitufy — https://github.com/mitufy
+Project:    https://www.printables.com/model/1559478 and
+            https://makerworld.com/en/models/2257440 (both by mitufy).
+            openGrid is by David D.
+Source:     https://github.com/mitufy/opengrid-projects
+            commit 04e2277a71c54a832e38062953845a590fbd80ca (2026-08-13)
+Retrieved:  2026-10-01 UTC (git clone at that commit)
+
+License:    Creative Commons Attribution 4.0 International (CC BY 4.0),
+            stated in each file's header and on both model pages.
+            https://creativecommons.org/licenses/by/4.0/
+            Text: build123d/reference/LICENSES/CC-BY-4.0.txt
+
+Required attribution:
+            "openConnect by mitufy, licensed CC BY 4.0."
+            Preserve this attribution in this repo and in any derived work.
+
+Modification status:
+            The four .scad files are redistributed VERBATIM, keeping the
+            upstream relative layout so their includes resolve. sha256:
+              33fc786b5f8050f7f13d7f983d8a0be3216cc1dd6efd2496efa92a9f1f00278a  lib/opengrid_base.scad
+              20cea93e45b8bff5ed4a7cf0859008fdc283cc387c3b6c8070ce91e84429b6a9  lib/openconnect_lib.scad
+              eb8d95950864675141c5beb3d822eebeeb444dcf10b20de7054b5d39eb7d5b4b  lib/opengrid_threads_lib.scad
+              ea93d0ea680c25ee4f25f9d6c75385f9a7b8b0c7284088bdad3c0a9858501b5f  openconnect_plate.scad
+            The other upstream files (lib/opengrid_snap_lib.scad, the other
+            generators) were not needed and are not committed.
+            build123d/openconnect/ is a port of openconnect_lib.scad's slot
+            and head modules (a derived work under the same attribution).
+
+Reference renders (used by build123d/tests/test_openconnect.py):
+            These files need a newer BOSL2 than this repo's pin (456fcd8's
+            std.scad does not include structs.scad, so every struct_val is
+            undef and the render fails), so they were rendered ONCE outside
+            the repo toolchain and committed. CI does not render them.
+
+  openscad: 2025.06.12.ai25773 (the ci.yml pin)
+  BOSL2:    https://github.com/BelfrySCAD/BOSL2 commit
+            b86a7584db6d324eb856c2d19d041f94435e6c32 (HEAD on 2026-10-01 UTC,
+            BOSL_VERSION 2.0.764), checked out at $BOSL2_PARENT/BOSL2
+  Commands, run from assets/openConnect/:
+
+    OPENSCADPATH=$BOSL2_PARENT openscad --export-format=binstl \
+      -D plate_horizontal_size=28 -D plate_vertical_size=28 \
+      -o mesh/openconnect_plate_one_slot.stl openconnect_plate.scad
+
+    OPENSCADPATH=$BOSL2_PARENT openscad --export-format=binstl \
+      -o mesh/openconnect_head.stl mesh/openconnect_head.scad
+
+  The plate overrides make one 28 x 28 mm tile (the shipped default is
+  84 x 56 = six slots). Every other setting is the shipped default:
+  plate_size_unit "mm", plate_extra_thickness 0.5, slot_type "slot",
+  slot_position "All" (= the one tile), slot_lock_distribution "Corners"
+  (the one tile is a corner, so it has the left lock), slot_entryramp_flip
+  false, clearances 0.1 / 0.1, slot_edge_feature_widen "Both". Result:
+  28 x 28 x 3.2 mm, one slot 2.7 mm deep, watertight.
+
+  sha256 of the committed renders:
+    e6244038bdd2e46ba6db5e844e1aeb4868e4188ec3a59a2be45f6f9762578171  mesh/openconnect_plate_one_slot.stl
+    b5a12a5024284c2a48faf87a54be4f58d9e9fda682d6ab1b85013c82c92757bb  mesh/openconnect_head.stl
+
+  Re-running a command gives the same triangles in a different facet order,
+  so the bytes (and sha256) change while the geometry does not. The hashes
+  pin the committed files; the tests compare geometry.
+
+These are reference assets only: not on OPENSCADPATH, not included by any
+model, not a build dependency. See build123d/docs/openconnect-library.md.

@@ -268,6 +268,16 @@ board constants and an optional cone alignment pin; thread and Fix-Point
 cutters are explicitly deferred. See the [API and evidence](docs/multibuild-library.md).
 The demo plate is test-only and is not registered or exported.
 
+## openConnect compatibility library
+
+[`openconnect/`](openconnect/) ports the openConnect slot (28 mm openGrid
+pitch) from the author's own CC BY 4.0 OpenSCAD, pinned by commit. This is a
+recorded exception to the HARD RULE in `pyproject.toml`. The tests check it
+against committed renders of the author's plate and head. It provides
+`slot_cutter`, a `head()` contract fixture, the `openconnect-slot` mount
+contract, and a test-only 84 × 84 × 5.5 demo plate. See the
+[API and evidence](docs/openconnect-library.md).
+
 ## Multibuild spool cradle
 
 | Model | Presets | Mount / print |
