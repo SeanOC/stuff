@@ -483,3 +483,86 @@ therefore unchanged. `part.volume` before and after:
 
 No fit changes, so no re-print is implied. The print audit is re-run and
 still passes.
+
+
+## Point pockets: `mount_style='points'` (pst-93yd5)
+
+`mount_style` is an enum param, `channel` (default) or `points`. Default
+geometry and both channel presets are unchanged. `points` replaces the two
+full-height channels with four discrete Multiconnect pockets: columns at
+x = ±12.5, two rows 50 mm (two board rows) apart. The body above the
+plate, the plate outline, the guides and the 75 mm cadence are the same.
+
+Each pocket is `multibuild.point_cutter()`: one on-ramp plus one seat,
+built with the channel's own library features. It is the shortest channel
+segment that holds them. The on-ramp is 12.5 mm above the pocket floor,
+as on a channel's lowest on-ramp, which leaves 1.5 mm below the Ø22
+opening. The seat is 12.5 mm above the on-ramp. The pocket ends one library
+head-cutter radius (10.15 mm) above the seat, so it is **35.15 mm** long.
+`channel_cutter` still requires 25 mm multiples, so this is a separate
+entry point. A 50 mm channel segment (the shortest multiple holding both
+features) would make the two pockets abut at 50 mm row spacing. They would
+be one spine, and the contract rejects that layout (no cap over the lower
+pocket). Rows 75 mm apart need a ≥130 mm plate, taller than any plate in
+the parameter range.
+
+The upper pocket ends where the channel spine would, under the same closed
+cap (plate thickness − 4.15 mm, 2.85 mm at default). That keeps the upper
+heads as high as the plate allows, for pull-out leverage. The lower pocket
+is 50 mm below it. A root height of 75 mm or less (channel length 75) would
+put the lower floor under the 2.9 mm bed margin (WEB + 0.5 mm) and raises
+`ValueError`. Every root height in the declared ranges gives a 100 or
+125 mm channel length.
+
+| Channel length | Lower pocket Z | Upper pocket Z | Seats Z | On-ramps Z | Solid between |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 100 (both presets) | 14.85–50.00 | 64.85–100.00 | 39.85, 89.85 | 27.35, 77.35 | 14.85 mm |
+| 125 (e.g. 25° cradle) | 39.85–75.00 | 89.85–125.00 | 64.85, 114.85 | 52.35, 102.35 | 14.85 mm |
+
+The bed edge is solid under each column, with no bottom opening. Backing
+behind every pocket is plate thickness − 4.15, at least 2.45 mm. Both
+styles declare the one mount type `multibuild-multiconnect-channel`.
+`mount_fixtures` returns the style's fixtures: four short cutters, four
+seats and four on-ramps for `points`.
+
+### Contract generalization
+
+`verify_multiconnect_channel` matched seats to cutters by X centre and swept
+one path from each X's lowest on-ramp to its highest seat. It now matches
+each (seat, on-ramp) pair to the one cutter whose X centre matches and whose
+Z extent holds both poses. Travel is swept per cutter, from its own lowest
+on-ramp to its own highest seat. On a full-height spine this is the same
+matching and the same sweep. A test checks the demo plate's pairs against
+the old rule. The four defect-detection cases still fail the contract. Two
+discrete pockets in one column are not joined by a sweep: the plate between
+them is meant to be solid.
+
+### Load path
+
+The truss webs and rails meet the plate at |x| = root_inner…root_inner+2.4
+(30.6–33.0 mm at 66 mm spool width, 22.6–25.0 mm at 50 mm). Their roots start
+at y = plate thickness − 2.4, behind the 4.15 mm pockets, so every web
+lands on the pocket backing, not on a void. The truss-section test runs on
+both points presets. It checks that no web section meets a pocket.
+
+### Volumes
+
+| Preset | mount_style | Volume (mm³) |
+| --- | --- | ---: |
+| `bambu_reusable_200` | channel | 104,215.208 |
+| `ams_generic_200` | channel | 105,882.620 |
+| `bambu_reusable_200_points` | points | 108,936.692 |
+| `ams_generic_200_points` | points | 110,604.104 |
+
+The points presets are 4,721.484 mm³ (+4.5%) heavier than the matching
+channel presets. That is the plate left solid between and around the
+pockets, which is the purpose of the style.
+
+### Print audit
+
+Both points presets and the 12 corners spool_width 50/66/70 × saddle
+clearance 0.25/1.5 × cradle angle 25/45 pass the print audit and the
+finished-edge classes. The only accepted exception is the mount pockets
+(the four cutters). The pocket ceilings are the same library slot ends as
+the channel top, so the standing print needs support only inside the
+pockets.

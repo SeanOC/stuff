@@ -1,5 +1,5 @@
 """Independent compatibility geometry; no official tile/connector assets bundled."""
-from .multiconnect import slot_cutter, channel_cutter
+from .multiconnect import slot_cutter, channel_cutter, point_cutter
 from .pins import SmallHoleConePin
 
 
