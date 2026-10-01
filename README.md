@@ -97,6 +97,8 @@ matrix.
 - Bundled libraries keep their own licenses:
   [`libs/BOSL2/LICENSE`](libs/BOSL2/LICENSE) (BSD-2-Clause) and
   [`libs/QuackWorks/LICENSE`](libs/QuackWorks/LICENSE) (CC BY-NC-SA 4.0).
+- Vendored reference files under `assets/` keep their source licence and
+  attribution (CC BY 4.0; see each directory's `NOTICE`).
 - **MultiBuild-derived files are excluded from the MIT grant.**
   [`build123d/multibuild/tile.py`](build123d/multibuild/tile.py) and the
   MultiBuild-derived reference artefacts in `build123d/reference/`
