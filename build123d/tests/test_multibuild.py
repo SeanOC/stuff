@@ -10,16 +10,16 @@ import trimesh
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from build123d import Align, Axis, Box, Pos, Compound, Vector, Mode, Plane, section
+from build123d import Align, Axis, Box, Pos, Rot, Compound, Vector, Mode, Plane, section
 from opengrid import constants as oc
 from opengrid.multiconnect import RoundHead, RoundHeadCutter, SlotCutter
-from multibuild import SmallHoleConePin, LargeHoleThreadCutter, FixPointCutter, channel_cutter
+from multibuild import SmallHoleConePin, LargeHoleThreadCutter, FixPointCutter, channel_cutter, point_cutter
 from multibuild import constants as c
 from multibuild import demo_plate as demo
 from multibuild import tile
-from multibuild.multiconnect import POCKET_DEPTH, slot_cutter
+from multibuild.multiconnect import POCKET_DEPTH, POINT_ONRAMP, point_length, slot_cutter
 from scripts.export import export_stl
-from tests.mount_contracts import CONTRACTS, _residual_vol
+from tests.mount_contracts import CONTRACTS, _residual_vol, channel_pairs
 from tests.print_audit import audit
 
 
@@ -309,3 +309,76 @@ def test_channel_100_uses_explicit_centres():
         assert channel.is_inside((10.5,.1,z))
     # The library never generates the next row implicitly.
     assert not channel.is_inside((10.5,.1,87.5))
+
+
+def test_channel_pairs_keep_x_only_matching_on_demo():
+    # pst-93yd5 2c: X + Z matching is a superset rule; on full-height
+    # spines it must reproduce the previous X-centre-only matching exactly.
+    fx = demo.mount_fixtures(demo.CHANNEL_MOUNT, {})
+    old = []
+    for cutter in fx.cutters:
+        bb = cutter.bounding_box()
+        x = (bb.min.X+bb.max.X)/2
+        old.append([(s, r) for s, r in zip(fx.seat_locs, fx.onramp_locs)
+                    if abs(s.position.X-x) < 1e-7])
+    new = channel_pairs(fx)
+    assert [[(s.position, r.position) for s, r in pairs] for pairs in new] == \
+        [[(s.position, r.position) for s, r in pairs] for pairs in old]
+    assert [len(pairs) for pairs in new] == [2, 2]
+
+
+def test_point_cutter_is_shortest_channel_segment():
+    pocket = point_cutter()
+    bb = pocket.bounding_box()
+    assert pocket.is_valid and len(pocket.solids()) == 1
+    # One head-cutter radius above the seat, from the library cutter.
+    assert point_length() == pytest.approx(
+        POINT_ONRAMP+c.PITCH/2+RoundHeadCutter().bounding_box().size.X/2)
+    assert (bb.min.Z, bb.max.Z) == pytest.approx((0, point_length()))
+    assert (bb.min.Y, bb.max.Y) == pytest.approx((0, POCKET_DEPTH))
+    # Same features as a channel with that one on-ramp and seat.
+    channel = channel_cutter(50, onramps=(POINT_ONRAMP,), seats=(POINT_ONRAMP+c.PITCH/2,))
+    clip = Box(30, 10, point_length()-1, align=(Align.CENTER, Align.CENTER, Align.MIN))
+    assert (pocket & clip).volume == pytest.approx((channel & clip).volume, abs=1e-6)
+    with pytest.raises(ValueError):
+        point_cutter(drop=25)
+
+
+def _point_plate(gap):
+    """70x7 plate, four point pockets; the upper row sits gap above the lower."""
+    pocket = point_cutter()
+    bottoms = (3.0, 3.0+point_length()+gap)
+    plate = Box(70, 7, bottoms[1]+point_length()+3,
+                align=(Align.CENTER, Align.MIN, Align.MIN))
+    cutters = [Pos(x, 0, z)*pocket for x in (-12.5, 12.5) for z in bottoms]
+    for cutter in cutters:
+        plate -= cutter
+    def poses(offset):
+        return [Pos(x, POCKET_DEPTH, z+offset)*Rot(90, 0, 0)
+                for x in (-12.5, 12.5) for z in bottoms]
+    from holders.registry import MountFixtures
+    return plate, MountFixtures(cutters, poses(POINT_ONRAMP+12.5), onramp_locs=poses(POINT_ONRAMP),
+                                entry_axis=(0, 0, 1), face_normal=(0, -1, 0))
+
+
+def test_channel_contract_accepts_discrete_pockets_sharing_x():
+    plate, fx = _point_plate(gap=14.85)
+    CONTRACTS[demo.CHANNEL_MOUNT](plate, fx)
+    # Under X-only matching each column's two pockets formed one spine.
+    assert [len(p) for p in channel_pairs(fx)] == [1, 1, 1, 1]
+
+
+def test_channel_contract_rejects_abutting_point_pockets():
+    # Abutting pockets leave no cap over the lower one: its head rides
+    # straight into the upper pocket, i.e. they are one spine.
+    plate, fx = _point_plate(gap=0)
+    with pytest.raises(AssertionError, match='exit through channel top|not enclosed'):
+        CONTRACTS[demo.CHANNEL_MOUNT](plate, fx)
+
+
+def test_channel_contract_rejects_pose_outside_every_cutter():
+    plate, fx = _point_plate(gap=14.85)
+    fx.seat_locs[0] = Pos(0, 0, 100)*fx.seat_locs[0]
+    fx.onramp_locs[0] = Pos(0, 0, 100)*fx.onramp_locs[0]
+    with pytest.raises(AssertionError, match='exactly one channel cutter'):
+        channel_pairs(fx)

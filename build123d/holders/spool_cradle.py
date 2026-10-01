@@ -8,6 +8,8 @@ The 2.4 mm webs/panel print as perimeters; the plate uses three walls and
 caps keep the analytic flange contact; 45-degree underside ramps carry
 the caps and outboard lead-in guides in the standing pose.
 Fixed two-channel mount and 25 mm board pitch are operator-approved.
+mount_style='points' swaps the channels for four discrete point pockets
+(2 columns x 2 rows 50 mm apart, solid plate between); the body is the same.
 """
 from __future__ import annotations
 
@@ -15,7 +17,7 @@ import math
 from build123d import Align, Axis, Box, BuildSketch, Cone, Edge, Face, Plane, Polygon, Pos, Rot, Solid, Vector, Wire, extrude
 from holders.registry import ModelSpec, MountFixtures, PlaneSpec, Param, Preset, register
 from multibuild.constants import PITCH
-from multibuild.multiconnect import POCKET_DEPTH, channel_cutter
+from multibuild.multiconnect import POCKET_DEPTH, POINT_ONRAMP, channel_cutter, point_cutter, point_length
 
 MOUNT = 'multibuild-multiconnect-channel'
 WEB = 2.4
@@ -41,12 +43,14 @@ PARAMS = tuple(Param(name, 'number', default, min=lo, max=hi, step=step,
         ('rail_width', 10, 6, 14, 0.5, 'Saddle rail width, inboard'),
         ('guide_height', 15, 12, 30, 1, 'Guide height above rail'),
         ('guide_gap', 0.5, 0.5, 2, 0.25, 'Half-gap to the neighbouring holder'),
-    ))
+    )) + (Param('mount_style', 'enum', 'channel', choices=('channel', 'points'),
+                label='Mount style'),)
+POINT_ROW_SPACING = 2*PITCH  # Two board rows: the pockets stay discrete.
 
 
 def dimensions(values=None):
     p = SPEC.resolve_values(values)
-    if not all(math.isfinite(v) for v in p.values()):
+    if not all(math.isfinite(v) for v in p.values() if not isinstance(v, str)):
         raise ValueError('parameters must be finite')
     r = p['spool_diameter']/2
     a = math.radians(p['cradle_angle'])
@@ -72,6 +76,8 @@ def dimensions(values=None):
              rail_inner=p['spool_width']/2-WEB,
              root_inner=min(p['spool_width'], p['plate_width']-4)/2-WEB,
              winding_radius=r-p['flange_height'])
+    if p['mount_style'] == 'points':
+        p['point_bottoms'] = point_bottoms(length)
     p.update(cap_inner=p['spool_width']/2-p['rail_width'],
              cap_reach=p['rail_width']-WEB,
              guide_outer=CADENCE/2-p['guide_gap'],
@@ -242,10 +248,39 @@ def truss_relief(p, triangle, deep=False):
     return Solid.make_loft(wires,ruled=True)
 
 
+def point_bottoms(channel_length):
+    """Lower ends of the two point pockets in each column.
+
+    The upper pocket ends where the channel spine would, under the same
+    closed cap, which keeps the upper heads as high as the plate allows for
+    pull-out leverage. The lower pocket is one POINT_ROW_SPACING below and
+    keeps a WEB + 0.5 mm floor above the bed relief: no bottom opening.
+    """
+    upper = channel_length-point_length()
+    lower = upper-POINT_ROW_SPACING
+    if lower < WEB+.5-1e-9:
+        # dimensions() rounds root_height up to the 25 mm channel length.
+        span = WEB+.5+POINT_ROW_SPACING+point_length()
+        root = (math.ceil(span/PITCH)-1)*PITCH
+        raise ValueError(f"mount_style='points' needs root_height > {root:.0f} mm "
+                         f'({span:.2f} mm pocket span); channel length is {channel_length:.0f} mm')
+    return (lower, upper)
+
+
 def mount_fixtures(mount_type, values):
     if mount_type != MOUNT:
         raise ValueError(f'unsupported mount: {mount_type}')
     p = dimensions(values)
+    if p['mount_style'] == 'points':
+        pocket = point_cutter()
+        xs, bottoms = (-PITCH/2, PITCH/2), p['point_bottoms']
+        def poses(offset):
+            return [Pos(x, POCKET_DEPTH, z+offset)*Rot(90, 0, 0) for x in xs for z in bottoms]
+        return MountFixtures(
+            cutters=[Pos(x, 0, z)*pocket for x in xs for z in bottoms],
+            seat_locs=poses(POINT_ONRAMP+PITCH/2), onramp_locs=poses(POINT_ONRAMP),
+            entry_axis=(0, 0, 1), face_normal=(0, -1, 0),
+        )
     channel = channel_cutter(p['channel_length'], onramps=p['onramps'],
                              seats=(p['seat_rows'][0], p['seat_rows'][-1]))
     return MountFixtures(
@@ -484,8 +519,8 @@ _DEFAULT_SECTION_Y = 7 + 3 + 200 / 2
 SPEC = register(ModelSpec(
     name='holder_spool_cradle', build=lambda values: holder(**values),
     title='Spool cradle (Multibuild)', category_id='multiboard',
-    description='Single spool bookshelf cradle with wide inboard saddle rails, outboard placement guides (omitted when reach is less than 2.4 mm plus saddle clearance), closed truss webs and two full-height Multiconnect channels. Flange-rim support; standing PETG/PCTG print with support allowed only in the mount pockets.',
-    tags=('holder', 'multiboard', 'spool'), params=PARAMS,
+    description='Single spool bookshelf cradle with wide inboard saddle rails, outboard placement guides (omitted when reach is less than 2.4 mm plus saddle clearance), closed truss webs and a Multiconnect mount: two full-height channels (mount_style channel) or four discrete point pockets in two rows 50 mm apart (mount_style points). Flange-rim support; standing PETG/PCTG print with support allowed only in the mount pockets.',
+    tags=('holder', 'multiboard', 'spool', 'multiconnect-channel', 'multiconnect-points'), params=PARAMS,
     mounts=(MOUNT,), print_orientation=(0, 0, 1),
     review_sections=(PlaneSpec((0, _DEFAULT_SECTION_Y, 0), (1, 0, 0),
                               'mid-plane through saddle + truss'),),
@@ -494,5 +529,11 @@ SPEC = register(ModelSpec(
                {'spool_width': 67, 'flange_height': 8, 'flange_rim_width': 3}),
         Preset('ams_generic_200', 'AMS generic 200 mm',
                {'spool_width': 66, 'flange_height': 8, 'flange_rim_width': 3}),
+        Preset('bambu_reusable_200_points', 'Bambu reusable 200 mm, point pockets',
+               {'spool_width': 67, 'flange_height': 8, 'flange_rim_width': 3,
+                'mount_style': 'points'}),
+        Preset('ams_generic_200_points', 'AMS generic 200 mm, point pockets',
+               {'spool_width': 66, 'flange_height': 8, 'flange_rim_width': 3,
+                'mount_style': 'points'}),
     ),
 ))

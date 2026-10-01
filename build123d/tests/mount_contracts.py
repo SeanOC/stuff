@@ -297,10 +297,17 @@ def verify_multiconnect_slot(part: Part, fx: MountFixtures) -> None:
 
 
 def verify_multiconnect_channel(part: Part, fx: MountFixtures) -> None:
-    """Normal entry, sub-pitch drop, full channel travel and closed top.
+    """Normal entry, sub-pitch drop, per-cutter travel and closed top.
 
     Sample paths at <=0.5 mm, including both endpoints. Each on-ramp pose
-    corresponds to a seat; channels are matched by their X centre.
+    corresponds to a seat. A (seat, on-ramp) pair belongs to exactly one
+    cutter: the one whose X centre matches and whose Z extent contains both
+    poses, so one X may carry several discrete pockets (pst-93yd5).
+
+    Travel is proved PER CUTTER, from its own lowest on-ramp to its own
+    highest seat. A full-height spine is one cutter, so this is its whole
+    length; discrete pockets are deliberately NOT joined, because the plate
+    between them is meant to be solid. Do not restore a per-X sweep.
     """
     from multibuild.constants import PITCH
     _require_z_entry(fx)
@@ -327,13 +334,9 @@ def verify_multiconnect_channel(part: Part, fx: MountFixtures) -> None:
         sweep(Pos(0, -distance, 0) * head, (0, distance, 0))
         sweep(head, (0, 0, a.Z-b.Z))
 
-    matched_seats = 0
-    for cutter in fx.cutters:
+    for cutter, pairs in zip(fx.cutters, channel_pairs(fx)):
         bb = cutter.bounding_box()
         x = (bb.min.X + bb.max.X) / 2
-        pairs = [(s, r) for s, r in zip(fx.seat_locs, fx.onramp_locs) if abs(s.position.X-x) < 1e-7]
-        assert pairs, 'every channel needs seat and entry fixtures'
-        matched_seats += len(pairs)
         seats, ramps = zip(*pairs)
         # Existing helper expects one cutter per seat; expand only this view.
         assert_profile(part, MountFixtures([cutter] * len(seats), list(seats)))
@@ -364,7 +367,28 @@ def verify_multiconnect_channel(part: Part, fx: MountFixtures) -> None:
         assert _residual_vol(part, top_head) > _RETENTION_MIN, 'head can exit through channel top'
         above = Pos(x, bb.max.Y-2, bb.max.Z+1.2) * Box(4, 2, 2.4)
         assert _residual_vol(part, above) >= above.volume - _EMPTY_VOL, 'channel top is not enclosed'
-    assert matched_seats == len(fx.seat_locs), 'seat does not match exactly one channel'
+
+
+def channel_pairs(fx: MountFixtures) -> list[list[tuple]]:
+    """(seat, on-ramp) pairs per cutter, matched by X centre AND Z extent.
+
+    Every pair must match exactly one cutter and every cutter at least one
+    pair. The 1e-7 tolerance matches the X test; a looser one would let two
+    abutting pockets both claim a pose on their shared boundary.
+    """
+    boxes = [c.bounding_box() for c in fx.cutters]
+    result = [[] for _ in fx.cutters]
+    for seat, ramp in zip(fx.seat_locs, fx.onramp_locs):
+        hits = [i for i, bb in enumerate(boxes)
+                if abs(seat.position.X - (bb.min.X+bb.max.X)/2) < 1e-7
+                and all(bb.min.Z - 1e-7 <= z <= bb.max.Z + 1e-7
+                        for z in (seat.position.Z, ramp.position.Z))]
+        assert len(hits) == 1, (
+            f'seat at x={seat.position.X:.1f}, z={seat.position.Z:.1f} must match '
+            f'exactly one channel cutter by X centre and Z extent, matched {len(hits)}')
+        result[hits[0]].append((seat, ramp))
+    assert all(result), 'every channel needs seat and entry fixtures'
+    return result
 
 
 def verify_openconnect_slot(part: Part, fx: MountFixtures) -> None:
