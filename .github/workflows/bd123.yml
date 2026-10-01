@@ -14,8 +14,9 @@ jobs:
   bd123:
     name: build123d models
     runs-on: ubuntu-latest
-    # pst-mxfqk: the suite runs in ~12 min under xdist; a hang fails fast.
-    timeout-minutes: 30
+    # pst-mxfqk: serial pytest is ~108 min on CI (2026-10-01); xdist on 4
+    # vCPU brings it to ~30. 45 leaves headroom and still fails a hang fast.
+    timeout-minutes: 45
     defaults: { run: { working-directory: build123d } }
     steps:
       - uses: actions/checkout@v4
@@ -34,7 +35,9 @@ jobs:
       - name: tests (registry-driven manifold + manifest schema + bake)
         # -n auto: one worker per vCPU. --dist load, not loadfile: most of the
         # time is test_spool_cradle.py, which must spread across workers.
-        run: uv run pytest tests/ -q -n auto --dist load
+        # -v: one line per test as it finishes, so a cancelled run still
+        # names its failures and its slow tail.
+        run: uv run pytest tests/ -v -n auto --dist load
       - name: export all models (STL + GLB + PNG)
         run: uv run python scripts/export.py
       - name: upload artifacts (STL/GLB/PNG + viewer)
