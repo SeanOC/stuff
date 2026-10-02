@@ -98,7 +98,12 @@ _PER_MODEL_BUDGET_S = 60.0
 # produce many faces for the unchanged wall-thickness sampler. After batching
 # bed-relief booleans, profiling measured 2.9 s construction / 71.8 s audit;
 # CI measured 93.2 s total. Allow headroom only for this model, not other gates.
-_MODEL_BUDGET_S = {"holder_spool_cradle": 120.0}
+# pst-mxfqk: budgets are CPU seconds (time.process_time), so xdist time-slicing
+# no longer counts — but CI's 2 physical cores x 2 hyperthreads still slow the
+# single-threaded audit when -n 4 puts a sibling on the same core (x1.42 measured
+# -> ~132 s CPU from the 93 s serial run). 150 s covers that; the 60 s default
+# for every other model is unchanged.
+_MODEL_BUDGET_S = {"holder_spool_cradle": 150.0}
 
 _UP_Z = (0.0, 0.0, 1.0)
 
@@ -490,11 +495,15 @@ def _audit_model(spec) -> PrintAuditReport:
 
 
 def _timed_audit(spec) -> tuple[PrintAuditReport, float]:
-    """(report, wall seconds of the first build + audit) for ``spec``."""
+    """(report, CPU seconds of the first build + audit) for ``spec``.
+
+    process_time, not wall time: under pytest-xdist the workers share cores,
+    and wall time would charge this model for its neighbours (pst-mxfqk).
+    """
     if spec.name not in _AUDITS:
-        start = time.time()
+        start = time.process_time()
         report = _build_and_audit(spec)
-        _AUDITS[spec.name] = (report, time.time() - start)
+        _AUDITS[spec.name] = (report, time.process_time() - start)
     return _AUDITS[spec.name]
 
 
@@ -514,7 +523,7 @@ def _build_and_audit(spec) -> PrintAuditReport:
 @pytest.mark.parametrize("spec", _SPECS, ids=[s.name for s in _SPECS])
 def test_model_audit_produces_report_within_budget(spec):
     """Every registered model yields a report within its documented budget
-    (the elapsed time of its one build + audit, whichever test ran it first)."""
+    (the CPU time of its one build + audit, whichever test ran it first)."""
     report, elapsed = _timed_audit(spec)
     assert isinstance(report, PrintAuditReport)
     assert report.orientation == tuple(round(o, 6) for o in
