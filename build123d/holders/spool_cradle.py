@@ -203,6 +203,68 @@ def vertical_gusset(x, y, sx, sy):
         Edge.make_three_point_arc(a, mid, b), Edge.make_line(b, corner)])), (0, 0, 400))
 
 
+def rear_land_cutter(p):
+    """Flat land on the outboard root's rear end (right-hand side).
+
+    Unbacked, the root's rear end is a cradle_angle knife where the saddle
+    meets its vertical end face. The rail behind its own rear contact
+    continues the tangent plane, so it needs no land. A WEB/2 land with a
+    0.4 mm rear chamfer replaces the knife beside the rail. Cut before the
+    guide fuses, so the guide refills wherever it stands above the land.
+    Mirrored 30-degree ramps rise 0.4 mm to the rail's outer face and to the
+    guide's lead-in, so neither junction closes to a square groove. A
+    narrow gap becomes a 60-degree V with its root midway between them.
+    """
+    rear, xw, foot = p['rear_y'], p['spool_width']/2, p['spool_width']/2+p['saddle_clearance']
+    land_y = rear+WEB/2
+    def saddle(y):
+        return p['center_z']-math.sqrt(p['saddle_radius']**2-(y-p['center_y'])**2)
+    z, bevel, top = saddle(land_y), .4, p['contact_z']+20
+    # The lead-in rises from the guide's rear land to the crest; find where
+    # it crosses the land; the guide ramp reaches 0.4 mm above it there.
+    # guide_height is bounded to 12-30 mm by its Param, so never zero.
+    crest = max(foot, p['guide_outer']-WEB-.4)
+    wall = foot+(z-saddle(rear+WEB))*(crest-foot)/p['guide_height']
+    x0, length = xw-5, p['guide_outer']-xw+10
+    def stage(x_at, slope):
+        """Land floor z + (x - x_at) * slope across the cutter."""
+        offset = (x0-x_at)*slope
+        face = Face(Wire.make_polygon([
+            (x0, rear-1, z-bevel-1+offset), (x0, rear+bevel, z+offset),
+            (x0, land_y+1, z+offset), (x0, land_y+1, top+offset),
+            (x0, rear-1, top+offset)], close=True))
+        return Solid.extrude(face, (length, 0, length*slope))
+    ramp = math.tan(math.radians(30))
+    # At y=rear_y the guide underside is contact_z-(xo-x); the 45-degree
+    # stage keeps the bevelled floor 0.1 mm above it, so no notch opens
+    # below the guide where the shallower ramp would fall beneath it.
+    rise_x = p['guide_outer']-(p['contact_z']-z)-bevel-.1
+    return (stage(x0, 0) & stage(xw+.4/ramp, -ramp)
+            & stage(wall-.4/ramp, ramp) & stage(rise_x, 1))
+
+
+def rear_corner_wedge(p, bevel):
+    """Explicit bevel for the right concave rail/guide-root rear corner.
+
+    OCCT's chamfer of this corner fails non-monotonically with root depth,
+    so the 45-degree fill is built directly. The hypotenuse joins the
+    rail's outer face to the root's rear face; the land cutter trims its
+    top to the root's land. The underside rises at 45 degrees in X like
+    the root's underside, and also rises toward the plate. A small overlap
+    goes into the rail and root.
+    """
+    xw, rear, top = p['spool_width']/2, p['rear_y'], p['contact_z']
+    z0, overlap = top-p['guide_reach'], .1
+    outline = [(xw-overlap, rear-bevel), (xw, rear-bevel), (xw+bevel, rear),
+               (xw+bevel, rear+overlap), (xw-overlap, rear+overlap)]
+    def ring(z):
+        points = [(x, y, z(x, y)) for x, y in outline]
+        return Wire.make_polygon([*points, points[0]])
+    wedge = Solid.make_loft([ring(lambda x, y: z0+(x-xw)+(rear-y)/2),
+                             ring(lambda x, y: top+1)], ruled=True)
+    return wedge-rear_land_cutter(p)
+
+
 def placement_aids(p):
     """Right-hand cap and guide; the left side is its mirror.
 
@@ -231,6 +293,7 @@ def placement_aids(p):
         root = saddle_curtain(p, xi, xo, end_extension=WEB)
         root -= saddle_curtain(p, xi, xo, -reach-WEB, 0,
                                floor=-1000, end_extension=WEB)
+        root -= rear_land_cutter(p)
         if p['root_to_bed']:
             # The below-bed tail lies inside the rail: trimming it adds nothing.
             root -= Box(400, 400, 200, align=(Align.CENTER, Align.CENTER, Align.MAX))
@@ -240,13 +303,17 @@ def placement_aids(p):
         guide = guide_top(p, crest, xo, p['guide_height'], p['guide_height'])
         if crest-foot > 1e-8:
             guide = guide.fuse(guide_top(p, foot, crest, 0, p['guide_height']))
-        guide -= saddle_curtain(p, foot, xo, foot-xw-reach, 0, floor=-1000, end_extension=WEB)
-        guide = guide.fuse(root).clean()
+        # Finish the guide's rear end while it is still a full-depth block:
+        # the land exposes the lead-in's rear edge down into the root, and
+        # OCCT cannot reliably close that chamfer on the thin foot or after
+        # the fuse. The root buries the chamfer's lower end below the land.
         upper_ends = [e for e in guide.edges()
                       if e.geom_type.name == 'LINE' and e.bounding_box().size.X > 1e-6
                       and abs(e.center().Y-p['rear_y']) < 1e-6
                       and e.center().Z > p['contact_z']]
         guide = guide.chamfer(.4, None, upper_ends)
+        guide -= saddle_curtain(p, foot, xo, foot-xw-reach, 0, floor=-1000, end_extension=WEB)
+        guide = guide.fuse(root).clean()
         crest_edges = []
         for e in guide.edges():
             c=e.center()
@@ -274,45 +341,6 @@ def placement_aids(p):
     for triangle in truss_openings(p):
         cap -= truss_relief(p, triangle, deep=True)
     return cap.clean()
-
-
-def rear_land(part, p):
-    """Plane of the right root's rear land, if the guide's 0.4 mm upper-end
-    chamfer left one between the rail's outer face and the guide foot."""
-    xw, rear, top = p['spool_width']/2, p['rear_y'], p['contact_z']
-    for face in part.faces():
-        box = face.bounding_box()
-        if (face.geom_type.name == 'PLANE' and abs(box.min.X-xw) < 1e-6
-                and abs(box.min.Y-rear) < 1e-6 and box.max.Y < rear+1
-                and top-1 < box.min.Z and box.max.Z < top):
-            return Plane(face.center(), z_dir=face.normal_at(face.center()))
-    return None
-
-
-def rear_corner_wedge(p, bevel, land=None):
-    """Explicit bevel for the right concave rail/guide-root rear corner.
-
-    The hypotenuse joins the rail's outer face to the root's rear face, which
-    the wedge's rear face lies on. The underside rises at 45 degrees in X like
-    the root's underside, and also rises toward the plate. The top continues
-    the root's rear land where the guide left one (as OCCT's chamfer of the
-    same corner ends at the 75 mm cadence), else the rear contact tangent.
-    It overlaps the rail slightly in X.
-    """
-    xw, rear, top = p['spool_width']/2, p['rear_y'], p['contact_z']
-    slope = 1/math.tan(math.radians(p['cradle_angle']))
-    z0, overlap = top-p['guide_reach'], .1
-    outline = [(xw-overlap, rear-bevel), (xw, rear-bevel), (xw+bevel, rear),
-               (xw-overlap, rear)]
-    if land is None:
-        roof = lambda x, y: top+(rear-y)*slope
-    else:
-        o, n = land.origin, land.z_dir
-        roof = lambda x, y: o.Z-(n.X*(x-o.X)+n.Y*(y-o.Y))/n.Z
-    def ring(z):
-        points = [(x, y, z(x, y)) for x, y in outline]
-        return Wire.make_polygon([*points, points[0]])
-    return Solid.make_loft([ring(lambda x, y: z0+(x-xw)+(rear-y)/2), ring(roof)], ruled=True)
 
 
 def truss_relief(p, triangle, deep=False):
@@ -487,6 +515,10 @@ def holder(**values):
     rear_edges = [e for e in part.edges().filter_by(Axis.Z)
                   if any(abs(e.center().X-c.X) < 1e-6 and abs(e.center().Y-c.Y) < 1e-6
                          for c in rear_datums)]
+    # The concave rail/guide-root corner gets an explicit wedge instead.
+    concave = [e for e in rear_edges if p['guide_enabled']
+               and abs(abs(e.center().X)-p['spool_width']/2) < 1e-6]
+    rear_edges = [e for e in rear_edges if e not in concave]
     narrow_guide = p['guide_enabled'] and p['guide_reach']-p['saddle_clearance'] < WEB+.4
     # The rear contact tangent falls by cot(angle) per millimetre of Y.
     # Bound the bevel's vertical reach to the nominal 0.4 mm edge relief,
@@ -523,19 +555,11 @@ def holder(**values):
                        and abs(e.center().Y-p['rear_y']) < 1e-6]
         part = part.chamfer(guide_bevel, None, guide_inner)
     else:
-        try:
-            part = part.chamfer(rear_bevel, None, rear_edges)
-        except ValueError:
-            # OCCT's chamfer builder fails on the concave rail/guide-root
-            # corner for some root depths (non-monotonic in reach: the 84 mm
-            # cadence hits it, 75 mm never has). Only that formerly raising
-            # case builds the same 45-degree bevel as an explicit wedge.
-            concave = [e for e in rear_edges if p['guide_enabled']
-                       and abs(abs(e.center().X)-p['spool_width']/2) < 1e-6]
-            part = part.chamfer(rear_bevel, None, [e for e in rear_edges if e not in concave])
-            wedge = rear_corner_wedge(p, rear_bevel, rear_land(part, p))
-            part = part.fuse(wedge, wedge.mirror(Plane.YZ)).clean()
+        part = part.chamfer(rear_bevel, None, rear_edges)
         guide_bevel = rear_bevel
+    if concave:
+        wedge = rear_corner_wedge(p, guide_bevel)
+        part = part.fuse(wedge, wedge.mirror(Plane.YZ)).clean()
     if p['guide_enabled']:
         # Finish the short sloping intersections at the feet of those rear
         # bevels, where the guide and web meet the relieved contact surface.
