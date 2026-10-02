@@ -18,6 +18,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 import trimesh
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -27,6 +28,8 @@ from holders.registry import all_models  # noqa: E402
 from scripts.manifest import MANIFEST_PATH  # noqa: E402
 
 
+# Bakes every app-listed preset (~30 s) -> bd123 `audit` job (pst-24tr6).
+@pytest.mark.audit
 def test_presets_only_bakes_every_app_listed_preset(tmp_path):
     target = tmp_path / "bake"
     proc = subprocess.run(

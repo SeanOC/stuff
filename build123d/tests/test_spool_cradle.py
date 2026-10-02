@@ -579,6 +579,7 @@ def test_shallow_angle_and_wide_rail_edges(values):
     assert_finished_edges(model, dimensions(values))
 
 
+@pytest.mark.audit  # dense probes, ~20 s each -> bd123 `audit` job (pst-24tr6)
 @pytest.mark.parametrize('values', [{}, REAR_LAND_CORNER], ids=['default', 'rear-land-corner'])
 def test_outboard_rear_end_has_no_knife(values):
     # pst-dkqef: the print audit samples each face at UV 0.3/0.5/0.7 only,
