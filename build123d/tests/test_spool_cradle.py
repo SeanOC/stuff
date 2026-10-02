@@ -21,6 +21,7 @@ from openconnect import constants as oc
 from openconnect.slot import slot_cutter
 from scripts.export import export_stl
 from tests.mount_contracts import verify
+from tests import print_audit as pa
 from tests.print_audit import _bed_chamfer, audit
 
 
@@ -237,6 +238,8 @@ def test_truss_and_panel_hand_calc(preset):
           'panel force/area/stress',spread,panel_area,spread/panel_area)
 
 
+# pst-dkqef: the unbacked rear knife read 0.70 mm here in both mount styles.
+REAR_LAND_CORNER = dict(spool_width=66, saddle_clearance=.25, cradle_angle=25)
 PRINT_CORNER = dict(spool_diameter=205, spool_width=70, flange_height=4,
                     flange_rim_width=1.5, cradle_angle=25, saddle_clearance=.25,
                     lip_height=15, plate_width=68, plate_thickness=6.6,
@@ -248,9 +251,11 @@ PRINT_CORNER = dict(spool_diameter=205, spool_width=70, flange_height=4,
 @pytest.mark.parametrize('values', [SPEC.presets[0].values, PRINT_CORNER,
     dict(spool_width=50, guide_gap=.5, guide_height=12, rail_width=14, flange_height=4),
     dict(spool_width=70, guide_gap=2, guide_height=30, rail_width=14, flange_height=4),
-    dict(spool_width=70, guide_gap=.5, guide_height=30, rail_width=6, saddle_clearance=1.5)],
+    dict(spool_width=70, guide_gap=.5, guide_height=30, rail_width=6, saddle_clearance=1.5),
+    REAR_LAND_CORNER],
     ids=['bambu-shallow-root', 'diagonal-root-corner',
-         'maximum-reach-minimum-height', 'guides-omitted', 'insufficient-crest-room'])
+         'maximum-reach-minimum-height', 'guides-omitted', 'insufficient-crest-room',
+         'rear-land-corner'])
 def test_production_print_audit(values):
     part=holder(**values)
     assert part.is_valid and len(part.solids()) == 1
@@ -543,12 +548,44 @@ def test_max_clearance_guide_corner(max_clearance_guide):
     dict(spool_width=66, cradle_angle=25, rail_width=14),
     dict(spool_width=50, cradle_angle=25, flange_height=4, rail_width=14,
          saddle_clearance=1.5),
+    REAR_LAND_CORNER,
+    dict(spool_width=68, saddle_clearance=.25, cradle_angle=25),
+    dict(spool_width=66, saddle_clearance=1.5, cradle_angle=45),
+    dict(spool_width=50, saddle_clearance=.25, cradle_angle=45),
 ], ids=['wide-25', 'omitted-25', 'wide-45-rail14', 'narrow-25-rail14',
-        'wide-25-rail14-min-flange'])
+        'wide-25-rail14-min-flange', 'rear-land-lead-in', 'rear-land-narrow-v',
+        'rear-land-vertical-lead-in', 'rear-land-wide-45'])
 def test_shallow_angle_and_wide_rail_edges(values):
     model = holder(**values)
     assert model.is_valid and len(model.solids()) == 1
     assert_finished_edges(model, dimensions(values))
+
+
+@pytest.mark.parametrize('values', [{}, REAR_LAND_CORNER], ids=['default', 'rear-land-corner'])
+def test_outboard_rear_end_has_no_knife(values):
+    # pst-dkqef: the print audit samples each face at UV 0.3/0.5/0.7 only,
+    # so it saw the saddle's unbacked rear knife (~0.02 mm, including both
+    # presets) only by luck. Probe a denser grid over the outboard rear end.
+    p = dimensions(values)
+    part = holder(**values)
+    xw, rear, top = p['spool_width']/2, p['rear_y'], p['contact_z']
+    lo, hi = (xw-.2, rear-.5, top-3), (p['guide_outer'], rear+2, top+.5)
+    def near(b):
+        return all(a <= y and x <= c for a, x, y, c in zip(lo, (b.min.X, b.min.Y, b.min.Z),
+                                                            (b.max.X, b.max.Y, b.max.Z), hi))
+    uv = tuple(i/10 for i in range(1, 10))
+    thin = []
+    for face in part.faces():
+        if not near(face.bounding_box()):
+            continue
+        c, n = pa._outward_normal(part, face)
+        for point, normal in pa._face_samples(face, uv):
+            if not all(a <= v <= b for a, v, b in zip(lo, point, hi)):
+                continue
+            s = pa._signed(normal, n, face.normal_at(c))
+            if part.is_inside(point-s*.02) and not part.is_inside(point-s*pa.MIN_WALL_MM):
+                thin.append(tuple(round(v, 2) for v in point))
+    assert not thin, thin[:5]
 
 
 def test_max_clearance_guide_print_audit(max_clearance_guide):
@@ -650,20 +687,7 @@ POINTS_AUDIT_CASES = [p.values for p in POINTS_PRESETS] + [
     for w in (50, 66, 70) for c in (.25, 1.5) for a in (25, 45)]
 
 
-# Pre-existing body defect, both styles: a 0.70 mm slab at the saddle rear
-# end (y ~ rear_y, z 72-76). Saddle geometry is out of pst-93yd5 scope;
-# strict, so the pst-dkqef geometry fix flips these to XPASS.
-REAR_SLAB = dict(spool_width=66, saddle_clearance=.25, cradle_angle=25)
-REAR_SLAB_XFAIL = pytest.mark.xfail(strict=True, raises=AssertionError,
-                                    reason='pst-dkqef: 0.70 mm rear saddle slab')
-
-
-def _points_case(values):
-    corner = {k: values.get(k) for k in REAR_SLAB} == REAR_SLAB
-    return pytest.param(values, marks=REAR_SLAB_XFAIL if corner else ())
-
-
-@pytest.mark.parametrize('values', [_points_case(v) for v in POINTS_AUDIT_CASES],
+@pytest.mark.parametrize('values', POINTS_AUDIT_CASES,
                          ids=[p.id for p in POINTS_PRESETS]+[
                              f"w{v['spool_width']}-c{v['saddle_clearance']}-a{v['cradle_angle']}"
                              for v in POINTS_AUDIT_CASES[len(POINTS_PRESETS):]])
@@ -677,15 +701,6 @@ def test_points_print_audit_and_edges(values):
     report = audit(model, SPEC.print_orientation, cutters=fx.cutters, model=SPEC.name)
     assert report.ok, report.format()
     assert report.bed_chamfer == 'present'
-
-
-@REAR_SLAB_XFAIL
-def test_channel_rear_slab_corner_print_audit():
-    # The channel twin of the REAR_SLAB points case: the defect is the body's.
-    model = holder(**REAR_SLAB)
-    fx = mount_fixtures(MOUNT, REAR_SLAB)
-    report = audit(model, SPEC.print_orientation, cutters=fx.cutters, model=SPEC.name)
-    assert report.ok, report.format()
 
 
 # pst-pwtnq: mount_style='openconnect' — four openConnect slots, same body.
@@ -787,14 +802,6 @@ OC_AUDIT_CASES = [p.values for p in OC_PRESETS] + [
     for w in (50, 66, 70) for c in (.25, 1.5) for a in (25, 45)]
 
 
-# pst-dkqef's rear knife (saddle tangent meeting the vertical rear face where
-# nothing backs it) shows here on the outboard strip [spool_width/2, foot]:
-# 0.71 mm at x=+-36.96, y=rear_y. At 75 mm cadence this corner has no guide.
-# Pinned to the wall failure alone, so fixing the knife fails this pin and
-# removes it, as with REAR_SLAB.
-OC_KNIFE = dict(spool_width=70, saddle_clearance=1.5, cradle_angle=25)
-
-
 @pytest.mark.parametrize('values', OC_AUDIT_CASES,
                          ids=[p.id for p in OC_PRESETS]+[
                              f"w{v['spool_width']}-c{v['saddle_clearance']}-a{v['cradle_angle']}"
@@ -809,9 +816,5 @@ def test_openconnect_print_audit_and_edges(values):
     fx = mount_fixtures(OC_MOUNT, values)
     assert len(fx.cutters) == 4
     report = audit(model, SPEC.print_orientation, cutters=fx.cutters, model=SPEC.name)
-    if {k: values.get(k) for k in OC_KNIFE} == OC_KNIFE:
-        assert [f.split()[0] for f in report.failures()] == ['wall'], report.format()
-        assert report.min_wall_mm == pytest.approx(.71, abs=.02), report.format()
-    else:
-        assert report.ok, report.format()
+    assert report.ok, report.format()
     assert report.bed_chamfer == 'present'

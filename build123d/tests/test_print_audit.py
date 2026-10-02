@@ -16,6 +16,7 @@ Two layers, mirroring test_mount_contracts.py:
 Flip ``PRINT_AUDIT_REQUIRED = True`` (one line) to make the registry run a
 hard gate once the holder passes its own audit (design-guidelines §6 / AC 3).
 """
+import os
 import sys
 import time
 from pathlib import Path
@@ -98,12 +99,9 @@ _PER_MODEL_BUDGET_S = 60.0
 # produce many faces for the unchanged wall-thickness sampler. After batching
 # bed-relief booleans, profiling measured 2.9 s construction / 71.8 s audit;
 # CI measured 93.2 s total. Allow headroom only for this model, not other gates.
-# pst-mxfqk: budgets are CPU seconds (time.process_time), so xdist time-slicing
-# no longer counts — but CI's 2 physical cores x 2 hyperthreads still slow the
-# single-threaded audit when -n 4 puts a sibling on the same core (x1.42 measured
-# -> ~132 s CPU from the 93 s serial run). 150 s covers that; the 60 s default
-# for every other model is unchanged.
-_MODEL_BUDGET_S = {"holder_spool_cradle": 150.0}
+# pst-mxfqk: budgets are CPU seconds (time.process_time) of a SERIAL run; the
+# budget test skips inside pytest-xdist workers (see the test).
+_MODEL_BUDGET_S = {"holder_spool_cradle": 120.0}
 
 _UP_Z = (0.0, 0.0, 1.0)
 
@@ -524,6 +522,14 @@ def _build_and_audit(spec) -> PrintAuditReport:
 def test_model_audit_produces_report_within_budget(spec):
     """Every registered model yields a report within its documented budget
     (the CPU time of its one build + audit, whichever test ran it first)."""
+    # pst-mxfqk (mayor option D): under -n 4 on CI's 2 physical cores the
+    # cradle audit took 181 s of PROCESS CPU (serial: 93 s) — hyperthread
+    # contention inflates even CPU time ~2x, so no fixed budget holds under
+    # parallel load. The budget describes the serial measurement; pst-24tr6
+    # runs these tests serially (-n 0) in their own job.
+    if os.environ.get("PYTEST_XDIST_WORKER"):
+        pytest.skip("audit budget is a serial measurement; "
+                    "run with -n 0 or in the serial budget job")
     report, elapsed = _timed_audit(spec)
     assert isinstance(report, PrintAuditReport)
     assert report.orientation == tuple(round(o, 6) for o in
