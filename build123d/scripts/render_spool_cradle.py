@@ -5,6 +5,7 @@ Run from the repo root:
   uv run --project build123d python build123d/scripts/render_spool_cradle.py
 """
 import sys
+import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -92,7 +93,6 @@ def points_back(model,values):
     plate=model&(Pos(-40,-1,-1)*up((0,0,0),(80,p['plate_thickness']+1,p['plate_height']+2)))
     # Cut on the right column's axis: the lip profile at the top of the slot.
     cut=model&(Pos(0,-1,seat-fp.SLOT_LENGTH)*up((0,0,0),(12.5,p['plate_thickness']+1,fp.SLOT_LENGTH+12)))
-    directory=ROOT/'docs/exports'
     from holders.spool_cradle import FP_MOUNT, mount_fixtures
     boxes=[c.bounding_box() for c in mount_fixtures(FP_MOUNT,values).cutters]
     panels=[('Back (-Y): four Fix Point slots (orange), 25 x 50 mm',model,(.25,-1,.2)),
@@ -101,10 +101,10 @@ def points_back(model,values):
     sheet=Image.new('RGB',(2100,780),'white')
     draw=ImageDraw.Draw(sheet)
     for i,(label,shape,view) in enumerate(panels):
-        path=directory/'_points_back.stl'
-        export_stl(shape,path)
-        mesh=trimesh.load_mesh(path)
-        path.unlink()
+        with tempfile.TemporaryDirectory() as tmp:  # never litter docs/exports
+            path=Path(tmp)/'points_back.stl'
+            export_stl(shape,path)
+            mesh=trimesh.load_mesh(path)
         mesh.unmerge_vertices()  # flat shading: crisp pocket edges
         # Pocket faces orange: triangle centroids inside a slot cutter, off the back face.
         c=mesh.triangles_center
