@@ -203,6 +203,24 @@ def vertical_gusset(x, y, sx, sy):
         Edge.make_three_point_arc(a, mid, b), Edge.make_line(b, corner)])), (0, 0, 400))
 
 
+def land_stage(p, x0, length, x_at, slope, bevel=.4):
+    """Solid above a rear land floor z + (x - x_at) * slope over X.
+
+    The land lies at the saddle height WEB/2 in front of rear_y, with a
+    bevel x 45-degree chamfer at rear_y. Intersected stages take the
+    highest floor, so each one adds a ramp to the land.
+    """
+    rear, land_y = p['rear_y'], p['rear_y']+WEB/2
+    z = p['center_z']-math.sqrt(p['saddle_radius']**2-(land_y-p['center_y'])**2)
+    top = p['contact_z']+20
+    offset = (x0-x_at)*slope
+    face = Face(Wire.make_polygon([
+        (x0, rear-1, z-bevel-1+offset), (x0, rear+bevel, z+offset),
+        (x0, land_y+1, z+offset), (x0, land_y+1, top+offset),
+        (x0, rear-1, top+offset)], close=True))
+    return Solid.extrude(face, (length, 0, length*slope))
+
+
 def rear_land_cutter(p):
     """Flat land on the outboard root's rear end (right-hand side).
 
@@ -219,7 +237,7 @@ def rear_land_cutter(p):
     land_y = rear+WEB/2
     def saddle(y):
         return p['center_z']-math.sqrt(p['saddle_radius']**2-(y-p['center_y'])**2)
-    z, bevel, top = saddle(land_y), .4, p['contact_z']+20
+    z, bevel = saddle(land_y), .4
     # The lead-in rises from the guide's rear land to the crest; find where
     # it crosses the land; the guide ramp reaches 0.4 mm above it there.
     # guide_height is bounded to 12-30 mm by its Param, so never zero.
@@ -227,13 +245,7 @@ def rear_land_cutter(p):
     wall = foot+(z-saddle(rear+WEB))*(crest-foot)/p['guide_height']
     x0, length = xw-5, p['guide_outer']-xw+10
     def stage(x_at, slope):
-        """Land floor z + (x - x_at) * slope across the cutter."""
-        offset = (x0-x_at)*slope
-        face = Face(Wire.make_polygon([
-            (x0, rear-1, z-bevel-1+offset), (x0, rear+bevel, z+offset),
-            (x0, land_y+1, z+offset), (x0, land_y+1, top+offset),
-            (x0, rear-1, top+offset)], close=True))
-        return Solid.extrude(face, (length, 0, length*slope))
+        return land_stage(p, x0, length, x_at, slope, bevel)
     ramp = math.tan(math.radians(30))
     # At y=rear_y the guide underside is contact_z-(xo-x); the 45-degree
     # stage keeps the bevelled floor 0.1 mm above it, so no notch opens
@@ -263,6 +275,55 @@ def rear_corner_wedge(p, bevel):
     wedge = Solid.make_loft([ring(lambda x, y: z0+(x-xw)+(rear-y)/2),
                              ring(lambda x, y: top+1)], ruled=True)
     return wedge-rear_land_cutter(p)
+
+
+def cap_land_cutter(p):
+    """The outboard land, carried across the inboard cap's rear end.
+
+    Nothing backs the cap behind its rear contact between cap_inner and
+    the rail, so its rear end is the same cradle_angle knife. The land and
+    its 0.4 mm rear chamfer match the outboard ones. A 30-degree ramp rises
+    0.4 mm to the rail's inner face, where the cutter stops: the rail backs
+    the cap outboard of it. 45-degree 0.4 mm bevels finish the land's edge
+    at cap_inner and the cap's vertical rear corner there. Built, not
+    chamfered: OCCT's rear chamfers on the knife failed at some parameter
+    corners. holder() cuts it after the top clip.
+    """
+    ci, xi, rear, bevel = p['cap_inner'], p['rail_inner'], p['rear_y'], .4
+    x0, length = ci-1, xi-(ci-1)
+    ramp = math.tan(math.radians(30))
+    land = land_stage(p, x0, length, x0, 0) & land_stage(p, x0, length, xi-bevel/ramp, ramp)
+    # Union, not intersection: a 45-degree stage lowers the floor to the edge.
+    edge = land_stage(p, x0, xi-x0, ci+bevel, 1)
+    lo, hi = p['contact_z']-50, p['contact_z']+20
+    corner = Pos(0, 0, lo)*Solid.extrude(Face(Wire.make_polygon([
+        (ci+bevel+1, rear-1, 0), (ci-1, rear+bevel+1, 0), (ci-1, rear-1, 0)],
+        close=True)), (0, 0, hi-lo))
+    return land.fuse(edge, corner)
+
+
+def cap_corner_wedge(p, bevel=.4):
+    """Explicit bevel for the concave cap/rail-inner-face rear corner.
+
+    Mirrors rear_corner_wedge() inboard of the rail. Its underside is flush
+    with the cap's 45-degree underside at rear_y and rises toward the plate,
+    and the cap land cutter trims its top. It is fused after the top clip,
+    so its top stops just above the land's ramp at the rail's inner face:
+    the overlap into the rail then stays below the saddle.
+    """
+    xi, rear, overlap = p['rail_inner'], p['rear_y'], .1
+    def saddle(y, depth=0):
+        return p['center_z']-math.sqrt((p['saddle_radius']+depth)**2-(y-p['center_y'])**2)
+    deep, top = saddle(rear, WEB), saddle(rear+WEB/2)+bevel+.05
+    z0 = deep-(xi-p['cap_inner'])
+    outline = [(xi+overlap, rear-bevel), (xi, rear-bevel), (xi-bevel, rear),
+               (xi-bevel, rear+overlap), (xi+overlap, rear+overlap)]
+    def ring(z):
+        points = [(x, y, z(x, y)) for x, y in outline]
+        return Wire.make_polygon([*points, points[0]])
+    wedge = Solid.make_loft([ring(lambda x, y: z0+(xi-x)+(rear-y)/2),
+                             ring(lambda x, y: top)], ruled=True)
+    return wedge-cap_land_cutter(p)
 
 
 def placement_aids(p):
@@ -487,6 +548,12 @@ def holder(**values):
         align=(Align.CENTER, Align.MIN, Align.MIN))
     top_clip -= saddle_curtain(p, -foot, foot)
     part = (part-top_clip).clean()
+    # Cut the cap's rear land on the clipped part: on the aids, the cap's
+    # 0.01 mm curtain lift left a sliver on the rear knife line that the
+    # clip fused into an unorientable saddle face at cradle_angle=45.
+    land, wedge = cap_land_cutter(p), cap_corner_wedge(p)
+    part = (part-land-land.mirror(Plane.YZ)).fuse(
+        wedge, wedge.mirror(Plane.YZ)).clean()
     joints = [e for e in part.edges().filter_by(Axis.Z)
               if (abs(e.center().Y-t) < 1e-6 and abs(abs(e.center().X)-ri) < 1e-6)
               or (abs(e.center().Y-end) < 1e-6 and abs(abs(e.center().X)-xi) < 1e-6)]
@@ -501,10 +568,13 @@ def holder(**values):
     for face in part.faces():
         for edge in face.edges():
             adjacency.setdefault(edge, []).append(face)
+    # The cap's rear corners are built finished (cap_land_cutter/wedge).
     verticals = [e for e in part.edges().filter_by(Axis.Z)
                  if not (abs(e.center().Y-end) < 1e-6 and any(
                      abs(abs(e.center().X)-x) < 1e-6
                      for x in (p['cap_inner'], p['spool_width']/2)))
+                 if not (abs(e.center().Y-p['rear_y']) < .4+1e-6 and
+                         p['cap_inner']-1e-6 < abs(e.center().X) < p['rail_inner']+1e-6)
                  if len(adjacency[e]) == 2 and
                  adjacency[e][0].normal_at(e.center()).dot(
                      adjacency[e][1].normal_at(e.center())) < (
@@ -522,7 +592,7 @@ def holder(**values):
     narrow_guide = p['guide_enabled'] and p['guide_reach']-p['saddle_clearance'] < WEB+.4
     # The rear contact tangent falls by cot(angle) per millimetre of Y.
     # Bound the bevel's vertical reach to the nominal 0.4 mm edge relief,
-    # so shallow-angle cap corners retain their full section below it.
+    # so shallow-angle corners retain their full section below it.
     rear_bevel = min(0.4, p['saddle_clearance']/(4 if narrow_guide else 2),
                      BED_CHAMFER*math.tan(math.radians(p['cradle_angle'])))
     guide_inner = [e for e in rear_edges if narrow_guide and
@@ -547,15 +617,17 @@ def holder(**values):
                         runs.append(run)
         guide_bevel = min(rear_bevel, min(runs)/2)
         other_rear = [e for e in rear_edges if e not in guide_inner]
-        # Use the same land bound on the cap/web rear edges: a larger
-        # clearance-scaled bevel also thins the cap at the 25-degree corner.
-        part = part.chamfer(guide_bevel, None, other_rear)
+        # Use the same land bound on any other rear edges. The cap's rear
+        # corners are built (cap_land_cutter), so this is usually empty.
+        if other_rear:
+            part = part.chamfer(guide_bevel, None, other_rear)
         guide_inner = [e for e in part.edges().filter_by(Axis.Z)
                        if abs(abs(e.center().X)-foot) < 1e-6
                        and abs(e.center().Y-p['rear_y']) < 1e-6]
         part = part.chamfer(guide_bevel, None, guide_inner)
     else:
-        part = part.chamfer(rear_bevel, None, rear_edges)
+        if rear_edges:
+            part = part.chamfer(rear_bevel, None, rear_edges)
         guide_bevel = rear_bevel
     if concave:
         wedge = rear_corner_wedge(p, guide_bevel)
