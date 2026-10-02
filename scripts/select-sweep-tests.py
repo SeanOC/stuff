@@ -71,38 +71,60 @@ FULL_TRIGGER_FILES = frozenset(
 
 COVERAGE_TEST = "tests/sweep/coverage.test.ts"
 
-# Measured per-file sweep durations in seconds (CI run 29300566841,
-# 2026-07-14, ubuntu-latest). Case count is a poor time proxy — 25
-# opengrid_bin cases take 999s while 61 rv_ceiling cases take 61s —
-# so shard balance uses these where available. Advisory only: a stale
-# or missing entry skews balance, never correctness (new models fall
-# back to the @param estimate below). Refresh from a full-sweep run's
-# per-file times when balance drifts.
-MEASURED_SECONDS = {
-    "opengrid_bin": 999,
-    "led_remote_holder_55x124mm": 908,
-    "led_remote_holder_51x84mm": 645,
-    "spraycan_carrier_6x50mm": 587,
-    "cylindrical_holder_slot": 447,
-    "blu_flow_meter_mount_80mm": 376,
-    "blu_black_tank_valve_mount": 349,
-    "opengrid_panel_aligner": 322,
-    "ego_lb6500_blower_mount": 251,
-    "ego_powerhead_mount": 168,
-    "lcd_stylus_hex_8mm": 92,
-    "goblu_filter_holder_3x90mm": 73,
-    "blutech_water_softener_foot": 61,
-    "rv_ceiling_ap_adapter_235mm": 61,
-    "aquor_bib_drip_deflector": 31,
-    "gridfinity_bin": 30,
-    "lcd_stylus_75mm": 12,
+# Measured per-file sweep durations in seconds: the max of the two
+# most recent full sweeps (CI runs 34400659936 and 34385094684, both
+# 2026-09-09 pushes to main, ubuntu-latest). Case count is a poor time
+# proxy — 50 littletikes cases take 2080s while 42 blutech cases take
+# 59s — so shard balance uses these where available. Each value is the
+# file's WALL time while vitest runs up to four files at once inside its
+# shard (vitest.sweep.config.ts maxWorkers), so values include
+# contention and a shard's sum is ~2x its wall time; only their ratios
+# matter to the binning. Advisory only: a stale or missing entry skews
+# balance, never correctness (None — or no key — falls back to the
+# @param estimate below).
+#
+# Refresh procedure, after each full sweep: read each shard log's
+# per-file lines (`gh run view <id> --log`, "✓ tests/sweep/<stem>.test.ts
+# (N tests) <ms>ms"), take the max over the latest two full runs, fill
+# EVERY None, and update the run ids above. scripts/new-model.py appends
+# `"<stem>": None,` at the END of the table; keep None entries there and,
+# if you re-sort, sort with key=lambda kv: (kv[1] is not None, kv[1])
+# (a plain value sort raises TypeError on None). Every models/*.scad stem
+# needs a key (scripts/test_select_sweep_tests.py guards both ways).
+MEASURED_SECONDS: dict[str, int | None] = {
+    "littletikes_dream_machine_cartridge_holder": 2080,
+    "ryobi_p2860_strap_saddle": 1821,
+    "apple_tv_4th_gen_holder": 1750,
+    "opengrid_bin": 1694,
+    "ego_powerhead_mount": 1359,
+    "ego_ea0820_edger_mount": 1280,
+    "led_remote_holder_55x124mm": 1052,
+    "led_remote_holder_51x84mm": 955,
+    "spraycan_carrier_6x50mm": 533,
+    "blu_black_tank_valve_mount": 454,
+    "blu_flow_meter_mount_80mm": 382,
+    "opengrid_multiconnect_adapter": 299,
+    "opengrid_panel_aligner": 285,
+    "us_electrical_box_extender": 235,
+    "ego_lb6500_blower_mount": 168,
+    "goblu_filter_holder_3x90mm": 122,
+    "cylindrical_holder_slot": 99,
+    "blutech_water_softener_foot": 59,
+    "rv_ceiling_ap_adapter_235mm": 59,
+    "disney_ear_hanger": 52,
+    "lcd_stylus_hex_8mm": 52,
+    "aquor_bib_drip_deflector": 39,
+    "multiconnect_connectors": 34,
+    "gridfinity_bin": 27,
+    "opengrid_snaps": 25,
+    "kidscleancar_knob_cover": 14,
+    "lcd_stylus_75mm": 9,
     "popcorn_kernel": 7,
-    "disney_ear_hanger": 1,
 }
 
-# Full-sweep seconds per sweep case, for models not in the table
-# (5420s / 587 cases in the run above).
-FALLBACK_SECONDS_PER_CASE = 9
+# Full-sweep seconds per sweep case, for models with no measured entry
+# (14458s / 934 cases in run 34385094684 above; same units as the table).
+FALLBACK_SECONDS_PER_CASE = 15
 
 # Stems become shell-interpolated file paths in the workflow; reject
 # anything outside this alphabet (fall back to a full sweep instead).
