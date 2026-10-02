@@ -13,17 +13,17 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: isCI,
   retries: isCI ? 1 : 0,
-  // 3 (pst-3vp3w, CI P6; was 2). 4 = the ubuntu-latest vCPU count was
-  // tried first: two PR runs went 3.6 m / 2 flaky and 4.7 m / 3 flaky
-  // (command-palette + stale-render completion waits) vs 4.3 m at 2, so
-  // the spec's fall-back-to-3 applied. Do not raise `timeout` below to
-  // mask contention — lower workers instead.
-  workers: isCI ? 3 : undefined,
+  // 2 — measured, not a guess (pst-3vp3w, CI P6). Wall time is bound by
+  // CPU-heavy cold WASM renders, so more workers don't help: 2 → 4.3 m,
+  // 3 → 4.6 m, 4 → 3.6–4.7 m with 2–3 flaky (command-palette +
+  // stale-render completion waits). Do not raise `timeout` below to
+  // mask contention; a faster suite needs test-level work instead.
+  workers: isCI ? 2 : undefined,
   reporter: isCI ? [["github"], ["html", { open: "never" }]] : "list",
   // Per-test timeout sits above the default 30s because cold WASM
   // renders (first lib mount + Manifold build) can push past 30s on a
-  // CI runner — and with several workers running in parallel, cold
-  // renders compete for CPU and each slows down. The detail-page
+  // CI runner — and with two workers running in parallel, two cold
+  // renders compete for CPU and each roughly doubles. The detail-page
   // specs wait on that via support/render.ts (RENDER_READY_TIMEOUT_MS =
   // 120s); this cap leaves headroom above it for goto + follow-up
   // assertions so the render-ready wait, not the test cap, is what
