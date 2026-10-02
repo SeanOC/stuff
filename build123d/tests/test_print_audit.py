@@ -94,14 +94,13 @@ def _is_production(spec) -> bool:
     return "smoke" not in spec.tags
 
 # Default AC 1 ceiling; model-specific exceptions require measured justification.
-_PER_MODEL_BUDGET_S = 60.0
-# pst-tskv: channel pockets, truss reliefs and cap/guide edge treatments
-# produce many faces for the unchanged wall-thickness sampler. After batching
-# bed-relief booleans, profiling measured 2.9 s construction / 71.8 s audit;
-# CI measured 93.2 s total. Allow headroom only for this model, not other gates.
 # pst-mxfqk: budgets are CPU seconds (time.process_time) of a SERIAL run; the
 # budget test skips inside pytest-xdist workers (see the test).
-_MODEL_BUDGET_S = {"holder_spool_cradle": 120.0}
+_PER_MODEL_BUDGET_S = 60.0
+# pst-bzahj: the cradle's 120 s exception (CI measured 93.2 s total) is gone —
+# reusing one solid classifier per audit cut its audit 77 s -> 11 s CPU
+# (docs/print-audit-profile.md), so it now fits the default.
+_MODEL_BUDGET_S: dict[str, float] = {}
 
 _UP_Z = (0.0, 0.0, 1.0)
 

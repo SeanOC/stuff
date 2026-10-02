@@ -57,7 +57,11 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
+import OCP.TopAbs as ta
+from build123d import Vector
 from build123d.topology import Part
+from OCP.BRepClass3d import BRepClass3d_SolidClassifier
+from OCP.gp import gp_Pnt
 
 # --- thresholds (design-guidelines.md §1) ---------------------------------
 # OCP approximates angle-defined chamfers on curved loops with splines.
@@ -169,6 +173,29 @@ class PrintAuditReport:
 
 
 # --- geometry helpers -----------------------------------------------------
+
+class _ClassifiedPart:
+    """``part`` whose ``is_inside`` reuses ONE OCCT solid classifier.
+
+    build123d's ``Solid.is_inside`` constructs a new BRepClass3d_SolidClassifier
+    on every call, and that construction (reloading every face) was ~75 % of
+    an audit's CPU (docs/print-audit-profile.md, pst-bzahj). This runs the same
+    classifier, tolerance and IN-or-on-a-face rule, loaded once. Every other
+    attribute is the part's own.
+    """
+
+    def __init__(self, part):
+        self._part = part
+        self._classifier = BRepClass3d_SolidClassifier(part.wrapped)
+
+    def __getattr__(self, name):
+        return getattr(self._part, name)
+
+    def is_inside(self, point, tolerance: float = 1.0e-6) -> bool:
+        self._classifier.Perform(gp_Pnt(*Vector(point)), tolerance)
+        return (self._classifier.State() == ta.TopAbs_IN
+                or self._classifier.IsOnAFace())
+
 
 def _unit(v: tuple[float, float, float]) -> tuple[float, float, float]:
     m = math.sqrt(sum(c * c for c in v))
@@ -591,6 +618,7 @@ def audit(
     if not verts:
         raise ValueError(f"{model}: part has no geometry to audit")
     hmin = min(_height(v, up) for v in verts)
+    part = _ClassifiedPart(part)
 
     return PrintAuditReport(
         model=model,
