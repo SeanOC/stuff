@@ -14,8 +14,6 @@ from .constants import PITCH
 
 # Derived from the pinned cutter, including its axial clearances.
 POCKET_DEPTH = RoundHeadCutter().bounding_box().size.Z
-# A point pocket's on-ramp, as a channel's lowest: the opening clears Z=0.
-POINT_ONRAMP = PITCH / 2
 
 
 def slot_cutter(travel: float = PITCH, *, snap: bool = False) -> Part:
@@ -56,22 +54,6 @@ def channel_cutter(length: float, *, onramps, seats, drop: float = PITCH / 2) ->
     if not isfinite(length) or length <= 0 or not isclose(length / PITCH, round(length / PITCH), rel_tol=0, abs_tol=1e-9):
         raise ValueError('length must be a positive multiple of 25 mm')
     return _spine(length, onramps, seats, drop)
-
-
-def point_cutter(drop: float = PITCH / 2) -> Part:
-    """One discrete pocket: a channel_cutter segment with one on-ramp and seat.
-
-    Same frame and features as channel_cutter: on-ramp at Z=POINT_ONRAMP
-    (a channel's lowest on-ramp), seat ``drop`` above it. The spine ends one
-    library head-cutter radius above the seat, the shortest length that
-    still clears the seated head. That is not a 25 mm multiple, which is why
-    this is a separate entry point (pst-93yd5). Length: point_length(drop).
-    """
-    return _spine(point_length(drop), (POINT_ONRAMP,), (POINT_ONRAMP + drop,), drop)
-
-
-def point_length(drop: float = PITCH / 2) -> float:
-    return POINT_ONRAMP + drop + RoundHeadCutter().bounding_box().size.X / 2
 
 
 def _spine(length, onramps, seats, drop) -> Part:
