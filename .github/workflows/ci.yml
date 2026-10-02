@@ -5,8 +5,9 @@ name: ci
 # PRs merge via the city merge-green-prs controller order — a required check that never reports
 # hangs the merge forever. So this workflow must run on EVERY PR: do
 # not add a workflow-level `paths:` filter here. Cheap skipping is
-# handled inside the render job (paths-filter step), which still
-# reports a conclusion when it skips the heavy steps.
+# decided by the `changes` job (paths-filter) and applied inside the
+# render job, which still reports a conclusion when it skips the
+# heavy steps.
 on:
   push:
     branches: [main]
@@ -18,8 +19,84 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    # pst-3vp3w (CI P5; the st-2nv redesign the old in-container
+    # filter step pointed at): paths-filter runs HERE, on the bare
+    # runner, because inside the openscad container actions/checkout
+    # runs before git exists and falls back to a REST tarball with no
+    # .git — so on push (no PR listFiles API) paths-filter exited 128
+    # and every merge rendered all models. Not a required check; the
+    # render job consumes its outputs and renders ALL if it fails.
+    name: detect changed paths
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      # dorny/paths-filter calls listFiles on the PR to decide whether
+      # models/skills/render scripts changed; without pull-requests:read
+      # the API call fails with "Resource not accessible by integration".
+      pull-requests: read
+    outputs:
+      render: ${{ steps.filter.outputs.render }}
+      models_and_libs: ${{ steps.filter.outputs.models_and_libs }}
+      models_and_libs_files: ${{ steps.filter.outputs.models_and_libs_files }}
+      filter_ok: ${{ steps.filter.outcome == 'success' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history so the push-event base commit is present.
+          fetch-depth: 0
+
+      - name: Resolve push diff base
+        id: base
+        # Push events diff against github.event.before (the previous
+        # tip of main). Fall back to HEAD~1 when it is the null SHA
+        # (first push / branch creation) or no longer in history
+        # (force push). Skipped on pull_request — paths-filter uses
+        # the PR's listFiles API there and ignores `base`.
+        if: github.event_name == 'push'
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ] \
+             && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            base="$BEFORE"
+          else
+            echo "event.before unusable ('$BEFORE') — diffing against HEAD~1"
+            base=$(git rev-parse HEAD~1)
+          fi
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+
+      - name: Filter paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          base: ${{ steps.base.outputs.base }}
+          # st-mrt: also surface the specific changed models/libs
+          # files so render-all + export-all can short-circuit to
+          # the touched subset. `list-files: shell` makes
+          # ${{ steps.filter.outputs.models_and_libs_files }} a
+          # whitespace-separated path list.
+          list-files: shell
+          filters: |
+            render:
+              - 'models/**'
+              - '.claude/skills/scad-render/**'
+              - '.claude/skills/_lib/**'
+              - 'scripts/render-all.py'
+              - 'scripts/vendor-libs.sh'
+              - 'libs/README.md'
+            models_and_libs:
+              - 'models/*.scad'
+              - 'libs/**'
+
   render:
     name: render preview images
+    needs: changes
+    # Run even when `changes` failed (then render ALL, the fail-soft
+    # path) — a job skipped for a failed `needs` would report this
+    # required check without rendering anything.
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     # Engine architecture (st-mb1): the container image supplies the
     # runtime environment (EGL + Qt + GL libs — the deps that made bare
@@ -50,10 +127,13 @@ jobs:
     timeout-minutes: 40
     permissions:
       contents: write
-      # dorny/paths-filter calls listFiles on the PR to decide whether
-      # models/skills/render scripts changed; without pull-requests:read
-      # the API call fails with "Resource not accessible by integration".
-      pull-requests: read
+    env:
+      # pst-3vp3w: the one render gate every heavy step reads. Render
+      # when `changes` saw render-relevant paths, or when `changes`
+      # did not succeed (fail-soft: render everything, as before).
+      RENDER_NEEDED: ${{ needs.changes.outputs.render == 'true' || needs.changes.result != 'success' }}
+      # Empty ⇒ render-all/export-all default to ALL models.
+      CHANGED_PATHS: ${{ needs.changes.outputs.models_and_libs_files }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -62,14 +142,12 @@ jobs:
           ref: ${{ github.event.pull_request.head.ref || github.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install git for paths-filter
-        # st-yzo: dorny/paths-filter@v3 shells out to `git`, but the
-        # openscad/openscad container is minimal and git only gets
-        # apt-installed later in the python-deps step — so the next
-        # step fails with "Unable to locate executable file: git".
-        # ca-certificates is needed for any HTTPS git op downstream;
-        # bundle both here so paths-filter and any subsequent git
-        # work both succeed.
+      - name: Install git + ca-certificates
+        # st-yzo: the openscad/openscad container is minimal. git is
+        # no longer needed for paths-filter (that moved to the
+        # `changes` job, pst-3vp3w) but the commit-back steps below
+        # clone over HTTPS, and this step's `apt-get update` primes
+        # the package index for every later install.
         run: |
           apt-get update
           apt-get install -y --no-install-recommends ca-certificates git
@@ -94,37 +172,6 @@ jobs:
         # Running before the engine install also fails fast on render
         # PRs.
         run: python3 -m pytest scripts/ -v
-
-      - name: Filter paths
-        id: filter
-        # st-a50: smart-render is an OPTIMIZATION, not a hard
-        # dependency. paths-filter shells out to git operations that
-        # still hit container/.git incompatibility (after st-yzo
-        # installed git itself), so let the step fail soft — the
-        # downstream gates fall back to "render everything" when
-        # steps.filter.outcome == 'failure'. Proper redesign (run
-        # paths-filter in a separate non-container job) is filed as
-        # the st-2nv follow-up.
-        continue-on-error: true
-        uses: dorny/paths-filter@v3
-        with:
-          # st-mrt: also surface the specific changed models/libs
-          # files so render-all + export-all can short-circuit to
-          # the touched subset. `list-files: shell` makes
-          # ${{ steps.filter.outputs.models_and_libs_files }} a
-          # whitespace-separated path list.
-          list-files: shell
-          filters: |
-            render:
-              - 'models/**'
-              - '.claude/skills/scad-render/**'
-              - '.claude/skills/_lib/**'
-              - 'scripts/render-all.py'
-              - 'scripts/vendor-libs.sh'
-              - 'libs/README.md'
-            models_and_libs:
-              - 'models/*.scad'
-              - 'libs/**'
 
       - name: Install pinned OpenSCAD engine
         # st-mb1: replace the container's openscad with the exact
@@ -165,20 +212,25 @@ jobs:
       - name: Smart-render mode summary
         # st-a50: surface in the workflow summary which path the run
         # is taking so future "why did everything re-render?" goes to
-        # one place instead of the per-step logs.
+        # one place instead of the per-step logs. pst-3vp3w: push and
+        # PR now take the same filtered path (no push bypass).
+        env:
+          EVENT: ${{ github.event_name }}
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          FILTER_RENDER: ${{ needs.changes.outputs.render }}
         run: |
-          if [ "${{ steps.filter.outcome }}" = "failure" ]; then
-            echo "smart-render: **fallback render-all** (paths-filter failed)" >> "$GITHUB_STEP_SUMMARY"
-          elif [ "${{ steps.filter.outputs.render }}" = "true" ]; then
-            echo "smart-render: **filtered** — touched files = \`${{ steps.filter.outputs.models_and_libs_files }}\`" >> "$GITHUB_STEP_SUMMARY"
-          elif [ "${{ github.event_name }}" = "push" ]; then
-            echo "smart-render: **push render-all** (push event always renders)" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$CHANGES_RESULT" != "success" ]; then
+            echo "smart-render ($EVENT): **fallback render-all** (changes job: $CHANGES_RESULT)" >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$FILTER_RENDER" = "true" ] && [ -n "$CHANGED_PATHS" ]; then
+            echo "smart-render ($EVENT): **filtered** — render=true, models/libs subset = \`$CHANGED_PATHS\`" >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$FILTER_RENDER" = "true" ]; then
+            echo "smart-render ($EVENT): **filtered → render-all** — render=true but no models/*.scad or libs/** in the diff (render tooling changed), so ALL models" >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "smart-render: **skipped** (no render-relevant paths changed)" >> "$GITHUB_STEP_SUMMARY"
+            echo "smart-render ($EVENT): **skipped** — render=false, 0 models (no render-relevant paths changed)" >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Install python deps for measure + invariants
-        if: github.event_name == 'push' || steps.filter.outputs.render == 'true' || steps.filter.outcome == 'failure'
+        if: env.RENDER_NEEDED == 'true'
         # The openscad/openscad image is Debian-based but minimal —
         # bundle only what openscad itself needs. measure.py +
         # invariants need numpy, PIL, and trimesh; rtree is trimesh's
@@ -188,7 +240,7 @@ jobs:
         # .claude/skills/_lib/openscad.py invokes to drive openscad
         # headless; `xauth` is required by `xvfb-run -a` for the
         # auth-cookie dance. (git + ca-certificates are installed
-        # earlier for paths-filter, st-yzo; pytest earlier for the
+        # earlier, st-yzo; pytest earlier for the
         # unconditional scripts test step, pst-9mi.)
         #
         # apt-get is preferred (deb-packaged wheels are pre-built);
@@ -202,21 +254,20 @@ jobs:
                  numpy pillow trimesh rtree
 
       - name: Vendor SCAD libraries
-        if: github.event_name == 'push' || steps.filter.outputs.render == 'true' || steps.filter.outcome == 'failure'
+        if: env.RENDER_NEEDED == 'true'
         run: bash scripts/vendor-libs.sh
 
       - name: Render all models
-        if: github.event_name == 'push' || steps.filter.outputs.render == 'true' || steps.filter.outcome == 'failure'
+        if: env.RENDER_NEEDED == 'true'
         # st-mrt: pass the diff-derived models+libs file list so
         # render-all.py renders only the touched subset (a libs/
         # change still forces a full re-render). Empty string ⇒
-        # render-all defaults to ALL models.
-        env:
-          CHANGED_PATHS: ${{ steps.filter.outputs.models_and_libs_files }}
+        # render-all defaults to ALL models. CHANGED_PATHS is the
+        # job-level env from needs.changes (pst-3vp3w).
         run: python3 scripts/render-all.py --changed-paths "$CHANGED_PATHS"
 
       - name: Export STLs + invariants
-        if: github.event_name == 'push' || steps.filter.outputs.render == 'true' || steps.filter.outcome == 'failure'
+        if: env.RENDER_NEEDED == 'true'
         # The export job produces exports/<stem>.stl which the invariant
         # driver then analyzes. Either step failing is a CI failure —
         # don't keep building on a broken geometry.
@@ -224,14 +275,12 @@ jobs:
         # st-mrt: same --changed-paths short-circuit as the render
         # step — export-all skips unchanged models, but always runs
         # check-invariants-all on whatever exports/ already contains.
-        env:
-          CHANGED_PATHS: ${{ steps.filter.outputs.models_and_libs_files }}
         run: |
           python3 scripts/export-all.py --changed-paths "$CHANGED_PATHS"
           python3 scripts/check-invariants-all.py
 
       - name: Commit regenerated renders (PRs)
-        if: github.event_name == 'pull_request' && (steps.filter.outputs.render == 'true' || steps.filter.outcome == 'failure')
+        if: github.event_name == 'pull_request' && env.RENDER_NEEDED == 'true'
         # Best-effort auto-commit (st-491). openscad nightly renders
         # are non-deterministic and main is protected; the proper
         # redesign of this auto-commit-renders pipeline is filed as
@@ -315,7 +364,9 @@ jobs:
           fi
 
       - name: Commit regenerated renders (main)
-        if: github.event_name == 'push'
+        # pst-3vp3w: gated like the PR flavour — a push that rendered
+        # nothing has nothing to commit back.
+        if: github.event_name == 'push' && env.RENDER_NEEDED == 'true'
         # Best-effort auto-commit (st-491) — see matching comment on
         # the PR-flavour step above. Failure here should not gate
         # prod deploy; redesign tracked in st-fqc.
@@ -377,7 +428,8 @@ jobs:
     name: e2e tests (playwright)
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: unit
+    # pst-3vp3w (CI P6): no `needs: unit` — e2e shares nothing with the
+    # vitest job, and both stay required checks on their own.
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -392,12 +444,12 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      # pst-3vp3w (CI P6): no install-deps on a cache hit — the
+      # ubuntu-latest image already carries chromium's system libs.
+      # A miss still installs them via --with-deps.
       - name: Install Playwright browsers
         if: steps.pw-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
-      - name: Install Playwright system deps
-        if: steps.pw-cache.outputs.cache-hit == 'true'
-        run: npx playwright install-deps chromium
 
       # SCAD libraries (BOSL2, QuackWorks) are vendored by the `prebuild`
       # npm hook — scripts/vendor-libs.sh runs automatically as part of
