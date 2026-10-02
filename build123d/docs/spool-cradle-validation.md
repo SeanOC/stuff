@@ -617,20 +617,27 @@ requires each to raise. Both are also swept as valid cells under
 
 There are four `openconnect.slot_cutter()` slots (pst-qnekl port, snap
 nub on, 0.1/0.1 clearance). Columns are at x = ±14, adjacent tile centres.
-The two seat rows are one 28 mm tile apart. The upper slot roof
-(`OC_SLOT_TOP` = 9.0 mm above the seat) is exactly WEB = 2.4 mm below the
-plate top, which keeps the upper heads as high as the plate allows.
+The upper slot roof (`OC_SLOT_TOP` = 9.0 mm above the seat) is exactly
+WEB = 2.4 mm below the plate top, which keeps the upper heads as high as the
+plate allows. Since pst-fmvzb the lower row is the lowest whole tile below
+it whose on-ramp floor (`OC_SLOT_BOTTOM` = 13.2 mm below the seat) stays
+WEB + 0.5 = 2.9 mm above the bed relief (`oc_seats()`), so two slots sit
+near the top and two near the bottom. Before pst-fmvzb the rows were one
+tile apart (seats 75.4/103.4 and 47.4/75.4 below).
 
-| Grid length | Plate height (t = 5.5) | Seats Z | On-ramps Z | Slot Z extents | Cases |
-| ---: | ---: | --- | --- | --- | --- |
-| 112 | 114.8 | 75.4, 103.4 | 64.8, 92.8 | 62.2–84.4, 90.2–112.4 | both presets, every 25° corner |
-| 84 | 86.8 | 47.4, 75.4 | 36.8, 64.8 | 34.2–56.4, 62.2–84.4 | every 45° corner |
+| Grid length | Plate height (t = 5.5) | Seats Z | On-ramps Z | Slot Z extents | Row spacing | Cases |
+| ---: | ---: | --- | --- | --- | ---: | --- |
+| 112 | 114.8 | 19.4, 103.4 | 8.8, 92.8 | 6.2–28.4, 90.2–112.4 | 84 (3 tiles) | both presets, every 25° corner |
+| 84 | 86.8 | 19.4, 75.4 | 8.8, 64.8 | 6.2–28.4, 62.2–84.4 | 56 (2 tiles) | every 45° corner |
 
 Each slot spans x −13.0…+8.6 about its axis, because the on-ramp leans to
-−X. The webs are 5.8 mm between rows and 6.4 mm between columns. The plate
-margin at the 82 mm presets is 14.0 mm (left) and 18.4 mm (right). The
-lowest slot floor is ≥34 mm above the bed, so the bed edge is solid
-everywhere. Backing is plate thickness − 2.7: 2.8 mm at the presets and
+−X. The solid plate between rows is 61.8 mm (112 grid) or 33.8 mm (84
+grid) tall, and 6.4 mm between columns. The plate margin at the 82 mm
+presets is 14.0 mm (left) and 18.4 mm (right). The lowest slot floor is
+6.2 mm above the bed (t = 5.5; 5.8 mm at t = 5.1), above the 2.9 mm floor
+rule, so the bed edge is solid everywhere. Grid lengths 84 and 112 are the
+only ones the parameter ranges reach; a 28 mm grid would leave no tile for
+the lower row and `oc_seats()` raises with the minimum root_height. Backing is plate thickness − 2.7: 2.8 mm at the presets and
 2.4 mm at the 5.1 mm minimum.
 
 Installation: each head pushes in along +Y at its on-ramp, the holder
@@ -674,7 +681,10 @@ at a 66 mm spool and 31.1–33.5 mm at 67 mm, clear of every slot (|x| ≤ 27).
 Their roots start at y = t − 2.4 = 3.1, behind the 2.7 mm pockets. The
 truss-section test runs on both openConnect presets and checks that no web
 section meets a pocket. The upper heads sit 103.4 mm above the bed edge (the
-wall pivot), against 75 mm for the channel's top seat row. No pull-out
+wall pivot), against 75 mm for the channel's top seat row. Since pst-fmvzb
+the lower heads sit 19.4 mm above it. The pull-off lever about the
+bed-edge pivot is set by the upper row, so it is unchanged; the lower row
+now locates the plate near its bottom edge as well as its top. No pull-out
 rating is claimed for openConnect heads. The physical validation bead
 **pst-m9xt** still applies.
 
@@ -927,3 +937,43 @@ Both points presets are **+7,622.221 mm³ (+7.0 %)** heavier than before
 
 The plate outline and body are unchanged. The slot is the official
 envelope, so nothing is oversized.
+
+## openConnect rows spread top and bottom (pst-fmvzb)
+
+Operator request (2026-10-01): the four openConnect slots sit two at the top
+and two at the bottom of the plate. The upper row is unchanged. The lower
+row drops from one tile below it to the lowest 28 mm grid row whose on-ramp
+floor stays WEB + 0.5 = 2.9 mm above the bed relief (`oc_seats()`, the
+cutter-bbox rule the openConnect layout test already asserted). Columns
+(±14), on-ramp offsets and the install motion are unchanged.
+
+| Grid length | Old lower seat | New lower seat | Row spacing | Lower slot floor |
+| ---: | ---: | ---: | ---: | ---: |
+| 112 (both presets, 25° corners) | 75.4 | 19.4 | 84 (3 tiles) | 6.2 |
+| 84 (45° corners) | 47.4 | 19.4 | 56 (2 tiles) | 6.2 |
+
+`OC_SLOT_BOTTOM` (13.2 mm, the on-ramp's clearance floor below the seat)
+is derived from the openConnect constants and pinned to the cutter bbox by
+a test, as `OC_SLOT_TOP` is. A grid with no room for a second tile raises a
+ValueError naming the minimum root_height (> 28 mm); the parameter ranges
+only reach 84 and 112. A new test checks solid plate between the rows over
+the full pocket footprint, the points-style twin.
+
+The `channel` and `points` styles are unchanged; their preset STLs
+regenerate byte-identical.
+
+### Volumes
+
+| Preset | mount_style | Volume (mm³) |
+| --- | --- | ---: |
+| `bambu_reusable_200` | channel | 104,214.349 |
+| `ams_generic_200` | channel | 105,881.681 |
+| `bambu_reusable_200_points` | points (Fix Point) | 116,558.054 |
+| `ams_generic_200_points` | points (Fix Point) | 118,225.386 |
+| `bambu_reusable_200_openconnect` | openconnect | 136,365.579 |
+| `ams_generic_200_openconnect` | openconnect | 138,724.712 |
+
+The openConnect presets change by −0.004 mm³ (136,365.583 → 136,365.579 and
+138,724.716 → 138,724.712): moving a pocket removes the same slot volume,
+and the difference is OCCT volume-integration noise at the new
+position. The plate outline and body are unchanged.

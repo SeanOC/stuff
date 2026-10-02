@@ -11,10 +11,10 @@ from build123d import Axis, Box, Cylinder, Plane, Pos, Rot, section
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from holders.registry import all_models
 all_models()  # Preserve the manifest emitter's registration order.
-from holders.spool_cradle import (APEX_HEIGHT, FP_MOUNT, MOUNT, OC_MOUNT, OC_SLOT_TOP, PARAMS,
+from holders.spool_cradle import (APEX_HEIGHT, FP_MOUNT, MOUNT, OC_MOUNT, OC_SLOT_BOTTOM, OC_SLOT_TOP, PARAMS,
                                    POINT_ROW_SPACING, SPEC, WEB, CHORD, check_plate,
                                    dimensions, holder, mount_fixtures, mount_for_values,
-                                   point_seats, truss_openings)
+                                   oc_seats, point_seats, truss_openings)
 from multibuild.constants import PITCH, large_hole_center, small_hole_center
 from multibuild import fixpoint as fp
 from multibuild.multiconnect import POCKET_DEPTH
@@ -748,9 +748,22 @@ def test_openconnect_plate_floors():
             dimensions({'mount_style': 'openconnect', name: value})
 
 
-def test_openconnect_slot_top_is_the_cutter_roof():
+def test_openconnect_slot_extents_are_the_cutter_bbox():
     # OCCT bounding boxes overshoot by ~1e-7.
-    assert OC_SLOT_TOP == pytest.approx(slot_cutter().bounding_box().max.Z, abs=1e-6)
+    box = slot_cutter().bounding_box()
+    assert OC_SLOT_TOP == pytest.approx(box.max.Z, abs=1e-6)
+    assert OC_SLOT_BOTTOM == pytest.approx(-box.min.Z, abs=1e-6)
+
+
+def test_openconnect_lower_row_floor_guard():
+    # pst-fmvzb: the lower row is the lowest whole tile whose on-ramp keeps
+    # WEB + 0.5 above the bed relief. Every reachable grid length (84, 112)
+    # leaves >= 2 tiles; a 56 mm grid leaves one and 28 mm none.
+    upper = 56-WEB-OC_SLOT_TOP+2.4
+    assert oc_seats(56, 2.4) == pytest.approx((upper-oc.TILE_SIZE, upper))
+    with pytest.raises(ValueError, match=r"mount_style='openconnect' needs root_height > 28 mm "
+                                         r'\(53.10 mm slot span\); grid length is 28 mm'):
+        oc_seats(28, 2.4)
 
 
 @pytest.fixture(scope='module', params=OC_PRESETS, ids=lambda p: p.id)
@@ -768,11 +781,15 @@ def test_openconnect_layout(oc_model):
     seats = [s.position for s in fx.seat_locs]
     assert sorted({round(s.X, 6) for s in seats}) == [-14, 14]
     lower, upper = sorted({round(s.Z, 6) for s in seats})
-    assert upper-lower == pytest.approx(oc.TILE_SIZE)
+    # pst-fmvzb: two near the top, two near the bottom, on whole tiles.
+    tiles = (upper-lower)/oc.TILE_SIZE
+    assert tiles == pytest.approx(round(tiles)) and round(tiles) >= 2
     boxes = [c.bounding_box() for c in fx.cutters]
-    # Upper roof WEB below the plate top; lower slots well above the bed.
+    # Upper roof WEB below the plate top; the lower on-ramps keep WEB + 0.5
+    # above the bed relief, and one tile lower would not.
     assert p['plate_height']-max(b.max.Z for b in boxes) == pytest.approx(WEB)
-    assert min(b.min.Z for b in boxes) >= WEB+.5
+    floor = min(b.min.Z for b in boxes)
+    assert WEB+.5 <= floor < WEB+.5+oc.TILE_SIZE
     assert all(-p['plate_width']/2+2.4 <= b.min.X and b.max.X <= p['plate_width']/2-2.4
                for b in boxes)
     # One push-in, shift and downward slide seats all four heads at once.
@@ -781,6 +798,22 @@ def test_openconnect_layout(oc_model):
     assert moves == {(oc.ONRAMP_SHIFT, 0, oc.MOVE_DISTANCE)}
     assert p['plate_thickness']-p['pocket_depth'] == pytest.approx(2.8)
     assert model.bounding_box().size.X == pytest.approx(84-2*p['guide_gap'])
+
+
+def test_openconnect_solid_between_rows(oc_model):
+    values, model = oc_model
+    p = dimensions(values)
+    boxes = [c.bounding_box() for c in mount_fixtures(OC_MOUNT, values).cutters]
+    for x in (-oc.TILE_SIZE/2, oc.TILE_SIZE/2):
+        lower, upper = sorted((b for b in boxes if b.min.X < x < b.max.X), key=lambda b: b.min.Z)
+        # Solid plate between the rows, across the full pocket footprint.
+        gap = upper.min.Z-lower.max.Z
+        assert gap > oc.TILE_SIZE
+        between = Pos((lower.min.X+lower.max.X)/2, p['pocket_depth']/2, (lower.max.Z+upper.min.Z)/2)*Box(
+            lower.size.X, p['pocket_depth'], gap-.2)
+        assert (model & between).volume == pytest.approx(between.volume, rel=1e-6)
+        # No pocket opens through the bottom edge.
+        assert model.is_inside((x, p['pocket_depth']/2, 1))
 
 
 def test_openconnect_truss_returns_to_backing(oc_model):

@@ -12,7 +12,8 @@ mount_style='points' swaps the channels for four MultiBuild Fix Point slots
 (2 columns x 2 rows 50 mm apart, lip end up, solid plate between) that hang
 on Fix Points in the board; the body is the same.
 mount_style='openconnect' carries four openConnect slots for an openGrid
-wall (28 mm tiles, 84 mm holder cadence, 2 columns x 2 rows 28 mm apart);
+wall (28 mm tiles, 84 mm holder cadence, 2 columns x 2 rows: one under the
+plate top, one at the lowest tile that keeps the bottom floor);
 the body is the same, only the grid and the plate floors change.
 """
 from __future__ import annotations
@@ -44,6 +45,8 @@ GRIDS = {
 }
 # openConnect slot roof above its seat: the clearance-grown flange outline.
 OC_SLOT_TOP = oc.HEAD_WIDTH/2+oc.BACK_POS_OFFSET+oc.SIDE_CLEARANCE  # 9.0
+# The on-ramp's clearance floor, below the seat.
+OC_SLOT_BOTTOM = oc.HEAD_HEIGHT+2*oc.SIDE_CLEARANCE+oc.MOVE_DISTANCE+oc.ONRAMP_CLEARANCE-OC_SLOT_TOP  # 13.2
 
 PARAMS = tuple(Param(name, 'number', default, min=lo, max=hi, step=step,
                     unit='deg' if name == 'cradle_angle' else 'mm', label=label)
@@ -107,9 +110,7 @@ def dimensions(values=None):
     length = math.ceil(root_h/pitch)*pitch
     backing = p['plate_thickness']-depth
     if p['mount_style'] == 'openconnect':
-        # Upper slot roof WEB below the plate top; lower row one tile down.
-        upper = length+backing-WEB-OC_SLOT_TOP
-        rows = (upper-pitch, upper)
+        rows = oc_seats(length, backing)
         ramps = tuple(z-oc.MOVE_DISTANCE for z in rows)
     else:
         ramps = tuple(pitch/2+i*pitch for i in range(int(length/pitch)-1))
@@ -390,6 +391,25 @@ def point_seats(channel_length):
     return (lower, upper)
 
 
+def oc_seats(channel_length, backing):
+    """Seat heights of the two openConnect rows in each column.
+
+    The upper slot roof sits WEB below the plate top, which keeps the upper
+    heads as high as the plate allows. The lower row is the lowest whole tile
+    below it whose on-ramp keeps a WEB + 0.5 mm floor above the bed relief,
+    so the rows stand as far apart as the board grid allows.
+    """
+    upper = channel_length+backing-WEB-OC_SLOT_TOP
+    tiles = math.floor((upper-OC_SLOT_BOTTOM-(WEB+.5)+1e-9)/oc.TILE_SIZE)
+    if tiles < 1:
+        # dimensions() rounds root_height up to the 28 mm grid length.
+        span = 2*WEB+.5+OC_SLOT_TOP+oc.TILE_SIZE+OC_SLOT_BOTTOM-backing
+        root = (math.ceil(span/oc.TILE_SIZE-1e-9)-1)*oc.TILE_SIZE
+        raise ValueError(f"mount_style='openconnect' needs root_height > {root:.0f} mm "
+                         f'({span:.2f} mm slot span); grid length is {channel_length:.0f} mm')
+    return (upper-tiles*oc.TILE_SIZE, upper)
+
+
 def mount_fixtures(mount_type, values):
     """Fixtures for the selected style's mount; None for the other mount."""
     if mount_type not in (MOUNT, OC_MOUNT, FP_MOUNT):
@@ -664,7 +684,7 @@ _DEFAULT_SECTION_Y = 7 + 3 + 200 / 2
 SPEC = register(ModelSpec(
     name='holder_spool_cradle', build=lambda values: holder(**values),
     title='Spool cradle (Multibuild)', category_id='multiboard',
-    description='Single spool bookshelf cradle with wide inboard saddle rails, outboard placement guides (omitted when reach is less than 2.4 mm plus saddle clearance) and closed truss webs, in three mount styles: two full-height Multiconnect channels (channel), four MultiBuild Fix Point slots in two rows 50 mm apart, lip end up (points), or four openConnect slots for an openGrid wall on the 28 mm tile pitch and 84 mm cadence (openconnect). Flange-rim support; standing PETG/PCTG print with support allowed only in the mount pockets.',
+    description='Single spool bookshelf cradle with wide inboard saddle rails, outboard placement guides (omitted when reach is less than 2.4 mm plus saddle clearance) and closed truss webs, in three mount styles: two full-height Multiconnect channels (channel), four MultiBuild Fix Point slots in two rows 50 mm apart, lip end up (points), or four openConnect slots for an openGrid wall on the 28 mm tile pitch and 84 mm cadence, two under the plate top and two at the lowest tile that keeps the bottom floor (openconnect). Flange-rim support; standing PETG/PCTG print with support allowed only in the mount pockets.',
     tags=('holder', 'multiboard', 'opengrid', 'spool', 'multiconnect-channel',
           'fixpoint-slots', 'openconnect'), params=PARAMS,
     mounts=(MOUNT, OC_MOUNT, FP_MOUNT), mount_for_values=mount_for_values, print_orientation=(0, 0, 1),
