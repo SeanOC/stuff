@@ -394,8 +394,8 @@ jobs:
         # PR's checks run (GITHUB_TOKEN pushes and PRs trigger no
         # workflows, pst-dm9) — and this repo has "Allow GitHub Actions
         # to create pull requests" off, so GITHUB_TOKEN cannot open the
-        # PR at all. The GITHUB_TOKEN fallback only keeps the step from
-        # crashing on a fork-less mirror without the secret.
+        # PR at all. Without the secret the step therefore fails loudly
+        # at `gh pr create` (red step, after the warning below).
         env:
           BASE: ${{ github.ref_name }}
           BOT_BRANCH: gc-pilot/ci-renders
@@ -443,17 +443,29 @@ jobs:
           git checkout -q -b "$BOT_BRANCH"
 
           # Carry over an OPEN bot PR's renders so a second model merge
-          # before it lands does not drop the first one's thumbnails:
-          # the bot branch is always one commit on top of main, so its
-          # own changes are BOT^..BOT. This run's fresh renders win for
-          # the models it re-rendered.
+          # before it lands does not drop the first one's thumbnails.
+          # The file list comes from the PR's own (server-side,
+          # three-dot) diff, NOT BOT^..BOT: pr-autoupdate merges main
+          # into the bot branch, so its head is not always main + 1.
+          # This run's fresh renders win for the models it re-rendered,
+          # and main wins where a newer render landed there since the
+          # PR's merge base (its blob there != at the merge base).
           pr=$(gh pr list --head "$BOT_BRANCH" --base "$BASE" --state open --json number --jq '.[0].number // empty')
           bot_tree=""
-          if [ -n "$pr" ] && git fetch -q --depth 2 origin "$BOT_BRANCH"; then
+          if [ -n "$pr" ] && git fetch -q --depth 1 origin "$BOT_BRANCH"; then
             bot_tree=$(git rev-parse FETCH_HEAD:renders)
-            git diff --name-only --no-renames FETCH_HEAD^ FETCH_HEAD -- renders/ | while IFS= read -r path; do
+            carry=$(gh pr diff "$pr" --name-only | grep '^renders/' || true)
+            mb=$(gh api "repos/$GH_REPO/compare/$BASE...$BOT_BRANCH" --jq .merge_base_commit.sha)
+            printf '%s\n' "$carry" | while IFS= read -r path; do
+              [ -n "$path" ] || continue
               stem=$(printf '%s' "$path" | cut -d/ -f2)
               case " $fresh_stems " in *" $stem "*) continue ;; esac
+              main_blob=$(git rev-parse -q --verify "HEAD:$path" || true)
+              mb_blob=$(gh api "repos/$GH_REPO/contents/$path?ref=$mb" --jq .sha 2>/dev/null || true)
+              if [ "$main_blob" != "$mb_blob" ]; then
+                echo "not carried (newer render on $BASE): $path"
+                continue
+              fi
               if git cat-file -e "FETCH_HEAD:$path" 2>/dev/null; then
                 git checkout -q FETCH_HEAD -- "$path"
               else
@@ -469,7 +481,17 @@ jobs:
             mkdir -p "renders/$stem"
             cp -r "$GITHUB_WORKSPACE/renders/$stem/." "renders/$stem/"
           done
-          git add renders/
+          # Mirror render-all.py's stale-dir prune: a renders/<stem>/
+          # with no models/<stem>.scad is a deleted model's leftover.
+          for dir in renders/*/; do
+            [ -d "$dir" ] || continue
+            stem=$(basename "$dir")
+            [ -f "models/$stem.scad" ] && continue
+            git rm -rq --ignore-unmatch -- "renders/$stem"
+            rm -rf -- "renders/$stem"
+            echo "pruned stale renders/$stem/"
+          done
+          git add -A renders/
 
           # Content-aware skip (st-tiu) — compare trees, not the cached
           # patch (cp touches mode/mtime). Unchanged vs main ⇒ no PR.
@@ -507,9 +529,9 @@ jobs:
           if [ -n "$pr" ]; then
             gh pr edit "$pr" --body "$body"
           else
-            gh pr create --base "$BASE" --head "$BOT_BRANCH" \
-              --title "ci: regenerate model thumbnails" --body "$body"
-            pr=$(gh pr list --head "$BOT_BRANCH" --base "$BASE" --state open --json number --jq '.[0].number')
+            url=$(gh pr create --base "$BASE" --head "$BOT_BRANCH" \
+              --title "ci: regenerate model thumbnails" --body "$body")
+            pr=${url##*/}
           fi
           gh pr edit "$pr" --add-label bot-renders \
             || echo "::warning::could not label PR #$pr bot-renders (label missing?)"

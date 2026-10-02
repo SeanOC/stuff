@@ -241,7 +241,9 @@ directly — so the render job commits regenerated thumbnails back:
   regenerated `renders/` tree differs from `main`, rebuild the bot
   branch **`gc-pilot/ci-renders`** as one commit on top of `main`
   (force-push confined to that branch), carrying over any still-open
-  bot PR's renders for models this run did not re-render, and open
+  bot PR's renders (its server-side PR diff, not `BOT^..BOT` —
+  pr-autoupdate merges main into it) for models this run did not
+  re-render and where `main` has no newer render, and open
   or refresh ONE PR "ci: regenerate model thumbnails" (label
   `bot-renders`). The `gc-pilot/` prefix is what the codex gate and
   merge-green orders match, so it is reviewed and merged like any
