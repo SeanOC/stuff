@@ -191,6 +191,8 @@ def assert_mount_layout(values):
 
 # Presets are verified by test_mount_contracts.test_model_mount_contract
 # (defaults + every preset); only the thin-plate corners are cradle-only.
+# 20-45 s each (registry-sized build + contract) -> bd123 `audit` job (pst-24tr6).
+@pytest.mark.audit
 @pytest.mark.parametrize('values',[
     {'plate_width':68,'plate_thickness':6.6},
     {'plate_width':68,'plate_thickness':6.6,'mount_style':'points'},

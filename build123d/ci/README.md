@@ -148,10 +148,12 @@ gives you that second run). Then confirm the Cloud Run revision and a
 `.github/workflows/bd123.yml` is split into three jobs, and pytest markers in
 `build123d/pyproject.toml` decide which job runs each test. **fast** (`build123d
 fast`) runs the manifest checks, every test that is neither `audit` nor
-`budget`, then the `budget` tests serially (`-n 0`, because the 60 s / 120 s
-budgets measure serial CPU time), then the export. **audit** (`build123d
+`budget`, then the `budget` tests serially (`-n 0`, because the 60 s per-model
+budget measures serial CPU time), then the export. **audit** (`build123d
 audit`) runs `audit and not audit_full`: every registry-sized print audit,
-including each cradle style's presets, `PRINT_CORNER` and the reproducers.
+including each cradle style's presets, `PRINT_CORNER` and the reproducers,
+plus the spool cradle's mount-contract tests (registry-sized cradle builds,
+20–130 s each — they made `fast` 9m48s on the runner).
 **audit_full** (`build123d audit (full sweep)`) runs the cradle corner sweep
 (`audit_full`) as three `pytest-split` shards, balanced by the committed
 `build123d/tests/.test_durations`. A PR runs it only when it touches

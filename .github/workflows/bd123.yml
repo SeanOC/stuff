@@ -6,7 +6,8 @@
 # pst-24tr6 (CI P3+P4): three jobs selected by pytest marker (the contract is
 # in build123d/ci/README.md and enforced by build123d/tests/conftest.py):
 #   fast        everything that is not an audit, plus the serial budget step
-#   audit       every registry-sized print audit except the cradle corner sweep
+#   audit       every registry-sized print audit except the cradle corner sweep,
+#               plus the spool cradle mount contracts (registry-sized builds)
 #   audit_full  the cradle corner sweep, 3 pytest-split shards; PRs that touch
 #               model/audit code, every push to main, and nightly
 # A command-line -m REPLACES pyproject's addopts "-m 'not upstream'", so every
@@ -55,7 +56,7 @@ jobs:
       - name: audit budgets (serial)
         # The per-model audit budget is a serial CPU-time measurement, so it
         # skips under xdist (test_print_audit.py); this step is where the
-        # 60 s / 120 s (cradle) budgets are enforced.
+        # 60 s per-model budget is enforced.
         run: uv run pytest tests/ -q -n 0 -rf --tb=short -m "budget and not upstream"
       - name: export all models (STL + GLB + PNG)
         run: uv run python scripts/export.py
