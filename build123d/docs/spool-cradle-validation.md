@@ -805,9 +805,16 @@ can lift the holder 6 mm and off, as with any Fix Point accessory.
 
 **Printability.** The print audit excludes the slot cutters as library
 geometry, as for the other styles. Run without that exclusion, the audit
-reports a 90° downward face inside the pockets. The 3.2 mm-deep slots may
-still need support in the standing print; that is the same allowance the
-model header already grants the mount pockets.
+reports a 90° downward face inside the pockets. Located on
+`bambu_reusable_200_points`, each pocket has exactly two such faces, both
+narrower than one 0.42 mm extrusion line:
+
+- the lip's face land, 4.97 × 0.40 mm, at the top of the face opening
+- the step at the top of the well, 7.04 × 0.30 mm, at full depth
+
+Every other downward face in the pockets is the profile's 45° chamfer. So
+the standing print needs no support in the pockets. The model header's
+pocket allowance is kept, but these slots do not use it.
 
 ### Volumes
 
