@@ -25,9 +25,9 @@ jobs:
   bd123:
     name: build123d models
     runs-on: ubuntu-latest
-    # pst-mxfqk: serial pytest is ~108 min on CI (2026-10-01). Under -n 2 it
-    # reached 97% at 44.7 min (a18e413); 60 is the job plus ~25% headroom.
-    timeout-minutes: 60
+    # pst-mxfqk: the serial suite's CI median is ~74 min; split across -n 4
+    # that is ~20-30 min with the cradle tail, so 70 only catches a hang.
+    timeout-minutes: 70
     defaults: { run: { working-directory: build123d } }
     steps:
       - uses: actions/checkout@v4
@@ -44,13 +44,12 @@ jobs:
         # Note: job working-directory is build123d/, hence the relative path.
         run: git diff --exit-code manifest.json
       - name: tests (registry-driven manifold + manifest schema + bake)
-        # -n 2: what -n auto already picked here (xdist counts physical cores).
-        # Pinned so it never grows to 4: a worker peaks at 5.2 GB RSS, and four
-        # of those do not fit the 16 GB runner.
+        # -n 4, not auto: -n auto counts PHYSICAL cores (psutil) and picks 2 on
+        # this 4-vCPU runner. Memory is not the bound (measured: import 0.5 GB,
+        # serial suite 1.14 GB, cradle file <= 844 MB per xdist worker; 16 GB).
         # --dist load, not loadfile: most of the time is test_spool_cradle.py,
-        # which must spread across workers. -v prints one line per test as it
-        # finishes and -rf names the failures, so a cancelled run is readable.
-        run: uv run pytest tests/ -v -n 2 --dist load -rf --tb=short
+        # which must spread across workers. -rf names every failure.
+        run: uv run pytest tests/ -q -n 4 --dist load -rf --tb=short
       - name: export all models (STL + GLB + PNG)
         run: uv run python scripts/export.py
       # ---- ADDED (pst-ae3v): advisory VLM render review, Layer 2 of pst-3eun ----
