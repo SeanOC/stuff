@@ -23,7 +23,7 @@ from openconnect.slot import slot_cutter
 from scripts.export import export_stl
 from tests.mount_contracts import verify
 from tests import print_audit as pa
-from tests.print_audit import audit
+from tests.print_audit import _bed_chamfer, audit
 
 
 @pytest.fixture(scope='module')
@@ -74,6 +74,13 @@ def test_registered_default(part):
                                             'ams_generic_200_openconnect']
     assert not {'slot_count','slot_travel','snap_notches','pitch'} & SPEC.param_names()
     assert_contacts(part,dimensions())
+    # The default build's full audit is test_print_audit's holder_spool_cradle
+    # case (pst-mxfqk); these were the cradle-only extras of the dropped
+    # test_production_print_audit[default].
+    assert part.is_valid and len(part.solids()) == 1
+    hmin=min(v.Z for v in part.vertices())
+    assert _bed_chamfer(part,SPEC.print_orientation,hmin) == 'present'
+    assert len(mount_fixtures(MOUNT,{}).cutters) == 2
 
 
 @pytest.mark.parametrize('preset',SPEC.presets,ids=lambda p:p.id)
@@ -91,6 +98,9 @@ def test_presets_mesh_and_envelope(preset,tmp_path):
     assert bb.min.Z == pytest.approx(0,abs=1e-6)
     assert bb.size.X < 340 and bb.size.Y < 320 and bb.size.Z < 340
     assert_contacts(part,p)
+    # Each preset's mount contract is verified by test_mount_contracts
+    # (pst-mxfqk); the cradle-specific layout checks stay here.
+    assert_mount_layout(preset.values)
 
 
 NUMERIC=[q for q in PARAMS if q.kind == 'number']
@@ -162,12 +172,7 @@ def test_three_holder_channel_alignment(part,cadence):
     assert rows[0] == rows[1] == rows[2]
 
 
-@pytest.mark.parametrize('values',[p.values for p in SPEC.presets]+[
-    {'plate_width':68,'plate_thickness':6.6},
-    {'plate_width':68,'plate_thickness':6.6,'mount_style':'points'},
-    {'plate_width':70,'plate_thickness':5.6,'mount_style':'points'},
-    {'plate_width':82,'plate_thickness':5.1,'mount_style':'openconnect'}])
-def test_mount_contract_and_backing(values):
+def assert_mount_layout(values):
     p=dimensions(values)
     mount=mount_for_values(p)
     absent=[m for m in SPEC.mounts if m != mount]
@@ -180,10 +185,23 @@ def test_mount_contract_and_backing(values):
         assert len(fx.cutters) == len(fx.seat_locs) == len(fx.onramp_locs) == 4
     assert p['plate_height']-p['channel_length'] == pytest.approx(p['plate_thickness']-p['pocket_depth'])
     assert p['plate_thickness']-p['pocket_depth'] >= 2.4-1e-9
+    assert not any(verify(SPEC,m,SPEC.resolve_values(values)) for m in absent)
+    return mount
+
+
+# Presets are verified by test_mount_contracts.test_model_mount_contract
+# (defaults + every preset); only the thin-plate corners are cradle-only.
+@pytest.mark.parametrize('values',[
+    {'plate_width':68,'plate_thickness':6.6},
+    {'plate_width':68,'plate_thickness':6.6,'mount_style':'points'},
+    {'plate_width':70,'plate_thickness':5.6,'mount_style':'points'},
+    {'plate_width':82,'plate_thickness':5.1,'mount_style':'openconnect'}],
+    ids=['channel-thin-plate','points-thin-plate','points-plate-floor','openconnect-thin-plate'])
+def test_mount_contract_and_backing(values):
+    mount=assert_mount_layout(values)
     # Registered contract probes every actual pocket-back face locally,
     # every entry/drop, the entire low-to-high path, retention and closed top.
     assert verify(SPEC,mount,SPEC.resolve_values(values))
-    assert not any(verify(SPEC,m,SPEC.resolve_values(values)) for m in absent)
 
 
 def assert_truss_sections(part,p):
@@ -230,12 +248,14 @@ PRINT_CORNER = dict(spool_diameter=205, spool_width=70, flange_height=4,
                     wall_clearance=6)
 
 
-@pytest.mark.parametrize('values', [{}, SPEC.presets[0].values, PRINT_CORNER,
+# No 'default' case: test_print_audit::test_model_print_audit[holder_spool_cradle]
+# audits the default build (pst-mxfqk).
+@pytest.mark.parametrize('values', [SPEC.presets[0].values, PRINT_CORNER,
     dict(spool_width=50, guide_gap=.5, guide_height=12, rail_width=14, flange_height=4),
     dict(spool_width=70, guide_gap=2, guide_height=30, rail_width=14, flange_height=4),
     dict(spool_width=70, guide_gap=.5, guide_height=30, rail_width=6, saddle_clearance=1.5),
     REAR_LAND_CORNER],
-    ids=['default', 'bambu-shallow-root', 'diagonal-root-corner',
+    ids=['bambu-shallow-root', 'diagonal-root-corner',
          'maximum-reach-minimum-height', 'guides-omitted', 'insufficient-crest-room',
          'rear-land-corner'])
 def test_production_print_audit(values):

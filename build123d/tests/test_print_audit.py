@@ -16,6 +16,7 @@ Two layers, mirroring test_mount_contracts.py:
 Flip ``PRINT_AUDIT_REQUIRED = True`` (one line) to make the registry run a
 hard gate once the holder passes its own audit (design-guidelines §6 / AC 3).
 """
+import os
 import sys
 import time
 from pathlib import Path
@@ -98,6 +99,8 @@ _PER_MODEL_BUDGET_S = 60.0
 # produce many faces for the unchanged wall-thickness sampler. After batching
 # bed-relief booleans, profiling measured 2.9 s construction / 71.8 s audit;
 # CI measured 93.2 s total. Allow headroom only for this model, not other gates.
+# pst-mxfqk: budgets are CPU seconds (time.process_time) of a SERIAL run; the
+# budget test skips inside pytest-xdist workers (see the test).
 _MODEL_BUDGET_S = {"holder_spool_cradle": 120.0}
 
 _UP_Z = (0.0, 0.0, 1.0)
@@ -476,9 +479,34 @@ def _cup_lid_shank_exclusion(values):
 _MODEL_EXCLUSIONS = {'holder_cup_lid': _cup_lid_shank_exclusion}
 
 
+# pst-mxfqk: spec.name -> (report, seconds). Both registry tests below need the
+# same build + audit; doing it once per process halves the suite's audit time.
+# Never invalidated: specs are read-only for the whole run (and each xdist
+# worker has its own copy). A test that mutates a spec must not read this.
+_AUDITS: dict[str, tuple[PrintAuditReport, float]] = {}
+
+
 def _audit_model(spec) -> PrintAuditReport:
     """Audit a registered model at its declared print orientation, excluding
-    every declared mount's library-cutter envelopes."""
+    every declared mount's library-cutter envelopes. Memoised per model."""
+    return _timed_audit(spec)[0]
+
+
+def _timed_audit(spec) -> tuple[PrintAuditReport, float]:
+    """(report, CPU seconds of the first build + audit) for ``spec``.
+
+    process_time, not wall time, so waiting for a free core is not charged
+    (pst-mxfqk). It still counts slower execution on a shared hyperthread
+    core, so it is only comparable to the budget in a serial run.
+    """
+    if spec.name not in _AUDITS:
+        start = time.process_time()
+        report = _build_and_audit(spec)
+        _AUDITS[spec.name] = (report, time.process_time() - start)
+    return _AUDITS[spec.name]
+
+
+def _build_and_audit(spec) -> PrintAuditReport:
     values = spec.resolve_values()
     part = spec.build(values)
     cutters: list = []
@@ -493,10 +521,17 @@ def _audit_model(spec) -> PrintAuditReport:
 
 @pytest.mark.parametrize("spec", _SPECS, ids=[s.name for s in _SPECS])
 def test_model_audit_produces_report_within_budget(spec):
-    """Every registered model yields a report within its documented budget."""
-    start = time.time()
-    report = _audit_model(spec)
-    elapsed = time.time() - start
+    """Every registered model yields a report within its documented budget
+    (the CPU time of its one build + audit, whichever test ran it first)."""
+    # pst-mxfqk (mayor option D): under -n 4 on CI's 2 physical cores the
+    # cradle audit took 181 s of PROCESS CPU (serial: 93 s) — hyperthread
+    # contention inflates even CPU time ~2x, so no fixed budget holds under
+    # parallel load. The budget describes the serial measurement; pst-24tr6
+    # runs these tests serially (-n 0) in their own job.
+    if os.environ.get("PYTEST_XDIST_WORKER"):
+        pytest.skip("audit budget is a serial measurement; "
+                    "run with -n 0 or in the serial budget job")
+    report, elapsed = _timed_audit(spec)
     assert isinstance(report, PrintAuditReport)
     assert report.orientation == tuple(round(o, 6) for o in
                                        _unit(spec.print_orientation))
