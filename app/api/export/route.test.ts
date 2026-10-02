@@ -35,17 +35,17 @@ import { POST } from "./route";
 
 const MODEL = "tests/fixtures/bug_regression.scad";
 
-function post(params: Record<string, unknown>): Request {
+function post(params: Record<string, unknown>, model = MODEL): Request {
   return new Request("http://localhost/api/export", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ model: MODEL, params }),
+    body: JSON.stringify({ model, params }),
   });
 }
 
-async function callPost(params: Record<string, unknown>) {
+async function callPost(params: Record<string, unknown>, model = MODEL) {
   // POST only uses Request.json(); a plain Request satisfies it.
-  const res = await POST(post(params) as never);
+  const res = await POST(post(params, model) as never);
   const bytes = new Uint8Array(await res.arrayBuffer());
   return { res, bytes };
 }
@@ -212,5 +212,39 @@ describe("/api/export native render service path (st-d32)", () => {
     expect(res.headers.get("x-renderer")).toBe("native");
     expect(Array.from(bytes)).toEqual(Array.from(NATIVE_BYTES));
     expect(blobStore.size).toBe(0);
+  });
+});
+
+describe("/api/export download filename (pst-fcjqj)", () => {
+  beforeEach(() => {
+    blobStore.clear();
+    process.env.BLOB_READ_WRITE_TOKEN = "vercel_blob_rw_test";
+  });
+
+  afterEach(() => {
+    delete process.env.BLOB_READ_WRITE_TOKEN;
+  });
+
+  it("an unflagged model keeps stem.stl", async () => {
+    const { res } = await callPost({});
+    expect(res.headers.get("content-disposition")).toBe(
+      'attachment; filename="bug_regression.stl"',
+    );
+  });
+
+  it("a `filename`-flagged param names the file on MISS and HIT, defaults included", async () => {
+    const FLAGGED = "tests/fixtures/filename_flag.scad";
+    const round = 'attachment; filename="filename_flag-round.stl"';
+    const miss = await callPost({ style: "round" }, FLAGGED);
+    expect(miss.res.status).toBe(200);
+    expect(miss.res.headers.get("x-cache")).toBe("MISS");
+    expect(miss.res.headers.get("content-disposition")).toBe(round);
+    const hit = await callPost({ style: "round" }, FLAGGED);
+    expect(hit.res.headers.get("x-cache")).toBe("HIT");
+    expect(hit.res.headers.get("content-disposition")).toBe(round);
+    const dflt = await callPost({}, FLAGGED);
+    expect(dflt.res.headers.get("content-disposition")).toBe(
+      'attachment; filename="filename_flag-square.stl"',
+    );
   });
 });

@@ -500,7 +500,8 @@
             "channel",
             "points",
             "openconnect"
-          ]
+          ],
+          "filename": true
         }
       ],
       "presets": [
