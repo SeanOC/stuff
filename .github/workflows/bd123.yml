@@ -14,9 +14,9 @@ jobs:
   bd123:
     name: build123d models
     runs-on: ubuntu-latest
-    # pst-mxfqk: serial pytest is ~108 min on CI (2026-10-01); xdist on 4
-    # vCPU brings it to ~30. 45 leaves headroom and still fails a hang fast.
-    timeout-minutes: 45
+    # pst-mxfqk: serial pytest is ~108 min on CI (2026-10-01). Under -n 2 it
+    # reached 97% at 44.7 min (a18e413); 60 is the job plus ~25% headroom.
+    timeout-minutes: 60
     defaults: { run: { working-directory: build123d } }
     steps:
       - uses: actions/checkout@v4
@@ -33,11 +33,13 @@ jobs:
         # Note: job working-directory is build123d/, hence the relative path.
         run: git diff --exit-code manifest.json
       - name: tests (registry-driven manifold + manifest schema + bake)
-        # -n auto: one worker per vCPU. --dist load, not loadfile: most of the
-        # time is test_spool_cradle.py, which must spread across workers.
-        # -v: one line per test as it finishes, so a cancelled run still
-        # names its failures and its slow tail.
-        run: uv run pytest tests/ -v -n auto --dist load
+        # -n 2: what -n auto already picked here (xdist counts physical cores).
+        # Pinned so it never grows to 4: a worker peaks at 5.2 GB RSS, and four
+        # of those do not fit the 16 GB runner.
+        # --dist load, not loadfile: most of the time is test_spool_cradle.py,
+        # which must spread across workers. -v prints one line per test as it
+        # finishes and -rf names the failures, so a cancelled run is readable.
+        run: uv run pytest tests/ -v -n 2 --dist load -rf --tb=short
       - name: export all models (STL + GLB + PNG)
         run: uv run python scripts/export.py
       - name: upload artifacts (STL/GLB/PNG + viewer)

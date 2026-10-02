@@ -98,7 +98,9 @@ _PER_MODEL_BUDGET_S = 60.0
 # produce many faces for the unchanged wall-thickness sampler. After batching
 # bed-relief booleans, profiling measured 2.9 s construction / 71.8 s audit;
 # CI measured 93.2 s total. Allow headroom only for this model, not other gates.
-_MODEL_BUDGET_S = {"holder_spool_cradle": 120.0}
+# pst-mxfqk: under xdist (-n 2, sharing the runner with a second worker) CI
+# measured 123.1 s (a18e413), so 120 failed; 150 is that plus ~20 %.
+_MODEL_BUDGET_S = {"holder_spool_cradle": 150.0}
 
 _UP_Z = (0.0, 0.0, 1.0)
 
@@ -478,6 +480,8 @@ _MODEL_EXCLUSIONS = {'holder_cup_lid': _cup_lid_shank_exclusion}
 
 # pst-mxfqk: spec.name -> (report, seconds). Both registry tests below need the
 # same build + audit; doing it once per process halves the suite's audit time.
+# Never invalidated: specs are read-only for the whole run (and each xdist
+# worker has its own copy). A test that mutates a spec must not read this.
 _AUDITS: dict[str, tuple[PrintAuditReport, float]] = {}
 
 
