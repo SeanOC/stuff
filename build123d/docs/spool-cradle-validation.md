@@ -160,8 +160,9 @@ exception. No structural face is excluded.
 ![Front, saddle section, and three-holder row](renders/holder_spool_cradle.png)
 
 [Default STL](exports/holder_spool_cradle.stl) ·
-[Bambu preset STL](exports/holder_spool_cradle_bambu_reusable_200.stl) ·
-[Generic AMS preset STL](exports/holder_spool_cradle_ams_generic_200.stl)
+[Channel preset STL](exports/holder_spool_cradle_channel.stl)
+(the per-width preset STLs were consolidated in pst-026m4; see the end of
+this document)
 
 The middle view cuts through the near flange web to expose its closed
 triangular openings and the front panel. These are CAD views; no reference
@@ -1054,3 +1055,32 @@ The openConnect presets change by −0.004 mm³ (136,352.463 → 136,352.459 and
 138,711.600 → 138,711.596, against main after pst-2q3ej): moving a pocket removes the same slot volume,
 and the difference is OCCT volume-integration noise at the new
 position. The plate outline and body are unchanged.
+
+
+## Presets consolidated (Sean 2026-10-02, pst-026m4)
+
+Operator request (2026-10-02): the Bambu reusable and generic AMS presets
+differed only in `spool_width` (67 vs 66 mm), which is not material at
+these tolerances. The cradle now ships one preset per mount style, all at
+`spool_width` 67 (the larger width, so a 66 mm spool still fits with
+`saddle_clearance`). The six old ids are removed, not aliased; 66 mm stays
+reachable through the `spool_width` Param (default 66, unchanged).
+
+| Old preset ids | New preset id | Label |
+| --- | --- | --- |
+| `bambu_reusable_200`, `ams_generic_200` | `channel` | 200 mm spool, Multiconnect channels |
+| `bambu_reusable_200_points`, `ams_generic_200_points` | `points` | 200 mm spool, Fix Point slots |
+| `bambu_reusable_200_openconnect`, `ams_generic_200_openconnect` | `openconnect` | 200 mm spool, openConnect |
+
+The new presets carry the old Bambu values verbatim, so geometry is
+unchanged: each new export is byte-identical to the Bambu STL it replaces,
+and the generic AMS exports are deleted. Earlier tables in this document
+keep the old ids as history.
+
+### Volumes
+
+| Preset | mount_style | Volume (mm³) |
+| --- | --- | ---: |
+| `channel` | channel | 104,201.224 |
+| `points` | points (Fix Point) | 116,544.929 |
+| `openconnect` | openconnect | 136,352.459 |

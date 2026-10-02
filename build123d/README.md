@@ -282,7 +282,7 @@ contract, and a test-only 84 × 84 × 5.5 demo plate. See the
 
 | Model | Presets | Mount / print |
 | --- | --- | --- |
-| `holder_spool_cradle` | `bambu_reusable_200`, `ams_generic_200` | Two continuous Multiconnect channels, 25 mm on-ramp pitch; standing PETG/PCTG print. Channel pockets are the sole support exception. |
+| `holder_spool_cradle` | `channel`, `points`, `openconnect` | Two continuous Multiconnect channels, 25 mm on-ramp pitch; standing PETG/PCTG print. Channel pockets are the sole support exception. |
 
 The single-spool bookshelf cradle supports the flange rims on arc saddles with closed truss
 webs and a vertical front panel and fits 75 or 100 mm horizontal cadence. It uses the operator-approved
