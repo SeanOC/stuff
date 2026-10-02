@@ -9,6 +9,18 @@ The partition only holds if audit_full is a subset of audit (else an item runs
 in fast AND audit_full) and budget is disjoint from audit (else it runs, and
 skips under xdist, in the audit job instead of the serial step).
 """
+import locale
+
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _restore_locale():
+    """lib3mf (Mesher read/write) resets the process locale to C; never let that
+    leak into a later test's default-encoding file read (pst-0zfra)."""
+    saved = locale.setlocale(locale.LC_ALL)
+    yield
+    locale.setlocale(locale.LC_ALL, saved)
 
 
 def pytest_collection_modifyitems(items):

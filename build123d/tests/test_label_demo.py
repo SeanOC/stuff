@@ -1,4 +1,5 @@
 """Labels spike (pst-0zfra): font guard, fit_text, face-down inlay, one-object 3MF."""
+import locale
 import re
 import sys
 import zipfile
@@ -92,8 +93,10 @@ def _slab(lo, hi, fb):
 def test_3mf_is_one_object_with_two_filament_parts(filament, tmp_path):
     base, inlay = filament
     path = tmp_path / 'card.3mf'
+    saved = locale.setlocale(locale.LC_ALL)
     demo.export_3mf_one_object([('base', base, demo.BASE_RGBA),
                                 ('inlay', inlay, demo.INLAY_RGBA)], path, 'card')
+    assert locale.setlocale(locale.LC_ALL) == saved  # lib3mf's C-locale reset is undone
     with zipfile.ZipFile(path) as package:
         model = package.read('3D/3dmodel.model').decode()
         settings = package.read('Metadata/model_settings.config').decode()

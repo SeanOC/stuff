@@ -16,6 +16,7 @@ Run as a script from build123d/ to write the 3MF and STLs to docs/exports:
 """
 from __future__ import annotations
 
+import locale
 import sys
 from pathlib import Path
 
@@ -101,7 +102,11 @@ def export_3mf_one_object(named: list[tuple[str, Part, tuple]], path: Path,
         assembly.AddComponent(mesh, wrapper.GetIdentityTransform())
         part_ids.append((mesh.GetResourceID(), name))
     model.AddBuildItem(assembly, wrapper.GetIdentityTransform())
-    mesher.write(str(path))
+    saved = locale.setlocale(locale.LC_ALL)
+    try:
+        mesher.write(str(path))
+    finally:
+        locale.setlocale(locale.LC_ALL, saved)  # lib3mf resets the process locale to C
     settings = [f'<object id="{assembly.GetResourceID()}">',
                 f'  <metadata key="name" value="{object_name}"/>',
                 '  <metadata key="extruder" value="1"/>']
