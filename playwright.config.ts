@@ -13,6 +13,11 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: isCI,
   retries: isCI ? 1 : 0,
+  // 2 — measured, not a guess (pst-3vp3w, CI P6). Wall time is bound by
+  // CPU-heavy cold WASM renders, so more workers don't help: 2 → 4.3 m,
+  // 3 → 4.6 m, 4 → 3.6–4.7 m with 2–3 flaky (command-palette +
+  // stale-render completion waits). Do not raise `timeout` below to
+  // mask contention; a faster suite needs test-level work instead.
   workers: isCI ? 2 : undefined,
   reporter: isCI ? [["github"], ["html", { open: "never" }]] : "list",
   // Per-test timeout sits above the default 30s because cold WASM
