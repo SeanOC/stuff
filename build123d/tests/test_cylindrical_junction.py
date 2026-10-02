@@ -36,6 +36,7 @@ def _audit(spec, values, part):
     )
 
 
+@pytest.mark.audit
 def test_all_max_junction_prints_and_mounts(monkeypatch):
     spec = next(spec for spec in SPECS if spec.name == "holder_spray_can")
     values = spec.resolve_values(CORNER)
@@ -90,6 +91,7 @@ def test_all_max_junction_prints_and_mounts(monkeypatch):
     assert any(f.startswith("overhang ") for f in bad_report.failures())
 
 
+@pytest.mark.audit
 @pytest.mark.parametrize(
     "diameter,height,wall,count,travel",
     [
@@ -112,6 +114,7 @@ def test_tall_thick_junction_sweep(diameter, height, wall, count, travel):
     assert report.ok, report.failures()
 
 
+@pytest.mark.audit
 @pytest.mark.parametrize(
     "spec,preset",
     [(spec, preset) for spec in SPECS for preset in spec.presets],

@@ -518,6 +518,7 @@ def _build_and_audit(spec) -> PrintAuditReport:
                  exclusions=[exclusion(values)] if exclusion else (), model=spec.name)
 
 
+@pytest.mark.budget
 @pytest.mark.parametrize("spec", _SPECS, ids=[s.name for s in _SPECS])
 def test_model_audit_produces_report_within_budget(spec):
     """Every registered model yields a report within its documented budget
@@ -525,8 +526,8 @@ def test_model_audit_produces_report_within_budget(spec):
     # pst-mxfqk (mayor option D): under -n 4 on CI's 2 physical cores the
     # cradle audit took 181 s of PROCESS CPU (serial: 93 s) — hyperthread
     # contention inflates even CPU time ~2x, so no fixed budget holds under
-    # parallel load. The budget describes the serial measurement; pst-24tr6
-    # runs these tests serially (-n 0) in their own job.
+    # parallel load. The budget describes the serial measurement; bd123's
+    # fast job runs these `budget` tests in a serial (-n 0) step (pst-24tr6).
     if os.environ.get("PYTEST_XDIST_WORKER"):
         pytest.skip("audit budget is a serial measurement; "
                     "run with -n 0 or in the serial budget job")
@@ -540,6 +541,7 @@ def test_model_audit_produces_report_within_budget(spec):
     )
 
 
+@pytest.mark.audit
 @pytest.mark.parametrize("spec", _SPECS, ids=[s.name for s in _SPECS])
 def test_model_print_audit(spec, capsys):
     """AC 3: printability audit over every registered model. The report is
@@ -562,6 +564,7 @@ def test_model_print_audit(spec, capsys):
     pytest.xfail(reason)
 
 
+@pytest.mark.audit
 def test_cup_lid_shank_exclusion_is_the_only_miss():
     from holders.cup_lid import SPEC
     values = SPEC.resolve_values()
