@@ -24,14 +24,6 @@ import measure_step as ms  # noqa: E402
 from reference_pull import load_sources, local_path  # noqa: E402
 
 
-@pytest.fixture(autouse=True)
-def _restore_locale():
-    """Mesher.write (lib3mf) resets the process locale to C; don't leak that."""
-    saved = locale.setlocale(locale.LC_ALL)
-    yield
-    locale.setlocale(locale.LC_ALL, saved)
-
-
 def _step(tmp_path, shape, name="part.step"):
     path = tmp_path / name
     export_step(shape, str(path))

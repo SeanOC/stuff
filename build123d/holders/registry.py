@@ -458,6 +458,7 @@ def all_models() -> list[ModelSpec]:
     # the harness has ONE place that defines "everything buildable").
     from holders import cup_lid  # noqa: F401
     from holders import smoke  # noqa: F401  (toolchain smoke artifacts)
+    from holders import label_demo  # noqa: F401  (labels spike demo, smoke-tagged)
     try:
         from holders import cylindrical  # noqa: F401  (the PoC holder; lands via its bead)
     except ImportError:
