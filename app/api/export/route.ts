@@ -29,6 +29,7 @@ import {
   type Param,
   type ParamValue,
 } from "@/lib/scad-params/parse";
+import { downloadFilename } from "@/lib/models/download-name";
 import { renderToStl } from "@/lib/wasm/render";
 import {
   computeCacheKey,
@@ -102,7 +103,13 @@ export async function POST(req: NextRequest) {
     return jsonError(400, validated.error);
   }
 
-  const filename = path.basename(body.model, ".scad") + ".stl";
+  // Flagged (`filename`) params name the download like export-all's baked
+  // grid: multiconnect_connectors-pushfit.stl. Unflagged models keep stem.stl.
+  const filename = downloadFilename(
+    path.basename(body.model, ".scad"),
+    manifest,
+    validated.values,
+  );
   const fetchLibFile = fsLibFetcher;
   const fetchAssetFile = assetFetcherFor(path.dirname(abs));
 
