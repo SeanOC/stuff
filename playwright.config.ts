@@ -13,10 +13,12 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: isCI,
   retries: isCI ? 1 : 0,
-  // 4 = the ubuntu-latest vCPU count (pst-3vp3w, CI P6; was 2). If CI
-  // shows cold-render timeouts at 4, drop to 3 — do not raise
-  // `timeout` below to mask the contention.
-  workers: isCI ? 4 : undefined,
+  // 3 (pst-3vp3w, CI P6; was 2). 4 = the ubuntu-latest vCPU count was
+  // tried first: two PR runs went 3.6 m / 2 flaky and 4.7 m / 3 flaky
+  // (command-palette + stale-render completion waits) vs 4.3 m at 2, so
+  // the spec's fall-back-to-3 applied. Do not raise `timeout` below to
+  // mask contention — lower workers instead.
+  workers: isCI ? 3 : undefined,
   reporter: isCI ? [["github"], ["html", { open: "never" }]] : "list",
   // Per-test timeout sits above the default 30s because cold WASM
   // renders (first lib mount + Manifold build) can push past 30s on a
