@@ -145,7 +145,17 @@ For any PR touching `build123d/holders/**`, check and cite the file/line:
 1. Declared print orientation present; no downward face steeper than 45°
    without a stated reason; no bridge > 10 mm. Cite the UNDERSIDE review tile.
 2. No downward-facing fillets; plate-contact edges chamfered.
-3. Walls ≥ 0.9 mm (≥ 1.6 mm load-bearing); features ≥ 1.8 mm; holes ≥ Ø2.
+3. Walls ≥ 0.9 mm (≥ 1.6 mm load-bearing); features ≥ 1.8 mm; holes ≥ Ø2
+   — verified by the production print audit AND the exposed-edge classifier
+   at EVERY numeric Param endpoint and every documented corner (max
+   clearance, min/max width, both angle limits); the worker pastes that
+   table into the PR body before opening the PR, and the reviewer re-runs
+   any cell it doubts. The audit machine-checks only the 0.9 mm whole-part
+   wall floor (`tests/print_audit.py` `MIN_WALL_MM`; the 1.6 mm load-bearing
+   floor is deferred there), and the edge classifier is per-model (e.g.
+   `assert_finished_edges` in `tests/test_spool_cradle.py`) — name the seam
+   used in the table; feature ≥ 1.8 mm and hole ≥ Ø2 stay manual checks
+   evidenced by the table.
 4. User-exposed non-functional edges treated (fillet/chamfer); functional
    edges untouched; library cutters untouched.
 5. Features sized to their own envelope; `part.volume` before/after reported
@@ -158,6 +168,8 @@ For any PR touching `build123d/holders/**`, check and cite the file/line:
 
 A miss on 1–3 or 7 is blocking; 4–6 and 8 are blocking when the PR claims
 to address them and otherwise a required follow-up bead.
+A PR without the endpoint/corner audit table is a blocking omission like a
+missing `part.volume`.
 
 ## 7. Provenance
 
