@@ -280,13 +280,13 @@ def cap_land_cutter(p):
     Nothing backs the cap behind its rear contact between cap_inner and
     the rail, so its rear end is the same cradle_angle knife. The land and
     its 0.4 mm rear chamfer match the outboard ones. A 30-degree ramp rises
-    0.4 mm to the rail's inner face; the rail refills the cut above its own
-    width. 45-degree 0.4 mm bevels finish the land's edge at cap_inner and
+    0.4 mm to the rail's inner face, where the cutter stops: outboard of it
+    the cap takes the root's own cut (placement_aids). 45-degree 0.4 mm bevels finish the land's edge at cap_inner and
     the cap's vertical rear corner there. Built, not chamfered: OCCT's rear
     chamfers on the knife failed at some parameter corners.
     """
     ci, xi, rear, bevel = p['cap_inner'], p['rail_inner'], p['rear_y'], .4
-    x0, length = ci-1, p['spool_width']/2+1-(ci-1)
+    x0, length = ci-1, xi-(ci-1)
     ramp = math.tan(math.radians(30))
     land = land_stage(p, x0, length, x0, 0) & land_stage(p, x0, length, xi-bevel/ramp, ramp)
     # Union, not intersection: a 45-degree stage lowers the floor to the edge.
@@ -295,7 +295,13 @@ def cap_land_cutter(p):
     corner = Pos(0, 0, lo)*Solid.extrude(Face(Wire.make_polygon([
         (ci+bevel+1, rear-1, 0), (ci-1, rear+bevel+1, 0), (ci-1, rear-1, 0)],
         close=True)), (0, 0, hi-lo))
-    return land.fuse(edge, corner)
+    # Outboard of the rail's inner face the cap takes the root's own cut, so
+    # the two coincide. Overlapping the cap's ramp with the root's mirrored
+    # ramp left a sliver notch on the rear knife line, which fused an
+    # unorientable face at cradle_angle=45.
+    outboard = rear_land_cutter(p) & Pos(xi, 0, 0)*Box(
+        400, 400, 400, align=(Align.MIN, Align.CENTER, Align.CENTER))
+    return land.fuse(edge, corner, outboard)
 
 
 def cap_corner_wedge(p, bevel=.4):
