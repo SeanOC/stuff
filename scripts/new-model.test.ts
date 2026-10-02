@@ -39,6 +39,11 @@ beforeAll(() => {
     path.join(ROOT, "lib", "models", "catalog.ts"),
     path.join(sandbox, "lib", "models", "catalog.ts"),
   );
+  mkdirSync(path.join(sandbox, "scripts"), { recursive: true });
+  copyFileSync(
+    path.join(ROOT, "scripts", "select-sweep-tests.py"),
+    path.join(sandbox, "scripts", "select-sweep-tests.py"),
+  );
 });
 
 afterAll(() => {
@@ -91,6 +96,14 @@ describe("new-model.py scaffold", () => {
     expect(catalog).toMatch(/^ {2}zz_scaffold_demo: \{$/m);
     expect(catalog).toContain('categoryId: "storage"');
     expect(catalog).toMatch(/\},\n\};/);
+
+    // Shard-balance table key (pst-l7c92), so the parity guard in
+    // scripts/test_select_sweep_tests.py stays green.
+    const select = readFileSync(
+      path.join(sandbox, "scripts", "select-sweep-tests.py"),
+      "utf8",
+    );
+    expect(select).toMatch(/^ {4}"zz_scaffold_demo": None,.*\n\}/m);
   });
 
   it("refuses to clobber on re-run and leaves the tree untouched", () => {
@@ -98,9 +111,19 @@ describe("new-model.py scaffold", () => {
       path.join(sandbox, "lib", "models", "catalog.ts"),
       "utf8",
     );
+    const selectBefore = readFileSync(
+      path.join(sandbox, "scripts", "select-sweep-tests.py"),
+      "utf8",
+    );
     const res = runScaffold("zz_scaffold_demo", "--category", "storage");
     expect(res.status).not.toBe(0);
     expect(res.stderr).toContain("refusing to clobber");
+    expect(
+      readFileSync(
+        path.join(sandbox, "scripts", "select-sweep-tests.py"),
+        "utf8",
+      ),
+    ).toBe(selectBefore);
     const after = readFileSync(
       path.join(sandbox, "lib", "models", "catalog.ts"),
       "utf8",

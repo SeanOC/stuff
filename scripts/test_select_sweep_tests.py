@@ -95,15 +95,81 @@ def test_hostile_filename_degrades_to_full_not_injection() -> None:
     assert sel.files == []
 
 
+def _table_drift(root: Path, table: dict) -> tuple[list[str], list[str]]:
+    """(dead keys with no models/<stem>.scad, models/*.scad stems with no key)."""
+    stems = {p.stem for p in (root / "models").glob("*.scad")}
+    return sorted(set(table) - stems), sorted(stems - set(table))
+
+
 def test_measured_table_stems_exist() -> None:
     # A table entry whose model is gone is dead weight; a renamed
     # model silently falls back to the @param estimate. Keep the
     # table in sync with models/.
+    dead, _ = _table_drift(REPO_ROOT, mod.MEASURED_SECONDS)
+    assert not dead, (
+        f"MEASURED_SECONDS entries with no models/<stem>.scad: {dead} — "
+        "remove or rename the entries in scripts/select-sweep-tests.py"
+    )
+
+
+def test_every_model_has_a_measured_entry() -> None:
+    # pst-l7c92: the 2026-07 table silently lost 9 of 28 models. None is
+    # allowed (same fallback as a missing key) and is what
+    # scripts/new-model.py inserts, so a scaffolded model passes; this
+    # fails only for a model added by hand.
+    _, missing = _table_drift(REPO_ROOT, mod.MEASURED_SECONDS)
+    assert not missing, "".join(
+        f'\nadd "{stem}": None, to the END of MEASURED_SECONDS in '
+        "scripts/select-sweep-tests.py — or scaffold with scripts/new-model.py"
+        for stem in missing
+    )
+
+
+def test_none_entry_falls_back_like_a_missing_key(monkeypatch) -> None:
+    monkeypatch.setitem(mod.MEASURED_SECONDS, REAL_STEM, None)
+    with_none = mod.estimated_cost(REAL_TEST)
+    monkeypatch.delitem(mod.MEASURED_SECONDS, REAL_STEM)
+    assert with_none == mod.estimated_cost(REAL_TEST)
+
+
+def test_new_model_scaffold_keeps_the_table_guard_green(tmp_path: Path) -> None:
+    # Acceptance (b): scaffold a model into a scratch tree seeded with
+    # the real catalog + selector script, then load the EDITED script
+    # and check the parity guard against the scratch models/.
+    (tmp_path / "lib" / "models").mkdir(parents=True)
+    (tmp_path / "scripts").mkdir()
+    (tmp_path / "models").mkdir()
+    (tmp_path / "lib" / "models" / "catalog.ts").write_text(
+        (REPO_ROOT / "lib" / "models" / "catalog.ts").read_text()
+    )
+    (tmp_path / "scripts" / "select-sweep-tests.py").write_text(SCRIPT.read_text())
     for stem in mod.MEASURED_SECONDS:
-        assert (REPO_ROOT / "models" / f"{stem}.scad").is_file(), (
-            f"MEASURED_SECONDS entry '{stem}' has no models/{stem}.scad — "
-            "remove or rename the entry"
-        )
+        (tmp_path / "models" / f"{stem}.scad").touch()
+
+    res = subprocess.run(
+        [
+            sys.executable,
+            str(REPO_ROOT / "scripts" / "new-model.py"),
+            "zz_guard_demo",
+            "--category",
+            "storage",
+            "--root",
+            str(tmp_path),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert res.returncode == 0, res.stderr
+
+    edited = tmp_path / "scripts" / "select-sweep-tests.py"
+    spec2 = importlib.util.spec_from_file_location("select_sweep_scaffolded", edited)
+    scaffolded = importlib.util.module_from_spec(spec2)
+    sys.modules[spec2.name] = scaffolded
+    spec2.loader.exec_module(scaffolded)
+
+    assert scaffolded.MEASURED_SECONDS["zz_guard_demo"] is None
+    assert list(scaffolded.MEASURED_SECONDS)[-1] == "zz_guard_demo"
+    assert _table_drift(tmp_path, scaffolded.MEASURED_SECONDS) == ([], [])
 
 
 def test_unknown_model_falls_back_to_param_estimate() -> None:
