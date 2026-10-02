@@ -495,8 +495,9 @@ def _audit_model(spec) -> PrintAuditReport:
 def _timed_audit(spec) -> tuple[PrintAuditReport, float]:
     """(report, CPU seconds of the first build + audit) for ``spec``.
 
-    process_time, not wall time: under pytest-xdist the workers share cores,
-    and wall time would charge this model for its neighbours (pst-mxfqk).
+    process_time, not wall time, so waiting for a free core is not charged
+    (pst-mxfqk). It still counts slower execution on a shared hyperthread
+    core, so it is only comparable to the budget in a serial run.
     """
     if spec.name not in _AUDITS:
         start = time.process_time()
