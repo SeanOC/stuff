@@ -570,25 +570,20 @@ def test_max_clearance_guide_corner(max_clearance_guide):
     dict(spool_width=68, saddle_clearance=.25, cradle_angle=25),
     dict(spool_width=66, saddle_clearance=1.5, cradle_angle=45),
     dict(spool_width=50, saddle_clearance=.25, cradle_angle=45),
+    dict(spool_width=68, saddle_clearance=.25, cradle_angle=40),
+    dict(spool_width=68.5, saddle_clearance=.25, cradle_angle=40),
 ], ids=['wide-25', 'omitted-25', 'wide-45-rail14', 'narrow-25-rail14',
         'wide-25-rail14-min-flange', 'rear-land-lead-in', 'rear-land-narrow-v',
-        'rear-land-vertical-lead-in', 'rear-land-wide-45'])
+        'rear-land-vertical-lead-in', 'rear-land-wide-45', 'cap-land-narrow-40',
+        'cap-land-narrow-40-half'])
 def test_shallow_angle_and_wide_rail_edges(values):
     model = holder(**values)
     assert model.is_valid and len(model.solids()) == 1
     assert_finished_edges(model, dimensions(values))
 
 
-@pytest.mark.audit  # dense probes, ~20 s each -> bd123 `audit` job (pst-24tr6)
-@pytest.mark.parametrize('values', [{}, REAR_LAND_CORNER], ids=['default', 'rear-land-corner'])
-def test_outboard_rear_end_has_no_knife(values):
-    # pst-dkqef: the print audit samples each face at UV 0.3/0.5/0.7 only,
-    # so it saw the saddle's unbacked rear knife (~0.02 mm, including both
-    # presets) only by luck. Probe a denser grid over the outboard rear end.
-    p = dimensions(values)
-    part = holder(**values)
-    xw, rear, top = p['spool_width']/2, p['rear_y'], p['contact_z']
-    lo, hi = (xw-.2, rear-.5, top-3), (p['guide_outer'], rear+2, top+.5)
+def thin_walls(part, lo, hi):
+    """Dense-probe samples inside the box [lo, hi] with a wall < MIN_WALL_MM."""
     def near(b):
         return all(a <= y and x <= c for a, x, y, c in zip(lo, (b.min.X, b.min.Y, b.min.Z),
                                                             (b.max.X, b.max.Y, b.max.Z), hi))
@@ -604,6 +599,33 @@ def test_outboard_rear_end_has_no_knife(values):
             s = pa._signed(normal, n, face.normal_at(c))
             if part.is_inside(point-s*.02) and not part.is_inside(point-s*pa.MIN_WALL_MM):
                 thin.append(tuple(round(v, 2) for v in point))
+    return thin
+
+
+@pytest.mark.audit  # dense probes, ~20 s each -> bd123 `audit` job (pst-24tr6)
+@pytest.mark.parametrize('values', [{}, REAR_LAND_CORNER], ids=['default', 'rear-land-corner'])
+def test_outboard_rear_end_has_no_knife(values):
+    # pst-dkqef: the print audit samples each face at UV 0.3/0.5/0.7 only,
+    # so it saw the saddle's unbacked rear knife (~0.02 mm, including both
+    # presets) only by luck. Probe a denser grid over the outboard rear end.
+    p = dimensions(values)
+    xw, rear, top = p['spool_width']/2, p['rear_y'], p['contact_z']
+    thin = thin_walls(holder(**values), (xw-.2, rear-.5, top-3), (p['guide_outer'], rear+2, top+.5))
+    assert not thin, thin[:5]
+
+
+BAMBU = next(p.values for p in SPEC.presets if p.id == 'bambu_reusable_200')
+
+
+@pytest.mark.audit  # dense probes like the outboard knife -> bd123 `audit` job
+@pytest.mark.parametrize('values', [{}, BAMBU, REAR_LAND_CORNER],
+                         ids=['default', 'bambu', 'rear-land-corner'])
+def test_inboard_cap_rear_end_has_no_knife(values):
+    # pst-2q3ej: the same unbacked knife on the inboard rail cap (0.02 mm
+    # on main at both presets), between cap_inner and the rail.
+    p = dimensions(values)
+    ci, xi, rear, top = p['cap_inner'], p['rail_inner'], p['rear_y'], p['contact_z']
+    thin = thin_walls(holder(**values), (ci-.5, rear-1, top-8), (xi+.5, rear+4, top+2))
     assert not thin, thin[:5]
 
 

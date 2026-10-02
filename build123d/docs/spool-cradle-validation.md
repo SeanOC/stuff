@@ -927,3 +927,80 @@ Both points presets are **+7,622.221 mm³ (+7.0 %)** heavier than before
 
 The plate outline and body are unchanged. The slot is the official
 envelope, so nothing is oversized.
+
+
+## Inboard cap rear land (pst-2q3ej)
+
+### Defect
+
+The inboard rail cap had the same unbacked rear knife that pst-dkqef fixed
+outboard. Between cap_inner and the rail's inner face nothing stands
+behind rear_y, so the saddle tangent met the cap's vertical rear face in a
+25–45° edge. The dense probe (19 × 19 UV, inboard cap rear end only) read
+0.02–0.03 mm at both presets and at 66 / 0.25 / 25. The print audit passed
+it by sampling luck.
+
+Separately, 68 and 68.5 / 0.25 / 40 failed to build on main. OCCT could not
+chamfer the cap's rear vertical edges in the narrow-guide branch.
+
+### Fix
+
+`cap_land_cutter()` carries the outboard land across the cap:
+
+1. The same WEB/2 land and 0.4 × 45° rear chamfer as `rear_land_cutter()`
+   (shared `land_stage()` helper).
+2. A 30° ramp rises 0.4 mm to the rail's inner face, so the land does not
+   meet the rail at 90°. The cutter stops at that face; the rail backs the
+   cap outboard of it.
+3. 45° 0.4 mm bevels finish the land's edge at cap_inner and the cap's
+   vertical rear corner there.
+
+`cap_corner_wedge()` is the explicit 45° fill for the concave cap/rail rear
+corner. It mirrors `rear_corner_wedge()`.
+
+The cap's rear corners are built, not chamfered, so `holder()` drops them
+from the vertical and rear chamfer sets. That removes the chamfer that
+failed at 68 / 68.5 / 0.25 / 40.
+
+`holder()` cuts the land, and fuses the wedge, after the top clip. Cutting
+the cap in `placement_aids()` left a sliver on the rear knife line, between
+the cap curtain's 0.01 mm lift and the clip. At cradle_angle = 45 the clip
+fused that sliver into an unorientable saddle face, and every 45° case
+failed the R1 joint fillet. The wedge's top stops just above the land's ramp
+at the rail face, so its 0.1 mm overlap into the rail stays under the
+saddle.
+
+### Validation
+
+A 64-case gate builds every case as one valid solid. Every case passes the
+print audit, the finished-edge classes, and the inboard and outboard dense
+rear probes (no wall under 0.9 mm). The cases are:
+
+- all six presets
+- the seven production corners
+- the points grid
+- every endpoint
+- the bead's corners: 66 / 67 / 50 × 0.25 × 25, 66 / 0.5 / 25,
+  66 / 1.5 / 45 and 68 / 68.5 × 0.25 × 40
+
+Minimum walls are 1.08–2.40 mm, the worst overhang is 45.0°, and the worst
+exposed edge is 90.0°. The inboard dense probe reads 0.9 mm (its march
+cap) at both presets, at 66 / 0.25 / 25, at 68 / 0.25 / 40 and at the
+default with cradle_angle = 45. On main it reads 0.02–0.03 mm.
+
+New tests: `test_inboard_cap_rear_end_has_no_knife` (both presets and
+66 / 0.25 / 25), plus `cap-land-narrow-40` and `cap-land-narrow-40-half`
+edge cases (68 and 68.5 / 0.25 / 40, which do not build on main).
+
+### Volumes
+
+| Preset | Before (mm³) | After (mm³) | Change |
+| --- | ---: | ---: | ---: |
+| `bambu_reusable_200` | 104,214.349 | 104,201.224 | −13.125 (−0.01%) |
+| `ams_generic_200` | 105,881.681 | 105,868.556 | −13.125 (−0.01%) |
+| `bambu_reusable_200_points` | 116,558.054 | 116,544.929 | −13.125 (−0.01%) |
+| `ams_generic_200_points` | 118,225.386 | 118,212.261 | −13.125 (−0.01%) |
+| `bambu_reusable_200_openconnect` | 136,365.583 | 136,352.463 | −13.120 (−0.01%) |
+| `ams_generic_200_openconnect` | 138,724.716 | 138,711.600 | −13.116 (−0.01%) |
+
+The land removes the knife from both caps, about 6.6 mm³ per side.

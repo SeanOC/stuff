@@ -152,8 +152,9 @@ fast`) runs the manifest checks, every test that is neither `audit` nor
 budget measures serial CPU time), then the export. **audit** (`build123d
 audit`) runs `audit and not audit_full`: every registry-sized print audit,
 including each cradle style's presets, `PRINT_CORNER` and the reproducers,
-plus the spool cradle's mount-contract tests (registry-sized cradle builds,
-20–130 s each — they made `fast` 9m48s on the runner).
+plus the other registry-sized cradle checks that made `fast` 9m48s on the
+runner: the mount-contract tests (20–130 s each), the dense-probe rear-knife
+tests (outboard rear end and inboard cap) and the preset bake.
 **audit_full** (`build123d audit (full sweep)`) runs the cradle corner sweep
 (`audit_full`) as three `pytest-split` shards, balanced by the committed
 `build123d/tests/.test_durations`. A PR runs it only when it touches
