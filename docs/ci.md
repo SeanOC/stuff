@@ -58,11 +58,11 @@ Consequences worth knowing:
   treats only the explicit "no new commits on the base branch" answer
   as terminal, and warns if a PR is still not updated — rerun via
   `workflow_dispatch` if one stays BEHIND.
-- **Residual gap:** pushes to `main` made *with* `GITHUB_TOKEN` —
-  notably the render job's thumbnail canonicalization commit — don't
-  fire `pr-autoupdate.yml`. PRs stranded by such a bot-only main
-  move get picked up on the next real push, or run the workflow
-  manually (`workflow_dispatch`).
+- **Residual gap:** pushes to `main` made *with* `GITHUB_TOKEN`
+  don't fire `pr-autoupdate.yml`. PRs stranded by such a bot-only
+  main move get picked up on the next real push, or run the workflow
+  manually (`workflow_dispatch`). (The render job no longer pushes to
+  `main` — pst-vaiiu routes thumbnails through a bot PR.)
 - **Fork PRs are excluded**: the controller only merges `gc-pilot/*`
   branches, so fork PRs keep the manual merge path.
 - **Never make a check required unless it reports on every PR.** A
@@ -235,16 +235,31 @@ and [AGENTS.md](../AGENTS.md).
 The render PNGs are tracked in git — Vercel's build serves them
 directly — so the render job commits regenerated thumbnails back:
 
-- On **push to main**: commit any diff back to `main` as
-  `github-actions[bot]`.
+- On **push to main**: never push to `main` (pst-vaiiu — protected,
+  5 required checks, strict: a bot commit pushed straight to `main`
+  carries no checks and was rejected with GH006 on every push). If the
+  regenerated `renders/` tree differs from `main`, rebuild the bot
+  branch **`gc-pilot/ci-renders`** as one commit on top of `main`
+  (force-push confined to that branch), carrying over any still-open
+  bot PR's renders (its server-side PR diff, not `BOT^..BOT` —
+  pr-autoupdate merges main into it) for models this run did not
+  re-render and where `main` has no newer render, and open
+  or refresh ONE PR "ci: regenerate model thumbnails" (label
+  `bot-renders`). The `gc-pilot/` prefix is what the codex gate and
+  merge-green orders match, so it is reviewed and merged like any
+  other PR. Push + PR use `THUMBNAIL_PUSH_TOKEN` — this repo does not
+  let `GITHUB_TOKEN` create PRs, and its pushes trigger no checks.
+  Loop guard: the paths filter's render set excludes `renders/**`, so
+  merging the bot PR renders nothing; the step also skips a head
+  commit titled "ci: regenerate model thumbnails".
 - On **pull requests**: commit back to the PR's head branch.
 
 Implementation notes that have each bitten before:
 
-- Both steps are **`continue-on-error`** (st-491): engine renders are
-  not bit-deterministic and `main` is protected, so a commit-back
-  failure must not take down an otherwise-green run. A proper
-  redesign is filed as st-fqc.
+- The PR step is **`continue-on-error`** (st-491): engine renders are
+  not bit-deterministic, so a commit-back failure must not take down
+  an otherwise-green run. The main step is not (pst-vaiiu):
+  `continue-on-error` there hid GH006 on every push for months.
 - The steps push from a **fresh shallow clone in `/tmp`** (st-qfv):
   the container's workspace mount has no usable `.git`.
 - A **tree-hash comparison** (st-tiu) skips the commit when renders
