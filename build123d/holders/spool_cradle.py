@@ -8,8 +8,9 @@ The 2.4 mm webs/panel print as perimeters; the plate uses three walls and
 caps keep the analytic flange contact; 45-degree underside ramps carry
 the caps and outboard lead-in guides in the standing pose.
 Fixed two-channel mount and 25 mm board pitch are operator-approved.
-mount_style='points' swaps the channels for four discrete point pockets
-(2 columns x 2 rows 50 mm apart, solid plate between); the body is the same.
+mount_style='points' swaps the channels for four MultiBuild Fix Point slots
+(2 columns x 2 rows 50 mm apart, lip end up, solid plate between) that hang
+on Fix Points in the board; the body is the same.
 mount_style='openconnect' carries four openConnect slots for an openGrid
 wall (28 mm tiles, 84 mm holder cadence, 2 columns x 2 rows 28 mm apart);
 the body is the same, only the grid and the plate floors change.
@@ -20,12 +21,14 @@ import math
 from build123d import Align, Axis, Box, BuildSketch, Cone, Edge, Face, Plane, Polygon, Pos, Rot, Solid, Vector, Wire, extrude
 from holders.registry import ModelSpec, MountFixtures, PlaneSpec, Param, Preset, register
 from multibuild.constants import PITCH
-from multibuild.multiconnect import POCKET_DEPTH, POINT_ONRAMP, channel_cutter, point_cutter, point_length
+from multibuild import fixpoint as fp
+from multibuild.multiconnect import POCKET_DEPTH, channel_cutter
 from openconnect import constants as oc
 from openconnect.slot import POCKET_DEPTH as OC_POCKET_DEPTH, onramp_location, seat_location, slot_cutter
 
 MOUNT = 'multibuild-multiconnect-channel'
 OC_MOUNT = 'openconnect-slot'
+FP_MOUNT = 'multibuild-fixpoint-slot'
 WEB = 2.4
 APEX_HEIGHT = 18.0
 JOINT_RADIUS = 1.0
@@ -36,7 +39,7 @@ CHORD = 6.0
 # resolved into dimensions(); nothing below reads a module-level grid.
 GRIDS = {
     'channel': (PITCH, 3*PITCH, POCKET_DEPTH, 5.0),
-    'points': (PITCH, 3*PITCH, POCKET_DEPTH, 5.0),
+    'points': (PITCH, 3*PITCH, fp.POCKET_DEPTH, 5.0),
     'openconnect': (oc.TILE_SIZE, 3*oc.TILE_SIZE, OC_POCKET_DEPTH, 2.0),
 }
 # openConnect slot roof above its seat: the clearance-grown flange outline.
@@ -65,7 +68,7 @@ POINT_ROW_SPACING = 2*PITCH  # Two board rows: the pockets stay discrete.
 
 def mount_for_values(values):
     """The one declared mount present under these resolved values."""
-    return OC_MOUNT if values['mount_style'] == 'openconnect' else MOUNT
+    return {'openconnect': OC_MOUNT, 'points': FP_MOUNT}.get(values['mount_style'], MOUNT)
 
 
 def check_plate(p):
@@ -120,7 +123,7 @@ def dimensions(values=None):
              root_inner=min(p['spool_width'], p['plate_width']-4)/2-WEB,
              winding_radius=r-p['flange_height'])
     if p['mount_style'] == 'points':
-        p['point_bottoms'] = point_bottoms(length)
+        p['point_seats'] = point_seats(length)
     p.update(cap_inner=p['spool_width']/2-p['rail_width'],
              cap_reach=p['rail_width']-WEB,
              guide_outer=cadence/2-p['guide_gap'],
@@ -368,19 +371,19 @@ def truss_relief(p, triangle, deep=False):
     return Solid.make_loft(wires,ruled=True)
 
 
-def point_bottoms(channel_length):
-    """Lower ends of the two point pockets in each column.
+def point_seats(channel_length):
+    """Seat heights of the two Fix Point slots in each column.
 
-    The upper pocket ends where the channel spine would, under the same
-    closed cap, which keeps the upper heads as high as the plate allows for
-    pull-out leverage. The lower pocket is one POINT_ROW_SPACING below and
-    keeps a WEB + 0.5 mm floor above the bed relief: no bottom opening.
+    The upper slot's lip end stops where the channel spine would, under the
+    same closed cap, which keeps the upper heads as high as the plate allows
+    for pull-out leverage. The lower slot is one POINT_ROW_SPACING below and
+    its well keeps a WEB + 0.5 mm floor above the bed relief: no bottom opening.
     """
-    upper = channel_length-point_length()
+    upper = channel_length-fp.DEEP_INRADIUS
     lower = upper-POINT_ROW_SPACING
-    if lower < WEB+.5-1e-9:
+    if lower-(fp.SLOT_LENGTH-fp.DEEP_INRADIUS) < WEB+.5-1e-9:
         # dimensions() rounds root_height up to the 25 mm channel length.
-        span = WEB+.5+POINT_ROW_SPACING+point_length()
+        span = WEB+.5+POINT_ROW_SPACING+fp.SLOT_LENGTH
         root = (math.ceil(span/PITCH)-1)*PITCH
         raise ValueError(f"mount_style='points' needs root_height > {root:.0f} mm "
                          f'({span:.2f} mm pocket span); channel length is {channel_length:.0f} mm')
@@ -389,7 +392,7 @@ def point_bottoms(channel_length):
 
 def mount_fixtures(mount_type, values):
     """Fixtures for the selected style's mount; None for the other mount."""
-    if mount_type not in (MOUNT, OC_MOUNT):
+    if mount_type not in (MOUNT, OC_MOUNT, FP_MOUNT):
         raise ValueError(f'unsupported mount: {mount_type}')
     p = dimensions(values)
     if mount_type != mount_for_values(p):
@@ -406,13 +409,14 @@ def mount_fixtures(mount_type, values):
             entry_axis=(0, 0, 1), face_normal=(0, -1, 0),
         )
     if p['mount_style'] == 'points':
-        pocket = point_cutter()
-        xs, bottoms = (-PITCH/2, PITCH/2), p['point_bottoms']
-        def poses(offset):
-            return [Pos(x, POCKET_DEPTH, z+offset)*Rot(90, 0, 0) for x in xs for z in bottoms]
+        # Lip end up: lowering the holder onto the board's Fix Points carries
+        # each head from its well up under its lip.
+        slots = [(x, z) for x in (-p['pitch']/2, p['pitch']/2) for z in p['point_seats']]
+        cutter = fp.slot_cutter()
         return MountFixtures(
-            cutters=[Pos(x, 0, z)*pocket for x in xs for z in bottoms],
-            seat_locs=poses(POINT_ONRAMP+PITCH/2), onramp_locs=poses(POINT_ONRAMP),
+            cutters=[Pos(x, 0, z)*cutter for x, z in slots],
+            seat_locs=[fp.seat_location(x, z) for x, z in slots],
+            onramp_locs=[fp.entry_location(x, z) for x, z in slots],
             entry_axis=(0, 0, 1), face_normal=(0, -1, 0),
         )
     channel = channel_cutter(p['channel_length'], onramps=p['onramps'],
@@ -660,10 +664,10 @@ _DEFAULT_SECTION_Y = 7 + 3 + 200 / 2
 SPEC = register(ModelSpec(
     name='holder_spool_cradle', build=lambda values: holder(**values),
     title='Spool cradle (Multibuild)', category_id='multiboard',
-    description='Single spool bookshelf cradle with wide inboard saddle rails, outboard placement guides (omitted when reach is less than 2.4 mm plus saddle clearance) and closed truss webs, in three mount styles: two full-height Multiconnect channels (channel), four discrete Multiconnect point pockets in two rows 50 mm apart (points), or four openConnect slots for an openGrid wall on the 28 mm tile pitch and 84 mm cadence (openconnect). Flange-rim support; standing PETG/PCTG print with support allowed only in the mount pockets.',
+    description='Single spool bookshelf cradle with wide inboard saddle rails, outboard placement guides (omitted when reach is less than 2.4 mm plus saddle clearance) and closed truss webs, in three mount styles: two full-height Multiconnect channels (channel), four MultiBuild Fix Point slots in two rows 50 mm apart, lip end up (points), or four openConnect slots for an openGrid wall on the 28 mm tile pitch and 84 mm cadence (openconnect). Flange-rim support; standing PETG/PCTG print with support allowed only in the mount pockets.',
     tags=('holder', 'multiboard', 'opengrid', 'spool', 'multiconnect-channel',
-          'multiconnect-points', 'openconnect'), params=PARAMS,
-    mounts=(MOUNT, OC_MOUNT), mount_for_values=mount_for_values, print_orientation=(0, 0, 1),
+          'fixpoint-slots', 'openconnect'), params=PARAMS,
+    mounts=(MOUNT, OC_MOUNT, FP_MOUNT), mount_for_values=mount_for_values, print_orientation=(0, 0, 1),
     review_sections=(PlaneSpec((0, _DEFAULT_SECTION_Y, 0), (1, 0, 0),
                               'mid-plane through saddle + truss'),),
     presets=(
@@ -671,10 +675,10 @@ SPEC = register(ModelSpec(
                {'spool_width': 67, 'flange_height': 8, 'flange_rim_width': 3}),
         Preset('ams_generic_200', 'AMS generic 200 mm',
                {'spool_width': 66, 'flange_height': 8, 'flange_rim_width': 3}),
-        Preset('bambu_reusable_200_points', 'Bambu reusable 200 mm, point pockets',
+        Preset('bambu_reusable_200_points', 'Bambu reusable 200 mm, Fix Point slots',
                {'spool_width': 67, 'flange_height': 8, 'flange_rim_width': 3,
                 'mount_style': 'points'}),
-        Preset('ams_generic_200_points', 'AMS generic 200 mm, point pockets',
+        Preset('ams_generic_200_points', 'AMS generic 200 mm, Fix Point slots',
                {'spool_width': 66, 'flange_height': 8, 'flange_rim_width': 3,
                 'mount_style': 'points'}),
         Preset('bambu_reusable_200_openconnect', 'Bambu reusable 200 mm, openConnect',

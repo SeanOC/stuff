@@ -456,12 +456,87 @@ def verify_openconnect_slot(part: Part, fx: MountFixtures) -> None:
                 f'openconnect slot needs >=2.4 mm backing: {missing:.3f} mm^3 missing')
 
 
+_FP_END_STOP_MIN = 5.0  # mm^3: a Fix Point head pushed 1 mm past its seat must
+                        #     foul the lip end, not graze it (measured ~20)
+_FP_MIN_WEB = 0.9       # mm: material between two pockets (print_audit MIN_WALL_MM)
+
+
+def verify_fixpoint_slot(part: Part, fx: MountFixtures) -> None:
+    """MultiBuild Fix Point slot ([Core] §11, sliding installation): the
+    well admits the head straight off the board, the head slides +Z to the
+    seat unobstructed, the octagon lip then holds its 45-degree flare (no
+    release along the face normal, closed past the seat), >=2.4 mm backing,
+    and no two pockets fuse.
+
+    Fixtures: ``seat_locs`` / ``onramp_locs`` place ``multibuild.fixpoint.
+    head()`` (the measured Fix Point positive) seated and pushed into the
+    well, TRAVEL below the seat at the same X.
+    """
+    from multibuild.fixpoint import HEAD_FLAT, TRAVEL, head as fp_head
+    _require_z_entry(fx, "multibuild-fixpoint-slot")
+    _require_y_face(fx, "multibuild-fixpoint-slot")
+    assert fx.cutters and fx.seat_locs, 'fixpoint fixtures must not be empty'
+    assert len(fx.cutters) == len(fx.seat_locs) == len(fx.onramp_locs), \
+        'one cutter, seat and entry pose per pocket required'
+    fixture = fp_head()
+
+    def sweep(head, delta, step):
+        steps = max(1, math.ceil(max(abs(v) for v in delta) / step))
+        for i in range(steps + 1):
+            residual = _residual_vol(part, Pos(*(v * i / steps for v in delta)) * head)
+            assert residual < _EMPTY_VOL, (
+                f'fixpoint entry path blocked: {residual:.3f} mm^3 at step {i}/{steps} '
+                f'of {tuple(round(v, 2) for v in delta)}')
+
+    face_y = part.bounding_box().min.Y
+    for cutter, seat, entry in zip(fx.cutters, fx.seat_locs, fx.onramp_locs):
+        a, b = seat.position, entry.position
+        assert abs(a.X - b.X) < 1e-7 and abs(a.Y - b.Y) < 1e-7, \
+            'the entry pose must sit straight below the seat'
+        assert abs(a.Z - b.Z - TRAVEL) < 1e-7, 'the head slides TRAVEL up to the seat'
+        seated = seat * fixture
+        r = _residual_vol(part, seated)
+        assert r < _EMPTY_VOL, f'seated Fix Point head fouls the model ({r:.3f} mm^3)'
+        # Captured: the lip overlaps the flare, so the head cannot pull off.
+        for dist in _PULL_DISTS:
+            r = _residual_vol(part, Pos(0, -dist, 0) * seated)
+            assert r > _RETENTION_MIN, (
+                f'seated Fix Point head pulls off the wall at {dist} mm ({r:.3f} mm^3)')
+        r = _residual_vol(part, Pos(0, 0, 1.0) * seated)
+        assert r > _FP_END_STOP_MIN, f'slot is open past the seat ({r:.3f} mm^3 at +1 mm)'
+        # Entry: from wholly outside the back face straight into the well, then up.
+        head = entry * fixture
+        out = head.bounding_box().max.Y - face_y + 0.5
+        sweep(Pos(0, -out, 0) * head, (0, out, 0), 0.25)
+        sweep(head, (0, 0, a.Z - b.Z), 0.25)
+        # Lip: narrower than the head at the face, wider behind it.
+        surface = _cutter_x_width(cutter, face_y + 0.2, a.Z)
+        bb = cutter.bounding_box()
+        deep = _cutter_x_width(cutter, bb.max.Y - 0.1, a.Z)
+        assert 0 < surface < 2 * HEAD_FLAT <= deep, (
+            f'fixpoint pocket is not retentive: {surface:.2f} mm at the face, '
+            f'{deep:.2f} mm deep (head {2 * HEAD_FLAT})')
+        back_faces = [f for f in cutter.faces().filter_by(Axis.Y)
+                      if abs(f.center().Y - bb.max.Y) < 1e-7]
+        assert back_faces, 'fixpoint cutter must expose pocket-back faces'
+        for face in back_faces:
+            probe = Solid.extrude(face, (0, 2.4, 0))
+            missing = probe.volume - _residual_vol(part, probe)
+            assert missing < 1e-3, (
+                f'fixpoint slot needs >=2.4 mm backing: {missing:.3f} mm^3 missing')
+    for i, one in enumerate(fx.cutters):
+        for other in fx.cutters[i + 1:]:
+            gap = one.distance_to(other)
+            assert gap >= _FP_MIN_WEB - 1e-6, f'fixpoint pockets fuse: {gap:.2f} mm apart'
+
+
 # mount type -> contract. Every KNOWN_MOUNTS entry must appear here.
 CONTRACTS: dict[str, Callable[[Part, MountFixtures], None]] = {
     "multiconnect-slot": verify_multiconnect_slot,
     "multibuild-multiconnect-slot": verify_multiconnect_slot,
     "multibuild-multiconnect-channel": verify_multiconnect_channel,
     "openconnect-slot": verify_openconnect_slot,
+    "multibuild-fixpoint-slot": verify_fixpoint_slot,
 }
 
 _uncovered = KNOWN_MOUNTS - CONTRACTS.keys()

@@ -84,7 +84,7 @@ pin geometry is unchanged (see the cup-lid validation doc).
 | [C] Slot travel vs spacing | [Python] `constants.py` L4,17 defaults length to 28; `Slot` accepts length (`multiconnect.py` L17–24). Board head-center locations instead use integer multiples of 25 ([Core] §1); that placement is independent of entry travel. A same-row centered array is `x=(i−(count−1)/2)*25`. |
 | [C] Snap-in variant | [Python] `SnapInSlotCutter` L260–332 combines slot, triangular exclusions and paired head cutters: local `head_spacing=0.795`, triangle base 8, inset 0.6. This spacing is a seat detail, **not board pitch**. `SnapInSlot` L119–160 also scales asymmetric notch positions by length / length-reference (default reference 28). |
 | [C] Fix-Point alternative | Regular mates with a hole; Lite with a Rail and is 1 mm thinner. Installation/removal is sliding; tile anchoring can use threads or bolt-locking ([Core] §11, L238–251). Do not treat all Multipoints as push-in snap pegs. |
-| [U] Fix-Point geometry / bump retention | Head cross-section, neck, negative, detent and release force were not established by [Core] §11. Need selected official remix files. The description of slide removal does not prove upward-bump resistance. |
+| [V] Fix-Point geometry / [U] bump retention | Head and slot negative measured from the official remix files (`reference/measured/mb-fix-point-*.json`, pst-7shtl): no detent; the octagon lip holds the head's 45° flare against pull-off and closes the seat end. Release force is still not established; slide removal (lift 6 mm) does not prove upward-bump resistance. |
 | [C]/[U] Existing holders / likely intent | Repo `holders/cylindrical.py` imports Multiconnect cutters and uses openGrid spacing ([local source](../holders/cylindrical.py), L91–95,135–175). Multiconnect is therefore the leading hypothesis for those holders. Sean's physical mounts remain [U]: “slide on to fixed points” also describes Fix-Points per [Core] §11. |
 
 **Design recommendation:** prioritize a positive anti-lift feature or validated
@@ -92,7 +92,8 @@ snap retention for the spool cradle. [C] The current [mount contract](../tests/m
 L230–289 checks normal pull-off capture and dovetail direction; [U] it does not
 measure upward release force, creep or impact. Neither system is proven
 bump-proof by this research. Multiconnect needs pitch-aware placement and
-profile validation; Fix-Point needs a distinct head/negative/retention implementation.
+profile validation. Fix-Point now has a distinct, measured head/negative and its own contract
+(pst-7shtl, `multibuild/fixpoint.py`); its release force remains [U].
 
 ## 4. Library survey and reuse decision
 
@@ -131,8 +132,8 @@ system-specific; do not port `base.py` by changing pitch.
 | `LargeHoleThreadCutter(depth, profile)` | Female negative combining octagon, mouth relief and trapezoidal helix. Explicit right/left hand, starts, phase and runout in a validated profile record; no assumed ISO metric thread. Gate production on official STEP comparison. A male connector builder needs separate male fit data. |
 | `MulticonnectSlotCutter(travel, snap_notches)` | Compose pinned head/slot cutters, explicit travel injection, unchanged profile/clearances. Board-facing datum and insertion axis documented; pocket wide internally. A separate `mount_locations(count, grid_step=1)` uses integer pitch multiples. |
 | `channel_cutter(length, *, onramps, seats, drop=PITCH/2)` | Continuous pinned T-profile, explicit absolute Z centres with spine 0..length; +Y head entry then +Z drop <25 mm. Repeated snap seats, closed consumer cap, >=2.4 mm backing. New `multibuild-multiconnect-channel` contract. [Provenance and demo](multibuild-library.md#continuous-channel-with-on-ramps) distinguish verified secondary half-pitch placement from unresolved official file equality. |
-| `FixPointCutter(variant)` | Deferred until Regular/Lite negatives and retention geometry are sourced; do not alias to Multiconnect. |
-| Registry and fixture hook | Add `multibuild-multiconnect-slot` to `KNOWN_MOUNTS` and `CONTRACTS` together. Model supplies `mount_fixtures(mount_type, values) -> MountFixtures`: cutters, seat locations, face normal and entry axis. Reuse six existing checks only after confirmed head equality; add lattice-spacing, seam-obstacle and neighboring-pocket/backing checks. Separate Fix-Point contract when implemented. |
+| `FixPointCutter()` | [V] Regular only: `multibuild.fixpoint.slot_cutter()` re-derived from the measured Fix Point Slot negative (pst-7shtl); own `multibuild-fixpoint-slot` contract. Lite, Turn Slot and magnet variants are not built. Never alias to Multiconnect. |
+| Registry and fixture hook | Add `multibuild-multiconnect-slot` to `KNOWN_MOUNTS` and `CONTRACTS` together. Model supplies `mount_fixtures(mount_type, values) -> MountFixtures`: cutters, seat locations, face normal and entry axis. Reuse six existing checks only after confirmed head equality; add lattice-spacing, seam-obstacle and neighboring-pocket/backing checks. Fix-Point has its own `multibuild-fixpoint-slot` contract (pst-7shtl). |
 
 Apply [design-guidelines §5](design-guidelines.md#5-parametrics-for-mounts):
 expose count, travel, snap notches and plate margin via registry `Param`;

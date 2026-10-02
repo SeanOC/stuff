@@ -97,14 +97,22 @@ are computed from their roots, never typed.
 | Snap seat details | head spacing 0.795, triangle base 8, inset 0.6 | [C] Python multiconnect L260–332; spacing is not board pitch |
 | Official head equality | head and negative equal the v2 modelling files | [V] `mc-v2-*.json` (research §3) |
 | Production thread fit | unqualified | [U] research §2–3 |
-| Fix-Point variants | Regular mates with hole; Lite with Rail and is 1 mm thinner | [C] Core §11 L238–251 |
-| Fix-Point profile / release force | not established | [U] Core §11; sliding removal alone proves no force threshold |
+| Fix-Point variants | Regular mates with hole; Lite with Rail and is 1 mm thinner. Regular only is built | [C] Core §11 L238–251 |
+| Fix-Point slot profile | 3.2 deep; well = octagon inradius 8.5 centred 6.0 below the seat; lip = octagon inradius 6.0, 0.4 land, 45° to 8.5 at 2.9; far end undercut 0.4 from 1.8 | [V] `mb-fix-point-slot-negative.json` |
+| Fix-Point head (fixture) | neck r 5.87 × 0.454, 45° flare to r 8.0 at 2.584, flats ±7.2, top 3.0, four 45° top notches | [V] `mb-fix-point-positive.json` |
+| Fix-Point release force | not established | [U] Core §11; sliding removal alone proves no force threshold |
 
 The board records describe a reconstructed **female** hole. Octagonal flats
 are not circular thread diameters. `LargeHoleThreadCutter` raises
-`NotImplementedError` pending a qualified male/female thread specification;
-`FixPointCutter` raises because Multiconnect was selected and Fix-Point's
-profile is unresolved. See [research §5](multibuild-research.md).
+`NotImplementedError` pending a qualified male/female thread specification.
+See [research §5](multibuild-research.md). `FixPointCutter` is
+`multibuild.fixpoint.slot_cutter()` (pst-7shtl): the Fix Point Slot negative
+rebuilt from the measured profile above, in the Multiconnect consumer frame
+(back face Y=0, pocket +Y, lip end up). `tests/test_fixpoint.py` proves it
+and `fixpoint.head()` equal the official files (`-m upstream`), and the
+`multibuild-fixpoint-slot` contract checks entry, slide, capture, end stop,
+backing and pocket spacing. It is a Multiboard Licence remix
+([LICENSE-MULTIBOARD.md](../multibuild/LICENSE-MULTIBOARD.md)).
 
 ## Demo and verification
 
