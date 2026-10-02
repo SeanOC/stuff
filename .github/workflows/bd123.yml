@@ -14,6 +14,9 @@ jobs:
   bd123:
     name: build123d models
     runs-on: ubuntu-latest
+    # pst-mxfqk: the serial suite's CI median is ~74 min; split across -n 4
+    # that is ~20-30 min with the cradle tail, so 70 only catches a hang.
+    timeout-minutes: 70
     defaults: { run: { working-directory: build123d } }
     steps:
       - uses: actions/checkout@v4
@@ -30,13 +33,14 @@ jobs:
         # Note: job working-directory is build123d/, hence the relative path.
         run: git diff --exit-code manifest.json
       - name: tests (registry-driven manifold + manifest schema + bake)
-        run: uv run pytest tests/ -q
+        # -n 4, not auto: -n auto counts PHYSICAL cores (psutil) and picks 2 on
+        # this 4-vCPU runner. Memory is not the bound (measured: import 0.5 GB,
+        # serial suite 1.14 GB, cradle file <= 844 MB per xdist worker; 16 GB).
+        # --dist load, not loadfile: most of the time is test_spool_cradle.py,
+        # which must spread across workers. -rf names every failure.
+        run: uv run pytest tests/ -q -n 4 --dist load -rf --tb=short
       - name: export all models (STL + GLB + PNG)
         run: uv run python scripts/export.py
-      - name: bake presets (STL + GLB per preset)
-        # --presets-only is the P1c build input; exercising it in CI keeps
-        # the contract covered (tests also assert the output set).
-        run: uv run python scripts/export.py --presets-only out/presets
       - name: upload artifacts (STL/GLB/PNG + viewer)
         uses: actions/upload-artifact@v4
         with:

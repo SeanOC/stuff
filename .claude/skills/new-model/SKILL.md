@@ -32,6 +32,7 @@ watertight and pass the invariants pipeline as-generated.
 | `lib/models/catalog.ts` entry | `listModels()` **throws**; the model silently never surfaces in the gallery. Blocked by pre-commit + `lib/models/catalog.test.ts`. |
 | `models/<stem>.invariants.py` | Blocked by pre-commit + CI invariants gate. |
 | `tests/sweep/<stem>.test.ts` | `tests/sweep/coverage.test.ts` fails. |
+| `MEASURED_SECONDS` key (`None` until measured) | `scripts/test_select_sweep_tests.py` fails inside the required render job. |
 
 Valid `categoryId`s live in `MODEL_CATEGORIES` (`lib/models/catalog.ts`)
 — currently `storage | multiboard | toys | household`. The blurb is the

@@ -13,6 +13,11 @@ eyeballs the exported `out/*.png` renders and appends a Markdown summary to the
 job step summary. It **never gates**: the script always exits `0`, the `bd123`
 job is not a required status check, and the step carries `continue-on-error`.
 
+Rebased by pst-mxfqk onto the current workflow (xdist test step, job
+`timeout-minutes`, no separate preset bake step): still byte-identical to
+`.github/workflows/bd123.yml` apart from the ADDED step. pst-ae3v is closed but
+this step was never activated, so the proposal stays.
+
 ## Activate (operator, needs elevated access)
 
 1. **Copy the proposed workflow into place** (the only change is the added
@@ -100,3 +105,39 @@ to `main` triggers the first run. That run pulls every source in
 now sets `addopts = "-m 'not upstream'"`, which deselects those tests in PR CI
 and for plain local `pytest`. The trusted workflow's explicit `-m upstream`
 wins because the last `-m` on the command line takes precedence.
+
+# Staged workflows — docker layer cache + bd-render trigger paths (pst-l7c92)
+
+`deploy-bd-render-service.yml.proposed` and `deploy-render-service.yml.proposed`
+are FULL replacements for the two Cloud Run deploy workflows (CI P7). They
+touch the deployer service-account path, so the mayor copies them into place on
+the PR branch after codex passes the staged versions. Against the live files,
+they change:
+
+- **Both:** `docker build` + `docker push` become `docker/setup-buildx-action@v3`
+  + `docker/build-push-action@v6` with `cache-from: type=gha` /
+  `cache-to: type=gha,mode=max`. Tags, push target, Dockerfile, build context
+  and the auth steps are unchanged. `IMAGE` moves from a `$GITHUB_ENV` export
+  inside the old build step to the job `env:` block, because `gcloud run deploy
+  --image "${IMAGE}:${GITHUB_SHA}"` still needs it. The type=gha backend uses
+  the runner's own token, so `permissions:` is unchanged. Do not add
+  `load: true`: nothing needs a local image.
+- **bd-render only:** the trigger paths gain `build123d/multibuild/**` and
+  `build123d/openconnect/**`. The Dockerfile COPYs both into the image, but a
+  merge touching only those paths never redeployed (same class as pst-ubop).
+
+## Activate (mayor, on the PR branch)
+
+```bash
+uvx --from actionlint-py==1.7.12.25 actionlint build123d/ci/deploy-*.proposed   # exits 0
+git mv build123d/ci/deploy-bd-render-service.yml.proposed .github/workflows/deploy-bd-render-service.yml
+git mv build123d/ci/deploy-render-service.yml.proposed .github/workflows/deploy-render-service.yml
+git commit -m "ops(deploy): activate buildx gha cache + bd-render trigger paths (pst-l7c92)"
+```
+
+Each move matches its workflow's own path filter, so the merge to `main`
+redeploys both services. That first run has a cold cache and does a full build.
+Expect `importing cache manifest from gha` in the build log on the SECOND run,
+which should finish in ≤ 2 min (`gh workflow run deploy-bd-render-service.yml`
+gives you that second run). Then confirm the Cloud Run revision and a
+`POST /render` smoke (the pst-ubop recipe).
