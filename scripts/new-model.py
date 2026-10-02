@@ -14,6 +14,10 @@ gallery and pass the repo gates (st-t71):
   lib/models/catalog.ts          CATALOG entry appended (listModels()
                                  THROWS on a missing entry — models
                                  without one silently never surface)
+  scripts/select-sweep-tests.py  `"<stem>": None` MEASURED_SECONDS entry
+                                 (shard-balance table; the parity guard in
+                                 scripts/test_select_sweep_tests.py fails
+                                 on a model without a key)
 
 --opengrid emits the openGrid wall-mount conventions instead of a plain
 body: 28mm-pitch directional snap grid (strong nub up), the vendored
@@ -87,6 +91,31 @@ def insert_catalog_entry(
         f"  }},\n"
     )
     return catalog_src[: close + 1] + entry + catalog_src[close + 1 :]
+
+
+def insert_measured_entry(select_src: str, stem: str) -> str:
+    """Append `"<stem>": None` to MEASURED_SECONDS in select-sweep-tests.py.
+
+    None falls back to the @param cost estimate exactly like a missing
+    key; the entry exists so the table-parity guard in
+    scripts/test_select_sweep_tests.py stays green. Appended last: None
+    entries live at the end of the otherwise value-sorted table.
+    """
+    start = re.search(r"^MEASURED_SECONDS\b[^=]*=\s*\{", select_src, re.M)
+    if not start:
+        raise ValueError(
+            "MEASURED_SECONDS block not found in scripts/select-sweep-tests.py"
+        )
+    close = select_src.find("\n}", start.end())
+    if close == -1:
+        raise ValueError(
+            "could not locate MEASURED_SECONDS closing brace in "
+            "scripts/select-sweep-tests.py"
+        )
+    if re.search(rf'^    "{stem}":', select_src[start.end() : close], re.M):
+        return select_src
+    entry = f'    "{stem}": None,  # measured after the next full sweep\n'
+    return select_src[: close + 1] + entry + select_src[close + 1 :]
 
 
 # --- templates ----------------------------------------------------------
@@ -437,9 +466,16 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     catalog_src = catalog_path.read_text()
 
+    select_path = root / "scripts" / "select-sweep-tests.py"
+    if not select_path.is_file():
+        print(f"error: {select_path} not found — wrong --root?", file=sys.stderr)
+        return 1
+    select_src = select_path.read_text()
+
     try:
         categories = parse_categories(catalog_src)
         existing_keys = parse_catalog_keys(catalog_src)
+        new_select = insert_measured_entry(select_src, stem)
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
@@ -484,12 +520,14 @@ def main(argv: list[str] | None = None) -> int:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content)
     catalog_path.write_text(new_catalog)
+    select_path.write_text(new_select)
 
     rel = [str(p.relative_to(root)) for p in targets]
     print(
         "Created:\n  "
         + "\n  ".join(rel)
-        + "\n  lib/models/catalog.ts (entry appended)\n\n"
+        + "\n  lib/models/catalog.ts (entry appended)"
+        "\n  scripts/select-sweep-tests.py (MEASURED_SECONDS None entry)\n\n"
         "Next steps (full checklist: .claude/skills/new-model/SKILL.md):\n"
         f"  1. Replace the TODO body + header prose in models/{stem}.scad\n"
         f"  2. Render + eyeball: scad-render skill, or python3 scripts/render-all.py\n"
