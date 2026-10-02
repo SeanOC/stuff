@@ -27,7 +27,9 @@ export interface ParamBase {
   // `filename` is a bare-word flag on the @param line (e.g.
   // `// @param enum choices=a|b|c filename`). When true, the
   // export pipeline (scripts/export-all.py) expands one STL per
-  // choice of this param. The webapp ignores the flag.
+  // choice of this param, and live webapp downloads name the file
+  // after the param's current value (lib/models/download-name.ts).
+  // build123d's registry.Param carries the same flag via the manifest.
   filename?: boolean;
 }
 

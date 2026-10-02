@@ -70,8 +70,8 @@ _ROOT_FIELDS = ("schemaVersion", "models")
 # parse.ts emits ONLY set keys, so the strict check is: key SET equals
 # required + (optionals actually present) — no unknowns — and every key
 # appears in canonical order (a subsequence of the full canonical order).
-_PARAM_CANONICAL = ("name", "label", "group", "unit", "kind", "default", "min", "max", "step", "choices")
-_PARAM_OPTIONALS = ("label", "group", "unit", "min", "max", "step")
+_PARAM_CANONICAL = ("name", "label", "group", "unit", "kind", "default", "min", "max", "step", "choices", "filename")
+_PARAM_OPTIONALS = ("label", "group", "unit", "min", "max", "step", "filename")
 _KIND_REQUIRED = {
     "number": ("kind", "default"),
     "integer": ("kind", "default"),
@@ -115,6 +115,8 @@ def param_to_json(param) -> dict[str, Any]:
         out["default"] = param.default
     if param.kind == "enum":
         out["choices"] = list(param.choices)
+    if param.filename:
+        out["filename"] = True
     return out
 
 

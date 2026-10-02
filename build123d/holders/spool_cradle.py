@@ -65,7 +65,8 @@ PARAMS = tuple(Param(name, 'number', default, min=lo, max=hi, step=step,
         ('guide_height', 15, 12, 30, 1, 'Guide height above rail'),
         ('guide_gap', 0.5, 0.5, 2, 0.25, 'Half-gap to the neighbouring holder'),
     )) + (Param('mount_style', 'enum', 'channel',
-                choices=('channel', 'points', 'openconnect'), label='Mount style'),)
+                choices=('channel', 'points', 'openconnect'), label='Mount style',
+                filename=True),)
 POINT_ROW_SPACING = 2*PITCH  # Two board rows: the pockets stay discrete.
 
 

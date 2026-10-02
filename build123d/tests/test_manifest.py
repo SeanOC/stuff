@@ -129,6 +129,43 @@ def test_param_optional_fields_are_omitted():
     assert "options" not in e  # the app field is `choices`, never `options`
 
 
+def test_param_filename_flag_emitted_only_when_set():
+    """parse.ts ParamBase.filename is an optional bare flag: emitted as true
+    (last, after choices) when set, absent otherwise — so the manifest diff
+    for flagging a param is exactly one key."""
+    assert Param(name="m", kind="enum", default="a", choices=("a",)).filename is False
+    flagged = Param(name="m", kind="enum", default="a", choices=("a", "b"), filename=True)
+    assert list(param_to_json(flagged)) == ["name", "kind", "default", "choices", "filename"]
+    assert param_to_json(flagged)["filename"] is True
+    assert "filename" not in param_to_json(Param(name="x", kind="number", default=1.0))
+    num = Param(name="x", kind="number", default=1.0, min=0.0, filename=True)
+    assert param_to_json(num) == {"name": "x", "kind": "number", "default": 1.0,
+                                  "min": 0.0, "filename": True}
+
+
+def test_validator_accepts_filename_on_every_kind():
+    doc = _valid_doc()
+    for kind, extra in (("number", {}), ("integer", {}), ("boolean", {}),
+                        ("string", {}), ("enum", {"choices": ["a"]})):
+        d = _mutate(doc)
+        default = {"number": 1.0, "integer": 1, "boolean": True,
+                   "string": "s", "enum": "a"}[kind]
+        d["models"][0]["params"].append(
+            {"name": f"f_{kind}", "kind": kind, "default": default, **extra,
+             "filename": True})
+        assert validate_manifest(d) == [], kind
+
+
+def test_spool_cradle_mount_style_is_filename_flagged():
+    """pst-fcjqj: live downloads name the cradle after its mount style; it is
+    the ONLY flagged param in the registry (no churn elsewhere)."""
+    flagged = [(s.name, p.name) for s in all_models() for p in s.params if p.filename]
+    assert flagged == [("holder_spool_cradle", "mount_style")]
+    model = next(m for m in build_manifest()["models"] if m["slug"] == "holder-spool-cradle")
+    by_name = {p["name"]: p for p in model["params"]}
+    assert by_name["mount_style"]["filename"] is True
+
+
 def test_preset_serializes_like_parse_ts():
     pr = Preset(id="spray_can", label="Spray can (d=66, h=60)",
                 values={"d": 66.0, "h": 60.0})
