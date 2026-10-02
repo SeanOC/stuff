@@ -283,10 +283,11 @@ def cap_land_cutter(p):
     Nothing backs the cap behind its rear contact between cap_inner and
     the rail, so its rear end is the same cradle_angle knife. The land and
     its 0.4 mm rear chamfer match the outboard ones. A 30-degree ramp rises
-    0.4 mm to the rail's inner face, where the cutter stops: outboard of it
-    the cap takes the root's own cut (placement_aids). 45-degree 0.4 mm bevels finish the land's edge at cap_inner and
-    the cap's vertical rear corner there. Built, not chamfered: OCCT's rear
-    chamfers on the knife failed at some parameter corners.
+    0.4 mm to the rail's inner face, where the cutter stops: the rail backs
+    the cap outboard of it. 45-degree 0.4 mm bevels finish the land's edge
+    at cap_inner and the cap's vertical rear corner there. Built, not
+    chamfered: OCCT's rear chamfers on the knife failed at some parameter
+    corners. holder() cuts it after the top clip.
     """
     ci, xi, rear, bevel = p['cap_inner'], p['rail_inner'], p['rear_y'], .4
     x0, length = ci-1, xi-(ci-1)
@@ -298,13 +299,7 @@ def cap_land_cutter(p):
     corner = Pos(0, 0, lo)*Solid.extrude(Face(Wire.make_polygon([
         (ci+bevel+1, rear-1, 0), (ci-1, rear+bevel+1, 0), (ci-1, rear-1, 0)],
         close=True)), (0, 0, hi-lo))
-    # Outboard of the rail's inner face the cap takes the root's own cut, so
-    # the two coincide. Overlapping the cap's ramp with the root's mirrored
-    # ramp left a sliver notch on the rear knife line, which fused an
-    # unorientable face at cradle_angle=45.
-    outboard = rear_land_cutter(p) & Pos(xi, 0, 0)*Box(
-        400, 400, 400, align=(Align.MIN, Align.CENTER, Align.CENTER))
-    return land.fuse(edge, corner, outboard)
+    return land.fuse(edge, corner)
 
 
 def cap_corner_wedge(p, bevel=.4):
@@ -312,10 +307,14 @@ def cap_corner_wedge(p, bevel=.4):
 
     Mirrors rear_corner_wedge() inboard of the rail. Its underside is flush
     with the cap's 45-degree underside at rear_y and rises toward the plate,
-    and the cap land cutter trims its top.
+    and the cap land cutter trims its top. It is fused after the top clip,
+    so its top stops just above the land's ramp at the rail's inner face:
+    the overlap into the rail then stays below the saddle.
     """
     xi, rear, overlap = p['rail_inner'], p['rear_y'], .1
-    deep = p['center_z']-math.sqrt((p['saddle_radius']+WEB)**2-(rear-p['center_y'])**2)
+    def saddle(y, depth=0):
+        return p['center_z']-math.sqrt((p['saddle_radius']+depth)**2-(y-p['center_y'])**2)
+    deep, top = saddle(rear, WEB), saddle(rear+WEB/2)+bevel+.05
     z0 = deep-(xi-p['cap_inner'])
     outline = [(xi+overlap, rear-bevel), (xi, rear-bevel), (xi-bevel, rear),
                (xi-bevel, rear+overlap), (xi+overlap, rear+overlap)]
@@ -323,7 +322,7 @@ def cap_corner_wedge(p, bevel=.4):
         points = [(x, y, z(x, y)) for x, y in outline]
         return Wire.make_polygon([*points, points[0]])
     wedge = Solid.make_loft([ring(lambda x, y: z0+(xi-x)+(rear-y)/2),
-                             ring(lambda x, y: p['contact_z']+1)], ruled=True)
+                             ring(lambda x, y: top)], ruled=True)
     return wedge-cap_land_cutter(p)
 
 
@@ -339,7 +338,6 @@ def placement_aids(p):
     cap = saddle_curtain(p, p['cap_inner'], xw, .01, .01)
     cap -= saddle_curtain(p, p['cap_inner'], xw, 0, -p['rail_width'],
                           floor=-1000, radial_depth=WEB, tail_drop=p['tail_drop'])
-    cap = (cap-cap_land_cutter(p)).fuse(cap_corner_wedge(p))
     # An explicit vertical R1 gusset avoids OCCT's failed rolling fillet at
     # the short cap/panel junction. Its underside continues the 45° ramp.
     inner = p['cap_inner']
@@ -550,6 +548,12 @@ def holder(**values):
         align=(Align.CENTER, Align.MIN, Align.MIN))
     top_clip -= saddle_curtain(p, -foot, foot)
     part = (part-top_clip).clean()
+    # Cut the cap's rear land on the clipped part: on the aids, the cap's
+    # 0.01 mm curtain lift left a sliver on the rear knife line that the
+    # clip fused into an unorientable saddle face at cradle_angle=45.
+    land, wedge = cap_land_cutter(p), cap_corner_wedge(p)
+    part = (part-land-land.mirror(Plane.YZ)).fuse(
+        wedge, wedge.mirror(Plane.YZ)).clean()
     joints = [e for e in part.edges().filter_by(Axis.Z)
               if (abs(e.center().Y-t) < 1e-6 and abs(abs(e.center().X)-ri) < 1e-6)
               or (abs(e.center().Y-end) < 1e-6 and abs(abs(e.center().X)-xi) < 1e-6)]
