@@ -1,7 +1,17 @@
-# build123d PoC toolchain (Sean 2026-08-30). ADVISORY job — deliberately NOT a
-# required status check while the PoC runs, and path-filtered at the workflow
-# level (safe because it is not required; the required checks in ci.yml must
+# build123d PoC toolchain (Sean 2026-08-30). ADVISORY jobs — deliberately NOT
+# required status checks while the PoC runs, and path-filtered at the workflow
+# level (safe because they are not required; the required checks in ci.yml must
 # never get a workflow-level filter — see the comment there).
+#
+# pst-24tr6 (CI P3+P4): three jobs selected by pytest marker (the contract is
+# in build123d/ci/README.md and enforced by build123d/tests/conftest.py):
+#   fast        everything that is not an audit, plus the serial budget step
+#   audit       every registry-sized print audit except the cradle corner sweep
+#   audit_full  the cradle corner sweep, 3 pytest-split shards; PRs that touch
+#               model/audit code, every push to main, and nightly
+# A command-line -m REPLACES pyproject's addopts "-m 'not upstream'", so every
+# expression below ends with "and not upstream" (PR CI stays offline —
+# build123d/reference/FETCH.md).
 name: bd123
 on:
   pull_request:
@@ -9,14 +19,17 @@ on:
   push:
     branches: [main]
     paths: ["build123d/**", ".github/workflows/bd123.yml"]
+  schedule:
+    # Nightly full run (09:17 UTC). Failures are picked up by the mayor's
+    # heartbeat (gh run list --workflow bd123 --event schedule), see
+    # build123d/ci/README.md.
+    - cron: '17 9 * * *'
 
 jobs:
-  bd123:
-    name: build123d models
+  fast:
+    name: build123d fast
     runs-on: ubuntu-latest
-    # pst-mxfqk: the serial suite's CI median is ~74 min; split across -n 4
-    # that is ~20-30 min with the cradle tail, so 70 only catches a hang.
-    timeout-minutes: 70
+    timeout-minutes: 15
     defaults: { run: { working-directory: build123d } }
     steps:
       - uses: actions/checkout@v4
@@ -32,13 +45,18 @@ jobs:
       - name: manifest freshness (fail on drift)
         # Note: job working-directory is build123d/, hence the relative path.
         run: git diff --exit-code manifest.json
-      - name: tests (registry-driven manifold + manifest schema + bake)
+      - name: tests (everything except audits)
         # -n 4, not auto: -n auto counts PHYSICAL cores (psutil) and picks 2 on
         # this 4-vCPU runner. Memory is not the bound (measured: import 0.5 GB,
         # serial suite 1.14 GB, cradle file <= 844 MB per xdist worker; 16 GB).
-        # --dist load, not loadfile: most of the time is test_spool_cradle.py,
-        # which must spread across workers. -rf names every failure.
-        run: uv run pytest tests/ -q -n 4 --dist load -rf --tb=short
+        # --dist load, not loadfile: test_spool_cradle.py must spread across
+        # workers. -rf names every failure.
+        run: uv run pytest tests/ -q -n 4 --dist load -rf --tb=short -m "not audit and not budget and not upstream"
+      - name: audit budgets (serial)
+        # The per-model audit budget is a serial CPU-time measurement, so it
+        # skips under xdist (test_print_audit.py); this step is where the
+        # 60 s / 120 s (cradle) budgets are enforced.
+        run: uv run pytest tests/ -q -n 0 -rf --tb=short -m "budget and not upstream"
       - name: export all models (STL + GLB + PNG)
         run: uv run python scripts/export.py
       - name: upload artifacts (STL/GLB/PNG + viewer)
@@ -53,3 +71,85 @@ jobs:
           echo "## build123d models" >> "$GITHUB_STEP_SUMMARY"
           echo "Download the **bd123-models** artifact for STL/GLB + the drag-drop viewer (viewer/index.html)." >> "$GITHUB_STEP_SUMMARY"
           for f in out/*.png; do echo "### $(basename "$f" .png)" >> "$GITHUB_STEP_SUMMARY"; done
+
+  audit:
+    name: build123d audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults: { run: { working-directory: build123d } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: sync env (pinned via uv.lock)
+        run: uv sync --frozen
+      - name: print audits (presets, reproducers, other models)
+        run: uv run pytest tests/ -q -n 4 --dist load -rf --tb=short -m "audit and not audit_full and not upstream"
+
+  changes:
+    # Decides whether a PR runs the cradle corner sweep. pull_request only: on
+    # push to main and on schedule audit_full always runs. No checkout needed —
+    # on pull_request dorny/paths-filter lists the PR's files via the API.
+    name: detect model/audit changes
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      # paths-filter calls listFiles on the PR; without pull-requests: read the
+      # call fails with "Resource not accessible by integration" (ci.yml same).
+      pull-requests: read
+    outputs:
+      cradle: ${{ steps.filter.outputs.cradle }}
+    steps:
+      - name: Filter paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            cradle:
+              - 'build123d/holders/**'
+              - 'build123d/multibuild/**'
+              - 'build123d/openconnect/**'
+              - 'build123d/tests/print_audit.py'
+              - 'build123d/tests/mount_contracts.py'
+              - 'build123d/tests/test_spool_cradle.py'
+              - 'build123d/tests/conftest.py'
+              - 'build123d/pyproject.toml'
+              - 'build123d/uv.lock'
+
+  audit_full:
+    name: build123d audit (full sweep)
+    needs: changes
+    # Fail-soft like ci.yml's render job: if `changes` failed, run the sweep.
+    # !cancelled() so a skipped `changes` (push/schedule) does not skip this.
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.result != 'success' || needs.changes.outputs.cradle == 'true') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [1, 2, 3]
+    defaults: { run: { working-directory: build123d } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: sync env (pinned via uv.lock)
+        run: uv sync --frozen
+      - name: cradle corner sweep (shard ${{ matrix.group }}/3)
+        # tests/.test_durations balances the shards; a stale or missing entry
+        # only degrades balance (pytest-split splits evenly), never coverage.
+        # Nightly re-measures this shard's durations (--clean-durations keeps
+        # only its own tests) for the artifact below.
+        env:
+          STORE: ${{ github.event_name == 'schedule' && '--store-durations --clean-durations' || '' }}
+        run: >-
+          uv run pytest tests/ -q -n 4 --dist load -rf --tb=short
+          -m "audit_full and not upstream"
+          --splits 3 --group ${{ matrix.group }} --durations-path tests/.test_durations
+          $STORE
+      - name: upload refreshed durations (nightly)
+        if: ${{ !cancelled() && github.event_name == 'schedule' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: bd123-test-durations-${{ matrix.group }}
+          path: build123d/tests/.test_durations

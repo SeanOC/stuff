@@ -13,10 +13,11 @@ eyeballs the exported `out/*.png` renders and appends a Markdown summary to the
 job step summary. It **never gates**: the script always exits `0`, the `bd123`
 job is not a required status check, and the step carries `continue-on-error`.
 
-Rebased by pst-mxfqk onto the current workflow (xdist test step, job
-`timeout-minutes`, no separate preset bake step): still byte-identical to
-`.github/workflows/bd123.yml` apart from the ADDED step. pst-ae3v is closed but
-this step was never activated, so the proposal stays.
+Rebased by pst-24tr6 onto the three-job workflow (see the last section): the
+step sits in the `fast` job, right after the export it reviews, and the file is
+still byte-identical to `.github/workflows/bd123.yml` apart from the header
+comment and the ADDED step. pst-ae3v is closed but this step was never
+activated, so the proposal stays.
 
 ## Activate (operator, needs elevated access)
 
@@ -141,3 +142,31 @@ Expect `importing cache manifest from gha` in the build log on the SECOND run,
 which should finish in ≤ 2 min (`gh workflow run deploy-bd-render-service.yml`
 gives you that second run). Then confirm the Cloud Run revision and a
 `POST /render` smoke (the pst-ubop recipe).
+
+# bd123 jobs and the marker contract (pst-24tr6)
+
+`.github/workflows/bd123.yml` is split into three jobs, and pytest markers in
+`build123d/pyproject.toml` decide which job runs each test. **fast** (`build123d
+fast`) runs the manifest checks, every test that is neither `audit` nor
+`budget`, then the `budget` tests serially (`-n 0`, because the 60 s / 120 s
+budgets measure serial CPU time), then the export. **audit** (`build123d
+audit`) runs `audit and not audit_full`: every registry-sized print audit,
+including each cradle style's presets, `PRINT_CORNER` and the reproducers.
+**audit_full** (`build123d audit (full sweep)`) runs the cradle corner sweep
+(`audit_full`) as three `pytest-split` shards, balanced by the committed
+`build123d/tests/.test_durations`. A PR runs it only when it touches
+`holders/`, `multibuild/`, `openconnect/`, the audit/contract helpers,
+`test_spool_cradle.py`, `tests/conftest.py`, `pyproject.toml` or `uv.lock`.
+Every push to `main` and the nightly schedule (`17 9 * * *` UTC) run all three
+jobs unconditionally. The contract: a test that builds a registry-sized model
+and calls `audit()` gets `@pytest.mark.audit`; a cradle corner case also gets
+`audit_full`; `tests/conftest.py` fails collection if an `audit_full` item lacks
+`audit` or a `budget` item has it. Because a command-line `-m` replaces
+`addopts`, every job's expression ends in `and not upstream`, which keeps PR CI
+offline (`reference/FETCH.md`). Nightly failures are not filed as issues
+(`issues: write` is outside this workflow's permissions); the mayor's heartbeat
+checks `gh run list --workflow bd123 --event schedule`. The nightly also
+re-measures each shard and uploads it as `bd123-test-durations-<n>`. To refresh
+the balance, download the three files, merge them with
+`jq -s add d1 d2 d3 > build123d/tests/.test_durations`, and commit the result
+(optional: a stale file only skews shard balance, never coverage).

@@ -248,16 +248,26 @@ PRINT_CORNER = dict(spool_diameter=205, spool_width=70, flange_height=4,
                     wall_clearance=6)
 
 
+# pst-24tr6: every registry-sized print audit below is marked `audit`; the
+# corner sweep is also `audit_full` (bd123 runs it only on cradle-touching PRs,
+# push to main and nightly). Always on: each style's presets, PRINT_CORNER and
+# the reproducers (narrow-45-reproducer, rear-land-corner).
+FULL = pytest.mark.audit_full
+
+
 # No 'default' case: test_print_audit::test_model_print_audit[holder_spool_cradle]
 # audits the default build (pst-mxfqk).
-@pytest.mark.parametrize('values', [SPEC.presets[0].values, PRINT_CORNER,
-    dict(spool_width=50, guide_gap=.5, guide_height=12, rail_width=14, flange_height=4),
-    dict(spool_width=70, guide_gap=2, guide_height=30, rail_width=14, flange_height=4),
-    dict(spool_width=70, guide_gap=.5, guide_height=30, rail_width=6, saddle_clearance=1.5),
-    REAR_LAND_CORNER],
-    ids=['bambu-shallow-root', 'diagonal-root-corner',
-         'maximum-reach-minimum-height', 'guides-omitted', 'insufficient-crest-room',
-         'rear-land-corner'])
+@pytest.mark.audit
+@pytest.mark.parametrize('values', [
+    pytest.param(SPEC.presets[0].values, id='bambu-shallow-root'),
+    pytest.param(PRINT_CORNER, id='diagonal-root-corner'),
+    pytest.param(dict(spool_width=50, guide_gap=.5, guide_height=12, rail_width=14,
+                      flange_height=4), id='maximum-reach-minimum-height', marks=FULL),
+    pytest.param(dict(spool_width=70, guide_gap=2, guide_height=30, rail_width=14,
+                      flange_height=4), id='guides-omitted', marks=FULL),
+    pytest.param(dict(spool_width=70, guide_gap=.5, guide_height=30, rail_width=6,
+                      saddle_clearance=1.5), id='insufficient-crest-room', marks=FULL),
+    pytest.param(REAR_LAND_CORNER, id='rear-land-corner')])
 def test_production_print_audit(values):
     part=holder(**values)
     assert part.is_valid and len(part.solids()) == 1
@@ -497,6 +507,8 @@ def test_overall_width_within_cadence(values):
     assert_cadence(holder(**values), p)
 
 
+@pytest.mark.audit
+@pytest.mark.audit_full
 @pytest.mark.parametrize('reach, enabled', [(2.9, True), (2.85, False), (3.0, True)])
 def test_guide_threshold(reach, enabled):
     values = dict(spool_width=2*(dimensions()['cadence']/2-.5-reach))
@@ -521,10 +533,12 @@ def test_guide_threshold(reach, enabled):
     assert report.ok, report.format()
 
 
-@pytest.fixture(scope='module', params=[
-    dict(spool_width=width, saddle_clearance=1.5, cradle_angle=angle)
-    for width in (66, 50) for angle in (45, 25)
-], ids=['narrow-45-reproducer', 'narrow-25', 'wide-45', 'wide-25'])
+MAX_CLEARANCE_CASES = [dict(spool_width=width, saddle_clearance=1.5, cradle_angle=angle)
+                       for width in (66, 50) for angle in (45, 25)]
+MAX_CLEARANCE_IDS = ['narrow-45-reproducer', 'narrow-25', 'wide-45', 'wide-25']
+
+
+@pytest.fixture(scope='module', params=MAX_CLEARANCE_CASES, ids=MAX_CLEARANCE_IDS)
 def max_clearance_guide(request):
     values = request.param
     return values, holder(**values)
@@ -590,6 +604,12 @@ def test_outboard_rear_end_has_no_knife(values):
     assert not thin, thin[:5]
 
 
+# Re-parametrized indirectly so only the AUDIT items carry audit_full; the
+# geometry tests above share the fixture and stay in bd123's fast job.
+@pytest.mark.audit
+@pytest.mark.parametrize('max_clearance_guide', [
+    pytest.param(v, id=i, marks=() if i == 'narrow-45-reproducer' else FULL)
+    for v, i in zip(MAX_CLEARANCE_CASES, MAX_CLEARANCE_IDS)], indirect=True)
 def test_max_clearance_guide_print_audit(max_clearance_guide):
     values, model = max_clearance_guide
     fx = mount_fixtures(MOUNT, values)
@@ -690,10 +710,11 @@ POINTS_AUDIT_CASES = [p.values for p in POINTS_PRESETS] + [
     for w in (50, 66, 70) for c in (.25, 1.5) for a in (25, 45)]
 
 
-@pytest.mark.parametrize('values', POINTS_AUDIT_CASES,
-                         ids=[p.id for p in POINTS_PRESETS]+[
-                             f"w{v['spool_width']}-c{v['saddle_clearance']}-a{v['cradle_angle']}"
-                             for v in POINTS_AUDIT_CASES[len(POINTS_PRESETS):]])
+@pytest.mark.audit
+@pytest.mark.parametrize('values', [pytest.param(p.values, id=p.id) for p in POINTS_PRESETS] + [
+    pytest.param(v, id=f"w{v['spool_width']}-c{v['saddle_clearance']}-a{v['cradle_angle']}",
+                 marks=FULL)
+    for v in POINTS_AUDIT_CASES[len(POINTS_PRESETS):]])
 def test_points_print_audit_and_edges(values):
     model = holder(**values)
     assert model.is_valid and len(model.solids()) == 1
@@ -805,10 +826,11 @@ OC_AUDIT_CASES = [p.values for p in OC_PRESETS] + [
     for w in (50, 66, 70) for c in (.25, 1.5) for a in (25, 45)]
 
 
-@pytest.mark.parametrize('values', OC_AUDIT_CASES,
-                         ids=[p.id for p in OC_PRESETS]+[
-                             f"w{v['spool_width']}-c{v['saddle_clearance']}-a{v['cradle_angle']}"
-                             for v in OC_AUDIT_CASES[len(OC_PRESETS):]])
+@pytest.mark.audit
+@pytest.mark.parametrize('values', [pytest.param(p.values, id=p.id) for p in OC_PRESETS] + [
+    pytest.param(v, id=f"w{v['spool_width']}-c{v['saddle_clearance']}-a{v['cradle_angle']}",
+                 marks=FULL)
+    for v in OC_AUDIT_CASES[len(OC_PRESETS):]])
 def test_openconnect_print_audit_and_edges(values):
     model = holder(**values)
     assert model.is_valid and len(model.solids()) == 1

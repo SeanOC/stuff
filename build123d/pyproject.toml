@@ -31,11 +31,23 @@ dependencies = [
 opengrid = { git = "https://makerrepo.com/r/fangpenlin/opengrid.git", rev = "eea2b4154a10d2909e5edece567cbe0563aaf955" }
 
 [dependency-groups]
-dev = ["pytest-regressions>=2.5", "pytest-xdist>=3.6"]
+dev = [
+    "pytest-regressions>=2.5",
+    "pytest-split>=0.10",
+    "pytest-xdist>=3.6",
+]
 
 [tool.pytest.ini_options]
 # `upstream` tests need the private reference mirror on disk (reference/FETCH.md).
 # Deselected by default so PR CI stays offline; the trusted push-to-main
 # reference-measure workflow runs `pytest -m upstream` (a later -m overrides this).
-markers = ["upstream: needs build123d/reference/upstream/ pulled from the private GCS mirror"]
+# pst-24tr6: bd123.yml selects its three jobs by marker (build123d/ci/README.md).
+# A command-line -m REPLACES addopts, so every CI -m expression repeats
+# 'and not upstream'.
+markers = [
+    "upstream: needs build123d/reference/upstream/ pulled from the private GCS mirror",
+    "audit: builds a registry-sized model and runs the BRep print audit (tens of seconds each); bd123 'audit' job",
+    "audit_full: cradle corner sweep (always also 'audit'); cradle-touching PRs, push to main, nightly",
+    "budget: the per-model audit budget test; serial step of bd123's 'fast' job",
+]
 addopts = "-m 'not upstream'"
