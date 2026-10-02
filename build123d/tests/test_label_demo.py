@@ -25,7 +25,7 @@ def test_demo_is_smoke_and_out_of_catalog():
 
 def test_vendored_font_resolves_to_its_own_file():
     assert load_font() == 'Inter'
-    assert (FONT_PATH.parent / 'OFL.txt').read_text().startswith('Copyright')
+    assert (FONT_PATH.parent / 'OFL.txt').read_text(encoding='utf-8').startswith('Copyright')
 
 
 def test_missing_or_bogus_font_fails_loudly(tmp_path):

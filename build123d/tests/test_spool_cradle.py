@@ -632,7 +632,7 @@ def test_every_mount_style_has_a_preset():
 
 def recorded_volumes():
     """Last recorded volume per preset in the validation doc's tables."""
-    doc = (Path(__file__).resolve().parent.parent/'docs/spool-cradle-validation.md').read_text()
+    doc = (Path(__file__).resolve().parent.parent/'docs/spool-cradle-validation.md').read_text(encoding='utf-8')
     volumes = {}
     for line in doc.splitlines():
         row = re.match(r'\|\s*`(\w+)`\s*\|(.*)\|\s*$', line)
