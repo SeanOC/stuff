@@ -28,6 +28,7 @@ import type { CameraAxes } from "./StlViewer";
 import { paramsEqual, useDetailState } from "@/hooks/useDetailState";
 import { useBdRenderer } from "@/hooks/useBdRenderer";
 import type { Param, ParamValue, Preset } from "@/lib/scad-params/parse";
+import { downloadFilename } from "@/lib/models/download-name";
 
 export interface BdDetailPageModel {
   slug: string;
@@ -306,7 +307,11 @@ export default function BdDetailPage({ model }: { model: BdDetailPageModel }) {
           </div>
 
           {/* Download — always the CURRENT live params via /api/bd-render. */}
-          <BdDownloadStl slug={model.slug} values={detail.state.params} />
+          <BdDownloadStl
+            slug={model.slug}
+            params={model.params}
+            values={detail.state.params}
+          />
 
           {/* Editable params — shared control set with the SCAD viewer. */}
           <div className="mt-18 font-mono text-10 uppercase tracking-wide text-text-mute">
@@ -340,9 +345,11 @@ type DownloadState =
 // service surfaces a friendly inline error.
 function BdDownloadStl({
   slug,
+  params,
   values,
 }: {
   slug: string;
+  params: Param[];
   values: Record<string, ParamValue>;
 }) {
   const [state, setState] = useState<DownloadState>({ kind: "idle" });
@@ -373,7 +380,8 @@ function BdDownloadStl({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${slug}.stl`;
+      // Same name as /api/bd-render's content-disposition.
+      a.download = downloadFilename(slug, params, values);
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -385,7 +393,7 @@ function BdDownloadStl({
         message: e instanceof Error ? e.message : "network error",
       });
     }
-  }, [slug, values]);
+  }, [slug, params, values]);
 
   return (
     <div className="mt-16">

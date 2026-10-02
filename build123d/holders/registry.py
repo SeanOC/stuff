@@ -60,6 +60,9 @@ class Param:
       "boolean" -> default: bool
       "string"  -> default: str
       "enum"    -> default: str in choices; choices: non-empty tuple[str]
+
+    filename: name live STL downloads after this param's value
+    (slug-<value>.stl); emitted to the manifest only when True.
     """
 
     name: str
@@ -72,6 +75,7 @@ class Param:
     max: float | None = None
     step: float | None = None
     choices: tuple[str, ...] = ()
+    filename: bool = False
 
 
 @dataclass(frozen=True)

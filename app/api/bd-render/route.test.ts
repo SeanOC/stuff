@@ -215,11 +215,39 @@ describe("/api/bd-render render + cache", () => {
     const stl = await call({ slug: "holder-spray-can", params: { d: 70 } }, "?format=stl");
     expect(stl.res.status).toBe(200);
     expect(stl.res.headers.get("content-type")).toBe("application/sla");
-    expect(stl.res.headers.get("content-disposition")).toContain(".stl");
+    // Unflagged model: name stays slug.stl.
+    expect(stl.res.headers.get("content-disposition")).toBe(
+      'attachment; filename="holder-spray-can.stl"',
+    );
     // glb was sent with format glb, stl with format stl.
     expect(bdClient.renderBdViaService).toHaveBeenLastCalledWith(
       expect.objectContaining({ format: "stl" }),
     );
+  });
+
+  it("names the spool cradle STL after its filename-flagged mount style (MISS and HIT)", async () => {
+    // The REAL manifest entry, so this also proves mount_style is flagged.
+    const { loadBdModel } = await vi.importActual<
+      typeof import("@/lib/models/bd-manifest")
+    >("@/lib/models/bd-manifest");
+    manifest.loadBdModel.mockResolvedValue(await loadBdModel("holder-spool-cradle"));
+    const disposition = async (params: Record<string, unknown>) => {
+      const r = await call({ slug: "holder-spool-cradle", params }, "?format=stl");
+      expect(r.res.status).toBe(200);
+      return [r.res.headers.get("x-cache"), r.res.headers.get("content-disposition")];
+    };
+    const points = 'attachment; filename="holder-spool-cradle-points.stl"';
+    expect(await disposition({ mount_style: "points" })).toEqual(["MISS", points]);
+    expect(await disposition({ mount_style: "points" })).toEqual(["HIT", points]);
+    // Defaults are named too, so the name never depends on what was sent.
+    expect(await disposition({})).toEqual([
+      "MISS",
+      'attachment; filename="holder-spool-cradle-channel.stl"',
+    ]);
+    expect(await disposition({ mount_style: "openconnect" })).toEqual([
+      "MISS",
+      'attachment; filename="holder-spool-cradle-openconnect.stl"',
+    ]);
   });
 
   it("MISS then HIT: identical request serves from cache, no second render", async () => {

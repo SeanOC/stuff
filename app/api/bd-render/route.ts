@@ -32,6 +32,7 @@ import {
   type ParamValue,
 } from "@/lib/scad-params/parse";
 import { bdModelsEnabled, loadBdModel, type BdParam } from "@/lib/models/bd-manifest";
+import { downloadFilename } from "@/lib/models/download-name";
 import {
   getBdRenderServiceConfig,
   renderBdViaService,
@@ -111,7 +112,11 @@ export async function POST(req: NextRequest) {
         format,
       });
       const hit = await store.get(key, format);
-      if (hit) return bytesResponse(hit, model.slug, format, { cache: "HIT" });
+      if (hit) {
+        return bytesResponse(hit, downloadFilename(model.slug, model.params, validated.values, format), format, {
+          cache: "HIT",
+        });
+      }
     } catch (e) {
       // A cache fault must never break a render — fall through to live.
       // key may be set (get failed) or null (key compute failed); the put
@@ -147,7 +152,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  return bytesResponse(out, model.slug, format, {
+  return bytesResponse(out, downloadFilename(model.slug, model.params, validated.values, format), format, {
     cache: store ? "MISS" : null,
     renderMs: result.renderMs,
   });
@@ -164,7 +169,7 @@ const CONTENT_TYPE: Record<BdRenderFormat, string> = {
 // carries the timing header.
 function bytesResponse(
   bytes: Uint8Array,
-  slug: string,
+  filename: string,
   format: BdRenderFormat,
   meta: { cache: "HIT" | "MISS" | null; renderMs?: number },
 ): Response {
@@ -178,9 +183,12 @@ function bytesResponse(
         ? "public, max-age=31536000, immutable"
         : "no-store",
   };
-  // STL is a download; GLB is fetched inline by the in-page viewer.
+  // STL is a download; GLB is fetched inline by the in-page viewer. The name
+  // carries any `filename`-flagged param's value (holder-spool-cradle-points
+  // .stl) and must agree with BdDetailPage's a.download, which wins on the
+  // fetch-blob path.
   if (format === "stl") {
-    headers["content-disposition"] = `attachment; filename="${slug}.stl"`;
+    headers["content-disposition"] = `attachment; filename="${filename}"`;
   }
   if (meta.cache) headers["x-cache"] = meta.cache;
   if (meta.renderMs !== undefined) headers["x-render-ms"] = meta.renderMs.toFixed(0);

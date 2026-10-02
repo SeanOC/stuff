@@ -95,6 +95,10 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
     "cache-control": "public, max-age=0, must-revalidate",
   };
   // STL is a download; GLB is fetched by the in-page viewer (inline).
+  // Baked assets are named by PRESET, not via downloadFilename's flagged
+  // params: a preset id already names the variant, and once pst-026m4
+  // consolidates presets the id IS the mount style — so this stays
+  // `${slug}-${preset}.stl` and never doubles the suffix.
   if (format === "stl") {
     headers["content-disposition"] =
       `attachment; filename="${slug}-${preset}.stl"`;
