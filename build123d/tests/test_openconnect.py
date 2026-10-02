@@ -150,6 +150,7 @@ def plate():
     return demo.build()
 
 
+@pytest.mark.audit
 def test_demo_plate_contract_audit_and_volume(plate, tmp_path):
     assert plate.is_valid and len(plate.solids()) == 1
     assert tuple(plate.bounding_box().size) == pytest.approx((84, 5.5, 84))

@@ -191,6 +191,8 @@ def assert_mount_layout(values):
 
 # Presets are verified by test_mount_contracts.test_model_mount_contract
 # (defaults + every preset); only the thin-plate corners are cradle-only.
+# 20-45 s each (registry-sized build + contract) -> bd123 `audit` job (pst-24tr6).
+@pytest.mark.audit
 @pytest.mark.parametrize('values',[
     {'plate_width':68,'plate_thickness':6.6},
     {'plate_width':68,'plate_thickness':6.6,'mount_style':'points'},
@@ -248,16 +250,26 @@ PRINT_CORNER = dict(spool_diameter=205, spool_width=70, flange_height=4,
                     wall_clearance=6)
 
 
+# pst-24tr6: every registry-sized print audit below is marked `audit`; the
+# corner sweep is also `audit_full` (bd123 runs it only on cradle-touching PRs,
+# push to main and nightly). Always on: each style's presets, PRINT_CORNER and
+# the reproducers (narrow-45-reproducer, rear-land-corner).
+FULL = pytest.mark.audit_full
+
+
 # No 'default' case: test_print_audit::test_model_print_audit[holder_spool_cradle]
 # audits the default build (pst-mxfqk).
-@pytest.mark.parametrize('values', [SPEC.presets[0].values, PRINT_CORNER,
-    dict(spool_width=50, guide_gap=.5, guide_height=12, rail_width=14, flange_height=4),
-    dict(spool_width=70, guide_gap=2, guide_height=30, rail_width=14, flange_height=4),
-    dict(spool_width=70, guide_gap=.5, guide_height=30, rail_width=6, saddle_clearance=1.5),
-    REAR_LAND_CORNER],
-    ids=['bambu-shallow-root', 'diagonal-root-corner',
-         'maximum-reach-minimum-height', 'guides-omitted', 'insufficient-crest-room',
-         'rear-land-corner'])
+@pytest.mark.audit
+@pytest.mark.parametrize('values', [
+    pytest.param(SPEC.presets[0].values, id='bambu-shallow-root'),
+    pytest.param(PRINT_CORNER, id='diagonal-root-corner'),
+    pytest.param(dict(spool_width=50, guide_gap=.5, guide_height=12, rail_width=14,
+                      flange_height=4), id='maximum-reach-minimum-height', marks=FULL),
+    pytest.param(dict(spool_width=70, guide_gap=2, guide_height=30, rail_width=14,
+                      flange_height=4), id='guides-omitted', marks=FULL),
+    pytest.param(dict(spool_width=70, guide_gap=.5, guide_height=30, rail_width=6,
+                      saddle_clearance=1.5), id='insufficient-crest-room', marks=FULL),
+    pytest.param(REAR_LAND_CORNER, id='rear-land-corner')])
 def test_production_print_audit(values):
     part=holder(**values)
     assert part.is_valid and len(part.solids()) == 1
@@ -497,6 +509,8 @@ def test_overall_width_within_cadence(values):
     assert_cadence(holder(**values), p)
 
 
+@pytest.mark.audit
+@pytest.mark.audit_full
 @pytest.mark.parametrize('reach, enabled', [(2.9, True), (2.85, False), (3.0, True)])
 def test_guide_threshold(reach, enabled):
     values = dict(spool_width=2*(dimensions()['cadence']/2-.5-reach))
@@ -521,10 +535,12 @@ def test_guide_threshold(reach, enabled):
     assert report.ok, report.format()
 
 
-@pytest.fixture(scope='module', params=[
-    dict(spool_width=width, saddle_clearance=1.5, cradle_angle=angle)
-    for width in (66, 50) for angle in (45, 25)
-], ids=['narrow-45-reproducer', 'narrow-25', 'wide-45', 'wide-25'])
+MAX_CLEARANCE_CASES = [dict(spool_width=width, saddle_clearance=1.5, cradle_angle=angle)
+                       for width in (66, 50) for angle in (45, 25)]
+MAX_CLEARANCE_IDS = ['narrow-45-reproducer', 'narrow-25', 'wide-45', 'wide-25']
+
+
+@pytest.fixture(scope='module', params=MAX_CLEARANCE_CASES, ids=MAX_CLEARANCE_IDS)
 def max_clearance_guide(request):
     values = request.param
     return values, holder(**values)
@@ -554,24 +570,20 @@ def test_max_clearance_guide_corner(max_clearance_guide):
     dict(spool_width=68, saddle_clearance=.25, cradle_angle=25),
     dict(spool_width=66, saddle_clearance=1.5, cradle_angle=45),
     dict(spool_width=50, saddle_clearance=.25, cradle_angle=45),
+    dict(spool_width=68, saddle_clearance=.25, cradle_angle=40),
+    dict(spool_width=68.5, saddle_clearance=.25, cradle_angle=40),
 ], ids=['wide-25', 'omitted-25', 'wide-45-rail14', 'narrow-25-rail14',
         'wide-25-rail14-min-flange', 'rear-land-lead-in', 'rear-land-narrow-v',
-        'rear-land-vertical-lead-in', 'rear-land-wide-45'])
+        'rear-land-vertical-lead-in', 'rear-land-wide-45', 'cap-land-narrow-40',
+        'cap-land-narrow-40-half'])
 def test_shallow_angle_and_wide_rail_edges(values):
     model = holder(**values)
     assert model.is_valid and len(model.solids()) == 1
     assert_finished_edges(model, dimensions(values))
 
 
-@pytest.mark.parametrize('values', [{}, REAR_LAND_CORNER], ids=['default', 'rear-land-corner'])
-def test_outboard_rear_end_has_no_knife(values):
-    # pst-dkqef: the print audit samples each face at UV 0.3/0.5/0.7 only,
-    # so it saw the saddle's unbacked rear knife (~0.02 mm, including both
-    # presets) only by luck. Probe a denser grid over the outboard rear end.
-    p = dimensions(values)
-    part = holder(**values)
-    xw, rear, top = p['spool_width']/2, p['rear_y'], p['contact_z']
-    lo, hi = (xw-.2, rear-.5, top-3), (p['guide_outer'], rear+2, top+.5)
+def thin_walls(part, lo, hi):
+    """Dense-probe samples inside the box [lo, hi] with a wall < MIN_WALL_MM."""
     def near(b):
         return all(a <= y and x <= c for a, x, y, c in zip(lo, (b.min.X, b.min.Y, b.min.Z),
                                                             (b.max.X, b.max.Y, b.max.Z), hi))
@@ -587,9 +599,42 @@ def test_outboard_rear_end_has_no_knife(values):
             s = pa._signed(normal, n, face.normal_at(c))
             if part.is_inside(point-s*.02) and not part.is_inside(point-s*pa.MIN_WALL_MM):
                 thin.append(tuple(round(v, 2) for v in point))
+    return thin
+
+
+@pytest.mark.audit  # dense probes, ~20 s each -> bd123 `audit` job (pst-24tr6)
+@pytest.mark.parametrize('values', [{}, REAR_LAND_CORNER], ids=['default', 'rear-land-corner'])
+def test_outboard_rear_end_has_no_knife(values):
+    # pst-dkqef: the print audit samples each face at UV 0.3/0.5/0.7 only,
+    # so it saw the saddle's unbacked rear knife (~0.02 mm, including both
+    # presets) only by luck. Probe a denser grid over the outboard rear end.
+    p = dimensions(values)
+    xw, rear, top = p['spool_width']/2, p['rear_y'], p['contact_z']
+    thin = thin_walls(holder(**values), (xw-.2, rear-.5, top-3), (p['guide_outer'], rear+2, top+.5))
     assert not thin, thin[:5]
 
 
+BAMBU = next(p.values for p in SPEC.presets if p.id == 'bambu_reusable_200')
+
+
+@pytest.mark.audit  # dense probes like the outboard knife -> bd123 `audit` job
+@pytest.mark.parametrize('values', [{}, BAMBU, REAR_LAND_CORNER],
+                         ids=['default', 'bambu', 'rear-land-corner'])
+def test_inboard_cap_rear_end_has_no_knife(values):
+    # pst-2q3ej: the same unbacked knife on the inboard rail cap (0.02 mm
+    # on main at both presets), between cap_inner and the rail.
+    p = dimensions(values)
+    ci, xi, rear, top = p['cap_inner'], p['rail_inner'], p['rear_y'], p['contact_z']
+    thin = thin_walls(holder(**values), (ci-.5, rear-1, top-8), (xi+.5, rear+4, top+2))
+    assert not thin, thin[:5]
+
+
+# Re-parametrized indirectly so only the AUDIT items carry audit_full; the
+# geometry tests above share the fixture and stay in bd123's fast job.
+@pytest.mark.audit
+@pytest.mark.parametrize('max_clearance_guide', [
+    pytest.param(v, id=i, marks=() if i == 'narrow-45-reproducer' else FULL)
+    for v, i in zip(MAX_CLEARANCE_CASES, MAX_CLEARANCE_IDS)], indirect=True)
 def test_max_clearance_guide_print_audit(max_clearance_guide):
     values, model = max_clearance_guide
     fx = mount_fixtures(MOUNT, values)
@@ -690,10 +735,11 @@ POINTS_AUDIT_CASES = [p.values for p in POINTS_PRESETS] + [
     for w in (50, 66, 70) for c in (.25, 1.5) for a in (25, 45)]
 
 
-@pytest.mark.parametrize('values', POINTS_AUDIT_CASES,
-                         ids=[p.id for p in POINTS_PRESETS]+[
-                             f"w{v['spool_width']}-c{v['saddle_clearance']}-a{v['cradle_angle']}"
-                             for v in POINTS_AUDIT_CASES[len(POINTS_PRESETS):]])
+@pytest.mark.audit
+@pytest.mark.parametrize('values', [pytest.param(p.values, id=p.id) for p in POINTS_PRESETS] + [
+    pytest.param(v, id=f"w{v['spool_width']}-c{v['saddle_clearance']}-a{v['cradle_angle']}",
+                 marks=FULL)
+    for v in POINTS_AUDIT_CASES[len(POINTS_PRESETS):]])
 def test_points_print_audit_and_edges(values):
     model = holder(**values)
     assert model.is_valid and len(model.solids()) == 1
@@ -838,10 +884,11 @@ OC_AUDIT_CASES = [p.values for p in OC_PRESETS] + [
     for w in (50, 66, 70) for c in (.25, 1.5) for a in (25, 45)]
 
 
-@pytest.mark.parametrize('values', OC_AUDIT_CASES,
-                         ids=[p.id for p in OC_PRESETS]+[
-                             f"w{v['spool_width']}-c{v['saddle_clearance']}-a{v['cradle_angle']}"
-                             for v in OC_AUDIT_CASES[len(OC_PRESETS):]])
+@pytest.mark.audit
+@pytest.mark.parametrize('values', [pytest.param(p.values, id=p.id) for p in OC_PRESETS] + [
+    pytest.param(v, id=f"w{v['spool_width']}-c{v['saddle_clearance']}-a{v['cradle_angle']}",
+                 marks=FULL)
+    for v in OC_AUDIT_CASES[len(OC_PRESETS):]])
 def test_openconnect_print_audit_and_edges(values):
     model = holder(**values)
     assert model.is_valid and len(model.solids()) == 1

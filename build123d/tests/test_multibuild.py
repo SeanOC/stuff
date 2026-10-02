@@ -157,6 +157,7 @@ def test_demo_geometry_and_mount_contract(plate, tmp_path):
         assert sum(_residual_vol(plate,Pos(0,0,float(dz))*h) for h in heads) < 4
 
 
+@pytest.mark.audit
 def test_demo_bed_edges_and_slot_pocket_only_audit_exception(plate):
     fx = demo.mount_fixtures(demo.MOUNT,{})
     report = audit(plate,demo.PRINT_ORIENTATION,cutters=fx.cutters)
@@ -259,6 +260,7 @@ def test_channel_centres_and_snap_features():
         assert (retained-spine).volume == pytest.approx(0, abs=1e-7)
 
 
+@pytest.mark.audit
 def test_channel_demo_contract_and_audit(channel_demo, tmp_path):
     plate = channel_demo
     fx = demo.mount_fixtures(demo.CHANNEL_MOUNT,{})
