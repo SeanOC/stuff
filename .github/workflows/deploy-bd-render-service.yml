@@ -22,7 +22,8 @@
 # Optional (defaults in env below):
 #   GCP_REGION, GAR_REPOSITORY, BD_RENDER_SERVICE_NAME
 #
-# The image bakes the build123d env + holders (services/bd-render/Dockerfile),
+# The image bakes the build123d env + holders, multibuild and openconnect
+# (the COPY lines in services/bd-render/Dockerfile),
 # so a change to the service, the models, or the pinned lockfile needs a
 # redeploy — hence the paths filter.
 
@@ -34,6 +35,8 @@ on:
     paths:
       - "services/bd-render/**"
       - "build123d/holders/**"
+      - "build123d/multibuild/**"
+      - "build123d/openconnect/**"
       - "build123d/scripts/**"
       - "build123d/pyproject.toml"
       - "build123d/uv.lock"
@@ -61,6 +64,9 @@ jobs:
       REPOSITORY: ${{ vars.GAR_REPOSITORY || 'stuff' }}
       SERVICE: ${{ vars.BD_RENDER_SERVICE_NAME || 'stuff-bd-render' }}
       PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      # Job-level (was exported from the build step) — the deploy step's
+      # --image still reads it after build-push-action replaced that step.
+      IMAGE: ${{ vars.GCP_REGION || 'us-central1' }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.GAR_REPOSITORY || 'stuff' }}/${{ vars.BD_RENDER_SERVICE_NAME || 'stuff-bd-render' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -75,19 +81,27 @@ jobs:
       - name: Configure docker for Artifact Registry
         run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
 
-      - name: Build image
+      # docker-container driver: the image is NOT loaded into the local
+      # daemon — nothing here needs it (push + deploy by registry ref).
+      # Do not add `load: true` — it only adds a slow export to the daemon.
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build + push image (gha layer cache)
         # Build context is the repo root: the Dockerfile bakes the
         # build123d/OCP env (uv --frozen against build123d/uv.lock) + holders.
-        run: |
-          IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${SERVICE}"
-          echo "IMAGE=${IMAGE}" >> "$GITHUB_ENV"
-          docker build -f services/bd-render/Dockerfile \
-            -t "${IMAGE}:${GITHUB_SHA}" -t "${IMAGE}:latest" .
-
-      - name: Push image
-        run: |
-          docker push "${IMAGE}:${GITHUB_SHA}"
-          docker push "${IMAGE}:latest"
+        # type=gha authenticates with the runner's ACTIONS_RUNTIME_TOKEN —
+        # no extra `permissions:` needed. The first run after a cold cache
+        # is a full build; later runs log "importing cache manifest".
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: services/bd-render/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Deploy to Cloud Run
         # Auth REQUIRED (no --allow-unauthenticated): only identities with
