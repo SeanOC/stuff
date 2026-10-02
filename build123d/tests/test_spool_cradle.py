@@ -68,10 +68,8 @@ def test_registered_default(part):
     assert SPEC in all_models()
     assert SPEC.print_orientation == (0,0,1)
     assert SPEC.mounts == (MOUNT, OC_MOUNT, FP_MOUNT)
-    assert [p.id for p in SPEC.presets] == ['bambu_reusable_200','ams_generic_200',
-                                            'bambu_reusable_200_points','ams_generic_200_points',
-                                            'bambu_reusable_200_openconnect',
-                                            'ams_generic_200_openconnect']
+    # pst-026m4: one preset per mount style (the 66/67 mm split was not material).
+    assert [p.id for p in SPEC.presets] == ['channel', 'points', 'openconnect']
     assert not {'slot_count','slot_travel','snap_notches','pitch'} & SPEC.param_names()
     assert_contacts(part,dimensions())
     # The default build's full audit is test_print_audit's holder_spool_cradle
@@ -261,7 +259,7 @@ FULL = pytest.mark.audit_full
 # audits the default build (pst-mxfqk).
 @pytest.mark.audit
 @pytest.mark.parametrize('values', [
-    pytest.param(SPEC.presets[0].values, id='bambu-shallow-root'),
+    pytest.param(SPEC.presets[0].values, id='channel-preset-shallow-root'),
     pytest.param(PRINT_CORNER, id='diagonal-root-corner'),
     pytest.param(dict(spool_width=50, guide_gap=.5, guide_height=12, rail_width=14,
                       flange_height=4), id='maximum-reach-minimum-height', marks=FULL),
@@ -614,12 +612,12 @@ def test_outboard_rear_end_has_no_knife(values):
     assert not thin, thin[:5]
 
 
-BAMBU = next(p.values for p in SPEC.presets if p.id == 'bambu_reusable_200')
+CHANNEL_PRESET = next(p.values for p in SPEC.presets if p.id == 'channel')
 
 
 @pytest.mark.audit  # dense probes like the outboard knife -> bd123 `audit` job
-@pytest.mark.parametrize('values', [{}, BAMBU, REAR_LAND_CORNER],
-                         ids=['default', 'bambu', 'rear-land-corner'])
+@pytest.mark.parametrize('values', [{}, CHANNEL_PRESET, REAR_LAND_CORNER],
+                         ids=['default', 'channel-preset', 'rear-land-corner'])
 def test_inboard_cap_rear_end_has_no_knife(values):
     # pst-2q3ej: the same unbacked knife on the inboard rail cap (0.02 mm
     # on main at both presets), between cap_inner and the rail.
@@ -651,7 +649,7 @@ def test_every_mount_style_has_a_preset():
     # pins every style, one mount type each.
     styles = {p.values.get('mount_style', STYLE.default) for p in SPEC.presets}
     assert styles == set(STYLE.choices)
-    assert len(POINTS_PRESETS) == 2
+    assert len(POINTS_PRESETS) == 1
 
 
 def recorded_volumes():
@@ -766,7 +764,7 @@ def test_grid_follows_the_style():
         assert p['guide_outer'] == pytest.approx(cadence/2-p['guide_gap'])
         assert p['guide_reach'] == pytest.approx(cadence/2-p['guide_gap']-p['spool_width']/2)
         assert p['channel_length'] % pitch == pytest.approx(0)
-    assert len(OC_PRESETS) == 2
+    assert len(OC_PRESETS) == 1
     for preset in OC_PRESETS:
         assert preset.values['plate_width'] == 82 and preset.values['plate_thickness'] == 5.5
 
