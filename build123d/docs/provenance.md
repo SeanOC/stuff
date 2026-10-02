@@ -16,6 +16,7 @@ committed**. They live in the private mirror (see
 | openGrid | CC BY 4.0 | via the MIT `opengrid` Python library; David D's Multiconnect snap files are vendored verbatim in `assets/openGrid-multiconnect/` | [CC-BY-4.0.txt](../reference/LICENSES/CC-BY-4.0.txt) |
 | openConnect ([mitufy/opengrid-projects](https://github.com/mitufy/opengrid-projects) @ `04e2277a71c5`) | CC BY 4.0 | four author `.scad` files vendored verbatim plus two renders in `assets/openConnect/` (attribution: mitufy). **HARD-RULE exception (Sean 2026-10-01):** `openconnect/` is ported from the author's own OpenSCAD because no build123d library ships it; the port is pinned by commit and mesh-verified against the author's rendered plate (`tests/test_openconnect.py`). Constants are [C] with line locators; see [openconnect-library.md](openconnect-library.md) | [CC-BY-4.0.txt](../reference/LICENSES/CC-BY-4.0.txt) |
 | Gridfinity | MIT | not used by build123d yet | — |
+| Inter 4.1 ([rsms/inter v4.1 release](https://github.com/rsms/inter/releases/tag/v4.1), `extras/ttf/Inter-Bold.ttf`, sha256 `28831609…947f`) | SIL OFL 1.1 | **NOTICE:** the static Inter Bold TTF is vendored verbatim with its licence in `assets/fonts/inter/` for label text (pst-0zfra, [labels-spike.md](labels-spike.md)). OFL allows bundling and embedding; the font is not sold on its own and keeps its name and licence | [OFL.txt](../assets/fonts/inter/OFL.txt) |
 
 `tools/measure_step.py` maps each source-manifest licence string to its
 committed text (`LICENCE_TEXTS`). `--record` refuses to record a source whose
