@@ -11,10 +11,10 @@ from build123d import Axis, Box, Cylinder, Plane, Pos, Rot, section
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from holders.registry import all_models
 all_models()  # Preserve the manifest emitter's registration order.
-from holders.spool_cradle import (APEX_HEIGHT, FP_MOUNT, MOUNT, OC_MOUNT, OC_SLOT_TOP, PARAMS,
+from holders.spool_cradle import (APEX_HEIGHT, FP_MOUNT, MOUNT, OC_MOUNT, OC_SLOT_BOTTOM, OC_SLOT_TOP, PARAMS,
                                    POINT_ROW_SPACING, SPEC, WEB, CHORD, check_plate,
                                    dimensions, holder, mount_fixtures, mount_for_values,
-                                   point_seats, truss_openings)
+                                   oc_seats, point_seats, truss_openings)
 from multibuild.constants import PITCH, large_hole_center, small_hole_center
 from multibuild import fixpoint as fp
 from multibuild.multiconnect import POCKET_DEPTH
@@ -191,6 +191,8 @@ def assert_mount_layout(values):
 
 # Presets are verified by test_mount_contracts.test_model_mount_contract
 # (defaults + every preset); only the thin-plate corners are cradle-only.
+# 20-45 s each (registry-sized build + contract) -> bd123 `audit` job (pst-24tr6).
+@pytest.mark.audit
 @pytest.mark.parametrize('values',[
     {'plate_width':68,'plate_thickness':6.6},
     {'plate_width':68,'plate_thickness':6.6,'mount_style':'points'},
@@ -248,16 +250,26 @@ PRINT_CORNER = dict(spool_diameter=205, spool_width=70, flange_height=4,
                     wall_clearance=6)
 
 
+# pst-24tr6: every registry-sized print audit below is marked `audit`; the
+# corner sweep is also `audit_full` (bd123 runs it only on cradle-touching PRs,
+# push to main and nightly). Always on: each style's presets, PRINT_CORNER and
+# the reproducers (narrow-45-reproducer, rear-land-corner).
+FULL = pytest.mark.audit_full
+
+
 # No 'default' case: test_print_audit::test_model_print_audit[holder_spool_cradle]
 # audits the default build (pst-mxfqk).
-@pytest.mark.parametrize('values', [SPEC.presets[0].values, PRINT_CORNER,
-    dict(spool_width=50, guide_gap=.5, guide_height=12, rail_width=14, flange_height=4),
-    dict(spool_width=70, guide_gap=2, guide_height=30, rail_width=14, flange_height=4),
-    dict(spool_width=70, guide_gap=.5, guide_height=30, rail_width=6, saddle_clearance=1.5),
-    REAR_LAND_CORNER],
-    ids=['bambu-shallow-root', 'diagonal-root-corner',
-         'maximum-reach-minimum-height', 'guides-omitted', 'insufficient-crest-room',
-         'rear-land-corner'])
+@pytest.mark.audit
+@pytest.mark.parametrize('values', [
+    pytest.param(SPEC.presets[0].values, id='bambu-shallow-root'),
+    pytest.param(PRINT_CORNER, id='diagonal-root-corner'),
+    pytest.param(dict(spool_width=50, guide_gap=.5, guide_height=12, rail_width=14,
+                      flange_height=4), id='maximum-reach-minimum-height', marks=FULL),
+    pytest.param(dict(spool_width=70, guide_gap=2, guide_height=30, rail_width=14,
+                      flange_height=4), id='guides-omitted', marks=FULL),
+    pytest.param(dict(spool_width=70, guide_gap=.5, guide_height=30, rail_width=6,
+                      saddle_clearance=1.5), id='insufficient-crest-room', marks=FULL),
+    pytest.param(REAR_LAND_CORNER, id='rear-land-corner')])
 def test_production_print_audit(values):
     part=holder(**values)
     assert part.is_valid and len(part.solids()) == 1
@@ -497,6 +509,8 @@ def test_overall_width_within_cadence(values):
     assert_cadence(holder(**values), p)
 
 
+@pytest.mark.audit
+@pytest.mark.audit_full
 @pytest.mark.parametrize('reach, enabled', [(2.9, True), (2.85, False), (3.0, True)])
 def test_guide_threshold(reach, enabled):
     values = dict(spool_width=2*(dimensions()['cadence']/2-.5-reach))
@@ -521,10 +535,12 @@ def test_guide_threshold(reach, enabled):
     assert report.ok, report.format()
 
 
-@pytest.fixture(scope='module', params=[
-    dict(spool_width=width, saddle_clearance=1.5, cradle_angle=angle)
-    for width in (66, 50) for angle in (45, 25)
-], ids=['narrow-45-reproducer', 'narrow-25', 'wide-45', 'wide-25'])
+MAX_CLEARANCE_CASES = [dict(spool_width=width, saddle_clearance=1.5, cradle_angle=angle)
+                       for width in (66, 50) for angle in (45, 25)]
+MAX_CLEARANCE_IDS = ['narrow-45-reproducer', 'narrow-25', 'wide-45', 'wide-25']
+
+
+@pytest.fixture(scope='module', params=MAX_CLEARANCE_CASES, ids=MAX_CLEARANCE_IDS)
 def max_clearance_guide(request):
     values = request.param
     return values, holder(**values)
@@ -586,6 +602,7 @@ def thin_walls(part, lo, hi):
     return thin
 
 
+@pytest.mark.audit  # dense probes, ~20 s each -> bd123 `audit` job (pst-24tr6)
 @pytest.mark.parametrize('values', [{}, REAR_LAND_CORNER], ids=['default', 'rear-land-corner'])
 def test_outboard_rear_end_has_no_knife(values):
     # pst-dkqef: the print audit samples each face at UV 0.3/0.5/0.7 only,
@@ -600,6 +617,7 @@ def test_outboard_rear_end_has_no_knife(values):
 BAMBU = next(p.values for p in SPEC.presets if p.id == 'bambu_reusable_200')
 
 
+@pytest.mark.audit  # dense probes like the outboard knife -> bd123 `audit` job
 @pytest.mark.parametrize('values', [{}, BAMBU, REAR_LAND_CORNER],
                          ids=['default', 'bambu', 'rear-land-corner'])
 def test_inboard_cap_rear_end_has_no_knife(values):
@@ -611,6 +629,12 @@ def test_inboard_cap_rear_end_has_no_knife(values):
     assert not thin, thin[:5]
 
 
+# Re-parametrized indirectly so only the AUDIT items carry audit_full; the
+# geometry tests above share the fixture and stay in bd123's fast job.
+@pytest.mark.audit
+@pytest.mark.parametrize('max_clearance_guide', [
+    pytest.param(v, id=i, marks=() if i == 'narrow-45-reproducer' else FULL)
+    for v, i in zip(MAX_CLEARANCE_CASES, MAX_CLEARANCE_IDS)], indirect=True)
 def test_max_clearance_guide_print_audit(max_clearance_guide):
     values, model = max_clearance_guide
     fx = mount_fixtures(MOUNT, values)
@@ -711,10 +735,11 @@ POINTS_AUDIT_CASES = [p.values for p in POINTS_PRESETS] + [
     for w in (50, 66, 70) for c in (.25, 1.5) for a in (25, 45)]
 
 
-@pytest.mark.parametrize('values', POINTS_AUDIT_CASES,
-                         ids=[p.id for p in POINTS_PRESETS]+[
-                             f"w{v['spool_width']}-c{v['saddle_clearance']}-a{v['cradle_angle']}"
-                             for v in POINTS_AUDIT_CASES[len(POINTS_PRESETS):]])
+@pytest.mark.audit
+@pytest.mark.parametrize('values', [pytest.param(p.values, id=p.id) for p in POINTS_PRESETS] + [
+    pytest.param(v, id=f"w{v['spool_width']}-c{v['saddle_clearance']}-a{v['cradle_angle']}",
+                 marks=FULL)
+    for v in POINTS_AUDIT_CASES[len(POINTS_PRESETS):]])
 def test_points_print_audit_and_edges(values):
     model = holder(**values)
     assert model.is_valid and len(model.solids()) == 1
@@ -769,9 +794,22 @@ def test_openconnect_plate_floors():
             dimensions({'mount_style': 'openconnect', name: value})
 
 
-def test_openconnect_slot_top_is_the_cutter_roof():
+def test_openconnect_slot_extents_are_the_cutter_bbox():
     # OCCT bounding boxes overshoot by ~1e-7.
-    assert OC_SLOT_TOP == pytest.approx(slot_cutter().bounding_box().max.Z, abs=1e-6)
+    box = slot_cutter().bounding_box()
+    assert OC_SLOT_TOP == pytest.approx(box.max.Z, abs=1e-6)
+    assert OC_SLOT_BOTTOM == pytest.approx(-box.min.Z, abs=1e-6)
+
+
+def test_openconnect_lower_row_floor_guard():
+    # pst-fmvzb: the lower row is the lowest whole tile whose on-ramp keeps
+    # WEB + 0.5 above the bed relief. Every reachable grid length (84, 112)
+    # leaves >= 2 tiles; a 56 mm grid leaves one and 28 mm none.
+    upper = 56-WEB-OC_SLOT_TOP+2.4
+    assert oc_seats(56, 2.4) == pytest.approx((upper-oc.TILE_SIZE, upper))
+    with pytest.raises(ValueError, match=r"mount_style='openconnect' needs root_height > 28 mm "
+                                         r'\(53.10 mm slot span\); grid length is 28 mm'):
+        oc_seats(28, 2.4)
 
 
 @pytest.fixture(scope='module', params=OC_PRESETS, ids=lambda p: p.id)
@@ -789,11 +827,15 @@ def test_openconnect_layout(oc_model):
     seats = [s.position for s in fx.seat_locs]
     assert sorted({round(s.X, 6) for s in seats}) == [-14, 14]
     lower, upper = sorted({round(s.Z, 6) for s in seats})
-    assert upper-lower == pytest.approx(oc.TILE_SIZE)
+    # pst-fmvzb: two near the top, two near the bottom, on whole tiles.
+    tiles = (upper-lower)/oc.TILE_SIZE
+    assert tiles == pytest.approx(round(tiles)) and round(tiles) >= 2
     boxes = [c.bounding_box() for c in fx.cutters]
-    # Upper roof WEB below the plate top; lower slots well above the bed.
+    # Upper roof WEB below the plate top; the lower on-ramps keep WEB + 0.5
+    # above the bed relief, and one tile lower would not.
     assert p['plate_height']-max(b.max.Z for b in boxes) == pytest.approx(WEB)
-    assert min(b.min.Z for b in boxes) >= WEB+.5
+    floor = min(b.min.Z for b in boxes)
+    assert WEB+.5 <= floor < WEB+.5+oc.TILE_SIZE
     assert all(-p['plate_width']/2+2.4 <= b.min.X and b.max.X <= p['plate_width']/2-2.4
                for b in boxes)
     # One push-in, shift and downward slide seats all four heads at once.
@@ -802,6 +844,22 @@ def test_openconnect_layout(oc_model):
     assert moves == {(oc.ONRAMP_SHIFT, 0, oc.MOVE_DISTANCE)}
     assert p['plate_thickness']-p['pocket_depth'] == pytest.approx(2.8)
     assert model.bounding_box().size.X == pytest.approx(84-2*p['guide_gap'])
+
+
+def test_openconnect_solid_between_rows(oc_model):
+    values, model = oc_model
+    p = dimensions(values)
+    boxes = [c.bounding_box() for c in mount_fixtures(OC_MOUNT, values).cutters]
+    for x in (-oc.TILE_SIZE/2, oc.TILE_SIZE/2):
+        lower, upper = sorted((b for b in boxes if b.min.X < x < b.max.X), key=lambda b: b.min.Z)
+        # Solid plate between the rows, across the full pocket footprint.
+        gap = upper.min.Z-lower.max.Z
+        assert gap > oc.TILE_SIZE
+        between = Pos((lower.min.X+lower.max.X)/2, p['pocket_depth']/2, (lower.max.Z+upper.min.Z)/2)*Box(
+            lower.size.X, p['pocket_depth'], gap-.2)
+        assert (model & between).volume == pytest.approx(between.volume, rel=1e-6)
+        # No pocket opens through the bottom edge.
+        assert model.is_inside((x, p['pocket_depth']/2, 1))
 
 
 def test_openconnect_truss_returns_to_backing(oc_model):
@@ -826,10 +884,11 @@ OC_AUDIT_CASES = [p.values for p in OC_PRESETS] + [
     for w in (50, 66, 70) for c in (.25, 1.5) for a in (25, 45)]
 
 
-@pytest.mark.parametrize('values', OC_AUDIT_CASES,
-                         ids=[p.id for p in OC_PRESETS]+[
-                             f"w{v['spool_width']}-c{v['saddle_clearance']}-a{v['cradle_angle']}"
-                             for v in OC_AUDIT_CASES[len(OC_PRESETS):]])
+@pytest.mark.audit
+@pytest.mark.parametrize('values', [pytest.param(p.values, id=p.id) for p in OC_PRESETS] + [
+    pytest.param(v, id=f"w{v['spool_width']}-c{v['saddle_clearance']}-a{v['cradle_angle']}",
+                 marks=FULL)
+    for v in OC_AUDIT_CASES[len(OC_PRESETS):]])
 def test_openconnect_print_audit_and_edges(values):
     model = holder(**values)
     assert model.is_valid and len(model.solids()) == 1

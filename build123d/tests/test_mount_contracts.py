@@ -46,9 +46,16 @@ def test_some_model_declares_a_mount():
     assert _MOUNTED, "no registered model declares a mount type"
 
 
+# pst-24tr6: the spool cradle's contracts build the registry-sized cradle at
+# defaults + every preset (40-130 s each); they ride in bd123's `audit` job so
+# `fast` stays fast. Every other model's contract is seconds and stays in fast.
+_HEAVY_CONTRACT_MODELS = {"holder_spool_cradle"}
+
+
 @pytest.mark.parametrize(
     ("spec", "mount"),
-    _MOUNTED,
+    [pytest.param(s, m, marks=pytest.mark.audit)
+     if s.name in _HEAVY_CONTRACT_MODELS else (s, m) for s, m in _MOUNTED],
     ids=[f"{s.name}:{m}" for s, m in _MOUNTED],
 )
 def test_model_mount_contract(spec, mount):
