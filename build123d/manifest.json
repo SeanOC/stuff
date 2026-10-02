@@ -358,7 +358,7 @@
       "slug": "holder-spool-cradle",
       "engine": "build123d",
       "title": "Spool cradle (Multibuild)",
-      "blurb": "Single spool bookshelf cradle with wide inboard saddle rails, outboard placement guides (omitted when reach is less than 2.4 mm plus saddle clearance) and closed truss webs, in three mount styles: two full-height Multiconnect channels (channel), four discrete Multiconnect point pockets in two rows 50 mm apart (points), or four openConnect slots for an openGrid wall on the 28 mm tile pitch and 84 mm cadence (openconnect). Flange-rim support; standing PETG/PCTG print with support allowed only in the mount pockets.",
+      "blurb": "Single spool bookshelf cradle with wide inboard saddle rails, outboard placement guides (omitted when reach is less than 2.4 mm plus saddle clearance) and closed truss webs, in three mount styles: two full-height Multiconnect channels (channel), four MultiBuild Fix Point slots in two rows 50 mm apart, lip end up (points), or four openConnect slots for an openGrid wall on the 28 mm tile pitch and 84 mm cadence (openconnect). Flange-rim support; standing PETG/PCTG print with support allowed only in the mount pockets.",
       "categoryId": "multiboard",
       "params": [
         {
@@ -524,7 +524,7 @@
         },
         {
           "id": "bambu_reusable_200_points",
-          "label": "Bambu reusable 200 mm, point pockets",
+          "label": "Bambu reusable 200 mm, Fix Point slots",
           "values": {
             "spool_width": 67,
             "flange_height": 8,
@@ -534,7 +534,7 @@
         },
         {
           "id": "ams_generic_200_points",
-          "label": "AMS generic 200 mm, point pockets",
+          "label": "AMS generic 200 mm, Fix Point slots",
           "values": {
             "spool_width": 66,
             "flange_height": 8,

@@ -42,7 +42,7 @@ with these fields:
 - `plane`
 
 Section files are in plane-local `(u, v)` coordinates. For an XZ section, `u`
-is world X and `v` is world Z. For XY, they are world X and Y.
+is world X and `v` is world Z. For XY, they are world X and Y; for YZ, world Y and Z.
 
 | Stem (`.json` `.dxf` `.svg`) | Source file | Section | Shows |
 | --- | --- | --- | --- |
@@ -54,6 +54,8 @@ is world X and `v` is world Z. For XY, they are world X and Y.
 | `mb-small-thread-negative` | Small Thread (Negative).step | XZ @ 0 | Ø8 mouth, 45° to Ø6 at 1.0; thread Ø6 / Ø7, pitch 3.125 |
 | `mb-small-thread-hole-positive` | Small Thread Hole (Positive).step | XY @ 3.1 | small-hole cell centred on (12.5, 12.5): grid phase |
 | `mb-small-vertical-12-5mm-positive` | 12.5mm - Small Vertical (Positive).step | XZ @ 0 | male small thread Ø5.75 / Ø6.75, pitch 3.125 |
+| `mb-fix-point-slot-negative` | Fix Point Slot - Negative.step (group `multibuild-fix-point-slots`) | YZ @ X=0 | slot 17 × 23.4 × 3.2: lip mouth 6.0, land 0.4, 45° to 8.5 at 2.9; well end −14.5, undercut to −14.9 from 1.8 |
+| `mb-fix-point-positive` | Fix Point - Positive.step (group `multibuild-fix-points`) | XZ @ Y=0 | head: neck r 5.87 × 0.454, 45° flare, flats ±7.2, r 8.0, top 3.0 |
 
 `tests/test_reference_provenance.py` checks the committed evidence on every
 PR:
@@ -113,6 +115,17 @@ consequences: [cup-lid-validation.md](cup-lid-validation.md#pins-and-board-engag
 One official slot segment is 25 mm long, one board pitch. The library's
 28 mm default is the openGrid unit, and this repo's `slot_cutter` already
 sets the travel explicitly.
+
+**Fix Point (pst-7shtl).** No cited Fix-Point dimension existed, so every
+`multibuild/fixpoint.py` constant is [V] from the two `mb-fix-point-*`
+artefacts (`fixpoint.PROVENANCE`). The rebuilt slot negative and head equal
+the originals: volume within 0.003 %, bounding box exact, symmetric
+difference ≤ 0.024 mm³ (`tests/test_fixpoint.py -m upstream`). The slot file
+also carries a 0.5 mm locator tip at the origin below Z=0 (0.02 mm³, outside
+any consumer); it is not rebuilt. The magnet-hole slot variants (the same slot
+plus a magnet pocket from Z 3.2 to 5.2: Horizontal 10.6 × 10.6 bbox,
+≈179 mm³, i.e. round, not square; Vertical 17 × 10.2 bbox) and the Lite,
+Turn Slot and Twist Hole parts are mirrored but not measured or built.
 
 ## Measuring and recording
 

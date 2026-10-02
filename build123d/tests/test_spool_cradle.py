@@ -11,12 +11,13 @@ from build123d import Axis, Box, Cylinder, Plane, Pos, Rot, section
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from holders.registry import all_models
 all_models()  # Preserve the manifest emitter's registration order.
-from holders.spool_cradle import (APEX_HEIGHT, MOUNT, OC_MOUNT, OC_SLOT_TOP, PARAMS,
+from holders.spool_cradle import (APEX_HEIGHT, FP_MOUNT, MOUNT, OC_MOUNT, OC_SLOT_TOP, PARAMS,
                                    POINT_ROW_SPACING, SPEC, WEB, CHORD, check_plate,
                                    dimensions, holder, mount_fixtures, mount_for_values,
-                                   point_bottoms, truss_openings)
+                                   point_seats, truss_openings)
 from multibuild.constants import PITCH, large_hole_center, small_hole_center
-from multibuild.multiconnect import POCKET_DEPTH, point_length
+from multibuild import fixpoint as fp
+from multibuild.multiconnect import POCKET_DEPTH
 from openconnect import constants as oc
 from openconnect.slot import slot_cutter
 from scripts.export import export_stl
@@ -66,7 +67,7 @@ def assert_contacts(part,p):
 def test_registered_default(part):
     assert SPEC in all_models()
     assert SPEC.print_orientation == (0,0,1)
-    assert SPEC.mounts == (MOUNT, OC_MOUNT)
+    assert SPEC.mounts == (MOUNT, OC_MOUNT, FP_MOUNT)
     assert [p.id for p in SPEC.presets] == ['bambu_reusable_200','ams_generic_200',
                                             'bambu_reusable_200_points','ams_generic_200_points',
                                             'bambu_reusable_200_openconnect',
@@ -174,8 +175,8 @@ def test_three_holder_channel_alignment(part,cadence):
 def assert_mount_layout(values):
     p=dimensions(values)
     mount=mount_for_values(p)
-    absent=OC_MOUNT if mount == MOUNT else MOUNT
-    assert mount_fixtures(absent,values) is None
+    absent=[m for m in SPEC.mounts if m != mount]
+    assert all(mount_fixtures(m,values) is None for m in absent)
     fx=mount_fixtures(mount,values)
     if p['mount_style'] == 'channel':
         assert len(fx.cutters) == 2
@@ -184,7 +185,7 @@ def assert_mount_layout(values):
         assert len(fx.cutters) == len(fx.seat_locs) == len(fx.onramp_locs) == 4
     assert p['plate_height']-p['channel_length'] == pytest.approx(p['plate_thickness']-p['pocket_depth'])
     assert p['plate_thickness']-p['pocket_depth'] >= 2.4-1e-9
-    assert not verify(SPEC,absent,SPEC.resolve_values(values))
+    assert not any(verify(SPEC,m,SPEC.resolve_values(values)) for m in absent)
     return mount
 
 
@@ -193,8 +194,9 @@ def assert_mount_layout(values):
 @pytest.mark.parametrize('values',[
     {'plate_width':68,'plate_thickness':6.6},
     {'plate_width':68,'plate_thickness':6.6,'mount_style':'points'},
+    {'plate_width':70,'plate_thickness':5.6,'mount_style':'points'},
     {'plate_width':82,'plate_thickness':5.1,'mount_style':'openconnect'}],
-    ids=['channel-thin-plate','points-thin-plate','openconnect-thin-plate'])
+    ids=['channel-thin-plate','points-thin-plate','points-plate-floor','openconnect-thin-plate'])
 def test_mount_contract_and_backing(values):
     mount=assert_mount_layout(values)
     # Registered contract probes every actual pocket-back face locally,
@@ -595,13 +597,13 @@ def test_max_clearance_guide_print_audit(max_clearance_guide):
     assert report.ok, report.format()
 
 
-# pst-93yd5: mount_style='points' — four discrete pockets, same body.
+# pst-93yd5 / pst-7shtl: mount_style='points' — four Fix Point slots, same body.
 POINTS_PRESETS = [p for p in SPEC.presets if p.values.get('mount_style') == 'points']
 
 
 def test_every_mount_style_has_a_preset():
     # Mount coverage is registry._validate_spec's (mount_for_values); this
-    # pins every style, including the two that share the channel mount.
+    # pins every style, one mount type each.
     styles = {p.values.get('mount_style', STYLE.default) for p in SPEC.presets}
     assert styles == set(STYLE.choices)
     assert len(POINTS_PRESETS) == 2
@@ -628,9 +630,10 @@ def test_preset_volume_matches_validation_doc(preset):
 
 
 def test_points_too_short_root_is_rejected():
-    assert point_bottoms(100) == pytest.approx((100-POINT_ROW_SPACING-point_length(), 100-point_length()))
+    upper = 100-fp.DEEP_INRADIUS
+    assert point_seats(100) == pytest.approx((upper-POINT_ROW_SPACING, upper))
     with pytest.raises(ValueError, match=r'root_height > 75 mm'):
-        point_bottoms(75)
+        point_seats(75)
 
 
 @pytest.fixture(scope='module', params=POINTS_PRESETS, ids=lambda p: p.id)
@@ -642,13 +645,13 @@ def points_model(request):
 def test_points_layout_and_solid_between_rows(points_model):
     values, model = points_model
     p = dimensions(values)
-    fx = mount_fixtures(MOUNT, values)
+    fx = mount_fixtures(FP_MOUNT, values)
     boxes = [c.bounding_box() for c in fx.cutters]
     assert sorted({round((b.min.X+b.max.X)/2, 6) for b in boxes}) == [-PITCH/2, PITCH/2]
     seats = sorted({round(s.position.Z, 6) for s in fx.seat_locs})
     assert seats[1]-seats[0] == pytest.approx(POINT_ROW_SPACING)
     drops = {round(s.position.Z-r.position.Z, 6) for s, r in zip(fx.seat_locs, fx.onramp_locs)}
-    assert drops == {PITCH/2}
+    assert drops == {fp.TRAVEL}
     for x in (-PITCH/2, PITCH/2):
         lower, upper = sorted((b for b in boxes if abs((b.min.X+b.max.X)/2-x) < 1e-6),
                               key=lambda b: b.min.Z)
@@ -658,18 +661,18 @@ def test_points_layout_and_solid_between_rows(points_model):
         # Solid plate between the rows, across the full pocket footprint.
         gap = upper.min.Z-lower.max.Z
         assert gap > 10
-        between = Pos(x, POCKET_DEPTH/2, (lower.max.Z+upper.min.Z)/2)*Box(
-            lower.size.X, POCKET_DEPTH, gap-.2)
+        between = Pos(x, fp.POCKET_DEPTH/2, (lower.max.Z+upper.min.Z)/2)*Box(
+            lower.size.X, fp.POCKET_DEPTH, gap-.2)
         assert (model & between).volume == pytest.approx(between.volume, rel=1e-6)
         # No pocket opens through the bottom edge.
-        assert model.is_inside((x, POCKET_DEPTH/2, 1))
+        assert model.is_inside((x, fp.POCKET_DEPTH/2, 1))
 
 
 def test_points_truss_returns_to_backing(points_model):
     values, model = points_model
     p = dimensions(values)
     assert_truss_sections(model, p)
-    boxes = [c.bounding_box() for c in mount_fixtures(MOUNT, values).cutters]
+    boxes = [c.bounding_box() for c in mount_fixtures(FP_MOUNT, values).cutters]
     for tri in truss_openings(p):
         cross = section(model, section_by=Plane(origin=(0, tri[2][0], 0), x_dir=(1, 0, 0), z_dir=(0, 1, 0)))
         for face in cross.faces():
@@ -679,7 +682,7 @@ def test_points_truss_returns_to_backing(points_model):
         x = sign*(p['root_inner']+WEB/2)
         for z in (CHORD/2, p['contact_z']/2):
             assert model.is_inside((x, p['plate_thickness']-WEB/2, z))
-            assert model.is_inside((x, POCKET_DEPTH+.1, z))
+            assert model.is_inside((x, fp.POCKET_DEPTH+.1, z))
 
 
 POINTS_AUDIT_CASES = [p.values for p in POINTS_PRESETS] + [
@@ -696,7 +699,7 @@ def test_points_print_audit_and_edges(values):
     assert model.is_valid and len(model.solids()) == 1
     p = dimensions(values)
     assert_finished_edges(model, p)
-    fx = mount_fixtures(MOUNT, values)
+    fx = mount_fixtures(FP_MOUNT, values)
     assert len(fx.cutters) == 4
     report = audit(model, SPEC.print_orientation, cutters=fx.cutters, model=SPEC.name)
     assert report.ok, report.format()
@@ -709,7 +712,7 @@ OC_PRESETS = [p for p in SPEC.presets if p.values.get('mount_style') == 'opencon
 
 def test_grid_follows_the_style():
     for style, pitch, cadence, depth in (('channel', PITCH, 75, POCKET_DEPTH),
-                                         ('points', PITCH, 75, POCKET_DEPTH),
+                                         ('points', PITCH, 75, fp.POCKET_DEPTH),
                                          ('openconnect', 28, 84, 2.7)):
         p = dimensions({'mount_style': style})
         assert (p['pitch'], p['cadence']) == (pitch, cadence)
@@ -722,13 +725,13 @@ def test_grid_follows_the_style():
         assert preset.values['plate_width'] == 82 and preset.values['plate_thickness'] == 5.5
 
 
-@pytest.mark.parametrize('style', ('channel', 'points'))
-def test_multiboard_plate_floors(style):
-    dimensions({'mount_style': style, 'plate_width': 70, 'plate_thickness': 6.55})
+@pytest.mark.parametrize(('style', 'floor'), (('channel', 6.55), ('points', 5.6)))
+def test_multiboard_plate_floors(style, floor):
+    dimensions({'mount_style': style, 'plate_width': 70, 'plate_thickness': floor})
     with pytest.raises(ValueError, match=rf"mount_style='{style}' needs plate_width <= 70 mm"):
         dimensions({'mount_style': style, 'plate_width': 70.5})
-    with pytest.raises(ValueError, match=rf"mount_style='{style}' needs plate_thickness >= 6.55 mm"):
-        dimensions({'mount_style': style, 'plate_thickness': 6.5})
+    with pytest.raises(ValueError, match=rf"mount_style='{style}' needs plate_thickness >= {floor:g} mm"):
+        dimensions({'mount_style': style, 'plate_thickness': floor-0.1})
 
 
 def test_openconnect_plate_floors():
