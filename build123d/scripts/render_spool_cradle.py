@@ -20,8 +20,8 @@ from build123d import Align, Box, Pos, export_gltf
 from scripts.export import export_stl, section_svg
 from scripts.thumbnail import ReviewContext, _render_view, render_review
 
-REVIEW_PRESET='bambu_reusable_200_openconnect'
-POINTS_PRESET='bambu_reusable_200_points'
+REVIEW_PRESET='openconnect'
+POINTS_PRESET='points'
 
 
 def render():
