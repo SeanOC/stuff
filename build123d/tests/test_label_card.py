@@ -13,7 +13,8 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'tests'))
 from build123d import Axis, Plane, Pos, Rectangle, section  # noqa: E402
-from holders.label_card import SPEC, STROKE_FLOOR, card, colour_parts, fitted_text  # noqa: E402
+from holders.label_card import (SPEC, GAP_FLOOR, STROKE_FLOOR, card, colour_parts,  # noqa: E402
+                                fitted_text)
 from holders.registry import Param, _validate_param, all_models, resolve_colour_parts  # noqa: E402
 from labels import constants as C  # noqa: E402
 from labels.label_text import FLOOR_MARGIN, fit_text, layout_text, two_lines  # noqa: E402
@@ -24,6 +25,9 @@ from scripts.export import export_3mf_one_object, export_stl  # noqa: E402
 # (two lines, the thinnest accepted stroke found), 18 raised.
 LONGEST = {'inlaid': 'Polymaker PolyTerra Teal', 'raised': 'PETG HF JADE WHITE'}
 TOO_LONG = 'Bambu PLA Matte Charcoal'  # 24 characters, 0.69 mm on two lines
+# Raised only: strokes hold (1.06 / 0.96 mm) but Inter Bold's r-t pair closes to
+# 0.29 / 0.26 mm on one / two lines, under MIN_GAP_RAISED (pst-l4hsl).
+GAP_TOO_NARROW = 'Smart PLA'
 
 
 @functools.cache
@@ -116,6 +120,51 @@ def test_text_that_fails_the_floor_on_two_lines_is_rejected(style, text):
     fitted = layout_text(prefix, C.CARD_W, C.CARD_H, C.TEXT_MARGIN, C.INLAY_DEPTH,
                          STROKE_FLOOR[style])
     assert fitted.min_stroke >= STROKE_FLOOR[style]
+
+
+def raised_layout(text, gap_floor=C.MIN_GAP_RAISED):
+    return layout_text(text, C.CARD_W, C.CARD_H, C.TEXT_MARGIN, C.INLAY_DEPTH,
+                       C.STROKE_FLOOR_RAISED, gap_floor)
+
+
+def test_raised_text_below_the_gap_floor_is_rejected():
+    assert C.MIN_GAP_RAISED == 0.5 and GAP_FLOOR == {'inlaid': 0.0, 'raised': C.MIN_GAP_RAISED}
+    stroke_only = raised_layout(GAP_TOO_NARROW, gap_floor=0.0)  # the stroke floor holds
+    assert stroke_only.min_gap < C.MIN_GAP_RAISED
+    with pytest.raises(ValueError) as err:
+        SPEC.build(SPEC.resolve_values({'text': GAP_TOO_NARROW, 'text_style': 'raised'}))
+    message = str(err.value)
+    gap = float(re.search(r'narrowest gap would be ([\d.]+) mm', message).group(1))
+    assert gap < C.MIN_GAP_RAISED
+    assert 'below the 0.5 mm gap floor' in message
+    prefix = re.search(r"the longest that fits is '(.*)' \((\d+) characters\)", message).group(1)
+    assert 0 < len(prefix) < len(GAP_TOO_NARROW) and GAP_TOO_NARROW.startswith(prefix)
+    assert raised_layout(prefix).min_gap >= C.MIN_GAP_RAISED
+
+
+def test_inlaid_text_has_no_gap_floor():
+    _, fitted, _, part = case('inlaid', GAP_TOO_NARROW)
+    assert fitted.min_gap < C.MIN_GAP_RAISED and part.is_valid
+
+
+def test_gap_floor_is_inclusive():
+    """No FLOOR_MARGIN on the gap: it is not audited, so nothing under-reports it."""
+    fitted = raised_layout('Filament', gap_floor=0.0)
+    assert raised_layout('Filament', gap_floor=fitted.min_gap).min_gap == fitted.min_gap
+
+
+# AC (a) table, 60 x 20 card, 2.0 mm margin: (text, lines, min_stroke, min_gap).
+RAISED_GAP_TABLE = [('Filament', 1, 1.222, 1.250),
+                    ('PETG-CF Black', 2, 0.957, 1.096),
+                    (LONGEST['raised'], 2, 1.020, 1.001)]
+
+
+@pytest.mark.parametrize('text,lines,stroke,gap', RAISED_GAP_TABLE)
+def test_raised_table_strings_hold_both_floors(text, lines, stroke, gap):
+    _, fitted, _, _ = case('raised', text)
+    assert len(fitted.lines) == lines
+    assert (fitted.min_stroke, fitted.min_gap) == pytest.approx((stroke, gap), abs=5e-4)
+    assert fitted.min_stroke >= C.STROKE_FLOOR_RAISED and fitted.min_gap >= C.MIN_GAP_RAISED
 
 
 @pytest.mark.parametrize('style', ['inlaid', 'raised'])

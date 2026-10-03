@@ -3,7 +3,8 @@
 A 60 x 20 x 1.6 mm card (labels/constants.py, D7) that slides into the
 holder on the cradle's front panel (L3). One fixed font (Inter Bold, D1/D2),
 autoscaled and centred inside a 2.0 mm margin (D4); one line, else two, else
-a ValueError naming the stroke and the longest text that fits (D5/D6).
+a ValueError naming the stroke (or, raised, the gap) and the longest text
+that fits (D5/D6).
 
 text_style:
   inlaid (default): two colours, printed FACE DOWN. The text fills the
@@ -26,11 +27,13 @@ from __future__ import annotations
 from build123d import Axis, Part, Plane, Pos, RectangleRounded, chamfer, extrude, mirror
 from holders.registry import ColourPart, ModelSpec, Param, Preset, register
 from labels.constants import (CARD_SIZES, CARD_T, CORNER_R, EDGE_CHAMFER, INLAY_DEPTH,
-                              MAX_TEXT_LENGTH, STROKE_FLOOR_INLAID, STROKE_FLOOR_RAISED,
-                              TEXT_CHARSET, TEXT_MARGIN)
+                              MAX_TEXT_LENGTH, MIN_GAP_RAISED, STROKE_FLOOR_INLAID,
+                              STROKE_FLOOR_RAISED, TEXT_CHARSET, TEXT_MARGIN)
 from labels.label_text import FittedText, layout_text
 
 STROKE_FLOOR = {'inlaid': STROKE_FLOOR_INLAID, 'raised': STROKE_FLOOR_RAISED}
+# Inlaid gaps are card material, held by the print audit's wall floor instead.
+GAP_FLOOR = {'inlaid': 0.0, 'raised': MIN_GAP_RAISED}
 BASE_RGBA = (0.10, 0.10, 0.10, 1.0)
 TEXT_RGBA = (0.96, 0.96, 0.96, 1.0)
 
@@ -47,8 +50,9 @@ def fitted_text(values: dict) -> FittedText | None:
     if not values['text'].strip():
         return None
     w, h = CARD_SIZES[values['size']]
+    style = values['text_style']
     return layout_text(values['text'], w, h, TEXT_MARGIN, INLAY_DEPTH,
-                       STROKE_FLOOR[values['text_style']])
+                       STROKE_FLOOR[style], GAP_FLOOR[style])
 
 
 def _glyph_order(shape: Part) -> Part:

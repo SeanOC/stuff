@@ -16,8 +16,8 @@ spacing), both scaled, so a model can clamp before a feature goes below a
 printable width. Glyphs read correctly from +Z; a face-down card mirrors them.
 
 layout_text() applies the D6 rule on top: one line if the stroke holds the
-floor, else two lines split at the space nearest the middle with one common
-scale, else ValueError. Two lines stack on their ink boxes LINE_GAP apart
+floor (and the gap its gap floor, raised text only), else two lines split at
+the space nearest the middle with one common scale, else ValueError. Two lines stack on their ink boxes LINE_GAP apart
 (the font's own 1.2 em leading costs about 10 % of the scale, and height
 binds a two-line label on a 20 mm card).
 """
@@ -168,44 +168,63 @@ def _fit_scale(text: str, box_w: float, box_h: float, margin: float) -> float:
 
 
 def _longest_fitting(text: str, box_w: float, box_h: float, margin: float,
-                     floor: float, nominal_stroke: float) -> str:
-    """Longest prefix of text that lays out above floor.
+                     floor: float, nominal_stroke: float,
+                     gap_floor: float = 0.0, nominal_gap: float = float('inf')) -> str:
+    """Longest prefix of text that lays out above floor (and gap_floor).
 
-    Uses bounding boxes only, with the whole text's nominal stroke: a prefix
-    has a subset of the glyphs, so its own stroke is at least as thick and
-    the answer is conservative.
+    Uses bounding boxes only, with the whole text's nominal stroke and gap: a
+    prefix has a subset of the glyphs and glyph pairs, so its own stroke and
+    gap are at least as wide and the answer is conservative.
     """
+    def holds(t):
+        k = _fit_scale(t, box_w, box_h, margin)
+        return nominal_stroke * k >= floor + FLOOR_MARGIN and nominal_gap * k >= gap_floor
+
     for n in range(len(text.rstrip()) - 1, 0, -1):
         prefix = text[:n].rstrip()
         if not prefix.strip():
             continue
-        layouts = [prefix] + [t for t in (two_lines(prefix),) if t]
-        if max(nominal_stroke * _fit_scale(t, box_w, box_h, margin)
-               for t in layouts) >= floor + FLOOR_MARGIN:
+        if any(holds(t) for t in [prefix] + [t for t in (two_lines(prefix),) if t]):
             return prefix
     return ''
 
 
+def _shortfall(fitted: FittedText, floor: float, gap_floor: float) -> str:
+    """Why a layout is refused, or '' if it holds both floors."""
+    lines = f'{len(fitted.lines)} line(s)'
+    if fitted.min_stroke < floor + FLOOR_MARGIN:
+        return (f'its thinnest stroke would be {fitted.min_stroke:.2f} mm on {lines}, '
+                f'below the {floor:g} mm floor')
+    if fitted.min_gap < gap_floor:
+        return (f'its narrowest gap would be {fitted.min_gap:.2f} mm on {lines}, '
+                f'below the {gap_floor:g} mm gap floor')
+    return ''
+
+
 def layout_text(text: str, box_w: float, box_h: float, margin: float,
-                depth: float, floor: float) -> FittedText:
+                depth: float, floor: float, gap_floor: float = 0.0) -> FittedText:
     """fit_text on one line, else two (D6); ValueError if neither holds floor.
 
-    The error names the measured stroke, the floor and the longest prefix of
-    text that would fit.
+    gap_floor (0 = off) also refuses a layout whose narrowest gap is below
+    it; only raised text sets one. The error names the measured stroke (or
+    gap), the floor and the longest prefix of text that would fit.
     """
     tried = []
     for candidate in (text, two_lines(text)):
         if candidate is None:
             continue
         fitted = fit_text(candidate, box_w, box_h, margin, depth)
-        if fitted.min_stroke >= floor + FLOOR_MARGIN:
+        if not _shortfall(fitted, floor, gap_floor):
             return fitted
         tried.append(fitted)
-    best = max(tried, key=lambda f: f.min_stroke)
+    # Report the gap of a layout whose stroke held, else the best stroke.
+    stroke_ok = [f for f in tried if f.min_stroke >= floor + FLOOR_MARGIN]
+    best = (max(stroke_ok, key=lambda f: f.min_gap) if stroke_ok
+            else max(tried, key=lambda f: f.min_stroke))
     longest = _longest_fitting(text, box_w, box_h, margin, floor,
-                               best.min_stroke / best.scale)
+                               best.min_stroke / best.scale,
+                               gap_floor, min(f.min_gap / f.scale for f in tried))
     raise ValueError(
         f'label text {text!r} is too long for a {box_w:g} x {box_h:g} mm card: '
-        f'its thinnest stroke would be {best.min_stroke:.2f} mm on '
-        f'{len(best.lines)} line(s), below the {floor:g} mm floor; '
+        f'{_shortfall(best, floor, gap_floor)}; '
         f'the longest that fits is {longest!r} ({len(longest)} characters)')
