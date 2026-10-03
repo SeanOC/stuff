@@ -15,12 +15,23 @@ mount_style='openconnect' carries four openConnect slots for an openGrid
 wall (28 mm tiles, 84 mm holder cadence, 2 columns x 2 rows: one under the
 plate top, one at the lowest tile that keeps the bottom floor);
 the body is the same, only the grid and the plate floors change.
+label_holder (default on, labels L3): two side rails and a bottom lip on the
+front panel's outside face hold a label_card (labels/constants.py). The card
+slides in from the top with the spool out (above the panel the spool is
+proud of the face; the neighbouring cradle blocks a side slide). The holder
+is omitted below spool_width HOLDER_MIN_PANEL_W (63.4 mm). Load: the card's
+own weight on the lip; the rails retain it in +Y.
 """
 from __future__ import annotations
 
 import math
-from build123d import Align, Axis, Box, BuildSketch, Cone, Edge, Face, Plane, Polygon, Pos, Rot, Solid, Vector, Wire, extrude
+from build123d import (Align, Axis, Box, BuildSketch, Cone, Edge, Face, Kind, Plane, Polygon, Pos, Rot, Solid,
+                       Vector, Wire, extrude)
+from build123d import fillet as fillet_2d, offset as offset_2d
 from holders.registry import ModelSpec, MountFixtures, PlaneSpec, Param, Preset, register
+from labels.constants import (CARD_H, CARD_W, CORNER_R, HOLDER_JUNCTION, HOLDER_MIN_PANEL_W,
+                              HOLDER_TOP_INSET, LIP_OVERLAP, RAIL_PROUD, RAIL_W, SLOT_CLEARANCE,
+                              SLOT_DEPTH)
 from multibuild.constants import PITCH
 from multibuild import fixpoint as fp
 from multibuild.multiconnect import POCKET_DEPTH, channel_cutter
@@ -66,7 +77,10 @@ PARAMS = tuple(Param(name, 'number', default, min=lo, max=hi, step=step,
         ('guide_gap', 0.5, 0.5, 2, 0.25, 'Half-gap to the neighbouring holder'),
     )) + (Param('mount_style', 'enum', 'channel',
                 choices=('channel', 'points', 'openconnect'), label='Mount style',
-                filename=True),)
+                filename=True),
+           Param('label_holder', 'boolean', True,
+                 label=f'Label card holder (spool width >= {HOLDER_MIN_PANEL_W:g} mm; '
+                       'swap the card with the spool out)'))
 POINT_ROW_SPACING = 2*PITCH  # Two board rows: the pockets stay discrete.
 
 
@@ -137,6 +151,9 @@ def dimensions(values=None):
     # A wide reach (84 mm openGrid cadence, narrow spool) sinks the root's
     # 45-degree underside below the bed at the saddle apex.
     p['root_to_bed'] = p['guide_enabled'] and p['guide_reach']+WEB > APEX_HEIGHT
+    # The card holder needs the slot, two outer walls and the side inset;
+    # a narrower panel omits it (label_holder is then a no-op).
+    p['label_holder_enabled'] = p['label_holder'] and p['spool_width']+1e-9 >= HOLDER_MIN_PANEL_W
     # The cap underside's last millimetre must fall toward the panel, else
     # a steep lip (shallow cradle_angle) leaves an acute groove at the
     # panel face. sqrt(2) is the original drop; 0.2 mm is the minimum fall.
@@ -528,6 +545,65 @@ def truss_openings(p):
     return result
 
 
+def label_slot(p):
+    """The card slot (labels L3) as (x, y0, y1, z0, z1), or None when omitted.
+
+    X is the half-width at the side walls; Y runs off the panel face.
+    """
+    if not p['label_holder_enabled']:
+        return None
+    face, top = p['end_y']+WEB, p['panel_height']-HOLDER_TOP_INSET
+    return (CARD_W/2+SLOT_CLEARANCE, face, face+SLOT_DEPTH,
+            top-CARD_H-2*SLOT_CLEARANCE, top)
+
+
+def seated_card(p, shape):
+    """A label_card body (print frame, face down) centred in the slot, face out."""
+    _, face, _, floor, _ = label_slot(p)
+    return Pos(0, face+SLOT_DEPTH-SLOT_CLEARANCE, floor+SLOT_CLEARANCE+CARD_H/2)*Rot(90, 0, 0)*shape
+
+
+def label_holder(p):
+    """Rails and bottom lip on the panel's outside face (labels L3, D8).
+
+    Built finished, then fused last so no panel edge selection changes.
+    The underside is one 45-degree ramp from the panel face; a 45-degree
+    junction blend runs round the outer footprint, shrunk only where the
+    panel's 0.4 mm side chamfer leaves less room. The slot's walls, floor
+    and the shelves' backs are mating faces and stay sharp.
+    """
+    x_s, face, _, floor, top = label_slot(p)
+    x_o = x_s+RAIL_W-LIP_OVERLAP
+    x_in = CARD_W/2-LIP_OVERLAP
+    shelf_top = floor+SLOT_CLEARANCE+LIP_OVERLAP
+    tip = floor-(RAIL_W-LIP_OVERLAP)-RAIL_PROUD
+    blend = min(HOLDER_JUNCTION, p['spool_width']/2-x_o-.45)
+    corner = (RAIL_W-LIP_OVERLAP)/2
+    outline = Face(Wire.make_polygon([
+        (-x_o+RAIL_PROUD+1, face, tip-1), (x_o-RAIL_PROUD-1, face, tip-1),
+        (x_o, face, tip+RAIL_PROUD), (x_o, face, top), (-x_o, face, top),
+        (-x_o, face, tip+RAIL_PROUD)], close=True))
+    outline = fillet_2d(outline.vertices().filter_by_position(Axis.Z, top-1e-6, top+1e-6),
+                     corner).face()
+    body = extrude(outline, amount=RAIL_PROUD, dir=(0, 1, 0)).fuse(extrude(
+        offset_2d(outline, blend, kind=Kind.INTERSECTION), amount=blend, dir=(0, 1, 0), taper=45))
+    with BuildSketch(Plane.YZ) as ramp:
+        Polygon((face-1, tip-1), (face+RAIL_PROUD+1, tip+RAIL_PROUD+1),
+                (face+RAIL_PROUD+1, top+10), (face-1, top+10), align=None)
+    window = Face(Wire.make_polygon([(-x_in, 0, shelf_top), (x_in, 0, shelf_top),
+                                     (x_in, 0, top+10), (-x_in, 0, top+10)], close=True))
+    window = fillet_2d(window.vertices().filter_by_position(Axis.Z, shelf_top-1e-6,
+                                                         shelf_top+1e-6), CORNER_R).face()
+    body = (body & extrude(ramp.sketch, amount=x_o+10, both=True)) - Pos(0, face-1, 0)*extrude(
+        window, amount=RAIL_PROUD+2, dir=(0, 1, 0)) - Pos(0, face-1, floor)*Box(
+        2*x_s, SLOT_DEPTH+1, top, align=(Align.CENTER, Align.MIN, Align.MIN))
+    body = body.fillet(corner, [e for e in body.edges().filter_by(Axis.Y)
+                                if abs(abs(e.center().X)-x_in) < 1e-6
+                                and abs(e.center().Z-top) < 1e-6])
+    front = body.faces().filter_by(Axis.Y).sort_by(Axis.Y)[-1]
+    return body.chamfer(.4, None, front.edges())
+
+
 def holder(**values):
     p = dimensions(values)
     t, cy, end = p['plate_thickness'], p['center_y'], p['end_y']
@@ -748,6 +824,8 @@ def holder(**values):
         bed_cuts.append(Pos(x, y, 0)*Cone(BED_CHAMFER, 0, BED_CHAMFER,
                     align=(Align.CENTER, Align.CENTER, Align.MIN)))
     part = part.cut(*bed_cuts)
+    if p['label_holder_enabled']:
+        part = part.fuse(label_holder(p))
     return part.clean()
 
 
@@ -757,7 +835,7 @@ _DEFAULT_SECTION_Y = 7 + 3 + 200 / 2
 SPEC = register(ModelSpec(
     name='holder_spool_cradle', build=lambda values: holder(**values),
     title='Spool cradle (Multibuild)', category_id='multiboard',
-    description='Single spool bookshelf cradle with wide inboard saddle rails, outboard placement guides (omitted when reach is less than 2.4 mm plus saddle clearance) and closed truss webs, in three mount styles: two full-height Multiconnect channels (channel), four MultiBuild Fix Point slots in two rows 50 mm apart, lip end up (points), or four openConnect slots for an openGrid wall on the 28 mm tile pitch and 84 mm cadence, two under the plate top and two at the lowest tile that keeps the bottom floor (openconnect). Flange-rim support; standing PETG/PCTG print with support allowed only in the mount pockets.',
+    description='Single spool bookshelf cradle with wide inboard saddle rails, outboard placement guides (omitted when reach is less than 2.4 mm plus saddle clearance) and closed truss webs, in three mount styles: two full-height Multiconnect channels (channel), four MultiBuild Fix Point slots in two rows 50 mm apart, lip end up (points), or four openConnect slots for an openGrid wall on the 28 mm tile pitch and 84 mm cadence, two under the plate top and two at the lowest tile that keeps the bottom floor (openconnect). A slide-in label card holder on the front panel (spool width 63.4 mm and up; swap the card with the spool out). Flange-rim support; standing PETG/PCTG print with support allowed only in the mount pockets.',
     tags=('holder', 'multiboard', 'opengrid', 'spool', 'multiconnect-channel',
           'fixpoint-slots', 'openconnect'), params=PARAMS,
     mounts=(MOUNT, OC_MOUNT, FP_MOUNT), mount_for_values=mount_for_values, print_orientation=(0, 0, 1),

@@ -13,7 +13,7 @@ from holders.registry import all_models
 all_models()  # Preserve the manifest emitter's registration order.
 from holders.spool_cradle import (APEX_HEIGHT, FP_MOUNT, MOUNT, OC_MOUNT, OC_SLOT_BOTTOM, OC_SLOT_TOP, PARAMS,
                                    POINT_ROW_SPACING, SPEC, WEB, CHORD, check_plate,
-                                   dimensions, holder, mount_fixtures, mount_for_values,
+                                   dimensions, holder, label_slot, mount_fixtures, mount_for_values,
                                    oc_seats, point_seats, truss_openings)
 from multibuild.constants import PITCH, large_hole_center, small_hole_center
 from multibuild import fixpoint as fp
@@ -24,6 +24,10 @@ from scripts.export import export_stl
 from tests.mount_contracts import verify
 from tests import print_audit as pa
 from tests.print_audit import _bed_chamfer, audit
+from holders import label_card
+from holders.spool_cradle import seated_card
+from labels.constants import (CARD_W, HOLDER_JUNCTION, HOLDER_MIN_PANEL_W, LIP_OVERLAP, RAIL_W,
+                              SIDE_INSET, SLOT_CLEARANCE, TEXT_MARGIN)
 
 
 @pytest.fixture(scope='module')
@@ -349,7 +353,8 @@ def test_bed_edges_and_edge_classes(part):
 def assert_finished_edges(part, p):
     # Final BRep classes: functional slot/contact edges, R1 junctions,
     # eased exterior edges, and edges between coplanar/tangent faces.
-    counts={'mount':0,'contact':0,'blend':0,'internal_cap':0,'eased':0,'tangent':0}
+    counts={'mount':0,'contact':0,'blend':0,'internal_cap':0,'label_slot':0,'eased':0,'tangent':0}
+    slot=label_slot(p)
     cutters=[c.bounding_box() for c in mount_fixtures(
         mount_for_values(p), {k: p[k] for k in SPEC.param_names()}).cutters]
     adjacency={}
@@ -367,6 +372,12 @@ def assert_finished_edges(part, p):
                b.min.Y-.5 <= c.Y <= b.max.Y+.5 and
                b.min.Z-.5 <= c.Z <= b.max.Z+.5 for b in cutters):
             counts['mount']+=1
+            continue
+        # The label card slot's walls, floor and shelf backs are mating
+        # faces; its walls run on up through the panel junction blend.
+        if slot and abs(c.X) <= slot[0]+1e-6 and slot[1]-1e-6 <= c.Y <= slot[2]+1e-6 \
+                and slot[3]-1e-6 <= c.Z <= slot[4]+HOLDER_JUNCTION+1e-6:
+            counts['label_slot']+=1
             continue
         # Analytic circular saddle boundaries are functional rim contacts;
         # R1 cylinders are structural junction blends.
@@ -397,6 +408,7 @@ def assert_finished_edges(part, p):
             assert angle < 90-1e-3, (tuple(c),angle)
             counts['eased']+=1
     assert all(counts[k] > 0 for k in ('mount','contact','blend','eased'))
+    assert (counts['label_slot'] > 0) == bool(slot)
 
 
 def saddle_z(p, y):
@@ -670,6 +682,61 @@ def recorded_volumes():
 def test_preset_volume_matches_validation_doc(preset):
     # Channel presets must stay byte-identical at the default mount_style.
     assert holder(**preset.values).volume == pytest.approx(recorded_volumes()[preset.id], abs=1e-3)
+
+
+# Pre-L3 preset volumes (docs/spool-cradle-validation.md at 8a15e93, before
+# the label holder): the holder-off body must not move (pst-o9sd4).
+PRE_LABEL_VOLUMES = {'channel': 104201.224, 'points': 116544.929, 'openconnect': 136352.459}
+
+
+@pytest.mark.parametrize('preset', SPEC.presets, ids=lambda p: p.id)
+def test_label_holder_off_keeps_pre_label_volume(preset):
+    assert preset.values.get('label_holder', True)
+    model = holder(**preset.values, label_holder=False)
+    assert model.volume == pytest.approx(PRE_LABEL_VOLUMES[preset.id], abs=1e-3)
+
+
+def test_label_holder_threshold_is_derived():
+    assert HOLDER_MIN_PANEL_W == pytest.approx(
+        CARD_W+2*SLOT_CLEARANCE+2*(RAIL_W-LIP_OVERLAP)+2*SIDE_INSET)
+    assert HOLDER_MIN_PANEL_W == pytest.approx(63.4) and HOLDER_MIN_PANEL_W <= 66
+    assert RAIL_W-LIP_OVERLAP >= pa.MIN_WALL_MM
+    assert LIP_OVERLAP < TEXT_MARGIN
+    assert not dimensions({'spool_width': 63})['label_holder_enabled']
+    assert dimensions({'spool_width': 63.5})['label_holder_enabled']
+    assert not dimensions({'label_holder': False})['label_holder_enabled']
+    assert all(dimensions(p.values)['label_holder_enabled'] for p in SPEC.presets)
+
+
+@pytest.mark.parametrize('width', (50, 60))
+def test_label_holder_omitted_below_threshold(width):
+    on, off = holder(spool_width=width), holder(spool_width=width, label_holder=False)
+    assert on.volume == pytest.approx(off.volume, abs=1e-9)
+    a, b = on.bounding_box(), off.bounding_box()
+    assert (a.min - b.min).length < 1e-9 and (a.max - b.max).length < 1e-9
+
+
+def test_label_card_fits_and_is_retained(part):
+    p = dimensions()
+    x, face, back, floor, top = label_slot(p)
+    card = seated_card(p, label_card.build(label_card.SPEC.resolve_values({})))
+    # The card plus SLOT_CLEARANCE on every side is exactly the slot.
+    bb = card.bounding_box()
+    assert (bb.min.X-SLOT_CLEARANCE, bb.max.X+SLOT_CLEARANCE) == pytest.approx((-x, x))
+    assert (bb.min.Y-SLOT_CLEARANCE, bb.max.Y+SLOT_CLEARANCE) == pytest.approx((face, back))
+    assert (bb.min.Z-SLOT_CLEARANCE, bb.max.Z+SLOT_CLEARANCE) == pytest.approx((floor, top))
+    volume = lambda shape: 0 if shape is None else shape.volume  # empty & is None
+    assert volume(part & card) < 1e-6
+    # Directly in front of the card, the shelves cover LIP_OVERLAP of its
+    # face at both sides and the bottom, and nothing inboard of that.
+    probe = lambda x0, x1, z0, z1: volume(part & Pos((x0+x1)/2, back+.05, (z0+z1)/2)*Box(
+        x1-x0, .1, z1-z0))/((x1-x0)*.1*(z1-z0))
+    edge, low = CARD_W/2-LIP_OVERLAP, bb.min.Z+LIP_OVERLAP
+    for sign in (1, -1):
+        assert probe(*sorted((sign*edge, sign*x)), low+2, top-1) == pytest.approx(1)
+        assert probe(*sorted((sign*(edge-.2), sign*(edge-.01))), low+2, top-1) == 0
+    assert probe(-edge+2, edge-2, floor, low) == pytest.approx(1)
+    assert probe(-edge+2, edge-2, low+.01, low+.2) == 0
 
 
 def test_points_too_short_root_is_rejected():
