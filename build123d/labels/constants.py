@@ -21,10 +21,6 @@ INLAY_DEPTH = 0.6       # D9: 3 layers at 0.2; also the raised-text height
 # D5 stroke floors (Sean confirmed 2026-10-03): thinnest glyph stroke allowed.
 STROKE_FLOOR_INLAID = 0.7   # flush inlay, >= 1.75 first-layer lines
 STROKE_FLOOR_RAISED = 0.9   # free-standing raised strokes
-# Narrowest glyph gap (counter, letter or line) allowed on RAISED text
-# (pst-l4hsl): below ~0.5 mm the slicer closes it up (labels-spike.md, gap
-# analysis). Inlaid gaps are card material, held to 0.9 by the print audit.
-MIN_GAP_RAISED = 0.5
 
 # D6 text rules: at most 24 printable ASCII characters (0x20-0x7E).
 MAX_TEXT_LENGTH = 24

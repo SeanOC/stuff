@@ -13,11 +13,12 @@ fit_text() builds at NOMINAL_SIZE, scales uniformly to fit the box minus the
 margin in both axes and centres the ink bounding box on the origin. It also
 reports the thinnest stroke and the narrowest gap (counters and letter
 spacing), both scaled, so a model can clamp before a feature goes below a
-printable width. Glyphs read correctly from +Z; a face-down card mirrors them.
+printable width, plus the glyph-to-glyph clearance (reported, never gated:
+see docs/labels-spike.md, 'Raised: no inter-glyph floor'). Glyphs read correctly from +Z; a face-down card mirrors them.
 
 layout_text() applies the D6 rule on top: one line if the stroke holds the
-floor (and the gap its gap floor, raised text only), else two lines split at
-the space nearest the middle with one common scale, else ValueError. Two lines stack on their ink boxes LINE_GAP apart
+floor, else two lines split at the space nearest the middle with one common
+scale, else ValueError. Two lines stack on their ink boxes LINE_GAP apart
 (the font's own 1.2 em leading costs about 10 % of the scale, and height
 binds a two-line label on a 20 mm card).
 """
@@ -50,6 +51,7 @@ class FittedText(NamedTuple):
     min_stroke: float  # thinnest glyph feature, mm, after scaling
     min_gap: float     # narrowest counter / letter / line gap, mm, after scaling
     lines: tuple[str, ...] = ()
+    min_clearance: float = float('nan')  # closest two separate ink pieces, mm, scaled
 
 
 def load_font(path: Path | str = FONT_PATH) -> str:
@@ -131,11 +133,24 @@ def stroke_and_gap(sketch: Sketch) -> tuple[float, float]:
             min_feature_width(box(x0 - pad, y0 - pad, x1 + pad, y1 + pad).difference(ink)))
 
 
+def glyph_clearance(sketch: Sketch) -> float:
+    """Closest distance between two separate pieces of ink (glyphs, i-dots, lines).
+
+    Unlike min_gap this ignores notches inside one glyph: min_gap reads
+    Inter's 'M' crotch as 0.18 mm at NOMINAL_SIZE. inf for a single piece.
+    """
+    ink = _polygons(sketch)
+    pieces = list(getattr(ink, 'geoms', [ink]))
+    return min((a.distance(b) for i, a in enumerate(pieces) for b in pieces[i + 1:]),
+               default=float('inf'))
+
+
 def fit_text(text: str, box_w: float, box_h: float, margin: float,
              depth: float = 0.6, measure: bool = True) -> FittedText:
     """Text scaled to fit (box - 2 margin) in both axes, ink centred on the origin.
 
-    The part spans Z 0..depth. measure=False skips the stroke/gap scan (NaN).
+    The part spans Z 0..depth. measure=False skips the stroke/gap/clearance
+    measures (NaN).
     """
     w_avail, h_avail = box_w - 2 * margin, box_h - 2 * margin
     if w_avail <= 0 or h_avail <= 0 or depth <= 0:
@@ -144,11 +159,12 @@ def fit_text(text: str, box_w: float, box_h: float, margin: float,
     bb = nominal.bounding_box()
     s = min(w_avail / bb.size.X, h_avail / bb.size.Y)
     stroke, gap = stroke_and_gap(nominal) if measure else (float('nan'),) * 2
+    clearance = glyph_clearance(nominal) if measure else float('nan')
     fitted = scale(nominal, s)
     c = fitted.bounding_box().center()
     part = extrude(Pos(-c.X, -c.Y, 0) * fitted, depth)
     lines = tuple(line.strip() for line in text.split('\n'))
-    return FittedText(part, s, stroke * s, gap * s, lines)
+    return FittedText(part, s, stroke * s, gap * s, lines, clearance * s)
 
 
 def two_lines(text: str) -> str | None:
@@ -168,63 +184,44 @@ def _fit_scale(text: str, box_w: float, box_h: float, margin: float) -> float:
 
 
 def _longest_fitting(text: str, box_w: float, box_h: float, margin: float,
-                     floor: float, nominal_stroke: float,
-                     gap_floor: float = 0.0, nominal_gap: float = float('inf')) -> str:
-    """Longest prefix of text that lays out above floor (and gap_floor).
+                     floor: float, nominal_stroke: float) -> str:
+    """Longest prefix of text that lays out above floor.
 
-    Uses bounding boxes only, with the whole text's nominal stroke and gap: a
-    prefix has a subset of the glyphs and glyph pairs, so its own stroke and
-    gap are at least as wide and the answer is conservative.
+    Uses bounding boxes only, with the whole text's nominal stroke: a prefix
+    has a subset of the glyphs, so its own stroke is at least as thick and
+    the answer is conservative.
     """
-    def holds(t):
-        k = _fit_scale(t, box_w, box_h, margin)
-        return nominal_stroke * k >= floor + FLOOR_MARGIN and nominal_gap * k >= gap_floor
-
     for n in range(len(text.rstrip()) - 1, 0, -1):
         prefix = text[:n].rstrip()
         if not prefix.strip():
             continue
-        if any(holds(t) for t in [prefix] + [t for t in (two_lines(prefix),) if t]):
+        layouts = [prefix] + [t for t in (two_lines(prefix),) if t]
+        if max(nominal_stroke * _fit_scale(t, box_w, box_h, margin)
+               for t in layouts) >= floor + FLOOR_MARGIN:
             return prefix
     return ''
 
 
-def _shortfall(fitted: FittedText, floor: float, gap_floor: float) -> str:
-    """Why a layout is refused, or '' if it holds both floors."""
-    lines = f'{len(fitted.lines)} line(s)'
-    if fitted.min_stroke < floor + FLOOR_MARGIN:
-        return (f'its thinnest stroke would be {fitted.min_stroke:.2f} mm on {lines}, '
-                f'below the {floor:g} mm floor')
-    if fitted.min_gap < gap_floor:
-        return (f'its narrowest gap would be {fitted.min_gap:.2f} mm on {lines}, '
-                f'below the {gap_floor:g} mm gap floor')
-    return ''
-
-
 def layout_text(text: str, box_w: float, box_h: float, margin: float,
-                depth: float, floor: float, gap_floor: float = 0.0) -> FittedText:
+                depth: float, floor: float) -> FittedText:
     """fit_text on one line, else two (D6); ValueError if neither holds floor.
 
-    gap_floor (0 = off) also refuses a layout whose narrowest gap is below
-    it; only raised text sets one. The error names the measured stroke (or
-    gap), the floor and the longest prefix of text that would fit.
+    The error names the measured stroke, the floor and the longest prefix of
+    text that would fit.
     """
     tried = []
     for candidate in (text, two_lines(text)):
         if candidate is None:
             continue
         fitted = fit_text(candidate, box_w, box_h, margin, depth)
-        if not _shortfall(fitted, floor, gap_floor):
+        if fitted.min_stroke >= floor + FLOOR_MARGIN:
             return fitted
         tried.append(fitted)
-    # Report the gap of a layout whose stroke held, else the best stroke.
-    stroke_ok = [f for f in tried if f.min_stroke >= floor + FLOOR_MARGIN]
-    best = (max(stroke_ok, key=lambda f: f.min_gap) if stroke_ok
-            else max(tried, key=lambda f: f.min_stroke))
+    best = max(tried, key=lambda f: f.min_stroke)
     longest = _longest_fitting(text, box_w, box_h, margin, floor,
-                               best.min_stroke / best.scale,
-                               gap_floor, min(f.min_gap / f.scale for f in tried))
+                               best.min_stroke / best.scale)
     raise ValueError(
         f'label text {text!r} is too long for a {box_w:g} x {box_h:g} mm card: '
-        f'{_shortfall(best, floor, gap_floor)}; '
+        f'its thinnest stroke would be {best.min_stroke:.2f} mm on '
+        f'{len(best.lines)} line(s), below the {floor:g} mm floor; '
         f'the longest that fits is {longest!r} ({len(longest)} characters)')
