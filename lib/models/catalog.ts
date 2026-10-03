@@ -9,6 +9,7 @@ export const MODEL_CATEGORIES = [
   { id: "multiboard", label: "Multiboard" },
   { id: "toys", label: "Toys" },
   { id: "household", label: "Household" },
+  { id: "label", label: "Labels" },
 ] as const;
 
 export type CategoryId = (typeof MODEL_CATEGORIES)[number]["id"];
@@ -173,6 +174,11 @@ export const CATALOG: Record<string, CatalogEntry> = {
  * enforcement and cross-checks the manifest's categoryId against it.
  */
 export const BUILD123D_CATALOG: Record<string, CatalogEntry> = {
+  holder_label_card: {
+    categoryId: "label",
+    blurb:
+      "Slide-in label card for the spool cradle label holder: your text in a fixed font, autoscaled and centred. Inlaid two-colour (face down, flush) or raised single-colour.",
+  },
   holder_spool_cradle: {
     categoryId: "multiboard",
     blurb: "Single spool bookshelf cradle with arc saddles, closed truss webs and two full-height Multiconnect channels. Flange-rim support; standing PETG/PCTG print with support allowed only in the mount pockets.",
