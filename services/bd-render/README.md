@@ -25,7 +25,10 @@ served from `build123d/baked/` (P1c); this service is for on-the-fly tweaks.
   model/gltf-binary`), **raw STL bytes** (`application/sla`) when
   `?format=stl`, or a **one-object multi-colour 3MF** (`model/3mf`, the
   model's `colour_parts` with part i on filament i + 1) when `?format=3mf`
-  — multi-colour models only (`holder-label-card`). Bytes (not base64 JSON) mirror how `services/render` and
+  — multi-colour models only (`holder-label-card`). The GLB is one
+  uncoloured mesh, except inlaid label text: one matte material per
+  filament (`preview_colour_parts`, the same `export_glb` as the bake).
+  Bytes (not base64 JSON) mirror how `services/render` and
   `/api/bd-asset` already return geometry.
 - **Failure → `4xx`/`5xx`**, `content-type: application/json`,
   `{ ok: false, errorMessage, ... }`.

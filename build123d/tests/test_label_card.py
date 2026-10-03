@@ -14,11 +14,12 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'tests'))
 from build123d import Axis, Plane, Pos, Rectangle, section  # noqa: E402
 from holders.label_card import SPEC, STROKE_FLOOR, card, colour_parts, fitted_text  # noqa: E402
-from holders.registry import Param, _validate_param, all_models, resolve_colour_parts  # noqa: E402
+from holders.registry import (Param, _validate_param, all_models, resolve_colour_parts,  # noqa: E402
+                              resolve_preview_parts)
 from labels import constants as C  # noqa: E402
 from labels.label_text import FLOOR_MARGIN, fit_text, layout_text, two_lines  # noqa: E402
 from print_audit import MIN_WALL_MM, audit  # noqa: E402
-from scripts.export import export_3mf_one_object, export_stl  # noqa: E402
+from scripts.export import export_3mf_one_object, export_glb, export_stl  # noqa: E402
 
 # Longest strings each style accepts that we pin (A3): 24 characters inlaid
 # (two lines, the thinnest accepted stroke found), 18 raised.
@@ -241,6 +242,56 @@ def test_3mf_is_one_object_with_base_and_inlay_on_two_filaments(tmp_path):
     extruders = re.findall(r'<part id="\d+".*?key="name" value="(\w+)".*?key="extruder" value="(\d)"',
                            settings, re.S)
     assert extruders == [('base', '1'), ('inlay', '2')]
+
+
+def read_glb(path) -> dict:
+    """The JSON chunk of a binary glTF."""
+    import json
+    import struct
+    data = Path(path).read_bytes()
+    assert data[:4] == b'glTF'
+    (length,) = struct.unpack('<I', data[12:16])
+    return json.loads(data[20:20 + length])
+
+
+def glb_materials(doc: dict) -> list:
+    """The materials the viewer shows, one per distinct primitive material (None = default)."""
+    used = {prim.get('material') for mesh in doc['meshes'] for prim in mesh['primitives']}
+    return sorted(used, key=lambda m: -1 if m is None else m)
+
+
+@pytest.mark.parametrize('slug, preset, materials', [
+    ('holder-label-card', 'inlaid', 2),
+    ('holder-label-card', 'raised', 1),
+    ('holder-spray-can', None, 1),
+])
+def test_preview_glb_has_one_material_per_visible_colour(tmp_path, slug, preset, materials):
+    """pst-5b83s AC (b): only inlaid text gets a two-material viewer GLB."""
+    spec = next(m for m in all_models() if m.slug == slug)
+    values = spec.resolve_values(
+        next(p.values for p in spec.presets if p.id == preset) if preset else {})
+    part = spec.build(values)
+    path = tmp_path / 'preview.glb'
+    export_glb(part, path, resolve_preview_parts(spec, values))
+    doc = read_glb(path)
+    assert len(glb_materials(doc)) == materials
+    # The exporter's -90 deg X (Z-up -> Y-up) root rotation is the only
+    # transform: GlbViewer's fixed compass basis stays true (no display bake).
+    root = doc['nodes'][doc['scenes'][0]['nodes'][0]]
+    assert root['rotation'] == pytest.approx([-math.sqrt(0.5), 0, 0, math.sqrt(0.5)])
+    assert all('rotation' not in n and 'matrix' not in n for n in doc['nodes'] if n is not root)
+    if materials == 1:
+        assert 'materials' not in doc  # the plain export_gltf GLB, as before
+    else:
+        assert all(m['pbrMetallicRoughness']['metallicFactor'] == 0 for m in doc['materials'])
+        colours = [m['pbrMetallicRoughness']['baseColorFactor'] for m in doc['materials']]
+        assert colours[0][0] < 0.1 < 0.5 < colours[1][0]  # dark base, light inlay
+        assert [n.get('name') for n in doc['nodes'] if n is not root] == ['base', 'inlay']
+
+
+@pytest.mark.parametrize('style, text', [('raised', 'PETG'), ('inlaid', ' '), ('raised', ' ')])
+def test_raised_and_blank_cards_keep_the_plain_glb(style, text):
+    assert resolve_preview_parts(SPEC, {'text': text, 'text_style': style}) is None
 
 
 _WRITE = '''

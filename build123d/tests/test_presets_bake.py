@@ -14,6 +14,7 @@ built part as the GLB/STL so the listing card can never drift from the
 detail-view geometry.
 """
 import json
+import struct
 import subprocess
 import sys
 from pathlib import Path
@@ -77,6 +78,16 @@ def test_presets_only_bakes_every_app_listed_preset(tmp_path):
         f"extra={sorted(map(str, actual_files - expected_files))}, "
         f"missing={sorted(map(str, expected_files - actual_files))}"
     )
+
+    # Viewer GLB materials (pst-5b83s): only the inlaid label card is two
+    # colours; every other preset keeps the plain, material-less GLB.
+    for spec in specs:
+        for preset in spec.presets:
+            glb = (target / spec.slug / f"{preset.id}.glb").read_bytes()
+            (length,) = struct.unpack("<I", glb[12:16])
+            materials = json.loads(glb[20:20 + length]).get("materials", [])
+            two_colour = (spec.slug, preset.id) == ("holder-label-card", "inlaid")
+            assert len(materials) == (2 if two_colour else 0), f"{spec.slug}/{preset.id}"
 
     # Count: exactly 3 files (STL + GLB + PNG) per preset, +3 for multi-colour.
     expected_count = sum(len(s.presets) * (6 if s.is_multi_colour else 3) for s in specs)

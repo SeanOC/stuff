@@ -9,7 +9,7 @@
 
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import BdDetailPage, { type BdDetailPageModel } from "./BdDetailPage";
+import BdDetailPage, { type BdDetailPageModel, viewFor } from "./BdDetailPage";
 import type { CameraAxes } from "./StlViewer";
 
 let mockOnCameraChange: ((axes: CameraAxes) => void) | null = null;
@@ -17,11 +17,13 @@ vi.mock("./GlbViewer", () => ({
   __esModule: true,
   default: ({
     onCameraChange,
+    view,
   }: {
     onCameraChange?: (axes: CameraAxes) => void;
+    view?: string;
   }) => {
     mockOnCameraChange = onCameraChange ?? null;
-    return <div data-testid="glb-viewer" />;
+    return <div data-testid="glb-viewer" data-view={view ?? "iso"} />;
   },
 }));
 
@@ -148,5 +150,38 @@ describe("BdDetailPage label text + 3MF", () => {
     expect(url).toBe("/api/bd-render?format=3mf");
     expect(JSON.parse(String((init as RequestInit).body)).params.text).toBe("PLA");
     expect(clicked).toEqual(["holder-label-card.3mf"]);
+  });
+});
+
+describe("BdDetailPage camera hint (pst-5b83s)", () => {
+  const CARD: BdDetailPageModel = {
+    ...LABEL,
+    params: [
+      ...LABEL.params,
+      { name: "text_style", kind: "enum", default: "inlaid", choices: ["inlaid", "raised"] },
+    ],
+    presets: [
+      { id: "inlaid", label: "Inlaid", values: { text: "Filament", text_style: "inlaid" },
+        defaultView: "bottom" },
+      { id: "raised", label: "Raised", values: { text: "Filament", text_style: "raised" } },
+    ],
+  };
+  const [inlaid, raised] = CARD.presets;
+
+  it("opens the hinted preset on its text face and the others at iso", () => {
+    const page = render(<BdDetailPage model={CARD} />);
+    expect(page.getByTestId("glb-viewer").getAttribute("data-view")).toBe("bottom");
+    fireEvent.click(page.getByTestId("bd-preset-raised"));
+    expect(page.getByTestId("glb-viewer").getAttribute("data-view")).toBe("iso");
+    cleanup();
+    expect(render(<BdDetailPage model={MODEL} />).getByTestId("glb-viewer")
+      .getAttribute("data-view")).toBe("iso");
+  });
+
+  it("a live render keeps the hint across text edits, not a style switch", () => {
+    expect(viewFor(inlaid, CARD.params, null)).toBe("bottom");
+    expect(viewFor(inlaid, CARD.params, { text: "PETG-CF", text_style: "inlaid" })).toBe("bottom");
+    expect(viewFor(inlaid, CARD.params, { text: "PETG-CF", text_style: "raised" })).toBeUndefined();
+    expect(viewFor(raised, CARD.params, null)).toBeUndefined();
   });
 });

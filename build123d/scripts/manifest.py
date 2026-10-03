@@ -17,7 +17,7 @@ it verbatim:
           "blurb": "...",                  # catalog card blurb
           "categoryId": "multiboard",      # id from lib/models/catalog.ts
           "params": [ ... Param ... ],     # lib/scad-params/parse.ts shapes
-          "presets": [ ... Preset ... ],   # {id, label, values}
+          "presets": [ ... Preset ... ],   # {id, label, values, defaultView?}
           "multiColour": true              # only when tagged multi-colour
         },
         ...
@@ -33,7 +33,8 @@ Serialization rules (must match parse.ts output exactly):
       enum:           kind, default, choices (tuple -> array)
     then filename? (any kind, only when true).
   - presets: {id, label, values} — values keep Python JSON types
-    (int/float/bool/string); ints stay ints.
+    (int/float/bool/string); ints stay ints. Then defaultView? (a viewer
+    camera hint from DEFAULT_VIEWS, only when set; pst-5b83s).
   - key order is fixed; output is 2-space indented + trailing newline so
     regeneration is byte-identical everywhere.
 
@@ -57,7 +58,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from holders.registry import CATEGORY_IDS, CHARSETS, ModelSpec, SAFE_ID_RE  # noqa: E402
-from holders.registry import all_models  # noqa: E402
+from holders.registry import DEFAULT_VIEWS, all_models  # noqa: E402
 
 SCHEMA_VERSION = 1
 MANIFEST_PATH = ROOT / "manifest.json"
@@ -69,6 +70,9 @@ _MODEL_FIELDS = ("slug", "engine", "title", "blurb", "categoryId", "params", "pr
 # bakes a multi-colour 3MF per preset (ModelSpec tag "multi-colour").
 _MODEL_OPTIONAL = "multiColour"
 _PRESET_FIELDS = ("id", "label", "values")
+# Optional trailing preset key, emitted only when set (pst-5b83s): the
+# viewer's initial camera for that preset (registry Preset.default_view).
+_PRESET_OPTIONAL = "defaultView"
 _ROOT_FIELDS = ("schemaVersion", "models")
 
 # Per-kind key rules: (optional display keys, required kind-specific keys).
@@ -130,7 +134,10 @@ def param_to_json(param) -> dict[str, Any]:
 
 
 def preset_to_json(preset) -> dict[str, Any]:
-    return {"id": preset.id, "label": preset.label, "values": dict(preset.values)}
+    out = {"id": preset.id, "label": preset.label, "values": dict(preset.values)}
+    if preset.default_view is not None:
+        out[_PRESET_OPTIONAL] = preset.default_view
+    return out
 
 
 def spec_to_json(spec: ModelSpec) -> dict[str, Any]:
@@ -297,9 +304,12 @@ def validate_manifest(doc: Any, category_ids: set[str] | None = None) -> list[st
             if not isinstance(preset, dict):
                 errors.append(f"{rwhere} must be an object")
                 continue
-            errors += _field_order_errors(list(preset), _PRESET_FIELDS, rwhere)
-            if list(preset) != list(_PRESET_FIELDS):
+            expected = _PRESET_FIELDS + ((_PRESET_OPTIONAL,) if _PRESET_OPTIONAL in preset else ())
+            errors += _field_order_errors(list(preset), expected, rwhere)
+            if list(preset) != list(expected):
                 continue
+            if _PRESET_OPTIONAL in preset and preset[_PRESET_OPTIONAL] not in DEFAULT_VIEWS:
+                errors.append(f"{rwhere}: {_PRESET_OPTIONAL} must be one of {list(DEFAULT_VIEWS)}")
             pid = preset["id"]
             if not isinstance(pid, str) or not SAFE_ID_RE.match(pid or ""):
                 errors.append(f"{rwhere}: id must be a URL-safe string")

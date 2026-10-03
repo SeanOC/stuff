@@ -5,8 +5,8 @@
 // The emitter's docstring pins the serialization contract to
 // lib/scad-params/parse.ts: param objects are exactly the app's
 // `Param` shapes (only-set keys, canonical order) and presets are
-// `{id, label, values}`. So a well-formed manifest deserializes
-// verbatim into `Param[]`/`Preset[]`.
+// `{id, label, values}` plus an optional `defaultView` camera hint. So a
+// well-formed manifest deserializes verbatim into `BdParam[]`/`BdPreset[]`.
 
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -21,6 +21,16 @@ export type BdParam = Param & {
   unit?: string;
 };
 
+/** Viewer camera hints (build123d/holders/registry.py DEFAULT_VIEWS). */
+export type BdView = "bottom";
+
+export type BdPreset = Preset & {
+  /** Manifest extension: the viewer's initial camera for this preset
+   * (pst-5b83s — the face-down inlaid label opens on its text face).
+   * Emitted only when set; absent = the default iso view. */
+  defaultView?: BdView;
+};
+
 export interface BdModel {
   /** URL-safe slug straight from the manifest (dashes, no conversion). */
   slug: string;
@@ -28,7 +38,7 @@ export interface BdModel {
   blurb: string;
   categoryId: CategoryId;
   params: BdParam[];
-  presets: Preset[];
+  presets: BdPreset[];
   /** Manifest extension: present (true) only when every preset bakes a
    * one-object multi-colour 3MF (labels L2; served by L4). */
   multiColour?: boolean;

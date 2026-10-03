@@ -49,6 +49,15 @@ describe("label card (labels L2)", () => {
   });
 });
 
+describe("label card camera hint (pst-5b83s)", () => {
+  it("carries defaultView on the inlaid preset only", async () => {
+    const hinted = (await loadBdManifest()).models.flatMap((m) =>
+      m.presets.filter((p) => "defaultView" in p).map((p) => [m.slug, p.id, p.defaultView]),
+    );
+    expect(hinted).toEqual([["holder-label-card", "inlaid", "bottom"]]);
+  });
+});
+
 describe("loadBdModel", () => {
   it("returns the manifest entry for a known slug", async () => {
     const model = await loadBdModel("holder-spray-can");

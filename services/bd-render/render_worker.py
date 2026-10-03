@@ -65,9 +65,8 @@ def main() -> int:
         return _fail(4, "params must be a JSON object")
 
     # Import inside main so a usage error above doesn't pay the OCP import.
-    from build123d import export_gltf
-    from scripts.export import export_3mf_one_object, export_stl
-    from holders.registry import all_models, resolve_colour_parts
+    from scripts.export import export_3mf_one_object, export_glb, export_stl
+    from holders.registry import all_models, resolve_colour_parts, resolve_preview_parts
 
     spec = next(
         (m for m in all_models() if not m.is_smoke and m.slug == slug), None
@@ -91,6 +90,9 @@ def main() -> int:
         else:
             part = spec.build(values)
             shapes = [part]
+            # Inlaid label text gets its two materials (pst-5b83s); None
+            # keeps every other model's GLB identical to the bake's.
+            preview = resolve_preview_parts(spec, values) if fmt == "glb" else None
     except ValueError as e:
         # The model rejected in-range values it cannot build (label text
         # below the stroke floor): the client's input, so a 400 with the
@@ -113,7 +115,7 @@ def main() -> int:
         if fmt == "3mf":
             export_3mf_one_object(named, out_path, spec.slug)
         elif fmt == "glb":
-            export_gltf(part, out_path, binary=True)
+            export_glb(part, out_path, preview)
         else:
             export_stl(part, out_path)
     except Exception as e:  # noqa: BLE001

@@ -176,6 +176,26 @@ def test_preset_serializes_like_parse_ts():
     }
 
 
+def test_default_view_is_a_trailing_preset_key_only_when_set():
+    pr = Preset(id="p", label="P", values={}, default_view="bottom")
+    assert list(preset_to_json(pr)) == ["id", "label", "values", "defaultView"]
+    assert preset_to_json(pr)["defaultView"] == "bottom"
+    assert "defaultView" not in preset_to_json(Preset(id="p", label="P", values={}))
+
+
+def test_only_the_inlaid_label_card_preset_carries_a_view_hint():
+    """pst-5b83s AC (d): the face-down inlaid card opens on its text face."""
+    hinted = [(m["slug"], p["id"], p["defaultView"])
+              for m in build_manifest()["models"] for p in m["presets"] if "defaultView" in p]
+    assert hinted == [("holder-label-card", "inlaid", "bottom")]
+
+
+def test_validator_rejects_unknown_default_view():
+    doc = _mutate(_valid_doc())
+    doc["models"][0]["presets"][0]["defaultView"] = "sideways"
+    assert any("defaultView must be one of" in e for e in validate_manifest(doc))
+
+
 def test_shipped_holder_params_match_registry():
     """The shipped presets must round-trip through the emitter exactly."""
     spec = next(s for s in all_models() if s.name == "holder_spray_can")
@@ -321,6 +341,19 @@ def test_registry_rejects_preset_with_unknown_param():
         category_id="toys",
     )
     with pytest.raises(ValueError, match="unknown param"):
+        register(spec)
+
+
+def test_registry_rejects_unknown_default_view():
+    spec = ModelSpec(
+        name="tmp_bad_default_view",
+        build=_bare_build,
+        description="x",
+        params=(Param(name="a", kind="number", default=1.0),),
+        presets=(Preset(id="p", label="p", values={}, default_view="top"),),
+        category_id="toys",
+    )
+    with pytest.raises(ValueError, match="default_view"):
         register(spec)
 
 

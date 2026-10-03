@@ -90,19 +90,29 @@ class Param:
     charset: str | None = None
 
 
+# Viewer camera hints a preset may carry (manifest "defaultView", read by
+# components/GlbViewer.tsx fitCamera). "bottom": look up at the print
+# frame's -Z face, for a model whose visible face prints on the bed.
+DEFAULT_VIEWS = ("bottom",)
+
+
 @dataclass(frozen=True)
 class Preset:
-    """Named parameter set. Mirrors lib/scad-params/parse.ts Preset exactly.
+    """Named parameter set: lib/scad-params/parse.ts Preset plus one optional hint.
 
     id: unique within the model, URL-safe (used in baked file paths).
     label: required, human-readable (displayed in the preset rail).
     values: param-name -> value; every key must be a registered param of
     this model, every value kind-consistent (see _validate_value).
+    default_view: optional viewer camera hint, one of DEFAULT_VIEWS
+    (manifest extension "defaultView", pst-5b83s); None keeps the iso view.
+    Display only: the geometry, STL and 3MF stay in the print frame.
     """
 
     id: str
     label: str
     values: dict[str, ParamValue]
+    default_view: str | None = None
 
 
 def _is_number(value: Any) -> bool:
@@ -404,6 +414,20 @@ def resolve_colour_parts(spec: ModelSpec, values: dict) -> list[ColourPart]:
     return hook(spec.resolve_values(values))
 
 
+def resolve_preview_parts(spec: ModelSpec, values: dict) -> list[ColourPart] | None:
+    """The viewer GLB's coloured parts, or None for today's single-material GLB.
+
+    A multi-colour model opts in per values with a module-level
+    ``preview_colour_parts(values)`` hook (pst-5b83s): the label card
+    returns its parts for inlaid text only, since raised prints in one
+    colour. Every other model has no hook and keeps its GLB byte-identical.
+    """
+    if not spec.is_multi_colour:
+        return None
+    hook = getattr(importlib.import_module(spec.build.__module__), "preview_colour_parts", None)
+    return None if hook is None else hook(spec.resolve_values(values))
+
+
 _REGISTRY: dict[str, ModelSpec] = {}
 
 
@@ -412,6 +436,9 @@ def _validate_preset(spec: ModelSpec, preset: Preset) -> str | None:
         return f"{spec.name}: preset id {preset.id!r} must be URL-safe"
     if not preset.label:
         return f"{spec.name}: preset {preset.id!r}: label is required"
+    if preset.default_view is not None and preset.default_view not in DEFAULT_VIEWS:
+        return (f"{spec.name}: preset {preset.id!r}: default_view "
+                f"{preset.default_view!r} not in {list(DEFAULT_VIEWS)}")
     by_name = {p.name: p for p in spec.params}
     for name, value in preset.values.items():
         param = by_name.get(name)
