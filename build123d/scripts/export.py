@@ -16,6 +16,12 @@ presets and writes exactly three artifacts per preset into TARGET_DIR:
     TARGET_DIR/<model-slug>/<preset-id>.glb   # viewer geometry
     TARGET_DIR/<model-slug>/<preset-id>.png   # gallery thumbnail
 
+plus, ONLY for a model tagged "multi-colour" (labels L2):
+
+    TARGET_DIR/<model-slug>/<preset-id>.3mf        # one object, part i on filament i+1
+    TARGET_DIR/<model-slug>/<preset-id>-base.stl   # filament 1 body
+    TARGET_DIR/<model-slug>/<preset-id>-text.stl   # filament 2 body
+
 Single source of truth (bead pst-1vi5): the thumbnail is rendered from
 the same built part as the GLB/STL, so a model or preset change can
 never leave the gallery card showing stale geometry. The gallery's
@@ -28,7 +34,8 @@ Contract (validated by tests/test_presets_bake.py):
   - names are deterministic and filesystem-safe (slug + preset id, both
     URL-safe by registry validation),
   - exactly STL + GLB + PNG per preset (thumbnail is a bake output, not
-    a separate committed review artifact).
+    a separate committed review artifact), plus 3MF + -base/-text STLs for
+    multi-colour models only.
 """
 import argparse
 import io
@@ -48,7 +55,7 @@ import trimesh
 
 from build123d import export_stl as _native_export_stl, export_gltf  # noqa: E402
 
-from holders.registry import all_models, resolve_mount_fixtures  # noqa: E402
+from holders.registry import all_models, resolve_colour_parts, resolve_mount_fixtures  # noqa: E402
 from scripts.thumbnail import PlaneSpec, ReviewContext, render_review, render_thumbnail  # noqa: E402
 
 OUT = Path(__file__).resolve().parent.parent / "out"
@@ -71,6 +78,80 @@ def export_stl(part, path):
         mesh.update_faces(keep)
         mesh.export(str(path), file_type='stl')
     return True
+
+
+def export_3mf_one_object(named, path, object_name: str) -> None:
+    """ONE 3MF build item: a components object whose parts are the named meshes.
+
+    named: [(name, part, rgba)], part i on filament i + 1 (labels D10; moved
+    here from holders/label_demo.py in L2 so the bake and bd-render share it).
+
+    build123d's Mesher adds one build item per solid (a text Compound becomes
+    one slicer object per glyph), so this writes the core-spec structure with
+    lib3mf directly. Bambu Studio ignores mesh names and base-material
+    colours; the Metadata/model_settings.config sidecar names the parts and
+    puts part i on filament i + 1. Never declare Application=BambuStudio:
+    Bambu Studio then expects a full project and crashes on this file.
+    Without a project_settings.config Bambu Studio shows "not from Bambu Lab,
+    load geometry data and color data only" but keeps each part's extruder
+    (labels D10-revised); writing one would load our print config over the
+    user's presets, which is worse than the notice.
+
+    Byte-stable for the same input: lib3mf's random production-extension
+    UUIDs are replaced by uuid5 of object_name + part name.
+    """
+    import copy
+    import locale
+    import uuid
+    import zipfile
+    from build123d import Mesher
+
+    def stable_uuid(*key: str) -> str:
+        return str(uuid.uuid5(uuid.NAMESPACE_URL, '/'.join(('stuff-3mf', object_name, *key))))
+
+    mesher = Mesher()  # owns the lib3mf wrapper + model; its _mesh helpers weld vertices
+    wrapper, model = mesher.wrapper, mesher.model
+    group = model.AddBaseMaterialGroup()
+    assembly = model.AddComponentsObject()
+    assembly.SetName(object_name)
+    assembly.SetUUID(stable_uuid('object'))
+    part_ids = []
+    for name, shape, rgba in named:
+        verts, tris = Mesher._mesh_shape(copy.deepcopy(shape), 0.005, 0.1)
+        mesh = model.AddMeshObject()
+        mesh.SetName(name)
+        mesh.SetUUID(stable_uuid('part', name))
+        mesh.SetGeometry(*Mesher._create_3mf_mesh(verts, tris))
+        mat = group.AddMaterial(name, wrapper.FloatRGBAToColor(*rgba))
+        mesh.SetObjectLevelProperty(group.GetResourceID(), mat)
+        if not mesh.IsManifoldAndOriented():
+            raise RuntimeError(f'3MF part {name} is not manifold and oriented')
+        component = assembly.AddComponent(mesh, wrapper.GetIdentityTransform())
+        component.SetUUID(stable_uuid('component', name))
+        part_ids.append((mesh.GetResourceID(), name))
+    model.AddBuildItem(assembly, wrapper.GetIdentityTransform()).SetUUID(stable_uuid('item'))
+    model.SetBuildUUID(stable_uuid('build'))
+    saved = locale.setlocale(locale.LC_ALL)
+    try:
+        mesher.write(str(path))
+    finally:
+        locale.setlocale(locale.LC_ALL, saved)  # lib3mf resets the process locale to C
+    settings = [f'<object id="{assembly.GetResourceID()}">',
+                f'  <metadata key="name" value="{object_name}"/>',
+                '  <metadata key="extruder" value="1"/>']
+    for filament, (part_id, name) in enumerate(part_ids, start=1):
+        settings += [f'  <part id="{part_id}" subtype="normal_part">',
+                     f'    <metadata key="name" value="{name}"/>',
+                     f'    <metadata key="extruder" value="{filament}"/>',
+                     '  </part>']
+    xml = '\n'.join(['<?xml version="1.0" encoding="UTF-8"?>', '<config>',
+                     *('  ' + line for line in settings + ['</object>']),
+                     '</config>', ''])
+    # Fixed timestamp: writestr(name) stamps the wall clock, and the bake must
+    # be byte-stable for the same text.
+    entry = zipfile.ZipInfo('Metadata/model_settings.config', date_time=(1980, 1, 1, 0, 0, 0))
+    with zipfile.ZipFile(path, 'a', zipfile.ZIP_DEFLATED) as package:
+        package.writestr(entry, xml, compress_type=zipfile.ZIP_DEFLATED)
 
 
 def review_context(spec, values, part) -> ReviewContext:
@@ -183,6 +264,13 @@ def export_presets_only(target: Path) -> int:
             # software rasteriser (pst-o0wy) — matches the live preview and
             # keeps the pst-1vi5 single-source-of-truth property.
             render_thumbnail(glb, png)
+            if spec.is_multi_colour:
+                # Gated: every other model's bake output stays exactly STL+GLB+PNG.
+                named = resolve_colour_parts(spec, preset.values)
+                export_3mf_one_object(named, model_dir / f"{preset.id}.3mf",
+                                      f"{spec.slug}-{preset.id}")
+                for (_, shape, _), role in zip(named, ("base", "text")):
+                    export_stl(shape, str(model_dir / f"{preset.id}-{role}.stl"))
             baked += 1
             print(f"{spec.name}/{preset.id}: vol={part.volume:.0f}mm3 -> {stl}, {glb}, {png}")
     print(f"baked {baked} presets from {len(specs)} models into {target}")

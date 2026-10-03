@@ -49,6 +49,12 @@ export interface BooleanParam extends ParamBase {
 export interface StringParam extends ParamBase {
   kind: "string";
   default: string;
+  // Longest value in characters (`maxLength=24` on the @param line).
+  maxLength?: number;
+  // Character-set id every character must belong to (`charset=printable-ascii`):
+  // "printable-ascii" = 0x20-0x7E. build123d's registry.Param carries both
+  // via the manifest (max_length / charset).
+  charset?: string;
 }
 
 export interface EnumParam extends ParamBase {
@@ -188,7 +194,10 @@ function buildParam(args: {
     }
     case "string": {
       const unquoted = unquote(rawDefault);
-      return { ...base, kind: "string", default: unquoted };
+      const out: StringParam = { ...base, kind: "string", default: unquoted };
+      if (attrs.has("maxLength")) out.maxLength = Number(attrs.get("maxLength"));
+      if (attrs.has("charset")) out.charset = attrs.get("charset");
+      return out;
     }
     case "enum": {
       const choicesRaw = attrs.get("choices");

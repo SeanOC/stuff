@@ -35,6 +35,7 @@ on:
     paths:
       - "services/bd-render/**"
       - "build123d/holders/**"
+      - "build123d/labels/**"
       - "build123d/multibuild/**"
       - "build123d/openconnect/**"
       - "build123d/scripts/**"

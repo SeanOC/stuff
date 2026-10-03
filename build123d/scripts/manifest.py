@@ -17,7 +17,8 @@ it verbatim:
           "blurb": "...",                  # catalog card blurb
           "categoryId": "multiboard",      # id from lib/models/catalog.ts
           "params": [ ... Param ... ],     # lib/scad-params/parse.ts shapes
-          "presets": [ ... Preset ... ]    # {id, label, values}
+          "presets": [ ... Preset ... ],   # {id, label, values}
+          "multiColour": true              # only when tagged multi-colour
         },
         ...
       ]
@@ -28,8 +29,9 @@ Serialization rules (must match parse.ts output exactly):
     set; then per kind:
       number/integer: kind, default, min?, max?, step? (only when set)
       boolean:        kind, default
-      string:         kind, default
+      string:         kind, default, maxLength?, charset? (only when set)
       enum:           kind, default, choices (tuple -> array)
+    then filename? (any kind, only when true).
   - presets: {id, label, values} — values keep Python JSON types
     (int/float/bool/string); ints stay ints.
   - key order is fixed; output is 2-space indented + trailing newline so
@@ -54,7 +56,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from holders.registry import CATEGORY_IDS, ModelSpec, SAFE_ID_RE  # noqa: E402
+from holders.registry import CATEGORY_IDS, CHARSETS, ModelSpec, SAFE_ID_RE  # noqa: E402
 from holders.registry import all_models  # noqa: E402
 
 SCHEMA_VERSION = 1
@@ -63,6 +65,9 @@ MANIFEST_PATH = ROOT / "manifest.json"
 # Fixed key orders — deterministic output, and a shape check against
 # lib/scad-params/parse.ts (unknown/missing fields fail validate_manifest).
 _MODEL_FIELDS = ("slug", "engine", "title", "blurb", "categoryId", "params", "presets")
+# Optional trailing model flag, emitted only as true (labels L2): the model
+# bakes a multi-colour 3MF per preset (ModelSpec tag "multi-colour").
+_MODEL_OPTIONAL = "multiColour"
 _PRESET_FIELDS = ("id", "label", "values")
 _ROOT_FIELDS = ("schemaVersion", "models")
 
@@ -70,8 +75,8 @@ _ROOT_FIELDS = ("schemaVersion", "models")
 # parse.ts emits ONLY set keys, so the strict check is: key SET equals
 # required + (optionals actually present) — no unknowns — and every key
 # appears in canonical order (a subsequence of the full canonical order).
-_PARAM_CANONICAL = ("name", "label", "group", "unit", "kind", "default", "min", "max", "step", "choices", "filename")
-_PARAM_OPTIONALS = ("label", "group", "unit", "min", "max", "step", "filename")
+_PARAM_CANONICAL = ("name", "label", "group", "unit", "kind", "default", "min", "max", "step", "choices", "filename", "maxLength", "charset")
+_PARAM_OPTIONALS = ("label", "group", "unit", "min", "max", "step", "filename", "maxLength", "charset")
 _KIND_REQUIRED = {
     "number": ("kind", "default"),
     "integer": ("kind", "default"),
@@ -117,6 +122,10 @@ def param_to_json(param) -> dict[str, Any]:
         out["choices"] = list(param.choices)
     if param.filename:
         out["filename"] = True
+    if param.max_length is not None:
+        out["maxLength"] = param.max_length
+    if param.charset is not None:
+        out["charset"] = param.charset
     return out
 
 
@@ -125,7 +134,7 @@ def preset_to_json(preset) -> dict[str, Any]:
 
 
 def spec_to_json(spec: ModelSpec) -> dict[str, Any]:
-    return {
+    out = {
         "slug": spec.slug,
         "engine": "build123d",
         "title": spec.title or spec.slug.replace("-", " ").title(),
@@ -134,6 +143,9 @@ def spec_to_json(spec: ModelSpec) -> dict[str, Any]:
         "params": [param_to_json(p) for p in spec.params],
         "presets": [preset_to_json(p) for p in spec.presets],
     }
+    if spec.is_multi_colour:
+        out[_MODEL_OPTIONAL] = True
+    return out
 
 
 def build_manifest(specs: list[ModelSpec] | None = None) -> dict[str, Any]:
@@ -187,9 +199,12 @@ def validate_manifest(doc: Any, category_ids: set[str] | None = None) -> list[st
         if not isinstance(model, dict):
             errors.append(f"{mwhere} must be an object")
             continue
-        errors += _field_order_errors(list(model), _MODEL_FIELDS, mwhere)
-        if errors and list(model) != list(_MODEL_FIELDS):
+        expected = _MODEL_FIELDS + ((_MODEL_OPTIONAL,) if _MODEL_OPTIONAL in model else ())
+        errors += _field_order_errors(list(model), expected, mwhere)
+        if errors and list(model) != list(expected):
             continue
+        if _MODEL_OPTIONAL in model and model[_MODEL_OPTIONAL] is not True:
+            errors.append(f"{mwhere}: {_MODEL_OPTIONAL} must be true when present")
         slug = model["slug"]
         if not isinstance(slug, str) or not SAFE_ID_RE.match(slug or ""):
             errors.append(f"{mwhere}: slug {slug!r} must be a URL-safe string")
@@ -258,6 +273,12 @@ def validate_manifest(doc: Any, category_ids: set[str] | None = None) -> list[st
             elif kind == "string":
                 if not isinstance(param["default"], str):
                     errors.append(f"{pwhere}: string default must be a string")
+                length = param.get("maxLength")
+                if "maxLength" in param and (not isinstance(length, int) or isinstance(length, bool)
+                                             or length < 1):
+                    errors.append(f"{pwhere}: maxLength must be a positive int")
+                if "charset" in param and param["charset"] not in CHARSETS:
+                    errors.append(f"{pwhere}: charset must be one of {sorted(CHARSETS)}")
             elif kind == "enum":
                 choices = param["choices"]
                 if (

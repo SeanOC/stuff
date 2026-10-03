@@ -2,6 +2,61 @@
   "schemaVersion": 1,
   "models": [
     {
+      "slug": "holder-label-card",
+      "engine": "build123d",
+      "title": "Label card",
+      "blurb": "Slide-in label card for the spool cradle label holder: your text in a fixed font, autoscaled and centred. Inlaid two-colour (face down, flush) or raised single-colour.",
+      "categoryId": "label",
+      "params": [
+        {
+          "name": "text",
+          "label": "Label text",
+          "kind": "string",
+          "default": "Filament",
+          "maxLength": 24,
+          "charset": "printable-ascii"
+        },
+        {
+          "name": "size",
+          "label": "Card size",
+          "kind": "enum",
+          "default": "spool-cradle",
+          "choices": [
+            "spool-cradle"
+          ]
+        },
+        {
+          "name": "text_style",
+          "label": "Text style",
+          "kind": "enum",
+          "default": "inlaid",
+          "choices": [
+            "inlaid",
+            "raised"
+          ]
+        }
+      ],
+      "presets": [
+        {
+          "id": "inlaid",
+          "label": "Inlaid (two colours, face down)",
+          "values": {
+            "text": "Filament",
+            "text_style": "inlaid"
+          }
+        },
+        {
+          "id": "raised",
+          "label": "Raised (one colour, face up)",
+          "values": {
+            "text": "Filament",
+            "text_style": "raised"
+          }
+        }
+      ],
+      "multiColour": true
+    },
+    {
       "slug": "holder-bottle-500ml",
       "engine": "build123d",
       "title": "500ml bottle holder",

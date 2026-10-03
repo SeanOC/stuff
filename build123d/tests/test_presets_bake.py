@@ -51,6 +51,10 @@ def test_presets_only_bakes_every_app_listed_preset(tmp_path):
             expected_files.add(target / spec.slug / f"{preset.id}.stl")
             expected_files.add(target / spec.slug / f"{preset.id}.glb")
             expected_files.add(target / spec.slug / f"{preset.id}.png")
+            if spec.is_multi_colour:  # gated extras (labels L2): 3MF + one STL per filament
+                expected_files.add(target / spec.slug / f"{preset.id}.3mf")
+                expected_files.add(target / spec.slug / f"{preset.id}-base.stl")
+                expected_files.add(target / spec.slug / f"{preset.id}-text.stl")
 
     # Every expected artifact exists and is a valid mesh / non-empty PNG.
     for path in sorted(expected_files):
@@ -74,8 +78,8 @@ def test_presets_only_bakes_every_app_listed_preset(tmp_path):
         f"missing={sorted(map(str, expected_files - actual_files))}"
     )
 
-    # Count: exactly 3 files (STL + GLB + PNG) per preset of every model.
-    expected_count = sum(len(s.presets) for s in specs) * 3
+    # Count: exactly 3 files (STL + GLB + PNG) per preset, +3 for multi-colour.
+    expected_count = sum(len(s.presets) * (6 if s.is_multi_colour else 3) for s in specs)
     assert len(actual_files) == expected_count
 
 

@@ -44,8 +44,14 @@ KNOWN_MOUNTS: frozenset[str] = frozenset({"multiconnect-slot", "multibuild-multi
 # Mirrors MODEL_CATEGORIES ids in lib/models/catalog.ts (app catalog
 # contract). Keep in sync when a category is added there.
 CATEGORY_IDS: frozenset[str] = frozenset(
-    {"storage", "multiboard", "toys", "household"}
+    {"storage", "multiboard", "toys", "household", "label"}
 )
+
+# Character sets a string Param may declare (Param.charset). The id is what
+# the manifest carries; the app enforces the same rule on input (labels L4).
+CHARSETS: dict[str, re.Pattern] = {
+    "printable-ascii": re.compile(r"[\x20-\x7e]*"),  # space .. tilde
+}
 
 ParamValue = float | int | bool | str
 
@@ -63,6 +69,10 @@ class Param:
 
     filename: name live STL downloads after this param's value
     (slug-<value>.stl); emitted to the manifest only when True.
+
+    max_length / charset ("string" only): longest value in characters and
+    the CHARSETS id every character must belong to; enforced by
+    resolve_values, emitted to the manifest (maxLength, charset) when set.
     """
 
     name: str
@@ -76,6 +86,8 @@ class Param:
     step: float | None = None
     choices: tuple[str, ...] = ()
     filename: bool = False
+    max_length: int | None = None
+    charset: str | None = None
 
 
 @dataclass(frozen=True)
@@ -117,6 +129,17 @@ def _validate_value(kind: str, name: str, value: Any) -> str | None:
     return None
 
 
+def _validate_text(param: "Param", value: str) -> str | None:
+    """max_length / charset errors for a string param's value, else None."""
+    if param.max_length is not None and len(value) > param.max_length:
+        return (f"{param.name}: {len(value)} characters > max length "
+                f"{param.max_length}")
+    if param.charset is not None and not CHARSETS[param.charset].fullmatch(value):
+        bad = next(ch for ch in value if not CHARSETS[param.charset].fullmatch(ch))
+        return f"{param.name}: character {bad!r} is not in charset {param.charset}"
+    return None
+
+
 def _validate_param(param: Param) -> str | None:
     if not param.name or not SAFE_ID_RE.match(param.name):
         return f"param {param.name!r}: name must be a non-empty safe identifier"
@@ -126,6 +149,14 @@ def _validate_param(param: Param) -> str | None:
         value = getattr(param, field)
         if value is not None and (not isinstance(value, str) or not value):
             return f"param {param.name!r}: {field} must be a non-empty string"
+    if param.kind != "string" and (param.max_length is not None or param.charset is not None):
+        return f"param {param.name!r}: max_length/charset apply to string params only"
+    if param.max_length is not None and (
+            not isinstance(param.max_length, int) or isinstance(param.max_length, bool)
+            or param.max_length < 1):
+        return f"param {param.name!r}: max_length must be a positive int"
+    if param.charset is not None and param.charset not in CHARSETS:
+        return f"param {param.name!r}: charset {param.charset!r} not in {sorted(CHARSETS)}"
     if param.kind in ("number", "integer"):
         for bound in ("min", "max", "step"):
             value = getattr(param, bound)
@@ -155,7 +186,12 @@ def _validate_param(param: Param) -> str | None:
                 f"not in choices {list(param.choices)}"
             )
         return None
-    return _validate_value(param.kind, param.name, param.default)
+    error = _validate_value(param.kind, param.name, param.default)
+    if error is None and param.kind == "string":
+        error = _validate_text(param, param.default)
+        if error:
+            return f"param {param.name!r}: default: {error}"
+    return error
 
 
 @dataclass
@@ -204,7 +240,10 @@ class ModelSpec:
     build:   build(values) -> Part. ``values`` is a resolved param dict
              (see resolve_values); smoke models ignore it.
     tags:    "smoke" marks toolchain smoke artifacts (excluded from the
-             app-facing manifest and --presets-only baking).
+             app-facing manifest and --presets-only baking). "multi-colour"
+             marks a model whose module exposes ``colour_parts(values)``:
+             the bake adds a one-object two-filament 3MF + one STL per part
+             (see resolve_colour_parts), and the manifest says multiColour.
     params:  typed params (see Param); order defines manifest order.
     presets: named preset value sets (see Preset).
     title:   app-facing title; falls back to a humanized slug when empty.
@@ -258,6 +297,10 @@ class ModelSpec:
     def is_smoke(self) -> bool:
         return "smoke" in self.tags
 
+    @property
+    def is_multi_colour(self) -> bool:
+        return "multi-colour" in self.tags
+
     def param_names(self) -> frozenset[str]:
         return frozenset(p.name for p in self.params)
 
@@ -295,6 +338,10 @@ class ModelSpec:
                     raise ValueError(
                         f"{self.name}: {name}={value} > max {param.max}"
                     )
+            if param.kind == "string":
+                error = _validate_text(param, value)
+                if error:
+                    raise ValueError(f"{self.name}: {error}")
             values[name] = value
         return values
 
@@ -337,6 +384,26 @@ def resolve_mount_fixtures(
     return fx
 
 
+ColourPart = tuple[str, Part, tuple[float, float, float, float]]
+
+
+def resolve_colour_parts(spec: ModelSpec, values: dict) -> list[ColourPart]:
+    """A multi-colour model's ``colour_parts(values)`` hook: [(name, part, rgba)].
+
+    Part i prints on filament i + 1; the first is the base. Fails loudly if
+    the model is not tagged multi-colour or its module lacks the hook.
+    """
+    if not spec.is_multi_colour:
+        raise AssertionError(f"{spec.name}: not tagged multi-colour")
+    module = importlib.import_module(spec.build.__module__)
+    hook = getattr(module, "colour_parts", None)
+    if hook is None:
+        raise AssertionError(
+            f"{spec.name}: tagged multi-colour but its module {module.__name__} "
+            "has no colour_parts(values) hook")
+    return hook(spec.resolve_values(values))
+
+
 _REGISTRY: dict[str, ModelSpec] = {}
 
 
@@ -365,6 +432,10 @@ def _validate_preset(spec: ModelSpec, preset: Preset) -> str | None:
                 return f"{spec.name}: preset {preset.id!r}: {name}={value} < min {param.min}"
             if param.max is not None and value > param.max:
                 return f"{spec.name}: preset {preset.id!r}: {name}={value} > max {param.max}"
+        if param.kind == "string":
+            error = _validate_text(param, value)
+            if error:
+                return f"{spec.name}: preset {preset.id!r}: {error}"
     return None
 
 
@@ -464,4 +535,5 @@ def all_models() -> list[ModelSpec]:
     except ImportError:
         pass
     from holders import spool_cradle  # noqa: F401
+    from holders import label_card  # noqa: F401
     return list(_REGISTRY.values())

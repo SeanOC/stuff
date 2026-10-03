@@ -29,6 +29,9 @@ export interface BdModel {
   categoryId: CategoryId;
   params: BdParam[];
   presets: Preset[];
+  /** Manifest extension: present (true) only when every preset bakes a
+   * one-object multi-colour 3MF (labels L2; served by L4). */
+  multiColour?: boolean;
 }
 
 export interface BdManifest {

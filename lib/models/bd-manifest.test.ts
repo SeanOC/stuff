@@ -32,6 +32,23 @@ describe("loadBdManifest", () => {
   });
 });
 
+describe("label card (labels L2)", () => {
+  it("carries maxLength + charset on text and the multiColour flag", async () => {
+    const model = await loadBdModel("holder-label-card");
+    expect(model?.multiColour).toBe(true);
+    const text = model?.params.find((p) => p.name === "text");
+    expect(text).toMatchObject({
+      kind: "string",
+      maxLength: 24,
+      charset: "printable-ascii",
+    });
+    const others = (await loadBdManifest()).models.filter(
+      (m) => m.slug !== "holder-label-card",
+    );
+    expect(others.some((m) => "multiColour" in m)).toBe(false);
+  });
+});
+
 describe("loadBdModel", () => {
   it("returns the manifest entry for a known slug", async () => {
     const model = await loadBdModel("holder-spray-can");

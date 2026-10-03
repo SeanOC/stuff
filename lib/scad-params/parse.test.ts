@@ -118,6 +118,22 @@ describe("parseScadParams", () => {
     expect(out.params[0].filename).toBeUndefined();
   });
 
+  it("captures maxLength + charset on a string param (labels L2)", () => {
+    const out = parseScadParams(
+      wrap('t = "Filament"; // @param string maxLength=24 charset=printable-ascii label="Text"'),
+    );
+    expect(out.params).toEqual([
+      {
+        kind: "string",
+        name: "t",
+        label: "Text",
+        default: "Filament",
+        maxLength: 24,
+        charset: "printable-ascii",
+      },
+    ]);
+  });
+
   it("parses a string with default", () => {
     const out = parseScadParams(wrap('label = "hello world"; // @param string'));
     expect(out.params).toEqual([
