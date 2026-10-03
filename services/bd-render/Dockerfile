@@ -37,6 +37,7 @@ RUN uv sync --frozen --no-install-project
 # Bake the model tree: registry + holders (models) + shared geometry + export helpers.
 COPY build123d/holders ./holders
 COPY build123d/labels ./labels
+COPY build123d/assets/fonts ./assets/fonts
 COPY build123d/multibuild ./multibuild
 COPY build123d/openconnect ./openconnect
 COPY build123d/scripts ./scripts

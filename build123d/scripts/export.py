@@ -92,6 +92,10 @@ def export_3mf_one_object(named, path, object_name: str) -> None:
     colours; the Metadata/model_settings.config sidecar names the parts and
     puts part i on filament i + 1. Never declare Application=BambuStudio:
     Bambu Studio then expects a full project and crashes on this file.
+    Without a project_settings.config Bambu Studio shows "not from Bambu Lab,
+    load geometry data and color data only" but keeps each part's extruder
+    (labels D10-revised); writing one would load our print config over the
+    user's presets, which is worse than the notice.
 
     Byte-stable for the same input: lib3mf's random production-extension
     UUIDs are replaced by uuid5 of object_name + part name.

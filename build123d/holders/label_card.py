@@ -51,6 +51,18 @@ def fitted_text(values: dict) -> FittedText | None:
                        STROKE_FLOOR[values['text_style']])
 
 
+def _glyph_order(shape: Part) -> Part:
+    """The same solids in a fixed order (left to right, then down the lines).
+
+    OCCT booleans return the glyph solids in an address-dependent order, so
+    the -text STL and the 3MF would differ between processes without this.
+    """
+    def key(solid):
+        c = solid.center()
+        return (round(c.X, 3), round(-c.Y, 3), round(c.Z, 3), round(solid.volume, 3))
+    return Part(sorted(shape.solids(), key=key))
+
+
 def colour_parts(values: dict) -> list[ColourPart]:
     """[(base, filament 1), (text, filament 2)] in the print frame; base only if blank."""
     whole = card(values['size'])
@@ -58,10 +70,10 @@ def colour_parts(values: dict) -> list[ColourPart]:
     if fitted is None:
         return [('base', whole, BASE_RGBA)]
     if values['text_style'] == 'inlaid':
-        inlay = whole & mirror(fitted.part, Plane.YZ)
+        inlay = _glyph_order(whole & mirror(fitted.part, Plane.YZ))
         return [('base', whole - inlay, BASE_RGBA), ('inlay', inlay, TEXT_RGBA)]
     return [('base', whole, BASE_RGBA),
-            ('text', Pos(0, 0, CARD_T) * fitted.part, TEXT_RGBA)]
+            ('text', _glyph_order(Pos(0, 0, CARD_T) * fitted.part), TEXT_RGBA)]
 
 
 def build(values: dict) -> Part:
