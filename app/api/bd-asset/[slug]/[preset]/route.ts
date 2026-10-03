@@ -1,8 +1,10 @@
 // build123d baked-preset asset server (bead pst-0um9, epic pst-7srz).
 //
-// Serves the build-time-baked STL/GLB for one (model, preset) pair:
+// Serves the build-time-baked STL/GLB/3MF for one (model, preset) pair:
 //   GET /api/bd-asset/<slug>/<preset>?format=glb   → viewer geometry
 //   GET /api/bd-asset/<slug>/<preset>?format=stl   → print download
+//   GET /api/bd-asset/<slug>/<preset>?format=3mf   → multi-colour print
+//                                  download (multiColour models only)
 //
 // This is the P1 preset flow — NOT /api/export. There is no live
 // rendering here; the files were baked by scripts/bake-bd-presets.sh
@@ -26,12 +28,13 @@ export const runtime = "nodejs";
 
 const BAKED_ROOT = path.resolve(process.cwd(), "build123d", "baked");
 
-type Format = "stl" | "glb";
+type Format = "stl" | "glb" | "3mf";
 
 const CONTENT_TYPE: Record<Format, string> = {
   // Match /api/export's STL content-type for consistency.
   stl: "application/sla",
   glb: "model/gltf-binary",
+  "3mf": "model/3mf",
 };
 
 interface RouteContext {
@@ -42,8 +45,8 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
   const { slug, preset } = await ctx.params;
 
   const format = req.nextUrl.searchParams.get("format") ?? "glb";
-  if (format !== "stl" && format !== "glb") {
-    return jsonError(400, `format must be "stl" or "glb", got "${format}"`);
+  if (format !== "stl" && format !== "glb" && format !== "3mf") {
+    return jsonError(400, `format must be "stl", "glb" or "3mf", got "${format}"`);
   }
 
   // Allowlist: the model + preset must both be declared in the manifest.
@@ -51,6 +54,11 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
   if (!model) return jsonError(404, `unknown build123d model: ${slug}`);
   if (!model.presets.some((p) => p.id === preset)) {
     return jsonError(404, `unknown preset "${preset}" for model "${slug}"`);
+  }
+  // Only multi-colour models bake a 3MF (scripts/export.py is_multi_colour
+  // gate); say so rather than the misleading "bake didn't run" 404 below.
+  if (format === "3mf" && !model.multiColour) {
+    return jsonError(400, `${slug} is not a multi-colour model; 3mf is not available`);
   }
 
   // Path is built only from allowlist-matched, registry-validated ids
@@ -94,14 +102,14 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
     // caching but require revalidation so a new bake is picked up promptly.
     "cache-control": "public, max-age=0, must-revalidate",
   };
-  // STL is a download; GLB is fetched by the in-page viewer (inline).
+  // STL/3MF are downloads; GLB is fetched by the in-page viewer (inline).
   // Baked assets are named by PRESET, not via downloadFilename's flagged
   // params: a preset id already names the variant, and once pst-026m4
   // consolidates presets the id IS the mount style — so this stays
-  // `${slug}-${preset}.stl` and never doubles the suffix.
-  if (format === "stl") {
+  // `${slug}-${preset}.<format>` and never doubles the suffix.
+  if (format !== "glb") {
     headers["content-disposition"] =
-      `attachment; filename="${slug}-${preset}.stl"`;
+      `attachment; filename="${slug}-${preset}.${format}"`;
   }
 
   return new Response(body, { status: 200, headers });

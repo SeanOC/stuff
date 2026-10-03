@@ -61,7 +61,7 @@ def load_font(path: Path | str = FONT_PATH) -> str:
     manager = FontManager()
     names = manager.register_font(str(path), True, False)  # fontTools raises on a non-font
     if not names:
-        raise ValueError(f'no font faces in {path}')
+        raise RuntimeError(f'no font faces in {path}')  # a deployment fault, not bad input
     found = manager.find_font(names[0], FONT_STYLE)
     resolved = found.FontPath(FONT_ASPECT[FONT_STYLE]).ToCString() if found else ''
     if not resolved or Path(resolved).resolve() != path.resolve():

@@ -8,6 +8,8 @@
 //
 //   POST /api/bd-render            body { slug, params }
 //   POST /api/bd-render?format=stl same, STL bytes for download
+//   POST /api/bd-render?format=3mf same, one-object multi-colour 3MF
+//                                  (multiColour models only, else 400)
 //
 // Flow:
 //   1. Gate: bdModelsEnabled() AND config present. Else 503 {disabled:true}
@@ -22,12 +24,15 @@
 //      hit this route on every manual refresh, so repeat combos MUST be
 //      instant.
 //   6. MISS → bd-render service. Success → cache + serve x-cache=miss.
-//      Failure → 502 structured error (no fallback).
+//      Service 400 (the model rejected the values at build time, e.g. label
+//      text below the stroke floor) → 400 with its message; any other
+//      failure → 502 structured error (no fallback).
 //
 // No change to /api/export or its WASM fallback — this is a separate path.
 
 import { type NextRequest } from "next/server";
 import {
+  CHARSET_RE,
   defaultsOf,
   type ParamValue,
 } from "@/lib/scad-params/parse";
@@ -64,8 +69,8 @@ export async function POST(req: NextRequest) {
   // 2. Format + body shape. Read the query off req.url (works for both a
   //    NextRequest and a plain Request, unlike req.nextUrl).
   const format = new URL(req.url).searchParams.get("format") ?? "glb";
-  if (format !== "glb" && format !== "stl") {
-    return jsonError(400, `format must be "glb" or "stl", got "${format}"`);
+  if (format !== "glb" && format !== "stl" && format !== "3mf") {
+    return jsonError(400, `format must be "glb", "stl" or "3mf", got "${format}"`);
   }
 
   let body: BdRenderBody;
@@ -91,6 +96,9 @@ export async function POST(req: NextRequest) {
   const model = await loadBdModel(body.slug);
   if (!model) {
     return jsonError(404, `unknown build123d model: ${body.slug}`);
+  }
+  if (format === "3mf" && !model.multiColour) {
+    return jsonError(400, `${model.slug} is not a multi-colour model; 3mf is not available`);
   }
 
   // 4. JS manifest-range pre-check → fast 400 before the round-trip. The
@@ -139,6 +147,11 @@ export async function POST(req: NextRequest) {
       null,
   });
   if (!result.ok) {
+    // A service 400 is the model rejecting in-range values it cannot build
+    // (label text below the stroke floor): relay its message to the user.
+    if (result.badRequest !== undefined) {
+      return jsonError(400, result.badRequest);
+    }
     return jsonError(502, "bd-render service failed", { upstream: result.errorMessage });
   }
 
@@ -161,6 +174,7 @@ export async function POST(req: NextRequest) {
 const CONTENT_TYPE: Record<BdRenderFormat, string> = {
   glb: "model/gltf-binary",
   stl: "application/sla",
+  "3mf": "model/3mf",
 };
 
 // A HIT is content-addressed, so its bytes can never change for that (slug,
@@ -183,11 +197,11 @@ function bytesResponse(
         ? "public, max-age=31536000, immutable"
         : "no-store",
   };
-  // STL is a download; GLB is fetched inline by the in-page viewer. The name
+  // STL/3MF are downloads; GLB is fetched inline by the in-page viewer. The name
   // carries any `filename`-flagged param's value (holder-spool-cradle-points
   // .stl) and must agree with BdDetailPage's a.download, which wins on the
   // fetch-blob path.
-  if (format === "stl") {
+  if (format !== "glb") {
     headers["content-disposition"] = `attachment; filename="${filename}"`;
   }
   if (meta.cache) headers["x-cache"] = meta.cache;
@@ -260,8 +274,21 @@ function coerceBd(
         ? { value: s }
         : { error: `param ${param.name}: ${s} not in ${param.choices.join("|")}` };
     }
-    case "string":
-      return { value: typeof raw === "string" ? raw : String(raw) };
+    case "string": {
+      // Mirrors registry._validate_text so a bad label is a fast 400; the
+      // service still re-checks. Length counts code points, as Python does.
+      const s = typeof raw === "string" ? raw : String(raw);
+      const length = [...s].length;
+      if (param.maxLength !== undefined && length > param.maxLength) {
+        return { error: `${param.name}: ${length} characters > max length ${param.maxLength}` };
+      }
+      const charset = param.charset === undefined ? undefined : CHARSET_RE[param.charset];
+      if (charset && !charset.test(s)) {
+        const bad = [...s].find((ch) => !charset.test(ch));
+        return { error: `${param.name}: character ${JSON.stringify(bad)} is not in charset ${param.charset}` };
+      }
+      return { value: s };
+    }
   }
 }
 

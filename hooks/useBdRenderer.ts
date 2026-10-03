@@ -26,7 +26,13 @@ export type BdRenderState =
   | { kind: "idle" }
   | { kind: "loading"; since: number }
   | { kind: "ready"; glb: Uint8Array; seq: number; renderMs: number | null }
-  | { kind: "error"; message: string; disabled: boolean };
+  | {
+      kind: "error";
+      message: string;
+      disabled: boolean;
+      /** HTTP status of a failed response; null when the fetch threw. */
+      status: number | null;
+    };
 
 export interface UseBdRendererReturn {
   state: BdRenderState;
@@ -82,7 +88,7 @@ export function useBdRenderer(slug: string): UseBdRendererReturn {
             } catch {
               /* keep the status-based message */
             }
-            setState({ kind: "error", message, disabled });
+            setState({ kind: "error", message, disabled, status: res.status });
             return;
           }
           const glb = new Uint8Array(await res.arrayBuffer());
@@ -104,6 +110,7 @@ export function useBdRenderer(slug: string): UseBdRendererReturn {
                 ? `Couldn't reach the render service: ${e.message}`
                 : "Couldn't reach the render service.",
             disabled: false,
+            status: null,
           });
         }
       })();

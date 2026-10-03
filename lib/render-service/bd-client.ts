@@ -6,11 +6,13 @@
 // Vercel function or in the browser, so — unlike the SCAD path — there is
 // NO WASM fallback. A service failure is a clean, structured error, not a
 // silent degrade. The client still NEVER throws (returns { ok:false }); the
-// route turns that into a 502, it doesn't fall back to a second renderer.
+// route turns that into a 502 (or relays the service's 400 — the model
+// rejected the input), it doesn't fall back to a second renderer.
 //
 // The service's contract (services/bd-render/server.py):
-//   POST /render?format=glb|stl   body { slug, params }
-//   success: 200 + raw GLB bytes (model/gltf-binary) or STL (application/sla)
+//   POST /render?format=glb|stl|3mf   body { slug, params }
+//   success: 200 + raw GLB bytes (model/gltf-binary), STL (application/sla)
+//            or a multi-colour 3MF (model/3mf, multi-colour models only)
 //   failure: 4xx/5xx + JSON { ok:false, errorMessage }
 //
 // Auth reuses lib/render-service/auth.ts fetchGcpIdToken() UNCHANGED: the
@@ -20,7 +22,7 @@
 import { fetchGcpIdToken } from "./auth";
 import type { ParamValue } from "@/lib/scad-params/parse";
 
-export type BdRenderFormat = "glb" | "stl";
+export type BdRenderFormat = "glb" | "stl" | "3mf";
 
 export interface BdRenderServiceConfig {
   /** Cloud Run service base URL (BD_RENDER_SERVICE_URL). */
@@ -93,7 +95,12 @@ export function resetBdRenderServiceConfigWarning(): void {
 
 export type BdRenderResult =
   | { ok: true; bytes: Uint8Array; renderMs?: number }
-  | { ok: false; errorMessage: string };
+  | {
+      ok: false;
+      errorMessage: string;
+      /** Set when the service answered 400: its own errorMessage, verbatim. */
+      badRequest?: string;
+    };
 
 /**
  * Render (slug, params) via the bd-render service. NEVER throws: every
@@ -157,14 +164,17 @@ export async function renderBdViaService(opts: {
   if (!res.ok) {
     // Failure body is JSON { ok:false, errorMessage } per the service
     // contract, but never trust that shape from a 5xx.
-    let detail = "";
+    let message: string | null = null;
     try {
       const body = (await res.json()) as { errorMessage?: string };
-      if (typeof body?.errorMessage === "string") detail = `: ${body.errorMessage}`;
+      if (typeof body?.errorMessage === "string") message = body.errorMessage;
     } catch {
       // non-JSON error body — status alone is the diagnostic
     }
-    return { ok: false, errorMessage: `bd-render service HTTP ${res.status}${detail}` };
+    const errorMessage = `bd-render service HTTP ${res.status}${message === null ? "" : `: ${message}`}`;
+    return res.status === 400 && message !== null
+      ? { ok: false, errorMessage, badRequest: message }
+      : { ok: false, errorMessage };
   }
 
   let bytes: Uint8Array;

@@ -7,7 +7,7 @@
 // test drive the OrbitControls 'change' path from the outside, exactly
 // like ViewerChrome.test does for StlViewer.
 
-import { act, cleanup, render } from "@testing-library/react";
+import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import BdDetailPage, { type BdDetailPageModel } from "./BdDetailPage";
 import type { CameraAxes } from "./StlViewer";
@@ -70,5 +70,83 @@ describe("BdDetailPage orientation compass", () => {
     const after = xAxisEndpoint(getByTestId("axes-indicator"));
     expect(parseFloat(after.x2)).toBeCloseTo(48, 1);
     expect(after.x2).not.toBe(before.x2);
+  });
+});
+
+// Labels L4 (pst-egc3j): the text param joins the explicit Update/Enter
+// flow (no render per keystroke), a render's 400 shows under the text row,
+// and the 3MF download is offered only for a multi-colour model.
+const LABEL: BdDetailPageModel = {
+  slug: "holder-label-card",
+  title: "Label card",
+  blurb: "A card.",
+  params: [
+    {
+      name: "text",
+      kind: "string",
+      label: "Label text",
+      default: "Filament",
+      maxLength: 24,
+      charset: "printable-ascii",
+    },
+  ],
+  presets: [{ id: "inlaid", label: "Inlaid", values: {} }],
+  multiColour: true,
+};
+
+describe("BdDetailPage label text + 3MF", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("offers the 3MF download only for a multi-colour model", () => {
+    const label = render(<BdDetailPage model={LABEL} />);
+    expect(label.getByTestId("bd-download-3mf").textContent).toBe("Download 3MF (multi-colour)");
+    expect(label.getByTestId("bd-download-stl")).toBeTruthy();
+    cleanup();
+    const plain = render(<BdDetailPage model={MODEL} />);
+    expect(plain.queryByTestId("bd-download-3mf")).toBeNull();
+    expect(plain.getByTestId("bd-download-stl")).toBeTruthy();
+  });
+
+  it("typing never renders; Enter renders once and a 400 shows under the row", async () => {
+    const message = "label text 'WWWW' is too long for a 60 x 14 mm card: below the 1.2 mm floor";
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ error: message }), {
+        status: 400,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    const { getByLabelText, findByTestId } = render(<BdDetailPage model={LABEL} />);
+    const input = getByLabelText("Label text") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "W".repeat(24) } });
+    fireEvent.change(input, { target: { value: "W".repeat(23) } });
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("/api/bd-render");
+    expect(JSON.parse(String((init as RequestInit).body)).params.text).toBe("W".repeat(23));
+    expect((await findByTestId("param-error-text")).textContent).toBe(message);
+  });
+
+  it("the 3MF button downloads the live params as <slug>.3mf", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(new Uint8Array([0x50, 0x4b]), { status: 200 }));
+    URL.createObjectURL = vi.fn(() => "blob:x");
+    URL.revokeObjectURL = vi.fn();
+    const clicked: string[] = [];
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+      clicked.push(this.download);
+    });
+    const { getByLabelText, getByTestId } = render(<BdDetailPage model={LABEL} />);
+    fireEvent.change(getByLabelText("Label text"), { target: { value: "PLA" } });
+    await act(async () => {
+      fireEvent.click(getByTestId("bd-download-3mf"));
+    });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("/api/bd-render?format=3mf");
+    expect(JSON.parse(String((init as RequestInit).body)).params.text).toBe("PLA");
+    expect(clicked).toEqual(["holder-label-card.3mf"]);
   });
 });

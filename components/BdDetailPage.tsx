@@ -17,6 +17,10 @@
 //     "rendering…" state and a disabled/unreachable one a friendly error.
 //   • STL Download uses the CURRENT live params via /api/bd-render?format=
 //     stl, so a tweaked download reflects the tweak, not just the preset.
+//     A multi-colour model adds "Download 3MF (multi-colour)" (?format=3mf,
+//     same live params). Enter in a param input is the same action as
+//     Update; a render's 400 (e.g. label text below the stroke floor) is
+//     also shown under the param it is about.
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -29,6 +33,7 @@ import { paramsEqual, useDetailState } from "@/hooks/useDetailState";
 import { useBdRenderer } from "@/hooks/useBdRenderer";
 import type { Param, ParamValue, Preset } from "@/lib/scad-params/parse";
 import { downloadFilename } from "@/lib/models/download-name";
+import { paramErrorsFor } from "@/lib/models/bd-param-error";
 
 export interface BdDetailPageModel {
   slug: string;
@@ -36,6 +41,8 @@ export interface BdDetailPageModel {
   blurb: string;
   params: Param[];
   presets: Preset[];
+  /** Tagged multi-colour in the registry: offers the 3MF download. */
+  multiColour?: boolean;
 }
 
 function assetUrl(slug: string, presetId: string, format: "glb" | "stl"): string {
@@ -150,6 +157,12 @@ export default function BdDetailPage({ model }: { model: BdDetailPageModel }) {
   }
 
   const renderState = bd.state.kind;
+  // A 400 is about the input (a param the model rejects): also say so under
+  // that param's row, where the user is typing.
+  const paramErrors =
+    bd.state.kind === "error" && bd.state.status === 400
+      ? paramErrorsFor(model.params, bd.state.message)
+      : undefined;
 
   return (
     <div
@@ -307,11 +320,20 @@ export default function BdDetailPage({ model }: { model: BdDetailPageModel }) {
           </div>
 
           {/* Download — always the CURRENT live params via /api/bd-render. */}
-          <BdDownloadStl
+          <BdDownload
+            format="stl"
             slug={model.slug}
             params={model.params}
             values={detail.state.params}
           />
+          {model.multiColour && (
+            <BdDownload
+              format="3mf"
+              slug={model.slug}
+              params={model.params}
+              values={detail.state.params}
+            />
+          )}
 
           {/* Editable params — shared control set with the SCAD viewer. */}
           <div className="mt-18 font-mono text-10 uppercase tracking-wide text-text-mute">
@@ -321,11 +343,19 @@ export default function BdDetailPage({ model }: { model: BdDetailPageModel }) {
             Edit values, then Update the preview. Changes render on the
             build123d service — presets stay instant.
           </p>
-          <div className="mt-6 border-t border-line">
+          <div
+            className="mt-6 border-t border-line"
+            onKeyDown={(e) => {
+              // Enter in a text/number input = the Update action (never a
+              // render per keystroke); update() no-ops when nothing changed.
+              if (e.key === "Enter" && e.target instanceof HTMLInputElement) update();
+            }}
+          >
             <ParamRail
               params={model.params}
               values={detail.state.params}
               onChange={detail.setParam}
+              errors={paramErrors}
             />
           </div>
         </aside>
@@ -339,15 +369,22 @@ type DownloadState =
   | { kind: "exporting" }
   | { kind: "error"; message: string };
 
-// STL download for build123d: always renders the CURRENT live params via
-// /api/bd-render?format=stl (AC6) — a tweaked download reflects the tweak,
-// not just the baked preset. No WASM fallback, so a disabled/unreachable
-// service surfaces a friendly inline error.
-function BdDownloadStl({
+const DOWNLOAD_LABEL = {
+  stl: { idle: "Download STL", busy: "Preparing STL…" },
+  "3mf": { idle: "Download 3MF (multi-colour)", busy: "Preparing 3MF…" },
+};
+
+// STL / 3MF download for build123d: always renders the CURRENT live params
+// via /api/bd-render?format=<format> (AC6) — a tweaked download reflects the
+// tweak, not just the baked preset. No WASM fallback, so a disabled/
+// unreachable service surfaces a friendly inline error.
+function BdDownload({
+  format,
   slug,
   params,
   values,
 }: {
+  format: "stl" | "3mf";
   slug: string;
   params: Param[];
   values: Record<string, ParamValue>;
@@ -357,7 +394,7 @@ function BdDownloadStl({
   const download = useCallback(async () => {
     setState({ kind: "exporting" });
     try {
-      const res = await fetch("/api/bd-render?format=stl", {
+      const res = await fetch(`/api/bd-render?format=${format}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ slug, params: values }),
@@ -381,7 +418,7 @@ function BdDownloadStl({
       const a = document.createElement("a");
       a.href = url;
       // Same name as /api/bd-render's content-disposition.
-      a.download = downloadFilename(slug, params, values);
+      a.download = downloadFilename(slug, params, values, format);
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -393,13 +430,13 @@ function BdDownloadStl({
         message: e instanceof Error ? e.message : "network error",
       });
     }
-  }, [slug, params, values]);
+  }, [format, slug, params, values]);
 
   return (
-    <div className="mt-16">
+    <div className={format === "stl" ? "mt-16" : "mt-8"}>
       <button
         type="button"
-        data-testid="bd-download-stl"
+        data-testid={`bd-download-${format}`}
         onClick={download}
         disabled={state.kind === "exporting"}
         className={clsx(
@@ -409,11 +446,11 @@ function BdDownloadStl({
           "disabled:cursor-wait disabled:opacity-60",
         )}
       >
-        {state.kind === "exporting" ? "Preparing STL…" : "Download STL"}
+        {state.kind === "exporting" ? DOWNLOAD_LABEL[format].busy : DOWNLOAD_LABEL[format].idle}
       </button>
       {state.kind === "error" && (
         <p
-          data-testid="bd-download-error"
+          data-testid={format === "stl" ? "bd-download-error" : `bd-download-${format}-error`}
           className="mt-4 text-10 text-red"
         >
           {state.message}

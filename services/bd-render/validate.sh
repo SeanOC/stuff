@@ -49,6 +49,14 @@ curl -fsS -X POST "$BASE/render?format=stl" \
 [ -s /tmp/bd-out.stl ] || fail "empty STL"
 echo "    STL bytes: $(wc -c < /tmp/bd-out.stl)"
 
+echo "==> multi-colour 3MF render (?format=3mf)"
+curl -fsS -X POST "$BASE/render?format=3mf" \
+  -H 'content-type: application/json' \
+  -d '{"slug":"holder-label-card","params":{"text":"PETG-CF"}}' -o /tmp/bd-out.3mf
+[ -s /tmp/bd-out.3mf ] || fail "empty 3MF"
+head -c 2 /tmp/bd-out.3mf | grep -q 'PK' || fail "not a 3MF (zip) package"
+echo "    3MF bytes: $(wc -c < /tmp/bd-out.3mf)"
+
 check_status() { # method url body expected
   local got
   got=$(curl -s -o /dev/null -w '%{http_code}' -X "$1" "$BASE$2" \
@@ -62,5 +70,7 @@ check_status POST /render '{"slug":"no-such-model"}' 403
 check_status POST /render '{"slug":"holder-spray-can","params":{"nope":1}}' 400
 check_status POST /render '{"slug":"holder-spray-can","params":{"d":999}}' 400
 check_status POST '/render?format=obj' '{"slug":"holder-spray-can"}' 400
+check_status POST '/render?format=3mf' '{"slug":"holder-spray-can"}' 400
+check_status POST /render '{"slug":"holder-label-card","params":{"text":"WWWWWWWWWWWWWWWWWWWWWWWW"}}' 400
 
 echo "==> ALL CHECKS PASSED"

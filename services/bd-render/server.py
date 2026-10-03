@@ -18,11 +18,13 @@ SCAD service).
 
 Response contract (mirrors services/render/server.ts)
 -----------------------------------------------------
-``POST /render?format=glb|stl``  (default glb)
+``POST /render?format=glb|stl|3mf``  (default glb)
 
   request:  { "slug": "holder-spray-can", "params": { "d": 70 } }
   success:  200, body = raw GLB bytes (content-type model/gltf-binary),
-            or raw STL bytes (application/sla) when ?format=stl.
+            or raw STL bytes (application/sla) when ?format=stl, or a
+            one-object multi-colour 3MF (model/3mf) when ?format=3mf
+            (multi-colour models only).
   failure:  4xx/5xx, content-type application/json,
             { ok: false, errorMessage, ... }.
 
@@ -32,7 +34,8 @@ Status codes
 ------------
   200  clean build, non-empty mesh
   400  invalid JSON / body shape, unknown-key or out-of-range param,
-       unknown ?format
+       unknown ?format, 3mf for a non-multi-colour model, or values the
+       model rejects at build time (label text below the stroke floor)
   403  unknown / non-app-listed slug
   413  request body over 64 KiB
   500  build/export failure, or an empty/zero-volume mesh (fail-loud)
@@ -85,7 +88,7 @@ PORT = int(os.environ.get("PORT", "8080"))
 RENDER_CONCURRENCY = max(1, int(os.environ.get("BD_RENDER_CONCURRENCY", "2")))
 _RENDER_SLOTS = threading.BoundedSemaphore(RENDER_CONCURRENCY)
 
-CONTENT_TYPE = {"glb": "model/gltf-binary", "stl": "application/sla"}
+CONTENT_TYPE = {"glb": "model/gltf-binary", "stl": "application/sla", "3mf": "model/3mf"}
 
 # Exit codes from render_worker.py that map to a 4xx rather than 5xx.
 _WORKER_BADREQ = {3: 403, 4: 400}

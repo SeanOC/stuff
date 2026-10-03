@@ -22,6 +22,8 @@ interface Props {
   params: Param[];
   values: Record<string, ParamValue>;
   onChange: (name: string, value: ParamValue) => void;
+  /** Per-param inline errors (the last render's 400), keyed by param name. */
+  errors?: Record<string, string>;
   // Preset section (st-yxj moved this here from the left metadata
   // rail). Optional — the rail still works without it for fixtures
   // that don't pipe preset state through. When provided, renders
@@ -40,6 +42,7 @@ export function ParamRail({
   params,
   values,
   onChange,
+  errors,
   presets,
   activePresetId,
   modified,
@@ -82,7 +85,13 @@ export function ParamRail({
         <p className="p-14 text-12 text-text-dim">No parameters in this model.</p>
       ) : (
         groups.map((g) => (
-          <ParamGroup key={g.id} group={g} values={values} onChange={onChange} />
+          <ParamGroup
+            key={g.id}
+            group={g}
+            values={values}
+            onChange={onChange}
+            errors={errors}
+          />
         ))
       )}
     </div>
@@ -93,10 +102,12 @@ function ParamGroup({
   group,
   values,
   onChange,
+  errors,
 }: {
   group: Group;
   values: Record<string, ParamValue>;
   onChange: (name: string, value: ParamValue) => void;
+  errors?: Record<string, string>;
 }) {
   const [open, setOpen] = useState(true);
   return (
@@ -123,6 +134,7 @@ function ParamGroup({
               param={p}
               value={values[p.name]}
               onChange={onChange}
+              error={errors?.[p.name]}
             />
           ))}
         </div>

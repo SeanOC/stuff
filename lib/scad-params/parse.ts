@@ -57,6 +57,11 @@ export interface StringParam extends ParamBase {
   charset?: string;
 }
 
+/** Whole-value regex per StringParam.charset id (mirrors registry.CHARSETS). */
+export const CHARSET_RE: Record<string, RegExp> = {
+  "printable-ascii": /^[\x20-\x7E]*$/,
+};
+
 export interface EnumParam extends ParamBase {
   kind: "enum";
   default: string;

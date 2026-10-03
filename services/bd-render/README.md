@@ -13,7 +13,7 @@ served from `build123d/baked/` (P1c); this service is for on-the-fly tweaks.
 
 ## Contract
 
-`POST /render?format=glb|stl` (default `glb`)
+`POST /render?format=glb|stl|3mf` (default `glb`)
 
 ```jsonc
 // request
@@ -22,8 +22,10 @@ served from `build123d/baked/` (P1c); this service is for on-the-fly tweaks.
 ```
 
 - **Success → `200`**, body = **raw GLB bytes** (`content-type:
-  model/gltf-binary`), or **raw STL bytes** (`application/sla`) when
-  `?format=stl`. Bytes (not base64 JSON) mirror how `services/render` and
+  model/gltf-binary`), **raw STL bytes** (`application/sla`) when
+  `?format=stl`, or a **one-object multi-colour 3MF** (`model/3mf`, the
+  model's `colour_parts` with part i on filament i + 1) when `?format=3mf`
+  — multi-colour models only (`holder-label-card`). Bytes (not base64 JSON) mirror how `services/render` and
   `/api/bd-asset` already return geometry.
 - **Failure → `4xx`/`5xx`**, `content-type: application/json`,
   `{ ok: false, errorMessage, ... }`.
@@ -35,7 +37,7 @@ served from `build123d/baked/` (P1c); this service is for on-the-fly tweaks.
 | code | when |
 |------|------|
 | 200  | clean build, non-empty mesh |
-| 400  | invalid JSON / body shape, unknown-key or out-of-range param, unknown `?format` |
+| 400  | invalid JSON / body shape, unknown-key or out-of-range param, unknown `?format`, `3mf` for a single-colour model, or a `ValueError` the model raises at build time (label text below the stroke floor — the message is the model's) |
 | 403  | unknown / non-app-listed slug (smoke artifacts are excluded) |
 | 413  | request body over 64 KiB |
 | 500  | build/export failure, or an empty/zero-volume mesh (fail-loud) |

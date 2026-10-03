@@ -9,13 +9,16 @@ service shells ``openscad`` out of ``services/render/server.ts``).
 
 Contract
 --------
-argv:   <slug> <format:"glb"|"stl"> <out_path>
+argv:   <slug> <format:"glb"|"stl"|"3mf"> <out_path>
 stdin:  JSON object of param overrides (``{}`` for defaults)
-stdout: nothing on success (the geometry is written to ``out_path``)
+stdout: nothing on success (the geometry is written to ``out_path``;
+        3mf = the model's colour parts as one object, part i on filament i+1)
 stderr: on failure, a single JSON line ``{"ok": false, "errorMessage": …}``
 exit:   0 = wrote a non-empty mesh to out_path
         3 = unknown / non-app-listed slug   (defensive; parent pre-checks)
-        4 = param resolution error          (defensive; parent pre-checks)
+        4 = param resolution error          (defensive; parent pre-checks),
+            a ValueError the model raises at build time (e.g. label text
+            below the stroke floor), or 3mf for a non-multi-colour model
         5 = empty / zero-volume mesh (fail-loud, never a silent empty file)
         6 = build / export failure
 
@@ -48,9 +51,9 @@ def _fail(code: int, message: str) -> int:
 
 def main() -> int:
     if len(sys.argv) != 4:
-        return _fail(6, "usage: render_worker.py <slug> <glb|stl> <out_path>")
+        return _fail(6, "usage: render_worker.py <slug> <glb|stl|3mf> <out_path>")
     slug, fmt, out_path = sys.argv[1], sys.argv[2], sys.argv[3]
-    if fmt not in ("glb", "stl"):
+    if fmt not in ("glb", "stl", "3mf"):
         return _fail(6, f"unknown format {fmt!r}")
 
     try:
@@ -63,14 +66,16 @@ def main() -> int:
 
     # Import inside main so a usage error above doesn't pay the OCP import.
     from build123d import export_gltf
-    from scripts.export import export_stl
-    from holders.registry import all_models
+    from scripts.export import export_3mf_one_object, export_stl
+    from holders.registry import all_models, resolve_colour_parts
 
     spec = next(
         (m for m in all_models() if not m.is_smoke and m.slug == slug), None
     )
     if spec is None:
         return _fail(3, f"unknown model slug: {slug}")
+    if fmt == "3mf" and not spec.is_multi_colour:
+        return _fail(4, f"{slug} is not a multi-colour model; 3mf is not available")
 
     # Authoritative param contract: fills defaults, raises on unknown key or
     # out-of-range / kind-mismatched value. Same call the bake path uses.
@@ -80,21 +85,34 @@ def main() -> int:
         return _fail(4, str(e))
 
     try:
-        part = spec.build(values)
-    except Exception as e:  # noqa: BLE001 - any build failure is a 5xx
+        if fmt == "3mf":
+            named = resolve_colour_parts(spec, values)
+            shapes = [shape for _, shape, _ in named]
+        else:
+            part = spec.build(values)
+            shapes = [part]
+    except ValueError as e:
+        # The model rejected in-range values it cannot build (label text
+        # below the stroke floor): the client's input, so a 400 with the
+        # model's message. Deployment faults (a missing font) are not
+        # ValueErrors and stay 5xx below.
+        return _fail(4, str(e))
+    except Exception as e:  # noqa: BLE001 - any other build failure is a 5xx
         return _fail(6, f"build failed: {e}")
 
     # Fail loud on a degenerate mesh rather than shipping an empty file
     # (mirrors export_presets_only's zero-volume guard).
     try:
-        volume = float(part.volume)
+        volume = sum(float(shape.volume) for shape in shapes)
     except Exception as e:  # noqa: BLE001
         return _fail(6, f"could not measure volume: {e}")
     if volume <= 0:
         return _fail(5, "empty/zero-volume mesh")
 
     try:
-        if fmt == "glb":
+        if fmt == "3mf":
+            export_3mf_one_object(named, out_path, spec.slug)
+        elif fmt == "glb":
             export_gltf(part, out_path, binary=True)
         else:
             export_stl(part, out_path)
