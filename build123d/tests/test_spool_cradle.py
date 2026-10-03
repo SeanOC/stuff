@@ -26,7 +26,7 @@ from tests import print_audit as pa
 from tests.print_audit import _bed_chamfer, audit
 from holders import label_card
 from holders.spool_cradle import seated_card
-from labels.constants import (CARD_W, HOLDER_JUNCTION, HOLDER_MIN_PANEL_W, LIP_OVERLAP, RAIL_W,
+from labels.constants import (CARD_W, HOLDER_JUNCTION, HOLDER_MIN_PANEL_W, LIP_OVERLAP, RAIL_PROUD, RAIL_W,
                               SIDE_INSET, SLOT_CLEARANCE, TEXT_MARGIN)
 
 
@@ -295,7 +295,9 @@ def test_plate_shell_and_rib_section(part):
             assert part.is_inside((x,p['end_y']+WEB/2,z))
     cross=section(part,section_by=Plane.YZ)
     front=[f for f in cross.faces() if f.center().Y > p['end_y']-.1][0]
-    assert front.bounding_box().size.Y == pytest.approx(WEB)
+    # The web keeps WEB; the label holder (L3) only stands off its outer face.
+    assert front.bounding_box().min.Y == pytest.approx(p['end_y'])
+    assert front.bounding_box().size.Y == pytest.approx(WEB+(RAIL_PROUD if label_slot(p) else 0))
     assert front.bounding_box().size.Z >= p['contact_z']
 
 
