@@ -118,6 +118,35 @@ def test_text_that_fails_the_floor_on_two_lines_is_rejected(style, text):
     assert fitted.min_stroke >= STROKE_FLOOR[style]
 
 
+# Raised text on the 60 x 20 card, 2.0 mm margin (pst-l4hsl): (text, lines,
+# min_stroke, min_gap, min_clearance), regression values. There is no gap or
+# clearance floor for raised text (docs/labels-spike.md, 'Raised: no
+# inter-glyph floor'): 'PLA Matte' (M crotch, tt pair) and 'Smart PLA' (r-t
+# pair) must keep building.
+RAISED_TABLE = [('Filament', 1, 1.222, 1.250, 0.968),
+                ('PETG-CF Black', 2, 0.957, 1.096, 0.910),
+                (LONGEST['raised'], 2, 1.020, 1.001, 0.818),
+                ('PLA Matte', 1, 1.022, 0.204, 0.482),
+                ('Smart PLA', 1, 1.064, 0.288, 0.308)]
+
+
+@pytest.mark.parametrize('text,lines,stroke,gap,clearance', RAISED_TABLE)
+def test_raised_text_metrics_and_no_gap_floor(text, lines, stroke, gap, clearance):
+    _, fitted, _, part = case('raised', text)
+    assert len(fitted.lines) == lines
+    assert (fitted.min_stroke, fitted.min_gap, fitted.min_clearance) == pytest.approx(
+        (stroke, gap, clearance), abs=0.01)
+    assert fitted.min_stroke >= STROKE_FLOOR['raised'] and part.is_valid
+
+
+def test_clearance_ignores_notches_inside_one_glyph():
+    """min_gap reads the 'M' crotch as a gap; the clearance has one piece, so inf."""
+    fitted = fit_text('M', C.CARD_W, C.CARD_H, C.TEXT_MARGIN, C.INLAY_DEPTH)
+    assert fitted.min_gap < 0.5 and fitted.min_clearance == math.inf
+    skipped = fit_text('M', C.CARD_W, C.CARD_H, C.TEXT_MARGIN, C.INLAY_DEPTH, measure=False)
+    assert math.isnan(skipped.min_clearance)
+
+
 @pytest.mark.parametrize('style', ['inlaid', 'raised'])
 @pytest.mark.parametrize('text', ['', '   '])
 def test_blank_text_is_a_blank_card(style, text):
@@ -287,6 +316,7 @@ def test_print_audit_on_the_assembled_card(style, text, capsys):
     with capsys.disabled():
         print(f'\n{style:6} {text!r:28} lines={len(fitted.lines)} '
               f'min_stroke={fitted.min_stroke:.3f} min_gap={fitted.min_gap:.3f} '
+              f'min_clearance={fitted.min_clearance:.3f} '
               f'min_wall={report.min_wall_mm:.3f} overhang={report.max_overhang_deg:.1f} '
               f'bridge={report.longest_bridge_mm:.2f} volume={part.volume:.1f} ok={report.ok}')
     assert report.ok, report.format()

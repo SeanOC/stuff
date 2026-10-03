@@ -13,7 +13,8 @@ fit_text() builds at NOMINAL_SIZE, scales uniformly to fit the box minus the
 margin in both axes and centres the ink bounding box on the origin. It also
 reports the thinnest stroke and the narrowest gap (counters and letter
 spacing), both scaled, so a model can clamp before a feature goes below a
-printable width. Glyphs read correctly from +Z; a face-down card mirrors them.
+printable width, plus the glyph-to-glyph clearance (reported, never gated:
+see docs/labels-spike.md, 'Raised: no inter-glyph floor'). Glyphs read correctly from +Z; a face-down card mirrors them.
 
 layout_text() applies the D6 rule on top: one line if the stroke holds the
 floor, else two lines split at the space nearest the middle with one common
@@ -50,6 +51,7 @@ class FittedText(NamedTuple):
     min_stroke: float  # thinnest glyph feature, mm, after scaling
     min_gap: float     # narrowest counter / letter / line gap, mm, after scaling
     lines: tuple[str, ...] = ()
+    min_clearance: float = float('nan')  # closest two separate ink pieces, mm, scaled
 
 
 def load_font(path: Path | str = FONT_PATH) -> str:
@@ -131,11 +133,24 @@ def stroke_and_gap(sketch: Sketch) -> tuple[float, float]:
             min_feature_width(box(x0 - pad, y0 - pad, x1 + pad, y1 + pad).difference(ink)))
 
 
+def glyph_clearance(sketch: Sketch) -> float:
+    """Closest distance between two separate pieces of ink (glyphs, i-dots, lines).
+
+    Unlike min_gap this ignores notches inside one glyph: min_gap reads
+    Inter's 'M' crotch as 0.18 mm at NOMINAL_SIZE. inf for a single piece.
+    """
+    ink = _polygons(sketch)
+    pieces = list(getattr(ink, 'geoms', [ink]))
+    return min((a.distance(b) for i, a in enumerate(pieces) for b in pieces[i + 1:]),
+               default=float('inf'))
+
+
 def fit_text(text: str, box_w: float, box_h: float, margin: float,
              depth: float = 0.6, measure: bool = True) -> FittedText:
     """Text scaled to fit (box - 2 margin) in both axes, ink centred on the origin.
 
-    The part spans Z 0..depth. measure=False skips the stroke/gap scan (NaN).
+    The part spans Z 0..depth. measure=False skips the stroke/gap/clearance
+    measures (NaN).
     """
     w_avail, h_avail = box_w - 2 * margin, box_h - 2 * margin
     if w_avail <= 0 or h_avail <= 0 or depth <= 0:
@@ -144,11 +159,12 @@ def fit_text(text: str, box_w: float, box_h: float, margin: float,
     bb = nominal.bounding_box()
     s = min(w_avail / bb.size.X, h_avail / bb.size.Y)
     stroke, gap = stroke_and_gap(nominal) if measure else (float('nan'),) * 2
+    clearance = glyph_clearance(nominal) if measure else float('nan')
     fitted = scale(nominal, s)
     c = fitted.bounding_box().center()
     part = extrude(Pos(-c.X, -c.Y, 0) * fitted, depth)
     lines = tuple(line.strip() for line in text.split('\n'))
-    return FittedText(part, s, stroke * s, gap * s, lines)
+    return FittedText(part, s, stroke * s, gap * s, lines, clearance * s)
 
 
 def two_lines(text: str) -> str | None:
