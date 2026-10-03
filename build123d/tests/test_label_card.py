@@ -283,6 +283,7 @@ def test_preview_glb_has_one_material_per_visible_colour(tmp_path, slug, preset,
     if materials == 1:
         assert 'materials' not in doc  # the plain export_gltf GLB, as before
     else:
+        assert all(m['pbrMetallicRoughness']['metallicFactor'] == 0 for m in doc['materials'])
         colours = [m['pbrMetallicRoughness']['baseColorFactor'] for m in doc['materials']]
         assert colours[0][0] < 0.1 < 0.5 < colours[1][0]  # dark base, light inlay
         assert [n.get('name') for n in doc['nodes'] if n is not root] == ['base', 'inlay']

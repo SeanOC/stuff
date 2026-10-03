@@ -102,6 +102,28 @@ def export_glb(part, path, colour_parts=None) -> None:
         node.label, node.color = name, Color(*rgba)
         nodes.append(node)
     export_gltf(Compound(children=nodes), str(path), binary=True)
+    _matte_glb_materials(Path(path))
+
+
+def _matte_glb_materials(path: Path) -> None:
+    """Set metallicFactor 0 on every material of a binary glTF, in place.
+
+    OCCT writes only baseColorFactor, and glTF's default metallicFactor is
+    1: a metal with no environment map renders the white inlay a dull grey
+    barely lighter than the near-black base. Filament is a dielectric.
+    """
+    import json
+    import struct
+    data = path.read_bytes()
+    (json_len,) = struct.unpack_from('<I', data, 12)
+    doc = json.loads(data[20:20 + json_len])
+    for material in doc.get('materials', []):
+        material.setdefault('pbrMetallicRoughness', {})['metallicFactor'] = 0.0
+    chunk = json.dumps(doc, separators=(',', ':')).encode()
+    chunk += b' ' * (-len(chunk) % 4)  # GLB chunks are 4-byte aligned, JSON padded with spaces
+    rest = data[20 + json_len:]
+    path.write_bytes(struct.pack('<4sII', b'glTF', 2, 12 + 8 + len(chunk) + len(rest))
+                     + struct.pack('<I4s', len(chunk), b'JSON') + chunk + rest)
 
 
 def export_3mf_one_object(named, path, object_name: str) -> None:
