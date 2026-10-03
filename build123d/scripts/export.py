@@ -38,6 +38,7 @@ Contract (validated by tests/test_presets_bake.py):
     multi-colour models only.
 """
 import argparse
+import copy
 import io
 import re
 import shutil
@@ -53,9 +54,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import trimesh
 
-from build123d import export_stl as _native_export_stl, export_gltf  # noqa: E402
+from build123d import Color, Compound, export_stl as _native_export_stl, export_gltf  # noqa: E402
 
-from holders.registry import all_models, resolve_colour_parts, resolve_mount_fixtures  # noqa: E402
+from holders.registry import (all_models, resolve_colour_parts, resolve_mount_fixtures,  # noqa: E402
+                              resolve_preview_parts)
 from scripts.thumbnail import PlaneSpec, ReviewContext, render_review, render_thumbnail  # noqa: E402
 
 OUT = Path(__file__).resolve().parent.parent / "out"
@@ -80,6 +82,28 @@ def export_stl(part, path):
     return True
 
 
+def export_glb(part, path, colour_parts=None) -> None:
+    """The viewer GLB: ``part`` as one uncoloured mesh, or one node per colour part.
+
+    colour_parts: resolve_preview_parts(spec, values) — [(name, part, rgba)]
+    or None. None writes exactly export_gltf(part) (every single-colour model
+    and the raised label stay byte-identical); otherwise each part is a named
+    child carrying its own rgba, so the GLB has one material per filament
+    (pst-5b83s). No display transform: the exporter's own -90°X Z-up -> Y-up
+    root rotation is the only one, so the viewer's compass basis holds.
+    Shared by the bake and services/bd-render.
+    """
+    if colour_parts is None:
+        export_gltf(part, str(path), binary=True)
+        return
+    nodes = []
+    for name, shape, rgba in colour_parts:
+        node = copy.copy(shape)  # label/colour the copy, not the caller's part
+        node.label, node.color = name, Color(*rgba)
+        nodes.append(node)
+    export_gltf(Compound(children=nodes), str(path), binary=True)
+
+
 def export_3mf_one_object(named, path, object_name: str) -> None:
     """ONE 3MF build item: a components object whose parts are the named meshes.
 
@@ -100,7 +124,6 @@ def export_3mf_one_object(named, path, object_name: str) -> None:
     Byte-stable for the same input: lib3mf's random production-extension
     UUIDs are replaced by uuid5 of object_name + part name.
     """
-    import copy
     import locale
     import uuid
     import zipfile
@@ -217,7 +240,7 @@ def export_all(*, commit_review: bool = False) -> int:
         glb = OUT / f"{spec.name}.glb"
         png = OUT / f"{spec.name}.png"
         export_stl(part, str(stl))
-        export_gltf(part, str(glb), binary=True)
+        export_glb(part, glb, resolve_preview_parts(spec, values))
         ctx = review_context(spec, values, part)
         started = time.perf_counter()
         render_review(glb, png, ctx=ctx)
@@ -248,7 +271,8 @@ def export_presets_only(target: Path) -> int:
             print(f"SKIP {spec.name}: no presets registered", file=sys.stderr)
             return 1
         for preset in spec.presets:
-            part = spec.build(spec.resolve_values(preset.values))
+            values = spec.resolve_values(preset.values)
+            part = spec.build(values)
             if part.volume <= 0:
                 print(f"SKIP {spec.name}/{preset.id}: zero volume", file=sys.stderr)
                 return 1
@@ -258,7 +282,7 @@ def export_presets_only(target: Path) -> int:
             glb = model_dir / f"{preset.id}.glb"
             png = model_dir / f"{preset.id}.png"
             export_stl(part, str(stl))
-            export_gltf(part, str(glb), binary=True)
+            export_glb(part, glb, resolve_preview_parts(spec, values))
             # Thumbnail rendered from the SAME GLB the detail viewer loads,
             # using its smooth vertex normals through a depth-buffered
             # software rasteriser (pst-o0wy) — matches the live preview and

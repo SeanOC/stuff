@@ -43,6 +43,18 @@ describe("fitCamera", () => {
     expect(fit.far).toBeGreaterThan(dist);
   });
 
+  it("puts the camera under the part for the bottom view (pst-5b83s)", () => {
+    const fit = fitCamera(boxOfSize(1, 1, 1), 45, "bottom");
+    // World -Y is part -Z (the print bed face); a tilt toward world -Z
+    // (part +Y) keeps OrbitControls off its pole. Same framing distance.
+    expect(fit.position.y).toBeLessThan(fit.target.y);
+    expect(fit.position.z).toBeLessThan(fit.target.z);
+    expect(fit.position.x).toBeCloseTo(fit.target.x, 9);
+    const iso = fitCamera(boxOfSize(1, 1, 1), 45);
+    expect(fit.position.distanceTo(fit.target)).toBeCloseTo(
+      iso.position.distanceTo(iso.target), 9);
+  });
+
   it("puts the camera on the +++ iso diagonal", () => {
     const fit = fitCamera(boxOfSize(1, 1, 1), 45);
     expect(fit.position.x).toBeGreaterThan(fit.target.x);
@@ -89,6 +101,23 @@ describe("partCameraAxes (GLB Z-up→Y-up compass, pst-6ram)", () => {
     const part = partCameraAxes(isoCamera());
     expect(part.z[1]).toBeGreaterThan(0.3); // Z tip points up
     expect(part.x[0]).toBeGreaterThan(0.3); // X tip points right
+  });
+
+  it("the bottom view shows the bed face with face-down text reading left to right", () => {
+    // Compass invariant (pst-5b83s): the hint only moves the camera, so the
+    // fixed basis still describes the shipped GLB. From below, part Z (the
+    // print up-axis) points away from the viewer, part Y is screen-up and
+    // part X screen-LEFT — exactly what un-mirrors text mirrored about YZ.
+    const fit = fitCamera(boxOfSize(1, 1, 1), 45, "bottom");
+    const cam = new THREE.PerspectiveCamera(45, 1, fit.near, fit.far);
+    cam.up.set(0, 1, 0); // GlbViewer never changes the Y-up camera
+    cam.position.copy(fit.position);
+    cam.lookAt(fit.target);
+    cam.updateMatrixWorld();
+    const part = partCameraAxes(cam);
+    expect(part.z[2]).toBeLessThan(-0.8); // into the screen
+    expect(part.y[1]).toBeGreaterThan(0.8); // screen-up
+    expect(part.x[0]).toBeLessThan(-0.99); // screen-left
   });
 
   it("returns unit-length direction components", () => {

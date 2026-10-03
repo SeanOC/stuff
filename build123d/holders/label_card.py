@@ -16,7 +16,10 @@ text_style:
 
 build() returns the assembled card (what the print audit and the plain
 STL see); colour_parts() returns the two filament bodies for the 3MF and
-the -base / -text STLs (tag "multi-colour"). Glyph edges are left sharp:
+the -base / -text STLs (tag "multi-colour"); preview_colour_parts() gives
+the viewer GLB its two materials for inlaid text only (pst-5b83s). The
+inlaid preset's default_view="bottom" points the viewer at the text face;
+the geometry stays in the print frame. Glyph edges are left sharp:
 they are the feature, and strokes down to 0.7 mm leave no room to chamfer.
 
 Worst-case load: none (a label). The holder's rails and lip retain it.
@@ -76,6 +79,18 @@ def colour_parts(values: dict) -> list[ColourPart]:
             ('text', _glyph_order(Pos(0, 0, CARD_T) * fitted.part), TEXT_RGBA)]
 
 
+def preview_colour_parts(values: dict) -> list[ColourPart] | None:
+    """Two-material viewer GLB for inlaid text; None (one material) otherwise.
+
+    Raised prints in one colour (D11) and blank text has nothing to show
+    in a second colour, so both keep the plain single-material GLB.
+    """
+    if values['text_style'] != 'inlaid':
+        return None
+    parts = colour_parts(values)
+    return parts if len(parts) > 1 else None
+
+
 def build(values: dict) -> Part:
     parts = [shape for _, shape, _ in colour_parts(values)]
     out = parts[0]
@@ -103,7 +118,7 @@ SPEC = register(ModelSpec(
     ),
     presets=(
         Preset('inlaid', 'Inlaid (two colours, face down)',
-               {'text': 'Filament', 'text_style': 'inlaid'}),
+               {'text': 'Filament', 'text_style': 'inlaid'}, default_view='bottom'),
         Preset('raised', 'Raised (one colour, face up)',
                {'text': 'Filament', 'text_style': 'raised'}),
     ),

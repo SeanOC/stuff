@@ -43,7 +43,8 @@
           "values": {
             "text": "Filament",
             "text_style": "inlaid"
-          }
+          },
+          "defaultView": "bottom"
         },
         {
           "id": "raised",

@@ -31,7 +31,8 @@ import { ParamRail } from "./ParamRail";
 import type { CameraAxes } from "./StlViewer";
 import { paramsEqual, useDetailState } from "@/hooks/useDetailState";
 import { useBdRenderer } from "@/hooks/useBdRenderer";
-import type { Param, ParamValue, Preset } from "@/lib/scad-params/parse";
+import type { Param, ParamValue } from "@/lib/scad-params/parse";
+import type { BdPreset, BdView } from "@/lib/models/bd-manifest";
 import { downloadFilename } from "@/lib/models/download-name";
 import { paramErrorsFor } from "@/lib/models/bd-param-error";
 
@@ -40,13 +41,33 @@ export interface BdDetailPageModel {
   title: string;
   blurb: string;
   params: Param[];
-  presets: Preset[];
+  presets: BdPreset[];
   /** Tagged multi-colour in the registry: offers the 3MF download. */
   multiColour?: boolean;
 }
 
 function assetUrl(slug: string, presetId: string, format: "glb" | "stl"): string {
   return `/api/bd-asset/${slug}/${presetId}?format=${format}`;
+}
+
+/**
+ * The viewer's camera hint for the geometry on screen (pst-5b83s). A baked
+ * preset view takes the preset's own `defaultView`. A live render keeps it
+ * only while the rendered values still match the preset on every non-text
+ * key the preset sets: retyping the inlaid label keeps its text face in
+ * view; switching it to raised (printed face up) falls back to the iso view.
+ */
+export function viewFor(
+  preset: BdPreset,
+  params: Param[],
+  rendered: Record<string, ParamValue> | null,
+): BdView | undefined {
+  if (!preset.defaultView || rendered === null) return preset.defaultView;
+  const holds = Object.entries(preset.values).every(
+    ([name, value]) =>
+      params.find((p) => p.name === name)?.kind === "string" || rendered[name] === value,
+  );
+  return holds ? preset.defaultView : undefined;
 }
 
 export default function BdDetailPage({ model }: { model: BdDetailPageModel }) {
@@ -201,6 +222,7 @@ export default function BdDetailPage({ model }: { model: BdDetailPageModel }) {
             onLoaded={onLoaded}
             onError={onError}
             onCameraChange={setAxes}
+            view={viewFor(activePreset, model.params, showingLive ? bd.renderedValues : null)}
           />
           {/* Orientation compass — same component as the SCAD viewer.
               Offset up to clear the bottom stat strip below. */}

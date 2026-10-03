@@ -22,6 +22,7 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import type { BdView } from "@/lib/models/bd-manifest";
 import {
   computeCameraAxes,
   type CameraAxes,
@@ -56,6 +57,17 @@ export function partCameraAxes(camera: THREE.Camera): CameraAxes {
   return computeCameraAxes(camera, PART_BASIS_IN_WORLD);
 }
 
+// Camera direction (from the target) per view, in the Y-up world. The iso
+// default looks down the +++ diagonal. "bottom" sits under the part (world
+// -Y = part -Z), tilted ~27° toward world -Z (= part +Y) so the screen-up
+// projection of the Y-up camera is part +Y, screen-right is part -X —
+// which un-mirrors text that was mirrored about YZ for a face-down print —
+// and OrbitControls stays clear of its polar singularity.
+const VIEW_DIRS: Record<BdView | "iso", THREE.Vector3> = {
+  iso: new THREE.Vector3(1, 1, 1).normalize(),
+  bottom: new THREE.Vector3(0, -2, -1).normalize(),
+};
+
 interface Props {
   /**
    * URL of the GLB to load (the /api/bd-asset baked-preset route). Used
@@ -88,17 +100,28 @@ interface Props {
    * as the SCAD viewer. (pst-6ram)
    */
   onCameraChange?: (axes: CameraAxes) => void;
+  /**
+   * Initial camera hint from the manifest (preset `defaultView`,
+   * pst-5b83s); absent = the iso view every model had before. "bottom"
+   * looks up at the part's -Z face — the print frame's bed face, where a
+   * face-down inlaid label carries its (mirrored) text. Display only: the
+   * GLB, its -90°X root and PART_BASIS_IN_WORLD are untouched, so the
+   * compass stays truthful; the user can still orbit anywhere.
+   */
+  view?: BdView;
 }
 
 /**
  * Camera framing for a bounding box, scale-agnostic. Returns a camera
- * position on the iso diagonal plus near/far planes derived from the
- * model size (not a fixed floor), so a metre-scale GLB frames exactly
- * like a millimetre-scale one. Pure — unit-tested in GlbViewer.test.
+ * position on the iso diagonal (or the `view` hint's direction) plus
+ * near/far planes derived from the model size (not a fixed floor), so a
+ * metre-scale GLB frames exactly like a millimetre-scale one. Pure —
+ * unit-tested in GlbViewer.test.
  */
 export function fitCamera(
   box: THREE.Box3,
   fovDeg: number,
+  view?: BdView,
 ): { position: THREE.Vector3; target: THREE.Vector3; near: number; far: number } {
   const size = new THREE.Vector3();
   box.getSize(size);
@@ -107,7 +130,7 @@ export function fitCamera(
   const maxDim = Math.max(size.x, size.y, size.z) || 1;
   const fov = fovDeg * (Math.PI / 180);
   const dist = (maxDim / 2 / Math.tan(fov / 2)) * 1.8;
-  const dir = new THREE.Vector3(1, 1, 1).normalize();
+  const dir = VIEW_DIRS[view ?? "iso"];
   const position = target.clone().addScaledVector(dir, dist);
   return {
     position,
@@ -123,6 +146,7 @@ export default function GlbViewer({
   onLoaded,
   onError,
   onCameraChange,
+  view,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   // Latest callbacks in refs so the mount-once scene closure always
@@ -195,7 +219,7 @@ export default function GlbViewer({
       scene.add(model);
 
       const box = new THREE.Box3().setFromObject(model);
-      const fit = fitCamera(box, camera.fov);
+      const fit = fitCamera(box, camera.fov, view);
       camera.position.copy(fit.position);
       camera.near = fit.near;
       camera.far = fit.far;
@@ -249,7 +273,7 @@ export default function GlbViewer({
         container.removeChild(renderer.domElement);
       }
     };
-  }, [url, bytes]);
+  }, [url, bytes, view]);
 
   return (
     <div

@@ -333,6 +333,20 @@ def test_render_3mf_is_one_object_with_inlay_on_extruder_2(base_url):
     assert extruders == [("base", "1"), ("inlay", "2")]
 
 
+@pytest.mark.parametrize("style, materials", [("inlaid", 2), ("raised", 0)])
+def test_live_label_glb_is_two_colour_for_inlaid_only(base_url, style, materials):
+    """pst-5b83s: the live GLB matches the bake (export_glb + preview parts)."""
+    import struct
+    status, _, body = _post(
+        base_url, "/render?format=glb",
+        {"slug": "holder-label-card", "params": {"text": "PETG", "text_style": style}},
+    )
+    assert status == 200, body
+    (length,) = struct.unpack("<I", body[12:16])
+    doc = json.loads(body[20:20 + length])
+    assert len(doc.get("materials", [])) == materials
+
+
 def test_3mf_for_a_single_colour_model_is_400(base_url):
     status, _h, body = _post(
         base_url, "/render?format=3mf", {"slug": "holder-spray-can"}
