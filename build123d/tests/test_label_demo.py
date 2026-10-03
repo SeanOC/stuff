@@ -11,8 +11,9 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from build123d import Axis, Mesher, Plane, Pos, Rectangle, section
 from holders import label_demo as demo
-from holders.label_text import FONT_PATH, fit_text, load_font, text_sketch
+from labels.label_text import FONT_PATH, fit_text, load_font, text_sketch
 from holders.registry import all_models
+from scripts.export import export_3mf_one_object
 
 STRINGS = ('Filament', 'PLA Black', 'PETG-CF', 'W')
 
@@ -94,8 +95,8 @@ def test_3mf_is_one_object_with_two_filament_parts(filament, tmp_path):
     base, inlay = filament
     path = tmp_path / 'card.3mf'
     saved = locale.setlocale(locale.LC_ALL)
-    demo.export_3mf_one_object([('base', base, demo.BASE_RGBA),
-                                ('inlay', inlay, demo.INLAY_RGBA)], path, 'card')
+    export_3mf_one_object([('base', base, demo.BASE_RGBA),
+                           ('inlay', inlay, demo.INLAY_RGBA)], path, 'card')
     assert locale.setlocale(locale.LC_ALL) == saved  # lib3mf's C-locale reset is undone
     with zipfile.ZipFile(path) as package:
         model = package.read('3D/3dmodel.model').decode()

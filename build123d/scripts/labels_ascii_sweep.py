@@ -3,7 +3,7 @@
 Run from build123d/: PYTHONPATH=. uv run python scripts/labels_ascii_sweep.py
 """
 import time
-from holders.label_text import text_sketch, stroke_and_gap
+from labels.label_text import text_sketch, stroke_and_gap
 t0 = time.perf_counter(); rows = []
 for code in range(0x21, 0x7f):
     ch = chr(code); st, gp = stroke_and_gap(text_sketch(ch)); rows.append((st, gp, ch))

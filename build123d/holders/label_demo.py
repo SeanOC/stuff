@@ -1,5 +1,8 @@
 """Labels spike demo card (pst-0zfra): smoke-tagged, never in the app catalog.
 
+The spike's own envelope, kept as measured: the production card and its
+numbers are holders/label_card.py + labels/constants.py (L2).
+
 A 60 x 14 x 1.6 mm card printed FACE DOWN: the visible face is the bed face
 (Z = 0) and the text is a flush two-colour inlay in the bottom INLAY_DEPTH.
 print_orientation is metadata only (export writes the part unrotated), so
@@ -16,12 +19,11 @@ Run as a script from build123d/ to write the 3MF and STLs to docs/exports:
 """
 from __future__ import annotations
 
-import locale
 import sys
 from pathlib import Path
 
 from build123d import Axis, Part, Plane, Pos, RectangleRounded, chamfer, extrude, mirror
-from holders.label_text import fit_text
+from labels.label_text import fit_text
 from holders.registry import ModelSpec, Param, register
 
 CARD_W, CARD_H, CARD_T = 60.0, 14.0, 1.6
@@ -70,60 +72,8 @@ SPEC = register(ModelSpec(
 ))
 
 
-def export_3mf_one_object(named: list[tuple[str, Part, tuple]], path: Path,
-                          object_name: str) -> None:
-    """ONE 3MF build item: a components object whose parts are the named meshes.
-
-    build123d's Mesher adds one build item per solid (a text Compound becomes
-    one slicer object per glyph), so this writes the core-spec structure with
-    lib3mf directly. Bambu Studio ignores mesh names and base-material
-    colours; the Metadata/model_settings.config sidecar names the parts and
-    puts part i on filament i + 1. Never declare Application=BambuStudio:
-    Bambu Studio then expects a full project and crashes on this file.
-    """
-    import copy
-    import zipfile
-    from build123d import Mesher
-    mesher = Mesher()  # owns the lib3mf wrapper + model; its _mesh helpers weld vertices
-    wrapper, model = mesher.wrapper, mesher.model
-    group = model.AddBaseMaterialGroup()
-    assembly = model.AddComponentsObject()
-    assembly.SetName(object_name)
-    part_ids = []
-    for name, shape, rgba in named:
-        verts, tris = Mesher._mesh_shape(copy.deepcopy(shape), 0.005, 0.1)
-        mesh = model.AddMeshObject()
-        mesh.SetName(name)
-        mesh.SetGeometry(*Mesher._create_3mf_mesh(verts, tris))
-        mat = group.AddMaterial(name, wrapper.FloatRGBAToColor(*rgba))
-        mesh.SetObjectLevelProperty(group.GetResourceID(), mat)
-        if not mesh.IsManifoldAndOriented():
-            raise RuntimeError(f'3MF part {name} is not manifold and oriented')
-        assembly.AddComponent(mesh, wrapper.GetIdentityTransform())
-        part_ids.append((mesh.GetResourceID(), name))
-    model.AddBuildItem(assembly, wrapper.GetIdentityTransform())
-    saved = locale.setlocale(locale.LC_ALL)
-    try:
-        mesher.write(str(path))
-    finally:
-        locale.setlocale(locale.LC_ALL, saved)  # lib3mf resets the process locale to C
-    settings = [f'<object id="{assembly.GetResourceID()}">',
-                f'  <metadata key="name" value="{object_name}"/>',
-                '  <metadata key="extruder" value="1"/>']
-    for filament, (part_id, name) in enumerate(part_ids, start=1):
-        settings += [f'  <part id="{part_id}" subtype="normal_part">',
-                     f'    <metadata key="name" value="{name}"/>',
-                     f'    <metadata key="extruder" value="{filament}"/>',
-                     '  </part>']
-    xml = '\n'.join(['<?xml version="1.0" encoding="UTF-8"?>', '<config>',
-                     *('  ' + line for line in settings + ['</object>']),
-                     '</config>', ''])
-    with zipfile.ZipFile(path, 'a', zipfile.ZIP_DEFLATED) as package:
-        package.writestr('Metadata/model_settings.config', xml)
-
-
 def export_all(text: str = 'PLA Black', out: Path = EXPORTS) -> list[Path]:
-    from scripts.export import export_stl
+    from scripts.export import export_3mf_one_object, export_stl
     base, inlay = parts(text)
     files = {name: out / f'label_demo_{name}.stl' for name in
              ('base', 'inlay', 'debossed', 'raised')}
