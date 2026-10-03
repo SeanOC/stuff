@@ -413,7 +413,7 @@
       "slug": "holder-spool-cradle",
       "engine": "build123d",
       "title": "Spool cradle (Multibuild)",
-      "blurb": "Single spool bookshelf cradle with wide inboard saddle rails, outboard placement guides (omitted when reach is less than 2.4 mm plus saddle clearance) and closed truss webs, in three mount styles: two full-height Multiconnect channels (channel), four MultiBuild Fix Point slots in two rows 50 mm apart, lip end up (points), or four openConnect slots for an openGrid wall on the 28 mm tile pitch and 84 mm cadence, two under the plate top and two at the lowest tile that keeps the bottom floor (openconnect). Flange-rim support; standing PETG/PCTG print with support allowed only in the mount pockets.",
+      "blurb": "Single spool bookshelf cradle with wide inboard saddle rails, outboard placement guides (omitted when reach is less than 2.4 mm plus saddle clearance) and closed truss webs, in three mount styles: two full-height Multiconnect channels (channel), four MultiBuild Fix Point slots in two rows 50 mm apart, lip end up (points), or four openConnect slots for an openGrid wall on the 28 mm tile pitch and 84 mm cadence, two under the plate top and two at the lowest tile that keeps the bottom floor (openconnect). A slide-in label card holder on the front panel (spool width 63.4 mm and up; swap the card with the spool out). Flange-rim support; standing PETG/PCTG print with support allowed only in the mount pockets.",
       "categoryId": "multiboard",
       "params": [
         {
@@ -557,6 +557,12 @@
             "openconnect"
           ],
           "filename": true
+        },
+        {
+          "name": "label_holder",
+          "label": "Label card holder (spool width >= 63.4 mm; swap the card with the spool out)",
+          "kind": "boolean",
+          "default": true
         }
       ],
       "presets": [

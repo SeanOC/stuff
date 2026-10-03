@@ -1084,3 +1084,89 @@ keep the old ids as history.
 | `channel` | channel | 104,201.224 |
 | `points` | points (Fix Point) | 116,544.929 |
 | `openconnect` | openconnect | 136,352.459 |
+
+## Front-panel label holder (labels L3, pst-o9sd4)
+
+`label_holder` (boolean, default on) adds two side rails and a bottom lip
+on the front panel's outside face. A `holder_label_card` card (L2) slides
+in from the top. Every number is in `build123d/labels/constants.py`, so the
+card and its slot cannot drift apart:
+
+| Constant | Value | Meaning |
+| --- | --- | --- |
+| `SLOT_CLEARANCE` | 0.2 | card to slot, per side, on every axis |
+| `SLOT_DEPTH` | 2.0 | `CARD_T + 2·SLOT_CLEARANCE` |
+| `LIP_T` | 1.2 | retaining shelf in front of the card |
+| `RAIL_PROUD` | 3.2 | `SLOT_DEPTH + LIP_T`, rail/lip stand-off from the panel face |
+| `LIP_OVERLAP` | 1.5 | shelf over the card face at each side and the bottom (< `TEXT_MARGIN` 2.0, so it never covers ink) |
+| `RAIL_W` | 2.5 | `LIP_OVERLAP` + a 1.0 outer wall (≥ `MIN_WALL_MM` 0.9) |
+| `SIDE_INSET` | 0.5 | minimum margin, rail outer face to panel side (clears the 0.4 rim chamfer) |
+| `HOLDER_MIN_PANEL_W` | 63.4 | `CARD_W + 2·SLOT_CLEARANCE + 2·(RAIL_W − LIP_OVERLAP) + 2·SIDE_INSET` |
+| `HOLDER_TOP_INSET` | 2.0 | rail tops below the panel top |
+| `HOLDER_JUNCTION` | 1.0 | 45° blend where the holder meets the panel face |
+
+**Placement.** Each rail is an L in plan: a 1.0 mm outer wall at
+X = ±30.2…31.2 (card edge 30.0 + 0.2 clearance) running the full slot depth
+down to the panel face, and a 1.2 mm shelf at Y = 2.0…3.2 off the face that
+reaches in to X = ±28.5, covering 1.5 mm of the centred card. The lip is the
+same section along the bottom: a 1.0 mm floor under the slot and a shelf
+1.7 mm tall (0.2 clearance + 1.5 overlap). The slot is 60.4 × 20.4 × 2.0 mm
+with its top `HOLDER_TOP_INSET` below the panel top; the window's lower
+corners take the card's 1.5 mm radius.
+
+**Width rule.** The holder needs `spool_width ≥ 63.4` mm. Below that,
+`label_holder` is a no-op: at the 0.5 mm step, 63.0 omits it and 63.5 keeps
+it. This follows the `guide_enabled` auto-omit precedent. The default (66)
+leaves 1.8 mm per side, and all three presets (67) keep the holder.
+`test_label_holder_omitted_below_threshold` checks that at widths 50 and 60
+the volume and bounding box equal `label_holder=False`.
+
+**Insertion.** Insert or swap the card from the top with the spool removed.
+Above the panel top the spool sits 5–10 mm proud of the face, and the
+neighbouring cradle blocks a side slide (`labels-spike.md` Q6).
+
+**Printability (standing pose).** The holder is fused after all of the
+panel's edge finishing, so no existing chamfer selection changes (the
+`panel_rims` predicate and its 0.4 mm chamfer are untouched). The lip's
+underside is one 45° ramp from the panel face. Each shelf stands on its
+own full-depth wall or floor, so there is no bridge. A 45° junction blend
+runs round the outer footprint. It is `HOLDER_JUNCTION` (1.0) wide, shrunk
+to `spool_width/2 − 31.2 − 0.45` where the panel's 0.4 mm side chamfer
+leaves less room (0.1 mm at 63.5). The front-face edges get a 0.4 chamfer,
+and the rail tops take R0.5 rounds. The slot walls, the floor and the
+shelf backs are mating faces and stay sharp. `assert_finished_edges`
+classifies them as `label_slot`.
+
+**Load.** The only load is the card's own weight (about 3 g) on the lip.
+The rails retain the card in +Y.
+
+### Card fit (AC a)
+
+`test_label_card_fits_and_is_retained` seats the default `holder_label_card`
+build (text "Filament", inlaid) centred in the slot. It asserts:
+
+- the card's bounding box plus 0.2 mm on every side equals the slot;
+- the card and the cradle have zero intersection volume;
+- the shelves cover exactly `LIP_OVERLAP` in front of the card at both
+  sides and at the bottom, with nothing inboard of that.
+
+Review sheet: `docs/renders/holder_spool_cradle_label.png`
+(`scripts/render_spool_cradle.py` `label_view`).
+
+### Volumes
+
+`label_holder=False` reproduces the pre-change volumes within 1e-3 mm³
+(`test_label_holder_off_keeps_pre_label_volume` pins them as literals). The
+last column is the shipped preset (holder on), which
+`test_preset_volume_matches_validation_doc` reads.
+
+| Preset | label_holder=False (mm³) | Δ | label_holder=True (mm³) |
+| --- | ---: | ---: | ---: |
+| `channel` | 104,201.224 | +851.009 (+0.82%) | 105,052.233 |
+| `points` | 116,544.929 | +851.009 (+0.73%) | 117,395.938 |
+| `openconnect` | 136,352.459 | +851.009 (+0.62%) | 137,203.468 |
+
+The holder adds 851 mm³ to every preset (about 0.3 g of PCTG). About
+317 mm³ of that is the 45° ramp under the lip, the cost of printing the
+3.2 mm lip without support. The rest is the slot section the spike sized
+(D8).

@@ -1,5 +1,6 @@
 """Regenerate v2.1 placement-aid views, 75 mm row, preset STLs, the
-openConnect preset's review sheet and the points preset's back view.
+openConnect preset's review sheet, the points preset's back view and the
+label holder with a seated label card.
 
 Run from the repo root:
   uv run --project build123d python build123d/scripts/render_spool_cradle.py
@@ -14,7 +15,8 @@ from PIL import Image, ImageDraw
 
 ROOT=Path(__file__).resolve().parent.parent
 sys.path.insert(0,str(ROOT))
-from holders.spool_cradle import SPEC, holder, dimensions
+from holders.spool_cradle import SPEC, holder, dimensions, label_slot, seated_card
+from holders import label_card
 from multibuild import fixpoint as fp
 from build123d import Align, Box, Pos, export_gltf
 from scripts.export import export_stl, section_svg
@@ -70,6 +72,7 @@ def render():
             review(model)
         if preset.id == POINTS_PRESET:
             points_back(model,preset.values)
+    label_view(part)
 
 
 def review(model):
@@ -122,6 +125,46 @@ def points_back(model,values):
     draw.text((12,752),'Z up (standing print). Lowering the holder onto board Fix Points carries each head up from its well and under its lip.',
               fill='black',font_size=17)
     sheet.save(ROOT/'docs/renders/holder_spool_cradle_points_back.png')
+
+
+def label_view(model):
+    """Front panel label holder with the default label_card seated (two colours)."""
+    p=dimensions()
+    values=label_card.SPEC.resolve_values({})
+    shapes=[(model,(.22,.57,.72))]+[(seated_card(p,shape),rgba[:3])
+                                    for _,shape,rgba in label_card.colour_parts(values)]
+    x,face,_,floor,top=label_slot(p)
+    window=Pos(0,face-3,floor-12)*Box(2*x+16,9,top-floor+16,
+                                       align=(Align.CENTER,Align.MIN,Align.MIN))
+    meshes=[]
+    with tempfile.TemporaryDirectory() as tmp:  # never litter docs/exports
+        for i,(shape,color) in enumerate(shapes):
+            path=Path(tmp)/f'label_{i}.stl'
+            export_stl(shape,path)
+            mesh=trimesh.load_mesh(path)
+            mesh.unmerge_vertices()
+            meshes.append((mesh,color))
+            close=Path(tmp)/f'label_close_{i}.stl'
+            export_stl(shape&window,close)
+            meshes.append((trimesh.load_mesh(close),color))
+    full=trimesh.util.concatenate([m for m,_ in meshes[0::2]])
+    full_colors=np.vstack([np.tile(c,(len(m.faces),1)) for m,c in meshes[0::2]])
+    near=trimesh.util.concatenate([m for m,_ in meshes[1::2]])
+    near_colors=np.vstack([np.tile(c,(len(m.faces),1)) for m,c in meshes[1::2]])
+    panels=[('Front (+Y): label card seated in the panel holder',full,full_colors,(0,1,0)),
+            ('Close-up from above: open-top slot, rails overlap 1.5 mm',near,near_colors,(-.5,1,.5)),
+            ('Close-up from below: bottom lip on a 45-degree ramp',near,near_colors,(-.5,1,-.5))]
+    sheet=Image.new('RGB',(2100,780),'white')
+    draw=ImageDraw.Draw(sheet)
+    for i,(label,mesh,colors,view) in enumerate(panels):
+        pixels=_render_view(mesh.vertices,mesh.faces,mesh.vertex_normals,face_colors=colors,
+                           color=np.array([.22,.57,.72]),view_dir=np.array(view,dtype=float),
+                           world_up=np.array([0.,0.,1.]),res=700)
+        image=Image.fromarray((pixels*255+.5).astype(np.uint8),'RGBA')
+        sheet.paste(image,(i*700,40),image)
+        draw.text((i*700+12,14),label,fill='black',font_size=18)
+    draw.text((12,757),'CAD review: default cradle + default label_card (inlaid). Insert the card from the top with the spool removed.',fill='black',font_size=17)
+    sheet.save(ROOT/'docs/renders/holder_spool_cradle_label.png')
 
 
 if __name__ == '__main__':
