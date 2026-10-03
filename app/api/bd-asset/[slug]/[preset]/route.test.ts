@@ -17,8 +17,13 @@ const SLUG = "holder-spray-can";
 const PRESET = "spray_can";
 const STL_BYTES = new Uint8Array([1, 2, 3, 4]);
 const GLB_BYTES = new Uint8Array([0x67, 0x6c, 0x54, 0x46]); // "glTF"
+// The multi-colour model and the 3MF its L2 bake writes (pst-egc3j).
+const LABEL_SLUG = "holder-label-card";
+const LABEL_PRESET = "inlaid";
+const THREEMF_BYTES = new Uint8Array([0x50, 0x4b, 0x03, 0x04]); // zip "PK"
 
 let createdDir: string | null = null;
+let createdLabelDir: string | null = null;
 
 beforeAll(() => {
   const dir = path.join(BAKED_ROOT, SLUG);
@@ -27,6 +32,10 @@ beforeAll(() => {
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, `${PRESET}.stl`), STL_BYTES);
   fs.writeFileSync(path.join(dir, `${PRESET}.glb`), GLB_BYTES);
+  const labelDir = path.join(BAKED_ROOT, LABEL_SLUG);
+  if (!fs.existsSync(labelDir)) createdLabelDir = labelDir;
+  fs.mkdirSync(labelDir, { recursive: true });
+  fs.writeFileSync(path.join(labelDir, `${LABEL_PRESET}.3mf`), THREEMF_BYTES);
 });
 
 afterAll(() => {
@@ -35,6 +44,8 @@ afterAll(() => {
   fs.rmSync(path.join(dir, `${PRESET}.stl`), { force: true });
   fs.rmSync(path.join(dir, `${PRESET}.glb`), { force: true });
   if (createdDir) fs.rmSync(createdDir, { recursive: true, force: true });
+  fs.rmSync(path.join(BAKED_ROOT, LABEL_SLUG, `${LABEL_PRESET}.3mf`), { force: true });
+  if (createdLabelDir) fs.rmSync(createdLabelDir, { recursive: true, force: true });
 });
 
 async function call(
@@ -72,6 +83,22 @@ describe("/api/bd-asset", () => {
       `attachment; filename="${SLUG}-${PRESET}.stl"`,
     );
     expect(new Uint8Array(await res.arrayBuffer())).toEqual(STL_BYTES);
+  });
+
+  it("serves a multi-colour model's baked 3MF as an attachment download", async () => {
+    const res = await call(LABEL_SLUG, LABEL_PRESET, "3mf");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("model/3mf");
+    expect(res.headers.get("content-disposition")).toBe(
+      `attachment; filename="${LABEL_SLUG}-${LABEL_PRESET}.3mf"`,
+    );
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(THREEMF_BYTES);
+  });
+
+  it("400s a 3MF for a single-colour model (never baked, not a missing bake)", async () => {
+    const res = await call(SLUG, PRESET, "3mf");
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain("not a multi-colour model");
   });
 
   it("404s an unknown model", async () => {

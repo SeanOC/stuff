@@ -310,3 +310,74 @@ def test_cup_lid_pointed_pins_export_watertight(base_url):
     mesh = trimesh.load_mesh(io.BytesIO(body), file_type="stl")
     assert mesh.is_watertight and mesh.is_winding_consistent
     assert mesh.volume > 0
+
+
+# --- multi-colour 3MF + build-time rejections (labels L4, pst-egc3j) ------
+
+def test_render_3mf_is_one_object_with_inlay_on_extruder_2(base_url):
+    import io
+    import zipfile
+    status, headers, body = _post(
+        base_url, "/render?format=3mf",
+        {"slug": "holder-label-card", "params": {"text": "PETG-CF"}},
+    )
+    assert status == 200, body
+    assert headers["content-type"] == "model/3mf"
+    with zipfile.ZipFile(io.BytesIO(body)) as package:
+        model = package.read("3D/3dmodel.model").decode()
+        settings = package.read("Metadata/model_settings.config").decode()
+    assert model.count("<item ") == 1
+    extruders = re.findall(
+        r'<part id="\d+".*?key="name" value="(\w+)".*?key="extruder" value="(\d)"',
+        settings, re.S)
+    assert extruders == [("base", "1"), ("inlay", "2")]
+
+
+def test_3mf_for_a_single_colour_model_is_400(base_url):
+    status, _h, body = _post(
+        base_url, "/render?format=3mf", {"slug": "holder-spray-can"}
+    )
+    assert status == 400
+    assert "not a multi-colour model" in json.loads(body)["errorMessage"]
+
+
+@pytest.mark.parametrize("fmt", ["glb", "3mf"])
+def test_text_below_the_stroke_floor_is_400_with_the_models_message(base_url, fmt):
+    # 24 characters pass the param contract but not the inlay stroke floor:
+    # the ValueError comes from spec.build(), not resolve_values.
+    status, _h, body = _post(
+        base_url, f"/render?format={fmt}",
+        {"slug": "holder-label-card", "params": {"text": "W" * 24}},
+    )
+    assert status == 400, body
+    message = json.loads(body)["errorMessage"]
+    assert "below the" in message and "the longest that fits is" in message
+
+
+def _run_worker(monkeypatch, slug: str, fmt: str, params: dict, out) -> int:
+    import io
+    worker_path = REPO_ROOT / "services" / "bd-render" / "render_worker.py"
+    spec = importlib.util.spec_from_file_location("bd_render_worker", worker_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    monkeypatch.setattr(sys, "argv", ["render_worker.py", slug, fmt, str(out)])
+    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(params)))
+    return module.main()
+
+
+@pytest.mark.parametrize("fault", [
+    FileNotFoundError("label font missing: /app/fonts/Inter-Bold.ttf"),
+    RuntimeError("no font faces in /app/fonts/Inter-Bold.ttf"),
+])
+def test_a_font_fault_stays_a_5xx(monkeypatch, tmp_path, capsys, fault):
+    """Only the model's own input rejections become 400; a broken deploy is 500."""
+    import labels.label_text as label_text
+
+    def broken(*_args, **_kwargs):
+        raise fault
+
+    monkeypatch.setattr(label_text, "load_font", broken)
+    out = tmp_path / "out.glb"
+    assert _run_worker(monkeypatch, "holder-label-card", "glb", {"text": "PETG"}, out) == 6
+    assert str(fault) in capsys.readouterr().err
+    assert not out.exists()

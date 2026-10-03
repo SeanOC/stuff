@@ -46,14 +46,16 @@ vi.mock("@/lib/models/bd-manifest", async (orig) => ({
 
 // In-memory Vercel Blob, keyed by pathname (mirrors the content-addressed store).
 const blobStore = new Map<string, Uint8Array>();
+const blobContentType = new Map<string, string>();
 vi.mock("@vercel/blob", () => ({
   get: async (pathname: string) => {
     const buf = blobStore.get(pathname);
     if (!buf) return null;
     return { stream: new Response(new Uint8Array(buf)).body, blob: {}, headers: new Headers() };
   },
-  put: async (pathname: string, body: Uint8Array) => {
+  put: async (pathname: string, body: Uint8Array, opts: { contentType: string }) => {
     blobStore.set(pathname, new Uint8Array(body));
+    blobContentType.set(pathname, opts.contentType);
     return { url: `mock://${pathname}`, pathname };
   },
 }));
@@ -86,6 +88,7 @@ function okResult(bytes = new Uint8Array([1, 2, 3])): BdRenderResult {
 
 beforeEach(() => {
   blobStore.clear();
+  blobContentType.clear();
   process.env.BD_MODELS_ENABLED = "1";
   process.env.BLOB_READ_WRITE_TOKEN = "vercel_blob_rw_test";
   bdClient.getBdRenderServiceConfig.mockReturnValue({
@@ -290,10 +293,94 @@ describe("/api/bd-render render + cache", () => {
     expect(blobStore.size).toBe(0); // failed render never cached
   });
 
+  it("relays the service's 400 (build-time rejection) with the model's message", async () => {
+    const message =
+      "label text 'WWWWWWWWWWWWWWWWWWWWWWWW' is too long for a 60 x 14 mm card: " +
+      "its thinnest stroke would be 0.80 mm on 2 line(s), below the 1.2 mm floor";
+    bdClient.renderBdViaService.mockResolvedValue({
+      ok: false,
+      errorMessage: `bd-render service HTTP 400: ${message}`,
+      badRequest: message,
+    });
+    const { res, json } = await call({ slug: "holder-spray-can", params: { d: 70 } });
+    expect(res.status).toBe(400);
+    expect(json!.error).toBe(message);
+    expect(blobStore.size).toBe(0);
+  });
+
+  it("a service 500 (e.g. the label font missing from the image) stays a 5xx", async () => {
+    bdClient.renderBdViaService.mockResolvedValue({
+      ok: false,
+      errorMessage: "bd-render service HTTP 500: build failed: label font missing: /app/x.ttf",
+    });
+    const { res, json } = await call({ slug: "holder-spray-can", params: { d: 70 } });
+    expect(res.status).toBe(502);
+    expect(json!.upstream).toContain("label font missing");
+  });
+
   it("renders live (no cache) when Blob token is absent", async () => {
     delete process.env.BLOB_READ_WRITE_TOKEN;
     const { res } = await call({ slug: "holder-spray-can", params: { d: 70 } });
     expect(res.status).toBe(200);
     expect(res.headers.get("x-cache")).toBeNull();
+  });
+});
+
+describe("/api/bd-render 3MF (labels L4, pst-egc3j)", () => {
+  async function useRealModel(slug: string) {
+    const { loadBdModel } = await vi.importActual<
+      typeof import("@/lib/models/bd-manifest")
+    >("@/lib/models/bd-manifest");
+    manifest.loadBdModel.mockResolvedValue(await loadBdModel(slug));
+  }
+
+  it("serves the label card's 3MF as a download, cached under model/3mf", async () => {
+    await useRealModel("holder-label-card");
+    const miss = await call({ slug: "holder-label-card", params: { text: "PLA" } }, "?format=3mf");
+    expect(miss.res.status).toBe(200);
+    expect(miss.res.headers.get("content-type")).toBe("model/3mf");
+    // text is not filename-flagged, so the name is the slug alone.
+    expect(miss.res.headers.get("content-disposition")).toBe(
+      'attachment; filename="holder-label-card.3mf"',
+    );
+    expect(bdClient.renderBdViaService).toHaveBeenLastCalledWith(
+      expect.objectContaining({ format: "3mf", params: expect.objectContaining({ text: "PLA" }) }),
+    );
+    const [[pathname, contentType]] = [...blobContentType];
+    expect(pathname).toMatch(/\.3mf$/);
+    expect(contentType).toBe("model/3mf");
+
+    const hit = await call({ slug: "holder-label-card", params: { text: "PLA" } }, "?format=3mf");
+    expect(hit.res.headers.get("x-cache")).toBe("HIT");
+    expect(hit.res.headers.get("content-type")).toBe("model/3mf");
+  });
+
+  it("a different label text is a different cache entry", async () => {
+    await useRealModel("holder-label-card");
+    await call({ slug: "holder-label-card", params: { text: "PLA" } }, "?format=3mf");
+    const other = await call({ slug: "holder-label-card", params: { text: "PETG" } }, "?format=3mf");
+    expect(other.res.headers.get("x-cache")).toBe("MISS");
+    expect(bdClient.renderBdViaService).toHaveBeenCalledTimes(2);
+  });
+
+  it("400s overlong or non-printable-ASCII text before the round-trip", async () => {
+    await useRealModel("holder-label-card");
+    const long = await call({ slug: "holder-label-card", params: { text: "W".repeat(25) } });
+    expect(long.res.status).toBe(400);
+    expect(long.json!.error).toBe("text: 25 characters > max length 24");
+    const accent = await call({ slug: "holder-label-card", params: { text: "café" } });
+    expect(accent.res.status).toBe(400);
+    expect(accent.json!.error).toBe('text: character "é" is not in charset printable-ascii');
+    const ok = await call({ slug: "holder-label-card", params: { text: "W".repeat(24) } });
+    expect(ok.res.status).toBe(200);
+    expect(bdClient.renderBdViaService).toHaveBeenCalledTimes(1);
+  });
+
+  it("400s a 3MF for a single-colour model without calling the service", async () => {
+    await useRealModel("holder-spray-can");
+    const { res, json } = await call({ slug: "holder-spray-can", params: {} }, "?format=3mf");
+    expect(res.status).toBe(400);
+    expect(json!.error).toContain("not a multi-colour model");
+    expect(bdClient.renderBdViaService).not.toHaveBeenCalled();
   });
 });

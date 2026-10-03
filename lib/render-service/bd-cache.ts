@@ -91,6 +91,7 @@ export interface BdRenderCacheStore {
 const CONTENT_TYPE: Record<BdRenderFormat, string> = {
   glb: "model/gltf-binary",
   stl: "application/sla",
+  "3mf": "model/3mf",
 };
 
 // Blob pathname namespace. key is a sha256 hex digest (unguessable,

@@ -12,22 +12,42 @@
 // "preview 220 mm to see what breaks" workflows the CAD-y users expect.
 
 import clsx from "clsx";
-import type {
-  BooleanParam,
-  EnumParam,
-  NumberParam,
-  Param,
-  ParamValue,
-  StringParam,
+import {
+  CHARSET_RE,
+  type BooleanParam,
+  type EnumParam,
+  type NumberParam,
+  type Param,
+  type ParamValue,
+  type StringParam,
 } from "@/lib/scad-params/parse";
 
 interface Props {
   param: Param;
   value: ParamValue | undefined;
   onChange: (name: string, value: ParamValue) => void;
+  /** The last render's 400 message for this param, shown under the row. */
+  error?: string;
 }
 
-export function ParamRow({ param, value, onChange }: Props) {
+export function ParamRow({ param, value, onChange, error }: Props) {
+  const row = <ParamControl param={param} value={value} onChange={onChange} />;
+  if (error === undefined) return row;
+  return (
+    <div className="flex flex-col gap-4">
+      {row}
+      <p
+        role="alert"
+        data-testid={`param-error-${param.name}`}
+        className="text-10 text-red"
+      >
+        {error}
+      </p>
+    </div>
+  );
+}
+
+function ParamControl({ param, value, onChange }: Omit<Props, "error">) {
   switch (param.kind) {
     case "number":
     case "integer":
@@ -203,6 +223,9 @@ function StringRow({
   const v = value ?? param.default;
   const id = `param-${param.name}`;
   const label = param.label ?? param.name;
+  // maxLength stops typing past the limit; pattern only flags :invalid (a
+  // pasted non-ASCII character) — the render's 400 explains it inline.
+  const charset = param.charset === undefined ? undefined : CHARSET_RE[param.charset];
   return (
     <div className="flex items-center justify-between gap-8">
       <label htmlFor={id} className="text-11 text-text">
@@ -212,6 +235,10 @@ function StringRow({
         id={id}
         type="text"
         value={v}
+        maxLength={param.maxLength}
+        pattern={charset?.source}
+        spellCheck={false}
+        autoComplete="off"
         onChange={(e) => onChange(param.name, e.target.value)}
         className={clsx(
           "flex-1 rounded-3 border border-line bg-panel2 px-4 py-2",

@@ -43,6 +43,7 @@ export default async function ModelPage({ params }: Props) {
               blurb: bd.blurb,
               params: bd.params,
               presets: bd.presets,
+              multiColour: bd.multiColour,
             }}
           />
         );

@@ -124,7 +124,26 @@ describe("renderBdViaService (never throws)", () => {
     );
     const r = await renderBdViaService({ config: CONFIG, slug: "s", params: {}, vercelOidcToken: "t" });
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.errorMessage).toContain("out of range");
+    if (!r.ok) {
+      expect(r.errorMessage).toContain("out of range");
+      // A 400 carries the service's message verbatim for the route to relay.
+      expect(r.badRequest).toBe("out of range");
+    }
+  });
+
+  it("a 5xx is never marked badRequest, even with an errorMessage", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ ok: false, errorMessage: "build failed: font missing" }), {
+        status: 500,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    const r = await renderBdViaService({ config: CONFIG, slug: "s", params: {}, vercelOidcToken: "t" });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errorMessage).toContain("HTTP 500: build failed: font missing");
+      expect(r.badRequest).toBeUndefined();
+    }
   });
 
   it("ok:false when the network throws", async () => {
