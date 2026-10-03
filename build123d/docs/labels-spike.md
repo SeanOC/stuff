@@ -416,3 +416,41 @@ is 44 mm wide, and one line of about 8 characters holds a 0.9 mm stroke.
 | D12 | Web (L4) | `StringRow` exists. Add `maxLength` and the charset rule end to end: `Param` → manifest `"string"` row → `bd-manifest.ts` → `StringRow` → `route.ts:255` → Python. Rebase with pst-fcjqj's `filename` field | Q4 |
 | D13 | Service (L4) | `COPY build123d/assets ./assets`; `render_worker` format `3mf` using the shared writer, which L2 moves to `scripts/export.py`; `BdRenderFormat` / route / `CONTENT_TYPE` `model/3mf`. No new dependency, and no change to the image or cold start beyond the 420 KB font | Q5 |
 | D14 | Slicer check | Bambu Studio's object tree is verified headless. **Open:** a two-colour GUI slice in Bambu Studio and PrusaSlicer, by Sean, recorded here | Q3 |
+| D15 | Raised gap floor | **None** (mayor, 2026-10-03, pst-l4hsl). `fit_text` reports `min_clearance` beside `min_stroke` / `min_gap`. Neither gap measure is gated | 'Raised: no inter-glyph floor' below; table test |
+
+### Raised: no inter-glyph floor (pst-l4hsl, 2026-10-03)
+
+Raised text has no gap or clearance floor. Only the stroke floor (D5,
+0.9 mm) gates it. This bead first asked for a 0.5 mm `min_gap` floor on
+raised text, and two facts ruled it out:
+
+- **`min_gap` reads the 'M' crotch as a gap.** The crotch is an acute notch
+  inside one glyph (the artefact noted in Q2), and it measures 0.18 mm at
+  10 pt. A scan of every letter, digit and punctuation glyph found that 'M'
+  is the only one that can go under 0.5 mm while the 0.9 mm stroke holds.
+  A 0.5 mm gate would have rejected 'M' on its own (0.40 mm at full scale),
+  'MATTE', and 'PLA Matte'. 'PLA Matte' already builds raised.
+- **The 0.5 mm figure belongs to the inlay.** Under Q3, 0.5 mm is where
+  first-layer squish of a flush two-colour inlay closes a gap. Raised text
+  prints face up, at Z 1.6–2.2 on the card, and gets no first-layer squish.
+
+The true inter-glyph gap is the closest distance between two separate pieces
+of ink (`glyph_clearance`). It cannot see notches inside a glyph. It is
+reported as `FittedText.min_clearance` and is not gated. Raised text on the
+60 × 20 card with a 2.0 mm margin:
+
+| text | lines | min stroke | min gap | min clearance |
+| --- | --- | --- | --- | --- |
+| Filament | 1 | 1.222 | 1.250 | 0.968 |
+| PETG-CF Black | 2 | 0.957 | 1.096 | 0.910 |
+| PETG HF JADE WHITE | 2 | 1.020 | 1.001 | 0.818 |
+| PLA Matte | 1 | 1.022 | 0.204 (M crotch) | 0.482 (tt) |
+| Smart PLA | 1 | 1.064 | 0.288 | 0.308 (rt) |
+
+On raised text a narrow gap can only fuse two glyphs, which is cosmetic, and
+the stroke floor already guarantees the print. Rejecting 'Smart PLA' would
+be a worse product than a fused r-t. Whether a 0.3–0.48 mm raised gap
+actually closes on the H2S has not been slice-tested; that is a later call
+for Sean. Inlaid text is unchanged: its gaps are card material, held to
+0.9 mm by the print audit. `test_raised_text_metrics_and_no_gap_floor` pins
+this table.
