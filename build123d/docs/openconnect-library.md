@@ -136,7 +136,11 @@ and offsets position the grid. Offsets must keep complete tiles in the plate.
 Backing defaults to 2.4 mm; **0.5–2.3 mm requires another model's wall and is
 not standalone-printable**. Thickness follows the actual clearance-adjusted
 pocket depth plus backing (5.1 mm at defaults). Profiles, pitch and travel
-remain library constants. There is no fused joint or asserted load rating;
+remain library constants. At maximum 0.5/0.5 mm clearances the connector has
+initial free play: the default mount contract's 0.5 mm pull probe is clear,
+but the 1 and 2 mm probes still engage the lip (5.45 and 10.98 mm³ overlap
+on the one-tile rounded case). Shipped presets use 0.1/0.1 mm and pass the
+full mount contract, including its 0.5 mm pull threshold. There is no fused joint or asserted load rating;
 an attached accessory's off-wall pull is the worst-case load, in PLA/PCTG.
 
 Print standing, +Z up. Exposed slab edges have a 0.4 mm chamfer, including the

@@ -15,7 +15,7 @@ from holders import openconnect_plate as m
 from holders.registry import _validate_spec, resolve_mount_fixtures
 from openconnect.constants import POCKET_DEPTH
 from scripts.export import export_glb, export_stl
-from tests.mount_contracts import CONTRACTS
+from tests.mount_contracts import CONTRACTS, _residual_vol
 from tests.print_audit import audit
 from tests.test_openconnect import ASSETS, TOL, _hausdorff, _stl
 
@@ -215,3 +215,14 @@ def test_printable_endpoints(name, overrides):
     assert report.bed_chamfer == 'present'
     angle = assert_finished_edges(part, v)
     print(f'AUDIT_ROW | {name} | {report.min_wall_mm:.3f} | {report.max_overhang_deg:.3f} | {angle:.3f} | PASS |')
+
+
+def test_maximum_clearance_retains_after_initial_free_play():
+    from openconnect import head
+    values = m.SPEC.resolve_values(AUDIT_CASES['tile-rounded-max-clearance'])
+    part = m.build(values)
+    seated = m._fixtures(values).seat_locs[0] * head()
+    # Author tolerances permit play beyond the default contract's 0.5 mm probe.
+    assert _residual_vol(part, Pos(0, -.5, 0) * seated) < 1e-6
+    for pull in (1, 2):
+        assert _residual_vol(part, Pos(0, -pull, 0) * seated) > 1
