@@ -53,7 +53,7 @@ from __future__ import annotations
 import math
 from typing import Callable
 
-from build123d import Align, Axis, Box, Pos, Solid
+from build123d import Align, Axis, Box, Pos, Rot, Solid
 from build123d.topology import Part
 from opengrid.multiconnect import RoundHead
 
@@ -403,8 +403,19 @@ def verify_openconnect_slot(part: Part, fx: MountFixtures) -> None:
     """
     from openconnect import head as oc_head
     from openconnect.constants import HEAD_WIDTH
-    _require_z_entry(fx, "openconnect-slot")
     _require_y_face(fx, "openconnect-slot")
+    # Express the cardinal slide direction in the existing +Z probe frame.
+    # Only this contract supports sideways/downward entry; other mounts keep
+    # their existing +Z requirement. The caller's fixtures are not mutated.
+    entry = tuple(round(v, 6) for v in fx.entry_axis)
+    assert entry in ((0, 0, 1), (0, 0, -1), (1, 0, 0), (-1, 0, 0)), \
+        'openconnect entry_axis must be a cardinal direction in the XZ face'
+    if entry != (0, 0, 1):
+        undo = Rot(0, -math.degrees(math.atan2(entry[0], entry[2])), 0)
+        part = undo * part
+        fx = MountFixtures([undo * c for c in fx.cutters],
+                           [undo * loc for loc in fx.seat_locs],
+                           onramp_locs=[undo * loc for loc in fx.onramp_locs])
     assert fx.cutters and fx.seat_locs, 'openconnect fixtures must not be empty'
     assert len(fx.cutters) == len(fx.seat_locs) == len(fx.onramp_locs), \
         'one cutter, seat and on-ramp pose per slot required'

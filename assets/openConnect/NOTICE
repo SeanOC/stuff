@@ -74,3 +74,57 @@ Reference renders (used by build123d/tests/test_openconnect.py):
 
 These are reference assets only: not on OPENSCADPATH, not included by any
 model, not a build dependency. See build123d/docs/openconnect-library.md.
+
+OC1 investigation (pst-q52ae, 2026-10-04; NOT acceptance-approved)
+------------------------------------------------------------------
+Baseline: stuff 1091ee26d04ea2b38b090ec988a4a54c6ca4ebfa.
+Same upstream, OpenSCAD and BOSL2 pins as above. The Printables flattened
+single-file copy is a reading aid only; all citations use the vendored files.
+
+Additional plate renders use the one-tile command above with these -D values:
+  openconnect_nubs_right.stl: slot_lock_side="Right"
+  openconnect_nubs_both.stl: slot_lock_side="Both"
+  openconnect_nubs_none.stl: slot_lock_distribution="None"
+  openconnect_flip.stl: slot_entryramp_flip=true
+  openconnect_edge_top.stl: slot_edge_feature_widen="Top"
+  openconnect_edge_side.stl: slot_edge_feature_widen="Side"
+  openconnect_edge_none.stl: slot_edge_feature_widen="None"
+
+The additional mesh/*.scad files are this repo's wrappers, not upstream.
+Render slide_down, slide_left, slide_right, excess_thickness and excess_length:
+  OPENSCADPATH=$BOSL2_PARENT openscad --export-format=binstl \
+    -o mesh/openconnect_<variant>.stl mesh/openconnect_<variant>.scad
+
+The default vase wrapper FAILS with the recorded default CGAL backend:
+  CGALUtils::applyUnion3D, SNC_external_structure.h:1150 assertion violation;
+  top-level object empty. The diagnostic STL was obtained using:
+  OPENSCADPATH=$BOSL2_PARENT openscad --backend=Manifold --export-format=binstl \
+    -o mesh/openconnect_vase.stl mesh/openconnect_vase.scad
+It is NOT a watertight reference: trimesh reports two edges used four times
+and one used six times (lengths 0.0785083, 0.0785083 and 3.0627418 mm).
+Merging vertices at 1e-4 mm and removing degenerate faces does not repair it.
+Volume: 109.6264217955 mm^3. Upstream's sweep radius is 1.6970563 mm,
+while the profile reaches 2.6 mm inward, crossing the corner's sweep axis
+(openconnect_lib.scad:136-148,353-358). The analytic port has invalid top
+faces at this corner too. A geometry/reference decision is required before
+this prototype can satisfy valid-BRep, render-equality and print-audit gates.
+
+The grid spin values at openconnect_lib.scad:467 are passed to a BOTTOM
+attachment (:484); they are not direct world-Z rotations. Author left/right
+meshes match world-Z +90/-90 respectively. Direct -90/+90 rotation differs
+by 9.1638 mm; reversing the spin gives <=0.003536 mm surface distance.
+
+Diagnostic render hashes (all <2 MB):
+  fbe40f07a13f8edd11e36518101df8c12bcc144ef089bada10b59e937f328396  mesh/openconnect_edge_none.stl
+  ef863fe9dcee08ad1a8ae172a815ce720742dfda72aba8f443098c1e34550f36  mesh/openconnect_edge_side.stl
+  674687b9fadc2afdc76e6a3558ce5fea1485e1c17ab803e6cd342524457ac3a9  mesh/openconnect_edge_top.stl
+  bd7bbd9865e75f64218657c420189a3d50912ecc78f22974053be948c1741b2c  mesh/openconnect_excess_length.stl
+  70368b8526ecdc8716fc63805e57ddd05bf4f3149e524db22288cd9808cb6bb2  mesh/openconnect_excess_thickness.stl
+  221b1ab3c6c6bff1d5831765af22198aa5f7ca370f59cd08c9bc6d6192a68c36  mesh/openconnect_flip.stl
+  90b1007b9a8d867f0ca17979c7c91f2362836d8121366b746eae8b7c31242c55  mesh/openconnect_nubs_both.stl
+  61393cf3ce71b2d1439d890f9140ea5b8f225948fd83541bbf079df3434f7ec0  mesh/openconnect_nubs_none.stl
+  61bf5caa1650c0f689f5f838c27a087f02be73e273a107a965310d33391190c0  mesh/openconnect_nubs_right.stl
+  a98dc4354d33049d728f3efd058927dc937339998a1e37ff7297b68c9e7ec889  mesh/openconnect_slide_down.stl
+  940df37c433fa30ca49d15b666d181206a0566292f458e68ac24a1cf50acc7d5  mesh/openconnect_slide_left.stl
+  4b43b71a277aae91bcac99d6ad19e8c4b77fbf7ad286b43637517406693248c9  mesh/openconnect_slide_right.stl
+  a29942c530c076b3e27c375d77cd7177a09dfca5dc4eb6bbab6258cfe52b34ef  mesh/openconnect_vase.stl

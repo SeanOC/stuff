@@ -58,6 +58,15 @@ DEPTH_CLEARANCE = 0.10
 NUB_FLANK_ANGLE = 45.0
 ONRAMP_ROOF_HEIGHT = 4.0
 
+# Grid rotation (the footprint helper uses opposite left/right signs).
+SLIDE_UP = 0
+SLIDE_DOWN = 180
+SLIDE_LEFT = -90
+SLIDE_RIGHT = 90
+VASE_LINEWIDTH = 0.6
+VASE_OVERHANG_ANGLE = 45
+VASE_TRIM_LENGTH = 60
+
 # Derived.
 HEAD_DEPTH = HEAD_BOTTOM_HEIGHT + HEAD_MIDDLE_HEIGHT + HEAD_TOP_HEIGHT   # 2.6
 MOUTH_WIDTH = HEAD_WIDTH - 2 * HEAD_MIDDLE_HEIGHT                      # 14.2
@@ -75,6 +84,12 @@ def half_angle_share(clearance: float) -> float:
 
 
 PROVENANCE = {
+    **{name: _cite(value, _LIB, 467) for name, value in (
+        ('SLIDE_UP', SLIDE_UP), ('SLIDE_DOWN', SLIDE_DOWN),
+        ('SLIDE_LEFT', SLIDE_LEFT), ('SLIDE_RIGHT', SLIDE_RIGHT))},
+    'VASE_LINEWIDTH': _cite(VASE_LINEWIDTH, _LIB, 82),
+    'VASE_OVERHANG_ANGLE': _cite(VASE_OVERHANG_ANGLE, _LIB, 83),
+    'VASE_TRIM_LENGTH': _cite(VASE_TRIM_LENGTH, _LIB, 370),
     'EPS': _cite(EPS, _BASE, 3),
     'TILE_SIZE': _cite(TILE_SIZE, _BASE, 4),
     'HEAD_BOTTOM_HEIGHT': _cite(HEAD_BOTTOM_HEIGHT, _BASE, 43),
