@@ -16,7 +16,7 @@ import trimesh
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from build123d import Align, Box, Plane, Pos, Mode, export_stl as fine_stl, section
+from build123d import Align, Box, Plane, Pos, Rot, Mode, export_stl as fine_stl, section
 from openconnect import POCKET_DEPTH, head, onramp_location, seat_location, slot_cutter
 from openconnect import constants as c
 from openconnect import demo_plate as demo
@@ -30,11 +30,27 @@ LOCATOR = re.compile(
     r'^https://github\.com/mitufy/opengrid-projects/blob/04e2277a71c5/'
     r'(?P<file>[\w/.-]+\.scad)#L(?P<line>\d+)$')
 # Values computed from other constants; the cited line holds the arithmetic.
-DERIVED = {'HEAD_DEPTH', 'MOUTH_WIDTH', 'POCKET_DEPTH', 'NUB_TAPER_SHIFT', 'ONRAMP_SHIFT'}
+DERIVED = {'HEAD_DEPTH', 'MOUTH_WIDTH', 'POCKET_DEPTH', 'NUB_TAPER_SHIFT', 'ONRAMP_SHIFT',
+           'SLIDE_LEFT', 'SLIDE_RIGHT'}  # :467 spin is reversed by :484 BOTTOM attachment
 # Render-comparison bound. The spec allows side clearance + EPS (0.105 mm);
 # the port is exact, so hold it to tessellation noise, 10x tighter.
 TOL = 0.01
 PLATE_THICKNESS = 3.2  # the render: 2.7 pocket + plate_extra_thickness 0.5
+
+AUTHOR_VARIANTS = [
+    ('nubs_right', dict(nubs='right')),
+    ('nubs_both', dict(nubs='both')),
+    ('nubs_none', dict(nubs='none')),
+    ('flip', dict(entryramp_flip=True)),
+    ('edge_top', dict(edge_feature='top')),
+    ('edge_side', dict(edge_feature='side')),
+    ('edge_none', dict(edge_feature='none')),
+    ('slide_down', dict(slide='down')),
+    ('slide_left', dict(slide='left')),
+    ('slide_right', dict(slide='right')),
+    ('excess_thickness', dict(excess_thickness=1.0)),
+    ('excess_length', dict(excess_length=5.0)),
+]
 
 
 def test_constants_are_cited_to_the_pinned_upstream():
@@ -59,7 +75,9 @@ def test_vendored_files_and_renders_match_notice():
     assert '04e2277a71c54a832e38062953845a590fbd80ca' in notice and 'CC BY 4.0' in notice
     for rel in ('lib/opengrid_base.scad', 'lib/openconnect_lib.scad', 'lib/opengrid_threads_lib.scad',
                 'openconnect_plate.scad', 'mesh/openconnect_plate_one_slot.stl',
-                'mesh/openconnect_head.stl'):
+                'mesh/openconnect_head.stl',
+                *(f'mesh/openconnect_{name}.stl' for name, _ in AUTHOR_VARIANTS)):
+        assert (ASSETS / rel).stat().st_size <= 2_000_000
         digest = hashlib.sha256((ASSETS / rel).read_bytes()).hexdigest()
         assert f'{digest}  {rel}' in notice, rel
 
@@ -96,7 +114,24 @@ def test_slot_equals_the_author_render(rendered_plate, tmp_path):
     assert _hausdorff(mine, ref) < TOL and _hausdorff(ref, mine) < TOL
     # The consumer cutter is the same body, rotated into the back-face frame.
     cutter = slot_cutter()
-    assert cutter.volume == pytest.approx(slot_body().volume, rel=1e-9)
+    assert cutter.volume == pytest.approx(body.volume, rel=1e-9)
+
+
+@pytest.mark.parametrize('name,options', AUTHOR_VARIANTS, ids=[n for n, _ in AUTHOR_VARIANTS])
+def test_slot_options_equal_author_renders(name, options, tmp_path):
+    # Undo only the consumer-frame transform; slide must already be applied
+    # once by the cutter. The wrappers render the author's grid negatives.
+    cutter = slot_cutter(**options)
+    assert cutter.is_valid and len(cutter.solids()) == 1
+    part = Rot(-90, 0, 0) * Pos(0, -POCKET_DEPTH, 0) * cutter
+    if name.startswith(('nubs', 'flip', 'edge')):
+        part = (Box(28, 28, PLATE_THICKNESS, align=(Align.MIN,) * 3)
+                - Pos(14, 14, PLATE_THICKNESS - POCKET_DEPTH) * part)
+    ref = trimesh.load(ASSETS / 'mesh' / f'openconnect_{name}.stl')
+    mine = _stl(part, tmp_path / f'{name}.stl')
+    assert mine.is_watertight and ref.is_watertight
+    assert mine.volume == pytest.approx(ref.volume, abs=0.05)
+    assert _hausdorff(mine, ref) < TOL and _hausdorff(ref, mine) < TOL
 
 
 def test_head_equals_the_author_render(tmp_path):
@@ -129,7 +164,7 @@ def test_cutter_frame_and_options():
     cutter = slot_cutter()
     assert cutter.is_valid and len(cutter.solids()) == 1
     bb = cutter.bounding_box()
-    assert bb.min.Y == pytest.approx(0, abs=1e-6) and bb.max.Y == pytest.approx(POCKET_DEPTH)
+    assert bb.min.Y == pytest.approx(-c.EPS, abs=1e-6) and bb.max.Y == pytest.approx(POCKET_DEPTH)
     assert -c.TILE_SIZE / 2 <= bb.min.X and bb.max.X <= c.TILE_SIZE / 2
     assert -c.TILE_SIZE / 2 <= bb.min.Z and bb.max.Z <= c.TILE_SIZE / 2
     # Seat end above the origin, on-ramp 10.6 below: the slot runs -13.2 .. +9.0.
@@ -143,6 +178,44 @@ def test_cutter_frame_and_options():
             slot_cutter(clearance=bad)
     assert onramp_location(0, 0).position.Z == pytest.approx(-c.MOVE_DISTANCE)
     assert onramp_location(0, 0).position.X == pytest.approx(-2.2)
+
+
+@pytest.mark.parametrize('snap,nubs', [(True, 'left'), (False, 'none')])
+def test_deprecated_snap_alias(snap, nubs):
+    with pytest.warns(DeprecationWarning, match='snap is deprecated'):
+        alias = slot_cutter(snap=snap)
+    explicit = slot_cutter(nubs=nubs)
+    assert (alias - explicit).volume < 1e-8
+    assert (explicit - alias).volume < 1e-8
+    with pytest.warns(DeprecationWarning), pytest.raises(ValueError, match='disagree'):
+        slot_cutter(snap=snap, nubs='both')
+
+
+@pytest.mark.parametrize('options', [dict(nubs='invalid'), dict(slide='invalid'),
+    dict(edge_feature='invalid'), dict(excess_length=-1), dict(excess_thickness=-1),
+    dict(excess_length=float('inf')), dict(excess_thickness=float('nan'))])
+def test_invalid_slot_options(options):
+    with pytest.raises(ValueError):
+        slot_cutter(**options)
+
+
+@pytest.mark.parametrize('slide,axis', [('up', (0, 0, 1)), ('down', (0, 0, -1)),
+                                     ('left', (-1, 0, 0)), ('right', (1, 0, 0))])
+@pytest.mark.parametrize('flip', [False, True])
+def test_slide_frames_and_mount_contract(slide, axis, flip):
+    from holders.registry import MountFixtures
+    # An off-origin seat catches rotations applied about the plate origin.
+    x, z = 3, 24
+    cutter = Pos(x, 0, z) * slot_cutter(slide=slide, entryramp_flip=flip)
+    seat = seat_location(x, z, slide=slide)
+    ramp = onramp_location(x, z, slide=slide, entryramp_flip=flip)
+    assert tuple(seat.position) == pytest.approx((x, c.HEAD_DEPTH, z))
+    travel = seat.position - ramp.position
+    assert sum(v * a for v, a in zip(travel, axis)) == pytest.approx(c.MOVE_DISTANCE)
+    part = (Pos(x, 0, z) * Box(48, 5.5, 48,
+            align=(Align.CENTER, Align.MIN, Align.CENTER)) - cutter)
+    fx = MountFixtures([cutter], [seat], onramp_locs=[ramp], entry_axis=axis)
+    CONTRACTS[demo.MOUNT](part, fx)
 
 
 @pytest.fixture(scope='module')

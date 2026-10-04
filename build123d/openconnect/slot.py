@@ -21,7 +21,7 @@ Adapted from openConnect by mitufy, licensed CC BY 4.0.
 from math import cos, isfinite, radians, sin, sqrt, tan
 import warnings
 
-from build123d import (Align, Box, Face, Line, Part, Plane, Pos, Rot, Solid, ThreePointArc,
+from build123d import (Align, Box, Face, Line, Part, Plane, Pos, Rot, Shell, Solid, ThreePointArc,
                        Vector, Wire)
 
 from . import constants as c
@@ -111,12 +111,24 @@ def _lock(base_x, inward, bottom_h, taper_in) -> Part:
     return lower + upper
 
 
-def _stack(bottom, top, bottom_h, top_h, top_extra=0.0) -> Part:
+def _stack(bottom, top, bottom_h, top_h, top_extra=0.0, *, planar=False) -> Part:
     """Flange band, ruled 45° taper (the SCAD hull), neck band."""
     mid = c.HEAD_MIDDLE_HEIGHT
     flange = Solid.extrude(_poly(bottom), Vector(0, 0, bottom_h))
-    taper = Solid.make_loft([_poly(bottom, bottom_h).outer_wire(),
-                             _poly(top, bottom_h + mid).outer_wire()], ruled=True)
+    if planar:
+        # The slot's SCAD hull has planar walls. A ruled loft instead emits
+        # spline surfaces whose shared trim edges tessellate inconsistently
+        # when one EPS-extended cutter is reused across a multi-slot plate.
+        lo = [(x, y, bottom_h) for x, y in bottom]
+        hi = [(x, y, bottom_h + mid) for x, y in top]
+        loops = [lo, hi]
+        for i in range(len(lo)):
+            j = (i + 1) % len(lo)
+            loops.append([lo[i], lo[j], hi[j], hi[i]])
+        taper = Solid(Shell([Face(Wire.make_polygon(v, close=True)) for v in loops]))
+    else:
+        taper = Solid.make_loft([_poly(bottom, bottom_h).outer_wire(),
+                                 _poly(top, bottom_h + mid).outer_wire()], ruled=True)
     neck = Solid.extrude(_poly(top, bottom_h + mid), Vector(0, 0, top_h + top_extra))
     return flange + taper + neck
 
@@ -194,7 +206,7 @@ def slot_body(*, snap: bool | None = None, nubs: str | None = None,
     # 1. Seat: head-shaped pocket, minus the lock nub (plate material).
     bottom = _chamfered_rect(w, h, w / 2 + bpo, ch, ch)
     top = _chamfered_rect(sw, sh, sw / 2 + bpo, sch, sch)
-    seat = _stack(bottom, top, bottom_h, top_h, excess)
+    seat = _stack(bottom, top, bottom_h, top_h, excess, planar=True)
     if nubs in ('left', 'both'):
         seat -= _lock(-w / 2 - c.EPS, 1, bottom_h, True)
     if nubs in ('right', 'both'):
@@ -267,6 +279,9 @@ def slot_cutter(*, snap: bool | None = None, nubs: str | None = None,
     """Slot negative at back face Y=0, material +Y, seated axis at origin.
 
     Slide is applied once here, including the upstream grid's ramp flip.
+    Up/down/left/right spin 0/180/+90/-90 in the slot frame (about the
+    consumer face normal). Upstream :467's left/right signs reverse through
+    the BOTTOM attachment at :484; the author meshes verify this mapping.
     Excess thickness extends outside the face (-Y); excess length extends
     the on-ramp end. ``snap`` is a deprecated left/none alias for ``nubs``.
     """
@@ -295,65 +310,3 @@ def onramp_location(x: float, z: float, *, slide: str = 'up',
     flip = (slide in ('right', 'down')) ^ entryramp_flip
     shift = c.ONRAMP_SHIFT if flip else -c.ONRAMP_SHIFT
     return seat_location(x, z, slide=slide) * Pos(shift, -c.MOVE_DISTANCE, 0)
-
-
-def vase_body(*, linewidth: float = c.VASE_LINEWIDTH,
-              overhang_angle: float = c.VASE_OVERHANG_ANGLE,
-              nubs: str = 'left',
-              clearance=(c.SIDE_CLEARANCE, c.DEPTH_CLEARANCE)) -> Part:
-    """Positive ``ocvase_body`` in the author's slot frame, bed normal +Z.
-
-    Two walls for integration into a vase plate; not a standalone print.
-    Worst load pulls the connector off the plate, across the dovetail walls.
-    Profile, turtle path, mirrored copy, locks and trim follow upstream
-    openconnect_lib.scad:136-148,342-370. All mating edges are spec geometry.
-    """
-    nubs = _nubs(nubs, None)
-    if not isfinite(linewidth) or linewidth <= 0:
-        raise ValueError('linewidth must be finite and positive')
-    if not isfinite(overhang_angle) or not 0 < overhang_angle < 90:
-        raise ValueError('overhang_angle must be between 0 and 90 degrees')
-    cs, cd = clearance
-    if not (0 <= cs <= 0.5 and 0 <= cd <= 0.5):
-        raise ValueError('clearance must be (side, depth) within 0..0.5 mm')
-    mid = c.HEAD_MIDDLE_HEIGHT
-    wall = 2 * linewidth
-    bottom = c.HEAD_BOTTOM_HEIGHT + c.half_angle_share(cs) + cd
-    total = pocket_depth(clearance)
-    vase_bottom = bottom + c.half_angle_share(wall)
-    if vase_bottom >= total:
-        raise ValueError('linewidth leaves no vase taper at this clearance')
-    profile = [(0, 0), (0, vase_bottom)]
-    if total - vase_bottom > mid:
-        profile.append((mid, vase_bottom + mid))
-    profile += [(min(mid, total - vase_bottom), total), (mid + wall, total),
-                (mid + wall, bottom + mid), (wall, bottom), (wall, 0)]
-    width = c.HEAD_WIDTH + 2 * cs
-    height = c.HEAD_HEIGHT + 2 * cs
-    ch = c.HEAD_CHAMFER + cs - c.half_angle_share(cs)
-    extra = tan(radians(overhang_angle)) * total
-    radius = wall * _SQ2
-    corner_offset = c.half_angle_share(radius - wall)
-    x = wall + width / 2
-    y = -(height - width / 2 - c.BACK_POS_OFFSET + extra)
-    straight = extra + height - ch - corner_offset
-    p0 = Vector(x, y, 0)
-    p1 = Vector(x, y + straight, 0)
-    pm = Vector(x - radius + radius * cos(radians(22.5)),
-                y + straight + radius * sin(radians(22.5)), 0)
-    p2 = Vector(x - radius + radius / _SQ2, y + straight + radius / _SQ2, 0)
-    p3 = p2 + Vector(-ch, ch, 0)
-    path = Wire([Line(p0, p1), ThreePointArc(p1, pm, p2), Line(p2, p3)])
-    face = Face(Wire.make_polygon([Vector(x - u, y, z) for u, z in profile], close=True))
-    right = Solid.sweep(face, path)
-    body = right + right.mirror(Plane.YZ)
-    if nubs in ('left', 'both'):
-        body += _lock(-width / 2, 1, bottom, True)
-        body -= _lock(-width / 2 - wall - c.EPS, 1, vase_bottom, True)
-    if nubs in ('right', 'both'):
-        body += _lock(width / 2, -1, bottom, True)
-        body -= _lock(width / 2 + wall + c.EPS, -1, vase_bottom, True)
-    trim = (Pos(0, y, 0) * Rot(90 - overhang_angle, 0, 0)
-            * Box(c.TILE_SIZE, c.VASE_TRIM_LENGTH, total * 2,
-                  align=(Align.CENTER, Align.MIN, Align.MIN)))
-    return body - trim
