@@ -736,6 +736,213 @@
           }
         }
       ]
+    },
+    {
+      "slug": "openconnect-plate",
+      "engine": "build123d",
+      "title": "openConnect plate",
+      "blurb": "openConnect by mitufy (CC BY 4.0): a 28 mm grid of locking slots. Print standing with 2.4 mm or more backing; negative slots are CAD tools.",
+      "categoryId": "multiboard",
+      "params": [
+        {
+          "name": "size_unit",
+          "label": "Size units",
+          "kind": "enum",
+          "default": "mm",
+          "choices": [
+            "grid",
+            "mm"
+          ]
+        },
+        {
+          "name": "horizontal_size",
+          "label": "Width (28\u2013280 mm / 1\u201310 grids)",
+          "kind": "number",
+          "default": 84,
+          "min": 1,
+          "max": 280,
+          "step": 1
+        },
+        {
+          "name": "vertical_size",
+          "label": "Height (28\u2013280 mm / 1\u201310 grids)",
+          "kind": "number",
+          "default": 56,
+          "min": 1,
+          "max": 280,
+          "step": 1
+        },
+        {
+          "name": "extra_thickness",
+          "label": "Backing (mm; below 2.4 requires another model wall)",
+          "kind": "number",
+          "default": 2.4,
+          "min": 0.5,
+          "max": 6,
+          "step": 0.1
+        },
+        {
+          "name": "corner_rounding",
+          "label": "Upper corners (lower corners always chamfered)",
+          "kind": "enum",
+          "default": "none",
+          "choices": [
+            "none",
+            "chamfer",
+            "fillet"
+          ]
+        },
+        {
+          "name": "corner_rounding_size",
+          "label": "Corner size (mm; up to 2 preserves slot backing)",
+          "kind": "integer",
+          "default": 0,
+          "min": 0,
+          "max": 2,
+          "step": 1
+        },
+        {
+          "name": "slot_type",
+          "label": "Slot / negative CAD tool",
+          "kind": "enum",
+          "default": "slot",
+          "choices": [
+            "slot",
+            "negslot"
+          ]
+        },
+        {
+          "name": "lock",
+          "label": "Lock distribution",
+          "kind": "enum",
+          "default": "corners",
+          "choices": [
+            "corners",
+            "all",
+            "staggered",
+            "top-corners",
+            "none"
+          ]
+        },
+        {
+          "name": "position",
+          "label": "Slot positions",
+          "kind": "enum",
+          "default": "all",
+          "choices": [
+            "all",
+            "staggered",
+            "edge-rows",
+            "edge-columns",
+            "corners"
+          ]
+        },
+        {
+          "name": "slide",
+          "label": "Slide direction",
+          "kind": "enum",
+          "default": "up",
+          "choices": [
+            "up",
+            "down",
+            "left",
+            "right"
+          ]
+        },
+        {
+          "name": "entryramp_flip",
+          "label": "Flip entry ramp",
+          "kind": "boolean",
+          "default": false
+        },
+        {
+          "name": "horizontal_alignment",
+          "kind": "enum",
+          "default": "center",
+          "choices": [
+            "center",
+            "left",
+            "right"
+          ]
+        },
+        {
+          "name": "vertical_alignment",
+          "kind": "enum",
+          "default": "center",
+          "choices": [
+            "center",
+            "top",
+            "bottom"
+          ]
+        },
+        {
+          "name": "horizontal_offset",
+          "label": "Horizontal slot offset (mm)",
+          "kind": "number",
+          "default": 0,
+          "min": -10,
+          "max": 10,
+          "step": 0.1
+        },
+        {
+          "name": "vertical_offset",
+          "label": "Vertical slot offset (mm)",
+          "kind": "number",
+          "default": 0,
+          "min": -10,
+          "max": 10,
+          "step": 0.1
+        },
+        {
+          "name": "side_clearance",
+          "kind": "number",
+          "default": 0.1,
+          "min": 0,
+          "max": 0.5,
+          "step": 0.01
+        },
+        {
+          "name": "depth_clearance",
+          "kind": "number",
+          "default": 0.1,
+          "min": 0,
+          "max": 0.5,
+          "step": 0.01
+        },
+        {
+          "name": "edge_feature",
+          "kind": "enum",
+          "default": "both",
+          "choices": [
+            "both",
+            "top",
+            "side",
+            "none"
+          ]
+        }
+      ],
+      "presets": [
+        {
+          "id": "default",
+          "label": "84 \u00d7 56 mm, corner locks",
+          "values": {}
+        },
+        {
+          "id": "one-tile",
+          "label": "One tile",
+          "values": {
+            "horizontal_size": 28,
+            "vertical_size": 28
+          }
+        },
+        {
+          "id": "negslot",
+          "label": "Negative slots (CAD tool)",
+          "values": {
+            "slot_type": "negslot"
+          }
+        }
+      ]
     }
   ]
 }

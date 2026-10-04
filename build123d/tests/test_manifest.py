@@ -386,3 +386,13 @@ def test_resolve_values_rejects_unknown_and_out_of_range():
         "slot_count": 1, "slot_travel": 28.0, "snap_notches": True,
         "plate_margin": 3.0,
     }
+
+
+def test_openconnect_plate_app_contract():
+    model = next(m for m in build_manifest()['models'] if m['slug'] == 'openconnect-plate')
+    assert model['categoryId'] == 'multiboard'
+    assert [p['id'] for p in model['presets']] == ['default', 'one-tile', 'negslot']
+    params = {p['name']: p for p in model['params']}
+    assert params['slot_type']['choices'] == ['slot', 'negslot']
+    assert params['extra_thickness']['default'] == 2.4
+    assert params['extra_thickness']['min'] == 0.5
