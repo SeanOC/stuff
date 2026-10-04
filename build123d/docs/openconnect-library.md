@@ -20,24 +20,45 @@ renders of the author's own modules (see Verification).
 ```python
 from openconnect import slot_cutter, head, seat_location, onramp_location, POCKET_DEPTH
 
-negative = slot_cutter(snap=True, clearance=(0.10, 0.10))
+negative = slot_cutter(nubs='left', clearance=(0.10, 0.10))
 plate -= Pos(x, 0, z) * negative            # (x, z) = an openGrid tile centre
 seated = seat_location(x, z) * head()       # contract fixture only
 entry = onramp_location(x, z) * head()
 ```
 
-`slot_cutter(*, snap=True, clearance=(side, depth))` returns the negative for
-one slot. `snap` keeps the author's left-hand lock nub; `snap=False` drops it
-(the slot then has no detent). The clearances are the author's
-`slot_side_clearance` / `slot_depth_clearance`, default 0.10 / 0.10, each
-limited to 0–0.5 mm. The rest of the slot (head profile, travel, on-ramp,
-lip widening) is fixed by the cited constants and is not a parameter.
+`slot_cutter(*, nubs=None, snap=None, clearance=(0.10, 0.10),
+entryramp_flip=False, edge_feature='both', slide='up',
+excess_thickness=EPS, excess_length=0.0)` returns one slot negative.
+
+- `nubs`: `left` (default), `right`, `both`, or `none`, naming the author's
+  lock sides before ramp flip and slide. The deprecated `snap=True/False`
+  alias maps to `left/none`, warns, and rejects conflicting `nubs` values.
+- `entryramp_flip`: mirrors the slot across its X axis, including the locks.
+- `edge_feature`: `both` (default), `top`, `side`, or `none` controls the
+  author's bridge/cliff widening; the 0.8 mm bridge and 0.6 mm wall minima
+  remain fixed, cited constants.
+- `slide`: `up/down/left/right` rotates the slot and head frames by
+  **0/180/+90/−90°** about the consumer face normal `(0,−1,0)`.
+  `lib/openconnect_lib.scad:467` supplies the grid spin, but the `BOTTOM`
+  attachment at `:484` reverses the left/right sense in world coordinates.
+  Committed author grid meshes verify these signs. The effective ramp flip
+  is `(slide in ('right', 'down')) xor entryramp_flip` (`:468`).
+  Rotation happens **once, on the cutter**; grid consumers pass `slide`
+  through and use `seat_location(x, z, slide=...)` and
+  `onramp_location(x, z, slide=..., entryramp_flip=...)` without rotating again.
+- `excess_thickness`: finite, nonnegative extension outside the face, default
+  `EPS` (0.005 mm), so the cutter starts at Y=−EPS. `excess_length` extends
+  the on-ramp end, default zero. Both follow the upstream through-cut CSG.
+- `clearance`: the author's side/depth clearances, default 0.10/0.10 mm,
+  each limited to 0–0.5 mm. Head profile and travel remain fixed.
+
+Vase bodies are deferred to OC1b (`pst-isd4c`); this API only supplies slots.
 
 **Datum.** This is the multibuild consumer frame: the back (wall-facing) face is
 Y=0, material is at +Y, and the pocket runs Y=0..2.7 (`POCKET_DEPTH`, the 2.6
 head plus 0.1 depth clearance). The origin is the seated connector axis,
 which must sit on an openGrid **tile centre**. Pitch is 28 mm, and nothing
-assumes 25. The negative stays inside the 28 × 28 tile around the origin:
+assumes 25. With default options the negative stays inside the 28 × 28 tile around the origin:
 X −13.0..+8.6, Z −13.2..+9.0.
 
 - **Seat:** the head at the origin. The pocket end above it (+Z) is
@@ -56,7 +77,8 @@ flush with Y=0, and its flange is 0.1 mm off the pocket floor.
 
 Mounts declare `openconnect-slot` and provide
 `mount_fixtures(mount_type, values) -> MountFixtures` with `cutters`,
-`seat_locs`, `onramp_locs`, entry axis `(0,0,1)` and face normal `(0,-1,0)`.
+`seat_locs`, `onramp_locs`, entry axis `(0,0,1)` for up, `(0,0,-1)` for down, `(-1,0,0)` for left,
+`(1,0,0)` for right, and face normal `(0,-1,0)`.
 `openconnect/demo_plate.py` is a minimal example.
 
 **Plate thickness rule.** Backing must be at least 2.4 mm behind the 2.7 mm
@@ -118,6 +140,20 @@ exact commands, `-D` overrides, versions and sha256 values:
 - `openconnect_plate_one_slot.stl`: the author's `openconnect_plate.scad`
   for one 28 × 28 tile (shipped defaults otherwise).
 - `openconnect_head.stl`: the author's `openconnect_head()`.
+- `openconnect_nubs_{right,both,none}.stl`, `openconnect_flip.stl`, and
+  `openconnect_edge_{top,side,none}.stl`: one-tile plate option renders.
+- `openconnect_slide_{down,left,right}.stl` and
+  `openconnect_excess_{thickness,length}.stl`: upstream grid negatives
+  rendered by the committed wrappers (1.0 mm thickness / 5.0 mm length).
+
+The slot taper uses explicit planar hull faces. A ruled loft can give the
+same analytic volume but leave inconsistent STL trim edges when one cutter
+is reused at several locations; the demo's watertight-export test covers this.
+The head fixture retains its original construction.
+
+All twelve option cases use the same bidirectional 0.01 mm surface bound
+and volume comparison. Defaults retain the existing plate geometry and
+recorded spool-cradle preset volumes; STL byte order is not an invariant.
 
 `tests/test_openconnect.py` rebuilds the same plate from `slot_body()` and
 compares surfaces in both directions. The bound is 0.01 mm, ten times tighter

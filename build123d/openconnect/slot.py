@@ -18,9 +18,10 @@ committed renders of the author's own plate and head.
 
 Adapted from openConnect by mitufy, licensed CC BY 4.0.
 """
-from math import cos, radians, sin, sqrt, tan
+from math import cos, isfinite, radians, sin, sqrt, tan
+import warnings
 
-from build123d import (Align, Box, Face, Line, Part, Pos, Rot, Solid, ThreePointArc,
+from build123d import (Align, Box, Face, Line, Part, Plane, Pos, Rot, Shell, Solid, ThreePointArc,
                        Vector, Wire)
 
 from . import constants as c
@@ -110,12 +111,24 @@ def _lock(base_x, inward, bottom_h, taper_in) -> Part:
     return lower + upper
 
 
-def _stack(bottom, top, bottom_h, top_h, top_extra=0.0) -> Part:
+def _stack(bottom, top, bottom_h, top_h, top_extra=0.0, *, planar=False) -> Part:
     """Flange band, ruled 45° taper (the SCAD hull), neck band."""
     mid = c.HEAD_MIDDLE_HEIGHT
     flange = Solid.extrude(_poly(bottom), Vector(0, 0, bottom_h))
-    taper = Solid.make_loft([_poly(bottom, bottom_h).outer_wire(),
-                             _poly(top, bottom_h + mid).outer_wire()], ruled=True)
+    if planar:
+        # The slot's SCAD hull has planar walls. A ruled loft instead emits
+        # spline surfaces whose shared trim edges tessellate inconsistently
+        # when one EPS-extended cutter is reused across a multi-slot plate.
+        lo = [(x, y, bottom_h) for x, y in bottom]
+        hi = [(x, y, bottom_h + mid) for x, y in top]
+        loops = [lo, hi]
+        for i in range(len(lo)):
+            j = (i + 1) % len(lo)
+            loops.append([lo[i], lo[j], hi[j], hi[i]])
+        taper = Solid(Shell([Face(Wire.make_polygon(v, close=True)) for v in loops]))
+    else:
+        taper = Solid.make_loft([_poly(bottom, bottom_h).outer_wire(),
+                                 _poly(top, bottom_h + mid).outer_wire()], ruled=True)
     neck = Solid.extrude(_poly(top, bottom_h + mid), Vector(0, 0, top_h + top_extra))
     return flange + taper + neck
 
@@ -141,12 +154,42 @@ def head(*, nubs: bool = True) -> Part:
     return part
 
 
-def slot_body(*, snap: bool = True, clearance=(c.SIDE_CLEARANCE, c.DEPTH_CLEARANCE),
-              excess: float = 0.0) -> Part:
-    """The negative in the SCAD slot frame (``ocslot_body`` for one
-    ``slot_position="All"`` tile, ``edge_feature="Both"``, entry ramp not
-    flipped, lock on the left when ``snap``). ``excess`` extends the mouth
-    side past the face, as the SCAD's ``excess_thickness``."""
+def _nubs(nubs, snap):
+    if snap is not None:
+        warnings.warn("snap is deprecated; use nubs='left' or 'none'",
+                      DeprecationWarning, stacklevel=3)
+        alias = 'left' if snap else 'none'
+        if nubs is not None and nubs != alias:
+            raise ValueError('snap and nubs disagree')
+        nubs = alias
+    nubs = 'left' if nubs is None else nubs
+    if nubs not in ('left', 'right', 'both', 'none'):
+        raise ValueError('nubs must be left, right, both or none')
+    return nubs
+
+
+def _slide(slide):
+    try:
+        return {'up': c.SLIDE_UP, 'down': c.SLIDE_DOWN,
+                'left': c.SLIDE_LEFT, 'right': c.SLIDE_RIGHT}[slide]
+    except (KeyError, TypeError):
+        raise ValueError('slide must be up, down, left or right') from None
+
+
+def slot_body(*, snap: bool | None = None, nubs: str | None = None,
+              clearance=(c.SIDE_CLEARANCE, c.DEPTH_CLEARANCE), excess: float = 0.0,
+              excess_length: float = 0.0, entryramp_flip: bool = False,
+              edge_feature: str = 'both') -> Part:
+    """Single tile negative in the author's XY slot frame (mouth at +Z).
+
+    ``excess`` is the historical name for excess_thickness; the consumer API
+    uses the upstream name. The grid's tile clipping is applied after flip.
+    """
+    nubs = _nubs(nubs, snap)
+    if edge_feature not in ('both', 'top', 'side', 'none'):
+        raise ValueError('edge_feature must be both, top, side or none')
+    if any(not isfinite(v) or v < 0 for v in (excess, excess_length)):
+        raise ValueError('excess dimensions must be finite and nonnegative')
     cs, cd = clearance
     mid, move, ramp_cl = c.HEAD_MIDDLE_HEIGHT, c.MOVE_DISTANCE, c.ONRAMP_CLEARANCE
     bpo = c.BACK_POS_OFFSET
@@ -163,12 +206,14 @@ def slot_body(*, snap: bool = True, clearance=(c.SIDE_CLEARANCE, c.DEPTH_CLEARAN
     # 1. Seat: head-shaped pocket, minus the lock nub (plate material).
     bottom = _chamfered_rect(w, h, w / 2 + bpo, ch, ch)
     top = _chamfered_rect(sw, sh, sw / 2 + bpo, sch, sch)
-    seat = _stack(bottom, top, bottom_h, top_h, excess)
-    if snap:
+    seat = _stack(bottom, top, bottom_h, top_h, excess, planar=True)
+    if nubs in ('left', 'both'):
         seat -= _lock(-w / 2 - c.EPS, 1, bottom_h, True)
+    if nubs in ('right', 'both'):
+        seat -= _lock(w / 2 + c.EPS, -1, bottom_h, False)
 
     # 2. Slide channel: the dovetail section swept from the seat to the ramp.
-    run = move + ramp_cl + bpo
+    run = move + ramp_cl + bpo + excess_length
     y0 = bpo - mid_to_bottom
     section = [(-w / 2, 0), (w / 2, 0), (w / 2, bottom_h), (sw / 2, bottom_h + mid),
                (sw / 2, total + excess), (-sw / 2, total + excess),
@@ -178,22 +223,22 @@ def slot_body(*, snap: bool = True, clearance=(c.SIDE_CLEARANCE, c.DEPTH_CLEARAN
 
     # 3. Bridge widening (edge_feature "Both"): mouth-width prism over the
     #    taper and neck, widened so the lip's bridges and walls stay printable.
-    top_bridge = max(0.0, c.EDGE_BRIDGE_MIN_W - top_h)
-    side_bridge = top_bridge
-    side_cliff = max(0.0, c.EDGE_WALL_MIN_W - top_h)
+    top_bridge = max(0.0, c.EDGE_BRIDGE_MIN_W - top_h) if edge_feature in ('both', 'top') else 0
+    side_bridge = max(0.0, c.EDGE_BRIDGE_MIN_W - top_h) if edge_feature in ('both', 'side') else 0
+    side_cliff = max(0.0, c.EDGE_WALL_MIN_W - top_h) if edge_feature in ('both', 'side') else 0
     bridge = _chamfered_rect(
         sw + side_bridge + side_cliff, sh + move + ramp_cl + top_bridge,
         sw / 2 + bpo + top_bridge,
         sch + top_bridge + side_bridge, sch + top_bridge + side_cliff,
         x_shift=side_bridge / 2 - side_cliff / 2)
-    bridge_prism = Solid.extrude(_poly(bridge, bottom_h), Vector(0, 0, top_h + mid + excess))
+    bridge_prism = Solid.extrude(_poly(bridge, bottom_h), Vector(0, 0, top_h + mid + min(excess, c.EPS)))
 
     # 4. On-ramp: flange outline plus a 45° roof continuing its chamfers,
     #    offset by the ramp clearance; leans -X by the taper height going up.
     # The roof's flanks are collinear with the chamfers, so its base corners
     # are not vertices of the outline.
     roof_top = w - 2 * ch - 2 * c.ONRAMP_ROOF_HEIGHT
-    outline = [(-w / 2, -h), (w / 2, -h), (w / 2, -ch),
+    outline = [(-w / 2, -h - excess_length), (w / 2, -h - excess_length), (w / 2, -ch),
                (roof_top / 2, c.ONRAMP_ROOF_HEIGHT), (-roof_top / 2, c.ONRAMP_ROOF_HEIGHT),
                (-w / 2, -ch)]
     dx, dy = -c.ONRAMP_SHIFT, w / 2 + bpo - move
@@ -208,39 +253,60 @@ def slot_body(*, snap: bool = True, clearance=(c.SIDE_CLEARANCE, c.DEPTH_CLEARAN
         body += Pos(0, -sch, 0) * Box(sw, sh, total + excess,
                                       align=(Align.CENTER, Align.CENTER, Align.MIN))
     tile = c.TILE_SIZE
-    # Keep a minimum wall at the tile's -Y edge, then clip to the tile.
-    body -= Pos(0, -tile / 2, 0) * Box(tile, c.EDGE_WALL_MIN_W, total + excess + 1,
-                                        align=(Align.CENTER, Align.MIN, Align.MIN))
-    body &= Box(tile, tile, total + excess, align=(Align.CENTER, Align.CENTER, Align.MIN))
+    # openconnect_slot:403-405; grid clip at :471-475.
+    if c.EDGE_WALL_MIN_W > excess_length:
+        body -= Pos(0, -tile / 2, 0) * Box(
+            tile, c.EDGE_WALL_MIN_W, total + excess + c.EPS,
+            align=(Align.CENTER, Align.MIN, Align.MIN))
+    if entryramp_flip:
+        body = body.mirror(Plane.YZ)
+    body &= Pos(0, -excess_length / 2, 0) * Box(
+        tile, tile + excess_length, total + excess,
+        align=(Align.CENTER, Align.CENTER, Align.MIN))
     return body
+
 
 
 def pocket_depth(clearance=(c.SIDE_CLEARANCE, c.DEPTH_CLEARANCE)) -> float:
     return c.HEAD_DEPTH + clearance[1]
 
 
-def slot_cutter(*, snap: bool = True, clearance=(c.SIDE_CLEARANCE, c.DEPTH_CLEARANCE)) -> Part:
-    """openConnect slot negative in the consumer frame: back face Y=0,
-    material +Y, pocket Y=0..2.7 (default clearance). The seated head sits on
-    the origin (the board tile centre); its on-ramp opens on the back face
-    10.6 mm below (-Z); the seat end is closed above (+Z). The cutter stays
-    inside the 28 x 28 tile around the origin."""
+def slot_cutter(*, snap: bool | None = None, nubs: str | None = None,
+                clearance=(c.SIDE_CLEARANCE, c.DEPTH_CLEARANCE),
+                entryramp_flip: bool = False, edge_feature: str = 'both',
+                slide: str = 'up', excess_thickness: float = c.EPS,
+                excess_length: float = 0.0) -> Part:
+    """Slot negative at back face Y=0, material +Y, seated axis at origin.
+
+    Slide is applied once here, including the upstream grid's ramp flip.
+    Up/down/left/right spin 0/180/+90/-90 in the slot frame (about the
+    consumer face normal). Upstream :467's left/right signs reverse through
+    the BOTTOM attachment at :484; the author meshes verify this mapping.
+    Excess thickness extends outside the face (-Y); excess length extends
+    the on-ramp end. ``snap`` is a deprecated left/none alias for ``nubs``.
+    """
     side, depth = clearance
     if not (0 <= side <= 0.5 and 0 <= depth <= 0.5):
         raise ValueError('clearance must be (side, depth) within 0..0.5 mm')
-    return _consumer(slot_body(snap=snap, clearance=clearance), pocket_depth(clearance))
+    spin = _slide(slide)
+    flip = (slide in ('right', 'down')) ^ entryramp_flip
+    body = slot_body(nubs=_nubs(nubs, snap), clearance=clearance,
+                     excess=excess_thickness, excess_length=excess_length,
+                     entryramp_flip=flip, edge_feature=edge_feature)
+    return _consumer(Rot(0, 0, spin) * body, pocket_depth(clearance))
 
 
 POCKET_DEPTH = pocket_depth()
 
 
-def seat_location(x: float, z: float):
-    """``seat_location(x, z) * head()`` is a head seated in a slot whose
-    cutter was placed at ``Pos(x, 0, z)``; the head's top is flush with Y=0."""
-    return Pos(x, c.HEAD_DEPTH, z) * Rot(90, 0, 0)
+def seat_location(x: float, z: float, *, slide: str = 'up'):
+    """Place the head fixture at the seat, rotated with the cutter."""
+    return Pos(x, c.HEAD_DEPTH, z) * Rot(90, 0, 0) * Rot(0, 0, _slide(slide))
 
 
-def onramp_location(x: float, z: float):
-    """The same head fully pushed into that slot's on-ramp: 2.2 mm to -X and
-    10.6 mm below the seat. From here it moves +X onto the axis, then +Z."""
-    return Pos(x - c.ONRAMP_SHIFT, c.HEAD_DEPTH, z - c.MOVE_DISTANCE) * Rot(90, 0, 0)
+def onramp_location(x: float, z: float, *, slide: str = 'up',
+                    entryramp_flip: bool = False):
+    """Place the inserted head at the direction/flip-adjusted on-ramp."""
+    flip = (slide in ('right', 'down')) ^ entryramp_flip
+    shift = c.ONRAMP_SHIFT if flip else -c.ONRAMP_SHIFT
+    return seat_location(x, z, slide=slide) * Pos(shift, -c.MOVE_DISTANCE, 0)
