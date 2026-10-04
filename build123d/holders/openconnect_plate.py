@@ -94,6 +94,21 @@ def build(values=None, *, reference=False):
     fx = _fixtures(v)
     if v['slot_type'] == 'negslot':
         return Compound(children=fx.cutters)
+    if not reference and v['extra_thickness'] >= 2.4:
+        # The approved thin border is at the author's exact grid edge only.
+        # A moved border needs 0.9 mm of wall plus the outer edge relief.
+        _, w, h, *_ = dimensions(v)
+        for p, cutter in zip(placements(v), fx.cutters):
+            bb = cutter.bounding_box()
+            grid_gap, wall = {
+                'up': (p.z-TILE_SIZE/2, bb.min.Z),
+                'down': (h-p.z-TILE_SIZE/2, h-bb.max.Z),
+                'left': (w/2-p.x-TILE_SIZE/2, w/2-bb.max.X),
+                'right': (w/2+p.x-TILE_SIZE/2, w/2+bb.min.X),
+            }[v['slide']]
+            if grid_gap > 1e-7 and wall < 0.9+BED_CHAMFER-1e-7:
+                raise ValueError('offset on-ramp border must be at least 1.3 mm including edge relief; '
+                                 'align to the grid edge or increase the margin')
     part = plate_body(v, bed_chamfer=not reference)
     for cutter in fx.cutters:
         part -= cutter

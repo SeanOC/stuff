@@ -133,6 +133,9 @@ is `openconnect-plate`, in the existing **multiboard** category. Presets:
 Size is in whole grids or millimetres; physical width/height are 28–280 mm.
 Millimetre dimensions floor to whole grid counts, then center/edge alignment
 and offsets position the grid. Offsets must keep complete tiles in the plate.
+A standalone plate also rejects a moved on-ramp border below 1.3 mm
+(0.9 mm wall plus 0.4 mm edge relief): the approved thin-strip exception
+applies only at the exact author grid edge.
 Backing defaults to 2.4 mm; **0.5–2.3 mm requires another model's wall and is
 not standalone-printable**. Thickness follows the actual clearance-adjusted
 pocket depth plus backing (5.1 mm at defaults). Profiles, pitch and travel

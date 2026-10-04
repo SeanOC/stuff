@@ -226,3 +226,18 @@ def test_maximum_clearance_retains_after_initial_free_play():
     assert _residual_vol(part, Pos(0, -.5, 0) * seated) < 1e-6
     for pull in (1, 2):
         assert _residual_vol(part, Pos(0, -pull, 0) * seated) > 1
+
+
+@pytest.mark.parametrize('slide,dimension', [('up','vertical_size'), ('down','vertical_size'),
+                                          ('left','horizontal_size'), ('right','horizontal_size')])
+def test_near_edge_offsets_cannot_hide_a_thin_border(slide, dimension):
+    values = {'slide':slide, dimension:56.1}
+    for size in (56.1, 56.2, 56.8):
+        with pytest.raises(ValueError, match='on-ramp border'):
+            m.build(dict(values, **{dimension:size}))
+    with pytest.raises(ValueError, match='on-ramp border'):
+        m.build(dict(values, **{dimension:57}, side_clearance=.5))
+    # Exact author edge is the approved exception; a 1 mm size remainder
+    # gives 1.3 mm border: 0.9 mm wall plus the 0.4 mm exterior edge relief.
+    for size in (56,57):
+        assert m.build(dict(values, **{dimension:size})).is_valid
