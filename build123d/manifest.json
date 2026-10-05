@@ -560,6 +560,17 @@
           "filename": true
         },
         {
+          "name": "oc_lock_distribution",
+          "label": "Lock nubs (openConnect only)",
+          "kind": "enum",
+          "default": "corners",
+          "choices": [
+            "corners",
+            "staggered",
+            "none"
+          ]
+        },
+        {
           "name": "label_holder",
           "label": "Label card holder (spool width >= 63.4 mm; swap the card with the spool out)",
           "kind": "boolean",
