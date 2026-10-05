@@ -25,6 +25,7 @@ own weight on the lip; the rails retain it in +Y.
 from __future__ import annotations
 
 import math
+from dataclasses import replace
 from build123d import (Align, Axis, Box, BuildSketch, Cone, Edge, Face, Kind, Plane, Polygon, Pos, Rot, Solid,
                        Vector, Wire, extrude)
 from build123d import fillet as fillet_2d, offset as offset_2d
@@ -36,7 +37,8 @@ from multibuild.constants import PITCH
 from multibuild import fixpoint as fp
 from multibuild.multiconnect import POCKET_DEPTH, channel_cutter
 from openconnect import constants as oc
-from openconnect.slot import POCKET_DEPTH as OC_POCKET_DEPTH, onramp_location, seat_location, slot_cutter
+from openconnect import grid as oc_grid
+from openconnect.slot import POCKET_DEPTH as OC_POCKET_DEPTH
 
 MOUNT = 'multibuild-multiconnect-channel'
 OC_MOUNT = 'openconnect-slot'
@@ -78,6 +80,9 @@ PARAMS = tuple(Param(name, 'number', default, min=lo, max=hi, step=step,
     )) + (Param('mount_style', 'enum', 'channel',
                 choices=('channel', 'points', 'openconnect'), label='Mount style',
                 filename=True),
+           Param('oc_lock_distribution', 'enum', 'corners',
+                 choices=('corners', 'staggered', 'none'),
+                 label='Lock nubs (openConnect only)'),
            Param('label_holder', 'boolean', True,
                  label=f'Label card holder (spool width >= {HOLDER_MIN_PANEL_W:g} mm; '
                        'swap the card with the spool out)'))
@@ -499,14 +504,21 @@ def mount_fixtures(mount_type, values):
     if p['mount_style'] == 'openconnect':
         # Both columns on adjacent tile centres; every slot has the same
         # on-ramp offset, so one push-in, shift and downward slide seats all.
-        slots = [(x, z) for z in p['seat_rows'] for x in (-p['pitch']/2, p['pitch']/2)]
-        cutter = slot_cutter()
-        return MountFixtures(
-            cutters=[Pos(x, 0, z)*cutter for x, z in slots],
-            seat_locs=[seat_location(x, z) for x, z in slots],
-            onramp_locs=[onramp_location(x, z) for x, z in slots],
-            entry_axis=(0, 0, 1), face_normal=(0, -1, 0),
-        )
+        lower, upper = p['seat_rows']
+        tiles = round((upper-lower)/oc.TILE_SIZE)
+        lock = p['oc_lock_distribution']
+        slots = oc_grid.layout(2, tiles+1, position='corners',
+                               lock='none' if lock == 'none' else 'corners', slide='up')
+        if lock == 'staggered':
+            # Diagonal of the populated rows, independent of lattice parity:
+            # left/lower and right/upper keep their nubs.
+            slots = [replace(s, nubs='none') if s.x*s.z < 0 else s for s in slots]
+        slots.sort(key=lambda s: (s.z, s.x))  # Preserve the original fixture order.
+        fx = oc_grid.fixtures(slots)
+        shift = Pos(0, 0, (upper+lower)/2)
+        return replace(fx, cutters=[shift*c for c in fx.cutters],
+                       seat_locs=[shift*s for s in fx.seat_locs],
+                       onramp_locs=[shift*r for r in fx.onramp_locs])
     if p['mount_style'] == 'points':
         # Lip end up: lowering the holder onto the board's Fix Points carries
         # each head from its well up under its lip.

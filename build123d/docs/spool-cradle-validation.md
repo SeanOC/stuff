@@ -1018,6 +1018,8 @@ The land removes the knife from both caps, about 6.6 mm³ per side.
 
 ## openConnect rows spread top and bottom (pst-fmvzb)
 
+openConnect grid adoption (OC3, pst-2z269): `oc_lock_distribution` defaults to `corners` (all four populated slots retain their nubs and preset volumes stay unchanged); `staggered` keeps the left-lower/right-upper diagonal at either row spacing, and `none` removes the nubs while retaining the dovetail pocket.
+
 Operator request (2026-10-01): the four openConnect slots sit two at the top
 and two at the bottom of the plate. The upper row is unchanged. The lower
 row drops from one tile below it to the lowest 28 mm grid row whose on-ramp

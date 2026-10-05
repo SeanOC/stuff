@@ -19,7 +19,8 @@ from multibuild.constants import PITCH, large_hole_center, small_hole_center
 from multibuild import fixpoint as fp
 from multibuild.multiconnect import POCKET_DEPTH
 from openconnect import constants as oc
-from openconnect.slot import slot_cutter
+from openconnect import grid as oc_grid
+from openconnect.slot import onramp_location, seat_location, slot_cutter
 from scripts.export import export_stl
 from tests.mount_contracts import verify
 from tests import print_audit as pa
@@ -116,6 +117,9 @@ CASES=[(v,'-'.join(f'{k}={x}' for k,x in v.items())) for v in ENDPOINTS if v not
 CASES += [({STYLE.name:v},f'{STYLE.name}={v}') for v in STYLE.choices]
 CASES += [({**v,'mount_style':'openconnect'},f'openconnect-{k}={x}')
           for v in ENDPOINTS for k,x in v.items() if k.startswith('plate_')]
+CASES += [({'mount_style':'openconnect', 'oc_lock_distribution':lock,
+            'spool_diameter':diameter}, f'openconnect-{lock}-d{diameter}')
+          for lock in ('staggered', 'none') for diameter in (190, 200)]
 CASES += [({'spool_width':70,'plate_width':68,'flange_rim_width':1.5,
             'flange_height':4,'spool_diameter':205,'cradle_angle':25,'lip_height':0},
            'narrow-plate-wide-spool')]
@@ -877,6 +881,51 @@ def test_openconnect_lower_row_floor_guard():
     with pytest.raises(ValueError, match=r"mount_style='openconnect' needs root_height > 28 mm "
                                          r'\(53.10 mm slot span\); grid length is 28 mm'):
         oc_seats(28, 2.4)
+
+
+@pytest.mark.parametrize('diameter,tiles', [(190, 2), (200, 3)])
+@pytest.mark.parametrize('lock', ['corners', 'staggered', 'none'])
+def test_openconnect_lock_distribution(monkeypatch, diameter, tiles, lock):
+    values = {**OC_PRESETS[0].values, 'spool_diameter': diameter}
+    # Omit the default explicitly to guard the pre-OC3 fixture contract.
+    if lock != 'corners':
+        values['oc_lock_distribution'] = lock
+    p = dimensions(values)
+    lower, upper = p['seat_rows']
+    assert round((upper-lower)/oc.TILE_SIZE) == tiles
+    placements = []
+    original = oc_grid.fixtures
+
+    def capture(slots):
+        placements.extend(slots)
+        return original(slots)
+
+    monkeypatch.setattr(oc_grid, 'fixtures', capture)
+    fx = mount_fixtures(OC_MOUNT, values)
+    expected = [(x, z) for z in (lower, upper) for x in (-14, 14)]
+    nubbed = set(expected) if lock == 'corners' else (
+        {(-14, lower), (14, upper)} if lock == 'staggered' else set())
+    actual = {(s.position.X, round(s.position.Z, 6), slot.nubs, slot.slide)
+              for s, slot in zip(fx.seat_locs, placements)}
+    assert actual == {(x, round(z, 6), 'left' if (x, z) in nubbed else 'none', 'up')
+                      for x, z in expected}
+    assert len(fx.cutters) == len(fx.seat_locs) == len(fx.onramp_locs) == 4
+    assert fx.entry_axis == (0, 0, 1) and fx.face_normal == (0, -1, 0)
+    for (x, z), cutter, seat, ramp in zip(expected, fx.cutters, fx.seat_locs, fx.onramp_locs):
+        # Compare actual geometry, not just the arguments sent to the helper.
+        old = Pos(x, 0, z)*slot_cutter(nubs='left' if (x, z) in nubbed else 'none')
+        assert cutter.volume == pytest.approx(old.volume, abs=1e-6)
+        assert (cutter & old).volume == pytest.approx(old.volume, abs=1e-6)
+        assert tuple(seat.position) == pytest.approx(tuple(seat_location(x, z).position))
+        assert tuple(ramp.position) == pytest.approx(tuple(onramp_location(x, z).position))
+
+
+@pytest.mark.audit
+@pytest.mark.parametrize('lock', ['staggered', 'none'])
+def test_openconnect_optional_nubs_retain_by_dovetail(lock):
+    values = SPEC.resolve_values({**OC_PRESETS[0].values, 'oc_lock_distribution': lock})
+    # Pull-off retention is supplied by the dovetail even without lock nubs.
+    assert verify(SPEC, OC_MOUNT, values)
 
 
 @pytest.fixture(scope='module', params=OC_PRESETS, ids=lambda p: p.id)
