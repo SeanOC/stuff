@@ -1,13 +1,16 @@
 """Pinned QuackWorks snap: external mesh parity and published mating geometry.
 
 References deliberately retain the SCAD's non-manifold nub-root interfaces.
-Only the port must be watertight. No native OpenSCAD or upstream checkout is
-needed to run these tests; assets/opengrid-snap/NOTICE pins the three renders.
+Only the port must be watertight. Ordinary tests need neither native OpenSCAD
+nor an upstream checkout; assets/opengrid-snap/NOTICE pins the three renders.
+The opt-in upstream provenance test fetches the pinned source into memory.
 """
 import hashlib
+import re
 import sys
 from collections import Counter
 from pathlib import Path
+from urllib.request import urlopen
 
 import numpy as np
 import pytest
@@ -53,6 +56,36 @@ def test_reference_hashes_and_constant_provenance():
         assert provenance.status == 'C'
         assert provenance.locator.startswith(
             'https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L')
+
+
+@pytest.mark.upstream
+def test_provenance_values_match_pinned_upstream():
+    # Patch 0001 is line-neutral and preserves these dimensions. Fetch the
+    # pinned original in memory; never commit QuackWorks source as a fixture.
+    source = 'https://raw.githubusercontent.com/AndyLevesque/QuackWorks/6123129/openGrid/opengrid-snap.scad'
+    with urlopen(source, timeout=30) as response:
+        lines = response.read().decode('utf-8').splitlines()
+    directional_args = {
+        'HEIGHT': 'nub_h', 'WIDTH': 'nub_w', 'DEPTH': 'nub_d',
+        'TOP_WEDGE': 'top_wedge_h', 'BOTTOM_WEDGE': 'bot_wedge_h',
+        'ROUND_X': 'r_x', 'ROUND_SCALE': 'r_s', 'ROUND_RADIUS': 'r_r',
+        'BOTTOM_SHIFT': 'b_y',
+    }
+    for name, provenance in c.PROVENANCE.items():
+        match = re.fullmatch(
+            r'https://github\.com/AndyLevesque/QuackWorks/blob/6123129/'
+            r'openGrid/opengrid-snap\.scad#L(\d+)', provenance.locator)
+        assert match, (name, provenance.locator)
+        line = lines[int(match[1]) - 1]
+        assert f'{provenance.value:g}' in line, (name, provenance.locator, line)
+        prefix, _, suffix = name.partition('_')
+        if prefix in {'FRONT', 'REAR'} and suffix in directional_args:
+            # Adjacent top/bottom wedges both use 0.6: the value alone cannot
+            # catch a one-line error, so also bind the defining SCAD argument.
+            argument = directional_args[suffix]
+            value = re.fullmatch(rf'\s*{argument}\s*=\s*([-\d.]+),?\s*', line)
+            assert value, (name, provenance.locator, line)
+            assert float(value[1]) == provenance.value
 
 
 def test_mesh_parity(built):

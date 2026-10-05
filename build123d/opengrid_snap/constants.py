@@ -40,23 +40,23 @@ NUB_ROUND_X = -12.36  # [C] opengrid-snap.scad:67
 NUB_ROUND_SCALE = 1.36  # [C] opengrid-snap.scad:68
 NUB_ROUND_RADIUS = 13.025  # [C] opengrid-snap.scad:69
 BOTTOM_WEDGE_DEPTH = 0.4  # [C] opengrid-snap.scad:30
-FRONT_HEIGHT = 0.0  # [C] opengrid-snap.scad:78
-FRONT_WIDTH = 14.0  # [C] opengrid-snap.scad:79
-FRONT_DEPTH = 0.8  # [C] opengrid-snap.scad:80
-FRONT_TOP_WEDGE = 1.0  # [C] opengrid-snap.scad:81
-FRONT_BOTTOM_WEDGE = 0.4  # [C] opengrid-snap.scad:82
-FRONT_ROUND_X = -11.75  # [C] opengrid-snap.scad:83
-FRONT_ROUND_SCALE = 1.26  # [C] opengrid-snap.scad:84
-FRONT_ROUND_RADIUS = 13.025  # [C] opengrid-snap.scad:85
-FRONT_BOTTOM_SHIFT = -0.4  # [C] opengrid-snap.scad:86
-REAR_HEIGHT = 0.65  # [C] opengrid-snap.scad:92
-REAR_WIDTH = 10.8  # [C] opengrid-snap.scad:93
-REAR_DEPTH = 0.4  # [C] opengrid-snap.scad:94
-REAR_TOP_WEDGE = 0.6  # [C] opengrid-snap.scad:95
-REAR_BOTTOM_WEDGE = 0.6  # [C] opengrid-snap.scad:96
-REAR_ROUND_X = -12.41  # [C] opengrid-snap.scad:97
-REAR_ROUND_SCALE = 1.37  # [C] opengrid-snap.scad:98
-REAR_ROUND_RADIUS = 13.025  # [C] opengrid-snap.scad:99
+FRONT_HEIGHT = 0.0  # [C] opengrid-snap.scad:77
+FRONT_WIDTH = 14.0  # [C] opengrid-snap.scad:78
+FRONT_DEPTH = 0.8  # [C] opengrid-snap.scad:79
+FRONT_TOP_WEDGE = 1.0  # [C] opengrid-snap.scad:80
+FRONT_BOTTOM_WEDGE = 0.4  # [C] opengrid-snap.scad:81
+FRONT_ROUND_X = -11.75  # [C] opengrid-snap.scad:82
+FRONT_ROUND_SCALE = 1.26  # [C] opengrid-snap.scad:83
+FRONT_ROUND_RADIUS = 13.025  # [C] opengrid-snap.scad:84
+FRONT_BOTTOM_SHIFT = -0.4  # [C] opengrid-snap.scad:85
+REAR_HEIGHT = 0.65  # [C] opengrid-snap.scad:91
+REAR_WIDTH = 10.8  # [C] opengrid-snap.scad:92
+REAR_DEPTH = 0.4  # [C] opengrid-snap.scad:93
+REAR_TOP_WEDGE = 0.6  # [C] opengrid-snap.scad:94
+REAR_BOTTOM_WEDGE = 0.6  # [C] opengrid-snap.scad:95
+REAR_ROUND_X = -12.41  # [C] opengrid-snap.scad:96
+REAR_ROUND_SCALE = 1.37  # [C] opengrid-snap.scad:97
+REAR_ROUND_RADIUS = 13.025  # [C] opengrid-snap.scad:98
 CLICK_OFFSET = 1.0  # [C] opengrid-snap.scad:105
 CLICK_DEPTH = 0.6  # [C] opengrid-snap.scad:107
 CLICK_WIDTH = 12.4  # [C] opengrid-snap.scad:107
@@ -124,39 +124,39 @@ PROVENANCE = {
     "BOTTOM_WEDGE_DEPTH": Provenance(BOTTOM_WEDGE_DEPTH, "C", "QuackWorks openGrid/opengrid-snap.scad + patch 0001",
         "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L30"),
     "FRONT_HEIGHT": Provenance(FRONT_HEIGHT, "C", "QuackWorks openGrid/opengrid-snap.scad + patch 0001",
-        "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L78"),
+        "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L77"),
     "FRONT_WIDTH": Provenance(FRONT_WIDTH, "C", "QuackWorks openGrid/opengrid-snap.scad + patch 0001",
-        "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L79"),
+        "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L78"),
     "FRONT_DEPTH": Provenance(FRONT_DEPTH, "C", "QuackWorks openGrid/opengrid-snap.scad + patch 0001",
-        "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L80"),
+        "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L79"),
     "FRONT_TOP_WEDGE": Provenance(FRONT_TOP_WEDGE, "C", "QuackWorks openGrid/opengrid-snap.scad + patch 0001",
-        "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L81"),
+        "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L80"),
     "FRONT_BOTTOM_WEDGE": Provenance(FRONT_BOTTOM_WEDGE, "C", "QuackWorks openGrid/opengrid-snap.scad + patch 0001",
-        "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L82"),
+        "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L81"),
     "FRONT_ROUND_X": Provenance(FRONT_ROUND_X, "C", "QuackWorks openGrid/opengrid-snap.scad + patch 0001",
-        "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L83"),
+        "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L82"),
     "FRONT_ROUND_SCALE": Provenance(FRONT_ROUND_SCALE, "C", "QuackWorks openGrid/opengrid-snap.scad + patch 0001",
-        "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L84"),
+        "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L83"),
     "FRONT_ROUND_RADIUS": Provenance(FRONT_ROUND_RADIUS, "C", "QuackWorks openGrid/opengrid-snap.scad + patch 0001",
-        "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L85"),
+        "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L84"),
     "FRONT_BOTTOM_SHIFT": Provenance(FRONT_BOTTOM_SHIFT, "C", "QuackWorks openGrid/opengrid-snap.scad + patch 0001",
-        "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L86"),
+        "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L85"),
     "REAR_HEIGHT": Provenance(REAR_HEIGHT, "C", "QuackWorks openGrid/opengrid-snap.scad + patch 0001",
-        "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L92"),
+        "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L91"),
     "REAR_WIDTH": Provenance(REAR_WIDTH, "C", "QuackWorks openGrid/opengrid-snap.scad + patch 0001",
-        "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L93"),
+        "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L92"),
     "REAR_DEPTH": Provenance(REAR_DEPTH, "C", "QuackWorks openGrid/opengrid-snap.scad + patch 0001",
-        "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L94"),
+        "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L93"),
     "REAR_TOP_WEDGE": Provenance(REAR_TOP_WEDGE, "C", "QuackWorks openGrid/opengrid-snap.scad + patch 0001",
-        "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L95"),
+        "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L94"),
     "REAR_BOTTOM_WEDGE": Provenance(REAR_BOTTOM_WEDGE, "C", "QuackWorks openGrid/opengrid-snap.scad + patch 0001",
-        "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L96"),
+        "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L95"),
     "REAR_ROUND_X": Provenance(REAR_ROUND_X, "C", "QuackWorks openGrid/opengrid-snap.scad + patch 0001",
-        "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L97"),
+        "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L96"),
     "REAR_ROUND_SCALE": Provenance(REAR_ROUND_SCALE, "C", "QuackWorks openGrid/opengrid-snap.scad + patch 0001",
-        "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L98"),
+        "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L97"),
     "REAR_ROUND_RADIUS": Provenance(REAR_ROUND_RADIUS, "C", "QuackWorks openGrid/opengrid-snap.scad + patch 0001",
-        "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L99"),
+        "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L98"),
     "CLICK_OFFSET": Provenance(CLICK_OFFSET, "C", "QuackWorks openGrid/opengrid-snap.scad + patch 0001",
         "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L105"),
     "CLICK_DEPTH": Provenance(CLICK_DEPTH, "C", "QuackWorks openGrid/opengrid-snap.scad + patch 0001",

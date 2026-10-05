@@ -70,23 +70,23 @@ are BOSL2 corner chamfers with `$fn=2`, not smooth corner fillets.
 | `NUB_ROUND_SCALE` | 1.36 | 68 |
 | `NUB_ROUND_RADIUS` | 13.025 | 69 |
 | `BOTTOM_WEDGE_DEPTH` | 0.4 | 30 |
-| `FRONT_HEIGHT` | 0.0 | 78 |
-| `FRONT_WIDTH` | 14.0 | 79 |
-| `FRONT_DEPTH` | 0.8 | 80 |
-| `FRONT_TOP_WEDGE` | 1.0 | 81 |
-| `FRONT_BOTTOM_WEDGE` | 0.4 | 82 |
-| `FRONT_ROUND_X` | -11.75 | 83 |
-| `FRONT_ROUND_SCALE` | 1.26 | 84 |
-| `FRONT_ROUND_RADIUS` | 13.025 | 85 |
-| `FRONT_BOTTOM_SHIFT` | -0.4 | 86 |
-| `REAR_HEIGHT` | 0.65 | 92 |
-| `REAR_WIDTH` | 10.8 | 93 |
-| `REAR_DEPTH` | 0.4 | 94 |
-| `REAR_TOP_WEDGE` | 0.6 | 95 |
-| `REAR_BOTTOM_WEDGE` | 0.6 | 96 |
-| `REAR_ROUND_X` | -12.41 | 97 |
-| `REAR_ROUND_SCALE` | 1.37 | 98 |
-| `REAR_ROUND_RADIUS` | 13.025 | 99 |
+| `FRONT_HEIGHT` | 0.0 | 77 |
+| `FRONT_WIDTH` | 14.0 | 78 |
+| `FRONT_DEPTH` | 0.8 | 79 |
+| `FRONT_TOP_WEDGE` | 1.0 | 80 |
+| `FRONT_BOTTOM_WEDGE` | 0.4 | 81 |
+| `FRONT_ROUND_X` | -11.75 | 82 |
+| `FRONT_ROUND_SCALE` | 1.26 | 83 |
+| `FRONT_ROUND_RADIUS` | 13.025 | 84 |
+| `FRONT_BOTTOM_SHIFT` | -0.4 | 85 |
+| `REAR_HEIGHT` | 0.65 | 91 |
+| `REAR_WIDTH` | 10.8 | 92 |
+| `REAR_DEPTH` | 0.4 | 93 |
+| `REAR_TOP_WEDGE` | 0.6 | 94 |
+| `REAR_BOTTOM_WEDGE` | 0.6 | 95 |
+| `REAR_ROUND_X` | -12.41 | 96 |
+| `REAR_ROUND_SCALE` | 1.37 | 97 |
+| `REAR_ROUND_RADIUS` | 13.025 | 98 |
 | `CLICK_OFFSET` | 1.0 | 105 |
 | `CLICK_DEPTH` | 0.6 | 107 |
 | `CLICK_WIDTH` | 12.4 | 107 |
@@ -157,3 +157,7 @@ not a claim that the snap passes the holder's generic 0.9 mm / 45° thresholds.
 
 Run `uv run pytest tests/test_opengrid_snap.py -q -s` from `build123d/` to emit
 parity and audit tables. The tests require neither OpenSCAD nor vendored libs.
+
+To verify the `[C]` values and directional argument names against the pinned
+upstream source, run `uv run pytest tests/test_opengrid_snap.py -m upstream -q`.
+This opt-in test fetches the source into memory; ordinary PR tests stay offline.
