@@ -17,8 +17,8 @@ The four click nubs stand 0.4 mm outside the core: overall dimensions are
 25.6 × 25.6 × 3.4 mm (lite), or 25.6 × 25.6 × 6.8 mm (full).
 Directional lite is 26.0 × 25.6 × 3.4 mm, with +X the front. Its front nub
 stands 0.8 mm proud, so the overall box is asymmetric about X=0.
-Both flags may be combined, although the three committed parity references
-are lite, full and directional lite.
+Both flags may be combined. The four committed parity references are lite,
+full, directional lite and directional full (26.0 × 25.6 × 6.8 mm).
 
 A consumer puts its back face at `z = h - 0.02` and fuses the snap into it,
 matching `models/littletikes_dream_machine_cartridge_holder.scad:189-194`:
@@ -112,7 +112,7 @@ are BOSL2 corner chamfers with `$fn=2`, not smooth corner fillets.
 
 ## Verification and published print inventory
 
-The three unmodified derived meshes and their generation commands, engine
+The four unmodified derived meshes and their generation commands, engine
 version and SHA256 hashes are committed in
 [`assets/opengrid-snap/NOTICE`](../../assets/opengrid-snap/NOTICE). No QuackWorks
 source is committed. Those SCAD meshes are non-manifold at the nub roots;
@@ -130,12 +130,13 @@ diagonal core planes |X|+|Y|=19.98163 (source :50, :52–56).
 This removes the source's internal contact surfaces without hiding outer errors.
 
 The production per-face wall, overhang, bridge and downward-fillet primitives
-run snaps-down on lite and full. These published mating features cannot be
+run snaps-down on all four flag combinations. These published mating features cannot be
 thickened or chamfered without breaking fit with the openGrid tile and the
 author's own snaps. Generic holder thresholds do not apply to the whole snap.
 The inventory is exact in both directions: neither extra misses nor removal
 of a published feature is permitted. Thickness tolerance is 0.01 mm; no sampled
-face may be thinner than 0.40 mm. Reference ray probes check the same buckets.
+face may be thinner than 0.40 mm. Reference ray probes check the same buckets. The following two tables describe
+the nondirectional variants; directional inventories follow separately.
 
 | Thin-wall region | Thickness | Lite faces | Full faces | Source lines |
 | --- | ---: | ---: | ---: | --- |
@@ -152,8 +153,78 @@ face may be thinner than 0.40 mm. Reference ray probes check the same buckets.
 | Top-plate underside ledges | 8 / 8 | 90° | 2.99 | 43, 48, 50 |
 
 The production audit measures a maximum local bridge of 0.5 mm and zero
-downward fillets for both variants. These are source-compatible inventories,
+downward fillets for both nondirectional variants. These are source-compatible inventories,
 not a claim that the snap passes the holder's generic 0.9 mm / 45° thresholds.
+
+### Directional mating exceptions
+
+The directional contract preserves the pinned front/rear nubs, rear relief,
+click holes and indicator. The exceptions below apply only to the exact face
+sets in [`tests/opengrid_snap_inventory.py`](../tests/opengrid_snap_inventory.py),
+not an enclosing box or a four-quadrant symmetry fold. Every listed face must
+exist exactly once with its measured wall/angle/local-bridge result; every
+unlisted face must meet 0.9 mm / 45° and have no sampled local bridge. The tests
+also require zero downward curved faces. Geometry and fit are unchanged.
+
+All source locators in these tables refer to
+[`opengrid-snap.scad@6123129`](https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad),
+with the line-neutral local patch recorded in NOTICE. +X is front, −X rear,
+±Y the two standard sides. Each count is a BRep face count, not an STL triangle
+count. Wall values are the production normal-ray proxy with a 3 mm cap.
+
+| Thin-wall face set | Production mm, lite / full | Lite / full count | Reference first-hit mm | Source lines |
+| --- | ---: | ---: | ---: | --- |
+| Top-plate underside ledges | 0.41 / 0.41 | 8 / 8 | 0.41 | 43, 48, 50 |
+| Side click-hole roofs | 0.60 / 0.60 | 2 / 2 | 0.60 | 103–107 |
+| Rear click-hole roof | 0.601 / 0.601 | 1 / 1 | 0.601 | 110 (0.599 + 2.2) |
+| Side upper ligaments | 0.70 / 0.70 | 2 / 2 | 0.70 | 103–107 |
+| Side lower ligaments | — / 0.70 | 0 / 2 | 0.70 (full) | 103–107 |
+| Rear upper ligament | 0.70 / 0.70 | 1 / 1 | 0.70 | 110, 119 |
+| Rear lower ligament | 0.88666 / 0.70 | 1 / 1 | 0.70 / 0.70 | 110–112 |
+| Rear sloped ligament | 0.56920 / 0.56920 | 1 / 1 | 0.56921 | 111–112 |
+| Side and rear wall click-hole roofs | 0.80 / 0.80 | 3 / 3 | 0.80 | 115–119 |
+| **Total thin faces** | | **19 / 21** | | |
+
+The lite rear lower ligament illustrates the audit proxy's limitation: its
+bisection can step across the neighbouring void, whereas the independent mesh
+ray stops at the first exit (0.70 mm). Both results are locked separately; the
+0.88666 mm proxy is not a claim of physical minimum thickness. The sloped
+ligament reference probe starts at (−11.56, −2.36, 0.18) along normalized
+(−3, 0, −1); its first-hit thickness is 0.56921 mm in both variants.
+
+Every ceiling below measures 90°. Reference triangles independently confirm
+each complete face bounding box and downward normal within 0.01 mm. For full,
+add 3.4 mm to the listed lite Z **except** the indicator, which stays at 0.4 mm.
+
+| Downward face set | Lite / full count | Lite Z (mm) | Maximum local bridge (mm) | Source lines |
+| --- | ---: | ---: | ---: | --- |
+| Top-plate underside ledges | 8 / 8 | 2.99 | 0.5 | 43, 48, 50 |
+| Side bottom click nubs | 2 / 2 | 0.19 | 0 | 26–30, 58–70 |
+| Rear bottom click nub | 1 / 1 | 0.64 | 0 | 26–30, 89–99 |
+| Side click-hole roofs | 2 / 2 | 2.8 | 0.5 | 103–107 |
+| Rear click-hole roof | 1 / 1 | 2.799 | 0.5 | 110 |
+| Side and rear wall click-hole roofs | 3 / 3 | 2.6 | 0.5 | 115–119 |
+| Triangular indicator roof | 1 / 1 | 0.4 (fixed) | 1.5 | 122 (`$fn=2` clamps to 3) |
+| Front nub underside | 0 / 1 | bed-contact; full Z=3.4 | 0 / 0.5 | 26–30, 75–85 |
+| **Total downward faces above bed** | **18 / 19** | | | |
+
+The front underside spans X=12.4…12.8, Y=−7…7; the lite face is on the bed
+and excluded by the production audit. The rear nub spans X=−12.8…−12.4,
+Y=−5.4…5.4. The indicator ceiling spans X=8.75…11, Y=±1.29904 at Z=0.4.
+These distinguish the directional geometry from the symmetric inventory.
+
+| Variant (snaps-down) | Minimum wall proxy (mm) | Worst overhang | Maximum local bridge (mm) | Downward fillets | Published inventory |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Lite | 0.41 | 90° | 0.5 | 0 | Pass |
+| Full | 0.41 | 90° | 0.5 | 0 | Pass |
+| Directional lite | 0.41 | 90° | 1.5 | 0 | Pass |
+| Directional full | 0.41 | 90° | 1.5 | 0 | Pass |
+
+The local-bridge column is measured by the production raster primitive on the
+port, whose external surface parity is independently checked against the SCAD
+mesh. It is not an STL bounding-box span. The 90° mating ceilings are explicit
+published exceptions to the generic holder angle limit; 1.5 mm remains below
+the generic 10 mm bridge limit. No geometry was modified to pass those limits.
 
 Run `uv run pytest tests/test_opengrid_snap.py -q -s` from `build123d/` to emit
 parity and audit tables. The tests require neither OpenSCAD nor vendored libs.

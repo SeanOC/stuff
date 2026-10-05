@@ -2,7 +2,7 @@
 
 References deliberately retain the SCAD's non-manifold nub-root interfaces.
 Only the port must be watertight. Ordinary tests need neither native OpenSCAD
-nor an upstream checkout; assets/opengrid-snap/NOTICE pins the three renders.
+nor an upstream checkout; assets/opengrid-snap/NOTICE pins the four renders.
 The opt-in upstream provenance test fetches the pinned source into memory.
 """
 import hashlib
@@ -24,9 +24,11 @@ from opengrid_snap import constants as c
 from opengrid_snap import snap
 from tests import print_audit as audit
 from tests.mount_contracts import CONTRACTS, verify_opengrid_snap
+from tests.opengrid_snap_inventory import DIRECTIONAL_FACES
 
 ASSETS = Path(__file__).resolve().parents[2] / 'assets/opengrid-snap'
-VARIANTS = [('lite', True, False), ('full', False, False), ('directional', True, True)]
+VARIANTS = [('lite', True, False), ('full', False, False), ('directional', True, True),
+            ('full-directional', False, True)]
 
 
 @pytest.fixture(scope='module', params=VARIANTS, ids=lambda v: v[0])
@@ -194,11 +196,45 @@ def _published_downward_region(face, extra):
     return None
 
 
+def _check_directional_inventory(part, lite, name):
+    """Exact asymmetric face sets, including thin faces that are not ceilings."""
+    expected = DIRECTIONAL_FACES[lite]
+    seen = Counter()
+    for face in part.faces():
+        one = _OneFace(part, face)
+        wall = audit._min_wall(one, (0, 0, 1), [])
+        angle = audit._max_overhang(one, (0, 0, 1), [], 0)
+        bridge = audit._longest_bridge(one, (0, 0, 1), [], 0)
+        bb = face.bounding_box()
+        bounds = (*bb.min, *bb.max)
+        matches = [i for i, (_, box, *_) in enumerate(expected)
+                   if np.allclose(bounds, box, atol=1e-5, rtol=0)]
+        if matches:
+            assert len(matches) == 1
+            i = matches[0]
+            region, _, want_wall, want_angle, want_bridge = expected[i]
+            assert wall == pytest.approx(want_wall, abs=.01), (name, region, bounds)
+            assert angle == pytest.approx(want_angle, abs=.01), (name, region, bounds)
+            assert bridge == pytest.approx(want_bridge, abs=1e-6), (name, region, bounds)
+            seen[i] += 1
+        else:
+            assert wall >= .9 and angle <= 45.01 and bridge == 0, (name, bounds, wall, angle, bridge)
+    assert seen == Counter(range(len(expected)))  # no missing or duplicate face
+    assert not audit._downward_curved_faces(part, (0, 0, 1), [], 0)
+    walls = Counter(row[2] for row in expected if row[2] < .9)
+    ceilings = Counter(row[0] for row in expected if row[3] > 45)
+    print(f'{name}: min_wall/count={dict(walls)}; overhang/count={dict(ceilings)}; '
+          f'worst overhang=90; bridge=1.5; downward fillets=0')
+
+
 @pytest.mark.audit
-@pytest.mark.parametrize('lite', [True, False], ids=['lite', 'full'])
-def test_published_print_inventory(lite):
-    name, extra = ('lite', 0) if lite else ('full', 3.4)
-    part = audit._ClassifiedPart(snap(lite=lite))
+@pytest.mark.parametrize('name,lite,directional', VARIANTS, ids=[v[0] for v in VARIANTS])
+def test_published_print_inventory(name, lite, directional):
+    extra = 0 if lite else 3.4
+    part = audit._ClassifiedPart(snap(lite=lite, directional=directional))
+    if directional:
+        _check_directional_inventory(part, lite, name)
+        return
     walls, overhangs = Counter(), Counter()
     worst_bridge = 0
     for face in part.faces():
@@ -226,13 +262,14 @@ def test_published_print_inventory(lite):
           f'worst overhang=90; bridge={worst_bridge}; downward fillets=0')
 
 
-@pytest.mark.parametrize('name,extra', [('lite', 0), ('full', 3.4)])
-def test_reference_wall_thicknesses(name, extra):
+@pytest.mark.parametrize('name,lite,directional', VARIANTS, ids=[v[0] for v in VARIANTS])
+def test_reference_wall_thicknesses(name, lite, directional):
     """Independent ray evidence for the inventory's source thickness buckets.
 
     Probe all four rotated features, including the full snap's lower ligaments.
     Mesh triangles are not BRep faces: counts are locked by the inventory test.
     """
+    extra = 0 if lite else 3.4
     ref = reference(name)
     probes = [([9.5, 9.5, 2.99 + extra], [0, 0, 1], .41),
               ([11.4, 0, 2.8 + extra], [0, 0, 1], .60),
@@ -242,6 +279,8 @@ def test_reference_wall_thicknesses(name, extra):
         probes.append(([11.7, 0, 1], [1, 0, 0], .70))
     for origin, direction, expected in probes:
         for angle in np.arange(4) * np.pi / 2:
+            if directional and origin[0] != 9.5 and abs(np.cos(angle)) > .5:
+                continue  # directional +/-X features have their own probes below
             rotation = np.array([[np.cos(angle), -np.sin(angle), 0],
                                  [np.sin(angle), np.cos(angle), 0], [0, 0, 1]])
             d = rotation @ direction
@@ -249,3 +288,40 @@ def test_reference_wall_thicknesses(name, extra):
             hits, _, _ = ref.ray.intersects_location([p], [d])
             thickness = np.linalg.norm(hits - p, axis=1).min() + 1e-4
             assert thickness == pytest.approx(expected, abs=.01)
+
+
+@pytest.mark.parametrize('lite', [True, False], ids=['directional', 'full-directional'])
+def test_directional_reference_features(lite):
+    ref = reference('directional' if lite else 'full-directional')
+    extra = 0 if lite else 3.4
+    # First-hit rays through the independent SCAD mesh. The lower rear
+    # ligament is physically .7 mm; the production bisection proxy reports
+    # .88666 on lite because it can step across the neighbouring void.
+    probes = [([-11.56, -2.36, .18], [-3, 0, -1], .56921),
+              ([-11.52, 0, 2.799 + extra], [0, 0, 1], .601),
+              ([-11.7, 0, 1.08], [-1, 0, 0], .7),
+              ([-11.7, 0, 2.6597 + extra], [-1, 0, 0], .7),
+              ([-12, 0, 2.6 + extra], [0, 0, 1], .8)]
+    for origin, direction, expected in probes:
+        d = np.array(direction, dtype=float)
+        d /= np.linalg.norm(d)
+        p = np.array(origin) + 1e-4 * d
+        hits, _, _ = ref.ray.intersects_location([p], [d])
+        assert len(hits)
+        thickness = np.linalg.norm(hits - p, axis=1).min() + 1e-4
+        assert thickness == pytest.approx(expected, abs=.01)
+    # Every published ceiling must have a downward reference surface at its
+    # recorded plane and inside its complete bounds (including the indicator
+    # at fixed Z=.4, and the full-only front nub at Z=3.4).
+    for region, bounds, _, angle, _ in DIRECTIONAL_FACES[lite]:
+        if angle <= 45:
+            continue
+        lo, hi = np.array(bounds[:3]), np.array(bounds[3:])
+        assert lo[2] == hi[2]
+        vertices = ref.triangles
+        within = np.all((vertices >= lo - 1e-4) & (vertices <= hi + 1e-4), axis=(1, 2))
+        downward = ref.face_normals[:, 2] < -.99999
+        selected = vertices[within & downward]
+        assert len(selected), (region, bounds)
+        assert np.allclose(selected.min(axis=(0, 1)), lo, atol=.01, rtol=0), region
+        assert np.allclose(selected.max(axis=(0, 1)), hi, atol=.01, rtol=0), region
