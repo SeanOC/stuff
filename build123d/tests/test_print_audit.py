@@ -475,7 +475,12 @@ def _cup_lid_shank_exclusion(values):
         align=(Align.CENTER, Align.CENTER, Align.MIN))
 
 
-_MODEL_EXCLUSIONS = {'holder_cup_lid': _cup_lid_shank_exclusion}
+from holders.openconnect_plate import border_exclusions
+
+_MODEL_EXCLUSIONS = {
+    'holder_cup_lid': lambda values: [_cup_lid_shank_exclusion(values)],
+    'openconnect_plate': border_exclusions,
+}
 
 
 # pst-mxfqk: spec.name -> (report, seconds). Both registry tests below need the
@@ -515,7 +520,7 @@ def _build_and_audit(spec) -> PrintAuditReport:
             cutters.extend(fx.cutters)
     exclusion = _MODEL_EXCLUSIONS.get(spec.name)
     return audit(part, spec.print_orientation, cutters=cutters,
-                 exclusions=[exclusion(values)] if exclusion else (), model=spec.name)
+                 exclusions=exclusion(values) if exclusion else (), model=spec.name)
 
 
 @pytest.mark.budget

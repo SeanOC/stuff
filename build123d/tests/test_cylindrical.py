@@ -222,7 +222,7 @@ def test_slot_count_scales_with_width():
 
 
 def test_mount_tunables_appear_in_param_list():
-    """AC 1: the four mount tunables appear in every mount model's Param list
+    """AC 1: the four collar mount tunables appear in every Multiconnect collar Param list
     with the specified ranges/defaults."""
     expected = {
         "slot_count": (SLOT_COUNT_MIN, SLOT_COUNT_MAX, "integer"),
@@ -239,6 +239,9 @@ def test_mount_tunables_appear_in_param_list():
             assert spec.mounts == (
                 "multibuild-multiconnect-channel", "openconnect-slot", "multibuild-fixpoint-slot")
             assert not expected.keys() & spec.param_names()
+            continue
+        if "multiconnect-slot" not in spec.mounts:
+            # Other mount families (e.g. the openConnect grid) have their own params.
             continue
         by_name = {p.name: p for p in spec.params}
         for name, (lo, hi, kind) in expected.items():

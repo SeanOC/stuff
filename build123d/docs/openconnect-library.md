@@ -52,7 +52,7 @@ excess_thickness=EPS, excess_length=0.0)` returns one slot negative.
 - `clearance`: the author's side/depth clearances, default 0.10/0.10 mm,
   each limited to 0–0.5 mm. Head profile and travel remain fixed.
 
-Vase bodies are deferred to OC1b (`pst-isd4c`); this API only supplies slots.
+Vase mode is not part of this port; the supported outputs are slots and negative slot grids.
 
 **Datum.** This is the multibuild consumer frame: the back (wall-facing) face is
 Y=0, material is at +Y, and the pocket runs Y=0..2.7 (`POCKET_DEPTH`, the 2.6
@@ -79,7 +79,7 @@ Mounts declare `openconnect-slot` and provide
 `mount_fixtures(mount_type, values) -> MountFixtures` with `cutters`,
 `seat_locs`, `onramp_locs`, entry axis `(0,0,1)` for up, `(0,0,-1)` for down, `(-1,0,0)` for left,
 `(1,0,0)` for right, and face normal `(0,-1,0)`.
-`openconnect/demo_plate.py` is a minimal example.
+`holders/openconnect_plate.py` is the registered grid/plate consumer.
 
 **Plate thickness rule.** Backing must be at least 2.4 mm behind the 2.7 mm
 pocket, so an openConnect plate is **at least 5.1 mm** thick. The contract
@@ -108,24 +108,65 @@ internally. For every slot it checks:
 on-ramp, a blocked channel, an open seat end, 1.3 mm backing, and an entry
 on the slot axis instead of the on-ramp each raise.
 
-## Demo plate
+## Grid helper and registered plate
 
-`openconnect/demo_plate.py` is not registered. It is 84 × 84 × 5.5 mm
-(3 × 3 tiles), printed standing (+Z up), with a 0.4 mm 45° chamfer on the bed
-edges. It has four snap slots at the tile centres of the central 2 × 2 block:
-X = ±14, Z = 28 and 56.
+`openconnect.grid.layout(h, v, *, position, lock, slide, entryramp_flip,
+except_positions)` is pure placement data, on the author's 28 mm pitch.
+Indices run left to right and **top to bottom**: `x = -(h-2*i-1)*14`,
+`z = +(v-2*j-1)*14`. `top-corners` means the first row; staggered parity
+is `i % 2 == j % 2`. Positions are all/staggered/edge-rows/edge-columns/corners;
+locks are corners/all/staggered/top-corners/none. Selected locks use left nubs.
+`except_positions` contains `(i,j)` pairs; footprint `limit_region` is not
+ported. `fixtures(placements, clearance=(0.1,0.1))` passes slide and flip raw
+to the slot and head helpers, without a second rotation or flip. A 2×2
+corner-lock layout has four slots at X/Z = ±14; OC3 maps them to cradle seats.
 
-- Backing: 5.5 − 2.7 = **2.8 mm** (minimum 2.4).
-- Slot packing: each slot spans 22.2 mm along Z (−13.2..+9.0) and 21.6 mm
-  across X. That leaves a **5.8 mm** web between the rows, a **6.4 mm** web
-  between the columns, and at least 14.8 mm to the plate edges.
-- Volume before: **N/A (new artifact)**. Final: **34,750.930 mm³**.
-- Print audit with the pocket exception: max overhang 45.0°, bridge 0 mm,
-  min wall 2.80 mm, PASS. Without it, the pocket's own downward faces fail
-  (90°, bridges up to 1.0 mm), as the Multiconnect pockets do. The author
-  designs the slot to print standing with the slide axis vertical: the
-  seat roof and the on-ramp roof are 45° chamfers.
-- It carries no service-load rating and has no fused load-bearing joint.
+`holders/openconnect_plate.py` replaces the unregistered demo. The app slug
+is `openconnect-plate`, in the existing **multiboard** category. Presets:
+
+- `default`: 84 × 56 × 5.1 mm, six slots, corner locks.
+- `one-tile`: 28 × 28 × 5.1 mm, one locking slot.
+- `negslot`: six disconnected watertight slot solids, exported together as
+  one STL/GLB. The author hides the base in negative mode; this is a CAD
+  subtraction tool, exempt from print audits and mount contracts.
+
+Size is in whole grids or millimetres; physical width/height are 28–280 mm.
+Millimetre dimensions floor to whole grid counts, then center/edge alignment
+and offsets position the grid. Offsets must keep complete tiles in the plate.
+A standalone plate also rejects a moved on-ramp border below 1.3 mm
+(0.9 mm wall plus 0.4 mm edge relief): the approved thin-strip exception
+applies only at the exact author grid edge.
+Backing defaults to 2.4 mm; **0.5–2.3 mm requires another model's wall and is
+not standalone-printable**. Thickness follows the actual clearance-adjusted
+pocket depth plus backing (5.1 mm at defaults). Profiles, pitch and travel
+remain library constants. At maximum 0.5/0.5 mm clearances the connector has
+initial free play: the default mount contract's 0.5 mm pull probe is clear,
+but the 1 and 2 mm probes still engage the lip (5.45 and 10.98 mm³ overlap
+on the one-tile rounded case). Shipped presets use 0.1/0.1 mm and pass the
+full mount contract, including its 0.5 mm pull threshold. There is no fused joint or asserted load rating;
+an attached accessory's off-wall pull is the worst-case load, in PLA/PCTG.
+
+Print standing, +Z up. Exposed slab edges have a 0.4 mm chamfer, including the
+bed edges; cutters and their mating edges remain untouched. Corner rounding
+is none by default. Chamfer/fillet applies to the **two upper footprint
+corners**; the two lower corners always get a same-size 45° chamfer, never a
+downward fillet (approved pst-zn36d rev 5). Corner sizes are 0, 1 or 2 mm:
+smaller radii conflict with the 0.4 mm edge relief, and larger radii remove
+required backing beneath edge-row pockets. `build(values, reference=True)`
+omits edge relief and preserves all four of the author's rounded corners,
+for reference equality at the author's 0.5 mm backing.
+
+**Narrow border audit exception (pst-zn36d rev 4).** With library cutters
+supplied to the production audit, the only additional exclusions are exact
+solid bands between edge-facing on-ramps and the plate edge. They are
+extruded from the actual ramp-end faces in the same placements as the
+cutters and clipped to the pocket depth; there is no bounding-box padding.
+At default clearances these bands are 0.8 mm high, with the ramp/channel's
+slanted cross-section, volume 43.763195959493 mm³ per slot (three in default,
+one in one-tile). Slots off the border produce no strip. Tests pin the count,
+volume, depth and border bounds for every slide/flip; no other exclusion is
+allowed. The author's 0.8/0.6 mm mating features remain under the existing
+library-cutter envelopes. No plate margin or global cutter margin changed.
 
 ## Verification against the author's renders
 
@@ -139,6 +180,8 @@ exact commands, `-D` overrides, versions and sha256 values:
 
 - `openconnect_plate_one_slot.stl`: the author's `openconnect_plate.scad`
   for one 28 × 28 tile (shipped defaults otherwise).
+- `openconnect_plate_{default,asymmetric,negative}.stl`: six-slot default,
+  top-corner locks on edge rows (catches reversed Z), and base-free negative.
 - `openconnect_head.stl`: the author's `openconnect_head()`.
 - `openconnect_nubs_{right,both,none}.stl`, `openconnect_flip.stl`, and
   `openconnect_edge_{top,side,none}.stl`: one-tile plate option renders.

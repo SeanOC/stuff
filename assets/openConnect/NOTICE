@@ -113,3 +113,18 @@ Reference render hashes (all <2 MB):
   a98dc4354d33049d728f3efd058927dc937339998a1e37ff7297b68c9e7ec889  mesh/openconnect_slide_down.stl
   940df37c433fa30ca49d15b666d181206a0566292f458e68ac24a1cf50acc7d5  mesh/openconnect_slide_left.stl
   4b43b71a277aae91bcac99d6ad19e8c4b77fbf7ad286b43637517406693248c9  mesh/openconnect_slide_right.stl
+
+OC2 grid/plate reference renders (pst-zn36d, 2026-10-04)
+------------------------------------------------------------------
+Baseline: stuff 2d97259e54e7dac96ce14dc324062422e9cc9b5f.
+Same OpenSCAD 2025.06.12.ai25773 and BOSL2 b86a7584db6d324eb856c2d19d041f94435e6c32
+pins as above, rendered separately from the Python build123d toolchain.
+From assets/openConnect, with OPENSCADPATH=$BOSL2_PARENT:
+  openscad --export-format=binstl -o mesh/openconnect_plate_default.stl openconnect_plate.scad
+  openscad --export-format=binstl -D 'slot_lock_distribution="Top Corners"' -D 'slot_position="Edge Rows"' -o mesh/openconnect_plate_asymmetric.stl openconnect_plate.scad
+  openscad --export-format=binstl -D 'slot_type="negslot"' -o mesh/openconnect_plate_negative.stl openconnect_plate.scad
+All unspecified settings are upstream defaults: 84 x 56 mm, 0.5 extra thickness.
+Negative mode hides the base: six disconnected slot-grid solids, no plate.
+  c4af2ac9e59fd0f7d8a81f95b18d24a4509845b566be9e43b3b7fdf99f00396b  mesh/openconnect_plate_default.stl
+  048ba6b7cdb53bb14ba29bb3d4c44ce1cb4b57c2326b1013451733857fa2f03c  mesh/openconnect_plate_asymmetric.stl
+  12d6a9ea47c4c0c444107b7aa6e82046014ddd281d78c461db015643d22a8d76  mesh/openconnect_plate_negative.stl

@@ -281,8 +281,9 @@ class ModelSpec:
     # its ``mount_fixtures`` hook returns None and every consumer of
     # resolve_mount_fixtures skips that (mount, values) pair. Data only (no
     # geometry), so _validate_spec can check that some preset selects each
-    # declared mount. None = every declared mount is always present.
-    mount_for_values: Callable[[dict[str, Any]], str] | None = None
+    # declared mount. A selector returning None means no mount for that value
+    # set (e.g. a negative CAD tool). No selector = every mount always present.
+    mount_for_values: Callable[[dict[str, Any]], str | None] | None = None
     # Print orientation: the unit vector, IN THIS MODEL'S OWN COORDINATE
     # FRAME, that points UP (away from the build plate) in the declared
     # print pose. The default ``(0, 0, 1)`` means "printed as modelled, +Z
@@ -501,6 +502,7 @@ def _validate_spec(spec: ModelSpec) -> str | None:
     if spec.mount_for_values is not None:
         selected = {spec.mount_for_values(spec.resolve_values(p.values))
                     for p in spec.presets}
+        selected.discard(None)  # CAD-tool presets can have no physical mount.
         if selected != seen_mounts:
             return (
                 f"{spec.name}: presets select mounts {sorted(selected)} but the "
@@ -563,4 +565,5 @@ def all_models() -> list[ModelSpec]:
         pass
     from holders import spool_cradle  # noqa: F401
     from holders import label_card  # noqa: F401
+    from holders import openconnect_plate  # noqa: F401
     return list(_REGISTRY.values())

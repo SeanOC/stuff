@@ -19,7 +19,6 @@ sys.path.insert(0, str(ROOT))
 from build123d import Align, Box, Plane, Pos, Rot, Mode, export_stl as fine_stl, section
 from openconnect import POCKET_DEPTH, head, onramp_location, seat_location, slot_cutter
 from openconnect import constants as c
-from openconnect import demo_plate as demo
 from openconnect.slot import slot_body
 from scripts.export import export_stl
 from tests.mount_contracts import CONTRACTS, _residual_vol
@@ -215,39 +214,7 @@ def test_slide_frames_and_mount_contract(slide, axis, flip):
     part = (Pos(x, 0, z) * Box(48, 5.5, 48,
             align=(Align.CENTER, Align.MIN, Align.CENTER)) - cutter)
     fx = MountFixtures([cutter], [seat], onramp_locs=[ramp], entry_axis=axis)
-    CONTRACTS[demo.MOUNT](part, fx)
-
-
-@pytest.fixture(scope='module')
-def plate():
-    return demo.build()
-
-
-@pytest.mark.audit
-def test_demo_plate_contract_audit_and_volume(plate, tmp_path):
-    assert plate.is_valid and len(plate.solids()) == 1
-    assert tuple(plate.bounding_box().size) == pytest.approx((84, 5.5, 84))
-    assert demo.THICKNESS - POCKET_DEPTH >= 2.4
-    fx = demo.mount_fixtures(demo.MOUNT, {})
-    assert tuple((loc.position.X, loc.position.Z) for loc in fx.seat_locs) == demo.SLOTS == (
-        (-14, 28), (14, 28), (-14, 56), (14, 56))
-    CONTRACTS[demo.MOUNT](plate, fx)
-    export_stl(plate, tmp_path / 'demo.stl')
-    assert trimesh.load(tmp_path / 'demo.stl').is_watertight
-    report = audit(plate, demo.PRINT_ORIENTATION, cutters=fx.cutters)
-    assert report.ok, report.format()
-    assert report.bed_chamfer == 'present'
-    assert not audit(plate, demo.PRINT_ORIENTATION).ok
-    # Webs between neighbouring slots and margins to the plate edge.
-    boxes = [cut.bounding_box() for cut in fx.cutters]
-    assert boxes[1].min.X - boxes[0].max.X == pytest.approx(6.4, abs=1e-6)
-    assert boxes[2].min.Z - boxes[0].max.Z == pytest.approx(5.8, abs=1e-6)
-    assert plate.volume == pytest.approx(34750.930, abs=0.001)
-
-
-def test_demo_is_not_registered():
-    from holders.registry import all_models
-    assert all(spec.build.__module__ != demo.__name__ for spec in all_models())
+    CONTRACTS['openconnect-slot'](part, fx)
 
 
 @pytest.fixture(scope='module')
@@ -279,10 +246,10 @@ def test_contract_detects_broken_slots(single, defect):
         from holders.registry import MountFixtures
         fx = MountFixtures(fx.cutters, fx.seat_locs, onramp_locs=[Pos(0, 0, 9.4) * seat_location(0, 0)])
     if defect == 'none':
-        CONTRACTS[demo.MOUNT](part, fx)
+        CONTRACTS['openconnect-slot'](part, fx)
         return
     match = {'sealed_onramp': 'entry path blocked', 'blocked_channel': 'entry path blocked',
              'open_seat': 'open past the seat', 'thin_backing': 'backing',
              'straight_entry': 'entry path blocked'}[defect]
     with pytest.raises(AssertionError, match=match):
-        CONTRACTS[demo.MOUNT](part, fx)
+        CONTRACTS['openconnect-slot'](part, fx)
