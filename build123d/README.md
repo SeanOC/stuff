@@ -10,6 +10,9 @@ openGrid / Multiconnect geometry comes **only** from the pinned
 [`opengrid` library](https://makerrepo.com/r/fangpenlin/opengrid/) (MIT, build123d-native) or other
 existing build123d ecosystem libraries. **No home-grown mount geometry. No porting from our SCAD.**
 If a library can't do something, that's a *finding for the eval*, not an invitation to work around it.
+Explicit exceptions: the pinned, mesh-verified [openConnect](docs/openconnect-library.md)
+port (Sean 2026-10-01) and [positive openGrid snap](docs/opengrid-snap-library.md)
+port (Sean 2026-10-05); see [provenance](docs/provenance.md).
 
 ## Layout
 - `holders/registry.py` — model registry with typed params + presets (mirrors

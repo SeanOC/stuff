@@ -7,6 +7,9 @@
 # CC BY 4.0 OpenSCAD (mitufy/opengrid-projects @04e2277a71c5) because no
 # build123d library ships it; the port is pinned by commit and mesh-verified
 # against the author's rendered plate (openconnect/ tests).
+# Exception (Sean 2026-10-05): opengrid_snap/ ports QuackWorks @6123129 + patch 0001
+# (CC BY-NC-SA 4.0) because no build123d library ships the positive snap; pinned
+# by commit and verified against committed reference meshes.
 [project]
 name = "stuff-bd"
 version = "0.1.0"
