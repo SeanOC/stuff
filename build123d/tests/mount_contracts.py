@@ -51,13 +51,14 @@ Adding a new mount contract
 from __future__ import annotations
 
 import math
-from typing import Callable
+from collections.abc import Callable
 
-from build123d import Align, Axis, Box, Pos, Rot, Solid
+from build123d import Align, Axis, Box, Plane, Pos, Rot, Solid, section
 from build123d.topology import Part
 from opengrid.multiconnect import RoundHead
 
 from holders.registry import KNOWN_MOUNTS, ModelSpec, MountFixtures
+
 # Compatibility name for existing contract callers.
 from holders.registry import resolve_mount_fixtures as resolve_fixtures
 
@@ -483,7 +484,8 @@ def verify_fixpoint_slot(part: Part, fx: MountFixtures) -> None:
     head()`` (the measured Fix Point positive) seated and pushed into the
     well, TRAVEL below the seat at the same X.
     """
-    from multibuild.fixpoint import HEAD_FLAT, TRAVEL, head as fp_head
+    from multibuild.fixpoint import HEAD_FLAT, TRAVEL
+    from multibuild.fixpoint import head as fp_head
     _require_z_entry(fx, "multibuild-fixpoint-slot")
     _require_y_face(fx, "multibuild-fixpoint-slot")
     assert fx.cutters and fx.seat_locs, 'fixpoint fixtures must not be empty'
@@ -539,6 +541,46 @@ def verify_fixpoint_slot(part: Part, fx: MountFixtures) -> None:
         for other in fx.cutters[i + 1:]:
             gap = one.distance_to(other)
             assert gap >= _FP_MIN_WEB - 1e-6, f'fixpoint pockets fuse: {gap:.2f} mm apart'
+
+
+def verify_opengrid_snap(part: Part, fx: MountFixtures) -> None:
+    """Check an isolated positive snap at each supplied seat pose (not registered).
+
+    BaseSnapSlotCutter in opengrid @eea2b41, base.py:92 defines the minimum
+    opening as pitch - 2*(bottom_width + bottom_chamfer): 28-2*(1.1+.4)=25.
+    Base (:214) subtracts that cutter; base_1x1 (:399) uses default Base.
+    Thus a 24.8 core has .10 mm clearance PER SIDE; no library clearance
+    constant exists. OC4b will supply model fixtures and register the contract.
+    """
+    from opengrid.base import BaseSnapSlotCutter
+
+    opening = BaseSnapSlotCutter()
+    width = opening.open_grid_unit_size - 2 * (
+        opening.snap_cut_bottom_width + opening.snap_cut_bottom_chamfer)
+    # Independently section the actual library cutter at its narrow land.
+    land_z = opening.snap_cut_bottom_chamfer + opening.snap_cut_bottom_bump_height / 2
+    assert abs(_cutter_x_width(opening, 0, land_z) - width) < 1e-5
+    assert fx.seat_locs, 'opengrid-snap needs at least one snap pose'
+    for loc in fx.seat_locs:
+        local = loc.inverse() * part
+        height = local.bounding_box().max.Z
+        assert min(abs(height - h) for h in (3.4, 6.8)) < 1e-5
+        assert abs(local.bounding_box().min.Z) < 1e-5
+        core = section(local, section_by=Plane.XY.offset(height - .7))
+        bb = core.bounding_box()
+        for low, high in ((bb.min.X, bb.max.X), (bb.min.Y, bb.max.Y)):
+            assert abs(low + 12.4) < 1e-5 and abs(high - 12.4) < 1e-5, 'core span must be 24.8'
+            assert abs((width - (high - low)) / 2 - .10) <= .05
+        # Beyond the 24.8 square only the published click nubs are allowed.
+        core_box = Box(24.8, 24.8, height, align=(Align.CENTER, Align.CENTER, Align.MIN))
+        extra = height - 3.4
+        envelope = core_box
+        for angle, depth, span in ((0, .8, 14), (90, .4, 11),
+                                   (180, .4, 11), (270, .4, 11)):
+            envelope += Rot(0, 0, angle) * Pos(12.4, 0, extra - .01) * Box(
+                depth, span, 2.01, align=(Align.MIN, Align.CENTER, Align.MIN))
+        outside = local - envelope
+        assert sum(s.volume for s in outside.solids()) < 1e-5, 'non-nub material outside core'
 
 
 # mount type -> contract. Every KNOWN_MOUNTS entry must appear here.
