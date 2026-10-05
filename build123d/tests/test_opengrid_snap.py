@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 import trimesh
-from build123d import Location, export_stl
+from build123d import Align, Box, Location, Pos, export_stl
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -67,10 +67,12 @@ def test_mesh_parity(built):
         classifier.is_inside(p + 0.05 * n) and classifier.is_inside(p - 0.05 * n)
         for p, n in zip(points, normals)
     ])
-    assert interior.mean() < 0.03
-    # Z is height: the four nub-root contact planes are |X|/|Y|=12.4.
-    # The rev5 decision's |z|=12.4 is its axis-name typo, not another exemption.
-    assert np.all(np.min(np.abs(np.abs(points[interior, :2]) - 12.4), axis=1) <= 0.05)
+    assert interior.mean() < 0.12
+    # Nub roots and top-nub/core interfaces, pinned source :50 and :52-56.
+    xy = np.abs(points[interior, :2])
+    axis_distance = np.min(np.abs(xy - 12.4), axis=1)
+    diagonal_distance = np.abs(xy.sum(axis=1) - 19.98163) / np.sqrt(2)
+    assert np.all(np.minimum(axis_distance, diagonal_distance) <= 0.05)
     _, forward, _ = trimesh.proximity.closest_point(mesh, points[~interior])
     points, _ = trimesh.sample.sample_surface(mesh, 15000, seed=1)
     _, reverse, _ = trimesh.proximity.closest_point(ref, np.vstack([points, mesh.vertices]))
@@ -94,6 +96,24 @@ def test_core_fit_and_only_click_nubs_outside_core(built):
     _, part, _, _ = built
     verify_opengrid_snap(part, MountFixtures(cutters=[], seat_locs=[Location()]))
     assert 'opengrid-snap' not in CONTRACTS  # registration belongs to OC4b
+
+
+def test_fit_at_transformed_seat(built):
+    _, part, _, _ = built
+    loc = Location((31, -20, 8), (90, 0, 15))
+    verify_opengrid_snap(loc * part, MountFixtures(cutters=[], seat_locs=[loc]))
+
+
+def test_fit_rejects_oversize_core_and_non_nub_protrusion():
+    part = snap()
+    fx = MountFixtures(cutters=[], seat_locs=[Location()])
+    oversize = part + Pos(12.4, 0, 2.7) * Box(.4, 8, .2)
+    with pytest.raises(AssertionError, match='core span'):
+        verify_opengrid_snap(oversize, fx)
+    stray = part + Pos(12.2, 8, 1) * Box(
+        .6, 1, 1, align=(Align.MIN, Align.CENTER, Align.MIN))
+    with pytest.raises(AssertionError, match='non-nub material'):
+        verify_opengrid_snap(stray, fx)
 
 
 def test_deterministic_stl(built, tmp_path):

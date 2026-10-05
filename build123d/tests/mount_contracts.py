@@ -569,7 +569,7 @@ def verify_opengrid_snap(part: Part, fx: MountFixtures) -> None:
         core = section(local, section_by=Plane.XY.offset(height - .7))
         bb = core.bounding_box()
         for low, high in ((bb.min.X, bb.max.X), (bb.min.Y, bb.max.Y)):
-            assert abs(low + 12.4) < 1e-5 and abs(high - 12.4) < 1e-5
+            assert abs(low + 12.4) < 1e-5 and abs(high - 12.4) < 1e-5, 'core span must be 24.8'
             assert abs((width - (high - low)) / 2 - .10) <= .05
         # Beyond the 24.8 square only the published click nubs are allowed.
         core_box = Box(24.8, 24.8, height, align=(Align.CENTER, Align.CENTER, Align.MIN))

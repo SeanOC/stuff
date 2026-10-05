@@ -17,7 +17,9 @@ from build123d import (
     Pos,
     RegularPolygon,
     Rot,
+    Shell,
     SlotOverall,
+    Solid,
     extrude,
     loft,
 )
@@ -48,6 +50,14 @@ def _nub(height, width, depth, top, bottom, rx, radius, scale, shift=0):
     rounding = Pos(rx, 0, 0) * extrude(Ellipse(radius, radius * scale),
                                       amount=c.NUB_TOP + c.OVERLAP)
     return Pos(c.CORE_WIDTH / 2, 0, 0) * ((block - upper - lower) & rounding)
+
+
+def _face_order(face):
+    """Geometric sort key, independent of OCCT's boolean face traversal order."""
+    bounds = face.bounding_box()
+    # Quantize the key only, not the geometry: ignore floating-point noise in
+    # equivalent builds while retaining sub-micron ordering precision.
+    return tuple(round(v, 7) for v in (*bounds.min, *bounds.max, *face.center(), face.area))
 
 
 def snap(lite: bool = True, directional: bool = False) -> Part:
@@ -112,4 +122,7 @@ def snap(lite: bool = True, directional: bool = False) -> Part:
             RegularPolygon(c.INDICATOR_BOTTOM_RADIUS, 3),
             Pos(0, 0, c.INDICATOR_HEIGHT) * RegularPolygon(c.INDICATOR_TOP_RADIUS, 3),
         ])
-    return Part(body.wrapped)
+    # The directional cuts can reorder unchanged planar faces between builds.
+    # Sew the same faces in geometric order so native STL traversal is stable;
+    # no mesh normalization, dimensional rounding or geometry repair is needed.
+    return Part([Solid(Shell(sorted(body.faces(), key=_face_order)))])

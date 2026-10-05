@@ -118,12 +118,15 @@ version and SHA256 hashes are committed in
 source is committed. Those SCAD meshes are non-manifold at the nub roots;
 tests check their bounds, volume and surface distances, never watertightness.
 The port must be one valid watertight solid with deterministic STL bytes.
+Its unchanged analytic faces are sewn in geometric order so boolean traversal
+order cannot change native STL triangle ordering.
 
 Parity limits: bounds within 0.05 mm, volume within 1%, sampled surface distance
 within 0.15 mm. Port → reference is raw. Reference → port excludes only samples
 whose ±0.05 mm normal offsets both lie inside the port. The excluded fraction
-must be <3%, and every excluded point must lie within 0.05 mm of |X|=12.4 or
-|Y|=12.4 (nub-root planes in this Z-up frame; rev5's |z| is an axis-name typo).
+must be <12% with fixed 15,000 area-weighted samples and seed 1. Every excluded
+point must lie within 0.05 mm of |X|=12.4, |Y|=12.4, or one of the four
+diagonal core planes |X|+|Y|=19.98163 (source :50, :52–56).
 This removes the source's internal contact surfaces without hiding outer errors.
 
 The production per-face wall, overhang, bridge and downward-fillet primitives
