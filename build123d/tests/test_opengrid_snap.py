@@ -90,6 +90,12 @@ def test_provenance_values_match_pinned_upstream():
             assert float(value[1]) == provenance.value
 
 
+# Full-directional parity exceeds the fast-job 60 s threshold (pst-n60q0).
+@pytest.mark.parametrize('built', [
+    pytest.param(variant, id=variant[0],
+                 marks=pytest.mark.audit if variant[0] == 'full-directional' else ())
+    for variant in VARIANTS
+], indirect=True)
 def test_mesh_parity(built):
     name, part, mesh, _ = built
     ref = reference(name)
