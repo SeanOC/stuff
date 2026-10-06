@@ -3780,6 +3780,78 @@
           "published_on": "2026-09-29"
         }
       ]
+    },
+    {
+      "source_file_id": "opengrid-snap/directional.stl",
+      "source_group_id": "opengrid-snap",
+      "filename": "directional.stl",
+      "upstream_file_id": null,
+      "url": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad",
+      "licence": "CC BY-NC-SA 4.0",
+      "access": "bucket",
+      "current": "41f37803712efdf141fb797cbb89e39270f84b91ae0ea360e2e82714c1167733",
+      "versions": [
+        {
+          "sha256": "41f37803712efdf141fb797cbb89e39270f84b91ae0ea360e2e82714c1167733",
+          "size": 130284,
+          "gcs": "gs://stuff-reference-upstream/opengrid-snap/41f37803712efdf141fb797cbb89e39270f84b91ae0ea360e2e82714c1167733/directional.stl",
+          "published_on": "2026-10-06"
+        }
+      ]
+    },
+    {
+      "source_file_id": "opengrid-snap/full-directional.stl",
+      "source_group_id": "opengrid-snap",
+      "filename": "full-directional.stl",
+      "upstream_file_id": null,
+      "url": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad",
+      "licence": "CC BY-NC-SA 4.0",
+      "access": "bucket",
+      "current": "65e729c9bd29379f2d23941c424a889c7c61af80eb5fc7dca3e7870f7d338d79",
+      "versions": [
+        {
+          "sha256": "65e729c9bd29379f2d23941c424a889c7c61af80eb5fc7dca3e7870f7d338d79",
+          "size": 130284,
+          "gcs": "gs://stuff-reference-upstream/opengrid-snap/65e729c9bd29379f2d23941c424a889c7c61af80eb5fc7dca3e7870f7d338d79/full-directional.stl",
+          "published_on": "2026-10-06"
+        }
+      ]
+    },
+    {
+      "source_file_id": "opengrid-snap/full.stl",
+      "source_group_id": "opengrid-snap",
+      "filename": "full.stl",
+      "upstream_file_id": null,
+      "url": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad",
+      "licence": "CC BY-NC-SA 4.0",
+      "access": "bucket",
+      "current": "fc86b27cfce423418bac7af4c10175add55fea4a83a007ef9ceeb6f8ae2071e7",
+      "versions": [
+        {
+          "sha256": "fc86b27cfce423418bac7af4c10175add55fea4a83a007ef9ceeb6f8ae2071e7",
+          "size": 135884,
+          "gcs": "gs://stuff-reference-upstream/opengrid-snap/fc86b27cfce423418bac7af4c10175add55fea4a83a007ef9ceeb6f8ae2071e7/full.stl",
+          "published_on": "2026-10-06"
+        }
+      ]
+    },
+    {
+      "source_file_id": "opengrid-snap/lite.stl",
+      "source_group_id": "opengrid-snap",
+      "filename": "lite.stl",
+      "upstream_file_id": null,
+      "url": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad",
+      "licence": "CC BY-NC-SA 4.0",
+      "access": "bucket",
+      "current": "9d80e5998c603397b36bbd86c9c61ccd2241c5622014a700a4be06701575bf73",
+      "versions": [
+        {
+          "sha256": "9d80e5998c603397b36bbd86c9c61ccd2241c5622014a700a4be06701575bf73",
+          "size": 135884,
+          "gcs": "gs://stuff-reference-upstream/opengrid-snap/9d80e5998c603397b36bbd86c9c61ccd2241c5622014a700a4be06701575bf73/lite.stl",
+          "published_on": "2026-10-06"
+        }
+      ]
     }
   ]
 }
