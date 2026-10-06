@@ -40,9 +40,11 @@ SCHEMA = 2
 
 # Source-manifest licence string -> committed licence text, relative to ROOT.
 # Shared by reference validation, publishing and measurement provenance.
+# Keys preserve verbatim upstream spellings; do not collapse aliases.
 LICENCE_TEXTS = {
     "Multiboard Licence (non-commercial)": "reference/LICENSES/Multiboard-Licence-2025-12-19.txt",
     "Creative Commons — Attribution": "reference/LICENSES/CC-BY-4.0.txt",
+    "CC BY-NC-SA 4.0": "reference/LICENSES/CC-BY-NC-SA-4.0.txt",
     "Creative Commons — Attribution  — Noncommercial  —  Share Alike":
         "reference/LICENSES/CC-BY-NC-SA-4.0.txt",
 }
