@@ -476,10 +476,12 @@ def _cup_lid_shank_exclusion(values):
 
 
 from holders.openconnect_plate import border_exclusions
+from holders.cartridge_holder import audit_exclusions as cartridge_exclusions
 
 _MODEL_EXCLUSIONS = {
     'holder_cup_lid': lambda values: [_cup_lid_shank_exclusion(values)],
     'openconnect_plate': border_exclusions,
+    'littletikes_dream_machine_cartridge_holder': cartridge_exclusions,
 }
 
 

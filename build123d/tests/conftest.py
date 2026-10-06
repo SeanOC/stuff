@@ -23,7 +23,17 @@ def _restore_locale():
     locale.setlocale(locale.LC_ALL, saved)
 
 
-def pytest_collection_modifyitems(items):
+def pytest_addoption(parser):
+    parser.addoption('--run-slow', action='store_true', default=False,
+                     help='run explicitly gated expensive geometry contracts')
+
+
+def pytest_collection_modifyitems(config, items):
+    if not config.getoption('--run-slow'):
+        skip = pytest.mark.skip(reason='requires --run-slow')
+        for item in items:
+            if item.get_closest_marker('slow'):
+                item.add_marker(skip)
     bad = [item.nodeid for item in items
            if (item.get_closest_marker('audit_full')
                and not item.get_closest_marker('audit'))

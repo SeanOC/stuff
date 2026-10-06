@@ -21,7 +21,7 @@ Both flags may be combined. The four committed parity references are lite,
 full, directional lite and directional full (26.0 × 25.6 × 6.8 mm).
 
 A consumer puts its back face at `z = h - 0.02` and fuses the snap into it,
-matching `models/littletikes_dream_machine_cartridge_holder.scad:189-194`:
+as used by `build123d/holders/cartridge_holder.py` (the OC4b port):
 
 ```python
 from build123d import Align, Box, Pos

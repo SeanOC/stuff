@@ -242,18 +242,12 @@ used here.
 to the reference bucket, measuring it with `tools/measure_step.py` into
 `reference/measured/oc-*.json` would earn [V] for these values.
 
-**Second definition in the repo.**
-`models/littletikes_dream_machine_cartridge_holder.scad:292-340` carries a
-hand-typed OpenSCAD openConnect receiver (`oc_*` constants at :309-322,
-probed by its `invariants.py:91`). The numbers it shares with this table
-agree today: 17 / 14.2 / 10.6, the 0.6 + 1.4 + 0.6 stack, 0.1 / 0.1
-clearances, 10.6 travel, 2.7 depth. Its geometry is simplified, though: a
-straight dovetail with a full-depth on-ramp on the slot axis, and no seat
-chamfers, lock nub, offset on-ramp or lip widening.
-`build123d/openconnect/constants.py` is the **citation of record**, pinned
-to the upstream commit. The SCAD model keeps its literals until someone
-migrates it, and any future disagreement is resolved toward the pinned
-upstream.
+**Retired second definition (OC4b).** The native simplified receiver in
+`models/littletikes_dream_machine_cartridge_holder.scad` was retired by
+pst-7wnqb. `holders/cartridge_holder.py` now consumes `openconnect.grid`
+with corner locks and the author's default upward slide. Its floor is
+clamped to 5.2 mm to preserve 2.4 mm of backing below the cartridge cuts.
+`openconnect/constants.py` remains the citation of record.
 
 ## Licence
 

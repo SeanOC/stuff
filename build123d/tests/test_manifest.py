@@ -156,14 +156,17 @@ def test_validator_accepts_filename_on_every_kind():
         assert validate_manifest(d) == [], kind
 
 
-def test_spool_cradle_mount_style_is_filename_flagged():
-    """pst-fcjqj: live downloads name the cradle after its mount style; it is
-    the ONLY flagged param in the registry (no churn elsewhere)."""
+def test_mount_selection_params_are_filename_flagged():
+    """Mount selections distinguish downloads for the cradle and cartridge tray."""
     flagged = [(s.name, p.name) for s in all_models() for p in s.params if p.filename]
-    assert flagged == [("holder_spool_cradle", "mount_style")]
-    model = next(m for m in build_manifest()["models"] if m["slug"] == "holder-spool-cradle")
-    by_name = {p["name"]: p for p in model["params"]}
-    assert by_name["mount_style"]["filename"] is True
+    assert set(flagged) == {
+        ("holder_spool_cradle", "mount_style"),
+        ("littletikes_dream_machine_cartridge_holder", "mount_type"),
+    }
+    models = {m["slug"]: m for m in build_manifest()["models"]}
+    for name, param in flagged:
+        by_name = {p["name"]: p for p in models[name.replace("_", "-")]["params"]}
+        assert by_name[param]["filename"] is True
 
 
 def test_preset_serializes_like_parse_ts():

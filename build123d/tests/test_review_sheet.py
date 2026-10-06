@@ -93,9 +93,11 @@ def test_resolve_mount_fixtures_absent_style():
 
 
 def test_default_plane_mounted_model(parts):
-    spec = next(s for s in SPECS if s.mounts and not s.review_sections)
-    fx = next(f for f in (resolve_mount_fixtures(spec, m, spec.resolve_values())
-                          for m in spec.mounts) if f is not None)
+    candidates = ((s, resolve_mount_fixtures(s, mount, s.resolve_values()))
+                  for s in SPECS if not s.review_sections for mount in s.mounts)
+    # A declared mount may be inactive for the default values (the cartridge
+    # holder defaults to positive snaps, not its optional receiver fixtures).
+    spec, fx = next((s, fx) for s, fx in candidates if fx is not None)
     ctx = review_context(spec, spec.resolve_values(), parts[spec.slug])
     assert len(ctx.sections) == 1
     assert ctx.sections[0].origin == tuple(fx.seat_locs[0].position)

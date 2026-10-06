@@ -130,11 +130,7 @@ export const CATALOG: Record<string, CatalogEntry> = {
     blurb:
       "Ego MultiHead EA0820 edger attachment wall mount converted from screw-mount to openGrid or Multiconnect (pick mount_type): the operator's bracket mesh import()ed as-is, its four countersunk screw holes plugged solid, and either ten directional openGrid snaps (strong nub up) fused to a grid-aligned extended back plate or a Multiconnect slot-plate backer. Prints supportless snaps-down — snap the two breakaway ribs out of the tool slots before first use. Hangs the EA0820 edger head by its original slot bearing surfaces.",
   },
-  littletikes_dream_machine_cartridge_holder: {
-    categoryId: "toys",
-    blurb:
-      "Wall-mounted holder for Little Tikes Dream Machine cartridges and figures — an openGrid tray sized in whole 28mm cells that auto-fills with 51x14 cartridge slots (top) and rounded figure pockets (front). Pick a back-face mount: openGrid lite snaps (default), a blank flat back, or openConnect receivers — all on the same 28mm cell grid. The preview shows a compact 2x4-cell tile; scale the cell count up to 9x8 for the full-size holder.",
-  },
+
   us_electrical_box_extender: {
     categoryId: "household",
     blurb:
@@ -174,6 +170,11 @@ export const CATALOG: Record<string, CatalogEntry> = {
  * enforcement and cross-checks the manifest's categoryId against it.
  */
 export const BUILD123D_CATALOG: Record<string, CatalogEntry> = {
+  littletikes_dream_machine_cartridge_holder: {
+    categoryId: "toys",
+    blurb:
+      "Wall-mounted holder for Little Tikes Dream Machine cartridges and figures — an openGrid tray sized in whole 28mm cells that auto-fills with 52x14 cartridge slots (top) and rounded figure pockets (front). Pick a back-face mount: openGrid lite snaps (default), a blank flat back, or openConnect receivers — all on the same 28mm cell grid. The preview shows a compact 2x4-cell tile; scale the cell count up to 9x8 for the full-size holder.",
+  },
   openconnect_plate: {
     categoryId: "multiboard",
     blurb: "openConnect slot plate by mitufy: grid or millimetre sizing, selectable locks and negative slots for CAD. Print standing with at least 2.4 mm backing.",
