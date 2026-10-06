@@ -170,6 +170,10 @@ export const CATALOG: Record<string, CatalogEntry> = {
  * enforcement and cross-checks the manifest's categoryId against it.
  */
 export const BUILD123D_CATALOG: Record<string, CatalogEntry> = {
+  openconnect_gridfinity_shelf: {
+    categoryId: "multiboard",
+    blurb: "mitufy’s openConnect Gridfinity shelf: wedge-down printing, optional magnets and rims. The sturdy-back preset provides 2.4 mm slot backing.",
+  },
   littletikes_dream_machine_cartridge_holder: {
     categoryId: "toys",
     blurb:

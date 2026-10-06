@@ -11,7 +11,7 @@ from build123d import Align, Box, Pos, export_gltf
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from holders.registry import all_models, resolve_mount_fixtures, _validate_spec
+from holders.registry import all_models, in_print_frame, resolve_mount_fixtures, _validate_spec
 from holders import cup_lid, spool_cradle
 from scripts import thumbnail as th
 from scripts.export import review_context, section_svg
@@ -157,7 +157,9 @@ def test_context_requires_resolved_sections():
 @pytest.mark.parametrize("spec", SPECS, ids=lambda s: s.slug)
 def test_section_golden(spec, parts, file_regression):
     part = parts[spec.slug]
-    plane = review_context(spec, spec.resolve_values(), part).sections[0]
+    values = spec.resolve_values()
+    plane = review_context(spec, values, part).sections[0]
+    part = in_print_frame(spec, values, part)
     file_regression.check(section_svg(part, plane), extension=".svg",
                           fullpath=ROOT / "docs/renders/sections" / f"{spec.slug}.svg")
 

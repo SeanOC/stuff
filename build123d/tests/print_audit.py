@@ -692,6 +692,7 @@ def audit(
     cutters=(),
     exclusions=(),
     model: str = "part",
+    print_frame=None,
 ) -> PrintAuditReport:
     """Run the full printability audit (AC 1).
 
@@ -706,6 +707,10 @@ def audit(
             Production callers must regression-test every exception.
         model: a label for the report.
     """
+    if print_frame is not None:
+        part = print_frame * part
+        cutters = [print_frame * c for c in cutters]
+        exclusions = [print_frame * e for e in exclusions]
     up = _unit(orientation)
     boxes = _cutter_boxes(list(cutters)) + list(exclusions)
     verts = [v for v in part.vertices()]

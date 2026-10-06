@@ -157,16 +157,30 @@ def test_validator_accepts_filename_on_every_kind():
 
 
 def test_mount_selection_params_are_filename_flagged():
-    """Mount selections distinguish downloads for the cradle and cartridge tray."""
+    """Mount selections and shelf dimensions/style distinguish downloads."""
     flagged = [(s.name, p.name) for s in all_models() for p in s.params if p.filename]
     assert set(flagged) == {
         ("holder_spool_cradle", "mount_style"),
+        ("openconnect_gridfinity_shelf", "baseplate_style"),
+        ("openconnect_gridfinity_shelf", "gridfinity_width_grids"),
+        ("openconnect_gridfinity_shelf", "gridfinity_depth_grids"),
         ("littletikes_dream_machine_cartridge_holder", "mount_type"),
     }
     models = {m["slug"]: m for m in build_manifest()["models"]}
     for name, param in flagged:
         by_name = {p["name"]: p for p in models[name.replace("_", "-")]["params"]}
         assert by_name[param]["filename"] is True
+
+
+def test_shelf_clearance_description_reaches_catalog():
+    doc = build_manifest()
+    assert validate_manifest(doc) == []
+    shelf = next(m for m in doc['models'] if m['slug'] == 'openconnect-gridfinity-shelf')
+    clearance = next(p for p in shelf['params'] if p['name'] == 'gridfinity_socket_clearance')
+    assert 'at least 3 perimeters or keep the default 0' in clearance['description']
+    assert (clearance['min'], clearance['max']) == (0, .2)
+    clearance['description'] = 42
+    assert any('description must be a non-empty string' in e for e in validate_manifest(doc))
 
 
 def test_preset_serializes_like_parse_ts():
@@ -244,7 +258,7 @@ def test_validator_rejects_missing_field():
 
 def test_validator_rejects_unknown_param_field():
     doc = _mutate(_valid_doc())
-    doc["models"][0]["params"][0]["description"] = "not an app field"
+    doc["models"][0]["params"][0]["unknown_help_field"] = "not an app field"
     errors = validate_manifest(doc)
     assert any("unknown param fields" in e for e in errors)
 

@@ -39,7 +39,7 @@ SAFE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
 # module asserts full coverage at import). A model tagged with an unknown
 # mount fails loudly at registration (see _validate_spec). Add a new mount
 # type here AND its contract together.
-KNOWN_MOUNTS: frozenset[str] = frozenset({"multiconnect-slot", "multibuild-multiconnect-slot", "multibuild-multiconnect-channel", "openconnect-slot", "multibuild-fixpoint-slot"})
+KNOWN_MOUNTS: frozenset[str] = frozenset({"multiconnect-slot", "multibuild-multiconnect-slot", "multibuild-multiconnect-channel", "openconnect-slot", "openconnect-slot-shallow", "multibuild-fixpoint-slot"})
 
 # Mirrors MODEL_CATEGORIES ids in lib/models/catalog.ts (app catalog
 # contract). Keep in sync when a category is added there.
@@ -88,6 +88,7 @@ class Param:
     filename: bool = False
     max_length: int | None = None
     charset: str | None = None
+    description: str | None = None  # Optional catalog help shown below the control.
 
 
 # Viewer camera hints a preset may carry (manifest "defaultView", read by
@@ -155,7 +156,7 @@ def _validate_param(param: Param) -> str | None:
         return f"param {param.name!r}: name must be a non-empty safe identifier"
     if param.kind not in ("number", "integer", "boolean", "string", "enum"):
         return f"param {param.name!r}: unknown kind {param.kind!r}"
-    for field in ("label", "group", "unit"):
+    for field in ("label", "description", "group", "unit"):
         value = getattr(param, field)
         if value is not None and (not isinstance(value, str) or not value):
             return f"param {param.name!r}: {field} must be a non-empty string"
@@ -239,6 +240,8 @@ class MountFixtures:
     # Continuous channels: one head-entry pose per seat, in matching order.
     # cutters contains one negative per channel (which may hold many seats).
     onramp_locs: list[Location] = field(default_factory=list)
+    # Optional uncut body for pockets whose lead-in exits the body envelope.
+    backing_envelope: Part | None = None
 
 
 @dataclass(frozen=True)
@@ -296,6 +299,11 @@ class ModelSpec:
     # production model declares a non-default orientation only once it passes
     # the audit at that orientation (design-guidelines §6 items 1–3).
     print_orientation: tuple[float, float, float] = (0.0, 0.0, 1.0)
+
+    # Use only when print orientation depends on parameters. Build and mount
+    # fixtures stay in model coordinates; exports and audits apply this frame.
+    # None preserves every existing model output and static orientation.
+    print_frame: Callable[[dict[str, Any]], Location] | None = None
 
     review_sections: tuple[PlaneSpec, ...] = ()
 
@@ -355,6 +363,15 @@ class ModelSpec:
                     raise ValueError(f"{self.name}: {error}")
             values[name] = value
         return values
+
+
+def in_print_frame(spec: ModelSpec, values: dict, shape):
+    """Place an export shape in its parameter-dependent print frame, if any.
+
+    Contracts use build(values) and fixtures directly, in model coordinates.
+    A None resolver returns the original object, preserving existing exports.
+    """
+    return spec.print_frame(spec.resolve_values(values)) * shape if spec.print_frame else shape
 
 
 def resolve_mount_fixtures(
@@ -566,5 +583,6 @@ def all_models() -> list[ModelSpec]:
     from holders import spool_cradle  # noqa: F401
     from holders import label_card  # noqa: F401
     from holders import openconnect_plate  # noqa: F401
+    from holders import gridfinity_shelf  # noqa: F401
     from holders import cartridge_holder  # noqa: F401
     return list(_REGISTRY.values())

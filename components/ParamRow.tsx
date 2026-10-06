@@ -32,17 +32,22 @@ interface Props {
 
 export function ParamRow({ param, value, onChange, error }: Props) {
   const row = <ParamControl param={param} value={value} onChange={onChange} />;
-  if (error === undefined) return row;
+  if (error === undefined && param.description === undefined) return row;
   return (
     <div className="flex flex-col gap-4">
       {row}
-      <p
-        role="alert"
-        data-testid={`param-error-${param.name}`}
-        className="text-10 text-red"
-      >
-        {error}
-      </p>
+      {param.description !== undefined && (
+        <p className="text-10">{param.description}</p>
+      )}
+      {error !== undefined && (
+        <p
+          role="alert"
+          data-testid={`param-error-${param.name}`}
+          className="text-10 text-red"
+        >
+          {error}
+        </p>
+      )}
     </div>
   );
 }

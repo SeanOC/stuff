@@ -1,0 +1,25 @@
+openConnect Gridfinity Shelf Generator — mitufy
+https://makerworld.com/en/models/3055852-openconnect-gridfinity-shelf-generator#profileId-3438217
+Retrieved 2026-10-05 from Sean's uploaded original, redistributed verbatim.
+License: Creative Commons Attribution-ShareAlike 4.0 International
+https://creativecommons.org/licenses/by-sa/4.0/
+License text: ../../build123d/reference/LICENSES/CC-BY-SA-4.0.txt
+Source SHA256: 51d3b7b4173793e53268fc35ec37fe89d751a4947bd9d7cc743675f25df2501e
+
+Credits retained from the author: openGrid by David D; Gridfinity by Zack
+Freedman; baseplate code partly from Gridfinity Rebuilt (MIT).
+The Python shelf and baseplate routines are adaptations under CC BY-SA 4.0;
+Gridfinity profile constants are MIT-derived. Embedded openConnect code is
+not ported again: the existing openconnect/ library supplies the cutters.
+
+Reference meshes are generated from the unmodified SCAD, including slots.
+BOSL2: https://github.com/BelfrySCAD/BOSL2
+Pinned commit: b86a7584db6d324eb856c2d19d041f94435e6c32
+The repo's older BOSL2 pin lacks struct_set/struct_val. This is the existing
+assets/openConnect/NOTICE render pin. No library source is committed here.
+
+From the repository root, set OPENSCADPATH to the parent of that BOSL2 checkout:
+openscad --export-format=binstl -o assets/openConnect-gridfinity-shelf/mesh/default.stl assets/openConnect-gridfinity-shelf/openconnect_gridfinity_shelf_online.scad
+For magnets add: -D 'baseplate_style="Magnet - All"'
+For wide add: -D gridfinity_width_grids=4
+Mesh hashes are recorded in mesh/SHA256SUMS.

@@ -22,6 +22,8 @@ export type ParamType = "number" | "integer" | "boolean" | "string" | "enum";
 export interface ParamBase {
   name: string;
   label?: string;
+  /** Optional help from the build123d catalog, displayed below the control. */
+  description?: string;
   group?: string;
   unit?: string;
   // `filename` is a bare-word flag on the @param line (e.g.
