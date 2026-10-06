@@ -92,7 +92,6 @@ COVERAGE_TEST = "tests/sweep/coverage.test.ts"
 # (a plain value sort raises TypeError on None). Every models/*.scad stem
 # needs a key (scripts/test_select_sweep_tests.py guards both ways).
 MEASURED_SECONDS: dict[str, int | None] = {
-    "littletikes_dream_machine_cartridge_holder": 2080,
     "ryobi_p2860_strap_saddle": 1821,
     "apple_tv_4th_gen_holder": 1750,
     "opengrid_bin": 1694,
