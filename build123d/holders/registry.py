@@ -39,7 +39,7 @@ SAFE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
 # module asserts full coverage at import). A model tagged with an unknown
 # mount fails loudly at registration (see _validate_spec). Add a new mount
 # type here AND its contract together.
-KNOWN_MOUNTS: frozenset[str] = frozenset({"multiconnect-slot", "multibuild-multiconnect-slot", "multibuild-multiconnect-channel", "openconnect-slot", "multibuild-fixpoint-slot"})
+KNOWN_MOUNTS: frozenset[str] = frozenset({"multiconnect-slot", "multibuild-multiconnect-slot", "multibuild-multiconnect-channel", "openconnect-slot", "openconnect-slot-shallow", "multibuild-fixpoint-slot"})
 
 # Mirrors MODEL_CATEGORIES ids in lib/models/catalog.ts (app catalog
 # contract). Keep in sync when a category is added there.
@@ -296,6 +296,11 @@ class ModelSpec:
     # production model declares a non-default orientation only once it passes
     # the audit at that orientation (design-guidelines §6 items 1–3).
     print_orientation: tuple[float, float, float] = (0.0, 0.0, 1.0)
+
+    # Use only when print orientation depends on parameters. Build and mount
+    # fixtures stay in model coordinates; exports and audits apply this frame.
+    # None preserves every existing model output and static orientation.
+    print_frame: Callable[[dict[str, Any]], Location] | None = None
 
     review_sections: tuple[PlaneSpec, ...] = ()
 

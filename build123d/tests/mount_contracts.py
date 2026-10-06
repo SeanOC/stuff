@@ -52,6 +52,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable
+from functools import partial
 
 from build123d import Align, Axis, Box, Plane, Pos, Rot, Solid, section
 from build123d.topology import Part
@@ -392,7 +393,10 @@ def channel_pairs(fx: MountFixtures) -> list[list[tuple]]:
     return result
 
 
-def verify_openconnect_slot(part: Part, fx: MountFixtures) -> None:
+def verify_openconnect_slot(
+    part: Part, fx: MountFixtures, *, min_backing: float = 2.4,
+    backing_envelope: Part | None = None,
+) -> None:
     """openConnect: push in through the on-ramp, shift onto the slot axis,
     slide +Z to a closed seat; pull-off retained; >=2.4 mm backing.
 
@@ -462,10 +466,12 @@ def verify_openconnect_slot(part: Part, fx: MountFixtures) -> None:
                       if abs(f.center().Y - bb.max.Y) < 1e-7]
         assert back_faces, 'openconnect cutter must expose pocket-back faces'
         for face in back_faces:
-            probe = Solid.extrude(face, (0, 2.4, 0))
+            probe = Solid.extrude(face, (0, min_backing, 0))
+            if backing_envelope is not None:
+                probe = probe & backing_envelope
             missing = probe.volume - _residual_vol(part, probe)
             assert missing < 1e-3, (
-                f'openconnect slot needs >=2.4 mm backing: {missing:.3f} mm^3 missing')
+                f'openconnect slot needs >={min_backing} mm backing: {missing:.3f} mm^3 missing')
 
 
 _FP_END_STOP_MIN = 5.0  # mm^3: a Fix Point head pushed 1 mm past its seat must
@@ -589,6 +595,7 @@ CONTRACTS: dict[str, Callable[[Part, MountFixtures], None]] = {
     "multibuild-multiconnect-slot": verify_multiconnect_slot,
     "multibuild-multiconnect-channel": verify_multiconnect_channel,
     "openconnect-slot": verify_openconnect_slot,
+    "openconnect-slot-shallow": partial(verify_openconnect_slot, min_backing=0.8),
     "multibuild-fixpoint-slot": verify_fixpoint_slot,
 }
 

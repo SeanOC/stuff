@@ -5,10 +5,10 @@
 """
 from dataclasses import dataclass
 
-from build123d import Pos
+from build123d import Align, Box, Pos
 from holders.registry import MountFixtures
 from .constants import DEPTH_CLEARANCE, EPS, SIDE_CLEARANCE, TILE_SIZE
-from .slot import onramp_location, seat_location, slot_cutter
+from .slot import onramp_location, pocket_depth, seat_location, slot_cutter
 
 POSITIONS = ('all', 'staggered', 'edge-rows', 'edge-columns', 'corners')
 LOCKS = ('corners', 'all', 'staggered', 'top-corners', 'none')
@@ -49,7 +49,7 @@ def layout(h_grids, v_grids, *, position='all', lock='corners', slide='up',
 
 
 def fixtures(placements, clearance=(SIDE_CLEARANCE, DEPTH_CLEARANCE), *,
-             edge_feature='both', excess_thickness=EPS) -> MountFixtures:
+             edge_feature='both', excess_thickness=EPS, excess_length=0.0) -> MountFixtures:
     placements = list(placements)
     slides = {p.slide for p in placements}
     if len(slides) > 1:
@@ -58,9 +58,20 @@ def fixtures(placements, clearance=(SIDE_CLEARANCE, DEPTH_CLEARANCE), *,
         cutters=[Pos(p.x, 0, p.z) * slot_cutter(
             nubs=p.nubs, slide=p.slide, entryramp_flip=p.entryramp_flip,
             clearance=clearance, edge_feature=edge_feature,
-            excess_thickness=excess_thickness) for p in placements],
+            excess_thickness=excess_thickness, excess_length=excess_length) for p in placements],
         seat_locs=[seat_location(p.x, p.z, slide=p.slide) for p in placements],
         onramp_locs=[onramp_location(p.x, p.z, slide=p.slide,
                                   entryramp_flip=p.entryramp_flip) for p in placements],
         entry_axis=SLIDES[next(iter(slides), 'up')],
     )
+
+
+def row_strip(h_grids, excess_length, excess_thickness=EPS):
+    """[C] shelf source:1134-1138, row extension at the lower on-ramp end.
+
+    Separate from MountFixtures: those lists remain one item per slot.
+    Frame matches layout(h_grids, 1), with the row centred at Z=0.
+    """
+    return Pos(0, -excess_thickness, -TILE_SIZE/2-excess_length)*Box(
+        h_grids*TILE_SIZE, pocket_depth()+excess_thickness, excess_length,
+        align=(Align.CENTER, Align.MIN, Align.MIN))
