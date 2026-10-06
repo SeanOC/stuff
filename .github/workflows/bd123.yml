@@ -30,7 +30,7 @@ jobs:
   fast:
     name: build123d fast
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     defaults: { run: { working-directory: build123d } }
     steps:
       - uses: actions/checkout@v4

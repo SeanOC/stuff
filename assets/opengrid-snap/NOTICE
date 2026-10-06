@@ -12,7 +12,7 @@ Licence: CC BY-NC-SA 4.0; see
 
 Generated with OpenSCAD version 2025.06.12.ai25773 (default CGAL engine).
 Run bash scripts/vendor-libs.sh first. Copy the patched snap source into
-.tmp-pst-n9cij/snap.scad, replacing its final demo invocation at line 128
+.tmp-pst-n60q0/snap.scad, replacing its final demo invocation at line 128
 with a comment. This prevents an extra directional snap contaminating
 lite/full renders. Keep its include <BOSL2/std.scad> and module unchanged.
 The per-variant wrapper is:
@@ -21,9 +21,10 @@ The per-variant wrapper is:
 lite.scad: LITE=true, DIRECTIONAL=false
 full.scad: LITE=false, DIRECTIONAL=false
 directional.scad: LITE=true, DIRECTIONAL=true
+full-directional.scad: LITE=false, DIRECTIONAL=true
 
 Exact command pattern, run at repository root for each NAME above:
-    OPENSCADPATH="$PWD/libs" openscad -o "$PWD/assets/opengrid-snap/mesh/NAME.stl" "$PWD/.tmp-pst-n9cij/NAME.scad"
+    OPENSCADPATH="$PWD/libs" openscad -o "$PWD/assets/opengrid-snap/mesh/NAME.stl" "$PWD/.tmp-pst-n60q0/NAME.scad"
 Z=0 is the snap bottom. The original meshes have non-manifold nub-root
 interfaces. They are reference surfaces, not watertight printing assets.
 
@@ -31,3 +32,4 @@ SHA256:
 2a89068bc14c34307b221f7048365414ea112b30b97d4adbe92f9c2601081097  mesh/directional.stl
 2c8bca69ab60c58bb8b3b5971f7f094e4029a8e2c308a1066035f8f38ad1e0a4  mesh/full.stl
 3fa8ad3d8809b2b9283b72dbdc72b16a051ddeb8004ef8a14f522d7d7642a9cd  mesh/lite.stl
+1f96ceafcd28f6728fb6a7eb7e64aac99bec47fb8cdcdd9f4a3193fcf5fa0246  mesh/full-directional.stl
