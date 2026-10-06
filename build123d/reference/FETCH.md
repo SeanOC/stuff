@@ -1,10 +1,17 @@
 # Upstream reference files — private GCS mirror
 
-Official upstream CAD files (Multiconnect / MultiBuild STEP, STL and PDF) are
-used as measurement references. Their licences allow non-commercial *use* but
-not redistribution. So they are **never committed**: they live in the private
-bucket `gs://stuff-reference-upstream/`, and this repo commits only their
+Official upstream CAD files whose licences prohibit redistribution, such as
+Multiboard originals, are used as measurement references and **never
+committed**: they live in the private bucket `gs://stuff-reference-upstream/`,
+and this repo commits only their
 identities and checksums in [`source-manifest.json`](source-manifest.json).
+
+These mirrored-only originals are distinct from redistributable author meshes
+committed as binary STL in root `assets/` under their recorded licences. The
+committed meshes support offline PR parity tests; their bucket mirrors provide
+provenance redundancy. For openGrid snaps, NOTICE lists the destinations to be
+published by the operator after merge. The no-upstream-originals test scans
+only `build123d/reference/`, not these `assets/` directories.
 
 ## Pull (one line)
 

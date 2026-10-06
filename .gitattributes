@@ -1,0 +1,3 @@
+*.stl binary -diff
+*.step binary -diff
+*.3mf binary -diff

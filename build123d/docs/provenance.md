@@ -2,8 +2,9 @@
 
 Rule: [design-guidelines §7](design-guidelines.md#7-provenance). **[V]** means
 measured from an official file (artefact cited) or a physical print. **[C]**
-means cited, and **[U]** means unresolved. Upstream originals are **never
-committed**. They live in the private mirror (see
+means cited, and **[U]** means unresolved. Upstream originals whose licences
+prohibit redistribution are **never committed**. They live in the private
+mirror (see
 [`reference/FETCH.md`](../reference/FETCH.md)).
 
 ## Licences
@@ -34,7 +35,11 @@ manifest entry.
 
 ## Committed reference artefacts
 
-All live in `reference/measured/`. Each has one entry in
+Committed author meshes with redistributable licences live as binary STL in
+root `assets/`, with bucket mirrors for provenance (the operator publishes the
+openGrid snap mirrors after merge to the destinations in its NOTICE).
+
+Measured profiles live in `reference/measured/`. Each has one entry in
 [`reference/artifact-manifest.json`](../reference/artifact-manifest.json)
 with these fields:
 
