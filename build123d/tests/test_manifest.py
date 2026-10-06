@@ -156,18 +156,20 @@ def test_validator_accepts_filename_on_every_kind():
         assert validate_manifest(d) == [], kind
 
 
-def test_spool_cradle_mount_style_is_filename_flagged():
-    """Cradle mount style and shelf dimensions/style identify downloads."""
+def test_mount_selection_params_are_filename_flagged():
+    """Mount selections and shelf dimensions/style distinguish downloads."""
     flagged = [(s.name, p.name) for s in all_models() for p in s.params if p.filename]
-    assert flagged == [
+    assert set(flagged) == {
         ("holder_spool_cradle", "mount_style"),
         ("openconnect_gridfinity_shelf", "baseplate_style"),
         ("openconnect_gridfinity_shelf", "gridfinity_width_grids"),
         ("openconnect_gridfinity_shelf", "gridfinity_depth_grids"),
-    ]
-    model = next(m for m in build_manifest()["models"] if m["slug"] == "holder-spool-cradle")
-    by_name = {p["name"]: p for p in model["params"]}
-    assert by_name["mount_style"]["filename"] is True
+        ("littletikes_dream_machine_cartridge_holder", "mount_type"),
+    }
+    models = {m["slug"]: m for m in build_manifest()["models"]}
+    for name, param in flagged:
+        by_name = {p["name"]: p for p in models[name.replace("_", "-")]["params"]}
+        assert by_name[param]["filename"] is True
 
 
 def test_shelf_clearance_description_reaches_catalog():

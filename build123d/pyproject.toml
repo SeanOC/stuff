@@ -13,6 +13,8 @@
 # Exception (Sean 2026-10-05, pst-5k38j): holders/gridfinity_shelf.py and
 # gridfinity/baseplate.py adapt mitufy’s Gridfinity shelf under CC BY-SA 4.0;
 # the profile constants are Gridfinity Rebuilt-derived (MIT).
+# holders/cartridge_holder.py carries its source design CC BY-NC-SA 4.0;
+# personal/non-commercial use, see docs/provenance.md.
 [project]
 name = "stuff-bd"
 version = "0.1.0"
@@ -51,6 +53,7 @@ dev = [
 # A command-line -m REPLACES addopts, so every CI -m expression repeats
 # 'and not upstream'.
 markers = [
+    "slow: expensive geometry contracts, opt in with --run-slow",
     "upstream: needs build123d/reference/upstream/ pulled from the private GCS mirror",
     "audit: builds a registry-sized model and runs the BRep print audit (tens of seconds each); bd123 'audit' job",
     "audit_full: cradle corner sweep (always also 'audit'); cradle-touching PRs, push to main, nightly",

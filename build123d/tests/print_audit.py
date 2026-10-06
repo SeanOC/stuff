@@ -174,27 +174,93 @@ class PrintAuditReport:
 
 # --- geometry helpers -----------------------------------------------------
 
+_PARTITION_TRIGGER_FACES = 1000  # performance only; never an audit exemption
+
+
 class _ClassifiedPart:
-    """``part`` whose ``is_inside`` reuses ONE OCCT solid classifier.
+    """``part`` whose ``is_inside`` reuses OCCT solid classifiers.
 
     build123d's ``Solid.is_inside`` constructs a new BRepClass3d_SolidClassifier
     on every call, and that construction (reloading every face) was ~75 % of
     an audit's CPU (docs/print-audit-profile.md, pst-bzahj). This runs the same
-    classifier, tolerance and IN-or-on-a-face rule, loaded once. Every other
-    attribute is the part's own.
+    classifier, tolerance and IN-or-on-a-face rule, loaded once per solid.
+    Large solids use exact spatial pieces, with native fallback at split
+    planes and boundary faces. Every other attribute is the part's own.
     """
 
-    def __init__(self, part):
+    def __init__(self, part, *, partition=True):
         self._part = part
         self._classifier = BRepClass3d_SolidClassifier(part.wrapped)
+        self._pieces = None
+        # A 72-snap tray otherwise makes every body-wall ray visit thousands
+        # of unrelated mount faces. Split the SAME solid for classification
+        # only; all audit faces, samples and thresholds stay on the original.
+        if (partition and len(part.faces()) > _PARTITION_TRIGGER_FACES
+                and len(part.solids()) == 1):
+            try:
+                self._pieces = self._partition(part.solids()[0])
+            except (ValueError, RuntimeError):
+                # Unsupported/degenerate CAD splits retain the native path.
+                self._pieces = None
+
+    @staticmethod
+    def _partition(part):
+        from build123d import Keep, Plane, split
+
+        leaves, planes = [], []
+
+        def divide(solid, depth=0):
+            if len(solid.faces()) <= 400 or depth >= 6:
+                bb = solid.bounding_box()
+                leaves.append((tuple(bb.min), tuple(bb.max),
+                               _ClassifiedPart(solid, partition=False)))
+                return
+            bb = solid.bounding_box()
+            axis = max(range(3), key=lambda i: tuple(bb.size)[i])
+            middle = tuple(bb.center())[axis]
+            origin, normal = [0,0,0], [0,0,0]
+            origin[axis], normal[axis] = middle, 1
+            pieces = list(split(solid, bisect_by=Plane(origin=origin,z_dir=normal),
+                                keep=Keep.BOTH).solids())
+            # Guard the boolean decomposition. Volume integration has a small
+            # numerical error; this tolerance is <0.014 mm³ on the full tray.
+            if (len(pieces) < 2 or not all(p.is_valid for p in pieces)
+                    or abs(sum(p.volume for p in pieces)-solid.volume)
+                    > max(1e-4,abs(solid.volume)*1e-8)):
+                raise ValueError('classification split did not preserve the solid')
+            planes.append((axis,middle))
+            for piece in pieces:
+                divide(piece,depth+1)
+
+        divide(part)
+        return leaves, planes
 
     def __getattr__(self, name):
         return getattr(self._part, name)
 
-    def is_inside(self, point, tolerance: float = 1.0e-6) -> bool:
-        self._classifier.Perform(gp_Pnt(*Vector(point)), tolerance)
+    def _native_inside(self, point, tolerance):
+        self._classifier.Perform(gp_Pnt(*point), tolerance)
         return (self._classifier.State() == ta.TopAbs_IN
                 or self._classifier.IsOnAFace())
+
+    def is_inside(self, point, tolerance: float = 1.0e-6) -> bool:
+        point = tuple(Vector(point))
+        if self._pieces is None:
+            return self._native_inside(point,tolerance)
+        leaves, planes = self._pieces
+        # Artificial split faces must not change boundary-tolerance behavior.
+        if any(abs(point[axis]-middle) < 4*tolerance for axis,middle in planes):
+            return self._native_inside(point,tolerance)
+        for lo,hi,classifier in leaves:
+            if not all(a-tolerance <= p <= b+tolerance
+                       for a,p,b in zip(lo,point,hi)):
+                continue
+            inside = classifier._native_inside(point,tolerance)
+            if classifier._classifier.IsOnAFace():
+                return self._native_inside(point,tolerance)
+            if inside:
+                return True
+        return False
 
 
 def _unit(v: tuple[float, float, float]) -> tuple[float, float, float]:
@@ -238,6 +304,22 @@ def _cutter_boxes(cutters, margin=_CUTTER_MARGIN):
             )
         )
     return boxes
+
+
+def _face_in_box(face, boxes):
+    """Skip work only when one rectangular exemption contains the WHOLE face.
+
+    Dense snap arrays contain thousands of exempt library faces. Sampling
+    those is expensive even though every sample is excluded. Curved/exact
+    solid regions still use the existing point-by-point path.
+    """
+    rectangles = [b for b in boxes if not hasattr(b, 'is_inside')]
+    if not rectangles:
+        return False
+    bb = face.bounding_box()
+    return any(x0 <= bb.min.X and y0 <= bb.min.Y and z0 <= bb.min.Z
+               and bb.max.X <= x1 and bb.max.Y <= y1 and bb.max.Z <= z1
+               for x0, y0, z0, x1, y1, z1 in rectangles)
 
 
 def _bbox_corners(bb):
@@ -340,6 +422,8 @@ def _max_overhang(part, up, boxes, hmin):
     excluded."""
     worst = 0.0
     for face in part.faces():
+        if _face_in_box(face, boxes):
+            continue
         c, n = _outward_normal(part, face)
         if _in_any_box(c.X, c.Y, c.Z, boxes):
             continue
@@ -380,6 +464,8 @@ def _downward_curved_faces(part, up, boxes, hmin):
     not fillet") is obvious in the PR report."""
     found: list[DownwardFillet] = []
     for face in part.faces():
+        if _face_in_box(face, boxes):
+            continue
         if str(face.geom_type) == "GeomType.PLANE":
             continue
         c, n = _outward_normal(part, face)
@@ -475,6 +561,8 @@ def _longest_bridge(part, up, boxes, hmin):
     eps = _BRIDGE_PROBE
     worst = 0.0
     for face in part.faces():
+        if _face_in_box(face, boxes):
+            continue
         if str(face.geom_type) != "GeomType.PLANE":
             continue
         c, n = _outward_normal(part, face)
@@ -529,6 +617,8 @@ def _min_wall(part, up, boxes):
     ray-cast proxy). Capped at ``WALL_CAP`` — only thin walls matter."""
     best = WALL_CAP
     for face in part.faces():
+        if _face_in_box(face, boxes):
+            continue
         c, n = _outward_normal(part, face)
         for p, sn in _face_samples(face, _WALL_UV):
             if _in_any_box(p.X, p.Y, p.Z, boxes):
@@ -567,14 +657,18 @@ def _bed_chamfer(part, up, hmin) -> str:
     for face in part.faces():
         if str(face.geom_type) != "GeomType.PLANE":
             continue
-        c, n = _outward_normal(part, face)
-        cdot = n.X * up[0] + n.Y * up[1] + n.Z * up[2]
-        if cdot >= -_DOWN_EPS:
-            continue
         verts = [v for v in face.vertices()]
         if not verts:
             continue
         heights = [_height(v, up) for v in verts]
+        # Only a bed-touching face can satisfy either condition below.
+        # Avoid classifying thousands of elevated snap faces unnecessarily.
+        if min(heights) > hmin + _BED_EPS:
+            continue
+        c, n = _outward_normal(part, face)
+        cdot = n.X * up[0] + n.Y * up[1] + n.Z * up[2]
+        if cdot >= -_DOWN_EPS:
+            continue
         if max(heights) <= hmin + _BED_EPS:
             has_bed = True
             continue
