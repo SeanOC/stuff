@@ -8,9 +8,10 @@ bins pulling the shelf away from the wall; the continuous wedge is the web.
 The author's default backing is 0.85 mm; sturdy-back provides 2.4 mm.
 """
 from dataclasses import replace
-from math import atan, cos, degrees, floor, radians
+from math import atan, cos, degrees, floor, pi, radians
 
-from build123d import Align, Axis, Box, Cylinder, Face, Pos, Rot, Solid, Wire, fillet
+from build123d import Align, Axis, Box, Cylinder, Face, Part, Pos, Rot, Solid, Vector, Wire, fillet
+from OCP.BRepFilletAPI import BRepFilletAPI_MakeChamfer
 from gridfinity import baseplate as gf
 from holders.registry import ModelSpec, Param, Preset, register
 from openconnect.constants import EPS, TILE_SIZE
@@ -127,7 +128,22 @@ def build(values=None):
     for cutter in mount_fixtures(MOUNT, v).cutters:
         part -= cutter
     part -= Pos(dx, 0, TILE_SIZE/2+dz)*row_strip(nh, 4)
-    return part
+    # Rev 9 E1: finish every loop of the actual underside, including window
+    # and on-ramp edges, only after all cuts. Other author edges stay intact.
+    bed_normal = Vector(0, tilt/depth, -1).normalized()
+    bed_faces = [f for f in part.faces() if f.normal_at().dot(bed_normal) > 1-1e-7]
+    if len(bed_faces) != 1:
+        raise ValueError("shelf underside must be one connected bed face")
+    bed = bed_faces[0]
+    # Use OCCT's angle-based operation: build123d's angle argument converts
+    # to two linear distances, which is not 45 degrees on tilted side faces.
+    bevel = BRepFilletAPI_MakeChamfer(part.wrapped)
+    for edge in bed.edges():
+        bevel.AddDA(0.3, pi/4, edge.wrapped, bed.wrapped)
+    finished = Part(bevel.Shape())
+    if not finished.is_valid:
+        raise ValueError("shelf underside chamfer produced invalid geometry")
+    return finished
 
 
 SPEC = register(ModelSpec(

@@ -35,3 +35,43 @@ def test_rev8_backing_envelope(values, thickness):
             assert (removed-lower).volume < 1e-7
             assert (lower-removed).volume < 1e-7
     verify_openconnect_slot(part, fx, min_backing=thickness, backing_envelope=envelope)
+
+
+def reference_bed_band(mesh, points):
+    """Rev 9 E3 band, from the reference underside's welded triangle boundary.
+
+    Reference meshes already use the author's bed-down print frame. The
+    0.02 mm plane tolerance includes only the source's EPS-sized bed drift;
+    downward normals reject short side faces near the same plane.
+    """
+    import numpy as np
+
+    bed = mesh.triangles[(mesh.face_normals[:, 2] < -0.99999)
+                         & np.all(np.abs(mesh.triangles[:, :, 2]) < 0.02, axis=1)]
+    counts = {}
+    for triangle in np.round(bed, 5):
+        for i, j in ((0, 1), (1, 2), (2, 0)):
+            edge = tuple(sorted((tuple(triangle[i]), tuple(triangle[j]))))
+            counts[edge] = counts.get(edge, 0) + 1
+    edges = [edge for edge, count in counts.items() if count == 1]
+    assert edges, 'reference must have a bed perimeter'
+    distance = np.full(len(points), np.inf)
+    for start, end in edges:
+        a, b = np.asarray(start), np.asarray(end)
+        ab = b - a
+        t = np.clip(np.sum((points-a)*ab, axis=1)/(ab@ab), 0, 1)
+        distance = np.minimum(distance, np.linalg.norm(points-(a+t[:, None]*ab), axis=1))
+    return distance <= 0.5
+
+
+@pytest.mark.parametrize('preset', ['default', 'magnets', 'wide'])
+def test_rev9_reference_bed_band_fraction(preset):
+    """Keep E3's <=1% cap executable; do not silently widen the exception."""
+    import trimesh
+
+    root = Path(__file__).resolve().parents[2]
+    mesh = trimesh.load_mesh(root/'assets'/'openConnect-gridfinity-shelf'/'mesh'/f'{preset}.stl')
+    points, _ = trimesh.sample.sample_surface(mesh, 100000, seed=1)
+    excluded = reference_bed_band(mesh, points)
+    print(f'BED_BAND | {preset} | {excluded.mean():.5%}')
+    assert excluded.mean() <= 0.01, f'{preset}: bed band excludes {excluded.mean():.3%}, cap 1%'
