@@ -8,7 +8,7 @@ bins pulling the shelf away from the wall; the continuous wedge is the web.
 The author's default backing is 0.85 mm; sturdy-back provides 2.4 mm.
 """
 from dataclasses import replace
-from math import atan, cos, degrees, floor, pi, radians
+from math import atan, cos, degrees, floor, radians
 
 from build123d import Align, Axis, Box, Cylinder, Face, Part, Pos, Rot, Solid, Vector, Wire, fillet
 from OCP.BRepFilletAPI import BRepFilletAPI_MakeChamfer
@@ -88,7 +88,7 @@ def screw_positions(values):
     return positions
 
 
-def backing_envelope(values=None):
+def uncut_wedge(values=None):
     """Uncut body: the underside is z = tilt*y/depth in model coordinates."""
     _, width, depth, _, deck, tilt, *_ = dimensions(values)
     section = Face(Wire.make_polygon([(-width/2, 0, 0), (-width/2, depth, tilt),
@@ -99,7 +99,7 @@ def backing_envelope(values=None):
 
 def build(values=None):
     v, width, depth, extra, deck, tilt, magnets, nh, dx, dz = dimensions(values)
-    part = backing_envelope(v)
+    part = uncut_wedge(v)
     lip = v['shelf_rim_lip_height']
     side = v['shelf_side_rim'] if lip else 0
     front = v['shelf_front_rim'] if lip else 0
@@ -128,6 +128,16 @@ def build(values=None):
     for cutter in mount_fixtures(MOUNT, v).cutters:
         part -= cutter
     part -= Pos(dx, 0, TILE_SIZE/2+dz)*row_strip(nh, 4)
+    return chamfer_bed(part, v)
+
+
+def backing_envelope(values=None):
+    """Rev 10 E1b: uncut wedge with only its underside perimeter chamfered."""
+    return chamfer_bed(uncut_wedge(values), values)
+
+
+def chamfer_bed(part, values):
+    _, _, depth, _, _, tilt, *_ = dimensions(values)
     # Rev 9 E1: finish every loop of the actual underside, including window
     # and on-ramp edges, only after all cuts. Other author edges stay intact.
     bed_normal = Vector(0, tilt/depth, -1).normalized()
@@ -139,7 +149,10 @@ def build(values=None):
     # to two linear distances, which is not 45 degrees on tilted side faces.
     bevel = BRepFilletAPI_MakeChamfer(part.wrapped)
     for edge in bed.edges():
-        bevel.AddDA(0.3, pi/4, edge.wrapped, bed.wrapped)
+        # OCCT's fitted curved bevels overshoot the nominal slope by ~0.0012
+        # degrees. A 0.01-degree inward margin keeps the actual surface below
+        # 45 degrees from vertical without weakening the production audit.
+        bevel.AddDA(0.3, radians(45.01), edge.wrapped, bed.wrapped)
     finished = Part(bevel.Shape())
     if not finished.is_valid:
         raise ValueError("shelf underside chamfer produced invalid geometry")
