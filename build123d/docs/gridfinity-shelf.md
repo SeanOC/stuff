@@ -56,3 +56,5 @@ Source and port: **CC BY-SA 4.0**, attribution **mitufy**; credits **David D**
 (MIT-derived profile constants). See the source, hashes, rendering commands
 and BOSL2 pin in [NOTICE](../../assets/openConnect-gridfinity-shelf/NOTICE),
 and the [licence text](../reference/LICENSES/CC-BY-SA-4.0.txt).
+
+See also: [Porting published geometry](porting.md).

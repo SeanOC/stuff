@@ -165,8 +165,11 @@ For any PR touching `build123d/holders/**`, check and cite the file/line:
 7. Mount tunables exposed per §5; spec constants unchanged; presets cover
    light→robust; mount contracts (`tests/mount_contracts.py`) still pass.
 8. Load direction + material (PLA and PCTG) sanity sentence in the PR.
+9. For a port: every exception row cites the reference measurement (file,
+   ray/point, value) and names its face family; an exception without a
+   reference measurement is blocking. Apply §8 to published geometry.
 
-A miss on 1–3 or 7 is blocking; 4–6 and 8 are blocking when the PR claims
+A miss on 1–3, 7 or 9 is blocking; 4–6 and 8 are blocking when the PR claims
 to address them and otherwise a required follow-up bead.
 A PR without the endpoint/corner audit table is a blocking omission like a
 missing `part.volume`.
@@ -206,6 +209,107 @@ DXF/SVG sections, made with `tools/measure_step.py --record`) and geometry
 regenerated from measured values (`multibuild/tile.py`, carved out of the
 repository's MIT licence). See [provenance.md](provenance.md) for the licence
 table, the committed artefacts and the measure/record workflow.
+
+## 8. Published-geometry ports
+
+The rules above remain the default. A port may preserve published geometry
+only through a pre-declared, reference-verified exception inventory. A
+licence or a passing parity test alone grants no geometric exception. See
+the [porting recipe](porting.md) and the separate
+[vendoring grant check](provenance.md#vendored-source-grant-check).
+The precedents below were checked against main `a5bdcb1`.
+
+### What may yield, and its required pin
+
+| Rule | Scoped published exception | Pin required |
+| --- | --- | --- |
+| Wall floor | An inventoried mating face family may retain the author's thinner wall. | Exact face membership and reference wall measurements; e.g. the directional snap's **23 lite / 26 full faces** in [DIRECTIONAL_FACES](../tests/opengrid_snap_inventory.py), checked by `test_published_print_inventory` and `test_directional_reference_features` in [test_opengrid_snap.py](../tests/test_opengrid_snap.py). |
+| Mount backing depth | A named shallow contract may retain published backing. | `openconnect-slot-shallow` in [mount_contracts.py](../tests/mount_contracts.py) pins **0.8 mm**; the shelf's published **0.85 mm** and sturdy-back **2.4 mm** are checked by `test_published_backing_is_point_85_and_sturdy_is_2_point_4` and `test_endpoint_audit_mount_and_edges` in [test_gridfinity_shelf.py](../tests/test_gridfinity_shelf.py). Keep the full-depth proof on that preset. |
+| Edge treatment | Functional/mating edges (Gridfinity profile boundaries, mount faces) and explicitly inventoried author exterior edges may stay sharp. | A geometric edge inventory such as [gridfinity_shelf_edges.json](../tests/gridfinity_shelf_edges.json), checked by `edge_inventory` and `test_endpoint_audit_mount_and_edges`; no blanket waiver of all edges on a port. |
+| Parameter-driven thin walls | A published family may thin across its declared domain. | Pins at **both endpoints and the midpoint**, plus rejection of misses outside the inventory. The shelf's ten-face socket-wall family (two back lower tapers, six straight and two corner upper tapers) is selected by socket/exterior adjacency; `test_rev14_published_socket_wall_thickness` pins clearance **0 / 0.1 / 0.2 mm**, and `test_rev14_no_other_thin_faces_at_max_clearance` checks the remainder. Counts describe the tested default grid, not every grid size. |
+
+Published mating overhangs retain their measured angle and local bridge
+span, as in the snap's [directional inventory](opengrid-snap-library.md#directional-mating-exceptions)
+and `test_published_print_inventory`. This is a scoped reason under §1,
+not a global relaxation of the holder angle limit.
+The cartridge holder's source figure-pocket domes likewise retain only
+their approved cylindrical-surface inventory (`audit_exclusions` in
+[cartridge_holder.py](../holders/cartridge_holder.py), checked by
+`test_exceptions_are_narrow_and_dense_bridge_is_short` and
+`test_source_pocket_fit` in [test_cartridge_holder.py](../tests/test_cartridge_holder.py)).
+A published functional dome is not permission to add downward edge fillets:
+the raw audit reports that curved face, and the exact source-surface
+exclusion must still reject a new overhang outside it.
+
+### How exceptions are pinned
+
+Measure the **unmodified author source at the NOTICE pin**, rendered with
+the recorded engine, library pins and parameters. Record any existing
+compatibility patch separately (the snap NOTICE records its line-neutral
+patch); never modify reference geometry to make the port pass. Each row
+names the source file/lines, reference mesh, ray or sample point and
+direction, measured value, face family, parameter cases and enforcing test.
+
+Select faces by **adjacency and their geometric family**, never by thickness
+or by collecting only the faces where the audit happened to fail. Geometric
+locators must identify the whole family independently of the measured miss.
+Pins are self-policing: an extra miss outside the inventory fails; a missing
+inventoried face or a drifted value fails. The openConnect plate's exact
+ramp-end strips follow the same rule: `test_only_exact_edge_ramp_strips_are_excluded`
+in [test_openconnect_plate.py](../tests/test_openconnect_plate.py) pins their
+count, volume and bounds without an enlarged exclusion box.
+
+### What never yields
+
+- **Bed-contact chamfers, no downward fillets, and manifold port output**
+  remain required under §§1–2 (including the existing library-cutter
+  distinction). A non-manifold author mesh is reference evidence, not an
+  excuse for a non-manifold port: see `test_single_watertight_solid` and
+  `test_published_print_inventory` in [test_opengrid_snap.py](../tests/test_opengrid_snap.py),
+  and `test_endpoint_audit_mount_and_edges` in [test_gridfinity_shelf.py](../tests/test_gridfinity_shelf.py).
+- **No bridge above 10 mm without a measured span.** A published ceiling's
+  face width or angle is not a span measurement or a waiver. Keep the
+  production local-bridge measurement in the inventory; the snap's pinned
+  ceilings remain below `MAX_BRIDGE_MM` in [print_audit.py](../tests/print_audit.py).
+  A measured span above that limit still needs the §1 redesign.
+- **Parity caps stay 0.05 mm bbox / 1% volume / 0.15 mm surface**, pinned in
+  `test_mesh_parity` above and the shelf's `test_reference_parity`. For
+  mandatory bed treatment, compare bbox on the pre-treatment solid and
+  separately assert the finished solid's analytic reduction. For the shelf,
+  the depth reduction is `0.3*t/(1+t)`, where
+  `t = tan(print_bottom_angle) * tan(45.01°)`; width and height stay fixed.
+  Surface-band exclusions remove only **over-cap samples** inside a band
+  computed on the **reference**. Report and cap both total band coverage and
+  excluded fraction: the shelf pins a **0.5 mm** band, **6%** coverage and
+  **2%** excluded samples in `reference_bed_band`,
+  `test_rev10_reference_bed_band_coverage` and `test_reference_parity`.
+  The snap's separate internal-contact-surface exclusion is pinned in
+  `test_mesh_parity`; it does not exclude exterior surface errors.
+- **Backing must test material that ought to exist.** The probe is
+  **unbounded by default** (`verify_openconnect_slot` in
+  [mount_contracts.py](../tests/mount_contracts.py)). An explicit
+  `backing_envelope` clips it to the model's **uncut body**, before mount or
+  clearance cuts, minus mandatory edge-treatment volume. Any narrower
+  envelope must be declared and recorded in the exception inventory. The
+  worked precedent is `backing_envelope` in
+  [gridfinity_shelf.py](../holders/gridfinity_shelf.py): uncut wedge minus
+  the actual bed bevel. `test_rev11_backing_envelope` proves that the only
+  removed probe volume is below the wedge or in the bevel, keeping sockets,
+  windows, magnets and screws inside the checked region. **Never derive the
+  envelope from the finished part**: then the missing-volume test becomes
+  identically zero and cannot detect missing backing.
+
+### Parameter domains
+
+Every numeric endpoint and documented corner has one of three outcomes:
+passes the ordinary contracts; raises a **named `ValueError` for unbuildable
+geometry**; or passes a **pre-declared published exception**. An audit miss
+on buildable published geometry must never become a `ValueError`. The
+author's saturation value is the endpoint, not an invented cutoff before a
+thin wall appears. The shelf pins **0.2 mm** socket-clearance saturation in
+`test_socket_stack_and_clearance_saturation`; its endpoint audit accepts
+only the named horizontal/vertical slot-offset errors for impossible
+placements. These are the test seams in [test_gridfinity_shelf.py](../tests/test_gridfinity_shelf.py).
 
 ---
 
