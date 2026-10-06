@@ -49,10 +49,8 @@ The policy and test seams below were checked at main `a5bdcb1`.
    unchanged. Define backing from the uncut body minus mandatory treatment,
    never the finished part; declare any narrower envelope in the inventory.
 6. **Pin parity and exceptions before opening the PR.** The shared helper
-   bead is `pst-97unr`, “tests: one shared parity helper (tests/parity.py)
-   replacing the per-port copies in test_opengrid_snap / test_gridfinity_shelf
-   / test_openconnect / test_cartridge_holder — same assertions, same
-   numbers (retrospective D2b)”. Until it lands, use
+   [tests/parity.py](../tests/parity.py) provides the common arithmetic with
+   explicit sampling, bbox modes and tolerances. Use
    [test_gridfinity_shelf.py](../tests/test_gridfinity_shelf.py)::`test_reference_parity`
    as the template: transform explicitly, assert pre-treatment bbox and
    analytic finished reduction, compare volume and sampled surface distance

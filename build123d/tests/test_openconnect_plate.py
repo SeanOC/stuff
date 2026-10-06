@@ -4,7 +4,6 @@ import math
 import sys
 from pathlib import Path
 
-import numpy as np
 import pytest
 import trimesh
 from build123d import Axis, Compound, Pos, Rot
@@ -16,8 +15,10 @@ from holders.registry import _validate_spec, resolve_mount_fixtures
 from openconnect.constants import POCKET_DEPTH
 from scripts.export import export_glb, export_stl
 from tests.mount_contracts import CONTRACTS, _residual_vol
+from tests.parity import (bbox_parity, load_reference, mesh_from_part,
+                          surface_distance, volume_parity)
 from tests.print_audit import audit
-from tests.test_openconnect import ASSETS, TOL, _hausdorff, _stl
+from tests.test_openconnect import ASSETS, TOL
 
 
 def author_frame(part, values):
@@ -34,14 +35,16 @@ def author_frame(part, values):
 ])
 def test_reference_equals_author(name, values, tmp_path):
     values = m.SPEC.resolve_values(dict(values, extra_thickness=0.5))
-    mine = _stl(author_frame(m.build(values, reference=True), values), tmp_path/'ours.stl')
+    mine = mesh_from_part(author_frame(m.build(values, reference=True), values), tmp_path/'ours.stl', tolerance=0.001, angular_tolerance=0.05)
     path = ASSETS/'mesh'/f'openconnect_plate_{name}.stl'
-    ref = trimesh.load_mesh(path)
+    ref = load_reference(path)
     assert mine.is_watertight and ref.is_watertight
-    assert mine.volume == pytest.approx(ref.volume, abs=0.15)
-    np.testing.assert_allclose(mine.bounds, ref.bounds, atol=TOL)
-    assert _hausdorff(mine, ref) < TOL
-    assert _hausdorff(ref, mine) < TOL
+    assert volume_parity(mine, ref, abs=0.15)
+    assert bbox_parity(mine, ref, tol=TOL, mode='ordered', rtol=1e-7)
+    for source, target in ((mine, ref), (ref, mine)):
+        _, distances = surface_distance(source, target, n=40000, seed=1, sampler='even',
+                                         vertices=True, signed=False)
+        assert distances.max() < TOL
     assert f'{hashlib.sha256(path.read_bytes()).hexdigest()}  mesh/{path.name}' in (ASSETS/'NOTICE').read_text()
 
 
@@ -62,11 +65,14 @@ def test_negative_is_exportable_author_grid_without_base(tmp_path):
     assert mesh.is_watertight and len(mesh.split()) == 6
     reference = ASSETS/'mesh'/'openconnect_plate_negative.stl'
     assert f'{hashlib.sha256(reference.read_bytes()).hexdigest()}  mesh/{reference.name}' in (ASSETS/'NOTICE').read_text()
-    ref = trimesh.load_mesh(reference)
-    mine = _stl(author_frame(part, v), tmp_path/'author-frame.stl')
-    np.testing.assert_allclose(mine.bounds, ref.bounds, atol=TOL)
-    assert mine.volume == pytest.approx(ref.volume, abs=0.15)
-    assert _hausdorff(mine, ref) < TOL and _hausdorff(ref, mine) < TOL
+    ref = load_reference(reference)
+    mine = mesh_from_part(author_frame(part, v), tmp_path/'author-frame.stl', tolerance=0.001, angular_tolerance=0.05)
+    assert bbox_parity(mine, ref, tol=TOL, mode='ordered', rtol=1e-7)
+    assert volume_parity(mine, ref, abs=0.15)
+    for source, target in ((mine, ref), (ref, mine)):
+        _, distances = surface_distance(source, target, n=40000, seed=1, sampler='even',
+                                         vertices=True, signed=False)
+        assert distances.max() < TOL
 
 
 @pytest.mark.parametrize('preset', m.SPEC.presets, ids=lambda p:p.id)
