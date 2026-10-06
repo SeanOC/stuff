@@ -11,6 +11,19 @@ import { ParamRow } from "./ParamRow";
 import type { NumberParam, StringParam } from "@/lib/scad-params/parse";
 
 describe("ParamRow number input", () => {
+  it("shows catalog guidance alongside a render error", () => {
+    const param: NumberParam = {
+      kind: "number", name: "clearance", default: 0,
+      description: "Keep the default clearance for the thicker wall.",
+    };
+    const { getByText, getByRole } = render(
+      <ParamRow param={param} value={0} onChange={vi.fn()} error="Render failed" />,
+    );
+    expect(getByText(param.description!)).toBeTruthy();
+    expect(getByRole("alert").textContent).toBe("Render failed");
+    cleanup();
+  });
+
   it("accepts an out-of-range typed value without clamping", () => {
     const param: NumberParam = {
       kind: "number",

@@ -874,6 +874,7 @@
         },
         {
           "name": "gridfinity_socket_clearance",
+          "description": "Clearance above approximately 0.1 mm thins the wall behind the back row below the 0.9 mm guideline (the author's geometry); print with at least 3 perimeters or keep the default 0.",
           "kind": "number",
           "default": 0,
           "min": 0,

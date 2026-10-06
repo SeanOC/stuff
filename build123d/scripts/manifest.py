@@ -25,7 +25,7 @@ it verbatim:
     }
 
 Serialization rules (must match parse.ts output exactly):
-  - params: base fields name, label?, group?, unit? — only emitted when
+  - params: base fields name, label?, description?, group?, unit? — only emitted when
     set; then per kind:
       number/integer: kind, default, min?, max?, step? (only when set)
       boolean:        kind, default
@@ -79,8 +79,8 @@ _ROOT_FIELDS = ("schemaVersion", "models")
 # parse.ts emits ONLY set keys, so the strict check is: key SET equals
 # required + (optionals actually present) — no unknowns — and every key
 # appears in canonical order (a subsequence of the full canonical order).
-_PARAM_CANONICAL = ("name", "label", "group", "unit", "kind", "default", "min", "max", "step", "choices", "filename", "maxLength", "charset")
-_PARAM_OPTIONALS = ("label", "group", "unit", "min", "max", "step", "filename", "maxLength", "charset")
+_PARAM_CANONICAL = ("name", "label", "description", "group", "unit", "kind", "default", "min", "max", "step", "choices", "filename", "maxLength", "charset")
+_PARAM_OPTIONALS = ("label", "description", "group", "unit", "min", "max", "step", "filename", "maxLength", "charset")
 _KIND_REQUIRED = {
     "number": ("kind", "default"),
     "integer": ("kind", "default"),
@@ -109,7 +109,7 @@ def _param_field_errors(keys: list[str], kind: str, where: str) -> list[str]:
 def param_to_json(param) -> dict[str, Any]:
     """Serialize a registry Param to the app Param shape (parse.ts)."""
     out: dict[str, Any] = {"name": param.name}
-    for field in ("label", "group", "unit"):
+    for field in ("label", "description", "group", "unit"):
         value = getattr(param, field)
         if value is not None:
             out[field] = value
@@ -249,7 +249,7 @@ def validate_manifest(doc: Any, category_ids: set[str] | None = None) -> list[st
                 errors.append(f"{pwhere}: duplicate param name {name!r}")
             else:
                 seen_params.add(name)
-            for field in ("label", "group", "unit"):
+            for field in ("label", "description", "group", "unit"):
                 if field in param and (not isinstance(param[field], str) or not param[field]):
                     errors.append(f"{pwhere}: {field} must be a non-empty string")
             if kind in ("number", "integer"):

@@ -170,6 +170,17 @@ def test_spool_cradle_mount_style_is_filename_flagged():
     assert by_name["mount_style"]["filename"] is True
 
 
+def test_shelf_clearance_description_reaches_catalog():
+    doc = build_manifest()
+    assert validate_manifest(doc) == []
+    shelf = next(m for m in doc['models'] if m['slug'] == 'openconnect-gridfinity-shelf')
+    clearance = next(p for p in shelf['params'] if p['name'] == 'gridfinity_socket_clearance')
+    assert 'at least 3 perimeters or keep the default 0' in clearance['description']
+    assert (clearance['min'], clearance['max']) == (0, .2)
+    clearance['description'] = 42
+    assert any('description must be a non-empty string' in e for e in validate_manifest(doc))
+
+
 def test_preset_serializes_like_parse_ts():
     pr = Preset(id="spray_can", label="Spray can (d=66, h=60)",
                 values={"d": 66.0, "h": 60.0})

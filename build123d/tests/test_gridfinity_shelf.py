@@ -241,6 +241,81 @@ CASES = [(p.id, p.values) for p in m.SPEC.presets] + [
 ]
 
 
+def published_back_wall_faces(part, values):
+    """Rev 13's two lower-taper faces adjoining the first socket row/back wall.
+
+    Select the analytic socket plane, never faces by their measured thickness.
+    The outer side/front upper tapers are deliberately outside this exception.
+    """
+    from gridfinity import baseplate as gf
+
+    v, _, _, extra, _, tilt, magnets, *_ = m.dimensions(values)
+    bottom_z = tilt + extra + (gf.CLEARANCE if magnets else 0)
+    back_y = v['shelf_back_offset'] + .7 + gf.BOTTOM_INSET - v['gridfinity_socket_clearance']/2
+    selected = []
+    for face in part.faces():
+        p = face.center()
+        n = face.normal_at(p)
+        bb = face.bounding_box()
+        if (face.geom_type.name == 'PLANE' and abs(n.X) < 1e-6
+                and abs(n.Y - 2**-.5) < 1e-6 and abs(n.Z - 2**-.5) < 1e-6
+                and abs(p.Y+p.Z-back_y-bottom_z) < 1e-5
+                and abs(bb.min.Z-bottom_z) < 1e-5
+                and abs(bb.max.Z-bottom_z-gf.LOWER_TAPER) < 1e-5):
+            selected.append(face)
+    assert len(selected) == v['gridfinity_width_grids']
+    return selected
+
+
+def face_wall_measurements(part, values, faces):
+    """Use the production wall sampler and solid classifier on each given face."""
+    from tests import print_audit as a
+
+    frame = m.print_frame(values)
+    classified = a._ClassifiedPart(frame*part)
+    boxes = a._cutter_boxes([frame*c for c in m.slot_fixtures(values).cutters])
+
+    class FaceSubset:
+        def __init__(self, face):
+            self.face = frame*face
+
+        def faces(self):
+            return [self.face]
+
+        def __getattr__(self, name):
+            return getattr(classified, name)
+
+    return [(tuple(face.center()), a._min_wall(FaceSubset(face), (0, 0, 1), boxes))
+            for face in faces]
+
+
+@pytest.mark.parametrize('clearance,expected', [(0, .905097), (.1, .834378), (.2, .791961)])
+def test_rev13_published_back_wall_thickness(clearance, expected):
+    values = {'gridfinity_socket_clearance': clearance}
+    part = m.build(values)
+    measurements = face_wall_measurements(part, values, published_back_wall_faces(part, values))
+    for _, thickness in measurements:
+        assert thickness == pytest.approx(expected, abs=.01)
+        if clearance == 0:
+            assert thickness >= .9
+    # At c=.2 the unmodified author SCAD measures 0.791960724 mm on this ray.
+    print(f'PUBLISHED_WALL_2 | clearance {clearance} | {measurements}')
+
+
+def assert_no_other_thin_faces(part, values):
+    approved = set(published_back_wall_faces(part, values))
+    other = [f for f in part.faces() if f not in approved]
+    measurements = face_wall_measurements(part, values, other)
+    thin = [(p, thickness) for p, thickness in measurements if thickness < .9-1e-6]
+    assert not thin, f'faces outside published exception #2 below 0.9 mm: {thin}'
+    return min(thickness for _, thickness in measurements)
+
+
+def test_rev13_no_other_thin_faces_at_max_clearance():
+    values = {'gridfinity_socket_clearance': .2}
+    assert_no_other_thin_faces(m.build(values), values)
+
+
 def edge_inventory(part, values):
     """Classify sharp seams by E2 reason; pin their positions in a golden.
 
@@ -320,7 +395,16 @@ def test_endpoint_audit_mount_and_edges(name, values):
         return
     fx = m.mount_fixtures(m.MOUNT, values)
     report = audit(part, cutters=fx.cutters, print_frame=m.print_frame(values))
-    assert report.ok, report.format()
+    result = 'PASS'
+    if name == 'gridfinity_socket_clearance=0.2':
+        from dataclasses import replace
+
+        assert report.min_wall_mm == pytest.approx(.792, abs=.01)
+        other_min = assert_no_other_thin_faces(part, values)
+        assert replace(report, min_wall_mm=other_min).ok, report.format()
+        result = 'PASS (published exception #2; reference 0.791960724 mm)'
+    else:
+        assert report.ok, report.format()
     assert report.bed_chamfer == 'present'
     assert len(part.solids()) == 1
     verify_openconnect_slot(part, fx, min_backing=2.4 if name == 'sturdy-back' else .8,
@@ -330,4 +414,4 @@ def test_endpoint_audit_mount_and_edges(name, values):
     assert inventory == recorded[name]
     worst = max((e[-1] for e in inventory), default=0)
     print(f'AUDIT_ROW | {name} | {report.min_wall_mm:.3f} | {report.max_overhang_deg:.3f} | '
-          f'{worst:.3f} (E2 inventory) | PASS | volume {part.volume:.3f}')
+          f'{worst:.3f} (E2 inventory) | {result} | volume {part.volume:.3f}')

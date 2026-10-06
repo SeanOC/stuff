@@ -88,6 +88,7 @@ class Param:
     filename: bool = False
     max_length: int | None = None
     charset: str | None = None
+    description: str | None = None  # Optional catalog help shown below the control.
 
 
 # Viewer camera hints a preset may carry (manifest "defaultView", read by
@@ -155,7 +156,7 @@ def _validate_param(param: Param) -> str | None:
         return f"param {param.name!r}: name must be a non-empty safe identifier"
     if param.kind not in ("number", "integer", "boolean", "string", "enum"):
         return f"param {param.name!r}: unknown kind {param.kind!r}"
-    for field in ("label", "group", "unit"):
+    for field in ("label", "description", "group", "unit"):
         value = getattr(param, field)
         if value is not None and (not isinstance(value, str) or not value):
             return f"param {param.name!r}: {field} must be a non-empty string"
