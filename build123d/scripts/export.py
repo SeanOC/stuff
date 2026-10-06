@@ -215,11 +215,11 @@ def review_context(spec, values, part) -> ReviewContext:
                               "bounding-box centre")
         sections = (plane,)
     if spec.print_frame is not None:
-        from build123d import Vector
+        from build123d import Pos
         frame = spec.print_frame(values)
-        origin = frame * Vector(0, 0, 0)
-        sections = tuple(PlaneSpec(tuple(frame * Vector(p.origin)),
-                                   tuple(frame * Vector(p.normal) - origin), p.label)
+        origin = frame.position
+        sections = tuple(PlaneSpec(tuple((frame * Pos(*p.origin)).position),
+                                   tuple((frame * Pos(*p.normal)).position - origin), p.label)
                          for p in sections)
     return ReviewContext(spec.slug, spec.print_orientation, sections, spec.mounts)
 

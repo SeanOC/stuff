@@ -57,13 +57,18 @@ def print_frame(values):
 def mount_fixtures(mount_type, values):
     if mount_type != MOUNT:
         raise ValueError(f'unsupported mount: {mount_type}')
+    fx = slot_fixtures(values)
+    fx.backing_envelope = backing_envelope(values)
+    return fx
+
+
+def slot_fixtures(values):
+    """Axis-aligned library geometry, independent of the shelf body build."""
     v, _, _, _, _, _, _, nh, dx, dz = dimensions(values)
     points = [replace(p, x=p.x+dx, z=p.z+TILE_SIZE/2+dz) for p in layout(
         nh, 1, lock=LOCKS[v['slot_lock_distribution']], slide='up',
         entryramp_flip=v['slot_entryramp_flip'])]
-    fx = fixtures(points, edge_feature='top', excess_thickness=EPS, excess_length=4)
-    fx.backing_envelope = backing_envelope(values)
-    return fx
+    return fixtures(points, edge_feature='top', excess_thickness=EPS, excess_length=4)
 
 
 def _footprint(width, depth, bottom, height):
@@ -97,7 +102,7 @@ def uncut_wedge(values=None):
     return Solid.extrude(section, (width, 0, 0)) & _footprint(width, depth, 0, tilt+deck)
 
 
-def build(values=None):
+def before_bed_chamfer(values=None):
     v, width, depth, extra, deck, tilt, magnets, nh, dx, dz = dimensions(values)
     part = uncut_wedge(v)
     lip = v['shelf_rim_lip_height']
@@ -125,15 +130,21 @@ def build(values=None):
                                              align=(Align.CENTER, Align.CENTER, Align.MAX))
     for x, y, z in screw_positions(v):
         part -= Pos(x, y, z)*Rot(0, 90, 0)*Cylinder(v['connection_screw_diameter']/2, gf.PITCH/2)
-    for cutter in mount_fixtures(MOUNT, v).cutters:
+    for cutter in slot_fixtures(v).cutters:
         part -= cutter
     part -= Pos(dx, 0, TILE_SIZE/2+dz)*row_strip(nh, 4)
-    return chamfer_bed(part, v)
+    return part
+
+
+def build(values=None):
+    return chamfer_bed(before_bed_chamfer(values), values)
 
 
 def backing_envelope(values=None):
-    """Rev 10 E1b: uncut wedge with only its underside perimeter chamfered."""
-    return chamfer_bed(uncut_wedge(values), values)
+    """Rev 11: exclude exactly the final bevel, including pocket/window loops."""
+    before = before_bed_chamfer(values)
+    finished = chamfer_bed(before, values)
+    return uncut_wedge(values) - (before - finished)
 
 
 def chamfer_bed(part, values):

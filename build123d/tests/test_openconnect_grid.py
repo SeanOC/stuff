@@ -85,3 +85,24 @@ def test_fixtures_reject_mixed_slide_directions():
     with pytest.raises(ValueError, match='shared slide'):
         fixtures([SlotPlacement(0, 0, 'none', 'up', False),
                   SlotPlacement(28, 0, 'none', 'down', False)])
+
+
+def test_excess_length_keeps_fixture_lists_one_to_one():
+    placements = layout(3, 1, lock='top-corners')
+    normal = fixtures(placements, edge_feature='top')
+    extended = fixtures(placements, edge_feature='top', excess_length=4)
+    assert len(extended.cutters) == len(extended.seat_locs) == len(extended.onramp_locs) == 3
+    assert extended.seat_locs == normal.seat_locs
+    assert extended.onramp_locs == normal.onramp_locs
+    for short, long in zip(normal.cutters, extended.cutters):
+        assert long.bounding_box().min.Z == pytest.approx(short.bounding_box().min.Z-4)
+        assert (short-long).volume < 1e-7
+
+
+def test_row_strip_is_separate_and_has_author_envelope():
+    from openconnect.constants import EPS
+    from openconnect.grid import row_strip
+    from openconnect.slot import pocket_depth
+    bb = row_strip(3, 4).bounding_box()
+    assert tuple(bb.min) == pytest.approx((-42, -EPS, -18))
+    assert tuple(bb.max) == pytest.approx((42, pocket_depth(), -14))

@@ -12,6 +12,16 @@ const scad = (stem: string) =>
   ).params;
 
 describe("downloadFilename", () => {
+  it("includes Gridfinity width, depth and style from the real manifest", async () => {
+    const model = await loadBdModel("openconnect-gridfinity-shelf");
+    expect(model).not.toBeNull();
+    expect(downloadFilename(model!.slug, model!.params, {
+      gridfinity_width_grids: 4,
+      gridfinity_depth_grids: 2,
+      baseplate_style: "Magnet - All",
+    })).toBe("openconnect-gridfinity-shelf-baseplate_style=magnet---all-gridfinity_width_grids=4-gridfinity_depth_grids=2.stl");
+  });
+
   it("names the spool cradle after its mount style (real manifest)", async () => {
     const model = await loadBdModel("holder-spool-cradle");
     expect(model).not.toBeNull();
