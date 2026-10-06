@@ -104,6 +104,22 @@ internally. For every slot it checks:
    17 mm flange just inside the face and at least as wide near the floor.
 6. **Backing:** every pocket-floor face, extruded 2.4 mm into +Y, is solid.
 
+**Backing.** `verify_openconnect_slot` leaves that probe unbounded by default
+([mount_contracts.py](../tests/mount_contracts.py)). A model may explicitly
+provide `backing_envelope`: its **uncut body**, before mount or clearance
+cuts, minus mandatory edge treatment; any narrower envelope must be declared
+and inventoried. Clipping to the finished part is vacuous: the probe is then
+already contained in the part, so missing backing always measures zero. The
+shelf's worked envelope is the uncut wedge minus the actual final bed bevel
+([gridfinity_shelf.py](../holders/gridfinity_shelf.py), `backing_envelope`).
+Its default shallow probe otherwise includes about **64 mm³ per slot** of
+open air below the wedge; clipping to the uncut wedge still leaves legitimate
+bevel removal (about **1.5 mm³** at the leftmost slot). `test_rev11_backing_envelope` in
+[test_gridfinity_shelf.py](../tests/test_gridfinity_shelf.py) proves the
+excluded volume is exactly below-wedge plus bevel, while sockets, windows,
+magnets and screws remain inside the checked region. The default shallow
+contract and sturdy-back full-depth proof remain separate checks.
+
 `tests/test_openconnect.py` also proves that each failure is caught: a sealed
 on-ramp, a blocked channel, an open seat end, 1.3 mm backing, and an entry
 on the slot axis instead of the on-ramp each raise.
@@ -256,3 +272,5 @@ attribution in its `NOTICE`. `openconnect/` adapts the author's slot and head
 modules. CC BY 4.0 permits adaptation with attribution: "openConnect by
 mitufy, licensed CC BY 4.0." The licence text is
 [CC-BY-4.0.txt](../reference/LICENSES/CC-BY-4.0.txt).
+
+See also: [Porting published geometry](porting.md).

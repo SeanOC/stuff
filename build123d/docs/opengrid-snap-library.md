@@ -232,3 +232,5 @@ parity and audit tables. The tests require neither OpenSCAD nor vendored libs.
 To verify the `[C]` values and directional argument names against the pinned
 upstream source, run `uv run pytest tests/test_opengrid_snap.py -m upstream -q`.
 This opt-in test fetches the source into memory; ordinary PR tests stay offline.
+
+See also: [Porting published geometry](porting.md).

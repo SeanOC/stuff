@@ -2,10 +2,12 @@
 
 Rule: [design-guidelines §7](design-guidelines.md#7-provenance). **[V]** means
 measured from an official file (artefact cited) or a physical print. **[C]**
-means cited, and **[U]** means unresolved. Upstream originals whose licences
-prohibit redistribution are **never committed**. They live in the private
-mirror (see
-[`reference/FETCH.md`](../reference/FETCH.md)).
+means cited, and **[U]** means unresolved. **Upstream originals are never
+committed** without a dated, attributed grant for that exact file set in the
+[exception register](#exception-register). Otherwise they live in the private
+mirror (see [`reference/FETCH.md`](../reference/FETCH.md)). A redistributable
+licence alone is not a repository grant; a grant cannot override a licence
+that prohibits redistribution.
 
 ## Licences
 
@@ -20,7 +22,53 @@ mirror (see
 | Gridfinity profile | MIT-derived constants | `gridfinity/baseplate.py`, cited from the shelf source :291–311, :1263–1340 | see shelf NOTICE |
 | openConnect Gridfinity shelf (mitufy, MakerWorld 3055852, profile 3438217) | CC BY-SA 4.0 | Original SCAD and reference meshes in root `assets/openConnect-gridfinity-shelf/`; Python adaptation in `holders/gridfinity_shelf.py` and `gridfinity/baseplate.py`. Explicit redistribution exception, pst-5k38j; source hash and BOSL2 pin in [NOTICE](../../assets/openConnect-gridfinity-shelf/NOTICE) | [CC-BY-SA-4.0.txt](../reference/LICENSES/CC-BY-SA-4.0.txt) |
 | Little Tikes cartridge holder / `holders/cartridge_holder.py` | CC BY-NC-SA 4.0; Sean O’Connor, layout from the retired SCAD at `d12a407` | Personal/non-commercial use; consumes the unchanged `opengrid_snap/` and `openconnect/` libraries under their respective licences | [CC-BY-NC-SA-4.0.txt](../reference/LICENSES/CC-BY-NC-SA-4.0.txt) |
-| Inter 4.1 ([rsms/inter v4.1 release](https://github.com/rsms/inter/releases/tag/v4.1), `extras/ttf/Inter-Bold.ttf`, sha256 `28831609…947f`) | SIL OFL 1.1 | **NOTICE:** the static Inter Bold TTF is vendored verbatim with its licence in `assets/fonts/inter/` for label text (pst-0zfra, [labels-spike.md](labels-spike.md)). OFL allows bundling and embedding; the font is not sold on its own and keeps its name and licence | [OFL.txt](../assets/fonts/inter/OFL.txt) |
+| Inter 4.1 ([rsms/inter v4.1 release](https://github.com/rsms/inter/releases/tag/v4.1), `extras/ttf/Inter-Bold.ttf`, sha256 `28831609…947f`) | SIL OFL 1.1 | **NOTICE:** the static Inter Bold TTF is vendored verbatim with its licence in `build123d/assets/fonts/inter/` for label text (pst-0zfra, [labels-spike.md](labels-spike.md)). OFL allows bundling and embedding; the font is not sold on its own and keeps its name and licence | [OFL.txt](../assets/fonts/inter/OFL.txt) |
+
+### Vendored-source grant check
+
+1. **Is this an upstream original?** The §7 hard rule applies: never commit
+   it unless the exception register names **that exact file set**, with the
+   grant date, granter and recorded authority. Without that grant, use the
+   private mirror. No licence class is cleared as a class: a future
+   CC BY-NC-SA port does not inherit the snap row, and that row does not
+   grant permission to commit QuackWorks source.
+2. **Once a grant exists, retain the licence obligations.** CC BY needs
+   attribution in NOTICE. CC BY-SA adaptations carry the same licence,
+   with an SPDX header and the exception path recorded in
+   [pyproject.toml](../pyproject.toml). CC BY-NC-SA additionally remains
+   non-commercial, with attribution and the same terms. Multiboard/MultiBuild
+   originals prohibit redistribution: **no repository grant can permit
+   committing them**; mirror only via [reference/FETCH.md](../reference/FETCH.md).
+   Mark MIT-derived constants in the module header. For the existing OFL
+   font grant, preserve its name and bundled licence. These are the recorded
+   obligations in the licence table and linked licence texts, not new grants.
+3. **Maintain the register by file set.** Enumerate every row in `Licences`
+   above that documents committed upstream files or reference renders, then
+   cross-check the licence-exception paths in `pyproject.toml` (lines 6–17
+   at main `a5bdcb1`). Include adaptations in the scope column so the two
+   lists agree, distinguishing a port's licence from permission to vendor
+   its source. A newly added file set needs its own recorded grant; directory
+   notation below refers only to the pinned set, never future files.
+
+### Exception register
+
+Paths in this table are **repository-root relative**. It consolidates the
+existing grants and licence scopes at main `a5bdcb1`; it grants no new
+redistribution rights. The snap and its compatibility patch are one row.
+
+| Exact file set / scope | Licence | Date | Granted by | Where recorded |
+| --- | --- | --- | --- | --- |
+| `assets/openGrid-multiconnect/`: the six `step/*.step`, five `mesh/*.3mf` and one `mesh/*.stl` delivered by the operator; verbatim set at `f22a71e` (no `.shapr` or bundle ZIP) | CC BY 4.0 | 2026-08-17 | Sean, operator delivery and licence verification | [NOTICE](../../assets/openGrid-multiconnect/NOTICE), `pst-c73m`, PR #64 (`f22a71e`) |
+| `assets/openConnect/`: upstream `lib/opengrid_base.scad`, `lib/openconnect_lib.scad`, `lib/opengrid_threads_lib.scad`, `openconnect_plate.scad` at `04e2277a71c5`; reference renders/wrappers enumerated in NOTICE, including OC1/OC2 additions. Adaptation: `build123d/openconnect/` | CC BY 4.0 | 2026-10-01; render additions 2026-10-04 | Sean (port grant) | [NOTICE](../../assets/openConnect/NOTICE), [pyproject.toml](../pyproject.toml) openConnect exception; `pst-q52ae` / `pst-zn36d` render records |
+| `assets/opengrid-snap/NOTICE` and `mesh/{lite,full,directional,full-directional}.stl`, derived from QuackWorks `6123129` plus `scripts/patches/QuackWorks/0001-opengrid-snap-linear-extrude-click-holes.patch`. Adaptation: `build123d/opengrid_snap/`. **No QuackWorks source grant** | CC BY-NC-SA 4.0 | 2026-10-05 | Sean | [NOTICE](../../assets/opengrid-snap/NOTICE), [pyproject.toml](../pyproject.toml) snap exception |
+| `assets/openConnect-gridfinity-shelf/openconnect_gridfinity_shelf_online.scad` (SHA256 in NOTICE), `mesh/{default,magnets,wide}.stl` (hashes in `mesh/SHA256SUMS`). Adaptations: `build123d/holders/gridfinity_shelf.py`, `build123d/gridfinity/baseplate.py` | CC BY-SA 4.0; Gridfinity profile constants MIT-derived | 2026-10-05 | Sean | `pst-5k38j`, [NOTICE](../../assets/openConnect-gridfinity-shelf/NOTICE), [pyproject.toml](../pyproject.toml) shelf exception |
+| `build123d/holders/cartridge_holder.py`: adaptation of this repo's retired Little Tikes SCAD at `d12a407`; **licence scope only, no additional upstream files** | CC BY-NC-SA 4.0 | 2026-10-05 port (`e8522c5`) | Sean O’Connor, source-design author | [Module SPDX/header](../holders/cartridge_holder.py), [pyproject.toml](../pyproject.toml), `pst-7wnqb`, PR #159 |
+| `build123d/assets/fonts/inter/{Inter-Bold.ttf,OFL.txt}` from Inter v4.1, TTF SHA256 `28831609…947f` | SIL OFL 1.1 | 2026-10-02 | Mayor, `pst-0zfra` canonical spec rev 1, Q1 (vendor one OFL font and its licence) | [labels-spike.md Q1](labels-spike.md#q1-font-rendering), [OFL.txt](../assets/fonts/inter/OFL.txt), PR #146 (`91cdd5d`) |
+
+The Gridfinity-profile licence-table row shares the shelf's file set and
+module header; it is not a second source-vendoring grant. Mirrored
+Multiconnect and MultiBuild originals are not register members. See the
+[porting recipe](porting.md) before staging or committing another port.
 
 `tools/measure_step.py` maps each source-manifest licence string to its
 committed text (`LICENCE_TEXTS`). `--record` refuses to record a source whose
