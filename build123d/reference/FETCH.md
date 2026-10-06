@@ -125,6 +125,9 @@ Both scripts validate every record **before** copying anything:
 
 - the group id matches `^[a-z0-9-]+$`
 - the filename is a bare name, with no separators or dot segments
+- the licence is a key in `LICENCE_TEXTS` in `tools/reference_pull.py`, mapping
+  to committed licence text; refusals list the accepted keys (publishing checks
+  `--licence` even when the file is already current)
 - the sha256 is lowercase 64-hex
 - the size is 0 or more
 - `gcs` is exactly `gs://stuff-reference-upstream/<group>/<sha256>/<filename>`

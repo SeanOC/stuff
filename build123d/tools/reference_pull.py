@@ -38,6 +38,17 @@ UPSTREAM = ROOT / "reference" / "upstream"
 BUCKET = "gs://stuff-reference-upstream/"
 SCHEMA = 2
 
+# Source-manifest licence string -> committed licence text, relative to ROOT.
+# Shared by reference validation, publishing and measurement provenance.
+# Keys preserve verbatim upstream spellings; do not collapse aliases.
+LICENCE_TEXTS = {
+    "Multiboard Licence (non-commercial)": "reference/LICENSES/Multiboard-Licence-2025-12-19.txt",
+    "Creative Commons — Attribution": "reference/LICENSES/CC-BY-4.0.txt",
+    "CC BY-NC-SA 4.0": "reference/LICENSES/CC-BY-NC-SA-4.0.txt",
+    "Creative Commons — Attribution  — Noncommercial  —  Share Alike":
+        "reference/LICENSES/CC-BY-NC-SA-4.0.txt",
+}
+
 GROUP_RE = re.compile(r"^[a-z0-9-]+$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 RECORD_KEYS = (
@@ -111,6 +122,13 @@ def _check_sha(sha: object, where: str, field: str) -> None:
         _fail(where, field, f"{sha!r} must be lowercase 64-hex")
 
 
+def check_licence(licence: object, where: str = "record") -> None:
+    if not isinstance(licence, str) or licence not in LICENCE_TEXTS:
+        accepted = ", ".join(repr(key) for key in LICENCE_TEXTS)
+        _fail(where, "licence", f"{licence!r} has no committed licence text; "
+              f"accepted LICENCE_TEXTS keys: {accepted}")
+
+
 def validate_record(record: object) -> None:
     """Raise ManifestError naming the offending field; return None if sound."""
     if not isinstance(record, dict):
@@ -128,8 +146,7 @@ def validate_record(record: object) -> None:
         _fail(where, "upstream_file_id", "must be a string or null")
     if not isinstance(record["url"], str) or not record["url"].startswith("https://"):
         _fail(where, "url", "must be an https:// URL")
-    if not isinstance(record["licence"], str) or not record["licence"].strip():
-        _fail(where, "licence", "must be a non-empty string")
+    check_licence(record["licence"], where)
     if record["access"] != "bucket":
         _fail(where, "access", f"{record['access']!r} must be 'bucket'")
     versions = record["versions"]

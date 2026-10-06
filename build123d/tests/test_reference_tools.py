@@ -25,6 +25,7 @@ from reference_pull import (  # noqa: E402
 )
 
 GROUP = "test-group"
+LICENCE = "Creative Commons — Attribution"
 UPSTREAM_SUFFIXES = {".step", ".stp", ".stl", ".3mf", ".pdf", ".zip"}
 
 
@@ -72,7 +73,7 @@ def _file(tmp_path, name, data: bytes) -> Path:
 
 
 def _publish(path, manifest, **kw):
-    return publish(GROUP, path, url="https://example.com/m/1", licence="CC-BY",
+    return publish(GROUP, path, url="https://example.com/m/1", licence=LICENCE,
                    manifest=manifest, today="2026-09-29", **kw)
 
 
@@ -81,7 +82,7 @@ def _sample_record():
     return {
         "source_file_id": f"{GROUP}/part-a.step", "source_group_id": GROUP,
         "filename": "Part A.step", "upstream_file_id": "42",
-        "url": "https://example.com/m/1", "licence": "CC-BY", "access": "bucket",
+        "url": "https://example.com/m/1", "licence": LICENCE, "access": "bucket",
         "current": sha,
         "versions": [{"sha256": sha, "size": 3, "gcs": f"{BUCKET}{GROUP}/{sha}/Part A.step",
                       "published_on": "2026-09-29"}],
@@ -153,6 +154,29 @@ def test_publish_refuses_changed_sha_without_update(tmp_path, bucket, manifest):
     assert bucket.calls == uploads  # nothing copied
     # Re-publishing identical bytes is a no-op, not a refusal.
     assert _publish(_file(tmp_path, "Part A.step", b"v1"), manifest).startswith("unchanged")
+
+
+@pytest.mark.parametrize("state", ["new", "unchanged", "updated"])
+def test_publish_rejects_unmapped_licence_before_copy(state, tmp_path, bucket, manifest, capsys):
+    src = _file(tmp_path, "Part A.step", b"v1")
+    if state != "new":
+        _publish(src, manifest)
+    if state == "updated":
+        src = _file(tmp_path, "Part A.step", b"v2-changed")
+    before = manifest.read_bytes()
+    bucket.calls.clear()
+    args = [GROUP, str(src), "--url", "https://example.com/m/1",
+            "--licence", "unmapped licence", "--manifest", str(manifest)]
+    if state == "updated":
+        args.append("--update")
+    assert reference_publish.main(args) == 1
+    error = capsys.readouterr().err
+    assert "licence: 'unmapped licence'" in error
+    assert "accepted LICENCE_TEXTS keys:" in error
+    for key in reference_pull.LICENCE_TEXTS:
+        assert repr(key) in error
+    assert manifest.read_bytes() == before
+    assert bucket.calls == []
 
 
 def test_publish_v1_then_v2_same_file_keeps_both_versions(tmp_path, bucket, manifest):
@@ -244,6 +268,9 @@ MALFORMED = {
     "gcs-wrong-object": ("versions.gcs", _mut(["versions", 0, "gcs"],
                                               f"{BUCKET}{GROUP}/{'a' * 64}/Other.step")),
     "current-unknown": ("current", _mut(["current"], "b" * 64)),
+    "licence-unmapped": ("licence", _mut(["licence"], "unmapped licence")),
+    "licence-empty": ("licence", _mut(["licence"], "")),
+    "licence-not-string": ("licence", _mut(["licence"], [])),
     "access-public": ("access", _mut(["access"], "public")),
     "url-missing": ("url", _mut(["url"], KeyError)),
 }
@@ -274,7 +301,7 @@ def test_rejects_duplicate_source_file_id(tmp_path):
 def test_publish_rejects_unsafe_group_before_copy(tmp_path, bucket, manifest):
     src = _file(tmp_path, "Part A.step", b"x")
     with pytest.raises(ManifestError, match="source_group_id"):
-        publish("../up", src, url="https://example.com", licence="CC-BY", manifest=manifest)
+        publish("../up", src, url="https://example.com", licence=LICENCE, manifest=manifest)
     assert bucket.calls == []
 
 
