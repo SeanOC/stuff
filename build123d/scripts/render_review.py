@@ -46,7 +46,7 @@ DEFAULT_MODEL = "qwen/qwen3-vl-235b-a22b-instruct"  # vision model (inx assess.t
 # Bump when the rubric text or prompt scaffold in _build_prompt/RUBRICS changes,
 # so a summary is traceable to the exact wording that produced it. Reported in
 # the Markdown header alongside the model id (bead pst-ae3v, AC 2).
-PROMPT_VERSION = "7"
+PROMPT_VERSION = "8"
 
 # Mount-type -> the checklist a reviewer applies to the render. Keyed by the
 # same names as registry.KNOWN_MOUNTS so a new mount contract can add its rubric
@@ -79,8 +79,9 @@ RUBRICS["openconnect-slot"] = [
 ]
 RUBRICS["openconnect-slot-shallow"] = [
     RUBRICS["openconnect-slot"][0],
-    "Is there at least 0.8 mm backing inside the uncut wedge envelope? "
-    "The published shelf has 0.85 mm; sturdy-back increases it to 2.4 mm.",
+    ("Is there at least 0.8 mm backing inside the wedge envelope, excluding "
+     "only the material removed by the final 0.3 mm bed bevel? "
+     "The published shelf has 0.85 mm; sturdy-back increases it to 2.4 mm."),
     RUBRICS["openconnect-slot"][2],
 ]
 RUBRICS["multibuild-fixpoint-slot"] = [

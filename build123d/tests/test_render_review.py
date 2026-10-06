@@ -94,7 +94,7 @@ def test_review_stem_preserves_model_rubric():
 
 
 def test_tile_rubric_lockstep():
-    assert rr.PROMPT_VERSION == "7"
+    assert rr.PROMPT_VERSION == "8"
     prompt = rr._build_prompt("fixture", rr._GENERIC_RUBRIC, [])
     assert "five views (iso, front, top, section, underside)" in prompt
     assert "SECTION: is every load-bearing member ≥ 1.6 mm and connected at both ends? any free-ending arm?" in prompt
