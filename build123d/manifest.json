@@ -749,6 +749,184 @@
       ]
     },
     {
+      "slug": "openconnect-gridfinity-shelf",
+      "engine": "build123d",
+      "title": "openConnect Gridfinity shelf",
+      "blurb": "mitufy's Gridfinity shelf (CC BY-SA 4.0). Wedge-down print; sturdy-back provides 2.4 mm slot backing.",
+      "categoryId": "multiboard",
+      "params": [
+        {
+          "name": "baseplate_style",
+          "kind": "enum",
+          "default": "Default",
+          "choices": [
+            "Default",
+            "Magnet - All",
+            "Magnet - Corners Only"
+          ],
+          "filename": true
+        },
+        {
+          "name": "gridfinity_width_grids",
+          "kind": "integer",
+          "default": 2,
+          "min": 1,
+          "max": 6,
+          "step": 1,
+          "filename": true
+        },
+        {
+          "name": "gridfinity_depth_grids",
+          "kind": "integer",
+          "default": 2,
+          "min": 1,
+          "max": 4,
+          "step": 1,
+          "filename": true
+        },
+        {
+          "name": "enable_screw_connections",
+          "kind": "boolean",
+          "default": false
+        },
+        {
+          "name": "connection_screw_diameter",
+          "kind": "number",
+          "default": 3.3,
+          "min": 2,
+          "max": 5,
+          "step": 0.1
+        },
+        {
+          "name": "magnet_diameter",
+          "kind": "number",
+          "default": 6.4,
+          "min": 0,
+          "max": 8,
+          "step": 0.1
+        },
+        {
+          "name": "magnet_thickness",
+          "kind": "number",
+          "default": 2.4,
+          "min": 0,
+          "max": 3,
+          "step": 0.1
+        },
+        {
+          "name": "shelf_back_offset",
+          "kind": "number",
+          "default": 0,
+          "min": 0,
+          "max": 20,
+          "step": 0.1
+        },
+        {
+          "name": "shelf_side_rim",
+          "kind": "number",
+          "default": 0,
+          "min": 0,
+          "max": 10,
+          "step": 0.1
+        },
+        {
+          "name": "shelf_front_rim",
+          "kind": "number",
+          "default": 0,
+          "min": 0,
+          "max": 10,
+          "step": 0.1
+        },
+        {
+          "name": "shelf_rim_lip_height",
+          "kind": "number",
+          "default": 0,
+          "min": 0,
+          "max": 5,
+          "step": 0.1
+        },
+        {
+          "name": "slot_lock_distribution",
+          "kind": "enum",
+          "default": "Top Corners",
+          "choices": [
+            "All",
+            "Staggered",
+            "Corners",
+            "Top Corners",
+            "None"
+          ]
+        },
+        {
+          "name": "slot_entryramp_flip",
+          "kind": "boolean",
+          "default": false
+        },
+        {
+          "name": "slot_horizontal_alignment",
+          "kind": "enum",
+          "default": "Center",
+          "choices": [
+            "Center",
+            "Left",
+            "Right"
+          ]
+        },
+        {
+          "name": "gridfinity_socket_clearance",
+          "kind": "number",
+          "default": 0,
+          "min": 0,
+          "max": 0.2,
+          "step": 0.01
+        },
+        {
+          "name": "slot_horizontal_offset",
+          "kind": "number",
+          "default": 0,
+          "min": -14,
+          "max": 14,
+          "step": 0.1
+        },
+        {
+          "name": "slot_vertical_offset",
+          "kind": "number",
+          "default": 0,
+          "min": -10,
+          "max": 10,
+          "step": 0.1
+        }
+      ],
+      "presets": [
+        {
+          "id": "default",
+          "label": "2 \u00d7 2 shelf",
+          "values": {}
+        },
+        {
+          "id": "magnets",
+          "label": "2 \u00d7 2 with magnets",
+          "values": {
+            "baseplate_style": "Magnet - All"
+          }
+        },
+        {
+          "id": "wide",
+          "label": "4 \u00d7 2 shelf",
+          "values": {
+            "gridfinity_width_grids": 4
+          }
+        },
+        {
+          "id": "sturdy-back",
+          "label": "2.4 mm slot backing",
+          "values": {
+            "shelf_back_offset": 1.55
+          }
+        }
+      ]
+    },
+    {
       "slug": "openconnect-plate",
       "engine": "build123d",
       "title": "openConnect plate",

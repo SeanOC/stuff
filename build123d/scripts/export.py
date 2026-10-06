@@ -57,7 +57,7 @@ import trimesh
 from build123d import Color, Compound, export_stl as _native_export_stl, export_gltf  # noqa: E402
 
 from holders.registry import (all_models, resolve_colour_parts, resolve_mount_fixtures,  # noqa: E402
-                              resolve_preview_parts)
+                              resolve_preview_parts, in_print_frame)
 from scripts.thumbnail import PlaneSpec, ReviewContext, render_review, render_thumbnail  # noqa: E402
 
 OUT = Path(__file__).resolve().parent.parent / "out"
@@ -214,6 +214,13 @@ def review_context(spec, values, part) -> ReviewContext:
             plane = PlaneSpec(tuple(part.bounding_box().center()), (1, 0, 0),
                               "bounding-box centre")
         sections = (plane,)
+    if spec.print_frame is not None:
+        from build123d import Vector
+        frame = spec.print_frame(values)
+        origin = frame * Vector(0, 0, 0)
+        sections = tuple(PlaneSpec(tuple(frame * Vector(p.origin)),
+                                   tuple(frame * Vector(p.normal) - origin), p.label)
+                         for p in sections)
     return ReviewContext(spec.slug, spec.print_orientation, sections, spec.mounts)
 
 
@@ -258,12 +265,13 @@ def export_all(*, commit_review: bool = False) -> int:
     for spec in specs:
         values = spec.resolve_values()
         part = spec.build(values)
+        ctx = review_context(spec, values, part)
+        part = in_print_frame(spec, values, part)
         stl = OUT / f"{spec.name}.stl"
         glb = OUT / f"{spec.name}.glb"
         png = OUT / f"{spec.name}.png"
         export_stl(part, str(stl))
         export_glb(part, glb, resolve_preview_parts(spec, values))
-        ctx = review_context(spec, values, part)
         started = time.perf_counter()
         render_review(glb, png, ctx=ctx)
         elapsed = time.perf_counter() - started
@@ -294,7 +302,7 @@ def export_presets_only(target: Path) -> int:
             return 1
         for preset in spec.presets:
             values = spec.resolve_values(preset.values)
-            part = spec.build(values)
+            part = in_print_frame(spec, values, spec.build(values))
             if part.volume <= 0:
                 print(f"SKIP {spec.name}/{preset.id}: zero volume", file=sys.stderr)
                 return 1

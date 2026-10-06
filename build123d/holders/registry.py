@@ -239,6 +239,8 @@ class MountFixtures:
     # Continuous channels: one head-entry pose per seat, in matching order.
     # cutters contains one negative per channel (which may hold many seats).
     onramp_locs: list[Location] = field(default_factory=list)
+    # Optional uncut body for pockets whose lead-in exits the body envelope.
+    backing_envelope: Part | None = None
 
 
 @dataclass(frozen=True)
@@ -360,6 +362,15 @@ class ModelSpec:
                     raise ValueError(f"{self.name}: {error}")
             values[name] = value
         return values
+
+
+def in_print_frame(spec: ModelSpec, values: dict, shape):
+    """Place an export shape in its parameter-dependent print frame, if any.
+
+    Contracts use build(values) and fixtures directly, in model coordinates.
+    A None resolver returns the original object, preserving existing exports.
+    """
+    return spec.print_frame(spec.resolve_values(values)) * shape if spec.print_frame else shape
 
 
 def resolve_mount_fixtures(
@@ -571,4 +582,5 @@ def all_models() -> list[ModelSpec]:
     from holders import spool_cradle  # noqa: F401
     from holders import label_card  # noqa: F401
     from holders import openconnect_plate  # noqa: F401
+    from holders import gridfinity_shelf  # noqa: F401
     return list(_REGISTRY.values())

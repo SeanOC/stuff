@@ -10,6 +10,9 @@
 # Exception (Sean 2026-10-05): opengrid_snap/ ports QuackWorks @6123129 + patch 0001
 # (CC BY-NC-SA 4.0) because no build123d library ships the positive snap; pinned
 # by commit and verified against committed reference meshes.
+# Exception (Sean 2026-10-05, pst-5k38j): holders/gridfinity_shelf.py and
+# gridfinity/baseplate.py adapt mitufy’s Gridfinity shelf under CC BY-SA 4.0;
+# the profile constants are Gridfinity Rebuilt-derived (MIT).
 [project]
 name = "stuff-bd"
 version = "0.1.0"

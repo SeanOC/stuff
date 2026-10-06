@@ -66,7 +66,7 @@ def main() -> int:
 
     # Import inside main so a usage error above doesn't pay the OCP import.
     from scripts.export import export_3mf_one_object, export_glb, export_stl
-    from holders.registry import all_models, resolve_colour_parts, resolve_preview_parts
+    from holders.registry import all_models, resolve_colour_parts, resolve_preview_parts, in_print_frame
 
     spec = next(
         (m for m in all_models() if not m.is_smoke and m.slug == slug), None
@@ -88,7 +88,7 @@ def main() -> int:
             named = resolve_colour_parts(spec, values)
             shapes = [shape for _, shape, _ in named]
         else:
-            part = spec.build(values)
+            part = in_print_frame(spec, values, spec.build(values))
             shapes = [part]
             # Inlaid label text gets its two materials (pst-5b83s); None
             # keeps every other model's GLB identical to the bake's.

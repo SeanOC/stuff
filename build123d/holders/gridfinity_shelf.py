@@ -60,7 +60,9 @@ def mount_fixtures(mount_type, values):
     points = [replace(p, x=p.x+dx, z=p.z+TILE_SIZE/2+dz) for p in layout(
         nh, 1, lock=LOCKS[v['slot_lock_distribution']], slide='up',
         entryramp_flip=v['slot_entryramp_flip'])]
-    return fixtures(points, edge_feature='top', excess_thickness=EPS, excess_length=4)
+    fx = fixtures(points, edge_feature='top', excess_thickness=EPS, excess_length=4)
+    fx.backing_envelope = backing_envelope(values)
+    return fx
 
 
 def _footprint(width, depth, bottom, height):
@@ -85,13 +87,18 @@ def screw_positions(values):
     return positions
 
 
-def build(values=None):
-    v, width, depth, extra, deck, tilt, magnets, nh, dx, dz = dimensions(values)
-    # Continuous wedge/deck, trimmed by the author's rounded front footprint.
+def backing_envelope(values=None):
+    """Uncut body: the underside is z = tilt*y/depth in model coordinates."""
+    _, width, depth, _, deck, tilt, *_ = dimensions(values)
     section = Face(Wire.make_polygon([(-width/2, 0, 0), (-width/2, depth, tilt),
                                       (-width/2, depth, tilt+deck),
                                       (-width/2, 0, tilt+deck)], close=True))
-    part = Solid.extrude(section, (width, 0, 0)) & _footprint(width, depth, 0, tilt+deck)
+    return Solid.extrude(section, (width, 0, 0)) & _footprint(width, depth, 0, tilt+deck)
+
+
+def build(values=None):
+    v, width, depth, extra, deck, tilt, magnets, nh, dx, dz = dimensions(values)
+    part = backing_envelope(v)
     lip = v['shelf_rim_lip_height']
     side = v['shelf_side_rim'] if lip else 0
     front = v['shelf_front_rim'] if lip else 0

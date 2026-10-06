@@ -40,6 +40,7 @@ COPY build123d/labels ./labels
 COPY build123d/assets/fonts ./assets/fonts
 COPY build123d/multibuild ./multibuild
 COPY build123d/openconnect ./openconnect
+COPY build123d/gridfinity ./gridfinity
 COPY build123d/opengrid_snap ./opengrid_snap
 COPY build123d/scripts ./scripts
 

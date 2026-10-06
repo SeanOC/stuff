@@ -418,6 +418,8 @@ def verify_openconnect_slot(
     if entry != (0, 0, 1):
         undo = Rot(0, -math.degrees(math.atan2(entry[0], entry[2])), 0)
         part = undo * part
+        if backing_envelope is not None:
+            backing_envelope = undo * backing_envelope
         fx = MountFixtures([undo * c for c in fx.cutters],
                            [undo * loc for loc in fx.seat_locs],
                            onramp_locs=[undo * loc for loc in fx.onramp_locs])
@@ -619,5 +621,7 @@ def verify(spec: ModelSpec, mount_type: str, values: dict) -> bool:
     fx = resolve_fixtures(spec, mount_type, values)
     if fx is None:
         return False
-    CONTRACTS[mount_type](spec.build(values), fx)
+    kwargs = ({"backing_envelope": fx.backing_envelope}
+              if fx.backing_envelope is not None else {})
+    CONTRACTS[mount_type](spec.build(values), fx, **kwargs)
     return True

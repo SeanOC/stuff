@@ -174,6 +174,10 @@ export const CATALOG: Record<string, CatalogEntry> = {
  * enforcement and cross-checks the manifest's categoryId against it.
  */
 export const BUILD123D_CATALOG: Record<string, CatalogEntry> = {
+  openconnect_gridfinity_shelf: {
+    categoryId: "multiboard",
+    blurb: "mitufy’s openConnect Gridfinity shelf: wedge-down printing, optional magnets and rims. The sturdy-back preset provides 2.4 mm slot backing.",
+  },
   openconnect_plate: {
     categoryId: "multiboard",
     blurb: "openConnect slot plate by mitufy: grid or millimetre sizing, selectable locks and negative slots for CAD. Print standing with at least 2.4 mm backing.",

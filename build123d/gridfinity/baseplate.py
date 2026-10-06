@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: CC-BY-SA-4.0
 """Gridfinity Rebuilt-derived baseplate profile (MIT-derived constants).
 
 All dimensions [C]: assets/openConnect-gridfinity-shelf/
