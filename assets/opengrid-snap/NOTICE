@@ -12,7 +12,7 @@ Licence: CC BY-NC-SA 4.0; see
 
 Generated with OpenSCAD version 2025.06.12.ai25773 (default CGAL engine).
 Run bash scripts/vendor-libs.sh first. Copy the patched snap source into
-.tmp-pst-n60q0/snap.scad, replacing its final demo invocation at line 128
+.tmp-pst-vyery/snap.scad, replacing its final demo invocation at line 128
 with a comment. This prevents an extra directional snap contaminating
 lite/full renders. Keep its include <BOSL2/std.scad> and module unchanged.
 The per-variant wrapper is:
@@ -24,12 +24,17 @@ directional.scad: LITE=true, DIRECTIONAL=true
 full-directional.scad: LITE=false, DIRECTIONAL=true
 
 Exact command pattern, run at repository root for each NAME above:
-    OPENSCADPATH="$PWD/libs" openscad -o "$PWD/assets/opengrid-snap/mesh/NAME.stl" "$PWD/.tmp-pst-n60q0/NAME.scad"
+    OPENSCADPATH="$PWD/libs" openscad --export-format binstl -o "$PWD/assets/opengrid-snap/mesh/NAME.stl" "$PWD/.tmp-pst-vyery/NAME.scad"
 Z=0 is the snap bottom. The original meshes have non-manifold nub-root
 interfaces. They are reference surfaces, not watertight printing assets.
 
 SHA256:
-2a89068bc14c34307b221f7048365414ea112b30b97d4adbe92f9c2601081097  mesh/directional.stl
-2c8bca69ab60c58bb8b3b5971f7f094e4029a8e2c308a1066035f8f38ad1e0a4  mesh/full.stl
-3fa8ad3d8809b2b9283b72dbdc72b16a051ddeb8004ef8a14f522d7d7642a9cd  mesh/lite.stl
-1f96ceafcd28f6728fb6a7eb7e64aac99bec47fb8cdcdd9f4a3193fcf5fa0246  mesh/full-directional.stl
+41f37803712efdf141fb797cbb89e39270f84b91ae0ea360e2e82714c1167733  mesh/directional.stl
+65e729c9bd29379f2d23941c424a889c7c61af80eb5fc7dca3e7870f7d338d79  mesh/full-directional.stl
+fc86b27cfce423418bac7af4c10175add55fea4a83a007ef9ceeb6f8ae2071e7  mesh/full.stl
+9d80e5998c603397b36bbd86c9c61ccd2241c5622014a700a4be06701575bf73  mesh/lite.stl
+
+Mirror: gs://stuff-reference-upstream/opengrid-snap/41f37803712efdf141fb797cbb89e39270f84b91ae0ea360e2e82714c1167733/directional.stl (published by the operator after merge)
+Mirror: gs://stuff-reference-upstream/opengrid-snap/65e729c9bd29379f2d23941c424a889c7c61af80eb5fc7dca3e7870f7d338d79/full-directional.stl (published by the operator after merge)
+Mirror: gs://stuff-reference-upstream/opengrid-snap/fc86b27cfce423418bac7af4c10175add55fea4a83a007ef9ceeb6f8ae2071e7/full.stl (published by the operator after merge)
+Mirror: gs://stuff-reference-upstream/opengrid-snap/9d80e5998c603397b36bbd86c9c61ccd2241c5622014a700a4be06701575bf73/lite.stl (published by the operator after merge)
