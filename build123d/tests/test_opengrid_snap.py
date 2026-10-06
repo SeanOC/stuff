@@ -25,6 +25,8 @@ from opengrid_snap import snap
 from tests import print_audit as audit
 from tests.mount_contracts import CONTRACTS, verify_opengrid_snap
 from tests.opengrid_snap_inventory import DIRECTIONAL_FACES
+from tests.parity import (bbox_parity, external_boundary_mask, load_reference,
+                          point_distances, sample_surface, surface_distance, volume_parity)
 
 ASSETS = Path(__file__).resolve().parents[2] / 'assets/opengrid-snap'
 VARIANTS = [('lite', True, False), ('full', False, False), ('directional', True, True),
@@ -38,10 +40,6 @@ def built(request, tmp_path_factory):
     path = tmp_path_factory.mktemp(name) / 'snap.stl'
     export_stl(part, str(path), tolerance=0.001, angular_tolerance=0.05)
     return name, part, trimesh.load_mesh(path), path
-
-
-def reference(name):
-    return trimesh.load_mesh(ASSETS / 'mesh' / f'{name}.stl')
 
 
 def test_reference_hashes_and_constant_provenance():
@@ -98,29 +96,25 @@ def test_provenance_values_match_pinned_upstream():
 ], indirect=True)
 def test_mesh_parity(built):
     name, part, mesh, _ = built
-    ref = reference(name)
-    assert np.allclose(mesh.bounds, ref.bounds, atol=0.05, rtol=0)
-    assert mesh.volume == pytest.approx(ref.volume, rel=0.01)
-    points, faces = trimesh.sample.sample_surface(ref, 15000, seed=1)
-    normals = ref.face_normals[faces]
-    classifier = audit._ClassifiedPart(part)
-    interior = np.array([
-        classifier.is_inside(p + 0.05 * n) and classifier.is_inside(p - 0.05 * n)
-        for p, n in zip(points, normals)
-    ])
-    assert interior.mean() < 0.12
+    ref = load_reference(ASSETS / 'mesh' / f'{name}.stl')
+    assert bbox_parity(mesh, ref, tol=0.05, mode='ordered', rtol=0)
+    assert volume_parity(mesh, ref, rel=0.01)
+    points, faces = sample_surface(ref, n=15000, seed=1, sampler='uniform')
     # Nub roots and top-nub/core interfaces, pinned source :50 and :52-56.
-    xy = np.abs(points[interior, :2])
-    axis_distance = np.min(np.abs(xy - 12.4), axis=1)
-    diagonal_distance = np.abs(xy.sum(axis=1) - 19.98163) / np.sqrt(2)
-    assert np.all(np.minimum(axis_distance, diagonal_distance) <= 0.05)
-    _, forward, _ = trimesh.proximity.closest_point(mesh, points[~interior])
-    points, _ = trimesh.sample.sample_surface(mesh, 15000, seed=1)
-    _, reverse, _ = trimesh.proximity.closest_point(ref, np.vstack([points, mesh.vertices]))
+    planes = [((1, 0, 0), x) for x in (-12.4, 12.4)] + [
+        ((0, 1, 0), y) for y in (-12.4, 12.4)] + [
+        ((x, y, 0), 19.98163) for x in (-1, 1) for y in (-1, 1)]
+    interior, excluded = external_boundary_mask(
+        points, planes, normals=ref.face_normals[faces], classifier=audit._ClassifiedPart(part),
+        offset=0.05, tol=0.05)
+    assert excluded < 0.12
+    forward = point_distances(points[~interior], mesh, signed=False)
+    _, reverse = surface_distance(mesh, ref, n=15000, seed=1, sampler='uniform',
+                                  vertices=True, signed=False)
     print(f'{name}: bbox ref={ref.extents} port={mesh.extents}; volume '
           f'ref={ref.volume:.6f} port={mesh.volume:.6f}; distance '
           f'ref->port={forward.max():.6f} port->ref={reverse.max():.6f}; '
-          f'excluded={interior.mean():.4%}')
+          f'excluded={excluded:.4%}')
     assert forward.max() <= 0.15
     assert reverse.max() <= 0.15
 
@@ -276,7 +270,7 @@ def test_reference_wall_thicknesses(name, lite, directional):
     Mesh triangles are not BRep faces: counts are locked by the inventory test.
     """
     extra = 0 if lite else 3.4
-    ref = reference(name)
+    ref = load_reference(ASSETS / 'mesh' / f'{name}.stl')
     probes = [([9.5, 9.5, 2.99 + extra], [0, 0, 1], .41),
               ([11.4, 0, 2.8 + extra], [0, 0, 1], .60),
               ([11.7, 0, 2.7 + extra], [1, 0, 0], .70),
@@ -298,7 +292,8 @@ def test_reference_wall_thicknesses(name, lite, directional):
 
 @pytest.mark.parametrize('lite', [True, False], ids=['directional', 'full-directional'])
 def test_directional_reference_features(lite):
-    ref = reference('directional' if lite else 'full-directional')
+    name = 'directional' if lite else 'full-directional'
+    ref = load_reference(ASSETS / 'mesh' / f'{name}.stl')
     extra = 0 if lite else 3.4
     # First-hit rays through the independent SCAD mesh. The lower rear
     # ligament is physically .7 mm; the production bisection proxy reports

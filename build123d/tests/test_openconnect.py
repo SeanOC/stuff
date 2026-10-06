@@ -12,16 +12,17 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-import trimesh
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from build123d import Align, Box, Plane, Pos, Rot, Mode, export_stl as fine_stl, section
+from build123d import Align, Box, Plane, Pos, Rot, Mode, section
 from openconnect import POCKET_DEPTH, head, onramp_location, seat_location, slot_cutter
 from openconnect import constants as c
 from openconnect.slot import slot_body
 from scripts.export import export_stl
 from tests.mount_contracts import CONTRACTS, _residual_vol
+from tests.parity import (load_reference, mesh_from_part,
+                          surface_distance, volume_parity)
 from tests.print_audit import audit
 
 ASSETS = ROOT.parent / 'assets' / 'openConnect'
@@ -81,22 +82,9 @@ def test_vendored_files_and_renders_match_notice():
         assert f'{digest}  {rel}' in notice, rel
 
 
-def _hausdorff(a: trimesh.Trimesh, b: trimesh.Trimesh) -> float:
-    """Largest distance from a surface sample of ``a`` (plus its vertices) to ``b``."""
-    pts, _ = trimesh.sample.sample_surface_even(a, 40000, seed=1)
-    _, dist, _ = trimesh.proximity.closest_point(b, np.vstack([pts, a.vertices]))
-    return float(dist.max())
-
-
-def _stl(part, path) -> trimesh.Trimesh:
-    # Fine tessellation so chord error stays far below TOL.
-    fine_stl(part, str(path), tolerance=0.001, angular_tolerance=0.05)
-    return trimesh.load(path)
-
-
 @pytest.fixture(scope='module')
 def rendered_plate():
-    return trimesh.load(ASSETS / 'mesh' / 'openconnect_plate_one_slot.stl')
+    return load_reference(ASSETS / 'mesh' / 'openconnect_plate_one_slot.stl')
 
 
 def test_slot_equals_the_author_render(rendered_plate, tmp_path):
@@ -108,9 +96,12 @@ def test_slot_equals_the_author_render(rendered_plate, tmp_path):
     body = slot_body(excess=c.EPS)
     plate = (Box(28, 28, PLATE_THICKNESS, align=(Align.MIN,) * 3)
              - Pos(14, 14, PLATE_THICKNESS - POCKET_DEPTH) * body)
-    mine = _stl(plate, tmp_path / 'plate.stl')
-    assert mine.volume == pytest.approx(ref.volume, abs=0.05)
-    assert _hausdorff(mine, ref) < TOL and _hausdorff(ref, mine) < TOL
+    mine = mesh_from_part(plate, tmp_path / 'plate.stl', tolerance=0.001, angular_tolerance=0.05)
+    assert volume_parity(mine, ref, abs=0.05)
+    for source, target in ((mine, ref), (ref, mine)):
+        _, distances = surface_distance(source, target, n=40000, seed=1, sampler='even',
+                                         vertices=True, signed=False)
+        assert distances.max() < TOL
     # The consumer cutter is the same body, rotated into the back-face frame.
     cutter = slot_cutter()
     assert cutter.volume == pytest.approx(body.volume, rel=1e-9)
@@ -126,20 +117,26 @@ def test_slot_options_equal_author_renders(name, options, tmp_path):
     if name.startswith(('nubs', 'flip', 'edge')):
         part = (Box(28, 28, PLATE_THICKNESS, align=(Align.MIN,) * 3)
                 - Pos(14, 14, PLATE_THICKNESS - POCKET_DEPTH) * part)
-    ref = trimesh.load(ASSETS / 'mesh' / f'openconnect_{name}.stl')
-    mine = _stl(part, tmp_path / f'{name}.stl')
+    ref = load_reference(ASSETS / 'mesh' / f'openconnect_{name}.stl')
+    mine = mesh_from_part(part, tmp_path / f'{name}.stl', tolerance=0.001, angular_tolerance=0.05)
     assert mine.is_watertight and ref.is_watertight
-    assert mine.volume == pytest.approx(ref.volume, abs=0.05)
-    assert _hausdorff(mine, ref) < TOL and _hausdorff(ref, mine) < TOL
+    assert volume_parity(mine, ref, abs=0.05)
+    for source, target in ((mine, ref), (ref, mine)):
+        _, distances = surface_distance(source, target, n=40000, seed=1, sampler='even',
+                                         vertices=True, signed=False)
+        assert distances.max() < TOL
 
 
 def test_head_equals_the_author_render(tmp_path):
-    ref = trimesh.load(ASSETS / 'mesh' / 'openconnect_head.stl')
+    ref = load_reference(ASSETS / 'mesh' / 'openconnect_head.stl')
     part = head()
     assert part.is_valid and len(part.solids()) == 1
-    mine = _stl(part, tmp_path / 'head.stl')
-    assert mine.volume == pytest.approx(ref.volume, abs=0.05)
-    assert _hausdorff(mine, ref) < TOL and _hausdorff(ref, mine) < TOL
+    mine = mesh_from_part(part, tmp_path / 'head.stl', tolerance=0.001, angular_tolerance=0.05)
+    assert volume_parity(mine, ref, abs=0.05)
+    for source, target in ((mine, ref), (ref, mine)):
+        _, distances = surface_distance(source, target, n=40000, seed=1, sampler='even',
+                                         vertices=True, signed=False)
+        assert distances.max() < TOL
     # Envelope 17 x 10.6 x 2.6, and the dovetail: flange 17 wide, neck = mouth.
     assert tuple(part.bounding_box().size) == pytest.approx((17, 10.6, 2.6), abs=1e-6)
     for z, width in ((0.3, c.HEAD_WIDTH), (2.3, c.MOUTH_WIDTH)):
@@ -152,10 +149,10 @@ def test_head_equals_the_author_render(tmp_path):
 
 def test_head_fits_the_rendered_slot(rendered_plate, tmp_path):
     # Seated: flange c.DEPTH_CLEARANCE above the pocket floor, top flush.
-    seated = _stl(Pos(14, 14, PLATE_THICKNESS - POCKET_DEPTH + c.DEPTH_CLEARANCE) * head(),
-                  tmp_path / 'seated.stl')
-    pts, _ = trimesh.sample.sample_surface_even(seated, 40000, seed=2)
-    depth_into_plate = trimesh.proximity.signed_distance(rendered_plate, np.vstack([pts, seated.vertices]))
+    seated = mesh_from_part(Pos(14, 14, PLATE_THICKNESS - POCKET_DEPTH + c.DEPTH_CLEARANCE) * head(),
+                  tmp_path / 'seated.stl', tolerance=0.001, angular_tolerance=0.05)
+    _, depth_into_plate = surface_distance(
+        seated, rendered_plate, n=40000, seed=2, sampler='even', vertices=True, signed=True)
     assert depth_into_plate.max() < -0.05  # never inside material; tightest gap 0.1/sqrt(2)
 
 
