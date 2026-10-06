@@ -24,7 +24,7 @@ counts and the baseplate style appear in download filenames.
 | Slot locks | All, Staggered, Corners, Top Corners, None |
 | Slot placement | Center/Left/Right alignment, entry-ramp flip, horizontal ±14 mm and vertical ±10 mm offsets; impossible offsets raise a named validation error |
 
-Clearance above approximately 0.1 mm thins the wall behind the back row below the 0.9 mm guideline (the author's geometry); print with at least 3 perimeters or keep the default 0.
+Clearance above approximately 0.05 mm thins the socket perimeter walls below the 0.9 mm guideline (the author's geometry); print with at least 3 perimeters or keep the default 0.
 
 The model is built with the back in the XZ plane and the deck horizontal.
 The parameter-dependent `print_frame` rotates the wedge underside onto the

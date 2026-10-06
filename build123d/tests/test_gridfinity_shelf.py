@@ -242,10 +242,10 @@ CASES = [(p.id, p.values) for p in m.SPEC.presets] + [
 
 
 def published_back_wall_faces(part, values):
-    """Rev 13's two lower-taper faces adjoining the first socket row/back wall.
+    """The two lower-taper probe faces adjoining the first socket row/back wall.
 
     Select the analytic socket plane, never faces by their measured thickness.
-    The outer side/front upper tapers are deliberately outside this exception.
+    Rev 14 retains these probes and adds the outer upper tapers below.
     """
     from gridfinity import baseplate as gf
 
@@ -265,6 +265,48 @@ def published_back_wall_faces(part, values):
             selected.append(face)
     assert len(selected) == v['gridfinity_width_grids']
     return selected
+
+
+def published_socket_wall_faces(part, values):
+    """Rev 14 inventory by socket/exterior adjacency, never by wall thickness.
+
+    The back-wall probes lie on the lower taper; the side/front probes lie
+    on the upper taper. Identify the latter by their shared edge with the
+    vertical socket riser and that edge's position on the outer socket row.
+    OCCT represents some straight loft faces as BSplines, so surface type
+    alone cannot identify the straight versus corner groups.
+    """
+    from gridfinity import baseplate as gf
+
+    v, width, depth, extra, _, tilt, magnets, *_ = m.dimensions(values)
+    upper_z = tilt + extra + (gf.CLEARANCE if magnets else 0) + gf.LOWER_TAPER + gf.RISER
+    side = width/2 - v['shelf_side_rim'] - gf.MID_INSET + v['gridfinity_socket_clearance']/2
+    front = depth - v['shelf_front_rim'] - gf.MID_INSET + v['gridfinity_socket_clearance']/2
+    adjacency = {}
+    for face in part.faces():
+        for edge in face.edges():
+            adjacency.setdefault(edge, []).append(face)
+    groups = {'back': published_back_wall_faces(part, values), 'straight': [], 'corner': []}
+    for face in part.faces():
+        if abs(face.bounding_box().min.Z - upper_z) > 1e-5:
+            continue
+        for edge in face.edges():
+            bb = edge.bounding_box()
+            if abs(bb.min.Z-upper_z) > 1e-5 or abs(bb.max.Z-upper_z) > 1e-5:
+                continue
+            neighbours = [f for f in adjacency[edge] if f != face]
+            if not any(abs(f.normal_at(edge.center()).Z) < 1e-5 for f in neighbours):
+                continue  # upper taper must meet the vertical socket riser
+            left = abs(bb.min.X + side) < 1e-5
+            right = abs(bb.max.X - side) < 1e-5
+            outer_front = abs(bb.max.Y - front) < 1e-5
+            if edge.geom_type.name == 'LINE' and (left or right or outer_front):
+                groups['straight'].append(face)
+            elif edge.geom_type.name == 'CIRCLE' and (left or right) and outer_front:
+                groups['corner'].append(face)
+    assert len(groups['straight']) == 2*v['gridfinity_depth_grids'] + v['gridfinity_width_grids']
+    assert len(groups['corner']) == 2
+    return groups
 
 
 def face_wall_measurements(part, values, faces):
@@ -289,21 +331,31 @@ def face_wall_measurements(part, values, faces):
             for face in faces]
 
 
-@pytest.mark.parametrize('clearance,expected', [(0, .905097), (.1, .834378), (.2, .791961)])
-def test_rev13_published_back_wall_thickness(clearance, expected):
+@pytest.mark.parametrize('clearance,expected', [
+    (0, {'back': .905097, 'straight': .916043, 'corner': .916043}),
+    (.1, {'back': .834378, 'straight': .889918, 'corner': .860975}),
+    (.2, {'back': .791961, 'straight': .868733, 'corner': .811455}),
+])
+def test_rev14_published_socket_wall_thickness(clearance, expected):
     values = {'gridfinity_socket_clearance': clearance}
     part = m.build(values)
-    measurements = face_wall_measurements(part, values, published_back_wall_faces(part, values))
-    for _, thickness in measurements:
-        assert thickness == pytest.approx(expected, abs=.01)
-        if clearance == 0:
-            assert thickness >= .9
-    # At c=.2 the unmodified author SCAD measures 0.791960724 mm on this ray.
-    print(f'PUBLISHED_WALL_2 | clearance {clearance} | {measurements}')
+    groups = published_socket_wall_faces(part, values)
+    assert {name: len(faces) for name, faces in groups.items()} == {
+        'back': 2, 'straight': 6, 'corner': 2}
+    for name, faces in groups.items():
+        measurements = face_wall_measurements(part, values, faces)
+        for _, thickness in measurements:
+            assert thickness == pytest.approx(expected[name], abs=.01)
+            if clearance == 0:
+                assert thickness >= .9
+        # Max-clearance pins match rays on the unmodified author SCAD.
+        print(f'PUBLISHED_WALL_2 | clearance {clearance} | {name} | {measurements}')
 
 
 def assert_no_other_thin_faces(part, values):
-    approved = set(published_back_wall_faces(part, values))
+    groups = published_socket_wall_faces(part, values)
+    approved = {face for faces in groups.values() for face in faces}
+    assert len(approved) == 10
     other = [f for f in part.faces() if f not in approved]
     measurements = face_wall_measurements(part, values, other)
     thin = [(p, thickness) for p, thickness in measurements if thickness < .9-1e-6]
@@ -311,7 +363,7 @@ def assert_no_other_thin_faces(part, values):
     return min(thickness for _, thickness in measurements)
 
 
-def test_rev13_no_other_thin_faces_at_max_clearance():
+def test_rev14_no_other_thin_faces_at_max_clearance():
     values = {'gridfinity_socket_clearance': .2}
     assert_no_other_thin_faces(m.build(values), values)
 
@@ -402,7 +454,8 @@ def test_endpoint_audit_mount_and_edges(name, values):
         assert report.min_wall_mm == pytest.approx(.792, abs=.01)
         other_min = assert_no_other_thin_faces(part, values)
         assert replace(report, min_wall_mm=other_min).ok, report.format()
-        result = 'PASS (published exception #2; reference 0.791960724 mm)'
+        result = ('PASS (published exception #2 — socket upper-taper family (10 faces); '
+                  'reference back/straight/corner 0.791961/0.868733/0.811455 mm)')
     else:
         assert report.ok, report.format()
     assert report.bed_chamfer == 'present'
