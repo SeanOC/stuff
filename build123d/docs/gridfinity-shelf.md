@@ -38,6 +38,17 @@ under the bead's explicit Gridfinity-profile, mount-face and author-exterior
 exceptions. Backing probes exclude only the below-wedge region and the exact
 volume removed by this bed bevel, including pocket/window loops.
 
+Reference parity keeps the 0.05 mm bbox tolerance on the pre-bevel solid.
+The finished depth reduction is checked separately against
+`0.3 * t / (1 + t)`, where `t = tan(print_bottom_angle) * tan(45.01°)`;
+width and height stay unchanged. Finished surface distances retain the
+0.15 mm cap. Only samples exceeding that cap within 0.5 mm of the reference
+bed boundary are excluded (at most 2%); total band coverage is capped at 6%.
+The edge inventory in `tests/gridfinity_shelf_edges.json` records each
+retained sharp edge as `[reason, x, y, z, length, normal_angle_degrees]` in
+model coordinates. The endpoint test checks both that inventory and the
+production audit, including unwaived bed relief.
+
 Source and port: **CC BY-SA 4.0**, attribution **mitufy**; credits **David D**
 (openGrid), **Zack Freedman** (Gridfinity), and **Gridfinity Rebuilt**
 (MIT-derived profile constants). See the source, hashes, rendering commands

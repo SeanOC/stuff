@@ -10,8 +10,22 @@ The author's default backing is 0.85 mm; sturdy-back provides 2.4 mm.
 from dataclasses import replace
 from math import atan, cos, degrees, floor, radians
 
-from build123d import Align, Axis, Box, Cylinder, Face, Part, Pos, Rot, Solid, Vector, Wire, fillet
+from build123d import (
+    Align,
+    Axis,
+    Box,
+    Cylinder,
+    Face,
+    Part,
+    Pos,
+    Rot,
+    Solid,
+    Vector,
+    Wire,
+    fillet,
+)
 from OCP.BRepFilletAPI import BRepFilletAPI_MakeChamfer
+
 from gridfinity import baseplate as gf
 from holders.registry import ModelSpec, Param, Preset, register
 from openconnect.constants import EPS, TILE_SIZE

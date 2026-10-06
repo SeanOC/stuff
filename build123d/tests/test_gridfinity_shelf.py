@@ -83,6 +83,7 @@ def test_rev10_reference_bed_band_coverage(preset):
 @pytest.mark.parametrize('preset', m.SPEC.presets, ids=lambda p: p.id)
 def test_envelope_and_print_orientation(preset):
     import math
+
     from build123d import Pos
 
     v, w, d, extra, deck, tilt, magnets, count, _, _ = m.dimensions(preset.values)
@@ -137,24 +138,87 @@ def test_screws_obey_author_wall_guard():
     assert m.screw_positions({}) == []
 
 
+@pytest.mark.parametrize('rims', [
+    {'shelf_side_rim': 4}, {'shelf_front_rim': 4},
+    {'shelf_side_rim': 4, 'shelf_front_rim': 4},
+])
+def test_lips_require_matching_rims_and_leave_the_bin_pocket_open(rims):
+    from build123d import Align, Box, Pos
+
+    values = {**rims, 'shelf_rim_lip_height': 5}
+    part = m.before_bed_chamfer(values)
+    _, width, depth, *_ = m.dimensions(values)
+    assert part.bounding_box().max.Z == pytest.approx(33)
+    for point, occupied in [
+        ((width/2-1, depth/2, 30), bool(rims.get('shelf_side_rim'))),
+        ((0, depth-1, 30), bool(rims.get('shelf_front_rim'))),
+    ]:
+        assert part.is_inside(point) == occupied
+    # A bin's central clearance stays open through the full lip height.
+    probe = Pos(0, depth/2, 28)*Box(20, 20, 5, align=(Align.CENTER, Align.CENTER, Align.MIN))
+    intersection = part & probe
+    assert intersection is None or intersection.volume < 1e-7
+
+
+def test_lip_height_alone_adds_no_geometry():
+    part = m.before_bed_chamfer({'shelf_rim_lip_height': 5})
+    assert part.bounding_box().max.Z == pytest.approx(28)
+
+
+@pytest.mark.parametrize('disabled', [{'magnet_diameter': 0}, {'magnet_thickness': 0}])
+def test_zero_magnet_dimension_restores_plain_socket_and_windows(disabled):
+    reference = m.before_bed_chamfer({})
+    part = m.before_bed_chamfer({'baseplate_style': 'Magnet - All', **disabled})
+    assert (reference-part).volume + (part-reference).volume < 1e-7
+
+
+def test_corner_magnets_cut_only_the_four_outer_bosses():
+    values = {'baseplate_style': 'Magnet - Corners Only'}
+    part = m.before_bed_chamfer(values)
+    # The four outer holes are empty; the material immediately beyond each
+    # hole remains as its boss. Inner cell-corner positions are open windows.
+    for x in (-34, 34):
+        for y in (8.7, 76.7):
+            assert not part.is_inside((x, y, 22))
+            assert part.is_inside((x+3.7, y, 22))
+    assert not part.is_inside((8, 34.7, 22))
+
+
 @pytest.mark.parametrize('preset', [p for p in m.SPEC.presets if p.id != 'sturdy-back'], ids=lambda p: p.id)
 def test_reference_parity(preset, tmp_path):
-    """Both meshes in the author's bed-down frame, slots included (E3)."""
+    """Finished surface/volume parity and pre-E1 bbox parity (E3/E4)."""
+    import math
+
     import numpy as np
     import trimesh
     from build123d import Pos, Rot
+
     from scripts.export import export_stl
 
     values = preset.values
     _, width, *_ = m.dimensions(values)
-    part = Pos(width/2, 0, 0)*Rot(0, 0, 180)*m.print_frame(values)*m.build(values)
+    frame = Pos(width/2, 0, 0)*Rot(0, 0, 180)*m.print_frame(values)
+    before = m.before_bed_chamfer(values)
+    part = frame*m.chamfer_bed(before, values)
+    before_box = (frame*before).bounding_box()
+    after_box = part.bounding_box()
+    # In the print frame the back wall is y = z*tan(tilt_angle).
+    # E1 runs from (y,z)=(leg,0) to that wall at slope tan(bevel_angle),
+    # so its new depth extremum is leg*t/(1+t), t=tan(tilt)*tan(bevel).
+    # The 45.01 degree OCCT angle includes the documented fitting margin.
+    t = math.tan(math.radians(m.print_bottom_angle(values)))*math.tan(math.radians(45.01))
+    reduction = .3*t/(1+t)
+    assert after_box.size.Y == pytest.approx(before_box.size.Y-reduction, abs=.005)
+    assert after_box.size.X == pytest.approx(before_box.size.X, abs=.005)
+    assert after_box.size.Z == pytest.approx(before_box.size.Z, abs=.005)
     path = tmp_path/'port.stl'
     export_stl(part, path)
     port = trimesh.load_mesh(path)
     root = Path(__file__).resolve().parents[2]
     ref = trimesh.load_mesh(root/'assets'/'openConnect-gridfinity-shelf'/'mesh'/f'{preset.id}.stl')
-    bbox_ok = np.allclose(sorted(port.extents), sorted(ref.extents), atol=.05, rtol=0)
-    print(f"BBOX_ROW | {preset.id} | ref {ref.extents} | port {port.extents} | {bbox_ok}")
+    bbox_ok = np.allclose(sorted(before_box.size), sorted(ref.extents), atol=.05, rtol=0)
+    print(f"BBOX_ROW | {preset.id} | ref {ref.extents} | pre-E1 {tuple(before_box.size)} | "
+          f"finished {port.extents} | analytic reduction {reduction:.6f} | {bbox_ok}")
     assert port.volume == pytest.approx(ref.volume, rel=.01)
     assert port.is_watertight
     for direction, source, target in [('port->ref', port, ref), ('ref->port', ref, port)]:
@@ -167,7 +231,7 @@ def test_reference_parity(preset, tmp_path):
         assert distances[~excluded].max() <= .15
         print(f'PARITY_ROW | {preset.id} | {direction} | {ref.volume:.3f} | {port.volume:.3f} | '
               f'{distances[~excluded].max():.5f} | {band.mean():.3%} | {excluded.mean():.3%}')
-    assert bbox_ok, (port.extents, ref.extents)
+    assert bbox_ok, (before_box.size, ref.extents)
 
 
 CASES = [(p.id, p.values) for p in m.SPEC.presets] + [
@@ -184,9 +248,16 @@ def edge_inventory(part, values):
     The recorded inventory catches new seams even in a permitted region.
     """
     import math
+
     from build123d import Pos
-    v, width, depth, extra, deck, tilt, magnets, *_ = m.dimensions(values)
+
+    from gridfinity import baseplate as gf
+    v, width, depth, extra, _deck, tilt, magnets, *_ = m.dimensions(values)
     boxes = [c.bounding_box() for c in m.slot_fixtures(v).cutters]
+    mode = 'Corners Only' if v['baseplate_style'] == 'Magnet - Corners Only' else 'All'
+    origin_y = v['shelf_back_offset']+.7+v['gridfinity_depth_grids']*gf.PITCH/2
+    bosses = [(x, y+origin_y) for x, y in gf.magnet_positions(
+        v['gridfinity_width_grids'], v['gridfinity_depth_grids'], mode, v['magnet_diameter'])]
     adjacency = {}
     for face in part.faces():
         for edge in face.edges():
@@ -221,6 +292,11 @@ def edge_inventory(part, values):
             reason = 'author exterior'
         elif magnets and abs(p.Z-(tilt+extra-v['magnet_thickness'])) < 1e-5:
             reason = 'gridfinity profile'
+        elif magnets and any(abs(math.hypot(p.X-x, p.Y-y)
+                                 -(v['magnet_diameter']+gf.BOSS_EXTRA)/2) < 1e-5
+                             for x, y in bosses):
+            # Author's attachment-boss / through-window intersections.
+            reason = 'gridfinity profile'
         else:
             raise AssertionError(('unclassified sharp edge', tuple(p), angle))
         result.append([reason, *(round(x, 3) for x in p), round(edge.length, 3), round(angle, 3)])
@@ -231,6 +307,7 @@ def edge_inventory(part, values):
 @pytest.mark.parametrize('name,values', CASES, ids=[name for name, _ in CASES])
 def test_endpoint_audit_mount_and_edges(name, values):
     import json
+
     from tests.print_audit import audit
 
     try:

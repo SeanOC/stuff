@@ -67,7 +67,7 @@ def test_bake_applies_frame(spec, monkeypatch, tmp_path):
 
 
 def test_live_export_applies_frame(spec, monkeypatch, tmp_path):
-    import holders.registry as registry
+    from holders import registry
     path = Path(__file__).resolve().parents[2]/'services'/'bd-render'/'render_worker.py'
     module_spec = importlib.util.spec_from_file_location('frame_worker', path)
     worker = importlib.util.module_from_spec(module_spec)
