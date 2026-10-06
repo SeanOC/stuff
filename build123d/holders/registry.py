@@ -566,4 +566,5 @@ def all_models() -> list[ModelSpec]:
     from holders import spool_cradle  # noqa: F401
     from holders import label_card  # noqa: F401
     from holders import openconnect_plate  # noqa: F401
+    from holders import cartridge_holder  # noqa: F401
     return list(_REGISTRY.values())

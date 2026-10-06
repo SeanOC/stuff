@@ -954,6 +954,238 @@
           }
         }
       ]
+    },
+    {
+      "slug": "littletikes-dream-machine-cartridge-holder",
+      "engine": "build123d",
+      "title": "Little Tikes Dream Machine cartridge + figure holder",
+      "blurb": "Wall-mounted tray with auto-filled 52x14 mm cartridge slots and rounded figure pockets. Choose dense openGrid snaps, a blank back, or openConnect receivers on the 28 mm grid.",
+      "categoryId": "toys",
+      "params": [
+        {
+          "name": "mount_type",
+          "label": "Back-face mount",
+          "group": "mount",
+          "kind": "enum",
+          "default": "opengrid",
+          "choices": [
+            "opengrid",
+            "blank",
+            "openconnect"
+          ],
+          "filename": true
+        },
+        {
+          "name": "grid_cols",
+          "label": "Width (28mm openGrid cells)",
+          "group": "grid",
+          "kind": "integer",
+          "default": 2,
+          "min": 2,
+          "max": 9,
+          "step": 1
+        },
+        {
+          "name": "grid_rows",
+          "label": "Height (28mm openGrid cells)",
+          "group": "grid",
+          "kind": "integer",
+          "default": 4,
+          "min": 3,
+          "max": 9,
+          "step": 1
+        },
+        {
+          "name": "snap_lite",
+          "label": "Lite snaps (3.4mm not 6.8mm; openGrid mount)",
+          "group": "grid",
+          "kind": "boolean",
+          "default": true
+        },
+        {
+          "name": "body_h",
+          "label": "Body depth out from the wall",
+          "group": "grid",
+          "unit": "mm",
+          "kind": "number",
+          "default": 41,
+          "min": 38,
+          "max": 55,
+          "step": 1
+        },
+        {
+          "name": "body_corner_r",
+          "label": "Body outer-corner radius",
+          "group": "grid",
+          "unit": "mm",
+          "kind": "number",
+          "default": 3,
+          "min": 0.5,
+          "max": 8,
+          "step": 0.5
+        },
+        {
+          "name": "slot_w",
+          "label": "Cartridge slot width",
+          "group": "cartridge",
+          "unit": "mm",
+          "kind": "number",
+          "default": 52,
+          "min": 30,
+          "max": 56,
+          "step": 0.5
+        },
+        {
+          "name": "slot_l",
+          "label": "Cartridge slot length",
+          "group": "cartridge",
+          "unit": "mm",
+          "kind": "number",
+          "default": 14,
+          "min": 8,
+          "max": 19,
+          "step": 0.5
+        },
+        {
+          "name": "slot_depth",
+          "label": "Cartridge slot depth",
+          "group": "cartridge",
+          "unit": "mm",
+          "kind": "number",
+          "default": 36,
+          "min": 10,
+          "max": 40,
+          "step": 1
+        },
+        {
+          "name": "floor_z",
+          "label": "Pocket floor height above the back",
+          "group": "cartridge",
+          "unit": "mm",
+          "kind": "number",
+          "default": 5,
+          "min": 2,
+          "max": 8,
+          "step": 0.5
+        },
+        {
+          "name": "slot_col_pitch",
+          "label": "Slot column pitch (X; default 56 = 2 openGrid cells)",
+          "group": "cartridge",
+          "unit": "mm",
+          "kind": "number",
+          "default": 56,
+          "min": 54,
+          "max": 90,
+          "step": 0.5
+        },
+        {
+          "name": "slot_row_pitch",
+          "label": "Cartridge row pitch",
+          "group": "cartridge",
+          "unit": "mm",
+          "kind": "number",
+          "default": 22,
+          "min": 18,
+          "max": 40,
+          "step": 0.5
+        },
+        {
+          "name": "slot_corner_r",
+          "label": "Slot interior corner radius (0 = square)",
+          "group": "cartridge",
+          "unit": "mm",
+          "kind": "number",
+          "default": 0,
+          "min": 0,
+          "max": 6,
+          "step": 0.5
+        },
+        {
+          "name": "top_round",
+          "label": "Top-edge round-over (outer rim + slot rims; 0=off)",
+          "group": "cartridge",
+          "unit": "mm",
+          "kind": "number",
+          "default": 1.2,
+          "min": 0,
+          "max": 3,
+          "step": 0.2
+        },
+        {
+          "name": "fig_w",
+          "label": "Figure pocket width (dome dia.)",
+          "group": "figures",
+          "unit": "mm",
+          "kind": "number",
+          "default": 43.5,
+          "min": 24,
+          "max": 46,
+          "step": 0.5
+        },
+        {
+          "name": "fig_rect_h",
+          "label": "Figure straight-wall height",
+          "group": "figures",
+          "unit": "mm",
+          "kind": "number",
+          "default": 9,
+          "min": 3,
+          "max": 13,
+          "step": 0.5
+        },
+        {
+          "name": "fig_depth",
+          "label": "Figure pocket depth into front",
+          "group": "figures",
+          "unit": "mm",
+          "kind": "number",
+          "default": 10,
+          "min": 5,
+          "max": 18,
+          "step": 0.5
+        },
+        {
+          "name": "fig_pitch",
+          "label": "Figure pocket pitch (X)",
+          "group": "figures",
+          "unit": "mm",
+          "kind": "number",
+          "default": 49.25,
+          "min": 47,
+          "max": 90,
+          "step": 0.25
+        }
+      ],
+      "presets": [
+        {
+          "id": "default",
+          "label": "Default (2x4 tile, openGrid snaps)",
+          "values": {}
+        },
+        {
+          "id": "full_holder",
+          "label": "Full holder (9x8 cells)",
+          "values": {
+            "grid_cols": 9,
+            "grid_rows": 8
+          }
+        },
+        {
+          "id": "blank_back",
+          "label": "Blank back (no connector features)",
+          "values": {
+            "mount_type": "blank"
+          }
+        },
+        {
+          "id": "openconnect",
+          "label": "openConnect receivers (2x4 tile)",
+          "values": {
+            "mount_type": "openconnect"
+          }
+        }
+      ]
     }
   ]
 }

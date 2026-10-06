@@ -94,6 +94,9 @@ matrix.
 - **Code** — [MIT](LICENSE).
 - **Models** (`models/*.scad`) — [![CC BY-NC-SA 4.0](https://licensebuttons.net/l/by-nc-sa/4.0/88x31.png)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
   (see also [`models/LICENSE`](models/LICENSE))
+- The build123d cartridge-holder port
+  (`build123d/holders/cartridge_holder.py`) retains CC BY-NC-SA 4.0; it is
+  excluded from the MIT grant (personal/non-commercial use).
 - Bundled libraries keep their own licenses:
   [`libs/BOSL2/LICENSE`](libs/BOSL2/LICENSE) (BSD-2-Clause) and
   [`libs/QuackWorks/LICENSE`](libs/QuackWorks/LICENSE) (CC BY-NC-SA 4.0).

@@ -21,7 +21,7 @@ Both flags may be combined, although the three committed parity references
 are lite, full and directional lite.
 
 A consumer puts its back face at `z = h - 0.02` and fuses the snap into it,
-matching `models/littletikes_dream_machine_cartridge_holder.scad:189-194`:
+as used by `build123d/holders/cartridge_holder.py` (the OC4b port):
 
 ```python
 from build123d import Align, Box, Pos
