@@ -256,7 +256,7 @@ def test_validator_rejects_missing_field():
 
 def test_validator_rejects_unknown_param_field():
     doc = _mutate(_valid_doc())
-    doc["models"][0]["params"][0]["description"] = "not an app field"
+    doc["models"][0]["params"][0]["unknown_help_field"] = "not an app field"
     errors = validate_manifest(doc)
     assert any("unknown param fields" in e for e in errors)
 
