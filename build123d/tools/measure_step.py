@@ -30,6 +30,8 @@ import shlex
 import sys
 from pathlib import Path
 
+from reference_pull import LICENCE_TEXTS
+
 ROOT = Path(__file__).resolve().parent.parent  # build123d/
 SOURCE_MANIFEST = ROOT / "reference" / "source-manifest.json"
 ARTIFACT_MANIFEST = ROOT / "reference" / "artifact-manifest.json"
@@ -39,14 +41,6 @@ PRECISION = 4
 MIN_PLANE_AREA = 1.0  # mm^2; smaller planar faces are thread/facet noise
 MESH_UNSUPPORTED = "unsupported for mesh input"
 
-# Source-manifest licence string -> the licence text committed next to the
-# artefacts. --record refuses a source whose licence has no text here.
-LICENCE_TEXTS = {
-    "Multiboard Licence (non-commercial)": "reference/LICENSES/Multiboard-Licence-2025-12-19.txt",
-    "Creative Commons — Attribution": "reference/LICENSES/CC-BY-4.0.txt",
-    "Creative Commons — Attribution  — Noncommercial  —  Share Alike":
-        "reference/LICENSES/CC-BY-NC-SA-4.0.txt",
-}
 # Filename suffix -> media type. Only brep/mesh are ever loaded; citation (PDF
 # drawings) and archive (original zips) records are measurement-inert.
 MEDIA_TYPES = {

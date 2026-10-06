@@ -34,7 +34,7 @@ from pathlib import Path
 
 import reference_pull
 from reference_pull import (
-    MANIFEST, CopyError, ManifestError, check_filename, check_group, dump_sources,
+    MANIFEST, CopyError, ManifestError, check_filename, check_group, check_licence, dump_sources,
     gcs_path, load_sources, sha256_of, source_file_id, validate_sources,
 )
 
@@ -83,6 +83,7 @@ def publish(group: str, local_file: Path, *, url: str, licence: str,
     local_file = Path(local_file)
     check_group(group, "publish")
     check_filename(local_file.name, "publish")
+    check_licence(licence, "publish")  # also reject invalid input for unchanged bytes
     sid = source_file_id(group, local_file.name)
     sha = sha256_of(local_file)
     records = load_sources(manifest)
