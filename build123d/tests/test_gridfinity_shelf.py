@@ -9,6 +9,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from holders import gridfinity_shelf as m
 from tests.mount_contracts import verify_openconnect_slot
+from tests.parity import (band_mask, bbox_parity, boundary_edges, load_reference,
+                          over_cap_exclusion, rotate_to_print_frame, sample_surface,
+                          surface_distance, volume_parity)
 
 
 @pytest.mark.parametrize('values,thickness', [({}, 0.8), ({'shelf_back_offset': 1.55}, 2.4)],
@@ -40,42 +43,14 @@ def test_rev11_backing_envelope(values, thickness):
     verify_openconnect_slot(part, fx, min_backing=thickness, backing_envelope=envelope)
 
 
-def reference_bed_band(mesh, points):
-    """Rev 9 E3 band, from the reference underside's welded triangle boundary.
-
-    Reference meshes already use the author's bed-down print frame. The
-    0.02 mm plane tolerance includes only the source's EPS-sized bed drift;
-    downward normals reject short side faces near the same plane.
-    """
-    import numpy as np
-
-    bed = mesh.triangles[(mesh.face_normals[:, 2] < -0.99999)
-                         & np.all(np.abs(mesh.triangles[:, :, 2]) < 0.02, axis=1)]
-    counts = {}
-    for triangle in np.round(bed, 5):
-        for i, j in ((0, 1), (1, 2), (2, 0)):
-            edge = tuple(sorted((tuple(triangle[i]), tuple(triangle[j]))))
-            counts[edge] = counts.get(edge, 0) + 1
-    edges = [edge for edge, count in counts.items() if count == 1]
-    assert edges, 'reference must have a bed perimeter'
-    distance = np.full(len(points), np.inf)
-    for start, end in edges:
-        a, b = np.asarray(start), np.asarray(end)
-        ab = b - a
-        t = np.clip(np.sum((points-a)*ab, axis=1)/(ab@ab), 0, 1)
-        distance = np.minimum(distance, np.linalg.norm(points-(a+t[:, None]*ab), axis=1))
-    return distance <= 0.5
-
-
 @pytest.mark.parametrize('preset', ['default', 'magnets', 'wide'])
 def test_rev10_reference_bed_band_coverage(preset):
     """Rev 10 measures the full band separately from distance exemptions."""
-    import trimesh
-
     root = Path(__file__).resolve().parents[2]
-    mesh = trimesh.load_mesh(root/'assets'/'openConnect-gridfinity-shelf'/'mesh'/f'{preset}.stl')
-    points, _ = trimesh.sample.sample_surface(mesh, 100000, seed=1)
-    excluded = reference_bed_band(mesh, points)
+    mesh = load_reference(root/'assets'/'openConnect-gridfinity-shelf'/'mesh'/f'{preset}.stl')
+    points, _ = sample_surface(mesh, n=100000, seed=1, sampler='uniform')
+    excluded = band_mask(points, boundary_edges(
+        mesh, normal_z=-0.99999, plane_tol=0.02, decimals=5), radius=0.5)
     print(f'BED_BAND | {preset} | {excluded.mean():.5%}')
     assert excluded.mean() <= 0.06, f'{preset}: band coverage {excluded.mean():.3%}, cap 6%'
 
@@ -189,48 +164,47 @@ def test_reference_parity(preset, tmp_path):
     """Finished surface/volume parity and pre-E1 bbox parity (E3/E4)."""
     import math
 
-    import numpy as np
-    import trimesh
     from build123d import Pos, Rot
 
     from scripts.export import export_stl
 
     values = preset.values
     _, width, *_ = m.dimensions(values)
-    frame = Pos(width/2, 0, 0)*Rot(0, 0, 180)*m.print_frame(values)
+    frame = Pos(width/2, 0, 0)*Rot(0, 0, 180)
     before = m.before_bed_chamfer(values)
-    part = frame*m.chamfer_bed(before, values)
-    before_box = (frame*before).bounding_box()
-    after_box = part.bounding_box()
+    part = frame*rotate_to_print_frame(m.chamfer_bed(before, values), m.SPEC, values)
+    before = frame*rotate_to_print_frame(before, m.SPEC, values)
+    before_box = before.bounding_box()
     # In the print frame the back wall is y = z*tan(tilt_angle).
     # E1 runs from (y,z)=(leg,0) to that wall at slope tan(bevel_angle),
     # so its new depth extremum is leg*t/(1+t), t=tan(tilt)*tan(bevel).
     # The 45.01 degree OCCT angle includes the documented fitting margin.
     t = math.tan(math.radians(m.print_bottom_angle(values)))*math.tan(math.radians(45.01))
     reduction = .3*t/(1+t)
-    assert after_box.size.Y == pytest.approx(before_box.size.Y-reduction, abs=.005)
-    assert after_box.size.X == pytest.approx(before_box.size.X, abs=.005)
-    assert after_box.size.Z == pytest.approx(before_box.size.Z, abs=.005)
     path = tmp_path/'port.stl'
     export_stl(part, path)
-    port = trimesh.load_mesh(path)
+    port = load_reference(path)
     root = Path(__file__).resolve().parents[2]
-    ref = trimesh.load_mesh(root/'assets'/'openConnect-gridfinity-shelf'/'mesh'/f'{preset.id}.stl')
-    bbox_ok = np.allclose(sorted(before_box.size), sorted(ref.extents), atol=.05, rtol=0)
+    ref = load_reference(root/'assets'/'openConnect-gridfinity-shelf'/'mesh'/f'{preset.id}.stl')
+    bbox_ok = bbox_parity(part, ref, tol=.05, mode='sorted', rtol=0,
+                          pre_treatment=before, expected_reduction=(0, reduction, 0),
+                          reduction_tol=.005)
     print(f"BBOX_ROW | {preset.id} | ref {ref.extents} | pre-E1 {tuple(before_box.size)} | "
           f"finished {port.extents} | analytic reduction {reduction:.6f} | {bbox_ok}")
-    assert port.volume == pytest.approx(ref.volume, rel=.01)
+    assert volume_parity(port, ref, rel=.01)
     assert port.is_watertight
+    edges = boundary_edges(ref, normal_z=-0.99999, plane_tol=0.02, decimals=5)
     for direction, source, target in [('port->ref', port, ref), ('ref->port', ref, port)]:
-        points, _ = trimesh.sample.sample_surface(source, 40000, seed=1)
-        _, distances, _ = trimesh.proximity.closest_point(target, points)
-        band = reference_bed_band(ref, points)
+        points, distances = surface_distance(source, target, n=40000, seed=1,
+                                             sampler='uniform', vertices=False, signed=False)
+        band = band_mask(points, edges, radius=0.5)
+        coverage, fraction = over_cap_exclusion(distances, band, cap=.15)
         excluded = band & (distances > .15)
-        assert band.mean() <= .06
-        assert excluded.mean() <= .02
+        assert coverage <= .06
+        assert fraction <= .02
         assert distances[~excluded].max() <= .15
         print(f'PARITY_ROW | {preset.id} | {direction} | {ref.volume:.3f} | {port.volume:.3f} | '
-              f'{distances[~excluded].max():.5f} | {band.mean():.3%} | {excluded.mean():.3%}')
+              f'{distances[~excluded].max():.5f} | {coverage:.3%} | {fraction:.3%}')
     assert bbox_ok, (before_box.size, ref.extents)
 
 
