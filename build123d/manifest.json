@@ -1135,6 +1135,110 @@
       ]
     },
     {
+      "slug": "gridfinity-capture-bin",
+      "engine": "build123d",
+      "title": "Gridfinity capture bin",
+      "blurb": "A no-lip Gridfinity bin with a pocket fitted to a captured item footprint. Print feet-down without supports.",
+      "categoryId": "storage",
+      "params": [
+        {
+          "name": "footprint",
+          "label": "Item footprint (from the capture panel)",
+          "description": "The capture panel fills this encoded outline in millimetres.",
+          "kind": "string",
+          "default": "v1;65.50,-9.00;-65.50,-9.00;-66.38,-8.91;-67.22,-8.66;-68.00,-8.24;-68.68,-7.68;-69.24,-7.00;-69.66,-6.22;-69.91,-5.38;-70.00,-4.50;-70.00,4.50;-69.91,5.38;-69.66,6.22;-69.24,7.00;-68.68,7.68;-68.00,8.24;-67.22,8.66;-66.38,8.91;-65.50,9.00;65.50,9.00;66.38,8.91;67.22,8.66;68.00,8.24;68.68,7.68;69.24,7.00;69.66,6.22;69.91,5.38;70.00,4.50;70.00,-4.50;69.91,-5.38;69.66,-6.22;69.24,-7.00;68.68,-7.68;68.00,-8.24;67.22,-8.66;66.38,-8.91;65.50,-9.00",
+          "maxLength": 16384
+        },
+        {
+          "name": "pocket_depth",
+          "unit": "mm",
+          "kind": "number",
+          "default": 20,
+          "min": 3,
+          "max": 90,
+          "step": 1
+        },
+        {
+          "name": "clearance",
+          "description": "Capture accuracy is not established below 1 mm clearance. The 1.6 mm default covers the measured mean (0.790 mm), not the 1.612 mm worst case.",
+          "unit": "mm",
+          "kind": "number",
+          "default": 1.6,
+          "min": 1.0,
+          "max": 3.0,
+          "step": 0.1
+        },
+        {
+          "name": "floor_thickness",
+          "unit": "mm",
+          "kind": "number",
+          "default": 2.0,
+          "min": 1.2,
+          "max": 4.0,
+          "step": 0.1
+        },
+        {
+          "name": "wall_min",
+          "unit": "mm",
+          "kind": "number",
+          "default": 1.6,
+          "min": 1.2,
+          "max": 3.0,
+          "step": 0.1
+        },
+        {
+          "name": "size_mode",
+          "kind": "enum",
+          "default": "auto",
+          "choices": [
+            "auto",
+            "manual"
+          ]
+        },
+        {
+          "name": "width_units",
+          "kind": "integer",
+          "default": 4,
+          "min": 1,
+          "max": 6,
+          "step": 1,
+          "filename": true
+        },
+        {
+          "name": "depth_units",
+          "kind": "integer",
+          "default": 1,
+          "min": 1,
+          "max": 6,
+          "step": 1,
+          "filename": true
+        }
+      ],
+      "presets": [
+        {
+          "id": "default",
+          "label": "Marker pen",
+          "values": {}
+        },
+        {
+          "id": "deep",
+          "label": "Deep pocket",
+          "values": {
+            "pocket_depth": 45
+          }
+        },
+        {
+          "id": "wide",
+          "label": "4 \u00d7 2 cells",
+          "values": {
+            "size_mode": "manual",
+            "width_units": 4,
+            "depth_units": 2
+          }
+        }
+      ]
+    },
+    {
       "slug": "littletikes-dream-machine-cartridge-holder",
       "engine": "build123d",
       "title": "Little Tikes Dream Machine cartridge + figure holder",

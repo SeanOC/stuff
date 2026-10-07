@@ -1,0 +1,59 @@
+Gridfinity Rebuilt reference, MIT
+Upstream: https://github.com/kennetek/gridfinity-rebuilt-openscad
+Pin: 910e22d8607fd7f5f51ad5e5cbc5287a76810bfd (2025-08-31)
+Vendored by scripts/vendor-libs.sh; no source modifications for this render.
+Engine: OpenSCAD 2025.06.12.ai25773, Manifold backend.
+Run from the upstream checkout:
+
+openscad --backend manifold --export-format binstl -o gr-bin-2x2x3-nolip.stl -D gridx=2 -D gridy=2 -D gridz=3 -D include_lip=false -D style_tab=5 -D scoop=0 -D cut_cylinders=false -D refined_holes=false -D magnet_holes=false -D screw_holes=false -D crush_ribs=false -D chamfer_holes=false -D enable_thumbscrew=false gridfinity-rebuilt-bins.scad
+
+Output: 10,556 facets, watertight; volume 49418.328114 mm^3;
+bounds (-41.75,-41.75,0)..(41.75,41.75,21) mm.
+SHA256: 0afac5f3c72d168c664e48b11efef79b3fbb6c82cf6efeb526b40600558f5abf
+
+MIT License
+
+Copyright (c) 2023 Kenneth Hodson
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+This repository is based on Gridfinity:
+
+MIT License
+
+Copyright (c) 2023 Zachary Freedman and Voidstar Lab LLC
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
