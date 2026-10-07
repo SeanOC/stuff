@@ -1,0 +1,20 @@
+OpenCV.js 5.0.0 — official, unmodified prebuilt JS with embedded WebAssembly
+Copyright OpenCV contributors. SPDX-License-Identifier: Apache-2.0
+
+Download: https://github.com/opencv/opencv/releases/download/5.0.0/opencv-5.0.0-docs.zip
+Archive member: js/bin/opencv.js (identical to doc/doxygen/html/opencv.js)
+Upstream tag: https://github.com/opencv/opencv/tree/5.0.0
+opencv.js bytes: 16211109 (16.21 MB decimal / 15.46 MiB)
+opencv.js sha256: bf6130c3d755915e5d005b69e574225817f98dc5556fe640628f8f18c1eb568f
+
+The tagged documentation URL https://docs.opencv.org/5.0.0/opencv.js returned
+404 at vendoring time. The official release docs archive contains this build;
+getBuildInformation() identifies OpenCV 5.0.0, built 2026-06-05T21:00:37Z.
+No custom build, CDN request at runtime, Git LFS, or separate WASM asset.
+Python baseline uses opencv-python-headless 5.0.0.93 (cv2 5.0.0): no major skew.
+
+Size flag: this increases the largest tracked blob from about 2.03 MB to
+16.21 MB, above the bead's 12 MB flagging threshold. The specification
+explicitly permits proceeding after stating that increase. Loaded on demand.
+
+Apache License 2.0: see LICENSE in this directory.
