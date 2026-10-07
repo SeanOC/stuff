@@ -115,6 +115,9 @@ jobs:
               - 'build123d/tests/print_audit.py'
               - 'build123d/tests/mount_contracts.py'
               - 'build123d/tests/test_spool_cradle.py'
+              # capture-bin endpoint sweep lives in audit_full (pst-8vwop)
+              - 'build123d/gridfinity/**'
+              - 'build123d/tests/test_gridfinity_capture_bin.py'
               - 'build123d/tests/conftest.py'
               - 'build123d/pyproject.toml'
               - 'build123d/uv.lock'
