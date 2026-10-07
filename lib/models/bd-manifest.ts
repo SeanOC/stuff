@@ -42,6 +42,8 @@ export interface BdModel {
   /** Manifest extension: present (true) only when every preset bakes a
    * one-object multi-colour 3MF (labels L2; served by L4). */
   multiColour?: boolean;
+  /** Present only for models offering browser photo-to-footprint capture. */
+  capture?: boolean;
 }
 
 export interface BdManifest {
