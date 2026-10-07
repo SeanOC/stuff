@@ -12,6 +12,17 @@ const scad = (stem: string) =>
   ).params;
 
 describe("downloadFilename", () => {
+  it("includes capture-bin width and depth flags from the real manifest", async () => {
+    const model = await loadBdModel("gridfinity-capture-bin");
+    expect(model).not.toBeNull();
+    expect(downloadFilename(model!.slug, model!.params, {})).toBe(
+      "gridfinity-capture-bin-width_units=4-depth_units=1.stl",
+    );
+    expect(downloadFilename(model!.slug, model!.params, {
+      size_mode: "manual", width_units: 4, depth_units: 2,
+    }, "3mf")).toBe("gridfinity-capture-bin-width_units=4-depth_units=2.3mf");
+  });
+
   it("includes Gridfinity width, depth and style from the real manifest", async () => {
     const model = await loadBdModel("openconnect-gridfinity-shelf");
     expect(model).not.toBeNull();

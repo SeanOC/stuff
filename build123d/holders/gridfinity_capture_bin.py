@@ -8,12 +8,12 @@ edges remain functional. No stacking lip and no mount contract.
 """
 from math import ceil
 
-from capture.encoding import MAX_BYTES, encode, parse, validate
-from gridfinity import bin as gf
+from build123d import Face, Pos, Wire, chamfer, extrude, fillet
 from shapely import affinity
 from shapely.geometry import Point, Polygon, box
 
-from build123d import Face, Pos, Wire, chamfer, extrude, fillet
+from capture.encoding import MAX_BYTES, encode, parse, validate
+from gridfinity import bin as gf
 from holders.registry import ModelSpec, Param, Preset, register
 
 RIM_RADIUS = 1.0
@@ -63,6 +63,11 @@ def dimensions(values=None):
 def before_treatment(values=None):
     _, w, d, h, *_ = dimensions(values)
     return gf.blank(w, d, h)
+
+
+def audit_exclusions(values=None):
+    _, w, d, *_ = dimensions(values)
+    return gf.underside_exclusions(w, d)
 
 
 def build(values=None):

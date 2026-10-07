@@ -28,6 +28,24 @@ def outline(w_units, d_units):
     return RectangleRounded(w_units*PITCH-.5, d_units*PITCH-.5, TOP_RADIUS)
 
 
+def underside_exclusions(w_units, d_units):
+    """Exact rev-4 published bridge family, independent of audited faces.
+
+    [C] GR base.scad:164-180: body footprint minus the foot-top footprints
+    at Z=PROFILE_HEIGHT. No expanded bounding boxes or failed-face selection.
+    A single cell has no inter-foot bridge and therefore no exclusion.
+    """
+    if (w_units, d_units) == (1, 1):
+        return ()
+    region = outline(w_units, d_units)
+    for x, y in product(range(w_units), range(d_units)):
+        region -= Pos((x-(w_units-1)/2)*PITCH,
+                      (y-(d_units-1)/2)*PITCH)*outline(1, 1)
+    epsilon = 1e-4
+    return (extrude(Pos(0, 0, PROFILE_HEIGHT-epsilon)*region,
+                    amount=2*epsilon),)
+
+
 def base(w_units, d_units):
     """Feet plus the continuous bridge to Z=7; bottom 0.8 mm is 45° relief."""
     for value in (w_units, d_units):
