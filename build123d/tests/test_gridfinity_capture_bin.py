@@ -175,7 +175,12 @@ def assert_containment(part, values):
         assert part.is_inside((x+dx*scale, y+dy*scale, floor-.001))
 
 
+# Dual-marked like test_cartridge_holder.test_endpoints: this sweep pushed the
+# bd123 'audit' job (25 min budget) past its timeout on main at #167, so it
+# runs in the sharded audit_full job instead (cradle-touching PRs, push to
+# main, nightly) — pst-8vwop.
 @pytest.mark.audit
+@pytest.mark.audit_full
 @pytest.mark.parametrize('name,values,error', CASES, ids=[c[0] for c in CASES])
 def test_endpoint_audit_edges_and_containment(name, values, error):
     if error:
