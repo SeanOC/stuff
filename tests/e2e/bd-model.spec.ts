@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { expect, test, type Page, type Route } from "@playwright/test";
+import { expect, test, type Locator, type Page, type Route } from "@playwright/test";
 
 // End-to-end for the build123d live-param flow (bead pst-qbas, P2c). The
 // bd detail page loads its baked GLB, exposes EDITABLE params, live-renders
@@ -13,7 +13,9 @@ import { expect, test, type Page, type Route } from "@playwright/test";
 //
 //   bash scripts/vendor-libs.sh                     # once
 //   BD_MODELS_ENABLED=1 bash scripts/bake-bd-presets.sh
+//   BD_MODELS_ENABLED=1 STUFF_ENABLE_TEST_ROUTES=1 npm run build  # for CI=1
 //   BD_MODELS_ENABLED=1 npm run test:e2e -- bd-model
+// Re-bake after a full unit suite, which can replace the baked fixtures.
 //
 // The live-render specs stub /api/bd-render (page.route) with the baked
 // bytes: build123d renders only in a scale-to-zero Cloud Run service that
@@ -35,6 +37,35 @@ const BAKED_ROOT = path.resolve(process.cwd(), "build123d", "baked", SLUG);
 
 const bakedGlb = () => readFileSync(path.join(BAKED_ROOT, `${PRESET}.glb`));
 const bakedStl = () => readFileSync(path.join(BAKED_ROOT, `${PRESET}.stl`));
+
+async function expectDefaultCompass(compass: Locator): Promise<void> {
+  await expect(compass).toBeVisible();
+  for (const axis of ["x", "y", "z"]) {
+    const group = compass.locator(`g[data-axis="${axis}"]`);
+    await expect(group).toBeVisible();
+    const line = group.locator("line");
+    await expect(line).toHaveCount(1);
+    // SVG line bounds exclude the stroke: a visible vertical/horizontal
+    // axis has zero width/height, so toBeVisible() is unsuitable here.
+    await expect(line).toHaveCSS("visibility", "visible");
+    await expect(line).not.toHaveCSS("display", "none");
+    await expect(line).not.toHaveCSS("stroke", "none");
+    await expect.poll(() => line.evaluate((el) =>
+      Number.parseFloat(getComputedStyle(el).strokeWidth),
+    )).toBeGreaterThan(0);
+    // All three default-camera projections are ~18px long (radius 22).
+    // Length accepts vertical axes while rejecting missing/invalid or
+    // collapsed endpoints; neither coordinate delta must be nonzero alone.
+    await expect.poll(() => line.evaluate((el) => {
+      const coords = ["x1", "y1", "x2", "y2"].map((attr) =>
+        Number.parseFloat(el.getAttribute(attr) ?? ""),
+      );
+      if (!coords.every(Number.isFinite)) return 0;
+      const [x1, y1, x2, y2] = coords;
+      return Math.hypot(x2 - x1, y2 - y1);
+    })).toBeGreaterThan(15);
+  }
+}
 
 async function expectUprightBbox(page: Page): Promise<void> {
   // GLB load populates the bbox strip. data-glb-size = "x,y,z" in the
@@ -68,11 +99,7 @@ test("bd page loads with EDITABLE params (no presets-only banner) and renders up
   await expectUprightBbox(page);
 
   // Orientation compass parity with the SCAD viewer (pst-6ram).
-  const compass = page.getByTestId("axes-indicator");
-  await expect(compass).toBeVisible();
-  await expect(compass.locator('g[data-axis="x"] line')).toBeVisible();
-  await expect(compass.locator('g[data-axis="y"] line')).toBeVisible();
-  await expect(compass.locator('g[data-axis="z"] line')).toBeVisible();
+  await expectDefaultCompass(page.getByTestId("axes-indicator"));
 });
 
 test("selecting a preset loads the baked GLB with NO bd-render service call", async ({
