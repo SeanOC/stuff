@@ -51,7 +51,8 @@ def test_dockerfile_copies_registered_model_packages(monkeypatch):
         package = relative.parts[0]
         # Full-suite collection also imports helpers as tests.mount_contracts
         # and tests.print_audit; these are not service runtime dependencies.
-        if package == "tests":
+        # capture is a dev/CI-only package; the render image deliberately has no cv2.
+        if package in ("tests", "capture"):
             continue
         if len(relative.parts) > 1 and module.__name__.split(".")[0] == package:
             imported_packages.add(package)
