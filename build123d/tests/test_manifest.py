@@ -69,6 +69,22 @@ def test_manifest_file_is_fresh():
     assert MANIFEST_PATH.read_text() == manifest_text()
 
 
+def test_capture_flag_is_only_emitted_for_capture_bin():
+    flagged = [m for m in build_manifest()["models"] if "capture" in m]
+    assert [m["slug"] for m in flagged] == ["gridfinity-capture-bin"]
+    assert flagged[0]["capture"] is True
+
+
+@pytest.mark.parametrize("flag", ["multiColour", "capture"])
+@pytest.mark.parametrize("value", [False, None, 1, "true"])
+def test_validator_requires_true_for_optional_model_flags(flag, value):
+    doc = build_manifest()
+    model = next(m for m in doc["models"] if flag in m)
+    model[flag] = value
+    assert any(f"{flag} must be true when present" in e
+               for e in validate_manifest(doc))
+
+
 def test_emitter_is_deterministic():
     assert manifest_text() == manifest_text()
     # Round-trip through JSON must be stable (no float/int churn).

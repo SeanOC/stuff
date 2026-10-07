@@ -257,6 +257,7 @@ class ModelSpec:
              marks a model whose module exposes ``colour_parts(values)``:
              the bake adds a one-object two-filament 3MF + one STL per part
              (see resolve_colour_parts), and the manifest says multiColour.
+             "capture" enables the browser photo-to-footprint capture panel.
     params:  typed params (see Param); order defines manifest order.
     presets: named preset value sets (see Preset).
     title:   app-facing title; falls back to a humanized slug when empty.
@@ -319,6 +320,10 @@ class ModelSpec:
     @property
     def is_multi_colour(self) -> bool:
         return "multi-colour" in self.tags
+
+    @property
+    def is_capture(self) -> bool:
+        return "capture" in self.tags
 
     def param_names(self) -> frozenset[str]:
         return frozenset(p.name for p in self.params)
