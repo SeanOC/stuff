@@ -1236,7 +1236,8 @@
             "depth_units": 2
           }
         }
-      ]
+      ],
+      "capture": true
     },
     {
       "slug": "littletikes-dream-machine-cartridge-holder",

@@ -28,6 +28,7 @@ import clsx from "clsx";
 import GlbViewer, { type GlbBbox } from "./GlbViewer";
 import { AxesIndicator } from "./AxesIndicator";
 import { ParamRail } from "./ParamRail";
+import { CapturePanel } from "./CapturePanel";
 import type { CameraAxes } from "./StlViewer";
 import { paramsEqual, useDetailState } from "@/hooks/useDetailState";
 import { useBdRenderer } from "@/hooks/useBdRenderer";
@@ -44,6 +45,7 @@ export interface BdDetailPageModel {
   presets: BdPreset[];
   /** Tagged multi-colour in the registry: offers the 3MF download. */
   multiColour?: boolean;
+  capture?: boolean;
 }
 
 function assetUrl(slug: string, presetId: string, format: "glb" | "stl"): string {
@@ -136,11 +138,17 @@ export default function BdDetailPage({ model }: { model: BdDetailPageModel }) {
     [detail, bd],
   );
 
-  const update = useCallback(() => {
-    if (!stale && bd.state.kind !== "error") return;
+  const update = useCallback((values?: Record<string, ParamValue>) => {
+    if (!values && !stale && bd.state.kind !== "error") return;
     setViewerError(null);
-    bd.refresh(detail.state.params);
+    bd.refresh(values ?? detail.state.params);
   }, [stale, bd, detail.state.params]);
+
+  const applyFootprint = (footprint: string) => {
+    detail.setParam("footprint", footprint);
+    // Pass the new snapshot directly: React has not committed setParam yet.
+    update({ ...detail.state.params, footprint });
+  };
 
   const onLoaded = useCallback((b: GlbBbox) => {
     setViewerError(null);
@@ -184,6 +192,10 @@ export default function BdDetailPage({ model }: { model: BdDetailPageModel }) {
     bd.state.kind === "error" && bd.state.status === 400
       ? paramErrorsFor(model.params, bd.state.message)
       : undefined;
+  if (model.capture && paramErrors?.footprint &&
+      /footprint \+ wall exceeds 6[x×]6 cells/.test(paramErrors.footprint)) {
+    paramErrors.footprint += " Reduce clearance or wall_min, or pick a manual size.";
+  }
 
   return (
     <div
@@ -239,7 +251,7 @@ export default function BdDetailPage({ model }: { model: BdDetailPageModel }) {
               <button
                 type="button"
                 data-testid="bd-update-render"
-                onClick={update}
+                onClick={() => update()}
                 className="rounded-3 border border-accent-line bg-accent px-8 py-3 font-semibold text-accent-ink hover:opacity-90"
               >
                 Update
@@ -272,7 +284,7 @@ export default function BdDetailPage({ model }: { model: BdDetailPageModel }) {
               <button
                 type="button"
                 data-testid="bd-render-retry"
-                onClick={update}
+                onClick={() => update()}
                 className="rounded-3 border border-red/40 bg-panel2 px-8 py-3 font-semibold text-red hover:opacity-90"
               >
                 Retry
@@ -356,6 +368,14 @@ export default function BdDetailPage({ model }: { model: BdDetailPageModel }) {
               values={detail.state.params}
             />
           )}
+
+          {model.capture && <CapturePanel
+            params={model.params}
+            values={detail.state.params}
+            onChange={detail.setParam}
+            onApply={applyFootprint}
+            rendering={bd.state.kind === "loading"}
+          />}
 
           {/* Editable params — shared control set with the SCAD viewer. */}
           <div className="mt-18 font-mono text-10 uppercase tracking-wide text-text-mute">

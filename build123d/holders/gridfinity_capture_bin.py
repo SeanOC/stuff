@@ -88,6 +88,7 @@ SPEC = register(ModelSpec(
     name='gridfinity_capture_bin', title='Gridfinity capture bin', category_id='storage',
     description='A no-lip Gridfinity bin with a pocket fitted to a captured item footprint. Print feet-down without supports.',
     build=build,
+    tags=('capture',),
     params=(
         Param('footprint', 'string', DEFAULT_FOOTPRINT, max_length=MAX_BYTES,
               label='Item footprint (from the capture panel)',

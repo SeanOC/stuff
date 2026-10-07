@@ -66,9 +66,8 @@ MANIFEST_PATH = ROOT / "manifest.json"
 # Fixed key orders — deterministic output, and a shape check against
 # lib/scad-params/parse.ts (unknown/missing fields fail validate_manifest).
 _MODEL_FIELDS = ("slug", "engine", "title", "blurb", "categoryId", "params", "presets")
-# Optional trailing model flag, emitted only as true (labels L2): the model
-# bakes a multi-colour 3MF per preset (ModelSpec tag "multi-colour").
-_MODEL_OPTIONAL = "multiColour"
+# Optional trailing model flags, emitted only as true from ModelSpec tags.
+_MODEL_OPTIONAL = ("multiColour", "capture")
 _PRESET_FIELDS = ("id", "label", "values")
 # Optional trailing preset key, emitted only when set (pst-5b83s): the
 # viewer's initial camera for that preset (registry Preset.default_view).
@@ -151,7 +150,9 @@ def spec_to_json(spec: ModelSpec) -> dict[str, Any]:
         "presets": [preset_to_json(p) for p in spec.presets],
     }
     if spec.is_multi_colour:
-        out[_MODEL_OPTIONAL] = True
+        out["multiColour"] = True
+    if spec.is_capture:
+        out["capture"] = True
     return out
 
 
@@ -206,12 +207,13 @@ def validate_manifest(doc: Any, category_ids: set[str] | None = None) -> list[st
         if not isinstance(model, dict):
             errors.append(f"{mwhere} must be an object")
             continue
-        expected = _MODEL_FIELDS + ((_MODEL_OPTIONAL,) if _MODEL_OPTIONAL in model else ())
+        expected = _MODEL_FIELDS + tuple(key for key in _MODEL_OPTIONAL if key in model)
         errors += _field_order_errors(list(model), expected, mwhere)
         if errors and list(model) != list(expected):
             continue
-        if _MODEL_OPTIONAL in model and model[_MODEL_OPTIONAL] is not True:
-            errors.append(f"{mwhere}: {_MODEL_OPTIONAL} must be true when present")
+        for key in _MODEL_OPTIONAL:
+            if key in model and model[key] is not True:
+                errors.append(f"{mwhere}: {key} must be true when present")
         slug = model["slug"]
         if not isinstance(slug, str) or not SAFE_ID_RE.match(slug or ""):
             errors.append(f"{mwhere}: slug {slug!r} must be a URL-safe string")

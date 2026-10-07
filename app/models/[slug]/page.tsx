@@ -44,6 +44,7 @@ export default async function ModelPage({ params }: Props) {
               params: bd.params,
               presets: bd.presets,
               multiColour: bd.multiColour,
+              capture: bd.capture,
             }}
           />
         );
