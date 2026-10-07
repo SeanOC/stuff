@@ -135,6 +135,41 @@ Preset STL/GLB/PNG baking uses `scripts/export.py`; the tracked review
 includes the underside and centre section at
 [review](../build123d/docs/renders/review/gridfinity-capture-bin.png).
 
+## Capture panel
+
+On the Gridfinity capture bin page, choose **Take or choose a photo** to
+use a photo or the phone's rear camera. Place one contrasting item on a
+Gridfinity baseplate, with the whole baseplate inside the frame and a dark,
+plain surround. Photograph straight down in daylight or under a lamp.
+
+**Photos never leave your browser.** The detector loads only when you
+select a file. The blue overlay shows the recovered 42 mm lattice; amber
+shows the item outline. Inspect both before selecting **Apply footprint**.
+This fills the existing footprint parameter and requests one live preview;
+only the encoded outline and model parameters go to the render service.
+The existing STL download uses the current parameter values.
+
+The panel's clearance slider edits the same value as the Parameters control.
+**Type pocket depth yourself:** the photo gives the outline only, not depth.
+Accuracy measured on synthetic renders: **0.79 mm mean / 1.61 mm max**.
+Real-photo measurements are pending; check the overlay and allow clearance.
+
+Errors keep the detector's exact message and add the following advice:
+
+| Message | Advice |
+|---|---|
+| `no perimeter lattice contrast` | Show the whole baseplate on a dark, plain surface. |
+| `no board boundary` | Show the whole baseplate on a dark, plain surface. |
+| `board boundary is not a visible rectangle` | Show the whole baseplate on a dark, plain surface. |
+| `perimeter does not support a 42 mm lattice` | Use a Gridfinity baseplate 2–6 cells per side. |
+| `board touches image edge` | Step back so the whole baseplate is inside the frame. |
+| `no item contour` | The item must contrast with the plate (colour or darker). |
+| `contour cannot meet the 0.3 mm / 256 vertex contract` | Simplify the item's outline or move the camera closer. |
+| `footprint must fit 6x6 cells (252x252 mm)` | The item is too large for a 6×6 bin. |
+| Server: `footprint + wall exceeds 6x6 cells` | Reduce clearance or wall_min, or pick a manual size. |
+
+The server's size error appears under the footprint parameter after Apply.
+
 ## Capture pipeline (TypeScript)
 
 CB3a (`pst-r02mp.5`, canonical spec rev 3) ports the bare/paper threshold
@@ -157,7 +192,7 @@ with two branches trimmed:
    3–256 distinct vertices, and ignore holes.
 9. Map to millimetres, quantize to 0.01 mm, validate, and encode `v1`.
 
-The panel, human review overlay, registry flag, and render request belong to
+The panel, human review overlay, registry flag, and render request are supplied by
 CB3b. ArUco was dropped for its poorer accuracy, missed calibrations and lack
 of a capture-plate model ([CB1 decision](../build123d/docs/capture-bins-spike.md#measurements)).
 Constants and validation messages cite the Python source lines in each module.
