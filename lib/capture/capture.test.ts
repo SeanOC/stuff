@@ -7,6 +7,7 @@ import { loadOpenCV } from "./opencv";
 import { decodeImage } from "./image";
 import { rectify } from "./rectify";
 import { periodCount } from "./grid";
+import { segment } from "./segment";
 
 const fixtures = path.join(process.cwd(), "build123d/tests/fixtures/capture");
 const baseline = JSON.parse(readFileSync(path.join(fixtures, "python-footprints.json"), "utf8")) as {
@@ -182,4 +183,15 @@ test("uncropped rectify retains negative origin and both sample endpoints", asyn
 test("perimeter rejects low contrast and unsupported periods verbatim", () => {
   expect(() => periodCount(new Array(840).fill(180))).toThrow("no perimeter lattice contrast");
   expect(() => periodCount(Array.from({ length: 840 }, (_, i) => 100 * Math.sin(i * i)))).toThrow("perimeter does not support a 42 mm lattice");
+});
+
+test("custom resolution preserves Python ties-to-even rim inset", async () => {
+  const cv = await loadOpenCV();
+  const mask = segment(cv, {
+    image: { width: 10, height: 10, data: new Uint8Array(300) },
+    mmPerPx: 1.2, originMm: [0, 0], kind: "lattice",
+  });
+  // round(3 / 1.2) == 2 in Python, whereas Math.round would produce 3.
+  expect(mask.data[2 * 10 + 2]).toBe(1);
+  expect(mask.data[1 * 10 + 1]).toBe(0);
 });

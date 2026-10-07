@@ -18,7 +18,8 @@ export function periodCount(profile: number[]): [number, number] {
     throw new DetectionError("no perimeter lattice contrast");
   const scores: [number, number][] = [];
   for (let n = 2; n <= 6; n++) {
-    const lag = Math.round(p.length / n);
+    const rawLag = p.length / n, lower = Math.floor(rawLag);
+    const lag = rawLag - lower === .5 ? lower + lower % 2 : Math.round(rawLag);
     let dot = 0, aa = 0, bb = 0;
     for (let i = 0; i < p.length - lag; i++) {
       dot += p[i] * p[i + lag]; aa += p[i] ** 2; bb += p[i + lag] ** 2;

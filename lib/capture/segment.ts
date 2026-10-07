@@ -12,7 +12,9 @@ export function segment(cv: CV, rectified: Rectified): Mask {
   const mask = new cv.Mat(height, width, cv.CV_8UC1), kernel = cv.Mat.ones(3, 3, cv.CV_8UC1), closed = new cv.Mat();
   try {
     cv.cvtColor(rgb, gray, cv.COLOR_RGB2GRAY);
-    const inset = Math.round(3 / rectified.mmPerPx);
+    // Python round() uses ties-to-even, including for caller-selected resolution.
+    const rawInset = 3 / rectified.mmPerPx, lower = Math.floor(rawInset);
+    const inset = rawInset - lower === .5 ? lower + lower % 2 : Math.round(rawInset);
     let left = inset, top = inset, right = width - inset, bottom = height - inset;
     let whiteCount = 0;
     for (let i = 0; i < width * height; i++) {
