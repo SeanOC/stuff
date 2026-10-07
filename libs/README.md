@@ -1,10 +1,10 @@
-# Vendored OpenSCAD Libraries
+# Vendored libraries
 
-These are exposed to OpenSCAD via `OPENSCADPATH=libs/` (set by the skill
-helpers). When authoring a model, prefer a library primitive over hand-rolling
+The OpenSCAD libraries below are exposed via `OPENSCADPATH=libs/` (set by the
+skill helpers). When authoring a model, prefer a library primitive over hand-rolling
 geometry.
 
-| Library                     | Purpose                                          | Pinned SHA | Vendored? |
+| Library                     | Purpose                                          | Pinned revision | Vendored? |
 |-----------------------------|--------------------------------------------------|------------|-----------|
 | NopSCADlib                  | Mechanical + project utilities, vitamins         | `c9baa0e`  | menu only |
 | threads-scad                | ISO metric threads, bolts, nuts, washers         | `4ae9aeb`  | menu only |
@@ -12,8 +12,13 @@ geometry.
 | BOSL2                       | Attachment / transform system; broad toolkit     | `456fcd8`  | ✅        |
 | gridfinity-rebuilt-openscad | Gridfinity bins, baseplates, lite variants (MIT) | `910e22d`  | ✅        |
 | QuackWorks                  | Multiboard / Multiconnect accessory generators   | `6123129`  | ✅        |
+| OpenCV.js | Browser capture, JS with embedded WASM (Apache-2.0) | `5.0.0` | committed vendored JS/WASM |
 
-**Vendored** means `scripts/vendor-libs.sh` clones it at the pinned SHA
+OpenCV.js is committed under `public/vendor/opencv/`, with release provenance,
+SHA-256 and size in [NOTICE](../public/vendor/opencv/NOTICE). It is loaded only
+on capture; `scripts/vendor-libs.sh` does not download or modify it.
+
+For the OpenSCAD rows, **Vendored** means `scripts/vendor-libs.sh` clones it at the pinned SHA
 (it runs as the npm `prebuild` hook and in CI) — only those three are
 present in a fresh clone, and they are the only ones shipped models use.
 The **menu only** rows are an available-libraries menu for `/scad-new`:

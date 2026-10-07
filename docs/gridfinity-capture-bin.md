@@ -134,3 +134,144 @@ committed edge inventory is `tests/gridfinity_capture_bin_edges.json`.
 Preset STL/GLB/PNG baking uses `scripts/export.py`; the tracked review
 includes the underside and centre section at
 [review](../build123d/docs/renders/review/gridfinity-capture-bin.png).
+
+## Capture pipeline (TypeScript)
+
+CB3a (`pst-r02mp.5`, canonical spec rev 3) ports the bare/paper threshold
+path from main `a6d6a6590d9388b6e8e3121eb9d05639abeb874f` into `lib/capture/`.
+`capture(File | Blob | ArrayBuffer)` returns the encoded footprint, metric
+ring, grid homography/confidence/extent, and rectified RGB image/origin.
+The nine steps follow [CB1's summary](../build123d/docs/capture-bins-spike.md#cb3-algorithm-summary-nine-steps),
+with two branches trimmed:
+
+1. Decode RGB uint8. Browser `createImageBitmap` honours EXIF orientation;
+   node tests decode PNG using the single added dev dependency, `pngjs`.
+2. Fit the largest pale rectangular board outline. The ArUco branch is omitted.
+3. Correlate perimeter strips to infer the number of 42 mm cells.
+4. Solve the image-pixel-to-millimetre homography.
+5. Warp at 0.20 mm/pixel, retaining metric origin and board extent.
+6. Exclude the 3 mm outer rim or pixels outside detected paper bounds. The
+   ArUco marker-corner branch is omitted.
+7. Threshold chroma >35 or gray <65, then close gaps with a 3×3 kernel.
+8. Keep the largest external contour, simplify at 0.3 mm, reject outside
+   3–256 distinct vertices, and ignore holes.
+9. Map to millimetres, quantize to 0.01 mm, validate, and encode `v1`.
+
+The panel, human review overlay, registry flag, and render request belong to
+CB3b. ArUco was dropped for its poorer accuracy, missed calibrations and lack
+of a capture-plate model ([CB1 decision](../build123d/docs/capture-bins-spike.md#measurements)).
+Constants and validation messages cite the Python source lines in each module.
+The pre-wall limit is `footprint must fit 6x6 cells (252x252 mm)`;
+the later server model's `footprint + wall exceeds 6×6 cells` remains a
+separate constraint. No real-photo accuracy claim is made.
+
+### Python oracle and reproduction
+
+From `build123d/`, run:
+
+```sh
+uv run --group capture python -m capture.baseline
+uv run --group capture pytest tests/test_capture_baseline.py -q
+```
+
+The committed `build123d/tests/fixtures/capture/python-footprints.json` has
+`source_main`, `opencv`, `python`, `machine`, `cpu`, `threads: 1`,
+`mm_per_px: 0.2`, and `records` sorted by PNG name. `mm_per_px` is the
+rectified resolution; it is distinct from `measurements.json`'s
+`mm_per_source_pixel` source-image resolution. Each record contains `png`,
+`sha256`, `kind`, `result`, `footprint`, `error`, `vertices`, `area_mm2`, and
+`truth_mm` copied from the measurement record or stress case. Area is measured
+from the encoded ring. A failed contour retains `kind: "lattice"`; a failed
+calibration has `kind: null`. Error rows have null footprint/area and zero
+vertices. Truth is advisory and is never used by the fitting pipeline.
+
+The denominator is fixed at 15: twelve bare/paper fixtures plus same-colour,
+shadow, and edge-overhang stress cases; no ArUco or renderer-golden images.
+Generation sets `cv2.setNumThreads(1)` before processing. Freshness compares
+names, hashes, results, kind, errors, vertex counts and truth exactly; parsed
+ring coordinates tolerate 0.05 mm and area tolerates 0.1 mm² across platforms.
+Only the parsed ring is compared, so raster-derived wire strings need not
+be byte-identical after regeneration. Pure-string `encode(parse(s))` is
+separately required to preserve every committed footprint byte-for-byte.
+
+### Detection errors
+
+`DetectionError` preserves the reachable Python strings verbatim:
+
+- `no perimeter lattice contrast`
+- `perimeter does not support a 42 mm lattice`
+- `no board boundary`
+- `board boundary is not a visible rectangle`
+- `board touches image edge`
+- `no item contour`
+- `contour cannot meet the 0.3 mm / 256 vertex contract`
+
+Encoding errors also retain Python's messages, including explicit closure,
+repeated vertices, adjacent overlap, crossings/touches, finite pairs,
+coordinate magnitude, 25 mm² minimum area, vertex count, byte limit, and
+6×6 span. They remain distinct from detection failures.
+
+### Vendored runtime
+
+OpenCV.js **5.0.0** is the official prebuilt file from the
+[5.0.0 release docs archive](https://github.com/opencv/opencv/releases/tag/5.0.0),
+member `js/bin/opencv.js` (identical to `doc/doxygen/html/opencv.js`).
+The tagged online `opencv.js` URL returned 404; the release archive supplied
+it. This matches the Python baseline's OpenCV 5.0.0, wheel 5.0.0.93: **no
+major-version skew**. The unmodified file contains WASM, needs no separate
+asset or runtime CDN, and is committed without Git LFS.
+
+**Size flag:** 16,211,109 bytes (16.21 MB / 15.46 MiB), increasing the largest
+tracked blob from about 2.03 MB. This exceeds the spec's 12 MB flagging
+threshold; proceeding is explicitly permitted. SHA-256:
+`bf6130c3d755915e5d005b69e574225817f98dc5556fe640628f8f18c1eb568f`.
+See [NOTICE](../public/vendor/opencv/NOTICE) and the accompanying Apache-2.0
+license. `scripts/vendor-libs.sh` manages only SCAD libraries.
+
+`loadOpenCV()` caches one promise. In browsers it inserts one local script
+on first use and awaits runtime initialization; node tests load that same
+file. The pipeline imports OpenCV only through this loader. Mat/contour
+handles are deleted after use, including detection failures; returned pixel
+buffers and homographies own their data.
+
+The capability test enumerates every runtime call: `Mat`, `Mat.ones`,
+`MatVector`, `Size`, `matFromArray`, `cvtColor`, `threshold`, `findContours`,
+`contourArea`, `arcLength`, `approxPolyDP`, `getPerspectiveTransform`,
+`warpPerspective`, `boundingRect`, `morphologyEx`, and `getBuildInformation`.
+All are available; no missing-function fallback is needed. Typed-array loops
+implement NumPy's reductions/masks, and an explicit 3×3 matrix calculation
+implements the optional full-image rectification transform.
+
+### Cross-implementation parity
+
+From the repo root:
+
+```sh
+CAPTURE_PARITY_TABLE=/tmp/capture-parity.md npx vitest run lib/capture
+```
+
+The gate compares TypeScript against the committed Python result on each
+identical PNG: symmetric boundary Hausdorff ≤0.6 mm, area delta ≤1%, and
+mean Hausdorff over all 13 footprints ≤0.3 mm. Boundary sampling at ≤0.02 mm
+plus a 0.01 mm allowance gives a conservative Hausdorff upper bound; identical
+rings are exactly zero. Errors must match in class and exact message. The
+truth column is advisory, including the deliberately poor shadow case.
+All 13 rings match exactly here (mean 0 mm, every area delta 0%).
+
+| PNG | Python vertices | TS vertices | Hausdorff mm (upper bound) | Area delta % | TS vs truth mm (advisory) |
+|---|---:|---:|---:|---:|---:|
+| cup100-p2-bare-t0.png | 27 | 27 | 0.0000 | 0.0000 | 0.5220 |
+| cup100-p2-paper-t0.png | 27 | 27 | 0.0000 | 0.0000 | 0.5220 |
+| cup84-p1-bare-t15.png | 24 | 24 | 0.0000 | 0.0000 | 0.3725 |
+| cup84-p1-paper-t15.png | 24 | 24 | 0.0000 | 0.0000 | 0.3533 |
+| cylinder30-p0-bare-t15.png | 31 | 31 | 0.0000 | 0.0000 | 1.0028 |
+| cylinder30-p0-paper-t15.png | 31 | 31 | 0.0000 | 0.0000 | 1.0028 |
+| cylinder40-p1-bare-t0.png | 34 | 34 | 0.0000 | 0.0000 | 1.3400 |
+| cylinder40-p1-paper-t0.png | 34 | 34 | 0.0000 | 0.0000 | 1.3400 |
+| cylinder50-p2-bare-t15.png | 35 | 35 | 0.0000 | 0.0000 | 1.6216 |
+| cylinder50-p2-paper-t15.png | 35 | 35 | 0.0000 | 0.0000 | 1.6216 |
+| label-p0-bare-t0.png | 8 | 8 | 0.0000 | 0.0000 | 0.2107 |
+| label-p0-paper-t0.png | 8 | 8 | 0.0000 | 0.0000 | 0.2107 |
+| stress-edge-overhang.png | — | — | board boundary is not a visible rectangle | — | — |
+| stress-same-colour.png | — | — | no item contour | — | — |
+| stress-shadow.png | 31 | 31 | 0.0000 | 0.0000 | 10.3374 |
