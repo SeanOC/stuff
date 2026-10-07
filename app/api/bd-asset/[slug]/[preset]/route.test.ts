@@ -7,6 +7,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
 import { NextRequest } from "next/server";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { GET } from "./route";
@@ -22,30 +23,84 @@ const LABEL_SLUG = "holder-label-card";
 const LABEL_PRESET = "inlaid";
 const THREEMF_BYTES = new Uint8Array([0x50, 0x4b, 0x03, 0x04]); // zip "PK"
 
-let createdDir: string | null = null;
-let createdLabelDir: string | null = null;
+const FIXTURES = [
+  { file: `${SLUG}/${PRESET}.stl`, bytes: STL_BYTES },
+  { file: `${SLUG}/${PRESET}.glb`, bytes: GLB_BYTES },
+  { file: `${LABEL_SLUG}/${LABEL_PRESET}.3mf`, bytes: THREEMF_BYTES },
+];
 
+function installFixtures(root: string): () => void {
+  // Snapshot every artifact before writing any fixture, including the STL
+  // removed by the missing-bake test. Existing directories are left alone.
+  const originals = FIXTURES.map(({ file }) => {
+    const target = path.join(root, file);
+    return fs.existsSync(target) ? fs.readFileSync(target) : null;
+  });
+  const createdDirs = [
+    ...new Set(FIXTURES.map(({ file }) => path.dirname(path.join(root, file)))),
+  ].filter((dir) => !fs.existsSync(dir));
+  const restore = () => {
+    FIXTURES.forEach(({ file }, index) => {
+      const target = path.join(root, file);
+      const original = originals[index];
+      if (original === null) fs.rmSync(target, { force: true });
+      else fs.writeFileSync(target, original);
+    });
+    // Remove only directories we created, and only when empty.
+    for (const dir of createdDirs) {
+      if (fs.existsSync(dir)) fs.rmdirSync(dir);
+    }
+  };
+  try {
+    for (const { file, bytes } of FIXTURES) {
+      const target = path.join(root, file);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.writeFileSync(target, bytes);
+    }
+  } catch (error) {
+    restore();
+    throw error;
+  }
+  return restore;
+}
+
+let restoreFixtures: (() => void) | undefined;
 beforeAll(() => {
-  const dir = path.join(BAKED_ROOT, SLUG);
-  // Remember whether we created the dir so cleanup never nukes a real bake.
-  if (!fs.existsSync(dir)) createdDir = dir;
-  fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, `${PRESET}.stl`), STL_BYTES);
-  fs.writeFileSync(path.join(dir, `${PRESET}.glb`), GLB_BYTES);
-  const labelDir = path.join(BAKED_ROOT, LABEL_SLUG);
-  if (!fs.existsSync(labelDir)) createdLabelDir = labelDir;
-  fs.mkdirSync(labelDir, { recursive: true });
-  fs.writeFileSync(path.join(labelDir, `${LABEL_PRESET}.3mf`), THREEMF_BYTES);
+  restoreFixtures = installFixtures(BAKED_ROOT);
+});
+afterAll(() => {
+  restoreFixtures?.();
 });
 
-afterAll(() => {
-  // Only remove the fixtures we wrote; leave a developer's real bake alone.
-  const dir = path.join(BAKED_ROOT, SLUG);
-  fs.rmSync(path.join(dir, `${PRESET}.stl`), { force: true });
-  fs.rmSync(path.join(dir, `${PRESET}.glb`), { force: true });
-  if (createdDir) fs.rmSync(createdDir, { recursive: true, force: true });
-  fs.rmSync(path.join(BAKED_ROOT, LABEL_SLUG, `${LABEL_PRESET}.3mf`), { force: true });
-  if (createdLabelDir) fs.rmSync(createdLabelDir, { recursive: true, force: true });
+describe("baked fixture cleanup", () => {
+  it.each(["existing", "absent", "mixed"])("restores %s artifacts after fixture deletion", (state) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "bd-asset-test-"));
+    try {
+      const originals = FIXTURES.map(({ file }, index) => {
+        if (state === "absent" || (state === "mixed" && index === 1)) return null;
+        const bytes = Buffer.from([0, 255, index, 42]);
+        const target = path.join(root, file);
+        fs.mkdirSync(path.dirname(target), { recursive: true });
+        fs.writeFileSync(target, bytes);
+        return bytes;
+      });
+      const restore = installFixtures(root);
+      for (const { file, bytes } of FIXTURES) {
+        expect(fs.readFileSync(path.join(root, file))).toEqual(Buffer.from(bytes));
+      }
+      // Exercise the destructive missing-bake case before suite cleanup.
+      fs.rmSync(path.join(root, FIXTURES[0].file));
+      restore();
+      FIXTURES.forEach(({ file }, index) => {
+        const target = path.join(root, file);
+        if (originals[index] === null) expect(fs.existsSync(target)).toBe(false);
+        else expect(fs.readFileSync(target)).toEqual(originals[index]);
+      });
+      if (state === "absent") expect(fs.readdirSync(root)).toEqual([]);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
 });
 
 async function call(
@@ -127,16 +182,17 @@ describe("/api/bd-asset", () => {
   });
 
   it("404s a manifest-valid pair whose asset was never baked", async () => {
-    // Remove one fixture we own so this is deterministic regardless of
-    // any ambient local bake, then request that missing format. The
-    // pair is a valid manifest entry, so it passes the allowlist and
-    // hits the ENOENT branch. (beforeAll wrote it; afterAll rm is
-    // force:true so double-removal is fine.)
-    fs.rmSync(path.join(BAKED_ROOT, SLUG, `${PRESET}.stl`), { force: true });
-    const res = await call(SLUG, PRESET, "stl");
-    expect(res.status).toBe(404);
-    expect((await res.json()).error).toContain("baked asset missing");
-    // Restore for any later reads (currently none, but keep it hermetic).
-    fs.writeFileSync(path.join(BAKED_ROOT, SLUG, `${PRESET}.stl`), STL_BYTES);
+    // Remove our fixture to reach ENOENT even when all real presets were
+    // baked. Always put it back for later tests; suite cleanup separately
+    // restores the original developer artifact (or its absence).
+    const stl = path.join(BAKED_ROOT, SLUG, `${PRESET}.stl`);
+    fs.rmSync(stl);
+    try {
+      const res = await call(SLUG, PRESET, "stl");
+      expect(res.status).toBe(404);
+      expect((await res.json()).error).toContain("baked asset missing");
+    } finally {
+      fs.writeFileSync(stl, STL_BYTES);
+    }
   });
 });
