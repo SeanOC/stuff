@@ -39,6 +39,7 @@ dependencies = [
 opengrid = { git = "https://makerrepo.com/r/fangpenlin/opengrid.git", rev = "eea2b4154a10d2909e5edece567cbe0563aaf955" }
 
 [dependency-groups]
+capture = ["opencv-python-headless>=4.10"]
 dev = [
     "pytest-regressions>=2.5",
     "pytest-split>=0.10",
