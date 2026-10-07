@@ -170,6 +170,10 @@ export const CATALOG: Record<string, CatalogEntry> = {
  * enforcement and cross-checks the manifest's categoryId against it.
  */
 export const BUILD123D_CATALOG: Record<string, CatalogEntry> = {
+  gridfinity_capture_bin: {
+    categoryId: "storage",
+    blurb: "A no-lip Gridfinity bin with a pocket fitted to a captured item footprint. Print feet-down without supports.",
+  },
   openconnect_gridfinity_shelf: {
     categoryId: "multiboard",
     blurb: "mitufy’s openConnect Gridfinity shelf: wedge-down printing, optional magnets and rims. The sturdy-back preset provides 2.4 mm slot backing.",
