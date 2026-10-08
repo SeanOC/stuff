@@ -1,17 +1,12 @@
-/** Bare/paper branch of build123d/capture/footprint.py:42-117.
- * PITCH=42 (:12); period std<3, counts 2..6, epsilon 1e-9, score .60/.06 (:49-69).
- * Board threshold 85 (:95), quad .015*arcLength and .15*area (:100-102),
- * edge guard 2 / w-3 / h-3 (:105), rough warp 840 and strips 12:45 (:107-112).
- * ArUco deliberately excluded: build123d/docs/capture-bins-spike.md:102-108.
- */
+/** Polarity-agnostic lattice detection; Python reference: capture/footprint.py. */
 import { DetectionError } from "./errors";
-import type { CV, Mat } from "./opencv";
+import type { CV } from "./opencv";
 import type { Point } from "./encode";
 import type { RGBImage } from "./image";
 export const PITCH = 42;
-export interface Grid { H: number[]; confidence: number; sizeMm: Point; kind: "lattice" }
+export interface Grid { H: number[]; confidence: number; sizeMm: Point; kind: "lattice"; polarity: "pale" | "dark" }
 
-export function periodCount(profile: number[]): [number, number] {
+export function periodCount(profile: number[], interior = false): [number, number] {
   const mean = profile.reduce((a, b) => a + b, 0) / profile.length;
   const p = profile.map(v => v - mean);
   if (Math.sqrt(p.reduce((s, v) => s + v * v, 0) / p.length) < 3)
@@ -27,7 +22,7 @@ export function periodCount(profile: number[]): [number, number] {
     scores.push([dot / (Math.sqrt(aa) * Math.sqrt(bb) + 1e-9), n]);
   }
   const best = Math.max(...scores.map(s => s[0]));
-  const candidates = scores.filter(s => s[0] >= Math.max(.60, best - .06));
+  const candidates = scores.filter(s => s[0] >= Math.max(interior ? -Infinity : .60, best - .06));
   if (!candidates.length) throw new DetectionError("perimeter does not support a 42 mm lattice");
   const [score, count] = candidates[candidates.length - 1];
   return [count, score];
@@ -42,47 +37,79 @@ function orderedQuad(data: Int32Array): Point[] {
   return [...p.slice(start), ...p.slice(0, start)];
 }
 
-export function detectGrid(cv: CV, image: RGBImage): Grid {
+export function detectGrid(cv: CV, image: RGBImage, confidenceFloor = .5): Grid {
   const { width, height, data } = image;
   if (!(data instanceof Uint8Array) || data.length !== width * height * 3)
     throw new Error("expected RGB uint8 image");
+  if (!(confidenceFloor >= .3 && confidenceFloor <= .8)) throw new Error("confidence_floor must be in 0.3..0.8");
   const owned: { delete(): void }[] = [];
   const own = <T extends { delete(): void }>(item: T): T => { owned.push(item); return item; };
+  const candidates: Grid[] = [], errors: DetectionError[] = [];
+  let obstructed = false;
   try {
     const rgb = own(cv.matFromArray(height, width, cv.CV_8UC3, data));
-    const gray = own(new cv.Mat()), binary = own(new cv.Mat());
+    const gray = own(new cv.Mat());
     cv.cvtColor(rgb, gray, cv.COLOR_RGB2GRAY);
-    cv.threshold(gray, binary, 85, 255, cv.THRESH_BINARY);
-    const contours = own(new cv.MatVector()), hierarchy = own(new cv.Mat());
-    cv.findContours(binary, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
-    if (!contours.size()) throw new DetectionError("no board boundary");
-    let largest: Mat | undefined, largestArea = -1;
-    for (let i = 0; i < contours.size(); i++) {
-      const c = own(contours.get(i)), a = cv.contourArea(c);
-      if (a > largestArea) { largest = c; largestArea = a; }
-    }
-    const quad = own(new cv.Mat());
-    cv.approxPolyDP(largest!, quad, .015 * cv.arcLength(largest!, true), true);
-    if (quad.rows !== 4 || cv.contourArea(quad) < .15 * width * height)
-      throw new DetectionError("board boundary is not a visible rectangle");
-    const points = orderedQuad(quad.data32S);
-    if (points.some(([x, y]) => x < 2 || y < 2 || x > width - 3 || y > height - 3))
-      throw new DetectionError("board touches image edge");
-    const src = own(cv.matFromArray(4, 1, cv.CV_32FC2, points.flat()));
-    const square = own(cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, 839, 0, 839, 839, 0, 839]));
-    const roughH = own(cv.getPerspectiveTransform(src, square)), rough = own(new cv.Mat());
-    cv.warpPerspective(gray, rough, roughH, new cv.Size(840, 840));
-    const px = new Array<number>(840).fill(0), py = new Array<number>(840).fill(0);
-    for (let i = 0; i < 840; i++) {
-      for (let s = 12; s < 45; s++) {
-        px[i] += rough.data[s * 840 + i] + rough.data[(840 - 45 + s - 12) * 840 + i];
-        py[i] += rough.data[i * 840 + s] + rough.data[i * 840 + 840 - 45 + s - 12];
+    for (const polarity of ["pale", "dark"] as const) {
+      const binary = own(new cv.Mat());
+      cv.threshold(gray, binary, 85, 255, polarity === "pale" ? cv.THRESH_BINARY : cv.THRESH_BINARY_INV);
+      const contours = own(new cv.MatVector()), hierarchy = own(new cv.Mat());
+      cv.findContours(binary, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+      for (let index = 0; index < contours.size(); index++) {
+        const contour = own(contours.get(index));
+        if (cv.contourArea(contour) < .15 * width * height) continue;
+        const hull = own(new cv.Mat()), hullQuad = own(new cv.Mat());
+        cv.convexHull(contour, hull);
+        cv.approxPolyDP(hull, hullQuad, .015 * cv.arcLength(hull, true), true);
+        if (hullQuad.rows > 4) { obstructed = true; continue; }
+        let quad = own(new cv.Mat());
+        cv.approxPolyDP(contour, quad, .015 * cv.arcLength(contour, true), true);
+        if (quad.rows !== 4 && polarity === "dark") quad = hullQuad;
+        if (quad.rows !== 4 || cv.contourArea(quad) < .15 * width * height) {
+          errors.push(new DetectionError("board boundary is not a visible rectangle")); continue;
+        }
+        const points = orderedQuad(quad.data32S);
+        if (points.some(([x, y]) => x < 2 || y < 2 || x > width - 3 || y > height - 3)) {
+          errors.push(new DetectionError("board touches image edge")); continue;
+        }
+        const src = own(cv.matFromArray(4, 1, cv.CV_32FC2, points.flat()));
+        const square = own(cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, 839, 0, 839, 839, 0, 839]));
+        const roughH = own(cv.getPerspectiveTransform(src, square)), rough = own(new cv.Mat());
+        cv.warpPerspective(gray, rough, roughH, new cv.Size(840, 840));
+        const px = new Array<number>(840).fill(0), py = new Array<number>(840).fill(0);
+        for (let i = 0; i < 840; i++) {
+          for (let s = 12; s < 45; s++) {
+            px[i] += rough.data[s * 840 + i] + rough.data[(840 - 45 + s - 12) * 840 + i];
+            py[i] += rough.data[i * 840 + s] + rough.data[i * 840 + 840 - 45 + s - 12];
+          }
+          px[i] /= 66; py[i] /= 66;
+        }
+        let nx: number, ny: number, cx: number, cy: number;
+        try {
+          try { [nx, cx] = periodCount(px); [ny, cy] = periodCount(py); }
+          catch (error) {
+            if (!(error instanceof DetectionError)) throw error;
+            px.fill(0); py.fill(0);
+            for (let y = 0; y < 840; y++) for (let x = 0; x < 840; x++) {
+              px[x] += rough.data[y * 840 + x] / 840; py[y] += rough.data[y * 840 + x] / 840;
+            }
+            [nx, cx] = periodCount(px, true); [ny, cy] = periodCount(py, true);
+          }
+        } catch (error) {
+          if (!(error instanceof DetectionError)) throw error;
+          errors.push(error); continue;
+        }
+        const confidence = Math.min(cx, cy);
+        if (confidence < confidenceFloor) {
+          errors.push(new DetectionError("perimeter does not support a 42 mm lattice")); continue;
+        }
+        const dst = own(cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, nx * PITCH, 0, nx * PITCH, ny * PITCH, 0, ny * PITCH]));
+        const H = own(cv.getPerspectiveTransform(src, dst));
+        candidates.push({ H: Array.from(H.data64F), confidence, sizeMm: [nx * PITCH, ny * PITCH], kind: "lattice", polarity });
       }
-      px[i] /= 66; py[i] /= 66;
     }
-    const [nx, cx] = periodCount(px), [ny, cy] = periodCount(py);
-    const dst = own(cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, nx * PITCH, 0, nx * PITCH, ny * PITCH, 0, ny * PITCH]));
-    const H = own(cv.getPerspectiveTransform(src, dst));
-    return { H: Array.from(H.data64F), confidence: Math.min(cx, cy), sizeMm: [nx * PITCH, ny * PITCH], kind: "lattice" };
+    if (obstructed) throw new DetectionError("board obstructed by an object crossing its edge");
+    if (!candidates.length) throw errors[0] ?? new DetectionError("board boundary is not a visible rectangle");
+    return candidates.reduce((best, candidate) => candidate.confidence > best.confidence ? candidate : best);
   } finally { owned.reverse().forEach(m => m.delete()); }
 }

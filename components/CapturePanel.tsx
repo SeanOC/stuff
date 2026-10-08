@@ -6,12 +6,15 @@ import type { capture, Point } from "@/lib/capture";
 import type { Param, ParamValue } from "@/lib/scad-params/parse";
 
 export const DETECTION_ADVICE: Record<(typeof DETECTION_ERRORS)[number], string> = {
-  "no perimeter lattice contrast": "Show the whole baseplate on a dark, plain surface.",
-  "no board boundary": "Show the whole baseplate on a dark, plain surface.",
-  "board boundary is not a visible rectangle": "Show the whole baseplate on a dark, plain surface.",
+  "no perimeter lattice contrast": "Show the whole baseplate on a plain surface that contrasts with the plate.",
+  "no board boundary": "Show the whole baseplate on a plain surface that contrasts with the plate.",
+  "board boundary is not a visible rectangle": "Show the whole baseplate on a plain surface that contrasts with the plate.",
   "perimeter does not support a 42 mm lattice": "Use a Gridfinity baseplate 2–6 cells per side.",
   "board touches image edge": "Step back so the whole baseplate is inside the frame.",
-  "no item contour": "The item must contrast with the plate (colour or darker).",
+  "board obstructed by an object crossing its edge": "Remove anything crossing the plate edge.",
+  "item too large for the plate or background not modelled": "Use a bigger plate or move the item inside the grid.",
+  "item crosses the plate edge": "Move the item fully inside the baseplate.",
+  "no item contour": "The item must contrast with the plate (colour or brightness).",
   "contour cannot meet the 0.3 mm / 256 vertex contract": "Simplify the item's outline or move the camera closer.",
 };
 
@@ -101,7 +104,7 @@ export function CapturePanel({ params, values, onChange, onApply, rendering }: {
   return (
     <section aria-labelledby="capture-heading" className="mt-18 rounded-3 border border-line bg-panel2 p-12">
       <h2 id="capture-heading" className="m-0 text-14 font-semibold">Capture an item outline</h2>
-      <p className="mt-6 text-12 text-text-dim">Photos never leave your browser. Show the whole baseplate on a dark, plain surface, with one contrasting item.</p>
+      <p className="mt-6 text-12 text-text-dim">Photos never leave your browser. Show the whole baseplate on a plain surface that contrasts with the plate, with one item that contrasts with the plate.</p>
       <label className="mt-8 block text-12" htmlFor="capture-photo">Take or choose a photo</label>
       <input id="capture-photo" type="file" accept="image/*" capture="environment"
         className="mt-4 block w-full min-w-0 text-12"
@@ -125,7 +128,7 @@ export function CapturePanel({ params, values, onChange, onApply, rendering }: {
           value={Number(values.clearance)} onChange={event => onChange("clearance", Number(event.target.value))} />
       </div>}
       <p className="mt-8 text-12 text-text-dim">Type pocket depth below yourself. The photo gives the outline only.</p>
-      <p className="mt-4 text-11 text-text-mute">Accuracy measured on synthetic renders: 0.79 mm mean / 1.61 mm max. Real-photo measurements are pending.</p>
+      <p className="mt-4 text-11 text-text-mute">Pale-plate synthetic accuracy: 0.79 mm mean / 1.61 mm max. Dark-plate and real-photo accuracy remain unvalidated.</p>
       <button type="button" disabled={state.kind !== "ready" || rendering}
         className="mt-8 rounded-3 border border-accent-line bg-panel-hi px-10 py-6 text-12 disabled:opacity-50"
         onClick={() => { if (state.kind === "ready") onApply(state.footprint); }}>Apply footprint</button>

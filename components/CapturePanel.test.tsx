@@ -75,12 +75,15 @@ it("shares clearance with ParamRail and applies the new footprint in exactly one
 });
 
 const ADVICE_CASES = [
-  ["no perimeter lattice contrast", "Show the whole baseplate on a dark, plain surface."],
-  ["no board boundary", "Show the whole baseplate on a dark, plain surface."],
-  ["board boundary is not a visible rectangle", "Show the whole baseplate on a dark, plain surface."],
+  ["no perimeter lattice contrast", "Show the whole baseplate on a plain surface that contrasts with the plate."],
+  ["no board boundary", "Show the whole baseplate on a plain surface that contrasts with the plate."],
+  ["board boundary is not a visible rectangle", "Show the whole baseplate on a plain surface that contrasts with the plate."],
   ["perimeter does not support a 42 mm lattice", "Use a Gridfinity baseplate 2–6 cells per side."],
   ["board touches image edge", "Step back so the whole baseplate is inside the frame."],
-  ["no item contour", "The item must contrast with the plate (colour or darker)."],
+  ["board obstructed by an object crossing its edge", "Remove anything crossing the plate edge."],
+  ["item too large for the plate or background not modelled", "Use a bigger plate or move the item inside the grid."],
+  ["item crosses the plate edge", "Move the item fully inside the baseplate."],
+  ["no item contour", "The item must contrast with the plate (colour or brightness)."],
   ["contour cannot meet the 0.3 mm / 256 vertex contract", "Simplify the item's outline or move the camera closer."],
 ] as const;
 

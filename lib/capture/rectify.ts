@@ -9,10 +9,11 @@ export interface Rectified {
   image: RGBImage;
   mmPerPx: number;
   originMm: Point;
+  polarity: "pale" | "dark";
   kind: "bare" | "paper" | "lattice";
 }
 export function rectify(cv: CV, image: RGBImage, H: number[], options: {
-  mmPerPx?: number; sizeMm?: Point; kind?: Rectified["kind"];
+  mmPerPx?: number; sizeMm?: Point; kind?: Rectified["kind"]; polarity?: Rectified["polarity"];
 } = {}): Rectified {
   const mmPerPx = options.mmPerPx ?? MM_PER_PX;
   if (!Number.isFinite(mmPerPx) || mmPerPx <= 0) throw new Error("mm_per_px must be positive");
@@ -38,6 +39,6 @@ export function rectify(cv: CV, image: RGBImage, H: number[], options: {
   const transform = cv.matFromArray(3, 3, cv.CV_64F, matrix), dst = new cv.Mat();
   try {
     cv.warpPerspective(src, dst, transform, new cv.Size(width, height));
-    return { image: { width, height, data: dst.data.slice() }, mmPerPx, originMm, kind: options.kind ?? "bare" };
+    return { image: { width, height, data: dst.data.slice() }, mmPerPx, originMm, kind: options.kind ?? "bare", polarity: options.polarity ?? "pale" };
   } finally { src.delete(); transform.delete(); dst.delete(); }
 }

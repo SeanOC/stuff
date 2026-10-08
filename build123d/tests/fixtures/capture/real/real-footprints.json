@@ -1,0 +1,41 @@
+{
+  "source_main": "a55540327177ef40410f6c902145c8aff37a546e",
+  "records": [
+    {
+      "png": "sharpie-daylight.png",
+      "original_jpeg_sha256": "3c4b8cf14791c143497faaa34022974e75cd57ac7d8e009c88c66240a005e890",
+      "truth": {
+        "length_mm": null,
+        "width_mm": null,
+        "barrel_width_mm": 12.75
+      },
+      "case": "edge-crossing",
+      "sha256": "a17caaf7ce7147fa6d34e3065666af74e34729060bb8f3ea906faff2aec819c3",
+      "method": "structural",
+      "kind": "lattice",
+      "polarity": "dark",
+      "result": "error",
+      "error": "item crosses the plate edge",
+      "ring": null,
+      "footprint": null
+    },
+    {
+      "png": "sharpie-calipers.png",
+      "original_jpeg_sha256": "9faaac6e12aa42bc2923ab431ff15c69e55752d1a4b0e47a8e294802223fc30b",
+      "truth": {
+        "length_mm": null,
+        "width_mm": null,
+        "barrel_width_mm": 12.75
+      },
+      "case": "obstructed",
+      "sha256": "d9da3986c8d14f128868e7df1956c13abdd2a149ff2ad9475f7934bf96969c31",
+      "method": "structural",
+      "kind": null,
+      "polarity": null,
+      "result": "error",
+      "error": "board obstructed by an object crossing its edge",
+      "ring": null,
+      "footprint": null
+    }
+  ]
+}

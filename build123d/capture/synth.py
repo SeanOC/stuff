@@ -11,6 +11,7 @@ import hashlib
 import json
 from pathlib import Path
 import platform
+import subprocess
 import time
 
 import cv2
@@ -18,7 +19,7 @@ import numpy as np
 
 from scripts.thumbnail import _camera_basis
 from . import detect_grid, rectify, segment, footprint
-from .footprint import ARUCO_POSITIONS, DetectionError
+from .footprint import _region, ARUCO_POSITIONS, DetectionError
 
 
 def render_topdown(mesh, mm_per_px, light, *, bounds=None):
@@ -115,7 +116,35 @@ def _baseplate():
     return rgb
 
 
+def skeleton_background():
+    """Dark 4x4 frame with cross openings and dark corner pads, light surround."""
+    rgb = np.full((768,768,3), 220, np.uint8)
+    rgb[48:720,48:720] = 30
+    for row in range(4):
+        for col in range(4):
+            x,y = 48+168*col,48+168*row
+            # Two overlapping rectangles form a cross; retained corner pads
+            # make a two-class frame/opening approximation insufficient.
+            rgb[y+9:y+159,x+44:x+124] = 210
+            rgb[y+44:y+124,x+9:x+159] = 210
+    return rgb
+
+
+def white_skeleton_image(illumination=False):
+    """Small white item used for structural success/parity, generated in memory."""
+    image = skeleton_background()
+    image[340:388,320:440] = 248  # 30 x 12 mm, entirely inside the plate
+    if illumination:
+        for iy in range(4):
+            for ix in range(4):
+                cell = np.s_[48+iy*168:48+(iy+1)*168,48+ix*168:48+(ix+1)*168]
+                image[cell] = np.clip(image[cell].astype(float)*(.65+.1*iy+.025*ix)+3*ix,0,255).astype(np.uint8)
+    return image
+
+
 def _background(kind, base):
+    if kind == 'skeleton':
+        return skeleton_background(),168.,12.
     if kind in ('bare','paper'):
         rgb = base.copy()
         if kind == 'paper':
@@ -173,16 +202,17 @@ def measure(image, truth):
     start = time.perf_counter()
     try:
         grid = detect_grid(image)
-        rect = rectify(image,grid.H,size_mm=grid.size_mm,kind=grid.kind)
+        rect = rectify(image,grid.H,size_mm=grid.size_mm,kind=grid.kind,polarity=grid.polarity)
     except (DetectionError,ValueError) as exc:
         elapsed = time.perf_counter()-start
         return {'detected':False,'failure':str(exc),'detection_seconds':elapsed,'methods':{}}
     detection_seconds = time.perf_counter()-start
-    for method in ('threshold','periodic','grabcut'):
+    for method in ('threshold','periodic','grabcut','structural'):
         start = time.perf_counter()
         try:
             mask = segment(rect,method)
-            ring = footprint(mask,mm_per_px=rect.mm_per_px,origin_mm=rect.origin_mm)
+            ring = footprint(mask,mm_per_px=rect.mm_per_px,origin_mm=rect.origin_mm,
+                             roi=_region(rect) if grid.polarity == 'dark' else None)
             recovered,expected = Polygon(ring),Polygon(truth)
             if not recovered.is_valid:
                 raise DetectionError('recovered ring is not simple')
@@ -193,7 +223,7 @@ def measure(image, truth):
             entry = {'failure':str(exc)}
         entry['seconds'] = detection_seconds + time.perf_counter()-start
         result[method] = entry
-    return {'detected':True,'confidence':grid.confidence,'size_mm':grid.size_mm,
+    return {'detected':True,'polarity':grid.polarity,'confidence':grid.confidence,'size_mm':grid.size_mm,
             'detection_seconds':detection_seconds,'methods':result}
 
 
@@ -209,7 +239,7 @@ def generate(output):
             a = np.deg2rad(angle)
             T = np.array([[np.cos(a),-np.sin(a),0,dx],[np.sin(a),np.cos(a),0,dy],[0,0,1,0],[0,0,0,1]])
             mesh.apply_transform(T)
-            for kind in ('bare','paper','aruco'):
+            for kind in ('bare','paper','aruco','skeleton'):
                 bg,extent,margin = _background(kind,base)
                 truth = _truth(mesh,extent)
                 placed = mesh.copy()
@@ -223,8 +253,8 @@ def generate(output):
                     image,H = _phone_warp(rgb,tilt,1000+oi*100+pose*10+tilt)
                     result = measure(image,truth)
                     # 18 images: every object/background; poses and tilts spread
-                    # deterministically. All 108 measurements/truths stay in JSON.
-                    keep = pose == oi%3 and tilt == (15 if oi%2 else 0)
+                    # deterministically. All 144 measurements/truths stay in JSON.
+                    keep = kind != 'skeleton' and pose == oi%3 and tilt == (15 if oi%2 else 0)
                     filename = name_id+'.png' if keep else None
                     if keep:
                         cv2.imwrite(str(output/filename),cv2.cvtColor(image,cv2.COLOR_RGB2BGR),[cv2.IMWRITE_PNG_COMPRESSION,9])
@@ -263,7 +293,7 @@ def generate(output):
     golden_mesh.visual.face_colors = [60,120,180,255]
     golden = render_topdown(golden_mesh,.5,(.7,.4,.5),bounds=(-6,-6,6,6))
     cv2.imwrite(str(output/'renderer-golden.png'),cv2.cvtColor(golden,cv2.COLOR_RGBA2BGRA))
-    metadata = {'source_main':'c332021e23316252ade3453be8eb46fb2b16abf6','mm_per_source_pixel':.25,
+    metadata = {'source_main':subprocess.check_output(['git','rev-parse','origin/main'],text=True).strip(),'mm_per_source_pixel':.25,
                 'opencv':cv2.__version__,'python':platform.python_version(),'machine':platform.machine(),
                 'cpu':platform.processor(),'records':records,'stress_cases':stresses}
     (output/'measurements.json').write_text(json.dumps(metadata,indent=2)+'\n')

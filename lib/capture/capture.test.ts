@@ -6,14 +6,21 @@ import { area, encode, parse, validate, type Point } from "./encode";
 import { loadOpenCV } from "./opencv";
 import { decodeImage } from "./image";
 import { rectify } from "./rectify";
-import { periodCount } from "./grid";
+import { detectGrid, periodCount } from "./grid";
 import { segment } from "./segment";
+import { footprint } from "./footprint";
 
 const fixtures = path.join(process.cwd(), "build123d/tests/fixtures/capture");
 const baseline = JSON.parse(readFileSync(path.join(fixtures, "python-footprints.json"), "utf8")) as {
   records: { png: string; result: string; footprint: string | null; error: string | null;
     vertices: number; kind: string | null; truth_mm: Point[] }[];
 };
+const real = JSON.parse(readFileSync(path.join(fixtures, "real/real-footprints.json"), "utf8")) as {
+  records: { png: string; result: string; footprint: string | null; error: string | null;
+    kind: string | null; polarity: string | null; method: string }[];
+};
+const structuralOracle = JSON.parse(readFileSync(path.join(fixtures,"structural-footprints.json"),"utf8")) as
+  Record<"plain" | "illuminated", {ring: Point[]; method: string; polarity: string}>;
 function bytes(png: string): ArrayBuffer {
   return Uint8Array.from(readFileSync(path.join(fixtures, png))).buffer;
 }
@@ -136,7 +143,7 @@ test("test_vendored_opencv_exposes_required_functions", async () => {
   const cv = await first;
   const functions = ["Mat", "MatVector", "Size", "matFromArray", "cvtColor", "threshold", "findContours",
     "contourArea", "arcLength", "approxPolyDP", "getPerspectiveTransform", "warpPerspective",
-    "boundingRect", "morphologyEx", "getBuildInformation"] as const;
+    "boundingRect", "convexHull", "morphologyEx", "getBuildInformation"] as const;
   for (const name of functions) expect(typeof cv[name], name).toBe("function");
   expect(typeof cv.Mat.ones).toBe("function");
   expect(cv.getBuildInformation()).toMatch(/OpenCV 5\.0\.0/);
@@ -189,9 +196,89 @@ test("custom resolution preserves Python ties-to-even rim inset", async () => {
   const cv = await loadOpenCV();
   const mask = segment(cv, {
     image: { width: 10, height: 10, data: new Uint8Array(300) },
-    mmPerPx: 1.2, originMm: [0, 0], kind: "lattice",
+    mmPerPx: 1.2, originMm: [0, 0], kind: "lattice", polarity: "pale",
   });
   // round(3 / 1.2) == 2 in Python, whereas Math.round would produce 3.
   expect(mask.data[2 * 10 + 2]).toBe(1);
   expect(mask.data[1 * 10 + 1]).toBe(0);
 });
+
+
+test("test_real_photo_parity", async () => {
+  expect(baseline.records.length + real.records.length).toBe(17);
+  const cv = await loadOpenCV(), distances: number[] = [];
+  for (const record of real.records) {
+    const input = bytes(`real/${record.png}`);
+    if (record.kind) {
+      const grid = detectGrid(cv, await decodeImage(input));
+      expect(grid.kind).toBe(record.kind);
+      expect(grid.polarity).toBe(record.polarity);
+      expect(grid.sizeMm).toEqual([168,168]);
+      expect(grid.confidence).toBeGreaterThanOrEqual(.5);
+    }
+    if (record.result === "error") {
+      try { await capture(input); expect.fail(`expected ${record.error}`); }
+      catch (error) { expect(error).toBeInstanceOf(DetectionError); expect((error as Error).message).toBe(record.error); }
+    } else {
+      const actual = await capture(input);
+      const distance = hausdorff(parse(record.footprint!),actual.ring);
+      distances.push(distance);
+      expect(distance).toBeLessThanOrEqual(.6);
+    }
+  }
+  if (distances.length) expect(distances.reduce((a,b) => a+b,0)/distances.length).toBeLessThanOrEqual(.3);
+}, 120_000);
+
+function skeletonImage(illumination = false) {
+  const width = 768, data = new Uint8Array(width * width * 3).fill(220);
+  const fill = (x0: number, y0: number, x1: number, y1: number, value: number) => {
+    for (let y = y0; y < y1; y++) data.fill(value, (y * width + x0) * 3, (y * width + x1) * 3);
+  };
+  fill(48,48,720,720,30);
+  for (let row = 0; row < 4; row++) for (let col = 0; col < 4; col++) {
+    const x = 48+168*col, y = 48+168*row;
+    fill(x+44,y+9,x+124,y+159,210); fill(x+9,y+44,x+159,y+124,210);
+  }
+  fill(320,340,440,388,248);
+  if (illumination) for (let iy=0;iy<4;iy++) for (let ix=0;ix<4;ix++) {
+    for (let y=48+iy*168;y<48+(iy+1)*168;y++) for (let x=48+ix*168;x<48+(ix+1)*168;x++)
+      for (let c=0;c<3;c++) {
+        const i=(y*width+x)*3+c;
+        data[i]=Math.min(255,Math.max(0,data[i]*(.65+.1*iy+.025*ix)+3*ix));
+      }
+  }
+  return { width, height: width, data };
+}
+
+test("test_structural_white_item_and_parameter_endpoints", async () => {
+  const cv = await loadOpenCV(), image = skeletonImage();
+  for (const floor of [.3,.8]) expect(detectGrid(cv,image,floor).polarity).toBe("dark");
+  const grid = detectGrid(cv,image);
+  const rect = rectify(cv,image,grid.H,{sizeMm:grid.sizeMm,kind:grid.kind,polarity:grid.polarity});
+  for (const options of [{}, {k:3}, {k:8}, {coverageLimit:.2}, {coverageLimit:.5}, {shiftTolerance:1}, {shiftTolerance:3}]) {
+    const mask = segment(cv,rect,options), ring = footprint(cv,mask);
+    if (!Object.keys(options).length) expect(hausdorff(ring,structuralOracle.plain.ring)).toBeLessThanOrEqual(.3);
+    const sides = [0,1].map(axis => Math.max(...ring.map(p=>p[axis]))-Math.min(...ring.map(p=>p[axis])));
+    expect(Math.abs(sides[0]-30)).toBeLessThanOrEqual(1);
+    expect(Math.abs(sides[1]-12)).toBeLessThanOrEqual(1);
+    expect(mask.data.reduce((a,b)=>a+b,0)/mask.roi!.reduce((a,b)=>a+b,0)).toBeLessThan(.1);
+  }
+},120_000);
+
+
+test("structural illumination fit retains light and dark background inliers", async () => {
+  const cv=await loadOpenCV(), image=skeletonImage(true), grid=detectGrid(cv,image);
+  const rect=rectify(cv,image,grid.H,{sizeMm:grid.sizeMm,polarity:grid.polarity});
+  const mask=segment(cv,rect), ring=footprint(cv,mask);
+  expect(hausdorff(ring,structuralOracle.illuminated.ring)).toBeLessThanOrEqual(.3);
+  const sides=[0,1].map(axis=>Math.max(...ring.map(p=>p[axis]))-Math.min(...ring.map(p=>p[axis])));
+  expect(Math.abs(sides[0]-30)).toBeLessThanOrEqual(1);
+  expect(Math.abs(sides[1]-12)).toBeLessThanOrEqual(1);
+  expect(mask.data.reduce((a,b)=>a+b,0)/mask.roi!.reduce((a,b)=>a+b,0)).toBeLessThan(.1);
+},30_000);
+
+test("structural coverage sanity raises its named error", async () => {
+  const cv = await loadOpenCV(), image = await decodeImage(bytes("real/sharpie-daylight.png"));
+  const grid = detectGrid(cv,image), rect = rectify(cv,image,grid.H,{sizeMm:grid.sizeMm,polarity:grid.polarity});
+  expect(() => segment(cv,rect,{k:3,shiftTolerance:3})).toThrow("item too large for the plate or background not modelled");
+},30_000);

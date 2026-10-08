@@ -106,3 +106,22 @@ test("photo stays local, detector is lazy, overlay applies once and live STL use
   expect(renderBodies).toHaveLength(1);
   expect(detectorRequests).toHaveLength(1);
 });
+
+for (const [file, error, advice] of [
+  ["sharpie-daylight.png", "item crosses the plate edge", "Move the item fully inside the baseplate."],
+  ["sharpie-calipers.png", "board obstructed by an object crossing its edge", "Remove anything crossing the plate edge."],
+]) {
+  test(`real ${file} gives actionable advice without applying a clipped footprint`, async ({ page }) => {
+    const posts: string[] = [];
+    page.on("request", request => { if (request.method() === "POST") posts.push(request.url()); });
+    await page.goto(`/models/${SLUG}`);
+    // The loaded viewer confirms hydration/effects before dispatching a file event.
+    await expect(page.getByTestId("bd-glb-size")).toBeVisible();
+    await page.getByLabel("Take or choose a photo").setInputFiles(`build123d/tests/fixtures/capture/real/${file}`);
+    const alert = page.getByRole("region", { name: "Capture an item outline" }).getByRole("alert");
+    await expect(alert).toContainText(error, { timeout: 60_000 });
+    await expect(alert).toContainText(advice);
+    await expect(page.getByRole("button", { name: "Apply footprint" })).toBeDisabled();
+    expect(posts).toEqual([]);
+  });
+}
