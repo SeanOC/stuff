@@ -212,56 +212,50 @@ def _region(rectified, *, with_paper=False):
     return (roi, paper) if with_paper else roi
 
 
-def _structural(rectified, roi, *, k, coverage_limit, w_frame):
-    """Cell-local Lab references from eroded geometric frame/opening masks."""
+def _structural(rectified, roi, *, k, coverage_limit, shift_tolerance):
+    """Normalised lattice-phase median with local Lab matching tolerance."""
     if not 3 <= k <= 8 or not .2 <= coverage_limit <= .5:
         raise ValueError('k must be in 3..8 and coverage_limit in 0.2..0.5')
+    if shift_tolerance not in (1, 2, 3):
+        raise ValueError('shift_tolerance must be 1, 2 or 3 pixels')
     rgb = rectified.image
     pitch = round(PITCH/rectified.mm_per_px)
     h, w = rgb.shape[:2]
-    yy, xx = np.indices((h, w))
-    dx = np.minimum(xx % pitch, pitch-xx % pitch)
-    dy = np.minimum(yy % pitch, pitch-yy % pitch)
-    distance = np.minimum(dx, dy)*rectified.mm_per_px
-    if w_frame is None:
-        # Median across all cell phases measures the repeated dark boundary band.
-        gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
-        widths = []
-        for d in np.arange(0, 5.01, rectified.mm_per_px):
-            band = (distance >= d) & (distance < d+rectified.mm_per_px) & (roi != 0)
-            if band.any() and np.median(gray[band]) < 85:
-                widths.append(d)
-        w_frame = float(np.clip(2*max(widths, default=1), 2, 10))
-    if not 2 <= w_frame <= 10:
-        raise ValueError('w_frame must be in 2..10 mm')
-    frame = (distance <= w_frame).astype(np.uint8)
-    radius = round(1.5/rectified.mm_per_px)
-    kernel = np.ones((2*radius+1, 2*radius+1), np.uint8)
-    classes = [frame, 1-frame]
-    lab = cv2.cvtColor(rgb.astype(np.float32)/255, cv2.COLOR_RGB2LAB)
-    residual = np.zeros((h,w), np.float64)
-    for cls in classes:
-        eroded = cv2.erode(cls, kernel) != 0
-        for y in range(0,h,pitch):
-            for x in range(0,w,pitch):
-                cell = np.s_[y:y+pitch,x:x+pitch]
-                samples = eroded[cell] & (roi[cell] != 0)
-                if not samples.any():
-                    raise DetectionError('item too large for the plate or background not modelled')
-                reference = np.median(lab[cell][samples], axis=0)
-                delta = np.linalg.norm(lab[cell]-reference, axis=2)
-                chosen = cls[cell] != 0
-                residual[cell][chosen] = delta[chosen]
+    ny, nx = h//pitch, w//pitch
+    if nx*ny < 4:
+        raise DetectionError('item too large for the plate or background not modelled')
+    gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
+    medians = [np.median(gray[y:y+pitch,x:x+pitch])
+               for y in range(0,ny*pitch,pitch) for x in range(0,nx*pitch,pitch)]
+    target = np.median(medians)
+    normalised = np.empty(rgb.shape, np.float32)
+    for y in range(0,h,pitch):
+        for x in range(0,w,pitch):
+            cell = np.s_[y:y+pitch,x:x+pitch]
+            # Divide by tile/global luminance ratio to remove illumination gain.
+            gain = target/max(float(np.median(gray[cell])), 1.)
+            normalised[cell] = np.clip(rgb[cell].astype(np.float32)*gain/255, 0, 1)
+    tiles = normalised[:ny*pitch,:nx*pitch].reshape(ny,pitch,nx,pitch,3)
+    template = np.median(tiles, axis=(0,2))
+    lab = cv2.cvtColor(normalised, cv2.COLOR_RGB2LAB)
+    template_lab = cv2.cvtColor(template, cv2.COLOR_RGB2LAB)
+    residual = np.full((h,w), np.inf)
+    for dy in range(-shift_tolerance,shift_tolerance+1):
+        for dx in range(-shift_tolerance,shift_tolerance+1):
+            shifted = np.roll(template_lab, (dy,dx), axis=(0,1))
+            background = np.tile(shifted, (ny+1,nx+1,1))[:h,:w]
+            residual = np.minimum(residual, np.linalg.norm(lab-background, axis=2))
     values = residual[roi != 0]
     median = np.median(values)
     threshold = median + k*np.median(np.abs(values-median))
     mask = ((residual > threshold) & (roi != 0)).astype(np.uint8)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((3,3),np.uint8))
     if mask.sum() > coverage_limit*np.count_nonzero(roi):
         raise DetectionError('item too large for the plate or background not modelled')
     return mask
 
 
-def segment(rectified, method=None, *, k=5., coverage_limit=.35, w_frame=None):
+def segment(rectified, method=None, *, k=5., coverage_limit=.35, shift_tolerance=2):
     """Default to threshold for pale plates and structural residuals for dark plates."""
     rgb = rectified.image
     gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
@@ -290,7 +284,7 @@ def segment(rectified, method=None, *, k=5., coverage_limit=.35, w_frame=None):
             residual = np.linalg.norm(rgb.astype(float)-bg, axis=2)
         mask = ((residual > 48) & (roi != 0)).astype(np.uint8)
     elif method == 'structural':
-        mask = _structural(rectified, roi, k=k, coverage_limit=coverage_limit, w_frame=w_frame)
+        mask = _structural(rectified, roi, k=k, coverage_limit=coverage_limit, shift_tolerance=shift_tolerance)
     elif method == 'grabcut':
         labels = np.full(gray.shape, cv2.GC_BGD, np.uint8)
         labels[roi != 0] = cv2.GC_PR_BGD

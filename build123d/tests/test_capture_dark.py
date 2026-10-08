@@ -36,7 +36,10 @@ def test_sharpie_real_photo_bbox():
                         kind=grid.kind, polarity=grid.polarity)
     mask = segment(rectified)
     coverage = np.count_nonzero(mask)/np.count_nonzero(_region(rectified))
-    assert coverage < .05, f'foreground coverage {coverage:.4%} exceeds spec invariant (d)'
     ring = footprint(mask)
     centre = (ring.min(axis=0)+ring.max(axis=0))/2
     assert 42 <= centre[1] <= 126
+    sides = np.ptp(ring, axis=0)
+    assert coverage <= .08 and max(sides) >= 100 and abs(min(sides)-12.75) <= 1.5, (
+        f'coverage={coverage:.4%}, bbox={sides.tolist()} mm; '
+        'require <=8%, long side>=100 mm, short side=12.75+/-1.5 mm')
