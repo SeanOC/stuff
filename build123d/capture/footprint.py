@@ -213,7 +213,7 @@ def _region(rectified, *, with_paper=False):
 
 
 def _structural(rectified, roi, *, k, coverage_limit, shift_tolerance):
-    """Normalised lattice-phase median with local Lab matching tolerance."""
+    """Phase median + background-inlier RGB gain/offset fit + local matching."""
     if not 3 <= k <= 8 or not .2 <= coverage_limit <= .5:
         raise ValueError('k must be in 3..8 and coverage_limit in 0.2..0.5')
     if shift_tolerance not in (1, 2, 3):
@@ -224,35 +224,59 @@ def _structural(rectified, roi, *, k, coverage_limit, shift_tolerance):
     ny, nx = h//pitch, w//pitch
     if nx*ny < 4:
         raise DetectionError('item too large for the plate or background not modelled')
-    gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
-    medians = [np.median(gray[y:y+pitch,x:x+pitch])
-               for y in range(0,ny*pitch,pitch) for x in range(0,nx*pitch,pitch)]
-    target = np.median(medians)
-    normalised = np.empty(rgb.shape, np.float32)
-    for y in range(0,h,pitch):
-        for x in range(0,w,pitch):
-            cell = np.s_[y:y+pitch,x:x+pitch]
-            # Divide by tile/global luminance ratio to remove illumination gain.
-            gain = target/max(float(np.median(gray[cell])), 1.)
-            normalised[cell] = np.clip(rgb[cell].astype(np.float32)*gain/255, 0, 1)
-    tiles = normalised[:ny*pitch,:nx*pitch].reshape(ny,pitch,nx,pitch,3)
+    # A phase median discards objects/shadows present in a minority of cells.
+    tiles = rgb[:ny*pitch,:nx*pitch].astype(float).reshape(ny,pitch,nx,pitch,3)
     template = np.median(tiles, axis=(0,2))
-    lab = cv2.cvtColor(normalised, cv2.COLOR_RGB2LAB)
-    template_lab = cv2.cvtColor(template, cv2.COLOR_RGB2LAB)
+    x = template.reshape(-1,3)
+    # Learn intensity strata from the template, not from a hand-drawn class
+    # map. Trimming each stratum keeps both bright and dark background samples
+    # in the illumination fit even when an item contaminates one brightness.
+    levels = x.mean(axis=1)
+    bins = np.digitize(levels,np.percentile(levels,[25,50,75]))
+    def inliers(error):
+        good = np.zeros(len(error),bool)
+        for index in range(4):
+            selected = bins == index
+            values = error[selected]
+            if not len(values): continue
+            mid = np.median(values)
+            good[selected] = values <= max(1.,mid+2*np.median(abs(values-mid)))
+        return good
     residual = np.full((h,w), np.inf)
-    for dy in range(-shift_tolerance,shift_tolerance+1):
-        for dx in range(-shift_tolerance,shift_tolerance+1):
-            shifted = np.roll(template_lab, (dy,dx), axis=(0,1))
-            background = np.tile(shifted, (ny+1,nx+1,1))[:h,:w]
-            residual = np.minimum(residual, np.linalg.norm(lab-background, axis=2))
+    for iy in range(ny):
+        for ix in range(nx):
+            tile = tiles[iy,:,ix]
+            y = tile.reshape(-1,3)
+            error = np.linalg.norm(y-x, axis=1)
+            good = inliers(error)
+            # Six trimmed least-squares updates fit illumination only on the
+            # background inliers. Never normalise by an occupied tile's median.
+            for _ in range(6):
+                xm, ym = x[good].mean(0), y[good].mean(0)
+                variance = np.sum((x[good]-xm)**2, axis=0)
+                covariance = np.sum((x[good]-xm)*(y[good]-ym), axis=0)
+                gain = np.divide(covariance, variance, out=np.ones(3), where=variance>1)
+                offset = ym-gain*xm
+                error = np.linalg.norm(y-(x*gain+offset), axis=1)
+                good = inliers(error)
+            background = template*gain+offset
+            lo, hi = background.copy(), background.copy()
+            for dy in range(-shift_tolerance,shift_tolerance+1):
+                for dx in range(-shift_tolerance,shift_tolerance+1):
+                    shifted = np.roll(background, (dy,dx), axis=(0,1))
+                    lo, hi = np.minimum(lo,shifted), np.maximum(hi,shifted)
+            # Local colour envelope also tolerates fractional-pixel resampling.
+            cell = np.linalg.norm(tile-np.clip(tile,lo,hi), axis=2)
+            residual[iy*pitch:(iy+1)*pitch,ix*pitch:(ix+1)*pitch] = cell
     values = residual[roi != 0]
     median = np.median(values)
-    threshold = median + k*np.median(np.abs(values-median))
+    threshold = max(1., median + k*np.median(np.abs(values-median)))
     mask = ((residual > threshold) & (roi != 0)).astype(np.uint8)
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((3,3),np.uint8))
     if mask.sum() > coverage_limit*np.count_nonzero(roi):
         raise DetectionError('item too large for the plate or background not modelled')
     return mask
+
 
 
 def segment(rectified, method=None, *, k=5., coverage_limit=.35, shift_tolerance=2):
@@ -310,12 +334,17 @@ def segment(rectified, method=None, *, k=5., coverage_limit=.35, shift_tolerance
     return cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((3,3),np.uint8))
 
 
-def footprint(mask, *, mm_per_px=MM_PER_PX, origin_mm=(0.,0.), tolerance_mm=.3):
+def footprint(mask, *, mm_per_px=MM_PER_PX, origin_mm=(0.,0.), tolerance_mm=.3, roi=None):
     """Largest external contour, closed ring, <=256 vertices; holes ignored."""
     contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if not contours:
         raise DetectionError('no item contour')
     contour = max(contours, key=cv2.contourArea)
+    if roi is not None:
+        boundary = (roi != 0) & (cv2.erode(roi.astype(np.uint8), np.ones((3,3),np.uint8)) == 0)
+        points = contour.reshape(-1,2)
+        if boundary[points[:,1],points[:,0]].any():
+            raise DetectionError('item crosses the plate edge')
     poly = cv2.approxPolyDP(contour, tolerance_mm/mm_per_px, True).reshape(-1,2)
     if len(poly) < 3 or len(poly) > 256:
         raise DetectionError('contour cannot meet the 0.3 mm / 256 vertex contract')

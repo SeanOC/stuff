@@ -51,3 +51,14 @@ def test_python_baseline_expectations():
     reference = next(r for r in measurements['stress_cases'] if r['png'] == edge['png'])
     assert reference['detected'] is False
     assert edge['error'] == reference['failure']
+
+
+def test_real_photo_oracle_is_fresh():
+    from capture.real_oracle import REAL, generate as generate_real
+    expected = json.loads((REAL/'real-footprints.json').read_text())['records']
+    assert {r['png'] for r in expected} == {p.name for p in REAL.glob('*.png')}
+    for row in expected:
+        assert len(row['original_jpeg_sha256']) == 64
+        assert (REAL/row['png']).stat().st_size <= 8_000_000
+    actual = generate_real(expected)
+    assert actual == expected

@@ -39,7 +39,7 @@ def main():
     ends = [cv2.perspectiveTransform((p+shifts)[None], grid.H)[0] for p in ENDPOINTS_PX]
     lengths = [np.linalg.norm(b-a) for a in ends[0] for b in ends[1]]
     print(f'+/-3 px annotation sensitivity: {min(lengths):.3f}..{max(lengths):.3f} mm')
-    print('rev 5 invariant (d) allows only 120..150 mm; an intact marker exceeds that bound.')
+    print('Historical rev 5 allowed only 120..150 mm; rev 6 instead requires an edge-crossing error.')
     print('The right tip also lies beyond x=168 mm; the current ROI clips it at x=165 mm.')
     if args.overlay:
         for point, label in zip(ENDPOINTS_PX, ('left end', 'right tip')):

@@ -27,13 +27,13 @@ def measurements():
 
 def test_experiment_coverage_and_reported_failures(measurements):
     records = measurements['records']
-    assert len(records) == 108
+    assert len(records) == 144
     assert len({r['object'] for r in records}) == 6
     for obj in {r['object'] for r in records}:
         rows = [r for r in records if r['object'] == obj]
-        assert len(rows) == 18
+        assert len(rows) == 24
         assert {r['tilt_deg'] for r in rows} == {0,15}
-        assert {r['background'] for r in rows} == {'bare','paper','aruco'}
+        assert {r['background'] for r in rows} == {'bare','paper','aruco','skeleton'}
         assert len({r['pose']['rotation_deg'] for r in rows}) == 3
     for r in records:
         assert Polygon(r['truth_mm']).is_valid
@@ -41,7 +41,7 @@ def test_experiment_coverage_and_reported_failures(measurements):
         if not r['detected']:
             assert r['failure'] and not r['methods']
         else:
-            assert set(r['methods']) == {'threshold','periodic','grabcut'}
+            assert set(r['methods']) == {'threshold','periodic','grabcut','structural'}
             for m in r['methods'].values():
                 assert m['seconds'] >= r['detection_seconds']
                 assert 'failure' in m or (m['hausdorff_mm'] >= 0 and m['area_error_pct'] >= 0 and 3 <= m['vertices'] <= 256)
@@ -195,3 +195,16 @@ def test_rectangular_lattice_dimensions_from_pixels(nx,ny):
     assert grid.size_mm == (nx*42,ny*42)
     recovered = cv2.perspectiveTransform(np.array([[[24,24],[24+168*nx-1,24+168*ny-1]]],np.float32),grid.H)[0]
     np.testing.assert_allclose(recovered,[[0,0],[nx*42,ny*42]],atol=.3)
+
+
+def test_methods_set_is_four(measurements):
+    methods = {'threshold','periodic','grabcut','structural'}
+    for row in measurements['records']:
+        if row['detected']:
+            assert set(row['methods']) == methods
+        if row['background'] == 'skeleton':
+            assert row['png'] is None
+    doc = (FIXTURES.parents[2]/'docs'/'capture-bins-spike.md').read_text()
+    documented = {line.split('|')[3].strip() for line in doc.splitlines()
+                  if line.startswith(('| bare |','| paper |','| aruco |','| skeleton |'))}
+    assert documented == methods
