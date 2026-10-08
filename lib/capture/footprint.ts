@@ -19,6 +19,16 @@ export function footprint(cv: CV, mask: Mask, mmPerPx = MM_PER_PX, originMm: Poi
       const area = cv.contourArea(c);
       if (area > largestArea) { largest = c; largestArea = area; }
     }
+    if (mask.roi) {
+      const points = largest!.data32S, roi = mask.roi;
+      for (let i = 0; i < largest!.rows; i++) {
+        const x = points[2 * i], y = points[2 * i + 1];
+        if (!roi[y * mask.width + x]) continue;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++)
+          if (x + dx >= 0 && x + dx < mask.width && y + dy >= 0 && y + dy < mask.height &&
+              !roi[(y + dy) * mask.width + x + dx]) throw new DetectionError("item crosses the plate edge");
+      }
+    }
     cv.approxPolyDP(largest!, poly, .3 / mmPerPx, true);
     if (poly.rows < 3 || poly.rows > 256)
       throw new DetectionError("contour cannot meet the 0.3 mm / 256 vertex contract");

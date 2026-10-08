@@ -6,6 +6,9 @@ export const DETECTION_ERRORS = [
   "board boundary is not a visible rectangle",
   "board touches image edge",
   "no item contour",
+  "board obstructed by an object crossing its edge",
+  "item too large for the plate or background not modelled",
+  "item crosses the plate edge",
   "contour cannot meet the 0.3 mm / 256 vertex contract",
 ] as const;
 

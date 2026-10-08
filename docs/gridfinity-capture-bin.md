@@ -138,9 +138,9 @@ includes the underside and centre section at
 ## Capture panel
 
 On the Gridfinity capture bin page, choose **Take or choose a photo** to
-use a photo or the phone's rear camera. Place one contrasting item on a
-Gridfinity baseplate, with the whole baseplate inside the frame and a dark,
-plain surround. Photograph straight down in daylight or under a lamp.
+use a photo or the phone's rear camera. Place one item that contrasts with the plate on a
+Gridfinity baseplate, with the whole baseplate inside the frame and a plain
+surface that contrasts with the plate. Keep the item fully inside the grid. Photograph straight down in daylight or under a lamp.
 
 **Photos never leave your browser.** The detector loads only when you
 select a file. The blue overlay shows the recovered 42 mm lattice; amber
@@ -151,19 +151,22 @@ The existing STL download uses the current parameter values.
 
 The panel's clearance slider edits the same value as the Parameters control.
 **Type pocket depth yourself:** the photo gives the outline only, not depth.
-Accuracy measured on synthetic renders: **0.79 mm mean / 1.61 mm max**.
-Real-photo measurements are pending; check the overlay and allow clearance.
+Pale-plate synthetic accuracy: **0.79 mm mean / 1.61 mm max**.
+Dark-plate and real-photo accuracy remain unvalidated; check the overlay and allow clearance.
 
 Errors keep the detector's exact message and add the following advice:
 
 | Message | Advice |
 |---|---|
-| `no perimeter lattice contrast` | Show the whole baseplate on a dark, plain surface. |
-| `no board boundary` | Show the whole baseplate on a dark, plain surface. |
-| `board boundary is not a visible rectangle` | Show the whole baseplate on a dark, plain surface. |
+| `no perimeter lattice contrast` | Show the whole baseplate on a plain surface that contrasts with the plate. |
+| `no board boundary` | Show the whole baseplate on a plain surface that contrasts with the plate. |
+| `board boundary is not a visible rectangle` | Show the whole baseplate on a plain surface that contrasts with the plate. |
 | `perimeter does not support a 42 mm lattice` | Use a Gridfinity baseplate 2–6 cells per side. |
 | `board touches image edge` | Step back so the whole baseplate is inside the frame. |
-| `no item contour` | The item must contrast with the plate (colour or darker). |
+| `board obstructed by an object crossing its edge` | Remove anything crossing the plate edge. |
+| `item too large for the plate or background not modelled` | Use a bigger plate or move the item inside the grid. |
+| `item crosses the plate edge` | Move the item fully inside the baseplate. |
+| `no item contour` | The item must contrast with the plate (colour or brightness). |
 | `contour cannot meet the 0.3 mm / 256 vertex contract` | Simplify the item's outline or move the camera closer. |
 | `footprint must fit 6x6 cells (252x252 mm)` | The item is too large for a 6×6 bin. |
 | Server: `footprint + wall exceeds 6x6 cells` | Reduce clearance or wall_min, or pick a manual size. |

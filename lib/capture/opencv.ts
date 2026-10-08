@@ -16,13 +16,14 @@ export interface CV {
   MatVector: new() => MatVector;
   Size: new(width: number, height: number) => { width: number; height: number };
   CV_8UC1: number; CV_8UC3: number; CV_32FC2: number; CV_64F: number;
-  COLOR_RGB2GRAY: number; THRESH_BINARY: number; RETR_EXTERNAL: number;
+  COLOR_RGB2GRAY: number; THRESH_BINARY: number; THRESH_BINARY_INV: number; RETR_EXTERNAL: number;
   CHAIN_APPROX_SIMPLE: number; MORPH_CLOSE: number;
   matFromArray(rows: number, cols: number, type: number, data: number[] | Uint8Array): Mat;
   cvtColor(src: Mat, dst: Mat, code: number): void;
   threshold(src: Mat, dst: Mat, threshold: number, max: number, type: number): void;
   findContours(src: Mat, contours: MatVector, hierarchy: Mat, mode: number, method: number): void;
   contourArea(contour: Mat): number;
+  convexHull(src: Mat, dst: Mat): void;
   arcLength(contour: Mat, closed: boolean): number;
   approxPolyDP(src: Mat, dst: Mat, epsilon: number, closed: boolean): void;
   getPerspectiveTransform(src: Mat, dst: Mat): Mat;

@@ -1,4 +1,4 @@
-/** Threshold-only bare/paper capture; see build123d/docs/capture-bins-spike.md:180-190. */
+/** Pale threshold / dark structural capture; see build123d/docs/capture-bins-spike.md. */
 import { loadOpenCV } from "./opencv";
 import { decodeImage } from "./image";
 import { detectGrid } from "./grid";
@@ -13,7 +13,7 @@ export type { Point } from "./encode";
 export async function capture(input: Blob | ArrayBuffer) {
   const [cv, image] = await Promise.all([loadOpenCV(), decodeImage(input)]);
   const grid = detectGrid(cv, image);
-  const rectified = rectify(cv, image, grid.H, { sizeMm: grid.sizeMm, kind: grid.kind });
+  const rectified = rectify(cv, image, grid.H, { sizeMm: grid.sizeMm, kind: grid.kind, polarity: grid.polarity });
   const ring = footprint(cv, segment(cv, rectified), rectified.mmPerPx, rectified.originMm);
   return { footprint: encode(ring), ring, grid, rectified };
 }
