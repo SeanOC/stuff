@@ -29,6 +29,7 @@ class Grid:
     confidence: float
     size_mm: tuple[float, float]
     kind: str
+    polarity: str = 'pale'
 
 
 @dataclass
@@ -37,6 +38,7 @@ class Rectified:
     mm_per_px: float
     origin_mm: tuple[float, float]
     kind: str = 'bare'
+    polarity: str = 'pale'
 
 
 def _ordered_quad(points):
@@ -69,7 +71,23 @@ def _period_count(profile):
     return count, score
 
 
-def detect_grid(image):
+def _interior_count(rough, axis):
+    """Whole-grid autocorrelation tolerates a rim without socket lips."""
+    profile = rough.mean(axis=axis).astype(float)
+    profile -= profile.mean()
+    if profile.std() < 3:
+        raise DetectionError('no perimeter lattice contrast')
+    scores = []
+    for n in range(2, 7):
+        lag = round(len(profile)/n)
+        a, b = profile[:-lag], profile[lag:]
+        score = float(a@b/(np.linalg.norm(a)*np.linalg.norm(b)+1e-9))
+        scores.append((score, n))
+    best = max(scores)[0]
+    return max((s for s in scores if s[0] >= best-.06), key=lambda s:s[1])[::-1]
+
+
+def detect_grid(image, *, confidence_floor=.5):
     """Return metric H, confidence, extent and calibration kind or raise.
 
     ArUco IDs 0..3 encode a known 84 mm plate, not a inferred lattice.
@@ -90,34 +108,63 @@ def detect_grid(image):
             raise DetectionError('inconsistent fiducials')
         error = np.linalg.norm(cv2.perspectiveTransform(src[None], H)[0]-dst, axis=1).mean()
         return Grid(H, float(np.exp(-error)), (84.,84.), 'aruco')
-    # A pale board on a contrasting dark surround is the explicit capture
-    # protocol for the unmarked baseline. Fail if its outer rectangle is clipped.
-    _, binary = cv2.threshold(gray, 85, 255, cv2.THRESH_BINARY)
-    contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    if not contours:
-        raise DetectionError('no board boundary')
-    contour = max(contours, key=cv2.contourArea)
-    quad = cv2.approxPolyDP(contour, .015*cv2.arcLength(contour, True), True)
-    if len(quad) != 4 or cv2.contourArea(quad) < .15*gray.size:
-        raise DetectionError('board boundary is not a visible rectangle')
-    src = _ordered_quad(quad)
+    if not .3 <= confidence_floor <= .8:
+        raise ValueError('confidence_floor must be in 0.3..0.8')
+    candidates = []
+    errors = []
+    obstructed = False
     h, w = gray.shape
-    if np.any(src < 2) or np.any(src[:,0] > w-3) or np.any(src[:,1] > h-3):
-        raise DetectionError('board touches image edge')
-    square = np.array([[0,0],[839,0],[839,839],[0,839]], np.float32)
-    rough_H = cv2.getPerspectiveTransform(src, square)
-    rough = cv2.warpPerspective(gray, rough_H, (840,840))
-    # Sample strips through the socket lips, keeping the central paper/item out.
-    px = np.concatenate((rough[12:45, :], rough[-45:-12, :]), axis=0).mean(0)
-    py = np.concatenate((rough[:,12:45], rough[:,-45:-12]), axis=1).mean(1)
-    nx, cx = _period_count(px)
-    ny, cy = _period_count(py)
-    dst = np.array([[0,0],[nx*PITCH,0],[nx*PITCH,ny*PITCH],[0,ny*PITCH]], np.float32)
-    H = cv2.getPerspectiveTransform(src, dst)
-    return Grid(H, min(cx,cy), (nx*PITCH,ny*PITCH), 'lattice')
+    for polarity, channel in (('pale', gray), ('dark', 255-gray)):
+        _, binary = cv2.threshold(channel, 85, 255, cv2.THRESH_BINARY)
+        contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        for contour in contours:
+            if cv2.contourArea(contour) < .15*gray.size:
+                continue
+            hull = cv2.convexHull(contour)
+            hull_quad = cv2.approxPolyDP(hull, .015*cv2.arcLength(hull, True), True)
+            if len(hull_quad) > 4:
+                obstructed = True
+                continue
+            # Preserve the existing pale path's exact corner samples.
+            quad = cv2.approxPolyDP(contour, .015*cv2.arcLength(contour, True), True)
+            if len(quad) != 4:
+                quad = hull_quad
+            if len(quad) != 4 or cv2.contourArea(quad) < .15*gray.size:
+                errors.append('board boundary is not a visible rectangle')
+                continue
+            src = _ordered_quad(quad)
+            if np.any(src < 2) or np.any(src[:,0] > w-3) or np.any(src[:,1] > h-3):
+                errors.append('board touches image edge')
+                continue
+            square = np.array([[0,0],[839,0],[839,839],[0,839]], np.float32)
+            rough = cv2.warpPerspective(gray, cv2.getPerspectiveTransform(src, square), (840,840))
+            px = np.concatenate((rough[12:45, :], rough[-45:-12, :]), axis=0).mean(0)
+            py = np.concatenate((rough[:,12:45], rough[:,-45:-12]), axis=1).mean(1)
+            try:
+                nx, cx = _period_count(px)
+                ny, cy = _period_count(py)
+            except DetectionError:
+                try:
+                    nx, cx = _interior_count(rough, 0)
+                    ny, cy = _interior_count(rough, 1)
+                except DetectionError as exc:
+                    errors.append(str(exc))
+                    continue
+            confidence = min(cx, cy)
+            if confidence < confidence_floor:
+                errors.append('perimeter does not support a 42 mm lattice')
+                continue
+            dst = np.array([[0,0],[nx*PITCH,0],[nx*PITCH,ny*PITCH],[0,ny*PITCH]], np.float32)
+            candidates.append(Grid(cv2.getPerspectiveTransform(src, dst), confidence,
+                                   (nx*PITCH,ny*PITCH), 'lattice', polarity))
+    if obstructed:
+        raise DetectionError('board obstructed by an object crossing its edge')
+    if not candidates:
+        raise DetectionError(errors[0] if errors else 'board boundary is not a visible rectangle')
+    return max(candidates, key=lambda candidate: candidate.confidence)
 
 
-def rectify(image, H, *, mm_per_px=MM_PER_PX, size_mm=None, kind='bare'):
+def rectify(image, H, *, mm_per_px=MM_PER_PX, size_mm=None, kind='bare', polarity='pale'):
     """Warp to uniform metric pixels. H maps source pixel centres to mm.
 
     Pass size_mm from Grid to crop to the baseplate; without it, cover the
@@ -140,7 +187,7 @@ def rectify(image, H, *, mm_per_px=MM_PER_PX, size_mm=None, kind='bare'):
         raise ValueError('invalid or excessive rectified extent')
     to_pixels = np.array([[1/mm_per_px,0,-origin[0]/mm_per_px],[0,1/mm_per_px,-origin[1]/mm_per_px],[0,0,1]])
     rgb = cv2.warpPerspective(image, to_pixels@H, tuple(size), borderValue=(0,0,0))
-    return Rectified(rgb, mm_per_px, tuple(origin), kind)
+    return Rectified(rgb, mm_per_px, tuple(origin), kind, polarity)
 
 
 def _region(rectified):
