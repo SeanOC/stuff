@@ -114,8 +114,8 @@ def detect_grid(image, *, confidence_floor=.5):
     errors = []
     obstructed = False
     h, w = gray.shape
-    for polarity, channel in (('pale', gray), ('dark', 255-gray)):
-        _, binary = cv2.threshold(channel, 85, 255, cv2.THRESH_BINARY)
+    for polarity, mode in (('pale', cv2.THRESH_BINARY), ('dark', cv2.THRESH_BINARY_INV)):
+        _, binary = cv2.threshold(gray, 85, 255, mode)
         contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         for contour in contours:
             if cv2.contourArea(contour) < .15*gray.size:
@@ -127,7 +127,7 @@ def detect_grid(image, *, confidence_floor=.5):
                 continue
             # Preserve the existing pale path's exact corner samples.
             quad = cv2.approxPolyDP(contour, .015*cv2.arcLength(contour, True), True)
-            if len(quad) != 4:
+            if len(quad) != 4 and polarity == 'dark':
                 quad = hull_quad
             if len(quad) != 4 or cv2.contourArea(quad) < .15*gray.size:
                 errors.append('board boundary is not a visible rectangle')
@@ -190,7 +190,7 @@ def rectify(image, H, *, mm_per_px=MM_PER_PX, size_mm=None, kind='bare', polarit
     return Rectified(rgb, mm_per_px, tuple(origin), kind, polarity)
 
 
-def _region(rectified):
+def _region(rectified, *, with_paper=False):
     rgb = rectified.image
     h,w = rgb.shape[:2]
     roi = np.zeros((h,w), np.uint8)
@@ -202,19 +202,72 @@ def _region(rectified):
         roi[-corner:,:corner] = roi[-corner:,-corner:] = 0
     # White paper interior is detected from colour, never supplied from truth.
     white = (rgb.min(axis=2) > 225).astype(np.uint8)
-    if rectified.kind != 'aruco' and white.any():
+    paper = False
+    if rectified.polarity == 'pale' and rectified.kind != 'aruco' and white.any():
         x,y,bw,bh = cv2.boundingRect(white)
         if white.sum() > .12*h*w and bw < .9*w and bh < .9*h:
+            paper = True
             roi[:] = 0
             roi[y+2:y+bh-2,x+2:x+bw-2] = 1
-    return roi
+    return (roi, paper) if with_paper else roi
 
 
-def segment(rectified, method='threshold'):
-    """Compare threshold, periodic median background, and lattice-seeded GrabCut."""
+def _structural(rectified, roi, *, k, coverage_limit, w_frame):
+    """Cell-local Lab references from eroded geometric frame/opening masks."""
+    if not 3 <= k <= 8 or not .2 <= coverage_limit <= .5:
+        raise ValueError('k must be in 3..8 and coverage_limit in 0.2..0.5')
+    rgb = rectified.image
+    pitch = round(PITCH/rectified.mm_per_px)
+    h, w = rgb.shape[:2]
+    yy, xx = np.indices((h, w))
+    dx = np.minimum(xx % pitch, pitch-xx % pitch)
+    dy = np.minimum(yy % pitch, pitch-yy % pitch)
+    distance = np.minimum(dx, dy)*rectified.mm_per_px
+    if w_frame is None:
+        # Median across all cell phases measures the repeated dark boundary band.
+        gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
+        widths = []
+        for d in np.arange(0, 5.01, rectified.mm_per_px):
+            band = (distance >= d) & (distance < d+rectified.mm_per_px) & (roi != 0)
+            if band.any() and np.median(gray[band]) < 85:
+                widths.append(d)
+        w_frame = float(np.clip(2*max(widths, default=1), 2, 10))
+    if not 2 <= w_frame <= 10:
+        raise ValueError('w_frame must be in 2..10 mm')
+    frame = (distance <= w_frame).astype(np.uint8)
+    radius = round(1.5/rectified.mm_per_px)
+    kernel = np.ones((2*radius+1, 2*radius+1), np.uint8)
+    classes = [frame, 1-frame]
+    lab = cv2.cvtColor(rgb.astype(np.float32)/255, cv2.COLOR_RGB2LAB)
+    residual = np.zeros((h,w), np.float64)
+    for cls in classes:
+        eroded = cv2.erode(cls, kernel) != 0
+        for y in range(0,h,pitch):
+            for x in range(0,w,pitch):
+                cell = np.s_[y:y+pitch,x:x+pitch]
+                samples = eroded[cell] & (roi[cell] != 0)
+                if not samples.any():
+                    raise DetectionError('item too large for the plate or background not modelled')
+                reference = np.median(lab[cell][samples], axis=0)
+                delta = np.linalg.norm(lab[cell]-reference, axis=2)
+                chosen = cls[cell] != 0
+                residual[cell][chosen] = delta[chosen]
+    values = residual[roi != 0]
+    median = np.median(values)
+    threshold = median + k*np.median(np.abs(values-median))
+    mask = ((residual > threshold) & (roi != 0)).astype(np.uint8)
+    if mask.sum() > coverage_limit*np.count_nonzero(roi):
+        raise DetectionError('item too large for the plate or background not modelled')
+    return mask
+
+
+def segment(rectified, method=None, *, k=5., coverage_limit=.35, w_frame=None):
+    """Default to threshold for pale plates and structural residuals for dark plates."""
     rgb = rectified.image
     gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
-    roi = _region(rectified)
+    roi, paper = _region(rectified, with_paper=True)
+    if method is None:
+        method = 'structural' if rectified.polarity == 'dark' else 'threshold'
     chroma = rgb.max(axis=2).astype(float) - rgb.min(axis=2)
     # Known neutral baseplate/paper: saturated colour or a dark item.
     seed = ((chroma > 35) | (gray < 65)) & (roi != 0)
@@ -223,7 +276,7 @@ def segment(rectified, method='threshold'):
     elif method == 'periodic':
         pitch = round(PITCH/rectified.mm_per_px)
         h,w = gray.shape
-        if rectified.kind == 'aruco' or np.mean(rgb.min(2) > 225) > .12:
+        if rectified.kind == 'aruco' or (rectified.polarity == 'pale' and paper):
             # Flat backgrounds are the zero-texture special case.
             bg = np.median(rgb[roi != 0], axis=0)
             residual = np.linalg.norm(rgb.astype(float)-bg, axis=2)
@@ -236,6 +289,8 @@ def segment(rectified, method='threshold'):
             bg = np.tile(template, (ny+1,nx+1,1))[:h,:w]
             residual = np.linalg.norm(rgb.astype(float)-bg, axis=2)
         mask = ((residual > 48) & (roi != 0)).astype(np.uint8)
+    elif method == 'structural':
+        mask = _structural(rectified, roi, k=k, coverage_limit=coverage_limit, w_frame=w_frame)
     elif method == 'grabcut':
         labels = np.full(gray.shape, cv2.GC_BGD, np.uint8)
         labels[roi != 0] = cv2.GC_PR_BGD
