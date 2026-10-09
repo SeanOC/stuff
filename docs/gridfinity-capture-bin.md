@@ -143,8 +143,8 @@ separate PR2 bead `pst-6xypa`; the capture panel currently uses the plate path.
 
 | Sheet | Page (mm) | Marker top-lefts, IDs 0–3 clockwise (mm) | Field bounds (mm) |
 |---|---|---|---|
-| [Letter v1](/capture/capture-sheet-letter-v1.pdf) | 215.9 × 279.4 | (8,8), (183.9,8), (183.9,247.4), (8,247.4) | x 8–207.9; y 36–243.4 |
-| [A4 v1](/capture/capture-sheet-a4-v1.pdf) | 210 × 297 | (8,8), (178,8), (178,265), (8,265) | x 8–202; y 36–261 |
+| [Letter v1](../public/capture/capture-sheet-letter-v1.pdf) | 215.9 × 279.4 | (8,8), (183.9,8), (183.9,247.4), (8,247.4) | x 8–207.9; y 36–243.4 |
+| [A4 v1](../public/capture/capture-sheet-a4-v1.pdf) | 210 × 297 | (8,8), (178,8), (178,265), (8,265) | x 8–202; y 36–261 |
 
 Both use four 24 mm DICT_4X4_50 markers (IDs 0–3, including black border),
 an 8 mm page margin, a neutral gray-140 field, and a 100 mm check bar.
