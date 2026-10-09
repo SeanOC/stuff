@@ -166,12 +166,19 @@ height. Prefer flat items: this planar calibration cannot remove visible side
 walls or height parallax. Mean marker reprojection must be below 0.8 mm.
 
 The sheet path white-balances a copy from the neutral field and excludes mild
-neutral shadows. Neutral items within 0.55–1.30 times the field lightness can
-segment only partially (observed on the gray Sharpie barrel). A saturated cyan
-field is a possible v2 remedy. Synthetic accuracy is still under review: the
-specified 2 mm closing operation fills narrow concavities and currently misses
-the 1.5 mm mean Hausdorff gate; see the spike report. Real flat-item accuracy
-remains pending Sean's photograph and measured dimensions.
+neutral shadows. Pixels with chroma above 20 identify tinted objects even when
+their lightness resembles the field. Neutral items with chroma at most 20 and
+lightness within 0.55–1.30 times the field can segment partially (observed on
+the gray Sharpie barrel). A saturated cyan field is a possible v2 remedy.
+The mask uses 1 mm elliptical opening and closing to remove isolated noise
+without filling narrow concavities. Existing plate segmentation is unchanged.
+
+The 72-image synthetic sheet matrix covers 18 CAD silhouettes at two tilts and
+two illuminants; each group meets the 1.5 mm mean Hausdorff limit. Sean's flat
+85.60 × 53.98 mm card recovers as 84.8 × 54.2 mm, within 1.5 mm on both sides.
+This is one real flat-item success, not a general accuracy claim. The tall
+cleaner recovers around 102.5 × 38 mm against 95 × 28 mm truth because planar
+calibration retains its visible side wall. See the spike report for evidence.
 
 ## Capture panel
 

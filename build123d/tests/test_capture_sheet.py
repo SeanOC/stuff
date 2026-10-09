@@ -109,9 +109,13 @@ def test_sheet_scaled_print_recovers():
     image, _ = photo(scale=.97)
     grid, _, corrected = recover(image, bar_mm=97)
     uncorrected_grid, _, uncorrected = recover(image)
-    sides = lambda ring: sorted(cv2.minAreaRect(ring.astype(np.float32))[1])
-    assert sides(corrected) == pytest.approx([30,50], abs=.3)
-    assert sides(uncorrected) == pytest.approx([30/.97,50/.97], abs=.3)
+    # Pin ring error (the 0.3 mm contract), not a twice-accumulated side error:
+    # simplification may move both parallel edges by up to 0.3 mm each.
+    truth = np.array([[70,100],[120,100],[120,130],[70,130],[70,100]])
+    truth = truth - np.array([8,36])*.97
+    assert Polygon(corrected).hausdorff_distance(Polygon(truth)) <= .3
+    assert Polygon(uncorrected).hausdorff_distance(Polygon(truth/.97)) <= .3
+    assert max(cv2.minAreaRect(uncorrected.astype(np.float32))[1]) == pytest.approx(50/.97, abs=.3)
     assert np.asarray(grid.size_mm) == pytest.approx(np.asarray(uncorrected_grid.size_mm)*.97)
     assert grid.H[:2] == pytest.approx(uncorrected_grid.H[:2]*.97)
 
@@ -236,9 +240,13 @@ def test_real_sheet_rows():
 
 def test_real_sheet_flat_item():
     rows = json.loads((FIXTURES/'real/sheet/sheet-footprints.json').read_text())['records']
-    if not any(r['case']=='inside-sheet' for r in rows):
-        pytest.skip('awaiting Sean’s flat item (<=2 mm) inside the sheet with measured truth')
-    test_real_sheet_rows()
+    card = next(r for r in rows if r['png'] == 'card.png')
+    assert card['case'] == 'inside-sheet'
+    assert card['truth']['length_mm'] == 85.60
+    assert card['truth']['width_mm'] == 53.98
+    assert card['result'] == 'footprint'
+    sides = sorted(cv2.minAreaRect(np.array(card['ring'], np.float32))[1])
+    assert sides == pytest.approx([53.98, 85.60], abs=1.5)
 
 
 def test_real_plate_markers_and_errors_unchanged():

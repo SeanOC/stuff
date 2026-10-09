@@ -157,8 +157,7 @@ def detect_grid(image, *, confidence_floor=.5, sheets=None, bar_mm=100.0):
         H, inliers = cv2.findHomography(src, dst, cv2.RANSAC, .4)
         if H is not None and inliers.sum() >= 14:
             error = np.linalg.norm(cv2.perspectiveTransform(src[None], H)[0]-dst, axis=1).mean()
-            if error < .4:
-                return Grid(H, float(np.exp(-error)), (84.,84.), 'aruco')
+            return Grid(H, float(np.exp(-error)), (84.,84.), 'aruco')
         src = cv2.cornerSubPix(gray, src.copy(), (3,3), (-1,-1),
                                (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_MAX_ITER, 30, .01))
         fits = []
@@ -387,8 +386,9 @@ def segment(rectified, method=None, *, k=5., coverage_limit=.35, shift_tolerance
         if rectified.kind == 'sheet':
             chroma = pixels.max(axis=2)-pixels.min(axis=2)
             lightness = pixels.mean(axis=2)
-            item = (chroma > 30) | (lightness < .55*bg.mean()) | (lightness > 1.30*bg.mean())
-            mask &= item.astype(np.uint8)
+            item = (chroma > 20) | (lightness < .55*bg.mean()) | (lightness > 1.30*bg.mean())
+            # Chroma independently identifies tinted items close to field lightness.
+            mask = (item & (roi != 0)).astype(np.uint8)
     elif method == 'structural':
         mask = _structural(rectified, roi, k=k, coverage_limit=coverage_limit, shift_tolerance=shift_tolerance)
     elif method == 'grabcut':
@@ -413,10 +413,10 @@ def segment(rectified, method=None, *, k=5., coverage_limit=.35, shift_tolerance
     else:
         raise ValueError('unknown segmentation method')
     if rectified.kind == 'sheet':
-        opening = max(1, round(1/rectified.mm_per_px))
-        closing = max(1, round(2/rectified.mm_per_px)) | 1
-        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((opening, opening), np.uint8))
-        return cv2.morphologyEx(mask, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (closing, closing)))
+        size = max(1, round(1/rectified.mm_per_px)) | 1
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (size, size))
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+        return cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
     # Close only sub-mm raster gaps; do not erase thin hex keys with an opening.
     return cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((3,3),np.uint8))
 

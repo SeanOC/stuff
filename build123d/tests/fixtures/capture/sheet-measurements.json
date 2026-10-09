@@ -294,8 +294,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.04454682022333145,
-      "hausdorff_mm": 0.40392639955706194,
-      "area_error_pct": 1.3227909069160344
+      "hausdorff_mm": 0.3314669941721465,
+      "area_error_pct": 0.9972502732767901
     },
     {
       "id": "label-p0-sheet-neutral-t15",
@@ -589,8 +589,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.05314839631319046,
-      "hausdorff_mm": 0.3314669941721465,
-      "area_error_pct": 1.299418758859901
+      "hausdorff_mm": 0.2452824875263695,
+      "area_error_pct": 0.962671285146484
     },
     {
       "id": "label-p0-sheet-warm-t0",
@@ -884,8 +884,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.044584549963474274,
-      "hausdorff_mm": 0.40392639955706194,
-      "area_error_pct": 1.3227909069160344
+      "hausdorff_mm": 0.3314669941721465,
+      "area_error_pct": 0.9972502732767901
     },
     {
       "id": "label-p0-sheet-warm-t15",
@@ -1179,8 +1179,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.05290240794420242,
-      "hausdorff_mm": 0.3314669941721465,
-      "area_error_pct": 1.3077659545942344
+      "hausdorff_mm": 0.2452824875263695,
+      "area_error_pct": 0.962671285146484
     },
     {
       "id": "label-p1-sheet-neutral-t0",
@@ -1478,8 +1478,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.0445641353726387,
-      "hausdorff_mm": 0.39279734085357587,
-      "area_error_pct": 0.6351360260551236
+      "hausdorff_mm": 0.2557801424473841,
+      "area_error_pct": 0.0977466232150658
     },
     {
       "id": "label-p1-sheet-neutral-t15",
@@ -1777,8 +1777,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.053137507289648056,
-      "hausdorff_mm": 0.3116341594471095,
-      "area_error_pct": 0.22612406917306146
+      "hausdorff_mm": 0.24578091492426582,
+      "area_error_pct": 1.0660198272622934
     },
     {
       "id": "label-p1-sheet-warm-t0",
@@ -2076,8 +2076,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.04460945725440979,
-      "hausdorff_mm": 0.3116341594471095,
-      "area_error_pct": 0.4348036390108723
+      "hausdorff_mm": 0.2557801424473841,
+      "area_error_pct": 0.0977466232150658
     },
     {
       "id": "label-p1-sheet-warm-t15",
@@ -2375,8 +2375,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.05288703739643097,
-      "hausdorff_mm": 0.3116341594471095,
-      "area_error_pct": 0.42311758309993075
+      "hausdorff_mm": 0.24578091492426582,
+      "area_error_pct": 0.8790429326876841
     },
     {
       "id": "label-p2-sheet-neutral-t0",
@@ -2675,7 +2675,7 @@
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.0445537269115448,
       "hausdorff_mm": 0.328904625773195,
-      "area_error_pct": 0.7352363188154298
+      "area_error_pct": 0.6768060004696418
     },
     {
       "id": "label-p2-sheet-neutral-t15",
@@ -2973,8 +2973,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.053082626312971115,
-      "hausdorff_mm": 0.4121452131446675,
-      "area_error_pct": 1.2861507489330144
+      "hausdorff_mm": 0.328904625773195,
+      "area_error_pct": 0.08248619100948104
     },
     {
       "id": "label-p2-sheet-warm-t0",
@@ -3273,7 +3273,7 @@
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.04458631947636604,
       "hausdorff_mm": 0.328904625773195,
-      "area_error_pct": 0.7352363188154298
+      "area_error_pct": 0.6768060004696418
     },
     {
       "id": "label-p2-sheet-warm-t15",
@@ -3571,8 +3571,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.05283515155315399,
-      "hausdorff_mm": 0.4121452131446675,
-      "area_error_pct": 1.2477536825914834
+      "hausdorff_mm": 0.328904625773195,
+      "area_error_pct": 0.08248619100948104
     },
     {
       "id": "cup84-p0-sheet-neutral-t0",
@@ -3810,8 +3810,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.04457645118236542,
-      "hausdorff_mm": 0.6249999999999716,
-      "area_error_pct": 1.5570697325949105
+      "hausdorff_mm": 0.3335305788961626,
+      "area_error_pct": 0.11547158690850384
     },
     {
       "id": "cup84-p0-sheet-neutral-t15",
@@ -4049,8 +4049,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.053144171833992004,
-      "hausdorff_mm": 0.5048000725114181,
-      "area_error_pct": 1.268036094431897
+      "hausdorff_mm": 0.34152123951594715,
+      "area_error_pct": 2.3275423643161672
     },
     {
       "id": "cup84-p0-sheet-warm-t0",
@@ -4288,8 +4288,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.04461277276277542,
-      "hausdorff_mm": 0.6249999999999716,
-      "area_error_pct": 1.5127512414099098
+      "hausdorff_mm": 0.3335305788961626,
+      "area_error_pct": 0.03482590493626371
     },
     {
       "id": "cup84-p0-sheet-warm-t15",
@@ -4527,8 +4527,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.05289888381958008,
-      "hausdorff_mm": 0.5048000725114181,
-      "area_error_pct": 1.268036094431897
+      "hausdorff_mm": 0.34152123951594715,
+      "area_error_pct": 2.317907909710742
     },
     {
       "id": "cup84-p1-sheet-neutral-t0",
@@ -4766,8 +4766,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.0444955974817276,
-      "hausdorff_mm": 0.5411834308556271,
-      "area_error_pct": 1.0772738932441461
+      "hausdorff_mm": 0.44906572418293567,
+      "area_error_pct": 0.3466984974389544
     },
     {
       "id": "cup84-p1-sheet-neutral-t15",
@@ -5005,8 +5005,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.05311194062232971,
-      "hausdorff_mm": 0.5429842971165044,
-      "area_error_pct": 1.2005949121937227
+      "hausdorff_mm": 0.4157109647322187,
+      "area_error_pct": 1.3178515216667765
     },
     {
       "id": "cup84-p1-sheet-warm-t0",
@@ -5244,8 +5244,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.04453245550394058,
-      "hausdorff_mm": 0.5411834308556271,
-      "area_error_pct": 1.3239159311432773
+      "hausdorff_mm": 0.3740264243659468,
+      "area_error_pct": 0.5451682623109586
     },
     {
       "id": "cup84-p1-sheet-warm-t15",
@@ -5483,8 +5483,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.0528915710747242,
-      "hausdorff_mm": 0.5429842971165044,
-      "area_error_pct": 0.9173419467939751
+      "hausdorff_mm": 0.4157109647322187,
+      "area_error_pct": 1.3178515216667765
     },
     {
       "id": "cup84-p2-sheet-neutral-t0",
@@ -5722,8 +5722,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.0445578396320343,
-      "hausdorff_mm": 0.5256451175783847,
-      "area_error_pct": 0.6784074725791625
+      "hausdorff_mm": 0.4087780687376742,
+      "area_error_pct": 0.9864262832398364
     },
     {
       "id": "cup84-p2-sheet-neutral-t15",
@@ -5961,8 +5961,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.05315330997109413,
-      "hausdorff_mm": 0.47709795433400876,
-      "area_error_pct": 0.21595365151828316
+      "hausdorff_mm": 0.47554178615664816,
+      "area_error_pct": 1.2619716849552658
     },
     {
       "id": "cup84-p2-sheet-warm-t0",
@@ -6200,8 +6200,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.0445956289768219,
-      "hausdorff_mm": 0.5709885647323839,
-      "area_error_pct": 0.7863133641600364
+      "hausdorff_mm": 0.4087780687376742,
+      "area_error_pct": 0.9864262832398364
     },
     {
       "id": "cup84-p2-sheet-warm-t15",
@@ -6439,8 +6439,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.05290868133306503,
-      "hausdorff_mm": 0.47709795433400876,
-      "area_error_pct": 0.2217343242815603
+      "hausdorff_mm": 0.47554178615664816,
+      "area_error_pct": 1.4450263224585236
     },
     {
       "id": "cup100-p0-sheet-neutral-t0",
@@ -6686,8 +6686,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.044595807790756226,
-      "hausdorff_mm": 0.6249999999999716,
-      "area_error_pct": 1.9305616935784038
+      "hausdorff_mm": 0.4070744405684289,
+      "area_error_pct": 0.1057343924306521
     },
     {
       "id": "cup100-p0-sheet-neutral-t15",
@@ -6933,8 +6933,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.05306391417980194,
-      "hausdorff_mm": 0.555559108414522,
-      "area_error_pct": 1.6590677274140029
+      "hausdorff_mm": 0.5828272445049919,
+      "area_error_pct": 2.6285976953678047
     },
     {
       "id": "cup100-p0-sheet-warm-t0",
@@ -7180,8 +7180,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.044637132436037064,
-      "hausdorff_mm": 0.6249999999999716,
-      "area_error_pct": 1.8917768412691973
+      "hausdorff_mm": 0.4070744405684289,
+      "area_error_pct": 0.09409893673788135
     },
     {
       "id": "cup100-p0-sheet-warm-t15",
@@ -7427,8 +7427,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.05281936749815941,
-      "hausdorff_mm": 0.555559108414522,
-      "area_error_pct": 1.6590677274140029
+      "hausdorff_mm": 0.5828272445049919,
+      "area_error_pct": 2.7488307375263843
     },
     {
       "id": "cup100-p1-sheet-neutral-t0",
@@ -7682,8 +7682,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.04464272782206535,
-      "hausdorff_mm": 0.7591588220140582,
-      "area_error_pct": 0.5612669966543494
+      "hausdorff_mm": 0.4232761562133392,
+      "area_error_pct": 0.15790376431438605
     },
     {
       "id": "cup100-p1-sheet-neutral-t15",
@@ -7937,8 +7937,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.053204119205474854,
-      "hausdorff_mm": 0.7591588220140582,
-      "area_error_pct": 0.8133690168668569
+      "hausdorff_mm": 0.5169634819874104,
+      "area_error_pct": 1.4846378596853858
     },
     {
       "id": "cup100-p1-sheet-warm-t0",
@@ -8192,8 +8192,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.04469378665089607,
-      "hausdorff_mm": 0.7591588220140582,
-      "area_error_pct": 0.5612669966543494
+      "hausdorff_mm": 0.4232761562133392,
+      "area_error_pct": 0.03185275420817641
     },
     {
       "id": "cup100-p1-sheet-warm-t15",
@@ -8447,8 +8447,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.0529760867357254,
-      "hausdorff_mm": 0.6682090036645739,
-      "area_error_pct": 0.8385792188881693
+      "hausdorff_mm": 0.5169634819874104,
+      "area_error_pct": 1.4419744408801929
     },
     {
       "id": "cup100-p2-sheet-neutral-t0",
@@ -8694,8 +8694,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.044595539569854736,
-      "hausdorff_mm": 0.5584639007263582,
-      "area_error_pct": 1.2440698077055379
+      "hausdorff_mm": 0.5382764264289841,
+      "area_error_pct": 0.1405494197327934
     },
     {
       "id": "cup100-p2-sheet-neutral-t15",
@@ -8941,8 +8941,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.053117480129003525,
-      "hausdorff_mm": 0.6266219136625871,
-      "area_error_pct": 1.085051913237829
+      "hausdorff_mm": 0.5382764264289841,
+      "area_error_pct": 0.7339576600635729
     },
     {
       "id": "cup100-p2-sheet-warm-t0",
@@ -9188,8 +9188,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.044627174735069275,
-      "hausdorff_mm": 0.5584639007263582,
-      "area_error_pct": 1.2692799617065484
+      "hausdorff_mm": 0.5382764264289841,
+      "area_error_pct": 0.1405494197327934
     },
     {
       "id": "cup100-p2-sheet-warm-t15",
@@ -9435,8 +9435,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.05289747565984726,
-      "hausdorff_mm": 0.5584639007263582,
-      "area_error_pct": 1.1781355587799067
+      "hausdorff_mm": 0.49695464030704506,
+      "area_error_pct": 0.7921349385273165
     },
     {
       "id": "cylinder30-p0-sheet-neutral-t0",
@@ -10032,8 +10032,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.04461544752120972,
-      "hausdorff_mm": 2.3238173943804146,
-      "area_error_pct": 0.0013325343165904323
+      "hausdorff_mm": 1.5000859035603704,
+      "area_error_pct": 0.1361683350606021
     },
     {
       "id": "cylinder30-p0-sheet-neutral-t15",
@@ -10629,8 +10629,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.05290941148996353,
-      "hausdorff_mm": 2.3238173943804146,
-      "area_error_pct": 0.27100413580455557
+      "hausdorff_mm": 1.453040686032217,
+      "area_error_pct": 0.27271091809249126
     },
     {
       "id": "cylinder30-p0-sheet-warm-t0",
@@ -11226,8 +11226,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.044646985828876495,
-      "hausdorff_mm": 2.3238173943804146,
-      "area_error_pct": 0.047415656089846
+      "hausdorff_mm": 1.5000859035603704,
+      "area_error_pct": 0.1361683350606021
     },
     {
       "id": "cylinder30-p0-sheet-warm-t15",
@@ -11823,8 +11823,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.052678897976875305,
-      "hausdorff_mm": 2.3238173943804146,
-      "area_error_pct": 0.38023820223007465
+      "hausdorff_mm": 1.5000859035603704,
+      "area_error_pct": 0.2529780265802442
     },
     {
       "id": "cylinder30-p1-sheet-neutral-t0",
@@ -12420,8 +12420,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.04454848915338516,
-      "hausdorff_mm": 2.535241156799087,
-      "area_error_pct": 0.39585326767456036
+      "hausdorff_mm": 1.5790986021464262,
+      "area_error_pct": 0.4351091601802117
     },
     {
       "id": "cylinder30-p1-sheet-neutral-t15",
@@ -13017,8 +13017,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.053058985620737076,
-      "hausdorff_mm": 2.535241156799087,
-      "area_error_pct": 0.2849127018977872
+      "hausdorff_mm": 1.6622235369031728,
+      "area_error_pct": 0.23565456828556286
     },
     {
       "id": "cylinder30-p1-sheet-warm-t0",
@@ -13614,8 +13614,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.044587641954422,
-      "hausdorff_mm": 2.535241156799087,
-      "area_error_pct": 0.39585326767456036
+      "hausdorff_mm": 1.5790986021464262,
+      "area_error_pct": 0.34294315168874157
     },
     {
       "id": "cylinder30-p1-sheet-warm-t15",
@@ -14211,8 +14211,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.052820250391960144,
-      "hausdorff_mm": 2.535241156799087,
-      "area_error_pct": 0.2541906990672648
+      "hausdorff_mm": 1.6622235369031728,
+      "area_error_pct": 0.2988053518815752
     },
     {
       "id": "cylinder30-p2-sheet-neutral-t0",
@@ -14808,8 +14808,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.04451107233762741,
-      "hausdorff_mm": 2.3570003343049186,
-      "area_error_pct": 0.37834282458360147
+      "hausdorff_mm": 1.5202198931794122,
+      "area_error_pct": 0.3220189024552432
     },
     {
       "id": "cylinder30-p2-sheet-neutral-t15",
@@ -15405,8 +15405,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.052977584302425385,
-      "hausdorff_mm": 2.3570003343049186,
-      "area_error_pct": 0.6992185021633901
+      "hausdorff_mm": 1.5202198931794122,
+      "area_error_pct": 0.739601690388597
     },
     {
       "id": "cylinder30-p2-sheet-warm-t0",
@@ -16002,8 +16002,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.04456179589033127,
-      "hausdorff_mm": 2.3570003343049186,
-      "area_error_pct": 0.37834282458360147
+      "hausdorff_mm": 1.5202198931794122,
+      "area_error_pct": 0.2878831920744047
     },
     {
       "id": "cylinder30-p2-sheet-warm-t15",
@@ -16599,8 +16599,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.05272575095295906,
-      "hausdorff_mm": 2.3570003343049186,
-      "area_error_pct": 0.7760238505202476
+      "hausdorff_mm": 1.5202198931794122,
+      "area_error_pct": 0.739601690388597
     },
     {
       "id": "cylinder40-p0-sheet-neutral-t0",
@@ -17208,8 +17208,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.04459719732403755,
-      "hausdorff_mm": 2.8370558560809696,
-      "area_error_pct": 0.062076340530747384
+      "hausdorff_mm": 1.8180948842390834,
+      "area_error_pct": 0.10533882273250461
     },
     {
       "id": "cylinder40-p0-sheet-neutral-t15",
@@ -17817,8 +17817,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.05315663665533066,
-      "hausdorff_mm": 2.8370558560809696,
-      "area_error_pct": 0.14690002325078153
+      "hausdorff_mm": 2.0125661579094416,
+      "area_error_pct": 0.20355571851362683
     },
     {
       "id": "cylinder40-p0-sheet-warm-t0",
@@ -18426,8 +18426,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.0446476936340332,
-      "hausdorff_mm": 2.8370558560809696,
-      "area_error_pct": 0.062076340530747384
+      "hausdorff_mm": 1.8180948842390834,
+      "area_error_pct": 0.112035429263055
     },
     {
       "id": "cylinder40-p0-sheet-warm-t15",
@@ -19035,8 +19035,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.052908867597579956,
-      "hausdorff_mm": 2.8370558560809696,
-      "area_error_pct": 0.15806103413500255
+      "hausdorff_mm": 1.581728868401182,
+      "area_error_pct": 0.00515518502124678
     },
     {
       "id": "cylinder40-p1-sheet-neutral-t0",
@@ -19644,8 +19644,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.04448942095041275,
-      "hausdorff_mm": 3.28247550709619,
-      "area_error_pct": 0.08551446338767368
+      "hausdorff_mm": 1.5734191968796558,
+      "area_error_pct": 0.20716948202564606
     },
     {
       "id": "cylinder40-p1-sheet-neutral-t15",
@@ -20253,8 +20253,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.05307617783546448,
-      "hausdorff_mm": 3.000764266627157,
-      "area_error_pct": 0.4471312160363537
+      "hausdorff_mm": 1.8562616302475652,
+      "area_error_pct": 0.04310262202763125
     },
     {
       "id": "cylinder40-p1-sheet-warm-t0",
@@ -20862,8 +20862,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.044534455984830856,
-      "hausdorff_mm": 3.28247550709619,
-      "area_error_pct": 0.08551446338767368
+      "hausdorff_mm": 1.5734191968796558,
+      "area_error_pct": 0.20382117876039627
     },
     {
       "id": "cylinder40-p1-sheet-warm-t15",
@@ -21471,8 +21471,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.052833668887615204,
-      "hausdorff_mm": 3.000764266627157,
-      "area_error_pct": 0.4270413964447533
+      "hausdorff_mm": 1.8562616302475652,
+      "area_error_pct": 0.007387387198113822
     },
     {
       "id": "cylinder40-p2-sheet-neutral-t0",
@@ -22076,8 +22076,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.04456115514039993,
-      "hausdorff_mm": 2.837032106245272,
-      "area_error_pct": 0.1924703099967069
+      "hausdorff_mm": 1.796454767398622,
+      "area_error_pct": 0.05965402782606332
     },
     {
       "id": "cylinder40-p2-sheet-neutral-t15",
@@ -22681,8 +22681,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.05307360738515854,
-      "hausdorff_mm": 2.837032106245272,
-      "area_error_pct": 0.04514468607631625
+      "hausdorff_mm": 1.796454767398622,
+      "area_error_pct": 0.5307645710670164
     },
     {
       "id": "cylinder40-p2-sheet-warm-t0",
@@ -23286,8 +23286,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.044593945145606995,
-      "hausdorff_mm": 2.837032106245272,
-      "area_error_pct": 0.2092118581694881
+      "hausdorff_mm": 1.796454767398622,
+      "area_error_pct": 0.054073511768465365
     },
     {
       "id": "cylinder40-p2-sheet-warm-t15",
@@ -23891,8 +23891,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.052827559411525726,
-      "hausdorff_mm": 2.837032106245272,
-      "area_error_pct": 0.05072520213390151
+      "hausdorff_mm": 1.796454767398622,
+      "area_error_pct": 0.5363450871246016
     },
     {
       "id": "cylinder50-p0-sheet-neutral-t0",
@@ -24508,8 +24508,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.04455657675862312,
-      "hausdorff_mm": 3.201557659806019,
-      "area_error_pct": 0.1085464081425122
+      "hausdorff_mm": 2.021251573297153,
+      "area_error_pct": 0.008140471417516284
     },
     {
       "id": "cylinder50-p0-sheet-neutral-t15",
@@ -25125,8 +25125,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.05305643007159233,
-      "hausdorff_mm": 3.299563020468402,
-      "area_error_pct": 0.10776806754772776
+      "hausdorff_mm": 2.2044834489094836,
+      "area_error_pct": 0.17788293073189007
     },
     {
       "id": "cylinder50-p0-sheet-warm-t0",
@@ -25742,8 +25742,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.04459629952907562,
-      "hausdorff_mm": 3.201557659806019,
-      "area_error_pct": 0.08753121208379294
+      "hausdorff_mm": 2.021251573297153,
+      "area_error_pct": 0.03311158010517319
     },
     {
       "id": "cylinder50-p0-sheet-warm-t15",
@@ -26359,8 +26359,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.05281595140695572,
-      "hausdorff_mm": 3.299563020468402,
-      "area_error_pct": 0.11632981409017942
+      "hausdorff_mm": 2.2044834489094836,
+      "area_error_pct": 0.17165620597373857
     },
     {
       "id": "cylinder50-p1-sheet-neutral-t0",
@@ -26972,8 +26972,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.04457072168588638,
-      "hausdorff_mm": 3.460592186288539,
-      "area_error_pct": 0.27437522882129417
+      "hausdorff_mm": 1.8121412213225245,
+      "area_error_pct": 0.11481547453187092
     },
     {
       "id": "cylinder50-p1-sheet-neutral-t15",
@@ -27585,8 +27585,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.052982818335294724,
-      "hausdorff_mm": 3.460592186288539,
-      "area_error_pct": 0.3389774708019
+      "hausdorff_mm": 2.474565779192986,
+      "area_error_pct": 0.2860297618538759
     },
     {
       "id": "cylinder50-p1-sheet-warm-t0",
@@ -28198,8 +28198,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.0446200929582119,
-      "hausdorff_mm": 3.460592186288539,
-      "area_error_pct": 0.28293697173441484
+      "hausdorff_mm": 1.8121412213225245,
+      "area_error_pct": 0.11481547453187092
     },
     {
       "id": "cylinder50-p1-sheet-warm-t15",
@@ -28811,8 +28811,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.052741922438144684,
-      "hausdorff_mm": 3.460592186288539,
-      "area_error_pct": 0.3132922420626264
+      "hausdorff_mm": 2.474565779192986,
+      "area_error_pct": 0.29147814370769287
     },
     {
       "id": "cylinder50-p2-sheet-neutral-t0",
@@ -29428,8 +29428,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.044542498886585236,
-      "hausdorff_mm": 3.909313148370287,
-      "area_error_pct": 0.14574715464462484
+      "hausdorff_mm": 2.1091143041000646,
+      "area_error_pct": 0.0974899606372011
     },
     {
       "id": "cylinder50-p2-sheet-neutral-t15",
@@ -30045,8 +30045,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.05303708091378212,
-      "hausdorff_mm": 3.9054161647451293,
-      "area_error_pct": 0.04222769008025951
+      "hausdorff_mm": 2.144552449521487,
+      "area_error_pct": 0.31658789762045497
     },
     {
       "id": "cylinder50-p2-sheet-warm-t0",
@@ -30662,8 +30662,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.04458458721637726,
-      "hausdorff_mm": 3.909313148370287,
-      "area_error_pct": 0.13095865970686596
+      "hausdorff_mm": 2.1091143041000646,
+      "area_error_pct": 0.0974899606372011
     },
     {
       "id": "cylinder50-p2-sheet-warm-t15",
@@ -31279,8 +31279,8 @@
       "kind": "sheet",
       "sheet_id": "letter-v1",
       "reprojection_mm": 0.05277782678604126,
-      "hausdorff_mm": 3.9054161647451293,
-      "area_error_pct": 0.10449503718666583
+      "hausdorff_mm": 2.144552449521487,
+      "area_error_pct": 0.30102106084386665
     }
   ]
 }

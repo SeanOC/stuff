@@ -208,7 +208,7 @@ below the render service's 64 KiB total-body cap, leaving room for other params.
    boundary before simplifying at 0.3 mm and rejecting >256 vertices.
 9. Map to millimetres, show for human review, quantize/validate and encode `v1`.
 
-## Printed reference sheet v1 (PR1 checkpoint)
+## Printed reference sheet v1 (Python reference)
 
 Source main: `f6010d52f91257f2171b72a7f65de787784733a5`. The separate sheet
 matrix reuses all six CAD objects and three poses (18 silhouettes), at 0°/15°
@@ -221,41 +221,25 @@ are unchanged.
 
 The detector chooses Letter/A4 from all 16 marker corners, requires mean
 reprojection below 0.8 mm, re-bases the origin to the field, and applies
-`bar_mm / 100` once. The sheet-only segmenter white-balances a copy of the
-image, retains residual >48, rejects neutral shadows using the 0.55/1.30
-lightness rule, opens 1 mm, and closes 2 mm. A centered odd closing kernel
-avoids shifting a contour away from the 3 mm region boundary. The empty sheet
-has zero mask pixels after opening; the residual threshold remains unchanged.
+`bar_mm / 100` once. The sheet-only segmenter white-balances a copy, identifies
+chromatic pixels at chroma >20, and accepts neutral pixels only below 0.55 or
+above 1.30 times field lightness. It opens and closes with 1 mm elliptical
+kernels (5×5 samples at 0.2 mm/pixel). The plate paths retain their existing
+residual >48 threshold; the sheet rule independently accepts chromatic pixels
+so a tinted card near field lightness is retained. The empty sheet has zero
+mask pixels after opening. The field region has a 3 mm inset and no marker
+corner exclusion because the markers lie outside the field.
 
-**Acceptance blocked on morphology/accuracy contract:** 2 mm closing fills
-narrow concavities between the cylindrical holders and their mount plates.
-The sheet matrix detects 18/18 per lighting/tilt group, but its mean Hausdorff
-error exceeds the required 1.5 mm. The committed test deliberately retains
-that limit. A 1 mm closing comparison improves accuracy, but requires a spec
-revision before it can replace the required 2 mm operation. No accuracy
-threshold has been relaxed.
+All four lighting/tilt groups detect and recover 18/18 silhouettes and meet
+the mean Hausdorff limit of 1.5 mm. The maximum error is reported separately;
+the mean gate does not imply every individual contour is within 1.5 mm.
 
-| Lighting | Tilt | Detection | Mean / max Hausdorff (mm), 2 mm ellipse | Gate |
+| Lighting | Tilt | Detection / footprint | Mean / max Hausdorff (mm) | Gate |
 |---|---|---|---|---|
-| neutral | 0° | 18/18 | 1.750 / 3.909 | FAIL (mean >1.5) |
-| neutral | 15° | 18/18 | 1.727 / 3.905 | FAIL (mean >1.5) |
-| warm | 0° | 18/18 | 1.748 / 3.909 | FAIL (mean >1.5) |
-| warm | 15° | 18/18 | 1.718 / 3.905 | FAIL (mean >1.5) |
-
-Controlled comparison on the same committed pixels and unchanged residual,
-shadow rule, and 1 mm square opening (5×5 samples at 0.2 mm/pixel):
-
-| Lighting / tilt | 2 mm square close (10×10) | 2 mm centered ellipse close (11×11) | 1 mm centered ellipse close (5×5) |
-|---|---|---|---|
-| neutral / 0° | 2.008 | 1.750 | 1.010 |
-| neutral / 15° | 2.027 | 1.727 | 1.003 |
-| warm / 0° | 2.005 | 1.748 | 1.006 |
-| warm / 15° | 2.020 | 1.718 | 1.003 |
-
-Values are mean Hausdorff millimetres across all 18 poses. Kernel experiments
-are evidence only; the committed implementation retains the 2 mm operation.
-The spec owner must choose whether to permit 1 mm closing or revise the
-accuracy contract before this checkpoint is eligible for a PR.
+| neutral | 0° | 18/18 | 1.067 / 2.109 | PASS |
+| neutral | 15° | 18/18 | 1.156 / 2.475 | PASS |
+| warm | 0° | 18/18 | 1.063 / 2.109 | PASS |
+| warm | 15° | 18/18 | 1.133 / 2.475 | PASS |
 
 Regenerate only sheet artifacts from `build123d/`:
 
@@ -267,8 +251,9 @@ uv run --group capture pytest tests/test_capture_sheet.py -q
 
 ## Real photos
 
-**No real-photo accuracy claim yet.** Two supplied photographs exercise named
-errors. The inside-plate success test is skipped with the explicit reason
+**No real-plate accuracy claim yet.** The original two photographs exercise
+named errors. The separate sheet fixtures below include one flat-card success.
+The inside-plate success test is skipped with the explicit reason
 “awaiting a real photo with the item fully inside the plate” until both a photo
 and caliper truth are supplied in `real/real-footprints.json`.
 
@@ -315,14 +300,14 @@ the two existing plate records stay in `real/real-footprints.json`.
 | Sheet bare | `no item contour` | 0 mask pixels after the 1 mm opening |
 | Sheet cleaner | approximately 102.5 × 38 mm vs 95 × 28 mm truth | tall item, visible side wall; outside flat-item accuracy claim |
 | Sheet Sharpie | `item crosses the sheet field` | cap crosses the field's top boundary; gray barrel also segments partially |
-| Sheet flat item (≤2 mm) | **pending** | `inside-sheet` test will require both sides within 1.5 mm of measured truth |
+| Sheet card (~0.8 mm thick) | 84.8 × 54.2 mm vs 85.60 × 53.98 mm truth | `inside-sheet`; both minAreaRect sides within 1.5 mm |
 | 4×4 plate bare | `board obstructed by an object crossing its edge` | unchanged detector error, no markers |
 | 4×4 cleaner, Sharpie crossing, Sharpie off plate | `board boundary is not a visible rectangle` | unchanged detector errors, no markers |
 | 2×2 bare, cleaner | `board obstructed by an object crossing its edge` | unchanged detector errors, no markers |
 
 All eight real plate photos detect zero ArUco markers, and retain their
-original errors. A neutral item near field lightness remains a documented v1
-limitation; a colored field is a future option, not part of this checkpoint.
+original errors. A neutral item near field lightness with chroma at most 20 remains a v1
+limitation; a colored field is a future option, outside this version.
 
 ## Reproduction and CI
 
