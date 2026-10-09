@@ -1,0 +1,90 @@
+{
+  "letter-v1": {
+    "id": "letter-v1",
+    "page_mm": [
+      215.9,
+      279.4
+    ],
+    "dictionary": "DICT_4X4_50",
+    "marker_size_mm": 24.0,
+    "markers_mm": {
+      "0": [
+        8.0,
+        8.0
+      ],
+      "1": [
+        183.9,
+        8.0
+      ],
+      "2": [
+        183.9,
+        247.39999999999998
+      ],
+      "3": [
+        8.0,
+        247.39999999999998
+      ]
+    },
+    "marker_corner_order": "top-left, top-right, bottom-right, bottom-left (clockwise, page frame)",
+    "field_mm": [
+      8.0,
+      36.0,
+      207.9,
+      243.39999999999998
+    ],
+    "field_gray_8bit": 140,
+    "check_bar_mm": {
+      "x0": 57.95,
+      "x1": 157.95,
+      "y": 259.4,
+      "length_mm": 100.0
+    },
+    "origin": "page top-left, +x right, +y down, millimetres",
+    "pdf": "capture-sheet-letter-v1.pdf",
+    "pdf_sha256": "4a07a0dc693b0c3d89e03424631405942e7f90cf2b23a59c557f89b1c03514d7"
+  },
+  "a4-v1": {
+    "id": "a4-v1",
+    "page_mm": [
+      210.0,
+      297.0
+    ],
+    "dictionary": "DICT_4X4_50",
+    "marker_size_mm": 24.0,
+    "markers_mm": {
+      "0": [
+        8.0,
+        8.0
+      ],
+      "1": [
+        178.0,
+        8.0
+      ],
+      "2": [
+        178.0,
+        265.0
+      ],
+      "3": [
+        8.0,
+        265.0
+      ]
+    },
+    "marker_corner_order": "top-left, top-right, bottom-right, bottom-left (clockwise, page frame)",
+    "field_mm": [
+      8.0,
+      36.0,
+      202.0,
+      261.0
+    ],
+    "field_gray_8bit": 140,
+    "check_bar_mm": {
+      "x0": 55.0,
+      "x1": 155.0,
+      "y": 277.0,
+      "length_mm": 100.0
+    },
+    "origin": "page top-left, +x right, +y down, millimetres",
+    "pdf": "capture-sheet-a4-v1.pdf",
+    "pdf_sha256": "16490b0c8c914baff6651e557db9e2db7e231347c7d78b29ef4fdb9b258a243e"
+  }
+}
