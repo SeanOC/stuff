@@ -5,6 +5,8 @@ row of sockets. The grid's rotational/translation symmetry is resolved by using
 the visible upper-left board corner as origin, +X right and +Y down.
 """
 from dataclasses import dataclass
+import json
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -30,6 +32,8 @@ class Grid:
     size_mm: tuple[float, float]
     kind: str
     polarity: str = 'pale'
+    sheet_id: str | None = None
+    reprojection_mm: float | None = None
 
 
 @dataclass
@@ -87,27 +91,93 @@ def _interior_count(rough, axis):
     return max((s for s in scores if s[0] >= best-.06), key=lambda s:s[1])[::-1]
 
 
-def detect_grid(image, *, confidence_floor=.5):
+def sheet_profiles():
+    """Read the checked-in metric profiles; the generator owns their constants."""
+    return json.loads(Path(__file__).with_name('sheets.json').read_text())
+
+
+def marker_corners(sheet, ids=range(4)):
+    size = sheet['marker_size_mm']
+    offsets = np.array([[0, 0], [size, 0], [size, size], [0, size]])
+    return np.concatenate([np.asarray(sheet['markers_mm'][str(i)]) + offsets
+                           for i in ids]).astype(np.float32)
+
+
+def _partial_sheet(found, sheets):
+    # Fit all observed marker corners together, then check both local marker
+    # size and inter-marker spacing in the recovered page frame. A local fit
+    # to one rasterised marker is too noisy to extrapolate across a full page.
+    ids = sorted(found)
+    src = np.concatenate([found[i] for i in ids])
+    for sheet in sheets.values():
+        dst = marker_corners(sheet, ids)
+        H, _ = cv2.findHomography(src, dst, 0)
+        if H is None:
+            continue
+        projected = cv2.perspectiveTransform(src[None], H)[0].reshape(-1,4,2)
+        expected = dst.reshape(-1,4,2)
+        size = sheet['marker_size_mm']
+        lengths = np.linalg.norm(np.roll(projected,-1,axis=1)-projected,axis=2)
+        if np.any(abs(lengths-size) > .1*size):
+            continue
+        if np.any(np.linalg.norm(projected-expected,axis=2) > .1*size):
+            continue
+        centres = projected.mean(axis=1)
+        target_centres = expected.mean(axis=1)
+        if all(abs(np.linalg.norm(centres[i]-centres[j]) /
+                   np.linalg.norm(target_centres[i]-target_centres[j])-1) <= .1
+               for i in range(len(ids)) for j in range(i)):
+            return True
+    return False
+
+
+def detect_grid(image, *, confidence_floor=.5, sheets=None, bar_mm=100.0):
     """Return metric H, confidence, extent and calibration kind or raise.
 
-    ArUco IDs 0..3 encode a known 84 mm plate, not a inferred lattice.
+    ArUco IDs 0..3 identify either a reference sheet or the legacy 84 mm plate.
+    bar_mm is the measured printed 100 mm check bar (90..110 mm).
     Unmarked rectangular boards infer cell counts from periodic perimeter rails.
     Confidence is a correlation/reprojection score, not a calibrated probability.
     """
     if image.ndim != 3 or image.shape[2] != 3 or image.dtype != np.uint8:
         raise ValueError('expected RGB uint8 image')
+    if not np.isfinite(bar_mm) or not 90 <= bar_mm <= 110:
+        raise ValueError('bar_mm must be in 90..110')
+    sheets = sheet_profiles() if sheets is None else sheets
     gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
     dictionary = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
     corners, ids, _ = cv2.aruco.ArucoDetector(dictionary).detectMarkers(gray)
-    if ids is not None and set(range(4)).issubset(set(ids.ravel())):
-        found = {int(i): c.reshape(4,2) for i,c in zip(ids.ravel(), corners)}
+    found = {} if ids is None else {int(i): c.reshape(4, 2)
+                                    for i, c in zip(ids.ravel(), corners) if i in range(4)}
+    if len(found) == 4:
         src = np.concatenate([found[i] for i in range(4)])
+        # Preserve the established small square ArUco plate calibration. Its
+        # marker-size/spacing ratio differs from both printed sheet profiles.
         dst = ARUCO_POSITIONS.reshape(-1,2)
         H, inliers = cv2.findHomography(src, dst, cv2.RANSAC, .4)
-        if H is None or inliers.sum() < 14:
-            raise DetectionError('inconsistent fiducials')
-        error = np.linalg.norm(cv2.perspectiveTransform(src[None], H)[0]-dst, axis=1).mean()
-        return Grid(H, float(np.exp(-error)), (84.,84.), 'aruco')
+        if H is not None and inliers.sum() >= 14:
+            error = np.linalg.norm(cv2.perspectiveTransform(src[None], H)[0]-dst, axis=1).mean()
+            if error < .4:
+                return Grid(H, float(np.exp(-error)), (84.,84.), 'aruco')
+        src = cv2.cornerSubPix(gray, src.copy(), (3,3), (-1,-1),
+                               (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_MAX_ITER, 30, .01))
+        fits = []
+        for sheet_id, sheet in sheets.items():
+            dst = marker_corners(sheet)
+            H, _ = cv2.findHomography(src, dst, cv2.RANSAC, .8)
+            if H is not None:
+                error = float(np.linalg.norm(cv2.perspectiveTransform(src[None], H)[0]-dst, axis=1).mean())
+                fits.append((error, sheet_id, H))
+        if not fits or min(fits, key=lambda fit: fit[0])[0] >= .8:
+            raise DetectionError('sheet is not flat or the print is scaled')
+        error, sheet_id, H = min(fits, key=lambda fit: fit[0])
+        x0, y0, x1, y1 = sheets[sheet_id]['field_mm']
+        k = bar_mm / 100.0
+        field_frame = np.array([[k, 0, -k*x0], [0, k, -k*y0], [0, 0, 1.]])
+        return Grid(field_frame@H, float(np.exp(-error)), ((x1-x0)*k, (y1-y0)*k),
+                    'sheet', sheet_id=sheet_id, reprojection_mm=error)
+    if len(found) in (2, 3) and _partial_sheet(found, sheets):
+        raise DetectionError('a reference marker is hidden — keep all four corners visible and uncovered')
     if not .3 <= confidence_floor <= .8:
         raise ValueError('confidence_floor must be in 0.3..0.8')
     candidates = []
@@ -203,7 +273,7 @@ def _region(rectified, *, with_paper=False):
     # White paper interior is detected from colour, never supplied from truth.
     white = (rgb.min(axis=2) > 225).astype(np.uint8)
     paper = False
-    if rectified.polarity == 'pale' and rectified.kind != 'aruco' and white.any():
+    if rectified.polarity == 'pale' and rectified.kind not in ('aruco', 'sheet') and white.any():
         x,y,bw,bh = cv2.boundingRect(white)
         if white.sum() > .12*h*w and bw < .9*w and bh < .9*h:
             paper = True
@@ -284,6 +354,8 @@ def segment(rectified, method=None, *, k=5., coverage_limit=.35, shift_tolerance
     rgb = rectified.image
     gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
     roi, paper = _region(rectified, with_paper=True)
+    if rectified.kind == 'sheet':
+        method = 'periodic'
     if method is None:
         method = 'structural' if rectified.polarity == 'dark' else 'threshold'
     chroma = rgb.max(axis=2).astype(float) - rgb.min(axis=2)
@@ -294,10 +366,15 @@ def segment(rectified, method=None, *, k=5., coverage_limit=.35, shift_tolerance
     elif method == 'periodic':
         pitch = round(PITCH/rectified.mm_per_px)
         h,w = gray.shape
-        if rectified.kind == 'aruco' or (rectified.polarity == 'pale' and paper):
+        if rectified.kind in ('aruco', 'sheet') or (rectified.polarity == 'pale' and paper):
             # Flat backgrounds are the zero-texture special case.
-            bg = np.median(rgb[roi != 0], axis=0)
-            residual = np.linalg.norm(rgb.astype(float)-bg, axis=2)
+            pixels = rgb
+            if rectified.kind == 'sheet':
+                median = np.median(rgb[roi != 0], axis=0)
+                gains = median.mean() / np.maximum(median, 1)
+                pixels = np.clip(rgb.astype(float)*gains, 0, 255)
+            bg = np.median(pixels[roi != 0], axis=0)
+            residual = np.linalg.norm(pixels.astype(float)-bg, axis=2)
         else:
             ny,nx = h//pitch,w//pitch
             if min(nx,ny) < 2:
@@ -307,6 +384,11 @@ def segment(rectified, method=None, *, k=5., coverage_limit=.35, shift_tolerance
             bg = np.tile(template, (ny+1,nx+1,1))[:h,:w]
             residual = np.linalg.norm(rgb.astype(float)-bg, axis=2)
         mask = ((residual > 48) & (roi != 0)).astype(np.uint8)
+        if rectified.kind == 'sheet':
+            chroma = pixels.max(axis=2)-pixels.min(axis=2)
+            lightness = pixels.mean(axis=2)
+            item = (chroma > 30) | (lightness < .55*bg.mean()) | (lightness > 1.30*bg.mean())
+            mask &= item.astype(np.uint8)
     elif method == 'structural':
         mask = _structural(rectified, roi, k=k, coverage_limit=coverage_limit, shift_tolerance=shift_tolerance)
     elif method == 'grabcut':
@@ -330,11 +412,17 @@ def segment(rectified, method=None, *, k=5., coverage_limit=.35, shift_tolerance
         mask = ((labels == cv2.GC_FGD) | (labels == cv2.GC_PR_FGD)).astype(np.uint8)
     else:
         raise ValueError('unknown segmentation method')
+    if rectified.kind == 'sheet':
+        opening = max(1, round(1/rectified.mm_per_px))
+        closing = max(1, round(2/rectified.mm_per_px)) | 1
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((opening, opening), np.uint8))
+        return cv2.morphologyEx(mask, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (closing, closing)))
     # Close only sub-mm raster gaps; do not erase thin hex keys with an opening.
     return cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((3,3),np.uint8))
 
 
-def footprint(mask, *, mm_per_px=MM_PER_PX, origin_mm=(0.,0.), tolerance_mm=.3, roi=None):
+def footprint(mask, *, mm_per_px=MM_PER_PX, origin_mm=(0.,0.), tolerance_mm=.3, roi=None,
+              edge_message='item crosses the plate edge'):
     """Largest external contour, closed ring, <=256 vertices; holes ignored."""
     contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if not contours:
@@ -344,7 +432,7 @@ def footprint(mask, *, mm_per_px=MM_PER_PX, origin_mm=(0.,0.), tolerance_mm=.3, 
         boundary = (roi != 0) & (cv2.erode(roi.astype(np.uint8), np.ones((3,3),np.uint8)) == 0)
         points = contour.reshape(-1,2)
         if boundary[points[:,1],points[:,0]].any():
-            raise DetectionError('item crosses the plate edge')
+            raise DetectionError(edge_message)
     poly = cv2.approxPolyDP(contour, tolerance_mm/mm_per_px, True).reshape(-1,2)
     if len(poly) < 3 or len(poly) > 256:
         raise DetectionError('contour cannot meet the 0.3 mm / 256 vertex contract')

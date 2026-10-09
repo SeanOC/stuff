@@ -135,7 +135,48 @@ Preset STL/GLB/PNG baking uses `scripts/export.py`; the tracked review
 includes the underside and centre section at
 [review](../build123d/docs/renders/review/gridfinity-capture-bin.png).
 
+## Reference sheet (Python reference; browser integration pending)
+
+The offline Python detector accepts the printed Letter/A4 reference sheets.
+The browser marker reader, print links, and saved check-bar prompt are the
+separate PR2 bead `pst-6xypa`; the capture panel currently uses the plate path.
+
+| Sheet | Page (mm) | Marker top-lefts, IDs 0–3 clockwise (mm) | Field bounds (mm) |
+|---|---|---|---|
+| [Letter v1](/capture/capture-sheet-letter-v1.pdf) | 215.9 × 279.4 | (8,8), (183.9,8), (183.9,247.4), (8,247.4) | x 8–207.9; y 36–243.4 |
+| [A4 v1](/capture/capture-sheet-a4-v1.pdf) | 210 × 297 | (8,8), (178,8), (178,265), (8,265) | x 8–202; y 36–261 |
+
+Both use four 24 mm DICT_4X4_50 markers (IDs 0–3, including black border),
+an 8 mm page margin, a neutral gray-140 field, and a 100 mm check bar.
+`build123d/scripts/make_capture_sheet.py` owns the geometry and writes both
+`build123d/capture/sheets.json` and `public/capture/sheets.json`, plus the PDFs.
+Tests verify the checked-in PDF hashes; they never regenerate timestamped PDFs.
+
+Print at **100% / actual size**, with fit-to-page disabled. Measure the check
+bar: Python accepts `detect_grid(rgb, bar_mm=measured_length)` in 90–110 mm.
+A 97% print makes an uncorrected 50 mm object read 51.55 mm; `bar_mm=97`
+multiplies the recovered metric frame by 0.97 once, including the field crop.
+PR2 will store the measured length under `capture.sheetScale` after the prompt
+“Measure the check bar on your print: ___ mm” (default 100).
+
+Tape the sheet flat on a board. Keep all four markers visible and uncovered,
+and place one contrasting item wholly inside the field, leaving a 3 mm inset.
+Photograph straight down, with camera distance at least three times the item's
+height. Prefer flat items: this planar calibration cannot remove visible side
+walls or height parallax. Mean marker reprojection must be below 0.8 mm.
+
+The sheet path white-balances a copy from the neutral field and excludes mild
+neutral shadows. Neutral items within 0.55–1.30 times the field lightness can
+segment only partially (observed on the gray Sharpie barrel). A saturated cyan
+field is a possible v2 remedy. Synthetic accuracy is still under review: the
+specified 2 mm closing operation fills narrow concavities and currently misses
+the 1.5 mm mean Hausdorff gate; see the spike report. Real flat-item accuracy
+remains pending Sean's photograph and measured dimensions.
+
 ## Capture panel
+
+Reference-sheet capture and its print/scale controls arrive in PR2; the
+current browser flow below remains available for Gridfinity baseplates.
 
 On the Gridfinity capture bin page, choose **Take or choose a photo** to
 use a photo or the phone's rear camera. Place one item that contrasts with the plate on a
@@ -233,6 +274,13 @@ be byte-identical after regeneration. Pure-string `encode(parse(s))` is
 separately required to preserve every committed footprint byte-for-byte.
 
 ### Detection errors
+
+The Python sheet path additionally reports these exact strings; PR2 adds them
+to the browser error union and advice table:
+
+- `a reference marker is hidden — keep all four corners visible and uncovered`
+- `sheet is not flat or the print is scaled`
+- `item crosses the sheet field`
 
 `DetectionError` preserves the reachable Python strings verbatim:
 
