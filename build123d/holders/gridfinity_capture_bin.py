@@ -7,6 +7,7 @@ The GR 0.8 mm 45° foot chamfer is already the mating bed relief; foot/profile
 edges remain functional. No stacking lip and no mount contract.
 """
 from math import ceil
+import sys
 
 from build123d import Face, Pos, Wire, chamfer, extrude, fillet
 from shapely import affinity
@@ -18,6 +19,7 @@ from holders.registry import ModelSpec, Param, Preset, register
 
 RIM_RADIUS = 1.0
 POCKET_BREAK = .15
+POCKET_SIMPLIFY_MM = .1
 # Canned 140 x 18 mm rounded rectangle; the capture panel replaces this string.
 DEFAULT_FOOTPRINT = encode(box(-65.5, -4.5, 65.5, 4.5).buffer(4.5, quad_segs=8).exterior.coords)
 
@@ -36,12 +38,15 @@ def dimensions(values=None):
     x0, y0, x1, y1 = polygon.bounds
     polygon = affinity.translate(polygon, -(x0+x1)/2, -(y0+y1)/2)
     offset = polygon.buffer(v['clearance'], quad_segs=8)
-    pocket = offset
-    tolerance = .001
-    while len(pocket.exterior.coords) > 257:
+    tolerance = POCKET_SIMPLIFY_MM
+    while True:
+        # Real 0.2 mm-quantised rings produce sub-0.1 mm clearance-offset
+        # edges that OCP cannot chamfer, even below the vertex-count limit.
         # Expand after simplification so the true clearance outline is contained.
         pocket = offset.simplify(tolerance, preserve_topology=True).buffer(tolerance, quad_segs=1)
-        tolerance *= 2
+        if len(pocket.exterior.coords) <= 257:
+            break
+        tolerance = tolerance*2 or .001
     candidates = [(w, d) for w in range(1, 7) for d in range(1, 7)]
     candidates.sort(key=lambda wh: (wh[0]*wh[1], sum(wh), wh))
     if v['size_mode'] == 'manual':
@@ -81,7 +86,16 @@ def build(values=None):
     pocket_edges = [e for e in part.edges()
                     if abs(e.bounding_box().min.Z-top) < 1e-6
                     and pocket.boundary.distance(Point(e.center().X, e.center().Y)) < .001]
-    return chamfer(pocket_edges, POCKET_BREAK)
+    for length in (POCKET_BREAK, POCKET_BREAK/2, .05):
+        try:
+            return chamfer(pocket_edges, length)
+        except ValueError as error:
+            last_error = error
+    # Deviation from docs/design-guidelines.md §2: retain the pocket's hard
+    # top edge only if every break fails. It adds no downward face/overhang
+    # (§1), so this cosmetic failure need not prevent a printable render.
+    print(f'[capture-bin] pocket break skipped: {last_error}', file=sys.stderr)
+    return part
 
 
 SPEC = register(ModelSpec(

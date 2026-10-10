@@ -290,3 +290,73 @@ def test_dense_footprint_offset_is_contained_after_simplification():
                 continue
             outer = m.outer_polygon(cw, cd)
             assert not (outer.covers(pocket) and outer.boundary.distance(pocket) >= 1.6)
+
+
+REAL_SHEET = Path(__file__).parent/'fixtures/capture/real/sheet'
+REAL_FOOTPRINTS = {
+    f"python-{record['png']}": record['footprint']
+    for record in json.loads((REAL_SHEET/'sheet-footprints.json').read_text())['records']
+    if record['result'] == 'footprint'
+}
+REAL_FOOTPRINTS.update({
+    f'browser-{name}': ring
+    for name, ring in json.loads((REAL_SHEET/'browser-rings.json').read_text())['rings'].items()
+})
+
+
+@pytest.mark.parametrize('raw', REAL_FOOTPRINTS.values(), ids=REAL_FOOTPRINTS.keys())
+def test_real_capture_builds_with_contained_close_pocket(raw, capsys):
+    values = {'footprint': raw}
+    *_, pocket, offset = m.dimensions(values)
+    assert pocket.buffer(1e-7).covers(offset)
+    assert pocket.area <= offset.area*1.01
+    part = m.build(values)
+    assert part.is_valid and len(part.solids()) == 1 and part.volume > 0
+    assert 'pocket break skipped' not in capsys.readouterr().err
+
+
+def test_original_cleaner_exercises_chamfer_failure(monkeypatch):
+    monkeypatch.setattr(m, 'POCKET_SIMPLIFY_MM', 0.0)
+    original_chamfer = m.chamfer
+    failures = []
+
+    def record_failure(edges, length):
+        try:
+            return original_chamfer(edges, length)
+        except ValueError as error:
+            failures.append((length, str(error)))
+            raise
+
+    monkeypatch.setattr(m, 'chamfer', record_failure)
+    part = m.build({'footprint': REAL_FOOTPRINTS['python-cleaner.png']})
+    assert part.is_valid and len(part.solids()) == 1
+    assert failures and failures[0][0] == m.POCKET_BREAK
+    assert 'chamfer' in failures[0][1]
+
+
+@pytest.mark.parametrize('fail_count', [1, 2, 3])
+def test_pocket_break_retries_then_returns_original_solid(monkeypatch, capsys, fail_count):
+    original_chamfer = m.chamfer
+    attempts = []
+    unchamfered_volumes = []
+    finished = []
+
+    def flaky_chamfer(edges, length):
+        attempts.append(length)
+        unchamfered_volumes.append(edges[0].topo_parent.volume)
+        if len(attempts) <= fail_count:
+            raise ValueError('forced pocket break failure')
+        finished.append(original_chamfer(edges, length))
+        return finished[-1]
+
+    monkeypatch.setattr(m, 'chamfer', flaky_chamfer)
+    part = m.build()
+    assert part.is_valid and len(part.solids()) == 1
+    assert attempts == [m.POCKET_BREAK, m.POCKET_BREAK/2, .05][:fail_count+1]
+    log = capsys.readouterr().err
+    if fail_count == 3:
+        assert part.volume == pytest.approx(unchamfered_volumes[0])
+        assert log == '[capture-bin] pocket break skipped: forced pocket break failure\n'
+    else:
+        assert part is finished[-1]
+        assert not log
