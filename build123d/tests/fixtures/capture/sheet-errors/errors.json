@@ -1,0 +1,22 @@
+[
+  {
+    "png": "sheet-errors/hidden-1-t0.png",
+    "error": "a reference marker is hidden \u2014 keep all four corners visible and uncovered"
+  },
+  {
+    "png": "sheet-errors/hidden-1-t15.png",
+    "error": "a reference marker is hidden \u2014 keep all four corners visible and uncovered"
+  },
+  {
+    "png": "sheet-errors/hidden-2-t0.png",
+    "error": "a reference marker is hidden \u2014 keep all four corners visible and uncovered"
+  },
+  {
+    "png": "sheet-errors/hidden-2-t15.png",
+    "error": "a reference marker is hidden \u2014 keep all four corners visible and uncovered"
+  },
+  {
+    "png": "sheet-errors/not-flat.png",
+    "error": "sheet is not flat or the print is scaled"
+  }
+]

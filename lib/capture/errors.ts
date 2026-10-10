@@ -10,6 +10,9 @@ export const DETECTION_ERRORS = [
   "item too large for the plate or background not modelled",
   "item crosses the plate edge",
   "contour cannot meet the 0.3 mm / 256 vertex contract",
+  "sheet is not flat or the print is scaled",
+  "a reference marker is hidden — keep all four corners visible and uncovered",
+  "item crosses the sheet field",
 ] as const;
 
 export class DetectionError extends Error {

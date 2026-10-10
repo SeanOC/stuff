@@ -10,7 +10,7 @@ export interface Rectified {
   mmPerPx: number;
   originMm: Point;
   polarity: "pale" | "dark";
-  kind: "bare" | "paper" | "lattice";
+  kind: "bare" | "paper" | "lattice" | "aruco" | "sheet";
 }
 export function rectify(cv: CV, image: RGBImage, H: number[], options: {
   mmPerPx?: number; sizeMm?: Point; kind?: Rectified["kind"]; polarity?: Rectified["polarity"];
