@@ -13,9 +13,10 @@ eyeballs the exported `out/*.png` renders and appends a Markdown summary to the
 job step summary. It **never gates**: the script always exits `0`, the `bd123`
 job is not a required status check, and the step carries `continue-on-error`.
 
-Rebased by pst-24tr6 onto the three-job workflow (see the last section): the
-step sits in the `fast` job, right after the export it reviews, and the file is
-still byte-identical to `.github/workflows/bd123.yml` apart from the header
+Rebased by pst-bnya8 onto the current three-job workflow (see the marker
+contract section below), preserving the capture dependency group and live
+timeouts. The step sits in the `fast` job, right after the export it reviews,
+and the file is still byte-identical to `.github/workflows/bd123.yml` apart from the header
 comment and the ADDED step. pst-ae3v is closed but this step was never
 activated, so the proposal stays.
 
