@@ -16,6 +16,7 @@ import importlib.util
 import json
 import re
 import socket
+import subprocess
 import sys
 import threading
 import urllib.error
@@ -51,8 +52,7 @@ def test_dockerfile_copies_registered_model_packages(monkeypatch):
         package = relative.parts[0]
         # Full-suite collection also imports helpers as tests.mount_contracts
         # and tests.print_audit; these are not service runtime dependencies.
-        # capture is a dev/CI-only package; the render image deliberately has no cv2.
-        if package in ("tests", "capture"):
+        if package == "tests":
             continue
         if len(relative.parts) > 1 and module.__name__.split(".")[0] == package:
             imported_packages.add(package)
@@ -63,6 +63,18 @@ def test_dockerfile_copies_registered_model_packages(monkeypatch):
     ))
     missing = imported_packages - copied_packages
     assert not missing, f"bd-render image is missing local packages: {sorted(missing)}"
+
+
+def test_capture_encoding_imports_without_opencv():
+    """The render image can load capture's wire contract without OpenCV."""
+    subprocess.run(
+        [sys.executable, "-c", "import sys; sys.modules['cv2'] = None; import capture.encoding"],
+        cwd=REPO_ROOT / "build123d",
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
 
 
 def _load_server():
