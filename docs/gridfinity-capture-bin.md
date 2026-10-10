@@ -374,7 +374,7 @@ for i in range(4):
     print(''.join(map(str, bits.ravel())))
 ```
 
-From `build123d/`, `uv run python ../scripts/capture-sheet-markers.py` records
+From `build123d/`, `uv run --group capture python ../scripts/capture-sheet-markers.py` records
 raw corners and recomputes their RANSAC reprojection in `sheet-markers.json`;
 it also records the Python hidden/displaced-marker error inputs. All 72
 synthetic images require IDs 0–3, corners within 0.5 px, identical sheet ID and

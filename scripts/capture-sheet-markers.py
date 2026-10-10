@@ -1,4 +1,4 @@
-"""Record RAW ArUco corners; run from build123d: uv run python ../scripts/capture-sheet-markers.py.
+"""Record RAW ArUco corners; run from build123d: uv run --group capture python ../scripts/capture-sheet-markers.py.
 
 Unlike the footprint oracle this deliberately does not call cornerSubPix, which
 is unavailable in the browser runtime. Existing footprint records stay intact.
