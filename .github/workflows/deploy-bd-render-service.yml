@@ -35,9 +35,13 @@ on:
     paths:
       - "services/bd-render/**"
       - "build123d/holders/**"
+      - "build123d/capture/**"
       - "build123d/labels/**"
+      - "build123d/assets/fonts/**"
       - "build123d/multibuild/**"
       - "build123d/openconnect/**"
+      - "build123d/gridfinity/**"
+      - "build123d/opengrid_snap/**"
       - "build123d/scripts/**"
       - "build123d/pyproject.toml"
       - "build123d/uv.lock"
