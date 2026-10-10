@@ -42,12 +42,22 @@ port (Sean 2026-10-05); see [provenance](docs/provenance.md).
 
 ## Commands
 ```bash
-uv sync              # env (Python ≥3.13, uv.lock pinned, opengrid pinned by commit)
+uv sync              # env (Python 3.14 default; supports ≥3.13,<3.15; uv.lock pinned)
 uv run pytest tests/ # registry-driven checks (incl. manifest schema + bake)
 uv run python scripts/export.py   # build everything → out/
 uv run python scripts/export.py --presets-only out/presets  # bake presets
 uv run python scripts/manifest.py # regenerate manifest.json (run after model changes)
 ```
+
+The local model/thumbnail tools and CI use `.python-version` to select Python
+3.14; the project and lock constrain Python to `>=3.13,<3.15`
+because the locked `cadquery-ocp-novtk` supplies only CPython 3.13/3.14 wheels.
+The [render service Dockerfile](../services/bd-render/Dockerfile) uses a Python
+3.13 base and copies only the project metadata and lock for its dependency
+install, so its interpreter remains within this supported range.
+Dependencies, including the `opengrid` commit, remain pinned in `uv.lock`.
+Before widening the Python range, verify wheel support and run the full suite
+with the new interpreter.
 
 Adding a model: register a `ModelSpec` with `params`, `presets` (at least
 one), `title`, and `category_id` (an id from `lib/models/catalog.ts`), then
