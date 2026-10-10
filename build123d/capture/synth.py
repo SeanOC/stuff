@@ -299,8 +299,95 @@ def generate(output):
     (output/'measurements.json').write_text(json.dumps(metadata,indent=2)+'\n')
 
 
+def sheet_background(sheet_id='letter-v1', *, print_scale=1.):
+    """Rasterise nominal page geometry; print_scale changes ink, not the item."""
+    from .footprint import sheet_profiles
+    sheet = sheet_profiles()[sheet_id]
+    width, height = sheet['page_mm']
+    rgb = np.full((round(height*4), round(width*4), 3), 245, np.uint8)
+    def px(value):
+        return round(value*4*print_scale)
+    x0, y0, x1, y1 = sheet['field_mm']
+    rgb[px(y0):px(y1), px(x0):px(x1)] = sheet['field_gray_8bit']
+    dictionary = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
+    size = px(sheet['marker_size_mm'])
+    for i, (x, y) in sheet['markers_mm'].items():
+        marker = cv2.aruco.generateImageMarker(dictionary, int(i), size)
+        rgb[px(y):px(y)+size, px(x):px(x)+size] = marker[:, :, None]
+    return rgb
+
+
+def generate_sheet(output):
+    """Independent sheet matrix: 18 CAD poses × two tilts × two illuminants.
+
+    Sheet PNGs live in a subdirectory so the original fixture budget and matrix
+    remain pinned. The same per-PNG 200 KB cap applies here.
+    """
+    from .footprint import sheet_profiles
+    from .sheet_oracle import generate as sheet_oracle
+    output.mkdir(parents=True, exist_ok=True)
+    (output/'sheet').mkdir(exist_ok=True)
+    cv2.setNumThreads(1)
+    sheet = sheet_profiles()['letter-v1']
+    x0, y0, x1, y1 = sheet['field_mm']
+    width, height = sheet['page_mm']
+    records = []
+    for oi, (name, model, values, original) in enumerate(_objects()):
+        for pose, (angle, dx, dy) in enumerate(((0,0,0), (27,3,-2), (-38,-2,3))):
+            mesh = original.copy()
+            a = np.deg2rad(angle)
+            mesh.apply_transform(np.array([[np.cos(a),-np.sin(a),0,dx],
+                [np.sin(a),np.cos(a),0,dy],[0,0,1,0],[0,0,0,1]]))
+            truth = np.asarray(_truth(mesh, x1-x0))
+            truth[:, 1] += ((y1-y0)-(x1-x0))/2
+            placed = mesh.copy()
+            placed.apply_translation([(x0+x1)/2, height-(y0+y1)/2, 0])
+            rgba = render_topdown(placed, .25, (.7,.4,.5), bounds=(0,0,width,height))
+            rgb = sheet_background()
+            # render_topdown rounds its extent upward; crop the last sample.
+            rgba = rgba[:rgb.shape[0], :rgb.shape[1]]
+            selected = rgba[:, :, 3] > 0
+            rgb[selected] = rgba[selected, :3]
+            for light, gains in (('neutral', (1.,1.,1.)), ('warm', (1.12,1.,.85))):
+                lit = np.clip(rgb.astype(float)*gains, 0, 255).astype(np.uint8)
+                lit = cv2.copyMakeBorder(lit, 48, 48, 48, 48, cv2.BORDER_CONSTANT, value=(40,40,40))
+                for tilt in (0, 15):
+                    name_id = f'{name}-p{pose}-sheet-{light}-t{tilt}'
+                    image, H = _phone_warp(lit, tilt, 4000+oi*100+pose*10+tilt)
+                    filename = 'sheet/'+name_id+'.png'
+                    path = output/filename
+                    cv2.imwrite(str(path), cv2.cvtColor(image, cv2.COLOR_RGB2BGR),
+                                [cv2.IMWRITE_PNG_COMPRESSION, 9])
+                    if path.stat().st_size > 200_000:
+                        raise ValueError('fixture exceeds 200 KB')
+                    grid = detect_grid(image)
+                    rect = rectify(image, grid.H, size_mm=grid.size_mm, kind=grid.kind)
+                    ring = footprint(segment(rect), roi=_region(rect),
+                                     edge_message='item crosses the sheet field')
+                    from shapely.geometry import Polygon
+                    expected, recovered = Polygon(truth), Polygon(ring)
+                    dictionary = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
+                    corners, ids, _ = cv2.aruco.ArucoDetector(dictionary).detectMarkers(
+                        cv2.cvtColor(image, cv2.COLOR_RGB2GRAY))
+                    records.append(dict(id=name_id, object=name, model=model, values=values,
+                        pose=dict(rotation_deg=angle, translation_mm=[dx,dy]), background='sheet',
+                        lighting=light, tilt_deg=tilt, truth_mm=truth.tolist(), png=filename,
+                        sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
+                        metric_to_image=(H@np.array([[4,0,x0*4+48],[0,4,y0*4+48],[0,0,1.]])).tolist(),
+                        markers={str(int(i)):c.reshape(4,2).tolist() for i,c in zip(ids.ravel(),corners)},
+                        detected=True, kind=grid.kind, sheet_id=grid.sheet_id,
+                        reprojection_mm=grid.reprojection_mm,
+                        hausdorff_mm=recovered.hausdorff_distance(expected),
+                        area_error_pct=100*abs(recovered.area-expected.area)/expected.area))
+    metadata = dict(source_main=subprocess.check_output(['git','rev-parse','origin/main'], text=True).strip(),
+                    mm_per_source_pixel=.25, records=records)
+    (output/'sheet-measurements.json').write_text(json.dumps(metadata, indent=2)+'\n')
+    (output/'sheet-footprints.json').write_text(json.dumps(sheet_oracle(output), indent=2)+'\n')
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output',type=Path,default=Path('tests/fixtures/capture'))
+    parser.add_argument('--sheet', action='store_true', help='generate only the separate sheet matrix')
     args = parser.parse_args()
-    generate(args.output)
+    (generate_sheet if args.sheet else generate)(args.output)

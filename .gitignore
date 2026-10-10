@@ -66,3 +66,6 @@ services/render/dist/
 build123d/reference/upstream/
 # google-github-actions/auth credential file
 gha-creds-*.json
+
+# Local-only personal photo; retain measurement/provenance in sheet-footprints.json.
+/build123d/tests/fixtures/capture/real/sheet/card.png

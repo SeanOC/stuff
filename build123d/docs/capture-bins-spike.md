@@ -208,10 +208,53 @@ below the render service's 64 KiB total-body cap, leaving room for other params.
    boundary before simplifying at 0.3 mm and rejecting >256 vertices.
 9. Map to millimetres, show for human review, quantize/validate and encode `v1`.
 
+## Printed reference sheet v1 (Python reference)
+
+Source main: `f6010d52f91257f2171b72a7f65de787784733a5`. The separate sheet
+matrix reuses all six CAD objects and three poses (18 silhouettes), at 0°/15°
+and neutral/warm illuminants. Its 72 PNGs live in `fixtures/capture/sheet/`,
+each below 200 KB; `sheet-measurements.json` includes image homographies,
+ground-truth outlines, detected marker corners, and error measurements.
+`sheet-footprints.json` is a separate Python-only baseline for the future TS
+port. The original 144-row measurements and three shared footprint baselines
+are unchanged.
+
+The detector chooses Letter/A4 from all 16 marker corners, requires mean
+reprojection below 0.8 mm, re-bases the origin to the field, and applies
+`bar_mm / 100` once. The sheet-only segmenter white-balances a copy, identifies
+chromatic pixels at chroma >20, and accepts neutral pixels only below 0.55 or
+above 1.30 times field lightness. It opens and closes with 1 mm elliptical
+kernels (5×5 samples at 0.2 mm/pixel). The plate paths retain their existing
+residual >48 threshold; the sheet rule independently accepts chromatic pixels
+so a tinted card near field lightness is retained. The empty sheet has zero
+mask pixels after opening. The field region has a 3 mm inset and no marker
+corner exclusion because the markers lie outside the field.
+
+All four lighting/tilt groups detect and recover 18/18 silhouettes and meet
+the mean Hausdorff limit of 1.5 mm. The maximum error is reported separately;
+the mean gate does not imply every individual contour is within 1.5 mm.
+
+| Lighting | Tilt | Detection / footprint | Mean / max Hausdorff (mm) | Gate |
+|---|---|---|---|---|
+| neutral | 0° | 18/18 | 1.067 / 2.109 | PASS |
+| neutral | 15° | 18/18 | 1.156 / 2.475 | PASS |
+| warm | 0° | 18/18 | 1.063 / 2.109 | PASS |
+| warm | 15° | 18/18 | 1.133 / 2.475 | PASS |
+
+Regenerate only sheet artifacts from `build123d/`:
+
+```sh
+uv run --group capture python -m capture.synth --sheet
+uv run --group capture python -m capture.real_sheet_oracle
+uv run --group capture pytest tests/test_capture_sheet.py -q
+```
+
 ## Real photos
 
-**No real-photo accuracy claim yet.** Two supplied photographs exercise named
-errors. The inside-plate success test is skipped with the explicit reason
+**No real-plate accuracy claim yet.** The original two photographs exercise
+named errors. The separate sheet records below include one locally measured
+flat-card success; its personal photo is not published.
+The inside-plate success test is skipped with the explicit reason
 “awaiting a real photo with the item fully inside the plate” until both a photo
 and caliper truth are supplied in `real/real-footprints.json`.
 
@@ -244,6 +287,39 @@ Sean's protocol:
 | Marker + calipers (sharpie-calipers.png) | boundary obstructed | — | `board obstructed by an object crossing its edge` |
 | Hex key | pending | pending | pending |
 | Small box | pending | pending | pending |
+
+### 2026-10-09 printed sheet and plate negatives
+
+Original JPEGs were converted to RGB PNG without rescaling; original JPEG and
+PNG SHA-256 provenance lives in `real/sheet/sheet-footprints.json`. Sean
+confirmed the printed check bar measures 100 mm. These new records and PNGs
+are isolated under `real/sheet/`, including six additional plate negatives;
+the two existing plate records stay in `real/real-footprints.json`.
+
+The flat card fixture is held locally at
+`rig-stuff/scratch/capture-photos/sheet-letter-2026-10-09/card.jpg` until a
+non-personal flat item replaces it. The converted `real/sheet/card.png` is
+local-only and ignored by git, pending Sean's explicit publication sign-off.
+Its original JPEG hash, truth and measured ring remain in
+`real/sheet/sheet-footprints.json`. Without the PNG, the flat-item test skips
+with `local-only fixture: card.png not published`; the oracle warns and
+preserves that record without claiming to replay it. Public-photo tests still
+run, and the recorded flat result is historical evidence, not a fresh CI
+measurement. Any later approval to publish the photo will be a follow-up.
+
+| Photo | Result | Interpretation |
+|---|---|---|
+| Sheet bare | `no item contour` | 0 mask pixels after the 1 mm opening |
+| Sheet cleaner | approximately 102.5 × 38 mm vs 95 × 28 mm truth | tall item, visible side wall; outside flat-item accuracy claim |
+| Sheet Sharpie | `item crosses the sheet field` | cap crosses the field's top boundary; gray barrel also segments partially |
+| Sheet card (~0.8 mm thick; local-only photo) | recorded 84.8 × 54.2 mm vs 85.60 × 53.98 mm truth | `inside-sheet`; both minAreaRect sides within 1.5 mm locally; CI replay skips without PNG |
+| 4×4 plate bare | `board obstructed by an object crossing its edge` | unchanged detector error, no markers |
+| 4×4 cleaner, Sharpie crossing, Sharpie off plate | `board boundary is not a visible rectangle` | unchanged detector errors, no markers |
+| 2×2 bare, cleaner | `board obstructed by an object crossing its edge` | unchanged detector errors, no markers |
+
+All eight real plate photos detect zero ArUco markers, and retain their
+original errors. A neutral item near field lightness with chroma at most 20 remains a v1
+limitation; a colored field is a future option, outside this version.
 
 ## Reproduction and CI
 
