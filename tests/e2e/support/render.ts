@@ -1,5 +1,14 @@
 import { expect, type Page } from "@playwright/test";
 
+// AppShell's listener and modal islands hydrate independently. These
+// markers are set by effects, after the global keydown listeners attach;
+// an enabled server-rendered Search button does not prove readiness.
+export async function waitForGlobalShortcuts(page: Page): Promise<void> {
+  for (const island of ["global-shortcuts", "command-palette", "shortcut-sheet"]) {
+    await expect(page.locator("html")).toHaveAttribute(`data-${island}-ready`, "true");
+  }
+}
+
 // Shared render-ready wait for the e2e suite. (pst-r5k)
 //
 // Every detail-page spec has to wait out the same thing before it can

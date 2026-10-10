@@ -10,6 +10,7 @@
 import clsx from "clsx";
 import { Modal } from "./Modal";
 import { useUI } from "@/contexts/UIContext";
+import { useHydrationMarker } from "@/hooks/useHydrationMarker";
 
 interface Row {
   keys: string[];
@@ -61,6 +62,7 @@ const SECTIONS: Section[] = [
 ];
 
 export function ShortcutSheet() {
+  useHydrationMarker("shortcut-sheet");
   const { modal, closeModal } = useUI();
   return (
     <Modal

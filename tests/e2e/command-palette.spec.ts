@@ -1,4 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import { waitForGlobalShortcuts } from "./support/render";
 
 // Covers the Caliper command palette (st-3lc):
 // - ⌘K / top-bar button open it
@@ -12,22 +13,10 @@ import { expect, test, type Page } from "@playwright/test";
 const IS_MAC = process.platform === "darwin";
 const MOD = IS_MAC ? "Meta" : "Control";
 
-// Global shortcuts (⌘K, ⌘L, ?) live in the GlobalShortcuts client
-// island. Its useShortcut effects register window keydown listeners
-// during hydration — not on the `load` event Playwright's goto
-// resolves on. Waiting for the Search button's onClick to be ready
-// is a deterministic hydration gate: both handlers land in the same
-// pass.
-async function waitForHydration(page: Page) {
-  await expect(
-    page.getByRole("button", { name: /open command palette/i }),
-  ).toBeEnabled();
-}
-
 test.describe("command palette", () => {
   test("⌘K from the library opens the palette", async ({ page }) => {
     await page.goto("/");
-    await waitForHydration(page);
+    await waitForGlobalShortcuts(page);
     await page.keyboard.press(`${MOD}+KeyK`);
     await expect(
       page.getByRole("dialog", { name: /command palette/i }),
@@ -37,6 +26,7 @@ test.describe("command palette", () => {
 
   test("top-bar Search button opens the palette", async ({ page }) => {
     await page.goto("/");
+    await waitForGlobalShortcuts(page);
     await page.getByRole("button", { name: /open command palette/i }).click();
     await expect(
       page.getByRole("dialog", { name: /command palette/i }),
@@ -45,7 +35,7 @@ test.describe("command palette", () => {
 
   test("substring filter narrows results; Enter navigates to a model", async ({ page }) => {
     await page.goto("/");
-    await waitForHydration(page);
+    await waitForGlobalShortcuts(page);
     await page.keyboard.press(`${MOD}+KeyK`);
 
     const input = page.getByPlaceholder(/search or run a command/i);
@@ -64,7 +54,7 @@ test.describe("command palette", () => {
 
   test("Arrow keys move the selection; the selected row carries aria-selected", async ({ page }) => {
     await page.goto("/");
-    await waitForHydration(page);
+    await waitForGlobalShortcuts(page);
     await page.keyboard.press(`${MOD}+KeyK`);
     // The lazy catalog fetch inserts model rows before actions. Wait for
     // those rows so the selection cannot shift while we capture its text.
@@ -95,7 +85,7 @@ test.describe("command palette", () => {
 
   test("Go to library action navigates home", async ({ page }) => {
     await page.goto("/models/popcorn-kernel");
-    await waitForHydration(page);
+    await waitForGlobalShortcuts(page);
     await page.keyboard.press(`${MOD}+KeyK`);
     await page.getByPlaceholder(/search or run a command/i).fill("library");
     await page.getByTestId("palette-cmd-action:library").click();
@@ -104,7 +94,7 @@ test.describe("command palette", () => {
 
   test("Open shortcut sheet action swaps modals", async ({ page }) => {
     await page.goto("/");
-    await waitForHydration(page);
+    await waitForGlobalShortcuts(page);
     await page.keyboard.press(`${MOD}+KeyK`);
     await page.getByPlaceholder(/search or run a command/i).fill("shortcut");
     await page.getByTestId("palette-cmd-action:shortcuts").click();
@@ -115,7 +105,7 @@ test.describe("command palette", () => {
 
   test("? opens the shortcut sheet directly (without palette first)", async ({ page }) => {
     await page.goto("/");
-    await waitForHydration(page);
+    await waitForGlobalShortcuts(page);
     // Shift+/ emits "?" — the useShortcut binding listens for the
     // "?" key directly.
     await page.keyboard.press("Shift+Slash");
@@ -126,18 +116,20 @@ test.describe("command palette", () => {
 
   test("⌘L navigates to the library", async ({ page }) => {
     await page.goto("/models/popcorn-kernel");
-    await waitForHydration(page);
+    await waitForGlobalShortcuts(page);
     await page.keyboard.press(`${MOD}+KeyL`);
     await expect(page).toHaveURL(/\/$/);
   });
 
   test("Escape closes the palette", async ({ page }) => {
     await page.goto("/");
-    await waitForHydration(page);
+    await waitForGlobalShortcuts(page);
     await page.keyboard.press(`${MOD}+KeyK`);
     await expect(
       page.getByRole("dialog", { name: /command palette/i }),
     ).toBeVisible();
+    // Autofocus runs after the modal effect attaches its Escape listener.
+    await expect(page.getByPlaceholder(/search or run a command/i)).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(
       page.getByRole("dialog", { name: /command palette/i }),
@@ -156,7 +148,7 @@ test.describe("command palette", () => {
     await page.goto("/models/popcorn-kernel");
     await page.goto("/models/cylindrical-holder-slot");
 
-    await waitForHydration(page);
+    await waitForGlobalShortcuts(page);
     await page.keyboard.press(`${MOD}+KeyK`);
     const recent = page.getByTestId("palette-group-recent");
     await expect(recent).toBeVisible();

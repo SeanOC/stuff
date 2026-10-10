@@ -7,6 +7,7 @@
 import { useRouter } from "next/navigation";
 import { useUI } from "@/contexts/UIContext";
 import { useShortcut } from "@/hooks/useShortcut";
+import { useHydrationMarker } from "@/hooks/useHydrationMarker";
 
 export function GlobalShortcuts() {
   const router = useRouter();
@@ -15,6 +16,7 @@ export function GlobalShortcuts() {
   useShortcut("$mod+k", () => openModal({ kind: "palette" }));
   useShortcut("$mod+l", () => router.push("/"));
   useShortcut("?", () => openModal({ kind: "shortcutSheet" }));
+  useHydrationMarker("global-shortcuts");
 
   return null;
 }
