@@ -13,9 +13,10 @@ eyeballs the exported `out/*.png` renders and appends a Markdown summary to the
 job step summary. It **never gates**: the script always exits `0`, the `bd123`
 job is not a required status check, and the step carries `continue-on-error`.
 
-Rebased by pst-bnya8 onto the current three-job workflow (see the last
-section), preserving the capture dependency group and live timeouts. The step sits in the `fast` job, right after the export it reviews, and the file is
-still byte-identical to `.github/workflows/bd123.yml` apart from the header
+Rebased by pst-bnya8 onto the current three-job workflow (see the marker
+contract section below), preserving the capture dependency group and live
+timeouts. The step sits in the `fast` job, right after the export it reviews,
+and the file is still byte-identical to `.github/workflows/bd123.yml` apart from the header
 comment and the ADDED step. pst-ae3v is closed but this step was never
 activated, so the proposal stays.
 
@@ -173,33 +174,3 @@ re-measures each shard and uploads it as `bd123-test-durations-<n>`. To refresh
 the balance, download the three files, merge them with
 `jq -s add d1 d2 d3 > build123d/tests/.test_durations`, and commit the result
 (optional: a stale file only skews shard balance, never coverage).
-
-
-## Pending timeout fix (pst-bnya8)
-
-`bd123-timeouts.patch` stages the timeout-only change against main `d696c91`.
-It has **not** been applied to the live workflow: the bead still needs the
-mayor-recorded WORKFLOW CARVE-OUT for `.github/workflows/bd123.yml`. The VLM
-proposal above matches the current live workflow; after applying the timeout
-patch, carry the same timeout changes into that proposal before opening a PR.
-
-Timing evidence from GitHub Actions on 2026-10-10:
-
-| Job | Observed duration | Staged limit | Rationale |
-| --- | --- | --- | --- |
-| fast | 24m57s before export, then cancelled | 40m | About 50% headroom on an estimated 26m complete job |
-| audit | 22m53s complete | 35m | 50% headroom, rounded up to a whole minute |
-| audit_full | Slowest shard 7m59s complete | 30m (unchanged) | Already exceeds the same headroom rule |
-
-Sources: [PR run 38038626797](https://github.com/SeanOC/stuff/actions/runs/38038626797),
-[main run 38019354675](https://github.com/SeanOC/stuff/actions/runs/38019354675),
-and [successful run 38016264899](https://github.com/SeanOC/stuff/actions/runs/38016264899),
-where export completed in 39s and artifact upload in 2s. The 26m estimate is
-provisional: verify the new limit with a complete CI run and a nonempty
-`bd123-models` artifact containing STL, GLB, and PNG files. Splitting export
-is unnecessary based on these measurements.
-
-After the carve-out is recorded, apply the patch with `git apply`, synchronize
-the VLM proposal, and remove this patch and pending section. Run actionlint
-on both workflow variants and the required full build123d test suite before
-the PR push. Record PR and post-merge main timings; do not merge directly.
