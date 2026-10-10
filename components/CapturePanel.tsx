@@ -143,7 +143,7 @@ export function CapturePanel({ params, values, onChange, onApply, rendering }: {
           event.target.value = ""; // Allow retrying the same photo.
         }} />
       {state.kind === "loading" && <p role="status" className="mt-8 text-12">loading detector…</p>}
-      <canvas ref={canvas} hidden={state.kind !== "ready"} aria-label="Photo with detected lattice and item outline"
+      <canvas ref={canvas} hidden={state.kind !== "ready"} aria-label="Photo with detected reference and item outline"
         className="mt-8 h-auto w-full rounded-3" />
       {state.kind === "ready" && <p className="mt-4 text-11 text-text-dim">Blue: {state.sheet ? "sheet field" : "42 mm lattice"} · Amber: item outline. Check the outline before applying.</p>}
       {state.kind === "error" && <div role="alert" className="mt-8 text-12">

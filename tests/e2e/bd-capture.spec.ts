@@ -58,7 +58,7 @@ test("photo stays local, detector is lazy, overlay applies once and live STL use
     page.waitForRequest("**/vendor/opencv/opencv.js"),
     page.getByLabel("Take or choose a photo").setInputFiles("build123d/tests/fixtures/capture/cylinder40-p1-bare-t0.png"),
   ]);
-  const overlay = page.getByLabel("Photo with detected lattice and item outline");
+  const overlay = page.getByLabel("Photo with detected reference and item outline");
   await expect(overlay).toBeVisible({ timeout: 60_000 });
   expect(detectorRequests).toHaveLength(1);
   expect(renderBodies).toHaveLength(0);
