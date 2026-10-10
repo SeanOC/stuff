@@ -290,6 +290,14 @@ Sean's protocol:
 
 ### 2026-10-09 printed sheet and plate negatives
 
+**TS parity (pst-6xypa):** the browser sheet port matches all 72 synthetic and
+9 committed real records, including the six plate negatives. Across the 73
+public footprint rings, Hausdorff is 0.2454 mm mean / 0.5001 mm max and maximum
+area delta is 0.8446%. The local-only card replay also passes (0.5469 mm,
+0.1501% area delta) and skips when absent. Marker parity uses raw Python
+corners because the browser runtime lacks `cornerSubPix`; existing refined
+Python footprint records remain the ring oracle.
+
 Original JPEGs were converted to RGB PNG without rescaling; original JPEG and
 PNG SHA-256 provenance lives in `real/sheet/sheet-footprints.json`. Sean
 confirmed the printed check bar measures 100 mm. These new records and PNGs

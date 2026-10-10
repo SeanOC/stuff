@@ -17,10 +17,16 @@ export interface CV {
   Size: new(width: number, height: number) => { width: number; height: number };
   CV_8UC1: number; CV_8UC3: number; CV_32FC2: number; CV_64F: number;
   COLOR_RGB2GRAY: number; THRESH_BINARY: number; THRESH_BINARY_INV: number; RETR_EXTERNAL: number;
-  CHAIN_APPROX_SIMPLE: number; MORPH_CLOSE: number;
+  CHAIN_APPROX_SIMPLE: number; MORPH_CLOSE: number; MORPH_OPEN: number; MORPH_ELLIPSE: number;
+  RETR_LIST: number; ADAPTIVE_THRESH_MEAN_C: number; THRESH_OTSU: number; RANSAC: number;
   matFromArray(rows: number, cols: number, type: number, data: number[] | Uint8Array): Mat;
   cvtColor(src: Mat, dst: Mat, code: number): void;
   threshold(src: Mat, dst: Mat, threshold: number, max: number, type: number): void;
+  adaptiveThreshold(src: Mat, dst: Mat, max: number, method: number, type: number, blockSize: number, c: number): void;
+  isContourConvex(src: Mat): boolean;
+  findHomography(src: Mat, dst: Mat, method: number, tolerance?: number, mask?: Mat): Mat;
+  perspectiveTransform(src: Mat, dst: Mat, transform: Mat): void;
+  getStructuringElement(shape: number, size: { width: number; height: number }): Mat;
   findContours(src: Mat, contours: MatVector, hierarchy: Mat, mode: number, method: number): void;
   contourArea(contour: Mat): number;
   convexHull(src: Mat, dst: Mat): void;

@@ -3,8 +3,10 @@ import { DetectionError } from "./errors";
 import type { CV } from "./opencv";
 import type { Point } from "./encode";
 import type { RGBImage } from "./image";
+import { detectMarkers } from "./markers";
+import { markerGrid } from "./sheet";
 export const PITCH = 42;
-export interface Grid { H: number[]; confidence: number; sizeMm: Point; kind: "lattice"; polarity: "pale" | "dark" }
+export interface Grid { H: number[]; confidence: number; sizeMm: Point; kind: "lattice" | "aruco" | "sheet"; polarity?: "pale" | "dark"; sheetId?: string; reprojectionMm?: number }
 
 export function periodCount(profile: number[], interior = false): [number, number] {
   const mean = profile.reduce((a, b) => a + b, 0) / profile.length;
@@ -37,10 +39,13 @@ function orderedQuad(data: Int32Array): Point[] {
   return [...p.slice(start), ...p.slice(0, start)];
 }
 
-export function detectGrid(cv: CV, image: RGBImage, confidenceFloor = .5): Grid {
+export function detectGrid(cv: CV, image: RGBImage, confidenceFloor = .5, barMm = 100): Grid {
   const { width, height, data } = image;
   if (!(data instanceof Uint8Array) || data.length !== width * height * 3)
     throw new Error("expected RGB uint8 image");
+  if (!Number.isFinite(barMm) || barMm < 90 || barMm > 110) throw new Error("bar_mm must be in 90..110");
+  const marked = markerGrid(cv, detectMarkers(cv, image), barMm);
+  if (marked) return marked;
   if (!(confidenceFloor >= .3 && confidenceFloor <= .8)) throw new Error("confidence_floor must be in 0.3..0.8");
   const owned: { delete(): void }[] = [];
   const own = <T extends { delete(): void }>(item: T): T => { owned.push(item); return item; };

@@ -6,7 +6,8 @@ import type { Point } from "./encode";
 import type { Mask } from "./segment";
 import { MM_PER_PX } from "./rectify";
 import { DetectionError } from "./errors";
-export function footprint(cv: CV, mask: Mask, mmPerPx = MM_PER_PX, originMm: Point = [0, 0]): Point[] {
+export function footprint(cv: CV, mask: Mask, mmPerPx = MM_PER_PX, originMm: Point = [0, 0],
+  edgeMessage: "item crosses the plate edge" | "item crosses the sheet field" = "item crosses the plate edge"): Point[] {
   const src = cv.matFromArray(mask.height, mask.width, cv.CV_8UC1, mask.data);
   const contours = new cv.MatVector(), hierarchy = new cv.Mat(), poly = new cv.Mat();
   const handles: Mat[] = [];
@@ -26,7 +27,7 @@ export function footprint(cv: CV, mask: Mask, mmPerPx = MM_PER_PX, originMm: Poi
         if (!roi[y * mask.width + x]) continue;
         for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++)
           if (x + dx >= 0 && x + dx < mask.width && y + dy >= 0 && y + dy < mask.height &&
-              !roi[(y + dy) * mask.width + x + dx]) throw new DetectionError("item crosses the plate edge");
+              !roi[(y + dy) * mask.width + x + dx]) throw new DetectionError(edgeMessage);
       }
     }
     cv.approxPolyDP(largest!, poly, .3 / mmPerPx, true);

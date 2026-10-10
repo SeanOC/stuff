@@ -135,11 +135,11 @@ Preset STL/GLB/PNG baking uses `scripts/export.py`; the tracked review
 includes the underside and centre section at
 [review](../build123d/docs/renders/review/gridfinity-capture-bin.png).
 
-## Reference sheet (Python reference; browser integration pending)
+## Reference sheet
 
-The offline Python detector accepts the printed Letter/A4 reference sheets.
-The browser marker reader, print links, and saved check-bar prompt are the
-separate PR2 bead `pst-6xypa`; the capture panel currently uses the plate path.
+The Python and browser detectors accept the printed Letter/A4 reference sheets.
+The browser bundles `public/capture/sheets.json` with its lazy capture module;
+no manifest fetch or photo upload is needed.
 
 | Sheet | Page (mm) | Marker top-lefts, IDs 0–3 clockwise (mm) | Field bounds (mm) |
 |---|---|---|---|
@@ -153,11 +153,14 @@ an 8 mm page margin, a neutral gray-140 field, and a 100 mm check bar.
 Tests verify the checked-in PDF hashes; they never regenerate timestamped PDFs.
 
 Print at **100% / actual size**, with fit-to-page disabled. Measure the check
-bar: Python accepts `detect_grid(rgb, bar_mm=measured_length)` in 90–110 mm.
+bar: Python accepts `detect_grid(rgb, bar_mm=measured_length)` and TypeScript
+accepts `capture(photo, { barMm: measuredLength })` in 90–110 mm.
 A 97% print makes an uncorrected 50 mm object read 51.55 mm; `bar_mm=97`
 multiplies the recovered metric frame by 0.97 once, including the field crop.
-PR2 will store the measured length under `capture.sheetScale` after the prompt
-“Measure the check bar on your print: ___ mm” (default 100).
+The panel stores the measured length under localStorage key `capture.sheetScale`
+after the prompt “Measure the check bar on your print: ___ mm” (default 100).
+It restores a valid saved value on later visits, falls back to 100 if storage
+is unavailable or invalid, and permits editing when you use a new print.
 
 Tape the sheet flat on a board. Keep all four markers visible and uncovered,
 and place one contrasting item wholly inside the field, leaving a 3 mm inset.
@@ -184,8 +187,10 @@ calibration retains its visible side wall. See the spike report for evidence.
 
 ## Capture panel
 
-Reference-sheet capture and its print/scale controls arrive in PR2; the
-current browser flow below remains available for Gridfinity baseplates.
+Use **Print the reference sheet: Letter / A4**, print at 100%, and measure the
+check bar once per print. Place one item inside the grey field with all four
+markers visible. The saved measurement accepts 90–110 mm; changing it clears
+the old outline. Gridfinity baseplates remain an alternative.
 
 On the Gridfinity capture bin page, choose **Take or choose a photo** to
 use a photo or the phone's rear camera. Place one item that contrasts with the plate on a
@@ -193,8 +198,8 @@ Gridfinity baseplate, with the whole baseplate inside the frame and a plain
 surface that contrasts with the plate. Keep the item fully inside the grid. Photograph straight down in daylight or under a lamp.
 
 **Photos never leave your browser.** The detector loads only when you
-select a file. The blue overlay shows the recovered 42 mm lattice; amber
-shows the item outline. Inspect both before selecting **Apply footprint**.
+select a file. The blue overlay shows the sheet field or recovered 42 mm
+plate lattice; amber shows the item outline. Inspect both before selecting **Apply footprint**.
 This fills the existing footprint parameter and requests one live preview;
 only the encoded outline and model parameters go to the render service.
 The existing STL download uses the current parameter values.
@@ -208,6 +213,9 @@ Errors keep the detector's exact message and add the following advice:
 
 | Message | Advice |
 |---|---|
+| `sheet is not flat or the print is scaled` | Lay the sheet flat and print at 100% scale without fitting to the page. |
+| `a reference marker is hidden — keep all four corners visible and uncovered` | Keep all four printed markers visible and uncovered. |
+| `item crosses the sheet field` | Move the item fully inside the grey field. |
 | `no perimeter lattice contrast` | Show the whole baseplate on a plain surface that contrasts with the plate. |
 | `no board boundary` | Show the whole baseplate on a plain surface that contrasts with the plate. |
 | `board boundary is not a visible rectangle` | Show the whole baseplate on a plain surface that contrasts with the plate. |
@@ -216,7 +224,7 @@ Errors keep the detector's exact message and add the following advice:
 | `board obstructed by an object crossing its edge` | Remove anything crossing the plate edge. |
 | `item too large for the plate or background not modelled` | Use a bigger plate or move the item inside the grid. |
 | `item crosses the plate edge` | Move the item fully inside the baseplate. |
-| `no item contour` | The item must contrast with the plate (colour or brightness). |
+| `no item contour` | The item must contrast with the sheet or plate (colour or brightness). |
 | `contour cannot meet the 0.3 mm / 256 vertex contract` | Simplify the item's outline or move the camera closer. |
 | `footprint must fit 6x6 cells (252x252 mm)` | The item is too large for a 6×6 bin. |
 | Server: `footprint + wall exceeds 6x6 cells` | Reduce clearance or wall_min, or pick a manual size. |
@@ -230,25 +238,34 @@ path from main `a6d6a6590d9388b6e8e3121eb9d05639abeb874f` into `lib/capture/`.
 `capture(File | Blob | ArrayBuffer)` returns the encoded footprint, metric
 ring, grid homography/confidence/extent, and rectified RGB image/origin.
 The nine steps follow [CB1's summary](../build123d/docs/capture-bins-spike.md#cb3-algorithm-summary-nine-steps),
-with two branches trimmed:
+with sheet calibration ahead of the plate fallback:
 
 1. Decode RGB uint8. Browser `createImageBitmap` honours EXIF orientation;
    node tests decode PNG using the single added dev dependency, `pngjs`.
-2. Fit the largest pale rectangular board outline. The ArUco branch is omitted.
-3. Correlate perimeter strips to infer the number of 42 mm cells.
-4. Solve the image-pixel-to-millimetre homography.
+2. Decode the four known ArUco IDs. Try the legacy 84 mm plate fit first
+   (at least 14 inliers), then fit each manifest sheet in page millimetres
+   with RANSAC tolerance 0.8 mm and keep the lowest mean reprojection.
+   With no marker calibration, fit the rectangular plate outline.
+3. For unmarked plates, correlate perimeter strips to infer 42 mm cells.
+4. Solve the image-pixel-to-millimetre homography; sheets translate to the
+   field origin and apply the measured check-bar scale exactly once.
 5. Warp at 0.20 mm/pixel, retaining metric origin and board extent.
-6. Exclude the 3 mm outer rim or pixels outside detected paper bounds. The
-   ArUco marker-corner branch is omitted.
-7. Threshold chroma >35 or gray <65, then close gaps with a 3×3 kernel.
+6. Exclude the 3 mm outer rim or pixels outside detected paper bounds.
+   Sheets use only the field inset; legacy ArUco plates exclude marker corners.
+7. Plates retain threshold/structural segmentation. Sheets white-balance a
+   copy of the field using per-channel ROI medians, detect chroma >20 or
+   lightness outside 0.55–1.30 times the background mean, and apply a 1 mm
+   elliptical open and close (5×5 at 0.2 mm/px).
 8. Keep the largest external contour, simplify at 0.3 mm, reject outside
    3–256 distinct vertices, and ignore holes.
 9. Map to millimetres, quantize to 0.01 mm, validate, and encode `v1`.
 
 The panel, human review overlay, registry flag, and render request are supplied by
-CB3b. ArUco was dropped for its poorer accuracy, missed calibrations and lack
-of a capture-plate model ([CB1 decision](../build123d/docs/capture-bins-spike.md#measurements)).
-Constants and validation messages cite the Python source lines in each module.
+CB3b. The earlier baseline dropped ArUco for its poorer accuracy, missed
+calibrations and lack of a capture-plate model ([CB1 decision](../build123d/docs/capture-bins-spike.md#measurements)).
+The sheet port restores marker calibration while leaving those original
+baseline fixture counts unchanged. Constants and validation messages follow
+the Python reference.
 The pre-wall limit is `footprint must fit 6x6 cells (252x252 mm)`;
 the later server model's `footprint + wall exceeds 6×6 cells` remains a
 separate constraint. No real-photo accuracy claim is made.
@@ -284,8 +301,7 @@ separately required to preserve every committed footprint byte-for-byte.
 
 ### Detection errors
 
-The Python sheet path additionally reports these exact strings; PR2 adds them
-to the browser error union and advice table:
+Both implementations report these sheet strings; the panel advice is listed above:
 
 - `a reference marker is hidden — keep all four corners visible and uncovered`
 - `sheet is not flat or the print is scaled`
@@ -332,17 +348,50 @@ buffers and homographies own their data.
 The capability test enumerates every runtime call: `Mat`, `Mat.ones`,
 `MatVector`, `Size`, `matFromArray`, `cvtColor`, `threshold`, `findContours`,
 `contourArea`, `arcLength`, `approxPolyDP`, `getPerspectiveTransform`,
-`warpPerspective`, `boundingRect`, `morphologyEx`, and `getBuildInformation`.
+`warpPerspective`, `boundingRect`, `convexHull`, `morphologyEx`,
+`adaptiveThreshold`, `isContourConvex`, `findHomography`, `perspectiveTransform`,
+`getStructuringElement`, and `getBuildInformation`.
 All are available; no missing-function fallback is needed. Typed-array loops
 implement NumPy's reductions/masks, and an explicit 3×3 matrix calculation
 implements the optional full-image rectification transform.
+
+### Browser marker reader
+
+The official runtime has neither `aruco` nor `cornerSubPix`. `markers.ts`
+uses adaptive thresholds (windows 3, 13, 23; C=7), convex contour quads with
+minimum 12 px sides, a perspective-warped 6×6-cell marker plus its surround,
+a black border check, and Hamming distance ≤1 over the four codes and all
+four rotations. Returned corners start at the marker's own top-left and run
+clockwise, matching Python's convention. Two-bit damage is rejected.
+
+The row-major 4×4 codes are generated from `bytesList`, not hand drawn:
+
+```python
+import cv2
+d = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
+for i in range(4):
+    bits = cv2.aruco.Dictionary_getBitsFromByteList(d.bytesList[i:i+1], 4)
+    print(''.join(map(str, bits.ravel())))
+```
+
+From `build123d/`, `uv run python ../scripts/capture-sheet-markers.py` records
+raw corners and recomputes their RANSAC reprojection in `sheet-markers.json`;
+it also records the Python hidden/displaced-marker error inputs. All 72
+synthetic images require IDs 0–3, corners within 0.5 px, identical sheet ID and
+extent, and raw-corner reprojection within 0.05 mm (below the 0.8 mm gate).
+Python refines corners for footprint recovery; the browser reports the raw
+reprojection. The measured raw-to-refined field displacement is ≤0.12 mm on
+these fixtures, within the ring parity allowance. The original refined
+footprint oracle is preserved; a future refinement-gap failure gets its own
+bead rather than regenerating those rings.
 
 ### Cross-implementation parity
 
 From the repo root:
 
 ```sh
-CAPTURE_PARITY_TABLE=/tmp/capture-parity.md npx vitest run lib/capture
+CAPTURE_PARITY_TABLE=/tmp/capture-parity.md \
+CAPTURE_SHEET_PARITY_TABLE=/tmp/sheet-parity.txt npx vitest run lib/capture
 ```
 
 The gate compares TypeScript against the committed Python result on each
@@ -352,6 +401,19 @@ plus a 0.01 mm allowance gives a conservative Hausdorff upper bound; identical
 rings are exactly zero. Errors must match in class and exact message. The
 truth column is advisory, including the deliberately poor shadow case.
 All 13 rings match exactly here (mean 0 mm, every area delta 0%).
+
+Sheet parity uses separate JSONs, preserving the original 15-record,
+13-ring, and 17 combined plate-record pins. All 72 synthetic PNGs plus the
+9 committed real PNGs agree on result class and exact error text. The six
+null-kind real records exercise the plate fallback. Public sheet footprints
+(73 rings) have **0.2454 mm mean / 0.5001 mm max Hausdorff**, with maximum
+area delta **0.8446%**; the same ≤0.6 mm / ≤0.3 mm mean / ≤1% gate applies.
+The locally available card also passes (0.5469 mm, 0.1501% area delta), but
+its replay skips explicitly when the private PNG is absent; it is not shipped.
+The check-bar test uses the axis-aligned label fixture to avoid circle RDP
+vertex changes at a different raster scale, and separately asserts that every
+homography coefficient and field extent receives the scale exactly once.
+
 
 | PNG | Python vertices | TS vertices | Hausdorff mm (upper bound) | Area delta % | TS vs truth mm (advisory) |
 |---|---:|---:|---:|---:|---:|

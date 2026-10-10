@@ -14,7 +14,10 @@ export const DETECTION_ADVICE: Record<(typeof DETECTION_ERRORS)[number], string>
   "board obstructed by an object crossing its edge": "Remove anything crossing the plate edge.",
   "item too large for the plate or background not modelled": "Use a bigger plate or move the item inside the grid.",
   "item crosses the plate edge": "Move the item fully inside the baseplate.",
-  "no item contour": "The item must contrast with the plate (colour or brightness).",
+  "no item contour": "The item must contrast with the sheet or plate (colour or brightness).",
+  "sheet is not flat or the print is scaled": "Lay the sheet flat and print at 100% scale without fitting to the page.",
+  "a reference marker is hidden — keep all four corners visible and uncovered": "Keep all four printed markers visible and uncovered.",
+  "item crosses the sheet field": "Move the item fully inside the grey field.",
   "contour cannot meet the 0.3 mm / 256 vertex contract": "Simplify the item's outline or move the camera closer.",
 };
 
@@ -57,14 +60,17 @@ function drawOverlay(canvas: HTMLCanvasElement, photo: ImageBitmap, result: Capt
     ctx.stroke();
   };
   const [width, height] = result.grid.sizeMm;
-  for (let x = 0; x <= width; x += 42) path([[x, 0], [x, height]], "#38bdf8");
-  for (let y = 0; y <= height; y += 42) path([[0, y], [width, y]], "#38bdf8");
+  if (result.grid.kind === "sheet") path([[0,0], [width,0], [width,height], [0,height], [0,0]], "#38bdf8");
+  else {
+    for (let x = 0; x <= width; x += 42) path([[x, 0], [x, height]], "#38bdf8");
+    for (let y = 0; y <= height; y += 42) path([[0, y], [width, y]], "#38bdf8");
+  }
   path(result.ring, "#fbbf24");
 }
 
 type DetectionState =
   | { kind: "idle" | "loading" }
-  | { kind: "ready"; footprint: string }
+  | { kind: "ready"; footprint: string; sheet: boolean }
   | { kind: "error"; message: string };
 
 export function CapturePanel({ params, values, onChange, onApply, rendering }: {
@@ -75,6 +81,14 @@ export function CapturePanel({ params, values, onChange, onApply, rendering }: {
   rendering: boolean;
 }) {
   const [state, setState] = useState<DetectionState>({ kind: "idle" });
+  const [barMm, setBarMm] = useState("100");
+  const validScale = Number.isFinite(Number(barMm)) && Number(barMm) >= 90 && Number(barMm) <= 110;
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("capture.sheetScale");
+      if (stored !== null && Number.isFinite(Number(stored)) && Number(stored) >= 90 && Number(stored) <= 110) setBarMm(stored);
+    } catch { /* Storage may be unavailable; use the 100 mm default. */ }
+  }, []);
   const canvas = useRef<HTMLCanvasElement>(null);
   const selection = useRef(0);
   useEffect(() => () => { selection.current++; }, []);
@@ -89,10 +103,10 @@ export function CapturePanel({ params, values, onChange, onApply, rendering }: {
       const { capture } = await import("@/lib/capture");
       if (token !== selection.current) return;
       photo = await createImageBitmap(file, { imageOrientation: "from-image" });
-      const result = await capture(file);
+      const result = await capture(file, { barMm: Number(barMm) });
       if (token !== selection.current || !canvas.current) return;
       drawOverlay(canvas.current, photo, result);
-      setState({ kind: "ready", footprint: result.footprint });
+      setState({ kind: "ready", footprint: result.footprint, sheet: result.grid.kind === "sheet" });
     } catch (error) {
       if (token === selection.current)
         setState({ kind: "error", message: error instanceof Error ? error.message : String(error) });
@@ -104,9 +118,24 @@ export function CapturePanel({ params, values, onChange, onApply, rendering }: {
   return (
     <section aria-labelledby="capture-heading" className="mt-18 rounded-3 border border-line bg-panel2 p-12">
       <h2 id="capture-heading" className="m-0 text-14 font-semibold">Capture an item outline</h2>
-      <p className="mt-6 text-12 text-text-dim">Photos never leave your browser. Show the whole baseplate on a plain surface that contrasts with the plate, with one item that contrasts with the plate.</p>
+      <p className="mt-6 text-12 text-text-dim">Place one item inside the grey field of the reference sheet, with all four markers visible. Alternatively, show the whole Gridfinity baseplate on a contrasting plain surface. Photos never leave your browser.</p>
+      <p className="mt-6 text-12">Print the reference sheet: <a className="underline" href="/capture/capture-sheet-letter-v1.pdf">Letter</a> · <a className="underline" href="/capture/capture-sheet-a4-v1.pdf">A4</a> (100% scale).</p>
+      <label className="mt-8 block text-12" htmlFor="capture-sheet-scale">Measure the check bar on your print:</label>
+      <input id="capture-sheet-scale" type="number" min={90} max={110} step="any" value={barMm}
+        aria-invalid={!validScale} aria-describedby="capture-scale-help"
+        className="mt-4 w-84 rounded-3 border border-line bg-panel px-6 text-12"
+        onChange={event => {
+          const value = event.target.value;
+          setBarMm(value);
+          // Changing calibration invalidates the prior outline and any pending capture.
+          selection.current++; setState({ kind: "idle" });
+          if (Number.isFinite(Number(value)) && Number(value) >= 90 && Number(value) <= 110) {
+            try { localStorage.setItem("capture.sheetScale", value); } catch { /* Keep the current session value. */ }
+          }
+        }} /> <span className="text-12">mm</span>
+      <p id="capture-scale-help" className="mt-4 text-11 text-text-dim">{validScale ? "Measure once per print; this browser remembers your value." : "Enter a measurement from 90 to 110 mm."}</p>
       <label className="mt-8 block text-12" htmlFor="capture-photo">Take or choose a photo</label>
-      <input id="capture-photo" type="file" accept="image/*" capture="environment"
+      <input id="capture-photo" disabled={!validScale} type="file" accept="image/*" capture="environment"
         className="mt-4 block w-full min-w-0 text-12"
         onChange={event => {
           const file = event.target.files?.[0];
@@ -116,7 +145,7 @@ export function CapturePanel({ params, values, onChange, onApply, rendering }: {
       {state.kind === "loading" && <p role="status" className="mt-8 text-12">loading detector…</p>}
       <canvas ref={canvas} hidden={state.kind !== "ready"} aria-label="Photo with detected lattice and item outline"
         className="mt-8 h-auto w-full rounded-3" />
-      {state.kind === "ready" && <p className="mt-4 text-11 text-text-dim">Blue: 42 mm lattice · Amber: item outline. Check the outline before applying.</p>}
+      {state.kind === "ready" && <p className="mt-4 text-11 text-text-dim">Blue: {state.sheet ? "sheet field" : "42 mm lattice"} · Amber: item outline. Check the outline before applying.</p>}
       {state.kind === "error" && <div role="alert" className="mt-8 text-12">
         <p>{state.message}</p>
         {adviceFor(state.message) && <p>{adviceFor(state.message)}</p>}

@@ -125,3 +125,34 @@ for (const [file, error, advice] of [
     expect(posts).toEqual([]);
   });
 }
+
+test("bare reference sheet shows no-item advice and keeps the photo local", async ({ page }) => {
+  const posts: string[] = [];
+  page.on("request", request => { if (request.method() === "POST") posts.push(request.url()); });
+  await page.goto(`/models/${SLUG}`);
+  await expect(page.getByTestId("bd-glb-size")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Letter", exact: true })).toHaveAttribute("href", "/capture/capture-sheet-letter-v1.pdf");
+  await page.getByLabel("Take or choose a photo").setInputFiles("build123d/tests/fixtures/capture/real/sheet/bare.png");
+  const alert = page.getByRole("region", { name: "Capture an item outline" }).getByRole("alert");
+  await expect(alert).toContainText("no item contour", { timeout: 60_000 });
+  await expect(alert).toContainText("The item must contrast with the sheet or plate (colour or brightness).");
+  await expect(page.getByRole("button", { name: "Apply footprint" })).toBeDisabled();
+  expect(posts).toEqual([]);
+});
+
+test("sheet capture restores the measured check bar and previews its field", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("capture.sheetScale", "97"));
+  const posts: string[] = [];
+  page.on("request", request => { if (request.method() === "POST") posts.push(request.url()); });
+  await page.goto(`/models/${SLUG}`);
+  await expect(page.getByTestId("bd-glb-size")).toBeVisible();
+  const measurement = page.getByLabel("Measure the check bar on your print:");
+  await expect(measurement).toHaveValue("97");
+  await page.getByLabel("Take or choose a photo").setInputFiles("build123d/tests/fixtures/capture/sheet/label-p0-sheet-neutral-t0.png");
+  await expect(page.getByText("Blue: sheet field", { exact: false })).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole("button", { name: "Apply footprint" })).toBeEnabled();
+  await measurement.fill("99");
+  await expect(page.getByRole("button", { name: "Apply footprint" })).toBeDisabled();
+  expect(await page.evaluate(() => localStorage.getItem("capture.sheetScale"))).toBe("99");
+  expect(posts).toEqual([]);
+});
