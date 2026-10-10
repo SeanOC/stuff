@@ -41,8 +41,8 @@ def render(name, out):
     d.text((W/2*PX, (MARGIN+MARKER/2)*PX), f'Gridfinity capture sheet  {name.upper()} v1', fill=0, font=font, anchor='mm')
     d.text((W/2*PX, (MARGIN+MARKER/2+4.5)*PX), 'Place ONE item fully inside the grey field. Photograph straight down, all four markers visible, no flash.', fill=0, font=small, anchor='mm')
     d.text((W/2*PX, (H-3)*PX), 'stuff.seanoc.com  ·  capture sheet v1', fill=90, font=small, anchor='mb')  # page margin, never inside the field
-    pdf = out/f'capture-sheet-{name}-v1.pdf'; png = out/f'capture-sheet-{name}-v1.png'
-    img.save(pdf, 'PDF', resolution=DPI); img.resize((round(W*4), round(H*4))).save(png)
+    pdf = out/f'capture-sheet-{name}-v1.pdf'
+    img.save(pdf, 'PDF', resolution=DPI)
     return mf, pdf
 if __name__ == '__main__':
     root = Path(__file__).resolve().parents[2]

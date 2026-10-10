@@ -19,12 +19,12 @@ def generate(references):
     rows = []
     for ref in references:
         path = REAL/ref['png']
-        row = {k:ref[k] for k in ('png','original_jpeg_sha256','truth','case')}
+        row = {k:ref[k] for k in ('png','original_jpeg_sha256','truth','case','bar_mm')}
         row.update(sha256=hashlib.sha256(path.read_bytes()).hexdigest(), method='periodic',
                    kind=None, polarity=None, result='error', error=None, ring=None, footprint=None)
         try:
             image = cv2.cvtColor(cv2.imread(str(path)), cv2.COLOR_BGR2RGB)
-            grid = detect_grid(image, bar_mm=100)
+            grid = detect_grid(image, bar_mm=row['bar_mm'])
             row.update(kind=grid.kind, polarity=grid.polarity,
                        method='periodic' if grid.kind == 'sheet' else
                        ('structural' if grid.polarity == 'dark' else 'threshold'))

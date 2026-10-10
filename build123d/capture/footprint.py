@@ -13,6 +13,8 @@ import numpy as np
 
 PITCH = 42.0
 MM_PER_PX = 0.2
+SHEET_RANSAC_TOLERANCE_MM = 0.8
+SHEET_MAX_MEAN_REPROJECTION_MM = 0.8
 ARUCO_POSITIONS = np.array([
     [[3,3],[13,3],[13,13],[3,13]],
     [[71,3],[81,3],[81,13],[71,13]],
@@ -163,11 +165,12 @@ def detect_grid(image, *, confidence_floor=.5, sheets=None, bar_mm=100.0):
         fits = []
         for sheet_id, sheet in sheets.items():
             dst = marker_corners(sheet)
-            H, _ = cv2.findHomography(src, dst, cv2.RANSAC, .8)
+            # Reprojection residuals are measured in dst coordinates: page mm.
+            H, _ = cv2.findHomography(src, dst, cv2.RANSAC, SHEET_RANSAC_TOLERANCE_MM)
             if H is not None:
                 error = float(np.linalg.norm(cv2.perspectiveTransform(src[None], H)[0]-dst, axis=1).mean())
                 fits.append((error, sheet_id, H))
-        if not fits or min(fits, key=lambda fit: fit[0])[0] >= .8:
+        if not fits or min(fits, key=lambda fit: fit[0])[0] >= SHEET_MAX_MEAN_REPROJECTION_MM:
             raise DetectionError('sheet is not flat or the print is scaled')
         error, sheet_id, H = min(fits, key=lambda fit: fit[0])
         x0, y0, x1, y1 = sheets[sheet_id]['field_mm']
@@ -353,10 +356,11 @@ def segment(rectified, method=None, *, k=5., coverage_limit=.35, shift_tolerance
     rgb = rectified.image
     gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
     roi, paper = _region(rectified, with_paper=True)
-    if rectified.kind == 'sheet':
-        method = 'periodic'
+    if rectified.kind == 'sheet' and method not in (None, 'periodic'):
+        raise ValueError('sheet segmentation requires the periodic method')
     if method is None:
-        method = 'structural' if rectified.polarity == 'dark' else 'threshold'
+        method = ('periodic' if rectified.kind == 'sheet' else
+                  'structural' if rectified.polarity == 'dark' else 'threshold')
     chroma = rgb.max(axis=2).astype(float) - rgb.min(axis=2)
     # Known neutral baseplate/paper: saturated colour or a dark item.
     seed = ((chroma > 35) | (gray < 65)) & (roi != 0)

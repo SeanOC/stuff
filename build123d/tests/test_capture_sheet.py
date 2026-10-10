@@ -140,6 +140,25 @@ def test_sheet_item_crossing_field_raises():
         recover(rgb)
 
 
+@pytest.mark.parametrize('method', ['threshold', 'structural', 'grabcut', 'unknown'])
+def test_sheet_rejects_conflicting_explicit_methods(method):
+    image, _ = photo()
+    grid = detect_grid(image)
+    rect = rectify(image, grid.H, size_mm=grid.size_mm, kind=grid.kind)
+    with pytest.raises(ValueError, match='sheet segmentation requires the periodic method'):
+        segment(rect, method)
+    assert np.array_equal(segment(rect), segment(rect, 'periodic'))
+
+
+@pytest.mark.parametrize('turns', [1, 2, 3])
+def test_sheet_rotation_preserves_field_coordinates(turns):
+    image, _ = photo(tilt=15)
+    _, _, expected = recover(image)
+    grid, _, actual = recover(np.ascontiguousarray(np.rot90(image, turns)))
+    assert grid.sheet_id == 'letter-v1'
+    assert Polygon(actual).hausdorff_distance(Polygon(expected)) <= .3
+
+
 def test_sheet_shadow_rule():
     rgb = sheet_background()
     # Soft neutral shadow next to, and under, a chromatic rectangle.
@@ -231,6 +250,7 @@ def test_real_sheet_rows():
     assert 95 <= long <= 110
     assert 28 <= short <= 42
     for row in rows:
+        assert row['bar_mm'] == 100.0
         assert len(row['original_jpeg_sha256']) == 64
         assert (REAL/row['png']).stat().st_size <= 8_000_000
         if row['case'] == 'inside-sheet':
@@ -265,3 +285,14 @@ def test_real_plate_markers_and_errors_unchanged():
             assert row['result'] == 'error'
     assert generate(rows) == rows
     assert generate_sheet(new_rows) == new_rows
+
+
+def test_real_sheet_oracle_uses_recorded_scale():
+    from capture.real_sheet_oracle import REAL, generate
+    row = next(r for r in json.loads((REAL/'sheet-footprints.json').read_text())['records']
+               if r['png'] == 'card.png')
+    calibrated = generate([row | {'bar_mm': 97.0}])[0]
+    assert calibrated['bar_mm'] == 97.0
+    original = sorted(cv2.minAreaRect(np.array(row['ring'], np.float32))[1])
+    actual = sorted(cv2.minAreaRect(np.array(calibrated['ring'], np.float32))[1])
+    assert actual == pytest.approx(np.array(original)*.97, abs=.3)

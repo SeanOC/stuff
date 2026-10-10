@@ -10,6 +10,7 @@
         "expect": "no item contour"
       },
       "case": "empty-sheet",
+      "bar_mm": 100.0,
       "sha256": "a0a699325ce3664bad05116805fc86f7d553ebfd56940dfd828df654a26246ce",
       "method": "periodic",
       "kind": "sheet",
@@ -30,6 +31,7 @@
         "expect": "footprint ~95x28 inside the field"
       },
       "case": "tall-item",
+      "bar_mm": 100.0,
       "sha256": "c9eaff5051f30e17c6d780803c8037c968809aeff1142bcebc082e018270c104",
       "method": "periodic",
       "kind": "sheet",
@@ -398,6 +400,7 @@
         "expect": "footprint inside the field; width ~12.75 + clip"
       },
       "case": "edge",
+      "bar_mm": 100.0,
       "sha256": "6622e1247c7c2a48614eb4a29d234b64fb80f8fd923d82f3b231aa6873c87f9d",
       "method": "periodic",
       "kind": "sheet",
@@ -415,6 +418,7 @@
         "expect": "no item contour"
       },
       "case": "negative-plate",
+      "bar_mm": 100.0,
       "sha256": "3ba95e9cb0cb1667448d57b65733ee6017dc00530865166225c596da52a43deb",
       "method": "periodic",
       "kind": null,
@@ -434,6 +438,7 @@
         "expect": "footprint ~95x28 fully inside the plate (success fixture d2)"
       },
       "case": "negative-plate",
+      "bar_mm": 100.0,
       "sha256": "2d1d36780023023f7f42f7f45b8a9d6ed6856981850ee46bd62bcf1c0de08acc",
       "method": "periodic",
       "kind": null,
@@ -453,6 +458,7 @@
         "expect": "error: item crosses the plate edge (cap end hangs off the left edge) or board obstructed"
       },
       "case": "negative-plate",
+      "bar_mm": 100.0,
       "sha256": "0b831a7ec819ed568dcbead03d77495200b48668bf760a079f7e579617b70b90",
       "method": "periodic",
       "kind": null,
@@ -470,6 +476,7 @@
         "expect": "plate only partly in frame, pen beside it on the mat: detection error (boundary not a visible rectangle)"
       },
       "case": "negative-plate",
+      "bar_mm": 100.0,
       "sha256": "789ad14809bdcd0abd5424f10aa6819754979ed91fd1e304a70ae2801ecc99d6",
       "method": "periodic",
       "kind": null,
@@ -490,6 +497,7 @@
         "note": "item crosses both plate edges (95 > 84)"
       },
       "case": "negative-plate",
+      "bar_mm": 100.0,
       "sha256": "27bf7b22726f6128f3e9f561a232aa7c7657e7ccd3f17440cc215244381386c6",
       "method": "periodic",
       "kind": null,
@@ -503,13 +511,10 @@
       "png": "plate-2x2-2026-10-08-plate-bare.png",
       "original_jpeg_sha256": "22bb9c16955d52d5707d0e3f0c6807f4e223feed8757649a34dc0224b9c0cbb3",
       "truth": {
-        "plate": "Gridfinity Rebuilt thin 2x2 (frame, open cells), white, 84 mm square",
-        "item": "eyeglass cleaner",
-        "length_mm": 95,
-        "width_mm": 28,
-        "note": "item crosses both plate edges (95 > 84)"
+        "item": null
       },
       "case": "negative-plate",
+      "bar_mm": 100.0,
       "sha256": "12d6ca08604101f7ce92c65177c81faf8021c48f9f2684b28fc981b1b0b5352d",
       "method": "periodic",
       "kind": null,
@@ -530,6 +535,7 @@
         "expect": "footprint 85.6 x 53.98 within 1.5 mm \u2014 the FLAT success fixture (case inside-sheet)"
       },
       "case": "inside-sheet",
+      "bar_mm": 100.0,
       "sha256": "5cc88b21569856982d1575060a1bbb529430b295da65c14415634a15d8ea8fbe",
       "method": "periodic",
       "kind": "sheet",
