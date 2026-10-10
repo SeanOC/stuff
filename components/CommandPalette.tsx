@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import { Modal } from "./Modal";
 import { useUI } from "@/contexts/UIContext";
+import { useHydrationMarker } from "@/hooks/useHydrationMarker";
 import type { Binding } from "@/hooks/useShortcut";
 
 export interface PaletteModel {
@@ -44,6 +45,7 @@ const RECENT_KEY = "stuff.v1.recent.models";
 const RECENT_MAX = 5;
 
 export function CommandPalette() {
+  useHydrationMarker("command-palette");
   const { modal, closeModal, openModal, detail } = useUI();
   const router = useRouter();
   const open = modal.kind === "palette";
