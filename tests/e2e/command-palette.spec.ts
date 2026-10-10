@@ -66,19 +66,31 @@ test.describe("command palette", () => {
     await page.goto("/");
     await waitForHydration(page);
     await page.keyboard.press(`${MOD}+KeyK`);
+    // The lazy catalog fetch inserts model rows before actions. Wait for
+    // those rows so the selection cannot shift while we capture its text.
+    await expect(page.getByTestId("palette-group-models")).toBeVisible();
     await page.getByPlaceholder(/search or run a command/i).fill("model");
 
-    const first = page
-      .locator('[role="option"][aria-selected="true"]')
-      .first();
-    const initialText = await first.textContent();
+    const rows = page.getByRole("option");
+    // fill() dispatches input before React necessarily commits the filter
+    // and cursor reset. Wait for the filtered list before choosing a target.
+    await expect(rows.filter({ hasNotText: /model/i })).toHaveCount(0);
+    await expect(rows.nth(1)).toBeVisible();
+    await expect(rows.nth(0)).toHaveAttribute("aria-selected", "true");
+    const initialText = await rows.nth(0).textContent();
+    const nextText = await rows.nth(1).textContent();
+    const selected = page.getByRole("option", { selected: true });
 
     await page.keyboard.press("ArrowDown");
-    const afterMove = await page
-      .locator('[role="option"][aria-selected="true"]')
-      .first()
-      .textContent();
-    expect(afterMove).not.toBe(initialText);
+    await expect(rows.nth(1)).toHaveAttribute("aria-selected", "true");
+    await expect(selected).toHaveCount(1);
+    await expect(selected).toHaveText(nextText!);
+    await expect(selected).not.toHaveText(initialText!);
+
+    await page.keyboard.press("ArrowUp");
+    await expect(rows.nth(0)).toHaveAttribute("aria-selected", "true");
+    await expect(selected).toHaveCount(1);
+    await expect(selected).toHaveText(initialText!);
   });
 
   test("Go to library action navigates home", async ({ page }) => {

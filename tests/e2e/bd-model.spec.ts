@@ -186,10 +186,15 @@ test("STL download uses the CURRENT live params via /api/bd-render?format=stl", 
   });
 
   await page.goto(`/models/${SLUG}`);
-  await expect(page.getByTestId("bd-detail-root")).toBeVisible();
+  const root = page.getByTestId("bd-detail-root");
+  await expect(root).toBeVisible();
+  // The root is server-rendered. The bbox appears only after the client
+  // loads the GLB, so mount-time preset initialization has finished.
+  await expect(page.getByTestId("bd-glb-size")).toBeVisible();
 
   // Tweak so the download must carry the CURRENT value, not the preset.
   await page.locator("#param-d").fill("70");
+  await expect(root).toHaveAttribute("data-bd-stale", "true");
 
   const [download] = await Promise.all([
     page.waitForEvent("download"),
