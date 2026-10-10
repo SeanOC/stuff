@@ -252,7 +252,8 @@ uv run --group capture pytest tests/test_capture_sheet.py -q
 ## Real photos
 
 **No real-plate accuracy claim yet.** The original two photographs exercise
-named errors. The separate sheet fixtures below include one flat-card success.
+named errors. The separate sheet records below include one locally measured
+flat-card success; its personal photo is not published.
 The inside-plate success test is skipped with the explicit reason
 “awaiting a real photo with the item fully inside the plate” until both a photo
 and caliper truth are supplied in `real/real-footprints.json`.
@@ -295,12 +296,23 @@ confirmed the printed check bar measures 100 mm. These new records and PNGs
 are isolated under `real/sheet/`, including six additional plate negatives;
 the two existing plate records stay in `real/real-footprints.json`.
 
+The flat card fixture is held locally at
+`rig-stuff/scratch/capture-photos/sheet-letter-2026-10-09/card.jpg` until a
+non-personal flat item replaces it. The converted `real/sheet/card.png` is
+local-only and ignored by git, pending Sean's explicit publication sign-off.
+Its original JPEG hash, truth and measured ring remain in
+`real/sheet/sheet-footprints.json`. Without the PNG, the flat-item test skips
+with `local-only fixture: card.png not published`; the oracle warns and
+preserves that record without claiming to replay it. Public-photo tests still
+run, and the recorded flat result is historical evidence, not a fresh CI
+measurement. Any later approval to publish the photo will be a follow-up.
+
 | Photo | Result | Interpretation |
 |---|---|---|
 | Sheet bare | `no item contour` | 0 mask pixels after the 1 mm opening |
 | Sheet cleaner | approximately 102.5 × 38 mm vs 95 × 28 mm truth | tall item, visible side wall; outside flat-item accuracy claim |
 | Sheet Sharpie | `item crosses the sheet field` | cap crosses the field's top boundary; gray barrel also segments partially |
-| Sheet card (~0.8 mm thick) | 84.8 × 54.2 mm vs 85.60 × 53.98 mm truth | `inside-sheet`; both minAreaRect sides within 1.5 mm |
+| Sheet card (~0.8 mm thick; local-only photo) | recorded 84.8 × 54.2 mm vs 85.60 × 53.98 mm truth | `inside-sheet`; both minAreaRect sides within 1.5 mm locally; CI replay skips without PNG |
 | 4×4 plate bare | `board obstructed by an object crossing its edge` | unchanged detector error, no markers |
 | 4×4 cleaner, Sharpie crossing, Sharpie off plate | `board boundary is not a visible rectangle` | unchanged detector errors, no markers |
 | 2×2 bare, cleaner | `board obstructed by an object crossing its edge` | unchanged detector errors, no markers |

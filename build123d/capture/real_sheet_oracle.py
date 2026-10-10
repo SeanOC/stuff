@@ -4,6 +4,7 @@ Run from build123d/: uv run --group capture python -m capture.real_sheet_oracle
 """
 import hashlib
 import json
+import warnings
 from pathlib import Path
 
 import cv2
@@ -19,6 +20,11 @@ def generate(references):
     rows = []
     for ref in references:
         path = REAL/ref['png']
+        if ref['png'] == 'card.png' and not path.exists():
+            warnings.warn('local-only fixture: card.png not published; preserving recorded measurement',
+                          stacklevel=2)
+            rows.append(dict(ref))
+            continue
         row = {k:ref[k] for k in ('png','original_jpeg_sha256','truth','case','bar_mm')}
         row.update(sha256=hashlib.sha256(path.read_bytes()).hexdigest(), method='periodic',
                    kind=None, polarity=None, result='error', error=None, ring=None, footprint=None)

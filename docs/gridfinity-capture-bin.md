@@ -176,6 +176,8 @@ without filling narrow concavities. Existing plate segmentation is unchanged.
 The 72-image synthetic sheet matrix covers 18 CAD silhouettes at two tilts and
 two illuminants; each group meets the 1.5 mm mean Hausdorff limit. Sean's flat
 85.60 × 53.98 mm card recovers as 84.8 × 54.2 mm, within 1.5 mm on both sides.
+That measurement is retained with its provenance; the personal card photo is
+local-only pending publication approval, so CI skips its replay when absent.
 This is one real flat-item success, not a general accuracy claim. The tall
 cleaner recovers around 102.5 × 38 mm against 95 × 28 mm truth because planar
 calibration retains its visible side wall. See the spike report for evidence.

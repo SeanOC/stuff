@@ -239,9 +239,11 @@ def test_sheet_fixture_replay():
 def test_real_sheet_rows():
     from capture.real_sheet_oracle import REAL, generate
     rows = json.loads((REAL/'sheet-footprints.json').read_text())['records']
-    assert {r['png'] for r in rows} == {p.name for p in REAL.glob('*.png')}
-    actual = generate(rows)
-    assert actual == rows
+    available = {p.name for p in REAL.glob('*.png')}
+    assert {r['png'] for r in rows} - {'card.png'} == available - {'card.png'}
+    present_rows = [r for r in rows if r['png'] in available]
+    actual = generate(present_rows)
+    assert actual == present_rows
     by_case = {r['case']:r for r in actual}
     assert by_case['empty-sheet']['error'] == 'no item contour'
     assert by_case['edge']['error'] == FIELD_EDGE
@@ -252,13 +254,15 @@ def test_real_sheet_rows():
     for row in rows:
         assert row['bar_mm'] == 100.0
         assert len(row['original_jpeg_sha256']) == 64
-        assert (REAL/row['png']).stat().st_size <= 8_000_000
+        if row['png'] in available:
+            assert (REAL/row['png']).stat().st_size <= 8_000_000
         if row['case'] == 'inside-sheet':
             short,long = sorted(cv2.minAreaRect(np.array(row['ring'],np.float32))[1])
             assert [short,long] == pytest.approx(sorted([row['truth']['width_mm'],row['truth']['length_mm']]),abs=1.5)
 
 
 def test_real_sheet_flat_item():
+    from capture.real_sheet_oracle import REAL, generate
     rows = json.loads((FIXTURES/'real/sheet/sheet-footprints.json').read_text())['records']
     card = next(r for r in rows if r['png'] == 'card.png')
     assert card['case'] == 'inside-sheet'
@@ -267,6 +271,22 @@ def test_real_sheet_flat_item():
     assert card['result'] == 'footprint'
     sides = sorted(cv2.minAreaRect(np.array(card['ring'], np.float32))[1])
     assert sides == pytest.approx([53.98, 85.60], abs=1.5)
+    if not (REAL/'card.png').exists():
+        pytest.skip('local-only fixture: card.png not published')
+    assert generate([card]) == [card]
+
+
+def test_real_sheet_oracle_preserves_local_only_record(tmp_path, monkeypatch):
+    from capture import real_sheet_oracle
+    rows = json.loads((real_sheet_oracle.REAL/'sheet-footprints.json').read_text())['records']
+    card = next(r for r in rows if r['png'] == 'card.png')
+    monkeypatch.setattr(real_sheet_oracle, 'REAL', tmp_path)
+    with pytest.warns(UserWarning, match='local-only fixture: card.png not published'):
+        assert real_sheet_oracle.generate([card]) == [card]
+    # Missing public fixtures remain errors, rather than stale baseline successes.
+    public_row = next(r for r in rows if r['png'] != 'card.png')
+    with pytest.raises(FileNotFoundError):
+        real_sheet_oracle.generate([public_row])
 
 
 def test_real_plate_markers_and_errors_unchanged():
@@ -290,7 +310,7 @@ def test_real_plate_markers_and_errors_unchanged():
 def test_real_sheet_oracle_uses_recorded_scale():
     from capture.real_sheet_oracle import REAL, generate
     row = next(r for r in json.loads((REAL/'sheet-footprints.json').read_text())['records']
-               if r['png'] == 'card.png')
+               if r['case'] == 'tall-item')
     calibrated = generate([row | {'bar_mm': 97.0}])[0]
     assert calibrated['bar_mm'] == 97.0
     original = sorted(cv2.minAreaRect(np.array(row['ring'], np.float32))[1])
