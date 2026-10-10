@@ -41,13 +41,15 @@ jobs:
   fast:
     name: build123d fast
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # pst-bnya8: run 38038626797 spent 24m57s before export; allow ~50%
+    # headroom on a ~26m total (export took 39s in run 38016264899).
+    timeout-minutes: 40
     defaults: { run: { working-directory: build123d } }
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - name: sync env (pinned via uv.lock)
-        run: uv sync --frozen
+        run: uv sync --frozen --group capture
       - name: regenerate manifest (deterministic emitter)
         # The committed build123d/manifest.json must match what the
         # registry currently produces — same freshness contract as the
@@ -107,7 +109,8 @@ jobs:
   audit:
     name: build123d audit
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # pst-bnya8: 22m53s in run 38038626797; ~50% headroom, rounded up.
+    timeout-minutes: 35
     defaults: { run: { working-directory: build123d } }
     steps:
       - uses: actions/checkout@v4
@@ -140,11 +143,15 @@ jobs:
           filters: |
             cradle:
               - 'build123d/holders/**'
+              - 'build123d/labels/**'
               - 'build123d/multibuild/**'
               - 'build123d/openconnect/**'
               - 'build123d/tests/print_audit.py'
               - 'build123d/tests/mount_contracts.py'
               - 'build123d/tests/test_spool_cradle.py'
+              # capture-bin endpoint sweep lives in audit_full (pst-8vwop)
+              - 'build123d/gridfinity/**'
+              - 'build123d/tests/test_gridfinity_capture_bin.py'
               - 'build123d/tests/conftest.py'
               - 'build123d/pyproject.toml'
               - 'build123d/uv.lock'
@@ -156,6 +163,8 @@ jobs:
     # !cancelled() so a skipped `changes` (push/schedule) does not skip this.
     if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.result != 'success' || needs.changes.outputs.cradle == 'true') }}
     runs-on: ubuntu-latest
+    # pst-bnya8: retain 30m; slowest shard in main run 38019354675 was
+    # 7m59s, already comfortably above the same 50% headroom rule.
     timeout-minutes: 30
     strategy:
       fail-fast: false
