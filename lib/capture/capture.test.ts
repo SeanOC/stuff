@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { readFileSync, readdirSync, writeFileSync, existsSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, test } from "vitest";
 import { capture, DetectionError } from "./index";
@@ -143,7 +143,8 @@ test("test_vendored_opencv_exposes_required_functions", async () => {
   const cv = await first;
   const functions = ["Mat", "MatVector", "Size", "matFromArray", "cvtColor", "threshold", "findContours",
     "contourArea", "arcLength", "approxPolyDP", "getPerspectiveTransform", "warpPerspective",
-    "boundingRect", "convexHull", "morphologyEx", "getBuildInformation"] as const;
+    "boundingRect", "convexHull", "morphologyEx", "getBuildInformation", "adaptiveThreshold",
+    "isContourConvex", "findHomography", "perspectiveTransform", "getStructuringElement"] as const;
   for (const name of functions) expect(typeof cv[name], name).toBe("function");
   expect(typeof cv.Mat.ones).toBe("function");
   expect(cv.getBuildInformation()).toMatch(/OpenCV 5\.0\.0/);
@@ -282,3 +283,118 @@ test("structural coverage sanity raises its named error", async () => {
   const grid = detectGrid(cv,image), rect = rectify(cv,image,grid.H,{sizeMm:grid.sizeMm,polarity:grid.polarity});
   expect(() => segment(cv,rect,{k:3,shiftTolerance:3})).toThrow("item too large for the plate or background not modelled");
 },30_000);
+
+const sheetMarkers = JSON.parse(readFileSync(path.join(fixtures, "sheet-markers.json"), "utf8")) as {
+  records: { png: string; corners: Record<string, Point[]>; sheet_id: string; size_mm: Point; reprojection_mm: number }[];
+};
+test("test_markers_decode_all_four_ids", async () => {
+  const { detectMarkers } = await import("./markers");
+  const cv = await loadOpenCV();
+  expect(sheetMarkers.records).toHaveLength(72);
+  for (const record of sheetMarkers.records) {
+    const found = detectMarkers(cv, await decodeImage(bytes(record.png)));
+    expect([...found.keys()].sort(), record.png).toEqual([0, 1, 2, 3]);
+    for (const [id, corners] of found) for (let j = 0; j < 4; j++)
+      expect(Math.hypot(corners[j][0] - record.corners[id][j][0], corners[j][1] - record.corners[id][j][1]), `${record.png} id=${id} corner=${j}`).toBeLessThanOrEqual(.5);
+  }
+}, 120_000);
+
+test("test_sheet_grid_matches_python", async () => {
+  const cv = await loadOpenCV();
+  for (const record of sheetMarkers.records) {
+    const grid = detectGrid(cv, await decodeImage(bytes(record.png)));
+    expect(grid.kind, record.png).toBe("sheet");
+    expect(grid.sheetId, record.png).toBe(record.sheet_id);
+    expect(grid.sizeMm, record.png).toEqual(record.size_mm);
+    expect(Math.abs(grid.reprojectionMm! - record.reprojection_mm), record.png).toBeLessThanOrEqual(.05);
+    expect(grid.reprojectionMm!, record.png).toBeLessThan(.8);
+  }
+}, 120_000);
+
+test("test_markers_reject_rotated_and_damaged", async () => {
+  const { detectMarkers, MARKER_CODES } = await import("./markers");
+  const cv = await loadOpenCV();
+  for (let id = 0; id < 4; id++) for (let rotation = 0; rotation < 4; rotation++) for (const damage of [0, 1, 2]) {
+    const data = new Uint8Array(100 * 100 * 3).fill(255);
+    for (let y = 0; y < 60; y++) for (let x = 0; x < 60; x++) {
+      let xx = x, yy = y;
+      for (let r = 0; r < rotation; r++) [xx, yy] = [59 - yy, xx];
+      const cx = Math.floor(x / 10) - 1, cy = Math.floor(y / 10) - 1;
+      const inner = cx >= 0 && cy >= 0 && cx < 4 && cy < 4, bit = cy * 4 + cx;
+      const value = inner ? Number(MARKER_CODES[id][bit]) ^ Number(bit < damage) : 0;
+      const index = ((yy + 20) * 100 + xx + 20) * 3;
+      data.fill(value * 255, index, index + 3);
+    }
+    const found = detectMarkers(cv, { width: 100, height: 100, data });
+    if (damage === 2) expect(found.size).toBe(0);
+    else {
+      expect([...found.keys()]).toEqual([id]);
+      const corners: Point[] = [[20,20], [79,20], [79,79], [20,79]];
+      expect(found.get(id)).toEqual(corners.map((_, j) => corners[(j + rotation) % 4]));
+    }
+  }
+});
+
+type SheetRecord = { png: string; kind: string | null; result: string; error: string | null; footprint: string | null; bar_mm?: number };
+const syntheticSheets = JSON.parse(readFileSync(path.join(fixtures, "sheet-footprints.json"), "utf8")).records as SheetRecord[];
+const realSheets = JSON.parse(readFileSync(path.join(fixtures, "real/sheet/sheet-footprints.json"), "utf8")).records as SheetRecord[];
+const sheetDistances: number[] = [], sheetRows: string[] = [];
+describe("test_sheet_parity", () => {
+  for (const record of [...syntheticSheets, ...realSheets.map(r => ({ ...r, png: `real/sheet/${r.png}` }))]) {
+    const localOnly = record.png.endsWith("/card.png") && !existsSync(path.join(fixtures, record.png));
+    test.skipIf(localOnly)(record.png + (localOnly ? " (local-only card.png is not published)" : ""), async () => {
+      if (record.result === "error") {
+        // Null-kind real records are the six plate negatives: capture dispatches
+        // those through the existing plate fallback, independently of sheets.
+        const result = capture(bytes(record.png), { barMm: record.bar_mm ?? 100 });
+        await expect(result).rejects.toBeInstanceOf(DetectionError);
+        await expect(result).rejects.toHaveProperty("message", record.error);
+        sheetRows.push(`${record.png}: ${record.error}`);
+      } else {
+        const actual = await capture(bytes(record.png), { barMm: record.bar_mm ?? 100 });
+        expect(actual.grid.kind).toBe(record.kind);
+        const py = parse(record.footprint!), ts = parse(actual.footprint);
+        const distance = hausdorff(py, ts), delta = Math.abs(area(ts)-area(py)) / area(py) * 100;
+        sheetDistances.push(distance);
+        sheetRows.push(`${record.png}: Hausdorff=${distance.toFixed(4)} mm area=${delta.toFixed(4)}%`);
+        expect(distance).toBeLessThanOrEqual(.6);
+        expect(delta).toBeLessThanOrEqual(1);
+      }
+    }, 60_000);
+  }
+  test("mean Hausdorff and record pins", () => {
+    expect(syntheticSheets).toHaveLength(72);
+    expect(realSheets).toHaveLength(10);
+    expect(realSheets.filter(r => r.kind === null)).toHaveLength(6);
+    expect(sheetDistances.length).toBeGreaterThanOrEqual(73);
+    expect(sheetDistances.reduce((a,b) => a+b,0)/sheetDistances.length).toBeLessThanOrEqual(.3);
+    if (process.env.CAPTURE_SHEET_PARITY_TABLE) writeFileSync(process.env.CAPTURE_SHEET_PARITY_TABLE, sheetRows.join("\n")+"\n");
+  });
+});
+
+test("test_sheet_scale_contract", async () => {
+  const record = syntheticSheets.find(r => r.png === "sheet/label-p0-sheet-neutral-t0.png")!;
+  const actual = await capture(bytes(record.png), { barMm: 97 });
+  const original = await capture(bytes(record.png));
+  expect(actual.grid.sizeMm).toEqual(original.grid.sizeMm.map(value => value * .97));
+  actual.grid.H.forEach((value, i) => expect(value).toBeCloseTo(original.grid.H[i] * (i < 6 ? .97 : 1), 12));
+  const expected = parse(record.footprint!).map(([x,y]) => [x*.97,y*.97] as Point);
+  expect(hausdorff(actual.ring, expected)).toBeLessThanOrEqual(.3);
+});
+
+test("bundled sheet profiles equal the Python reference", async () => {
+  const { SHEET_PROFILES } = await import("./sheet");
+  expect(SHEET_PROFILES).toEqual(JSON.parse(readFileSync("build123d/capture/sheets.json", "utf8")));
+  expect(SHEET_PROFILES).toEqual(JSON.parse(readFileSync("public/capture/sheets.json", "utf8")));
+});
+
+const sheetErrors = JSON.parse(readFileSync(path.join(fixtures, "sheet-errors/errors.json"), "utf8")) as { png: string; error: string }[];
+for (const record of sheetErrors) test(`${record.png.includes("not-flat") ? "test_not_flat_error" : "test_partial_sheet_error"}: ${record.png}`, async () => {
+  const result = capture(bytes(record.png));
+  await expect(result).rejects.toBeInstanceOf(DetectionError);
+  await expect(result).rejects.toHaveProperty("message", record.error);
+});
+
+test.each([89, 111, NaN, Infinity])("rejects invalid check-bar measurement %s", async barMm => {
+  await expect(capture(bytes(syntheticSheets[0].png), { barMm })).rejects.toThrow("bar_mm must be in 90..110");
+});

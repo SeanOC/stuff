@@ -27,6 +27,7 @@ const draw = { drawImage: vi.fn(), beginPath: vi.fn(), moveTo: vi.fn(), lineTo: 
 const close = vi.fn();
 
 beforeEach(() => {
+  localStorage.clear();
   vi.mocked(capture).mockReset().mockResolvedValue(RESULT);
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(draw as unknown as ReturnType<HTMLCanvasElement["getContext"]>);
   vi.stubGlobal("createImageBitmap", vi.fn().mockResolvedValue({ width: 200, height: 200, close }));
@@ -83,8 +84,11 @@ const ADVICE_CASES = [
   ["board obstructed by an object crossing its edge", "Remove anything crossing the plate edge."],
   ["item too large for the plate or background not modelled", "Use a bigger plate or move the item inside the grid."],
   ["item crosses the plate edge", "Move the item fully inside the baseplate."],
-  ["no item contour", "The item must contrast with the plate (colour or brightness)."],
+  ["no item contour", "The item must contrast with the sheet or plate (colour or brightness)."],
   ["contour cannot meet the 0.3 mm / 256 vertex contract", "Simplify the item's outline or move the camera closer."],
+  ["sheet is not flat or the print is scaled", "Lay the sheet flat and print at 100% scale without fitting to the page."],
+  ["a reference marker is hidden — keep all four corners visible and uncovered", "Keep all four printed markers visible and uncovered."],
+  ["item crosses the sheet field", "Move the item fully inside the grey field."],
 ] as const;
 
 it("pins advice for every DetectionError", () => {
@@ -141,4 +145,52 @@ it("projects millimetre overlays back through a perspective homography", () => {
   const result = photoPoint(H, [(H[0] * x + H[1] * y + H[2]) / w, (H[3] * x + H[4] * y + H[5]) / w]);
   expect(result[0]).toBeCloseTo(x, 8);
   expect(result[1]).toBeCloseTo(y, 8);
+});
+
+it("links printable sheets and persists the check bar for the next visit", async () => {
+  const view = render(<BdDetailPage model={MODEL} />);
+  expect(screen.getByRole("link", { name: "Letter" }).getAttribute("href")).toBe("/capture/capture-sheet-letter-v1.pdf");
+  expect(screen.getByRole("link", { name: "A4" }).getAttribute("href")).toBe("/capture/capture-sheet-a4-v1.pdf");
+  const input = screen.getByLabelText("Measure the check bar on your print:") as HTMLInputElement;
+  expect(input.value).toBe("100");
+  fireEvent.change(input, { target: { value: "97" } });
+  expect(localStorage.getItem("capture.sheetScale")).toBe("97");
+  choose();
+  await waitFor(() => expect(capture).toHaveBeenCalledWith(expect.any(File), { barMm: 97 }));
+  view.unmount();
+  render(<BdDetailPage model={MODEL} />);
+  expect((screen.getByLabelText("Measure the check bar on your print:") as HTMLInputElement).value).toBe("97");
+});
+
+it.each(["", "89", "111"])("rejects check bar %s and disables capture", value => {
+  render(<BdDetailPage model={MODEL} />);
+  fireEvent.change(screen.getByLabelText("Measure the check bar on your print:"), { target: { value } });
+  expect((screen.getByLabelText("Take or choose a photo") as HTMLInputElement).disabled).toBe(true);
+  expect(localStorage.getItem("capture.sheetScale")).toBeNull();
+});
+
+it.each(["junk", "89", "111"])("ignores invalid stored check bar %s", value => {
+  localStorage.setItem("capture.sheetScale", value);
+  render(<BdDetailPage model={MODEL} />);
+  expect((screen.getByLabelText("Measure the check bar on your print:") as HTMLInputElement).value).toBe("100");
+});
+
+it("captures when storage throws and uses the session's calibration", async () => {
+  vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("denied"); });
+  vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("denied"); });
+  render(<BdDetailPage model={MODEL} />);
+  const input = screen.getByLabelText("Measure the check bar on your print:") as HTMLInputElement;
+  expect(input.value).toBe("100");
+  fireEvent.change(input, { target: { value: "99" } });
+  choose();
+  await waitFor(() => expect(capture).toHaveBeenCalledWith(expect.any(File), { barMm: 99 }));
+});
+
+it("shows a sheet field overlay and invalidates it when calibration changes", async () => {
+  vi.mocked(capture).mockResolvedValue({ ...RESULT, grid: { ...RESULT.grid, kind: "sheet" } });
+  render(<BdDetailPage model={MODEL} />);
+  choose();
+  await screen.findByText(/Blue: sheet field/);
+  fireEvent.change(screen.getByLabelText("Measure the check bar on your print:"), { target: { value: "98" } });
+  expect((screen.getByRole("button", { name: "Apply footprint" }) as HTMLButtonElement).disabled).toBe(true);
 });
