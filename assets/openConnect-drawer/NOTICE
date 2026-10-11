@@ -1,0 +1,32 @@
+openConnect Drawer Generator — mitufy
+https://www.printables.com/model/1559284-openconnect-drawer-generator/files
+Retrieved 2026-10-11 from Sean's uploaded original, redistributed verbatim.
+License: Creative Commons Attribution-ShareAlike 4.0 International
+https://creativecommons.org/licenses/by-sa/4.0/
+License text: ../../build123d/reference/LICENSES/CC-BY-SA-4.0.txt
+Source SHA256: 6ca565f2892f00b710050f70985cdeda724d1b590b3d4a13aa787a8141d3149a
+
+Credits retained from the author's header: mitufy, openConnect, and openGrid
+by David D. The drawer source and its generated meshes are distributed under
+CC BY-SA 4.0. Future Python drawer adaptations retain that share-alike scope;
+embedded openConnect cutters will use the existing openconnect/ library.
+Vendoring scope: pst-t0ob3.1 rev 3 section (a), following Sean's 2026-10-11
+request recorded in parent pst-t0ob3, expressly names this SCAD and meshes.
+
+Render-environment facts chosen by this repository, not author pins:
+OpenSCAD 2025.06.12.ai25773, default CGAL backend, binary STL.
+BOSL2: https://github.com/BelfrySCAD/BOSL2
+Pinned commit: b86a7584db6d324eb856c2d19d041f94435e6c32
+Use a separate checkout; do not change the repository's libs/ pin.
+No source patches or compatibility wrappers were applied.
+
+From the repository root, set OPENSCADPATH to the parent of the pinned
+BOSL2 checkout. Command for the sole mesh in this checkpoint:
+openscad --export-format=binstl -D generate_drawer_container=false -D horizontal_grids=1 -D vertical_grids=1 -D depth_grids=1 -D 'shell_bottom_wall_type="Solid"' -o assets/openConnect-drawer/mesh/shell-1x1x1-solid.stl assets/openConnect-drawer/openconnect_drawer_online.scad
+
+BLOCKED CHECKPOINT, NOT AN ACCEPTED REFERENCE SET:
+The worker-rendered shell-1x1x1-solid.stl does not match the mayor's required
+SHA256. SHA256SUMS records the actual checkpoint bytes, not an approved
+replacement baseline. render-mismatch.json records both hashes, pins and
+binary-STL measurements. Per rev 3 section (a), work stopped for escalation
+before rendering the remaining nine meshes or implementing the Python port.

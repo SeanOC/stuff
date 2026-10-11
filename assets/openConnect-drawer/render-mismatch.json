@@ -1,0 +1,40 @@
+{
+  "status": "BLOCKED: rev 3 section (a) requires byte-identical mesh hashes",
+  "source_sha256": "6ca565f2892f00b710050f70985cdeda724d1b590b3d4a13aa787a8141d3149a",
+  "openscad_version": "2025.06.12.ai25773",
+  "bosl2_commit": "b86a7584db6d324eb856c2d19d041f94435e6c32",
+  "base_commit": "50b2b5b0623b06cde0b9c5b0c47a333dcadf2310",
+  "worker": {
+    "sha256": "c15ad330ebf607f400c22c4d55ea5ac8a460ca532991f8769da3c857c4bf0b87",
+    "triangles": 862,
+    "bbox_min_mm": [
+      -14.0,
+      -14.0,
+      0.0
+    ],
+    "bbox_max_mm": [
+      14.0,
+      14.0,
+      28.0
+    ],
+    "signed_volume_mm3": 7499.688285244913
+  },
+  "mayor": {
+    "sha256": "aaf59b9e1dc6cfa12688fc0db35c065b341f75f97682f5e81adb8878a2fc54f6",
+    "triangles": 862,
+    "bbox_min_mm": [
+      -14.0,
+      -14.0,
+      0.0
+    ],
+    "bbox_max_mm": [
+      14.0,
+      14.0,
+      28.0
+    ],
+    "signed_volume_mm3": 7499.688285244913
+  },
+  "triangle_vertex_multisets_equal": true,
+  "worker_only_triangles": 0,
+  "mayor_only_triangles": 0
+}
