@@ -20,13 +20,85 @@ Pinned commit: b86a7584db6d324eb856c2d19d041f94435e6c32
 Use a separate checkout; do not change the repository's libs/ pin.
 No source patches or compatibility wrappers were applied.
 
-From the repository root, set OPENSCADPATH to the parent of the pinned
-BOSL2 checkout. Command for the sole mesh in this checkpoint:
-openscad --export-format=binstl -D generate_drawer_container=false -D horizontal_grids=1 -D vertical_grids=1 -D depth_grids=1 -D 'shell_bottom_wall_type="Solid"' -o assets/openConnect-drawer/mesh/shell-1x1x1-solid.stl assets/openConnect-drawer/openconnect_drawer_online.scad
+Reference verification (pst-t0ob3.1 REV 3b, mayor 2026-10-11):
+Compare facet count, bbox (1e-6 mm), signed volume (1e-6 relative), and
+canonical triangle vertices (exact or within 1e-6 mm). For passing renders,
+commit the mayor baseline verbatim. Both hashes are recorded below.
 
-BLOCKED CHECKPOINT, NOT AN ACCEPTED REFERENCE SET:
-The worker-rendered shell-1x1x1-solid.stl does not match the mayor's required
-SHA256. SHA256SUMS records the actual checkpoint bytes, not an approved
-replacement baseline. render-mismatch.json records both hashes, pins and
-binary-STL measurements. Per rev 3 section (a), work stopped for escalation
-before rendering the remaining nine meshes or implementing the Python port.
+From the repository root, set OPENSCADPATH to the parent of the pinned
+BOSL2 checkout. Commands below independently render to the named mesh path;
+replace the output with the verified mayor baseline before committing.
+SHA256SUMS records only committed mayor-baseline bytes.
+
+shell-default
+openscad --export-format=binstl -D generate_drawer_container=false -o assets/openConnect-drawer/mesh/shell-default.stl assets/openConnect-drawer/openconnect_drawer_online.scad
+Mayor SHA256: 3c4f8e5bffdf514cec0b79194ed9f630aa12cc2c8eb07195849af2564773c218
+Worker SHA256: 2e0ffae986dbcf6a928656b896cfb411f43e4d46673b9ad2e05280999f6e7e52
+geometrically equivalent (facets/bbox/volume/triangle set) — STL byte order is not reproducible across runs
+Facets: 5506; signed volume: 120590.825192263248 mm3.
+
+shell-all-solid
+openscad --export-format=binstl -D generate_drawer_container=false -D 'shell_bottom_wall_type="Solid"' -o assets/openConnect-drawer/mesh/shell-all-solid.stl assets/openConnect-drawer/openconnect_drawer_online.scad
+Mayor SHA256: fb42da32d16b10e70ebe4144eccd837cb6b9fcf3982334da56670ed0373016e3
+Worker SHA256: 09f638afc21c31ccbaa73a00d26a1471e9fcb903a08cc514c24730adeef99fdc
+geometrically equivalent (facets/bbox/volume/triangle set) — STL byte order is not reproducible across runs
+Facets: 3042; signed volume: 141954.700996857282 mm3.
+
+shell-1x1x1
+openscad --export-format=binstl -D generate_drawer_container=false -D horizontal_grids=1 -D vertical_grids=1 -D depth_grids=1 -o assets/openConnect-drawer/mesh/shell-1x1x1.stl assets/openConnect-drawer/openconnect_drawer_online.scad
+Mayor SHA256: 10a57a5dac63903750442b0d3f52dcabe5ce3fc431ecd0db48343baad113ee42
+Worker SHA256: 036a5811be937d07bd89e6e1fe894cea6e468d9ac6fdcb03045d384ce86a78c1
+geometrically equivalent (facets/bbox/volume/triangle set) — STL byte order is not reproducible across runs
+Facets: 986; signed volume: 7135.504885503447 mm3.
+
+shell-1x1x1-solid
+openscad --export-format=binstl -D generate_drawer_container=false -D horizontal_grids=1 -D vertical_grids=1 -D depth_grids=1 -D 'shell_bottom_wall_type="Solid"' -o assets/openConnect-drawer/mesh/shell-1x1x1-solid.stl assets/openConnect-drawer/openconnect_drawer_online.scad
+Mayor SHA256: aaf59b9e1dc6cfa12688fc0db35c065b341f75f97682f5e81adb8878a2fc54f6
+Worker SHA256: c15ad330ebf607f400c22c4d55ea5ac8a460ca532991f8769da3c857c4bf0b87
+geometrically equivalent (facets/bbox/volume/triangle set) — STL byte order is not reproducible across runs
+Facets: 862; signed volume: 7499.688285244913 mm3.
+
+shell-top-slot
+openscad --export-format=binstl -D generate_drawer_container=false -D 'shell_slot_position="Top"' -o assets/openConnect-drawer/mesh/shell-top-slot.stl assets/openConnect-drawer/openconnect_drawer_online.scad
+Mayor SHA256: 6c9af49df64070f96d374a147779da1372e19d46e17304a96cb4f1edfc9f851f
+Worker SHA256: 75a0f402b7dcaf80e2dcb083c9c1013cc103cfbadd9e41cdafa43784f3ccb85c
+geometrically equivalent (facets/bbox/volume/triangle set) — STL byte order is not reproducible across runs
+Facets: 6202; signed volume: 131457.076439029799 mm3.
+
+shell-top-slot-solid
+openscad --export-format=binstl -D generate_drawer_container=false -D 'shell_slot_position="Top"' -D 'shell_bottom_wall_type="Solid"' -o assets/openConnect-drawer/mesh/shell-top-slot-solid.stl assets/openConnect-drawer/openconnect_drawer_online.scad
+Mayor SHA256: 9d7986a17f436b11f7dc28dcd607d230a0bd4136ae742c0a296bb998846da1c1
+Worker SHA256: 4fd84972443a4c09cd343293be8e33f3787d28e7917907120338d53ba37c440e
+geometrically equivalent (facets/bbox/volume/triangle set) — STL byte order is not reproducible across runs
+Facets: 3726; signed volume: 152820.935265146371 mm3.
+
+container-default
+openscad --export-format=binstl -D generate_drawer_shell=false -o assets/openConnect-drawer/mesh/container-default.stl assets/openConnect-drawer/openconnect_drawer_online.scad
+Mayor SHA256: 36fe2ce9de8bfbdc7604bfc9889e7b5d9b3c9abb6c3f04a10bc9aab8c13014ef
+Worker SHA256: 810359e194bbd9045c33ebbb6f52ffecb61aabbc3ad96ceb8971707806d3bbaf
+geometrically equivalent (facets/bbox/volume/triangle set) — STL byte order is not reproducible across runs
+Facets: 11092; signed volume: 64646.422233248937 mm3.
+
+container-all-solid
+openscad --export-format=binstl -D generate_drawer_shell=false -D 'container_front_wall_type="Solid"' -D 'container_side_wall_type="Solid"' -o assets/openConnect-drawer/mesh/container-all-solid.stl assets/openConnect-drawer/openconnect_drawer_online.scad
+Mayor SHA256: ed62e5700208778c75a78e67f0055c1c21a75e37c1d9618cf18790dfa044954f
+Worker SHA256: d395af63819f8079b27a6b4f250a682a54e55c4a2ac04402f4e00af57eeefcf6
+FAILED canonical triangle comparison; this mesh is NOT committed.
+Facets: 8164; signed volume: 72012.473549545903 mm3.
+
+BLOCKED CHECKPOINT — REFERENCE SET INCOMPLETE:
+container-all-solid has 8164 facets in each render, identical bbox and signed
+volume 72012.4735495459 mm3. Of 8164 canonical triangles, 8162 match exactly.
+The remaining two use opposite diagonals on a tiny four-vertex patch:
+A = (54.87410354614258, -144.10888671875, 0)
+B = (54.915061950683594, -144.199951171875, 0.00000019073486612342094)
+C = (54.91508102416992, -144.1999969482422, 0)
+D = (54.91508102416992, -144.1999969482422, 0.00000019073486612342094)
+Worker: A-B-D and A-C-D. Mayor: B-C-D and A-B-C.
+Best maximum vertex-coordinate differences against the two mayor triangles,
+allowing all vertex permutations, are 1.9073486612342094e-7 mm and
+4.57763671875e-5 mm. The latter exceeds REV 3b's 1e-6 mm tolerance.
+This checkpoint does not silently exempt degenerate/sliver triangles.
+Per REV 3b, stopped before container-1x1x1 and stoppers, and before the
+Python shell implementation. Escalation asks whether the canonical triangle
+policy should cover this alternate triangulation and, if so, how to pin it.
