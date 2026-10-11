@@ -8,7 +8,7 @@ Source SHA256: 6ca565f2892f00b710050f70985cdeda724d1b590b3d4a13aa787a8141d3149a
 
 Credits retained from the author's header: mitufy, openConnect, and openGrid
 by David D. The drawer source and its generated meshes are distributed under
-CC BY-SA 4.0. Future Python drawer adaptations retain that share-alike scope;
+CC BY-SA 4.0. The Python drawer adaptations retain that share-alike scope;
 embedded openConnect cutters will use the existing openconnect/ library.
 Vendoring scope: pst-t0ob3.1 rev 3 section (a), following Sean's 2026-10-11
 request recorded in parent pst-t0ob3, expressly names this SCAD and meshes.
@@ -20,15 +20,18 @@ Pinned commit: b86a7584db6d324eb856c2d19d041f94435e6c32
 Use a separate checkout; do not change the repository's libs/ pin.
 No source patches or compatibility wrappers were applied.
 
-Reference verification (pst-t0ob3.1 REV 3b, mayor 2026-10-11):
+Reference verification (pst-t0ob3.1 REV 3b and REV 3c, mayor 2026-10-11):
 Compare facet count, bbox (1e-6 mm), signed volume (1e-6 relative), and
-canonical triangle vertices (exact or within 1e-6 mm). For passing renders,
-commit the mayor baseline verbatim. Both hashes are recorded below.
+canonical triangle vertices (exact or within 1e-6 mm). REV 3c also accepts
+unmatched triangles when all their vertices lie within 1e-4 mm of vertices
+in the other mesh AND they form coplanar quads with the same vertex set
+split on alternate diagonals. All ten renders PASS under these rules.
+Committed meshes are the mayor baselines copied verbatim; SHA256SUMS records
+those baseline bytes. Both baseline and independent worker hashes follow.
 
 From the repository root, set OPENSCADPATH to the parent of the pinned
 BOSL2 checkout. Commands below independently render to the named mesh path;
 replace the output with the verified mayor baseline before committing.
-SHA256SUMS records only committed mayor-baseline bytes.
 
 shell-default
 openscad --export-format=binstl -D generate_drawer_container=false -o assets/openConnect-drawer/mesh/shell-default.stl assets/openConnect-drawer/openconnect_drawer_online.scad
@@ -83,22 +86,35 @@ container-all-solid
 openscad --export-format=binstl -D generate_drawer_shell=false -D 'container_front_wall_type="Solid"' -D 'container_side_wall_type="Solid"' -o assets/openConnect-drawer/mesh/container-all-solid.stl assets/openConnect-drawer/openconnect_drawer_online.scad
 Mayor SHA256: ed62e5700208778c75a78e67f0055c1c21a75e37c1d9618cf18790dfa044954f
 Worker SHA256: d395af63819f8079b27a6b4f250a682a54e55c4a2ac04402f4e00af57eeefcf6
-FAILED canonical triangle comparison; this mesh is NOT committed.
+geometrically equivalent (facets/bbox/volume/triangle set) — STL byte order is not reproducible across runs
+Triangle-set acceptance uses REV 3c: alternate diagonal on a coplanar patch (details below).
 Facets: 8164; signed volume: 72012.473549545903 mm3.
 
-BLOCKED CHECKPOINT — REFERENCE SET INCOMPLETE:
-container-all-solid has 8164 facets in each render, identical bbox and signed
-volume 72012.4735495459 mm3. Of 8164 canonical triangles, 8162 match exactly.
-The remaining two use opposite diagonals on a tiny four-vertex patch:
+container-1x1x1
+openscad --export-format=binstl -D generate_drawer_shell=false -D horizontal_grids=1 -D vertical_grids=1 -D depth_grids=1 -o assets/openConnect-drawer/mesh/container-1x1x1.stl assets/openConnect-drawer/openconnect_drawer_online.scad
+Mayor SHA256: e2432966b85d8d4a6f2874c2ad19a58bdeb735fa664e6d7a4b341db3b8615c95
+Worker SHA256: 6b651f3552ee4cc6e346f6fd10a66f251cb2e6a5879e2b21d64ec591bf7fdfa4
+geometrically equivalent (facets/bbox/volume/triangle set) — STL byte order is not reproducible across runs
+Facets: 3030; signed volume: 4233.187184318932 mm3.
+
+stoppers
+openscad --export-format=binstl -D generate_drawer_shell=false -D generate_drawer_container=false -D generate_drawer_stopper_clips=true -o assets/openConnect-drawer/mesh/stoppers.stl assets/openConnect-drawer/openconnect_drawer_online.scad
+Mayor SHA256: 96229487d901ee02fa9ba63b6282c6161375ee7fe46eabdfa35be566ab50c750
+Worker SHA256: b690fa187e8e0beaf0a38fd7aab9eec4e2d31e2b3020e6f53313a6e7a6c317a6
+geometrically equivalent (facets/bbox/volume/triangle set) — STL byte order is not reproducible across runs
+Facets: 1192; signed volume: 130.079915460545 mm3.
+
+container-all-solid — alternate diagonal on a coplanar patch:
+Of 8164 canonical triangles, 8162 match exactly. Both renders have identical
+facet count, bbox and signed volume. Both quads have this exact vertex set:
 A = (54.87410354614258, -144.10888671875, 0)
 B = (54.915061950683594, -144.199951171875, 0.00000019073486612342094)
 C = (54.91508102416992, -144.1999969482422, 0)
 D = (54.91508102416992, -144.1999969482422, 0.00000019073486612342094)
-Worker: A-B-D and A-C-D. Mayor: B-C-D and A-B-C.
-Best maximum vertex-coordinate differences against the two mayor triangles,
-allowing all vertex permutations, are 1.9073486612342094e-7 mm and
-4.57763671875e-5 mm. The latter exceeds REV 3b's 1e-6 mm tolerance.
-This checkpoint does not silently exempt degenerate/sliver triangles.
-Per REV 3b, stopped before container-1x1x1 and stoppers, and before the
-Python shell implementation. Escalation asks whether the canonical triangle
-policy should cover this alternate triangulation and, if so, how to pin it.
+Worker quad: A-B-D plus A-C-D (diagonal A-D).
+Mayor quad: B-C-D plus A-B-C (diagonal B-C).
+Every unmatched vertex has an exact counterpart in the other mesh (delta 0).
+The patch lies within a 1.90735e-7 mm slab about Z=0, below REV 3c's 1e-4 mm
+vertex tolerance. Best triangle-to-triangle vertex deltas are 1.90735e-7
+and 4.57764e-5 mm; this is specifically the alternate-diagonal case accepted
+by the mayor in REV 3c, rather than a blanket triangle-comparison waiver.
