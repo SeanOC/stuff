@@ -28,6 +28,8 @@ that prohibits redistribution.
 
 ### Vendored-source grant check
 
+`tests/test_reference_provenance.py` enforces exception-register coverage for root `assets/` sets with a tracked NOTICE, their tracked model files, and the existence of enumerated files and adaptation paths.
+
 1. **Is this an upstream original?** The §7 hard rule applies: never commit
    it unless the exception register names **that exact file set**, with the
    grant date, granter and recorded authority. Without that grant, use the
@@ -60,6 +62,7 @@ redistribution rights. The snap and its compatibility patch are one row.
 
 | Exact file set / scope | Licence | Date | Granted by | Where recorded |
 | --- | --- | --- | --- | --- |
+| `assets/gridfinity-rebuilt/NOTICE` and `mesh/gr-bin-2x2x3-nolip.stl`, a render of kennetek/gridfinity-rebuilt-openscad at `910e22d` (no upstream SCAD committed; the library is pinned in `libs/README.md`). Adaptation: `build123d/gridfinity/` capture bins | MIT | 2026-10-07 | Mayor, on Sean's capture-bins epic `pst-r02mp` approval | [NOTICE](../../assets/gridfinity-rebuilt/NOTICE), `pst-r02mp.4`, PR #167 (`a6d6a65`); retain the copyright notice; no share-alike or pyproject adaptation note |
 | `assets/openGrid-multiconnect/`: the six `step/*.step`, five `mesh/*.3mf` and one `mesh/*.stl` delivered by the operator; verbatim set at `f22a71e` (no `.shapr` or bundle ZIP) | CC BY 4.0 | 2026-08-17 | Sean, operator delivery and licence verification | [NOTICE](../../assets/openGrid-multiconnect/NOTICE), `pst-c73m`, PR #64 (`f22a71e`) |
 | `assets/openConnect/`: upstream `lib/opengrid_base.scad`, `lib/openconnect_lib.scad`, `lib/opengrid_threads_lib.scad`, `openconnect_plate.scad` at `04e2277a71c5`; reference renders/wrappers enumerated in NOTICE, including OC1/OC2 additions. Adaptation: `build123d/openconnect/` | CC BY 4.0 | 2026-10-01; render additions 2026-10-04 | Sean (port grant) | [NOTICE](../../assets/openConnect/NOTICE), [pyproject.toml](../pyproject.toml) openConnect exception; `pst-q52ae` / `pst-zn36d` render records |
 | `assets/opengrid-snap/NOTICE` and `mesh/{lite,full,directional,full-directional}.stl`, derived from QuackWorks `6123129` plus `scripts/patches/QuackWorks/0001-opengrid-snap-linear-extrude-click-holes.patch`. Adaptation: `build123d/opengrid_snap/`. **No QuackWorks source grant** | CC BY-NC-SA 4.0 | 2026-10-05 | Sean | [NOTICE](../../assets/opengrid-snap/NOTICE), [pyproject.toml](../pyproject.toml) snap exception |
