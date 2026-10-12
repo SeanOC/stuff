@@ -951,7 +951,7 @@
       "slug": "openconnect-drawer",
       "engine": "build123d",
       "title": "openConnect drawer",
-      "blurb": "mitufy's drawer shell (CC BY-SA 4.0). Print back-wall-down; solid walls. Select the mounting face independently of print orientation.",
+      "blurb": "mitufy's drawer shell (CC BY-SA 4.0). Print back-wall-down; a honeycomb bottom and selectable wall types. Select the mounting face independently of print orientation.",
       "categoryId": "multiboard",
       "params": [
         {
@@ -1012,16 +1012,18 @@
           "kind": "enum",
           "default": "Solid",
           "choices": [
-            "Solid"
+            "Solid",
+            "Honeycomb"
           ]
         },
         {
           "name": "shell_bottom_wall_type",
           "group": "Shell",
           "kind": "enum",
-          "default": "Solid",
+          "default": "Honeycomb",
           "choices": [
-            "Solid"
+            "Solid",
+            "Honeycomb"
           ]
         },
         {
@@ -1030,8 +1032,27 @@
           "kind": "enum",
           "default": "Solid",
           "choices": [
-            "Solid"
+            "Solid",
+            "Honeycomb"
           ]
+        },
+        {
+          "name": "honeycomb_ceiling",
+          "group": "Shell",
+          "kind": "enum",
+          "default": "roofed",
+          "choices": [
+            "roofed"
+          ]
+        },
+        {
+          "name": "honeycomb_strut_hyp",
+          "group": "Shell",
+          "kind": "number",
+          "default": 5.0,
+          "min": 1.1,
+          "max": 16.3,
+          "step": 0.1
         },
         {
           "name": "shell_thickness",
@@ -1192,12 +1213,12 @@
       "presets": [
         {
           "id": "default",
-          "label": "5 \u00d7 2 \u00d7 5 solid shell",
+          "label": "5 \u00d7 2 \u00d7 5 honeycomb-bottom shell",
           "values": {}
         },
         {
           "id": "small",
-          "label": "2 \u00d7 1 \u00d7 2 solid shell",
+          "label": "2 \u00d7 1 \u00d7 2 honeycomb-bottom shell",
           "values": {
             "horizontal_grids": 2,
             "vertical_grids": 1,

@@ -121,6 +121,10 @@ jobs:
               # capture-bin endpoint sweep lives in audit_full (pst-8vwop)
               - 'build123d/gridfinity/**'
               - 'build123d/tests/test_gridfinity_capture_bin.py'
+              # drawer endpoint/corner sweep lives in audit_full (pst-t0ob3.2)
+              - 'build123d/drawer/**'
+              - 'build123d/tests/test_openconnect_drawer.py'
+              - 'build123d/tests/test_honeycomb.py'
               - 'build123d/tests/conftest.py'
               - 'build123d/pyproject.toml'
               - 'build123d/uv.lock'

@@ -108,6 +108,8 @@ def edge_inventory(part, values):
     mount_boxes = a._cutter_boxes([shell.AUTHOR_TO_MODEL.inverse()*cut for cut in fx.cutters])
     fitting_boxes = a._cutter_boxes(shell.source_magnet_cutters(values)+shell.source_stopper_cutters(values), margin=.001)
     original = shell.source_body(values)
+    honeycomb = [(hole.bounding_box(), hole.faces())
+                 for hole in shell.source_honeycomb_cutters(values)]
     corner_points = [(v.X, v.Y) for v in original.vertices()]
     base_edges = [e for e in original.edges() if
                   abs(e.bounding_box().min.Z-d.slot_thickness)<1e-6 and
@@ -137,6 +139,12 @@ def edge_inventory(part, values):
             family = 'library mount'
         elif all(a._in_any_box(*tuple(p), fitting_boxes) for p in points):
             family = 'magnet/stopper fit'
+        elif any(all(box.min.X-1e-5 <= p.X <= box.max.X+1e-5 and
+                     box.min.Y-1e-5 <= p.Y <= box.max.Y+1e-5 and
+                     box.min.Z-1e-5 <= p.Z <= box.max.Z+1e-5 and
+                     min(face.distance_to(p) for face in hole_faces) < 1e-5
+                     for p in points) for box, hole_faces in honeycomb):
+            family = 'source/roofed honeycomb opening'
         elif (max(abs(p.Z-d.depth) for p in points) < 1e-5 and
               all(min(e.distance_to(p) for e in front_edges) < 1e-5 for p in points)):
             family = 'published front rim'

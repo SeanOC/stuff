@@ -15,9 +15,9 @@ REFERENCES = Path(__file__).resolve().parents[2] / 'assets/openConnect-drawer/me
 
 
 @pytest.mark.parametrize('name,values', [
-    ('shell-all-solid', {}),
-    ('shell-1x1x1-solid', dict(horizontal_grids=1, vertical_grids=1, depth_grids=1)),
-    ('shell-top-slot-solid', dict(shell_slot_position='Top')),
+    ('shell-all-solid', dict(shell_bottom_wall_type='Solid')),
+    ('shell-1x1x1-solid', dict(horizontal_grids=1, vertical_grids=1, depth_grids=1, shell_bottom_wall_type='Solid')),
+    ('shell-top-slot-solid', dict(shell_slot_position='Top', shell_bottom_wall_type='Solid')),
 ])
 def test_reference_body_envelope_and_cavity(name, values):
     """Check the box/cavity against actual source meshes away from cut features.
@@ -82,13 +82,17 @@ def test_reject_clearance_above_retention_cap(builder):
 
 
 @pytest.fixture(scope='module', params=[
-    ('shell-all-solid', {}),
-    ('shell-1x1x1-solid', dict(horizontal_grids=1, vertical_grids=1, depth_grids=1)),
-    ('shell-top-slot-solid', dict(shell_slot_position='Top')),
+    ('shell-default', {}),
+    ('shell-top-slot', dict(shell_slot_position='Top')),
+    ('shell-1x1x1', dict(horizontal_grids=1, vertical_grids=1, depth_grids=1)),
+    ('shell-all-solid', dict(shell_bottom_wall_type='Solid')),
+    ('shell-1x1x1-solid', dict(horizontal_grids=1, vertical_grids=1, depth_grids=1, shell_bottom_wall_type='Solid')),
+    ('shell-top-slot-solid', dict(shell_slot_position='Top', shell_bottom_wall_type='Solid')),
 ], ids=lambda case: case[0])
 def reference_case(request, tmp_path_factory):
     from build123d import export_stl
     name, values = request.param
+    values = {**values, "honeycomb_ceiling": "source"}
     before = shell.before_bed_chamfer(values)
     finished = shell.chamfer_bed(before, values)
     source = shell.AUTHOR_TO_MODEL.inverse()*finished
@@ -121,7 +125,8 @@ def test_reference_parity(reference_case):
         # physical exterior errors are removed. The three planes/families
         # are independently pinned below, separately from the bed band.
         contact_cap = {'shell-all-solid': .005, 'shell-1x1x1-solid': .01,
-                       'shell-top-slot-solid': .12}[name]
+                       'shell-top-slot-solid': .12, 'shell-default': .005,
+                       'shell-top-slot': .12, 'shell-1x1x1': .01}[name]
         assert contact.mean() < contact_cap
         points, distances = points[~contact], distances[~contact]
         band = band_mask(points, edges, radius=.5)
@@ -248,6 +253,11 @@ CASES = [(p.id, p.values) for p in m.SPEC.presets] + [
     if p.kind in ('number', 'integer') for x in (p.min, p.max) if x is not None
 ] + [
     ('1x1x1', dict(horizontal_grids=1, vertical_grids=1, depth_grids=1)),
+    ('honeycomb-strut-2', dict(honeycomb_strut_hyp=2)),
+    ('all-honeycomb-strut-2', dict(honeycomb_strut_hyp=2, shell_top_wall_type='Honeycomb', shell_side_wall_type='Honeycomb')),
+    ('honeycomb-strut-default', dict(honeycomb_strut_hyp=5)),
+    ('all-honeycomb', dict(shell_top_wall_type='Honeycomb', shell_side_wall_type='Honeycomb')),
+    *((f'honeycomb-{face}', dict(shell_top_wall_type='Honeycomb', shell_side_wall_type='Honeycomb', shell_slot_position=face)) for face in shell.SLOT_FACES[1:]),
     ('8x8x8', dict(horizontal_grids=8, vertical_grids=8, depth_grids=8)),
     ('thin-chamfer', dict(shell_thickness=1.6, shell_outer_chamfer=4)),
     ('max-clearance', dict(slot_side_clearance=m.SLOT_SIDE_CLEARANCE_MAX,
@@ -258,7 +268,15 @@ CASES = [(p.id, p.values) for p in m.SPEC.presets] + [
 
 
 @pytest.mark.audit
-@pytest.mark.parametrize('name,values', CASES, ids=[case[0] for case in CASES])
+@pytest.mark.parametrize('name,values', [
+    # Keep presets in the regular audit job and the parameter/corner sweep
+    # in its sharded counterpart. With the honeycomb default, moving only
+    # the six extra wall-type cases still exceeds the 35-minute CI budget.
+    pytest.param(name, values, id=name,
+                 marks=pytest.mark.audit_full
+                 if name not in {p.id for p in m.SPEC.presets} else ())
+    for name, values in CASES
+])
 def test_endpoint_audit_and_edges(name, values):
     if name == 'max-clearance':
         cap = values['slot_side_clearance']
@@ -278,6 +296,9 @@ def test_endpoint_audit_and_edges(name, values):
         print(f'AUDIT | {name} | named error: {exc}')
         return
     assert part.is_valid and len(part.solids()) == 1
+    chords = shell.honeycomb_ceiling_chords(values)
+    max_unroofed = max((chord for _, chord, roofed in chords if not roofed), default=0)
+    assert max_unroofed <= audit.MAX_BRIDGE_MM
     fx = shell.slot_fixtures(values)
     raw = audit.audit(part, cutters=fx.cutters, print_frame=m.print_frame(values))
     assert raw.longest_bridge_mm <= audit.MAX_BRIDGE_MM
@@ -299,7 +320,7 @@ def test_endpoint_audit_and_edges(name, values):
     verify_openconnect_slot(part, fx, min_backing=.8, backing_envelope=envelope)
     inventory, angle = edge_inventory(part, values)
     print(f'AUDIT | {name} | raw wall {raw.min_wall_mm:.3f} | raw overhang {raw.max_overhang_deg:.1f} | '
-          f'bridge {raw.longest_bridge_mm:.2f} | exposed edge {angle:.3f} | '
+          f'bridge {raw.longest_bridge_mm:.2f} | analytic unroofed chord {max_unroofed:.6f} | exposed edge {angle:.3f} | '
           f'filtered wall {report.min_wall_mm:.3f} / overhang {report.max_overhang_deg:.1f} | mount PASS | PASS {inventory}')
 
 
