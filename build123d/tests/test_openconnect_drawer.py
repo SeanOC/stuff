@@ -15,9 +15,9 @@ REFERENCES = Path(__file__).resolve().parents[2] / 'assets/openConnect-drawer/me
 
 
 @pytest.mark.parametrize('name,values', [
-    ('shell-all-solid', {}),
-    ('shell-1x1x1-solid', dict(horizontal_grids=1, vertical_grids=1, depth_grids=1)),
-    ('shell-top-slot-solid', dict(shell_slot_position='Top')),
+    ('shell-all-solid', dict(shell_bottom_wall_type='Solid')),
+    ('shell-1x1x1-solid', dict(horizontal_grids=1, vertical_grids=1, depth_grids=1, shell_bottom_wall_type='Solid')),
+    ('shell-top-slot-solid', dict(shell_slot_position='Top', shell_bottom_wall_type='Solid')),
 ])
 def test_reference_body_envelope_and_cavity(name, values):
     """Check the box/cavity against actual source meshes away from cut features.
@@ -82,9 +82,12 @@ def test_reject_clearance_above_retention_cap(builder):
 
 
 @pytest.fixture(scope='module', params=[
-    ('shell-all-solid', {}),
-    ('shell-1x1x1-solid', dict(horizontal_grids=1, vertical_grids=1, depth_grids=1)),
-    ('shell-top-slot-solid', dict(shell_slot_position='Top')),
+    ('shell-default', {}),
+    ('shell-top-slot', dict(shell_slot_position='Top')),
+    ('shell-1x1x1', dict(horizontal_grids=1, vertical_grids=1, depth_grids=1)),
+    ('shell-all-solid', dict(shell_bottom_wall_type='Solid')),
+    ('shell-1x1x1-solid', dict(horizontal_grids=1, vertical_grids=1, depth_grids=1, shell_bottom_wall_type='Solid')),
+    ('shell-top-slot-solid', dict(shell_slot_position='Top', shell_bottom_wall_type='Solid')),
 ], ids=lambda case: case[0])
 def reference_case(request, tmp_path_factory):
     from build123d import export_stl
@@ -121,7 +124,8 @@ def test_reference_parity(reference_case):
         # physical exterior errors are removed. The three planes/families
         # are independently pinned below, separately from the bed band.
         contact_cap = {'shell-all-solid': .005, 'shell-1x1x1-solid': .01,
-                       'shell-top-slot-solid': .12}[name]
+                       'shell-top-slot-solid': .12, 'shell-default': .005,
+                       'shell-top-slot': .12, 'shell-1x1x1': .01}[name]
         assert contact.mean() < contact_cap
         points, distances = points[~contact], distances[~contact]
         band = band_mask(points, edges, radius=.5)
@@ -248,6 +252,9 @@ CASES = [(p.id, p.values) for p in m.SPEC.presets] + [
     if p.kind in ('number', 'integer') for x in (p.min, p.max) if x is not None
 ] + [
     ('1x1x1', dict(horizontal_grids=1, vertical_grids=1, depth_grids=1)),
+    ('honeycomb-strut-default', dict(honeycomb_strut_hyp=5)),
+    ('all-honeycomb', dict(shell_top_wall_type='Honeycomb', shell_side_wall_type='Honeycomb')),
+    *((f'honeycomb-{face}', dict(shell_top_wall_type='Honeycomb', shell_side_wall_type='Honeycomb', shell_slot_position=face)) for face in shell.SLOT_FACES[1:]),
     ('8x8x8', dict(horizontal_grids=8, vertical_grids=8, depth_grids=8)),
     ('thin-chamfer', dict(shell_thickness=1.6, shell_outer_chamfer=4)),
     ('max-clearance', dict(slot_side_clearance=m.SLOT_SIDE_CLEARANCE_MAX,

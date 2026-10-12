@@ -263,6 +263,24 @@ class _ClassifiedPart:
         return False
 
 
+class _ExactExclusion:
+    """Cache exact-solid classification for repeated ceiling/feature samples.
+
+    Honeycomb panels introduce hundreds of separate ceiling facets. The
+    bounds only reject distant points; every candidate still receives the
+    same OCCT IN-or-on-a-face test as the original solid.
+    """
+    def __init__(self, solid):
+        bb = solid.bounding_box()
+        self.lo, self.hi = tuple(bb.min), tuple(bb.max)
+        self.classifier = _ClassifiedPart(solid, partition=False)
+
+    def is_inside(self, point, tolerance=1e-6):
+        return (all(a-tolerance <= p <= b+tolerance
+                    for a, p, b in zip(self.lo, point, self.hi))
+                and self.classifier.is_inside(point, tolerance))
+
+
 def _unit(v: tuple[float, float, float]) -> tuple[float, float, float]:
     m = math.sqrt(sum(c * c for c in v))
     if m == 0.0:
@@ -712,7 +730,10 @@ def audit(
         cutters = [print_frame * c for c in cutters]
         exclusions = [print_frame * e for e in exclusions]
     up = _unit(orientation)
-    boxes = _cutter_boxes(list(cutters)) + list(exclusions)
+    # Analytic surface predicates (e.g. the cartridge dome) implement the
+    # exclusion protocol without a BRep. Preserve those objects unchanged.
+    boxes = _cutter_boxes(list(cutters)) + [
+        _ExactExclusion(e) if hasattr(e, 'wrapped') else e for e in exclusions]
     verts = [v for v in part.vertices()]
     if not verts:
         raise ValueError(f"{model}: part has no geometry to audit")

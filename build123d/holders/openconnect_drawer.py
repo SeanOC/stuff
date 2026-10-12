@@ -47,7 +47,7 @@ def mount_fixtures(mount_type, values):
 
 SPEC = register(ModelSpec(
     name='openconnect_drawer', title='openConnect drawer', category_id='multiboard',
-    description="mitufy's drawer shell (CC BY-SA 4.0). Print back-wall-down; solid walls. Select the mounting face independently of print orientation.",
+    description="mitufy's drawer shell (CC BY-SA 4.0). Print back-wall-down; a honeycomb bottom and selectable wall types. Select the mounting face independently of print orientation.",
     build=build, mounts=(MOUNT,), mount_for_values=mount_for_values,
     print_frame=print_frame,
     params=(
@@ -56,9 +56,10 @@ SPEC = register(ModelSpec(
         Param('vertical_grids', 'integer', 2, min=1, max=8, step=1, filename=True, group='Drawer Size'),
         Param('depth_grids', 'integer', 5, min=1, max=8, step=1, filename=True, group='Drawer Size'),
         Param('shell_slot_position', 'enum', 'Back', choices=shell.SLOT_FACES, group='Shell'),
-        Param('shell_top_wall_type', 'enum', 'Solid', choices=('Solid',), group='Shell'),
-        Param('shell_bottom_wall_type', 'enum', 'Solid', choices=('Solid',), group='Shell'),
-        Param('shell_side_wall_type', 'enum', 'Solid', choices=('Solid',), group='Shell'),
+        Param('shell_top_wall_type', 'enum', 'Solid', choices=('Solid', 'Honeycomb'), group='Shell'),
+        Param('shell_bottom_wall_type', 'enum', 'Honeycomb', choices=('Solid', 'Honeycomb'), group='Shell'),
+        Param('shell_side_wall_type', 'enum', 'Solid', choices=('Solid', 'Honeycomb'), group='Shell'),
+        Param('honeycomb_strut_hyp', 'number', 5.0, step=.1, group='Shell'),
         Param('shell_thickness', 'number', 2.4, min=1.6, max=4, step=.1, group='Shell'),
         Param('shell_outer_chamfer', 'number', 2, min=0, max=4, step=.1, group='Shell'),
         Param('shell_to_slot_wall_thickness', 'number', .9, min=.6, max=2, step=.1, group='Shell'),
@@ -81,7 +82,7 @@ SPEC = register(ModelSpec(
         Param('add_stopper_holes', 'boolean', True, group='Stoppers'),
         Param('stopper_edge_distance', 'number', 3, step=.1, group='Stoppers'),
     ),
-    presets=(Preset('default', '5 × 2 × 5 solid shell', {}),
-             Preset('small', '2 × 1 × 2 solid shell', {'horizontal_grids': 2, 'vertical_grids': 1, 'depth_grids': 2}),
+    presets=(Preset('default', '5 × 2 × 5 honeycomb-bottom shell', {}),
+             Preset('small', '2 × 1 × 2 honeycomb-bottom shell', {'horizontal_grids': 2, 'vertical_grids': 1, 'depth_grids': 2}),
              Preset('top-slot', 'Underdesk shell', {'shell_slot_position': 'Top'})),
 ))

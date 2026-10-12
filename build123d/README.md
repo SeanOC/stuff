@@ -295,9 +295,29 @@ contract, and a test-only 84 × 84 × 5.5 demo plate. See the
 
 `openconnect_drawer` adapts mitufy's drawer under **CC BY-SA 4.0**; see the
 [source, render commands and reference hashes](../assets/openConnect-drawer/NOTICE).
-The `default`, `small` and `top-slot` presets currently have solid walls.
+The `default`, `small` and `top-slot` presets use the author’s honeycomb bottom.
+Top, bottom and side walls can independently be Solid or Honeycomb; the
+slot-bearing wall stays solid. The source strut parameter has a 0.1 mm step
+and no published finite bounds. Panels too small for the source frame and
+one cell raise `HoneycombPanelTooSmall` instead of silently becoming solid.
 Print every mount-face option **back-wall-down**, with the open front up,
 in PLA/PCTG. Slot pitch and mating profiles come from `openconnect/`.
+
+Honeycomb geometry follows the reference NOTICE's BOSL2 `b86a7584` pin,
+including its padded, centred lattice. The default bottom has **97 openings**
+(9 rows of 9 plus 2 clipped rows of 8), independently counted in the source
+STL; the front-panel alignment formulas are separately exposed for the
+container port. The repo's vendored BOSL2 pin is unchanged.
+
+All selectable honeycomb walls stand vertically in the print frame. At the
+default strut setting, perpendicular struts are **4.330127 mm** and hole
+flat-to-flat distance is **11.835681 mm**. D2 REV 2 explicitly preserves that
+over-10 mm source dimension as a published exception. A reference bottom
+section through `(14, -27, 90.8072594)` pins the hole orientation and its
+**6.833333 mm horizontal ceiling edge**. Tests retain the production local
+bridge measurement, audit vertical struts, and exclude only the exact
+ceiling facets; the exposed-edge classifier inventories the opening rims.
+Magnet and stopper reinforcements stay solid before their pockets are cut.
 
 Clearance help (pst-t0ob3.1 REV 3e): the author allows up to **0.5 mm** side
 clearance; above **0.30 mm** the head no longer snaps within the required

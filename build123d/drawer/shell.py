@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: CC-BY-SA-4.0
-"""Solid-wall openConnect drawer shell with mounts, fittings and bed treatment.
+"""openConnect drawer shell with selectable walls, fittings and bed treatment.
 
 [C] assets/openConnect-drawer/openconnect_drawer_online.scad:384-394,
 1354-1357,1372-1483. Published magnet and stopper pockets are preserved;
@@ -305,8 +305,63 @@ def source_stopper_cutters(values=None):
     return cuts
 
 
+def source_honeycomb_cutters(values=None):
+    """Through-openings, preserving :1390-1415 frames and fitting infills.
+
+    All four wall planes are vertical in the back-wall-down print frame.
+    The hex ceilings bridge between their struts; none is a horizontal roof
+    panel. The slot-bearing wall always remains solid, as in the source.
+    """
+    from .honeycomb import hole_solids
+    v = values or {}
+    d = dimensions(v)
+    depth = d.depth+d.wall-d.slot_thickness
+    cutters = []
+    for name, setting, default in (
+        ('Top', 'shell_top_wall_type', 'Solid'),
+        ('Bottom', 'shell_bottom_wall_type', 'Honeycomb'),
+        ('Left', 'shell_side_wall_type', 'Solid'),
+        ('Right', 'shell_side_wall_type', 'Solid'),
+    ):
+        if v.get(setting, default) != 'Honeycomb' or d.slot_face == name:
+            continue
+        side = name in ('Left', 'Right')
+        size = (d.height if side else d.width)-2*d.inner_chamfer
+        sign = -1 if name in ('Left', 'Bottom') else 1
+        origin = ((d.source_x+sign*(d.width-d.wall)/2, d.source_y, d.depth-depth/2)
+                  if side else
+                  (d.source_x, d.source_y+sign*(d.height-d.wall)/2, d.depth-depth/2))
+        plane = Plane(origin=origin, x_dir=(0, 0, 1),
+                      z_dir=(-1, 0, 0) if side else (0, 1, 0))
+        holes = hole_solids(depth, size, d.wall+2*EPS,
+                            strut_hyp=v.get('honeycomb_strut_hyp', c.HONEYCOMB_STRUT_HYP))
+        # The source clears only the straight wall interior. Fitting infills
+        # extend down from the front rim before the pockets are cut.
+        front_fill = (v.get('shell_side_magnet_edge_distance', 6)
+                      +v.get('side_magnet_diameter', 6)+2*c.MAGNET_HOLE_SIDE_CLEARANCE+3
+                      if side and v.get('add_side_magnet_holes', True) else
+                      v.get('stopper_edge_distance', 3)+c.STOPPER_HEIGHT+3
+                      if name == 'Top' and v.get('add_stopper_holes', True) else 0)
+        length = d.inner_depth-front_fill
+        if length <= 0:
+            continue
+        window = (Pos(origin[0], d.source_y, d.slot_thickness+length/2)
+                  *Box(d.wall+2*EPS, d.inner_height-2*d.inner_chamfer, length)
+                  if side else
+                  Pos(d.source_x, origin[1], d.slot_thickness+length/2)
+                  *Box(d.inner_width-2*d.inner_chamfer, d.wall+2*EPS, length))
+        for hole in holes:
+            clipped = (plane.location*hole) & window
+            if clipped is not None:
+                cutters.extend(clipped.solids())
+    return cutters
+
+
 def before_bed_chamfer(values=None):
     part = source_body(values)
+    holes = source_honeycomb_cutters(values)
+    if holes:
+        part = part.cut(*holes)
     for cut in source_magnet_cutters(values)+source_stopper_cutters(values):
         part -= cut
     part = AUTHOR_TO_MODEL*part
@@ -372,6 +427,23 @@ def build(values=None):
     return chamfer_bed(before_bed_chamfer(values), values)
 
 
+def honeycomb_ceiling_regions(values):
+    """Only positive-Z opening facets in the declared source/print frame.
+
+    REV 2 preserves source hex ceilings, with 11.835681 mm conservative
+    flat-to-flat span at strut_hyp=5. Reference section and orientation are
+    independently pinned in test_honeycomb; vertical strut walls stay audited.
+    """
+    regions = []
+    for hole in source_honeycomb_cutters(values):
+        for face in hole.faces():
+            normal = face.normal_at()
+            if normal.Z > .01:
+                regions.append(AUTHOR_TO_MODEL *
+                               (Pos(*tuple(-normal*.0005))*Solid.extrude(face, normal*.001)))
+    return regions
+
+
 def published_ceiling_regions(values=None):
     """Exact thin regions for the author's short magnet/stopper ceilings.
 
@@ -399,4 +471,4 @@ def published_ceiling_regions(values=None):
         regions.append(Pos(x, y-depth, z+c.STOPPER_HEIGHT)*Box(
             c.STOPPER_WIDTH+c.STOPPER_FLANK_WIDTH, depth, .001,
             align=(Align.CENTER, Align.MIN, Align.CENTER)))
-    return [AUTHOR_TO_MODEL*r for r in regions]
+    return [AUTHOR_TO_MODEL*r for r in regions]+honeycomb_ceiling_regions(v)
