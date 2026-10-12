@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: CC-BY-SA-4.0
+# SPDX-License-Identifier: CC-BY-SA-4.0 AND BSD-2-Clause
 """Drawer hex panels, centred in XY with thickness centred on Z.
 
 [C] drawer source :435-451 and BOSL2 walls.scad hex_panel/_honeycomb,
@@ -19,14 +19,18 @@ class HoneycombPanelTooSmall(ValueError):
     """BOSL2's strict frame*2 + spacing < size guard failed."""
 
 
+class HoneycombStrutOutOfRange(ValueError):
+    """Unit/strut values cannot form a finite, positive hex opening."""
+
+
 def strut_dimensions(strut_hyp=HONEYCOMB_STRUT_HYP, unit=HONEYCOMB_UNIT):
     """Return spacing, perpendicular strut width, hex inradius/circumradius."""
     if not all(isfinite(x) and x > 0 for x in (strut_hyp, unit)):
-        raise ValueError('honeycomb unit and strut_hyp must be finite and positive')
+        raise HoneycombStrutOutOfRange('honeycomb unit and strut_hyp must be finite and positive')
     spacing, strut = unit/cos(pi/6), strut_hyp*cos(pi/6)
     ir = (spacing-strut)/2
     if ir <= 0:
-        raise ValueError('honeycomb strut must be smaller than spacing')
+        raise HoneycombStrutOutOfRange('honeycomb strut must be smaller than spacing')
     return spacing, strut, ir, ir*2/sqrt(3)
 
 

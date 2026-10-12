@@ -9,7 +9,7 @@ import pytest
 from build123d import Part, Plane, section
 
 from drawer import shell
-from drawer.honeycomb import (HoneycombPanelTooSmall, front_alignment,
+from drawer.honeycomb import (HoneycombPanelTooSmall, HoneycombStrutOutOfRange, front_alignment,
                              hole_polygons, honeycomb_panel, strut_dimensions)
 from holders.openconnect_drawer import SPEC
 
@@ -21,6 +21,12 @@ def test_default_dimensions_and_front_alignment():
     assert front_alignment(134.8, 50.8) == pytest.approx((9, 3, (50.8-3*spacing)/2))
     p = next(p for p in SPEC.params if p.name == 'honeycomb_strut_hyp')
     assert (p.default, p.step, p.min, p.max) == (5, .1, None, None)
+
+
+@pytest.mark.parametrize('strut', [0, -1, float('inf'), float('nan'), 20])
+def test_unbuildable_strut_has_named_error(strut):
+    with pytest.raises(HoneycombStrutOutOfRange):
+        shell.source_honeycomb_cutters({'honeycomb_strut_hyp': strut})
 
 
 def test_panel_frame_struts_holes_and_envelope():
@@ -92,6 +98,28 @@ def test_reference_bottom_count_orientation_and_ceiling_span():
     clipped = next(p for p in paths if np.allclose(
         p.min(axis=0), (63.1666641, -27, 39.0031891), atol=1e-4))
     assert np.ptp(clipped, axis=0)[0] == pytest.approx(1.9090958, abs=1e-5)
+
+
+@pytest.mark.parametrize('name,values,y,expected', [
+    ('default', {}, -27, 9.4695507),
+    ('1x1x1', dict(horizontal_grids=1, vertical_grids=1, depth_grids=1), -13, 7.8603461),
+])
+def test_clipped_ceiling_chords_match_reference(name, values, y, expected):
+    import numpy as np
+    import trimesh
+    ref = trimesh.load_mesh(Path(__file__).resolve().parents[2]/
+                            f'assets/openConnect-drawer/mesh/shell-{name}.stl')
+    paths = ref.section(plane_origin=(0, y, 0), plane_normal=(0, 1, 0)).discrete
+    # Drop the enclosing wall perimeter, then measure each opening's top
+    # horizontal chord independently of the production local-width scan.
+    holes = sorted(paths, key=lambda p: np.ptp(p[:, 0])*np.ptp(p[:, 2]))[:-1]
+    reference_chords = [np.ptp(p[np.abs(p[:, 2]-p[:, 2].max()) < 1e-5, 0])
+                        for p in holes]
+    assert max(reference_chords) == pytest.approx(expected, abs=1e-5)
+    ceilings = [f for h in shell.source_honeycomb_cutters(values)
+                for f in h.faces() if f.normal_at().Z > .999]
+    assert max(max(f.bounding_box().size.X, f.bounding_box().size.Y)
+               for f in ceilings) == pytest.approx(expected, abs=1e-5)
 
 
 def test_cached_exact_ceiling_exclusions_preserve_membership():

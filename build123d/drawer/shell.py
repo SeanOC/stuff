@@ -430,9 +430,11 @@ def build(values=None):
 def honeycomb_ceiling_regions(values):
     """Only positive-Z opening facets in the declared source/print frame.
 
-    REV 2 preserves source hex ceilings, with 11.835681 mm conservative
-    flat-to-flat span at strut_hyp=5. Reference section and orientation are
-    independently pinned in test_honeycomb; vertical strut walls stay audited.
+    REV 2 preserves source hex ceilings. The 11.835681 mm flat-to-flat
+    dimension at strut_hyp=5 is vertical, not a horizontal bridge span.
+    The family includes clipped frame cells as well as full hexes; no
+    horizontal chord bound is imposed here. Endpoint tests separately run
+    the production bridge measurement without these exclusions.
     """
     regions = []
     for hole in source_honeycomb_cutters(values):
@@ -445,11 +447,13 @@ def honeycomb_ceiling_regions(values):
 
 
 def published_ceiling_regions(values=None):
-    """Exact thin regions for the author's short magnet/stopper ceilings.
+    """Exact thin regions for source magnet, stopper and honeycomb ceilings.
 
     [C] :1438/:1444 (teardrop cap_h=r+.2) and :1468/:1816-1821
     (stopper-hole roofs). Tests independently pin their reference heights,
-    bridge spans and membership. These regions exclude no vertical walls.
+    bridge spans and membership. Honeycomb regions are the positive-Z
+    opening facets returned by honeycomb_ceiling_regions; their vertical
+    strut walls are not excluded.
     """
     v = values or {}
     d = dimensions(v)
