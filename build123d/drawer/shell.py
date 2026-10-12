@@ -47,9 +47,22 @@ class Dimensions:
     source_y: float
 
 
+def validate_clearances(values=None):
+    """REV 3e: keep the unchanged shallow contract's pull-off retention."""
+    v = values or {}
+    value = v.get('slot_side_clearance', .1)
+    # Depth clearance retains the full library domain. The registry/library
+    # diagnose its out-of-domain values; only side clearance loses retention.
+    if isinstance(value, (int, float)) and value > c.SLOT_SIDE_CLEARANCE_MAX:
+        raise ValueError(f'slot_side_clearance above {c.SLOT_SIDE_CLEARANCE_MAX:g} mm '
+                         'leaves no openConnect head retention '
+                         '(openconnect-slot-shallow contract)')
+
+
 def dimensions(values=None):
     """Author tile-based sizes; extra slot thickness extends only its face."""
     v = values or {}
+    validate_clearances(v)
     nh, nv, nd = (v.get(k, default) for k, default in (
         ('horizontal_grids', 5), ('vertical_grids', 2), ('depth_grids', 5)))
     if any(isinstance(n, bool) or not isinstance(n, int) or n <= 0

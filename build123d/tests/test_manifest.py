@@ -173,7 +173,7 @@ def test_validator_accepts_filename_on_every_kind():
 
 
 def test_mount_selection_params_are_filename_flagged():
-    """Mount selections and Gridfinity dimensions/style distinguish downloads."""
+    """Mount selections and model dimensions/style distinguish downloads."""
     flagged = [(s.name, p.name) for s in all_models() for p in s.params if p.filename]
     assert set(flagged) == {
         ("holder_spool_cradle", "mount_style"),
@@ -183,6 +183,9 @@ def test_mount_selection_params_are_filename_flagged():
         ("littletikes_dream_machine_cartridge_holder", "mount_type"),
         ("gridfinity_capture_bin", "width_units"),
         ("gridfinity_capture_bin", "depth_units"),
+        ("openconnect_drawer", "horizontal_grids"),
+        ("openconnect_drawer", "vertical_grids"),
+        ("openconnect_drawer", "depth_grids"),
     }
     models = {m["slug"]: m for m in build_manifest()["models"]}
     for name, param in flagged:

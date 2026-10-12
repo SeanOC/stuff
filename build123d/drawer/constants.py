@@ -19,3 +19,8 @@ BACK_MAGNET_OCSLOT_OFFSET = 4.6  # [C] :467; shell rule :1450-1462
 HANDLE_CHAMFER = 0.4  # [C] :461
 HONEYCOMB_UNIT = 14.0  # [C] :435; used by the later honeycomb port
 HONEYCOMB_STRUT_HYP = 5.0  # [C] :118
+
+# Local retention-domain decision (pst-t0ob3.1 REV 3e); measured with the
+# mandatory bevel and unchanged openconnect-slot-shallow contract.
+SLOT_SIDE_CLEARANCE_MAX = 0.3
+SLOT_DEPTH_CLEARANCE_MAX = 0.5

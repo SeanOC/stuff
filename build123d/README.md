@@ -291,6 +291,49 @@ against committed renders of the author's plate and head. It provides
 contract, and a test-only 84 × 84 × 5.5 demo plate. See the
 [API and evidence](docs/openconnect-library.md).
 
+## openConnect drawer shell
+
+`openconnect_drawer` adapts mitufy's drawer under **CC BY-SA 4.0**; see the
+[source, render commands and reference hashes](../assets/openConnect-drawer/NOTICE).
+The `default`, `small` and `top-slot` presets currently have solid walls.
+Print every mount-face option **back-wall-down**, with the open front up,
+in PLA/PCTG. Slot pitch and mating profiles come from `openconnect/`.
+
+Clearance help (pst-t0ob3.1 REV 3e): the author allows up to **0.5 mm** side
+clearance; above **0.30 mm** the head no longer snaps within the required
+0.5 mm pull test — rejected with the named `slot_side_clearance above 0.3 mm`
+retention error. Depth clearance keeps the author's **0–0.5 mm** range.
+Both default to **0.10 mm**. The cap is the largest passing value on the
+requested 0.05 mm search grid, including the combined maximum. The complete
+`openconnect-slot-shallow` contract is unchanged.
+
+The reproducible search uses the finished default shell, including its
+mandatory bed bevel, and reports the least interference across all ten
+seats at outward pulls of 0.5, 1 and 2 mm. Run from `build123d/`:
+`uv run python scripts/drawer_retention_preflight.py --search-caps`.
+The diagnostic temporarily permits the author's wider domain to measure
+rejected geometry; production builds always enforce the cap.
+
+| Side / depth clearance (mm) | Min interference at 0.5 / 1 / 2 mm pulls (mm³) | Full shallow contract |
+|---|---|---|
+| 0.10 / 0.10 | 12.987129 / 28.067526 / 20.666015 | PASS |
+| 0.30 / 0.10 | 2.301249 / 16.557276 / 16.986122 | PASS |
+| 0.40 / 0.10 | 0.000000 / 11.384378 / 15.057533 | FAIL: 0.5 mm pull |
+| 0.35 / 0.10 | 0.145317 / 13.879392 / 16.029451 | FAIL: 0.5 mm pull |
+| 0.10 / 0.30 | 12.987129 / 28.067526 / 20.666015 | PASS |
+| 0.10 / 0.40 | 12.987129 / 28.067526 / 20.666015 | PASS |
+| 0.10 / 0.45 | 12.987129 / 28.067526 / 20.666015 | PASS |
+| 0.10 / 0.50 | 12.987129 / 28.067526 / 20.666015 | PASS |
+| 0.30 / 0.50 | 2.301249 / 16.557276 / 16.986122 | PASS |
+| 0.30 / 0.30 | 2.301249 / 16.557276 / 16.986122 | PASS |
+| 0.40 / 0.40 | 0.000000 / 11.384378 / 15.057533 | FAIL: 0.5 mm pull |
+| 0.35 / 0.35 | 0.145317 / 13.879392 / 16.029451 | FAIL: 0.5 mm pull |
+
+[Recorded search evidence](tests/openconnect_drawer_retention_caps.json); the
+[original 0.5 mm comparison](tests/openconnect_drawer_retention_preflight.json)
+is retained separately. Depth beyond 0.5 mm remains outside the library
+domain; the search does not claim a retention failure beyond that limit.
+
 ## Multibuild spool cradle
 
 | Model | Presets | Mount / print |

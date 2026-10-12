@@ -8,12 +8,14 @@ Worst load is a filled drawer pulling the mount away from the wall; the
 continuous shell walls carry it. Mount profiles remain library geometry.
 """
 from drawer import shell
+from drawer.constants import SLOT_SIDE_CLEARANCE_MAX, SLOT_DEPTH_CLEARANCE_MAX
 from holders.registry import ModelSpec, Param, Preset, register
 
 MOUNT = 'openconnect-slot-shallow'
 
 
 def build(values=None):
+    shell.validate_clearances(values)
     return shell.build(SPEC.resolve_values(values))
 
 
@@ -30,6 +32,7 @@ def mount_for_values(values):
 def mount_fixtures(mount_type, values):
     if mount_type != MOUNT:
         raise ValueError(f'unsupported mount: {mount_type}')
+    shell.validate_clearances(values)
     v = SPEC.resolve_values(values)
     if mount_for_values(v) is None:
         return None
@@ -64,8 +67,8 @@ SPEC = register(ModelSpec(
         Param('slot_entryramp_flip', 'boolean', False, group='Slots'),
         Param('slot_horizontal_offset', 'number', 0, min=-14, max=14, step=.1, group='Slots'),
         Param('slot_vertical_offset', 'number', 0, min=-10, max=10, step=.1, group='Slots'),
-        Param('slot_side_clearance', 'number', .1, min=0, max=.5, step=.01, group='Advanced'),
-        Param('slot_depth_clearance', 'number', .1, min=0, max=.5, step=.01, group='Advanced'),
+        Param('slot_side_clearance', 'number', .1, min=0, max=SLOT_SIDE_CLEARANCE_MAX, step=.01, group='Advanced'),
+        Param('slot_depth_clearance', 'number', .1, min=0, max=SLOT_DEPTH_CLEARANCE_MAX, step=.01, group='Advanced'),
         # The author's drawer dimensions below have steps, but no published
         # finite ranges (:88-100). Preserve that numeric-input contract.
         Param('add_back_magnet_holes', 'boolean', True, group='Magnets'),

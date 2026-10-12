@@ -170,6 +170,11 @@ export const CATALOG: Record<string, CatalogEntry> = {
  * enforcement and cross-checks the manifest's categoryId against it.
  */
 export const BUILD123D_CATALOG: Record<string, CatalogEntry> = {
+  openconnect_drawer: {
+    categoryId: "multiboard",
+    blurb:
+      "mitufy's drawer shell (CC BY-SA 4.0). Print back-wall-down; solid walls. Select the mounting face independently of print orientation.",
+  },
   gridfinity_capture_bin: {
     categoryId: "storage",
     blurb: "A no-lip Gridfinity bin with a pocket fitted to a captured item footprint. Print feet-down without supports.",

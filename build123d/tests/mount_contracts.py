@@ -85,8 +85,10 @@ _OC_END_STOP_MIN = 5.0  # mm^3: an openConnect head pushed 1 mm past its seat mu
 _CENTER3 = (Align.CENTER, Align.CENTER, Align.CENTER)
 
 
-def _residual_vol(part: Part, solid: Part) -> float:
+def _residual_vol(part: Part | None, solid: Part) -> float:
     """Volume of ``part ∩ solid`` (0.0 when they do not overlap)."""
+    if part is None:
+        return 0.0
     inter = part.intersect(solid)
     if inter is None:
         return 0.0
@@ -393,6 +395,22 @@ def channel_pairs(fx: MountFixtures) -> list[list[tuple]]:
     return result
 
 
+def _head_path_region(poses):
+    """Enclose translated head-path endpoints, including all linear interiors.
+
+    A head translates without rotating on each tested path segment. Therefore
+    the union of endpoint bounding boxes encloses every sampled head. Cropping
+    ONLY head-interference queries to this region preserves their intersection
+    volumes; backing and cutter-profile queries still use the complete model.
+    Padding keeps the artificial cut planes away from coincident probe faces.
+    """
+    boxes = [pose.bounding_box() for pose in poses]
+    low = [min(tuple(box.min)[axis] for box in boxes)-.01 for axis in range(3)]
+    high = [max(tuple(box.max)[axis] for box in boxes)+.01 for axis in range(3)]
+    return Pos(*((a+b)/2 for a, b in zip(low, high))) * Box(
+        *(b-a for a, b in zip(low, high)))
+
+
 def verify_openconnect_slot(
     part: Part, fx: MountFixtures, *, min_backing: float = 2.4,
     backing_envelope: Part | None = None,
@@ -451,11 +469,11 @@ def verify_openconnect_slot(
         'one cutter, seat and on-ramp pose per slot required'
     fixture = oc_head()
 
-    def sweep(head, delta, step):
+    def sweep(probe_part, head, delta, step):
         steps = max(1, math.ceil(max(abs(v) for v in delta) / step))
         for i in range(steps + 1):
             pose = Pos(*(v * i / steps for v in delta)) * head
-            residual = _residual_vol(part, pose)
+            residual = _residual_vol(probe_part, pose)
             assert residual < _TRAVEL_TOL, (
                 f'openconnect entry path blocked: {residual:.3f} mm^3 at step {i}/{steps} '
                 f'of {tuple(round(v, 2) for v in delta)}')
@@ -466,20 +484,27 @@ def verify_openconnect_slot(
         assert abs(a.Y - b.Y) < 1e-7, 'on-ramp and seat poses must share the insertion depth'
         assert a.Z > b.Z, 'the on-ramp must be below the seat (heads ride +Z)'
         seated = seat * fixture
-        r = _residual_vol(part, seated)
-        assert r < _EMPTY_VOL, f'seated openConnect head fouls the model ({r:.3f} mm^3)'
-        for dist in _PULL_DISTS:
-            r = _residual_vol(part, Pos(0, -dist, 0) * seated)
-            assert r > _RETENTION_MIN, (
-                f'seated openConnect head pulls off the wall at {dist} mm ({r:.3f} mm^3)')
-        r = _residual_vol(part, Pos(0, 0, 1.0) * seated)
-        assert r > _OC_END_STOP_MIN, f'slot is open past the seat ({r:.3f} mm^3 at +1 mm)'
-        # Entire head starts outside the board-facing surface.
         head = ramp * fixture
         out = head.bounding_box().max.Y - face_y + 0.5
-        sweep(Pos(0, -out, 0) * head, (0, out, 0), 0.25)
-        sweep(head, (a.X - b.X, 0, 0), 0.25)
-        sweep(Pos(a.X - b.X, 0, 0) * head, (0, 0, a.Z - b.Z), 0.5)
+        outside = Pos(0, -out, 0) * head
+        shifted = Pos(a.X-b.X, 0, 0) * head
+        probe_part = part & _head_path_region([
+            seated, head, outside, shifted,
+            Pos(0, -max(_PULL_DISTS), 0)*seated,
+            Pos(0, 0, 1.0)*seated,
+        ])
+        r = _residual_vol(probe_part, seated)
+        assert r < _EMPTY_VOL, f'seated openConnect head fouls the model ({r:.3f} mm^3)'
+        for dist in _PULL_DISTS:
+            r = _residual_vol(probe_part, Pos(0, -dist, 0) * seated)
+            assert r > _RETENTION_MIN, (
+                f'seated openConnect head pulls off the wall at {dist} mm ({r:.3f} mm^3)')
+        r = _residual_vol(probe_part, Pos(0, 0, 1.0) * seated)
+        assert r > _OC_END_STOP_MIN, f'slot is open past the seat ({r:.3f} mm^3 at +1 mm)'
+        # Entire head starts outside the board-facing surface.
+        sweep(probe_part, outside, (0, out, 0), 0.25)
+        sweep(probe_part, head, (a.X - b.X, 0, 0), 0.25)
+        sweep(probe_part, shifted, (0, 0, a.Z - b.Z), 0.5)
         # Dovetail: the mouth is narrower than the head flange, the pocket wider.
         surface = _cutter_x_width(cutter, face_y + 0.2, a.Z)
         bb = cutter.bounding_box()

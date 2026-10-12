@@ -70,6 +70,17 @@ from tests.parity import (band_mask, bbox_parity, boundary_edges, load_reference
                           over_cap_exclusion, surface_distance, volume_parity)
 
 
+@pytest.mark.parametrize('builder', [shell.build, m.build])
+def test_reject_clearance_above_retention_cap(builder):
+    parameter, cap = 'slot_side_clearance', m.SLOT_SIDE_CLEARANCE_MAX
+    for value in (cap+.01, cap+.05):
+        with pytest.raises(ValueError) as exc:
+            builder({parameter: value})
+        assert str(exc.value) == (
+            f'{parameter} above {cap:g} mm leaves no openConnect head '
+            'retention (openconnect-slot-shallow contract)')
+
+
 @pytest.fixture(scope='module', params=[
     ('shell-all-solid', {}),
     ('shell-1x1x1-solid', dict(horizontal_grids=1, vertical_grids=1, depth_grids=1)),
@@ -239,7 +250,8 @@ CASES = [(p.id, p.values) for p in m.SPEC.presets] + [
     ('1x1x1', dict(horizontal_grids=1, vertical_grids=1, depth_grids=1)),
     ('8x8x8', dict(horizontal_grids=8, vertical_grids=8, depth_grids=8)),
     ('thin-chamfer', dict(shell_thickness=1.6, shell_outer_chamfer=4)),
-    ('max-clearance', dict(slot_side_clearance=.5, slot_depth_clearance=.5)),
+    ('max-clearance', dict(slot_side_clearance=m.SLOT_SIDE_CLEARANCE_MAX,
+                           slot_depth_clearance=m.SLOT_DEPTH_CLEARANCE_MAX)),
     ('minimum-valid-backing', dict(shell_to_slot_wall_thickness=.8)),
     *((face, {'shell_slot_position': face}) for face in ('Bottom', 'Left', 'Right')),
 ]
@@ -248,6 +260,13 @@ CASES = [(p.id, p.values) for p in m.SPEC.presets] + [
 @pytest.mark.audit
 @pytest.mark.parametrize('name,values', CASES, ids=[case[0] for case in CASES])
 def test_endpoint_audit_and_edges(name, values):
+    if name == 'max-clearance':
+        cap = values['slot_side_clearance']
+        with pytest.raises(ValueError) as exc:
+            m.build({**values, 'slot_side_clearance': cap+.05})
+        assert str(exc.value) == (
+            f'slot_side_clearance above {cap:g} mm leaves no openConnect head '
+            'retention (openconnect-slot-shallow contract)')
     try:
         part = m.build(values)
     except ValueError as exc:
