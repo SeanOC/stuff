@@ -46,3 +46,21 @@ Its named library
 strut below about 0.95 mm), nonfinite values, and values that leave no hex
 opening. `HoneycombPanelTooSmall` rejects panels smaller than the source's
 frame-and-cell requirement; neither guard silently substitutes a solid wall.
+
+## Deviations from the source
+
+**Left/Right slot orientation (decided by Sean 2026-10-12).** Source :1427
+(`slot_slide_direction = Top||Bottom ? "Left" : "Up"`) combined with :1421
+`attach(LEFT/RIGHT)` orients the side slots along the drawer depth, so a
+Left or Right shell can only hang with its opening facing up. We rotate
+those slots 90° about the face normal (`slide='left'` on Left,
+`slide='right'` on Right, compensating for their opposite normals). The
+shell now hangs opening-forward: as on the Back face, the head travels up
+relative to the shell while the shell drops onto the seat. Grid positions,
+tile counts and side-magnet exclusions are unchanged; the same cutters
+rotate in place. Back, Top and Bottom keep the source orientation.
+
+The author reference set has no Left/Right shell meshes, so mesh parity is
+unaffected. Do not add the author's Left/Right meshes as parity targets;
+they would pin the source orientation.
+`test_mount_entry_axis_in_model_frame` guards the entry axis for every face.
