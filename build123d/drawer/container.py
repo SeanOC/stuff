@@ -504,7 +504,12 @@ def wall_layouts(values=None):
         # (z, y) = (py + depth/2, px): attach(FRONT, LEFT, spin=90).
         holes = [Polygon([(y + d.depth/2, x) for x, y in p.exterior.coords])
                  for p in _hex_holes(d.height, d.depth, d, frame)]
-        side_window = window(d.back + 2*f, -d.height/2 + b + f, d.depth - d.front,
+        # [C] :1520-1522 anchors the window at the front wall and takes both
+        # fillet margins off its back end, so it overlaps the front inner
+        # fillet and leaves a 0.09 mm feather over it. Production stops at
+        # the fillet tangent; 'source' keeps the author's window for parity.
+        front_end = d.depth - d.front - (0 if ceiling == 'source' else f)
+        side_window = window(d.back + 2*f, -d.height/2 + b + f, front_end,
                              -d.height/2 + d.side_height - d.strut)
         for name, sign in (('Left', -1), ('Right', 1)):
             add(name, _side_plane(d, sign), holes, side_window, _side_fill(d, v), s + EPS, ceiling)
@@ -717,6 +722,8 @@ def chamfer_bed(part, values=None):
         if abs(bb.max.Z) > 1e-6 or face.normal_at().Z > -.999:
             continue
         for edge in face.edges():
+            if edge.length < 1e-3:
+                continue  # where the handle's swept halves meet (2-wide)
             others = [f for f in adjacent.get(edge, []) if f != face]
             if len(others) == 1 and abs(others[0].normal_at(edge.position_at(.5)).Z) < 1e-3:
                 bevel.AddDA(.3, radians(45.01), edge.wrapped, face.wrapped)
