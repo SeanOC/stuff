@@ -548,6 +548,7 @@ def test_model_audit_produces_report_within_budget(spec):
     assert report.orientation == tuple(round(o, 6) for o in
                                        _unit(spec.print_orientation))
     budget = _MODEL_BUDGET_S.get(spec.name, _PER_MODEL_BUDGET_S)
+    print(f'AUDIT BUDGET | {spec.name} | {elapsed:.3f} CPU s | limit {budget:.1f} s')
     assert elapsed < budget, (
         f"{spec.name}: audit took {elapsed:.1f}s (budget {budget}s)"
     )

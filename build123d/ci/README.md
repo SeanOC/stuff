@@ -156,8 +156,13 @@ including each cradle style's presets, `PRINT_CORNER` and the reproducers,
 plus the other registry-sized cradle checks that made `fast` 9m48s on the
 runner: the mount-contract tests (20–130 s each), the dense-probe rear-knife
 tests (outboard rear end and inboard cap) and the preset bake.
-**audit_full** (`build123d audit (full sweep)`) runs the cradle corner sweep
-(`audit_full`) as three `pytest-split` shards, balanced by the committed
+The drawer keeps its three preset audits and six reference parity cases in
+**audit**; its 34 parameter endpoint/corner audits run in **audit_full**.
+The raw bridge, filtered print audit, exposed-edge inventory and mount-contract
+assertions run unchanged in both jobs.
+**audit_full** (`build123d audit (full sweep)`) runs the cradle, capture-bin and
+drawer endpoint/corner sweeps (`audit_full`) as three `pytest-split` shards,
+balanced by the committed
 `build123d/tests/.test_durations`. A PR runs it only when it touches
 `holders/`, `multibuild/`, `openconnect/`, the audit/contract helpers,
 `test_spool_cradle.py`, `tests/conftest.py`, `pyproject.toml` or `uv.lock`.
@@ -174,3 +179,6 @@ re-measures each shard and uploads it as `bd123-test-durations-<n>`. To refresh
 the balance, download the three files, merge them with
 `jq -s add d1 d2 d3 > build123d/tests/.test_durations`, and commit the result
 (optional: a stale file only skews shard balance, never coverage).
+The drawer seed contains 12 measured endpoint durations from the local D2
+review audit; unmeasured cases use pytest-split's average-duration fallback
+until a nightly refresh supplies them.

@@ -31,5 +31,17 @@
     "tests/test_spool_cradle.py::test_points_print_audit_and_edges[w70-c1.5-a45]": 63.5272872177884,
     "tests/test_spool_cradle.py::test_production_print_audit[guides-omitted]": 82.121443239972,
     "tests/test_spool_cradle.py::test_production_print_audit[insufficient-crest-room]": 88.45289086923003,
-    "tests/test_spool_cradle.py::test_production_print_audit[maximum-reach-minimum-height]": 105.84022799413651
+    "tests/test_spool_cradle.py::test_production_print_audit[maximum-reach-minimum-height]": 105.84022799413651,
+    "tests/test_openconnect_drawer.py::test_endpoint_audit_and_edges[vertical_grids=8]": 528.23,
+    "tests/test_openconnect_drawer.py::test_endpoint_audit_and_edges[slot_side_clearance=0.3]": 355.88,
+    "tests/test_openconnect_drawer.py::test_endpoint_audit_and_edges[slot_depth_clearance=0]": 333.77,
+    "tests/test_openconnect_drawer.py::test_endpoint_audit_and_edges[slot_side_clearance=0]": 327.23,
+    "tests/test_openconnect_drawer.py::test_endpoint_audit_and_edges[shell_outer_chamfer=4]": 323.58,
+    "tests/test_openconnect_drawer.py::test_endpoint_audit_and_edges[Left]": 322.81,
+    "tests/test_openconnect_drawer.py::test_endpoint_audit_and_edges[Right]": 321.55,
+    "tests/test_openconnect_drawer.py::test_endpoint_audit_and_edges[shell_to_slot_wall_thickness=2]": 305.5,
+    "tests/test_openconnect_drawer.py::test_endpoint_audit_and_edges[horizontal_grids=8]": 304.51,
+    "tests/test_openconnect_drawer.py::test_endpoint_audit_and_edges[slot_depth_clearance=0.5]": 293.87,
+    "tests/test_openconnect_drawer.py::test_endpoint_audit_and_edges[vertical_grids=1]": 282.02,
+    "tests/test_openconnect_drawer.py::test_endpoint_audit_and_edges[depth_grids=1]": 122.48
 }
