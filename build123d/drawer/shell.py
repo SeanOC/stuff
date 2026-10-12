@@ -4,8 +4,10 @@
 [C] assets/openConnect-drawer/openconnect_drawer_online.scad:384-394,
 1354-1357,1372-1483. Published magnet and stopper pockets are preserved;
 openConnect library cutters supply the mating profiles. The only exterior
-geometry changes are the mandatory 0.3 mm bed-edge bevel and the selected
-inward roofs on honeycomb ceilings longer than 10 mm.
+geometry changes are the mandatory 0.3 mm bed-edge bevel, the selected
+inward roofs on honeycomb ceilings longer than 10 mm, and the Left/Right
+slot orientation recorded under "Deviations from the source" in
+docs/openconnect-drawer.md.
 
 Model frame: back at Y=0, open front at +Y, height along Z. A proper rotation
 maps the author frame (x,y,z) to (-x,z,y); the author's Left is consequently
@@ -158,10 +160,14 @@ def slot_layout(values=None):
         raise ValueError('slot_horizontal offset leaves the slot face')
     if abs(dz) > 1e-7:
         raise ValueError('slot_vertical offset leaves the slot face')
+    # Deliberate deviation from source :1427; see "Deviations from the source"
+    # in docs/openconnect-drawer.md.
+    slide = {'Back': 'up', 'Top': 'left', 'Bottom': 'left',
+             'Left': 'left', 'Right': 'right'}[d.slot_face]
     points = layout(h, rows,
                     position=v.get('slot_position', 'All').lower().replace(' ', '-'),
                     lock=v.get('slot_lock_distribution', 'Top Corners').lower().replace(' ', '-'),
-                    slide='left' if d.slot_face in ('Top', 'Bottom') else 'up',
+                    slide=slide,
                     entryramp_flip=v.get('slot_entryramp_flip', False),
                     except_positions=excluded)
     return h, rows, [replace(p, x=p.x+dx, z=p.z+dz) for p in points]

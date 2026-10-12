@@ -343,3 +343,21 @@ def test_published_exclusions_reject_new_thin_overhang():
     assert not report.ok
     assert report.max_overhang_deg > 45
     assert report.min_wall_mm < .9
+
+
+@pytest.mark.parametrize('face,entry_axis,face_normal,slots', [
+    ('Back', (0, 0, 1), (0, -1, 0), 10),
+    ('Left', (0, 0, 1), (1, 0, 0), 8),
+    ('Right', (0, 0, 1), (-1, 0, 0), 8),
+    ('Top', (-1, 0, 0), (0, 0, 1), 23),
+    ('Bottom', (1, 0, 0), (0, 0, -1), 25),
+])
+def test_mount_entry_axis_in_model_frame(face, entry_axis, face_normal, slots):
+    """Wall mounts lock by gravity with the drawer opening facing forward."""
+    fx = shell.slot_fixtures({'shell_slot_position': face})
+    assert fx.entry_axis == pytest.approx(entry_axis, abs=1e-6)
+    assert fx.face_normal == pytest.approx(face_normal, abs=1e-6)
+    assert len(fx.cutters) == len(fx.seat_locs) == len(fx.onramp_locs) == slots
+    if face in ('Back', 'Left', 'Right'):
+        for seat, onramp in zip(fx.seat_locs, fx.onramp_locs, strict=True):
+            assert seat.position.Z - onramp.position.Z > 0
