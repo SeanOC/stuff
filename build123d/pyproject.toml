@@ -13,6 +13,10 @@
 # Exception (Sean 2026-10-05, pst-5k38j): holders/gridfinity_shelf.py and
 # gridfinity/baseplate.py adapt mitufy’s Gridfinity shelf under CC BY-SA 4.0;
 # the profile constants are Gridfinity Rebuilt-derived (MIT).
+# Exception (Sean 2026-10-11, pst-t0ob3 / pst-t0ob3.1): drawer/ and
+# holders/openconnect_drawer.py adapt mitufy’s openConnect Drawer Generator
+# under CC BY-SA 4.0; source/reference grant in docs/provenance.md and
+# ../assets/openConnect-drawer/NOTICE.
 # holders/cartridge_holder.py carries its source design CC BY-NC-SA 4.0;
 # personal/non-commercial use, see docs/provenance.md.
 [project]
