@@ -107,6 +107,27 @@ def roof_opening(opening, frame_up=(0, 1), *, ceiling='roofed'):
     return affine_transform(upright, [uy, ux, -ux, uy, 0, 0]), chord, roofed
 
 
+def _without_spikes(coords):
+    """Drop zero-area spike tips (the outline reverses along one line).
+
+    Roofing a fill-clipped cell can leave one; OCCT extrudes it into an
+    invalid cutter. Every other vertex, collinear or not, is kept.
+    """
+    points = list(coords)
+    changed = True
+    while changed and len(points) > 3:
+        changed = False
+        for i, (x, y) in enumerate(points):
+            px, py = points[i-1]
+            nx, ny = points[(i+1) % len(points)]
+            ax, ay, bx, by = x-px, y-py, nx-x, ny-y
+            if abs(ax*by-ay*bx) < 1e-9 and ax*bx+ay*by < 0:
+                del points[i]
+                changed = True
+                break
+    return points
+
+
 @dataclass
 class HoneycombLayout:
     """2D source cells shared by panel extrusion and the analytic span audit."""
@@ -131,7 +152,8 @@ class HoneycombLayout:
             polygons = [profile] if profile.geom_type == 'Polygon' else profile.geoms
             for polygon in polygons:
                 faces.append(Face(Wire.make_polygon(
-                    [(x, y, -thickness/2) for x, y in list(polygon.exterior.coords)[:-1]],
+                    [(x, y, -thickness/2) for x, y in
+                     _without_spikes(list(polygon.exterior.coords)[:-1])],
                     close=True)))
         return extrude(Sketch(children=faces), amount=thickness, dir=(0, 0, 1))
 

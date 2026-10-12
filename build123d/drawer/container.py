@@ -663,3 +663,51 @@ def source_body(values=None):
     for bulge in bulges:
         body += bulge
     return body
+
+
+# ---------------------------------------------------------------- production
+
+def before_bed_chamfer(values=None):
+    """Model-frame container before the bed bevel (roofed honeycomb ceilings)."""
+    return AUTHOR_TO_MODEL * source_body(values)
+
+
+def chamfer_bed(part, values=None):
+    """0.3 mm bevel on every square edge of the bed face (print frame Z=0).
+
+    Edges whose other face is already a bevel (the outer chamfer, the
+    handle's 0.4 mm profile chamfers) keep it; only vertical walls meet
+    the bed square. Falls back to the shell's exact section bevel.
+    """
+    from OCP.BRepFilletAPI import BRepFilletAPI_MakeChamfer
+    from OCP.StdFail import StdFail_NotDone
+    from build123d import Part
+    frame = print_frame(values)
+    printed = frame * part
+    adjacent = {}
+    for face in printed.faces():
+        for edge in face.edges():
+            adjacent.setdefault(edge, []).append(face)
+    bevel = BRepFilletAPI_MakeChamfer(printed.wrapped)
+    count = 0
+    for face in printed.faces():
+        bb = face.bounding_box()
+        if abs(bb.max.Z) > 1e-6 or face.normal_at().Z > -.999:
+            continue
+        for edge in face.edges():
+            others = [f for f in adjacent.get(edge, []) if f != face]
+            if len(others) == 1 and abs(others[0].normal_at(edge.position_at(.5)).Z) < 1e-3:
+                bevel.AddDA(.3, radians(45.01), edge.wrapped, face.wrapped)
+                count += 1
+    try:
+        result = Part(bevel.Shape()) if count else printed
+    except StdFail_NotDone:
+        result = shell._bevel_from_sections(printed)
+    if not result.is_valid or len(result.solids()) != 1:
+        result = shell._bevel_from_sections(printed)
+    return frame.inverse() * result
+
+
+def build(values=None):
+    validate_label(values)
+    return chamfer_bed(before_bed_chamfer(values), values)
