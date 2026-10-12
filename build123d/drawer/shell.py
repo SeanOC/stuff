@@ -309,8 +309,8 @@ def source_honeycomb_cutters(values=None):
     """Through-openings, preserving :1390-1415 frames and fitting infills.
 
     All four wall planes are vertical in the back-wall-down print frame.
-    The hex ceilings bridge between their struts; none is a horizontal roof
-    panel. The slot-bearing wall always remains solid, as in the source.
+    The openings have horizontal ceiling facets between their struts,
+    including clipped cells at the frame. The slot-bearing wall stays solid.
     """
     from .honeycomb import hole_solids
     v = values or {}
@@ -432,15 +432,16 @@ def honeycomb_ceiling_regions(values):
 
     REV 2 preserves source hex ceilings. The 11.835681 mm flat-to-flat
     dimension at strut_hyp=5 is vertical, not a horizontal bridge span.
-    The family includes clipped frame cells as well as full hexes; no
-    horizontal chord bound is imposed here. Endpoint tests separately run
-    the production bridge measurement without these exclusions.
+    The family includes clipped frame cells as well as full hexes. Only
+    chords at most MAX_BRIDGE_MM are eligible; the production local-width
+    scan alone cannot bound unsupported through-wall ceiling chords.
     """
     regions = []
     for hole in source_honeycomb_cutters(values):
         for face in hole.faces():
             normal = face.normal_at()
-            if normal.Z > .01:
+            size = face.bounding_box().size
+            if normal.Z > .01 and max(size.X, size.Y) <= c.MAX_BRIDGE_MM:
                 regions.append(AUTHOR_TO_MODEL *
                                (Pos(*tuple(-normal*.0005))*Solid.extrude(face, normal*.001)))
     return regions

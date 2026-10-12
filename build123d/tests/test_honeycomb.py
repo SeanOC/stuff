@@ -136,3 +136,32 @@ def test_cached_exact_ceiling_exclusions_preserve_membership():
             points.extend(tuple(p+n*t) for t in (-.01, -1e-7, 0, 1e-7, .01))
         for point in points:
             assert cached.is_inside(point) == region.is_inside(point, tolerance=1e-6)
+
+
+@pytest.mark.parametrize('values,expected', [
+    ({}, 9.4695507),
+    (dict(horizontal_grids=1, vertical_grids=1, depth_grids=1), 7.8603461),
+    (dict(honeycomb_strut_hyp=4.7), 10.0695507),
+    (dict(honeycomb_strut_hyp=2.0), 15.4695507),
+    (dict(horizontal_grids=2, vertical_grids=1, depth_grids=2), 12.3054614),
+    (dict(shell_top_wall_type='Honeycomb', shell_side_wall_type='Honeycomb'), 13.2299342),
+])
+def test_ceiling_exclusions_never_waive_over_limit_chord(values, expected):
+    from drawer.constants import MAX_BRIDGE_MM
+    from tests.print_audit import MAX_BRIDGE_MM as audit_limit
+    assert MAX_BRIDGE_MM == audit_limit
+    ceilings = [f for h in shell.source_honeycomb_cutters(values)
+                for f in h.faces() if f.normal_at().Z > .01]
+    chords = [max(f.bounding_box().size.X, f.bounding_box().size.Y)
+              for f in ceilings]
+    assert max(chords) == pytest.approx(expected, abs=1e-5)
+    regions = [shell.AUTHOR_TO_MODEL.inverse()*r
+               for r in shell.honeycomb_ceiling_regions(values)]
+    assert regions
+    assert len(regions) == sum(chord <= MAX_BRIDGE_MM for chord in chords)
+    # Slabs extend .0005 mm to each side of their source face.
+    excluded_max = max(max(r.bounding_box().size.X, r.bounding_box().size.Y)
+                       for r in regions)
+    assert excluded_max <= MAX_BRIDGE_MM+.001
+    if expected <= MAX_BRIDGE_MM:
+        assert excluded_max == pytest.approx(expected, abs=.001)
