@@ -104,6 +104,42 @@ Worker SHA256: b690fa187e8e0beaf0a38fd7aab9eec4e2d31e2b3020e6f53313a6e7a6c317a6
 geometrically equivalent (facets/bbox/volume/triangle set) — STL byte order is not reproducible across runs
 Facets: 1192; signed volume: 130.079915460545 mm3.
 
+Top/side Honeycomb shell baselines (pst-fw5oa, mayor 2026-10-12; review N4
+of PR #185). Rendered with the same OpenSCAD, BOSL2 pin and source as above.
+All four match the independent worker renders exactly under REV 3b: identical
+facet count, bbox and signed volume, and every canonical triangle matches
+(no REV 3c alternate-diagonal exceptions). Parity tests force
+honeycomb_ceiling="source"; the published "roofed" ceiling stays covered by
+the endpoint audit, as for the bottom Honeycomb wall.
+
+shell-top-honeycomb
+openscad --export-format=binstl -D generate_drawer_container=false -D 'shell_top_wall_type="Honeycomb"' -o assets/openConnect-drawer/mesh/shell-top-honeycomb.stl assets/openConnect-drawer/openconnect_drawer_online.scad
+Mayor SHA256: 2fdc8252f8d5340d06b3f131781b5a6892d6c68244fb8a9ac2e366e9f971b9cd
+Worker SHA256: 6e6a3a2312d25d03f64632df4c166b29bfb857a32ff80a81942e64093ff994f3
+geometrically equivalent (facets/bbox/volume/triangle set) — STL byte order is not reproducible across runs
+Facets: 7890; signed volume: 99936.970714225201 mm3.
+
+shell-side-honeycomb
+openscad --export-format=binstl -D generate_drawer_container=false -D 'shell_side_wall_type="Honeycomb"' -o assets/openConnect-drawer/mesh/shell-side-honeycomb.stl assets/openConnect-drawer/openconnect_drawer_online.scad
+Mayor SHA256: bd3cb336ec77e8061e3a222ede8a5e8b353baee78dd4a1b9b496ff97b4f6098f
+Worker SHA256: b3863c4afbbf2bf4f88dea0efe49c9fcd8e993322275a045bd0d7f4b92ba3206
+geometrically equivalent (facets/bbox/volume/triangle set) — STL byte order is not reproducible across runs
+Facets: 7370; signed volume: 107381.262590888015 mm3.
+
+shell-all-honeycomb
+openscad --export-format=binstl -D generate_drawer_container=false -D 'shell_top_wall_type="Honeycomb"' -D 'shell_side_wall_type="Honeycomb"' -o assets/openConnect-drawer/mesh/shell-all-honeycomb.stl assets/openConnect-drawer/openconnect_drawer_online.scad
+Mayor SHA256: 62a83e318399877a7b7ec310519b915438b200a828e8553fa619e05b984bd3fd
+Worker SHA256: 98bc38e47950436e2b1d234f5f83e05ec703edfb964197a6e78083328bf6f074
+geometrically equivalent (facets/bbox/volume/triangle set) — STL byte order is not reproducible across runs
+Facets: 9754; signed volume: 86727.408112849866 mm3.
+
+shell-1x1x1-all-honeycomb
+openscad --export-format=binstl -D generate_drawer_container=false -D horizontal_grids=1 -D vertical_grids=1 -D depth_grids=1 -D 'shell_top_wall_type="Honeycomb"' -D 'shell_side_wall_type="Honeycomb"' -o assets/openConnect-drawer/mesh/shell-1x1x1-all-honeycomb.stl assets/openConnect-drawer/openconnect_drawer_online.scad
+Mayor SHA256: 7848d1132c68a808e903bc42ddc71b0905b42a5f8fcb9a552a55e06746898685
+Worker SHA256: 5066c467870ac09482903cdca93cd620a7cd9a9b18d719ffb07e0e20f81b6f10
+geometrically equivalent (facets/bbox/volume/triangle set) — STL byte order is not reproducible across runs
+Facets: 1222; signed volume: 6698.332918488290 mm3.
+
 container-all-solid — alternate diagonal on a coplanar patch:
 Of 8164 canonical triangles, 8162 match exactly. Both renders have identical
 facet count, bbox and signed volume. Both quads have this exact vertex set:
