@@ -665,6 +665,28 @@ def source_body(values=None):
     return body
 
 
+def published_ceiling_regions(values=None):
+    """Exact thin regions over flat print-up ceilings of source openings.
+
+    Print up is author +Y. Honeycomb cells of the vertical walls (roofed
+    chords above MAX_BRIDGE_MM are 45-degree roofs and stay audited) and the
+    magnet teardrop caps ([C] :1547/:1561, cap_h=r+.2). Only flat facets with
+    a horizontal extent of at most MAX_BRIDGE_MM are eligible.
+    """
+    cutters = [plane.location * layout.cutter(thickness, (0, 1))
+               for name, plane, layout, thickness in wall_layouts(values) if name != 'Bottom']
+    cutters += source_magnet_cutters(values)[0]
+    regions = []
+    for cutter in cutters:
+        for face in cutter.faces():
+            normal = face.normal_at()
+            size = face.bounding_box().size
+            if normal.Y > .999 and max(size.X, size.Z) <= c.MAX_BRIDGE_MM:
+                regions.append(AUTHOR_TO_MODEL *
+                               (Pos(*tuple(-normal*.0005))*Solid.extrude(face, normal*.001)))
+    return regions
+
+
 # ---------------------------------------------------------------- production
 
 def before_bed_chamfer(values=None):
