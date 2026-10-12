@@ -182,9 +182,13 @@ def test_colour_parts_partition_the_plate(preset_id):
     assert all(p.is_valid for _, p, _ in parts) and whole.is_valid
     total = sum(p.volume for _, p, _ in parts)
     assert total == pytest.approx(whole.volume, rel=1e-3)
-    for i, (a, pa, _) in enumerate(parts):
-        for b, pb, _ in parts[i + 1:]:
-            assert (pa & pb).volume < 1e-3, (a, b)
+    # The base is disjoint from the inlays by construction (it is the plate
+    # minus their pockets); test_colour_parts_are_pairwise_disjoint proves it
+    # with booleans once. Here the colours are checked against each other,
+    # boolean-testing only the glyph solids whose boxes overlap.
+    for i, (a, pa, _) in enumerate(parts[1:]):
+        for b, pb, _ in parts[i + 2:]:
+            assert _overlap(pa, pb) < 1e-3, (a, b)
     t = values['thickness']
     for name, part, _ in parts[1:]:
         bb = part.bounding_box()
@@ -194,6 +198,26 @@ def test_colour_parts_partition_the_plate(preset_id):
             assert bb.max.Z == pytest.approx(INLAY_DEPTH)
         else:
             assert bb.min.Z == pytest.approx(t) and bb.max.Z == pytest.approx(t + INLAY_DEPTH)
+
+
+def _overlap(a, b) -> float:
+    """Shared volume of two multi-solid parts, skipping solid pairs whose boxes only touch."""
+    def boxes_meet(p, q):
+        bp, bq = p.bounding_box(), q.bounding_box()
+        return all(min(bp.max.to_tuple()[k], bq.max.to_tuple()[k])
+                   - max(bp.min.to_tuple()[k], bq.min.to_tuple()[k]) > 1e-6 for k in range(3))
+    shared = (p & q for p in a.solids() for q in b.solids() if boxes_meet(p, q))
+    return sum(r.volume for r in shared if r is not None)  # an empty Solid & Solid is None
+
+
+@pytest.mark.audit
+@pytest.mark.audit_full
+def test_colour_parts_are_pairwise_disjoint():
+    """Full booleans on the four-colour default (~140 s): every pair, base included."""
+    _, parts, _ = preset_case('default')
+    for i, (a, pa, _) in enumerate(parts):
+        for b, pb, _ in parts[i + 1:]:
+            assert (pa & pb).volume < 1e-3, (a, b)
 
 
 @pytest.mark.audit
