@@ -59,6 +59,7 @@ SPEC = register(ModelSpec(
         Param('shell_top_wall_type', 'enum', 'Solid', choices=('Solid', 'Honeycomb'), group='Shell'),
         Param('shell_bottom_wall_type', 'enum', 'Honeycomb', choices=('Solid', 'Honeycomb'), group='Shell'),
         Param('shell_side_wall_type', 'enum', 'Solid', choices=('Solid', 'Honeycomb'), group='Shell'),
+        Param('honeycomb_ceiling', 'enum', 'roofed', choices=('roofed', 'source'), group='Shell'),
         Param('honeycomb_strut_hyp', 'number', 5.0, step=.1, group='Shell'),
         Param('shell_thickness', 'number', 2.4, min=1.6, max=4, step=.1, group='Shell'),
         Param('shell_outer_chamfer', 'number', 2, min=0, max=4, step=.1, group='Shell'),

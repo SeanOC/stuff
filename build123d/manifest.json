@@ -838,6 +838,16 @@
           ]
         },
         {
+          "name": "honeycomb_ceiling",
+          "group": "Shell",
+          "kind": "enum",
+          "default": "roofed",
+          "choices": [
+            "roofed",
+            "source"
+          ]
+        },
+        {
           "name": "honeycomb_strut_hyp",
           "group": "Shell",
           "kind": "number",

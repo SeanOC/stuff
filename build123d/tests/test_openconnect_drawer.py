@@ -92,6 +92,7 @@ def test_reject_clearance_above_retention_cap(builder):
 def reference_case(request, tmp_path_factory):
     from build123d import export_stl
     name, values = request.param
+    values = {**values, "honeycomb_ceiling": "source"}
     before = shell.before_bed_chamfer(values)
     finished = shell.chamfer_bed(before, values)
     source = shell.AUTHOR_TO_MODEL.inverse()*finished
@@ -252,6 +253,10 @@ CASES = [(p.id, p.values) for p in m.SPEC.presets] + [
     if p.kind in ('number', 'integer') for x in (p.min, p.max) if x is not None
 ] + [
     ('1x1x1', dict(horizontal_grids=1, vertical_grids=1, depth_grids=1)),
+    ('source-default', dict(honeycomb_ceiling='source')),
+    ('honeycomb-strut-minimum', dict(honeycomb_strut_hyp=1.1)),
+    ('honeycomb-strut-2', dict(honeycomb_strut_hyp=2)),
+    ('all-honeycomb-strut-2', dict(honeycomb_strut_hyp=2, shell_top_wall_type='Honeycomb', shell_side_wall_type='Honeycomb')),
     ('honeycomb-strut-default', dict(honeycomb_strut_hyp=5)),
     ('all-honeycomb', dict(shell_top_wall_type='Honeycomb', shell_side_wall_type='Honeycomb')),
     *((f'honeycomb-{face}', dict(shell_top_wall_type='Honeycomb', shell_side_wall_type='Honeycomb', shell_slot_position=face)) for face in shell.SLOT_FACES[1:]),
@@ -293,6 +298,9 @@ def test_endpoint_audit_and_edges(name, values):
         print(f'AUDIT | {name} | named error: {exc}')
         return
     assert part.is_valid and len(part.solids()) == 1
+    chords = shell.honeycomb_ceiling_chords(values)
+    max_unroofed = max((chord for _, chord, roofed in chords if not roofed), default=0)
+    assert max_unroofed <= audit.MAX_BRIDGE_MM
     fx = shell.slot_fixtures(values)
     raw = audit.audit(part, cutters=fx.cutters, print_frame=m.print_frame(values))
     assert raw.longest_bridge_mm <= audit.MAX_BRIDGE_MM
@@ -314,7 +322,7 @@ def test_endpoint_audit_and_edges(name, values):
     verify_openconnect_slot(part, fx, min_backing=.8, backing_envelope=envelope)
     inventory, angle = edge_inventory(part, values)
     print(f'AUDIT | {name} | raw wall {raw.min_wall_mm:.3f} | raw overhang {raw.max_overhang_deg:.1f} | '
-          f'bridge {raw.longest_bridge_mm:.2f} | exposed edge {angle:.3f} | '
+          f'bridge {raw.longest_bridge_mm:.2f} | analytic unroofed chord {max_unroofed:.6f} | exposed edge {angle:.3f} | '
           f'filtered wall {report.min_wall_mm:.3f} / overhang {report.max_overhang_deg:.1f} | mount PASS | PASS {inventory}')
 
 

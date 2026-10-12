@@ -9,10 +9,13 @@ edge cells; it does not change the centred staggered lattice.
 """
 from math import cos, sin, pi, floor, isfinite, sqrt
 
-from build123d import Box, Face, Part, Pos, Solid, Wire
+from dataclasses import dataclass
+
+from build123d import Box, Face, Part, Sketch, Wire, extrude
+from shapely.affinity import affine_transform
 from shapely.geometry import Polygon, box
 
-from .constants import HONEYCOMB_UNIT, HONEYCOMB_STRUT_HYP
+from .constants import HONEYCOMB_UNIT, HONEYCOMB_STRUT_HYP, MAX_BRIDGE_MM
 
 
 class HoneycombPanelTooSmall(ValueError):
@@ -27,6 +30,8 @@ def strut_dimensions(strut_hyp=HONEYCOMB_STRUT_HYP, unit=HONEYCOMB_UNIT):
     """Return spacing, perpendicular strut width, hex inradius/circumradius."""
     if not all(isfinite(x) and x > 0 for x in (strut_hyp, unit)):
         raise HoneycombStrutOutOfRange('honeycomb unit and strut_hyp must be finite and positive')
+    if strut_hyp < 1.1:
+        raise HoneycombStrutOutOfRange('honeycomb strut_hyp must be at least 1.1 mm')
     spacing, strut = unit/cos(pi/6), strut_hyp*cos(pi/6)
     ir = (spacing-strut)/2
     if ir <= 0:
@@ -75,15 +80,80 @@ def hole_polygons(width, height, *, strut_hyp=HONEYCOMB_STRUT_HYP,
     return result
 
 
-def hole_solids(width, height, thickness, **kwargs):
+def roof_opening(opening, frame_up=(0, 1), *, ceiling='roofed'):
+    """Return the opening minus its over-limit ceiling triangle, and chord.
+
+    Work in (horizontal, print-up) coordinates. Intersecting the inward V
+    with the source opening naturally permits two voids in a shallow cell.
+    The source polygon must already include frame and fitting clipping.
+    """
+    if ceiling not in ('source', 'roofed'):
+        raise ValueError('honeycomb ceiling must be source or roofed')
+    ux, uy = frame_up
+    length = (ux*ux+uy*uy)**.5
+    if not isfinite(length) or length == 0:
+        raise ValueError('honeycomb print up must be a finite nonzero direction')
+    ux, uy = ux/length, uy/length
+    upright = affine_transform(opening, [uy, -ux, ux, uy, 0, 0])
+    vertices = list(upright.exterior.coords)[:-1]
+    top = max(y for _, y in vertices)
+    ends = sorted((x, y) for x, y in vertices if abs(y-top) < 1e-7)
+    chord = ends[-1][0]-ends[0][0]
+    roofed = ceiling == 'roofed' and chord > MAX_BRIDGE_MM
+    if roofed:
+        left, right = ends[0], ends[-1]
+        triangle = Polygon([left, right, ((left[0]+right[0])/2, top-chord/2)])
+        upright = upright.difference(triangle.intersection(upright))
+    return affine_transform(upright, [uy, ux, -ux, uy, 0, 0]), chord, roofed
+
+
+@dataclass
+class HoneycombLayout:
+    """2D source cells shared by panel extrusion and the analytic span audit."""
+
+    openings: list
+    ceiling: str = 'source'
+    wall: str = 'panel'
+
+    def profiles(self, frame_up=(0, 1)):
+        return [roof_opening(p, frame_up, ceiling=self.ceiling) for p in self.openings]
+
+    def ceiling_chords(self, frame_up=(0, 1)):
+        return [(self.wall, chord, roofed) for _, chord, roofed in self.profiles(frame_up)
+                if chord > 1e-7]
+
+    def cutter(self, thickness, frame_up=(0, 1)):
+        """One sketch, extrusion and cutter for the entire wall."""
+        if not isfinite(thickness) or thickness <= 0:
+            raise ValueError('honeycomb thickness must be finite and positive')
+        faces = []
+        for profile, _, _ in self.profiles(frame_up):
+            polygons = [profile] if profile.geom_type == 'Polygon' else profile.geoms
+            for polygon in polygons:
+                faces.append(Face(Wire.make_polygon(
+                    [(x, y, -thickness/2) for x, y in list(polygon.exterior.coords)[:-1]],
+                    close=True)))
+        return extrude(Sketch(children=faces), amount=thickness, dir=(0, 0, 1))
+
+
+def hole_solids(width, height, thickness, *, ceiling='source', frame_up=(0, 1), **kwargs):
     if not isfinite(thickness) or thickness <= 0:
         raise ValueError('honeycomb thickness must be finite and positive')
-    return [Pos(0, 0, -thickness/2)*Solid.extrude(
-        Face(Wire.make_polygon([(x, y, 0) for x, y in polygon], close=True)),
-        (0, 0, thickness)) for polygon in hole_polygons(width, height, **kwargs)]
+    layout = HoneycombLayout([Polygon(p) for p in hole_polygons(width, height, **kwargs)], ceiling)
+    return list(layout.cutter(thickness, frame_up).solids())
+
+
+class HoneycombPanel(Part):
+    def ceiling_chords(self, frame_up=(0, 1)):
+        return self.layout.ceiling_chords(frame_up)
 
 
 def honeycomb_panel(width, height, thickness, *, strut_hyp=HONEYCOMB_STRUT_HYP,
-                    unit=HONEYCOMB_UNIT, frame=None) -> Part:
-    holes = hole_solids(width, height, thickness, strut_hyp=strut_hyp, unit=unit, frame=frame)
-    return Part(children=[Box(width, height, thickness).cut(*holes)])
+                    unit=HONEYCOMB_UNIT, frame=None, ceiling='source',
+                    frame_up=(0, 1)) -> Part:
+    layout = HoneycombLayout([Polygon(p) for p in hole_polygons(
+        width, height, strut_hyp=strut_hyp, unit=unit, frame=frame)], ceiling)
+    result = HoneycombPanel(children=[Box(width, height, thickness).cut(
+        layout.cutter(thickness, frame_up))])
+    result.layout = layout
+    return result

@@ -144,7 +144,7 @@ def edge_inventory(part, values):
                      box.min.Z-1e-5 <= p.Z <= box.max.Z+1e-5 and
                      min(face.distance_to(p) for face in hole_faces) < 1e-5
                      for p in points) for box, hole_faces in honeycomb):
-            family = 'published honeycomb opening'
+            family = 'source/roofed honeycomb opening'
         elif (max(abs(p.Z-d.depth) for p in points) < 1e-5 and
               all(min(e.distance_to(p) for e in front_edges) < 1e-5 for p in points)):
             family = 'published front rim'

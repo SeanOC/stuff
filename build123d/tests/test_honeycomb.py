@@ -23,7 +23,7 @@ def test_default_dimensions_and_front_alignment():
     assert (p.default, p.step, p.min, p.max) == (5, .1, None, None)
 
 
-@pytest.mark.parametrize('strut', [0, -1, float('inf'), float('nan'), 20])
+@pytest.mark.parametrize('strut', [0, -1, 1.09, float('inf'), float('nan'), 20])
 def test_unbuildable_strut_has_named_error(strut):
     with pytest.raises(HoneycombStrutOutOfRange):
         shell.source_honeycomb_cutters({'honeycomb_strut_hyp': strut})
@@ -145,13 +145,20 @@ def test_cached_exact_ceiling_exclusions_preserve_membership():
     (dict(honeycomb_strut_hyp=2.0), 15.4695507),
     (dict(horizontal_grids=2, vertical_grids=1, depth_grids=2), 12.3054614),
     (dict(shell_top_wall_type='Honeycomb', shell_side_wall_type='Honeycomb'), 13.2299342),
+    (dict(horizontal_grids=8, vertical_grids=8, depth_grids=8), 11.3003066),
+    (dict(shell_thickness=4), 10.3933111),
+    (dict(shell_side_wall_type='Honeycomb'), 11.9795043),
+    (dict(shell_top_wall_type='Honeycomb'), 13.2299338),
+    (dict(shell_top_wall_type='Honeycomb', shell_side_wall_type='Honeycomb',
+          honeycomb_strut_hyp=2), 16.2299338),
 ])
 def test_ceiling_exclusions_never_waive_over_limit_chord(values, expected):
+    values = {**values, "honeycomb_ceiling": "source"}
     from drawer.constants import MAX_BRIDGE_MM
     from tests.print_audit import MAX_BRIDGE_MM as audit_limit
     assert MAX_BRIDGE_MM == audit_limit
     ceilings = [f for h in shell.source_honeycomb_cutters(values)
-                for f in h.faces() if f.normal_at().Z > .01]
+                for f in h.faces() if f.normal_at().Z > .999]
     chords = [max(f.bounding_box().size.X, f.bounding_box().size.Y)
               for f in ceilings]
     assert max(chords) == pytest.approx(expected, abs=1e-5)
@@ -165,3 +172,85 @@ def test_ceiling_exclusions_never_waive_over_limit_chord(values, expected):
     assert excluded_max <= MAX_BRIDGE_MM+.001
     if expected <= MAX_BRIDGE_MM:
         assert excluded_max == pytest.approx(expected, abs=.001)
+
+
+@pytest.mark.parametrize('name,values,source_count,roofed_count', [
+    ('default', {}, 97, 97),
+    ('small', dict(horizontal_grids=2, vertical_grids=1, depth_grids=2), 17, 19),
+    ('top-slot', dict(shell_slot_position='Top'), 97, 97),
+    ('strut-2', dict(honeycomb_strut_hyp=2), 99, 103),
+])
+def test_roofed_profiles_match_independent_source_oracle(name, values, source_count, roofed_count):
+    import runpy
+    oracle = runpy.run_path(str(Path(__file__).resolve().parents[2] /
+                               'scripts/check-drawer-roof-contract.py'))['inspect']
+    measured = oracle(name, {**values, 'honeycomb_ceiling': 'source'}, source_count)
+    assert measured['roofed_openings'] == roofed_count
+    assert len(shell.source_honeycomb_cutters(values)) == roofed_count
+    removed = 0
+    for _, layout in shell.honeycomb_layouts(values):
+        for source, (roofed, chord, changed) in zip(layout.openings, layout.profiles((1, 0))):
+            removed += source.area-roofed.area
+            assert roofed.difference(source).area < 1e-8
+            if changed:
+                assert roofed.area < source.area
+                assert roofed.area >= source.area-chord**2/4-1e-8
+            else:
+                assert roofed.symmetric_difference(source).area < 1e-8
+    assert removed == pytest.approx(measured['removed_area_mm2'], abs=1e-7)
+
+
+@pytest.mark.parametrize('values', [{}, dict(horizontal_grids=2, vertical_grids=1, depth_grids=2)])
+def test_roof_volume_matches_polygon_area(values):
+    source = shell.build({**values, 'honeycomb_ceiling': 'source'})
+    roofed = shell.build(values)
+    removed = sum(original.area-profile.area
+                  for _, layout in shell.honeycomb_layouts(values)
+                  for original, (profile, _, _) in zip(layout.openings, layout.profiles((1, 0))))
+    expected = removed*shell.dimensions(values).wall
+    assert roofed.volume-source.volume == pytest.approx(expected, rel=.01, abs=1e-6)
+    print(f'VOLUME | {values} | source {source.volume:.6f} | roofed {roofed.volume:.6f}')
+
+
+@pytest.mark.parametrize('values', [
+    dict(shell_top_wall_type='Honeycomb', shell_side_wall_type='Honeycomb'),
+    dict(shell_top_wall_type='Honeycomb', shell_side_wall_type='Honeycomb', honeycomb_strut_hyp=2),
+    dict(honeycomb_strut_hyp=1.1), dict(honeycomb_strut_hyp=4.7),
+])
+def test_roofed_geometry_has_no_over_limit_flat_ceiling(values):
+    from drawer.constants import MAX_BRIDGE_MM
+    rows = shell.honeycomb_ceiling_chords(values)
+    assert any(roofed for _, _, roofed in rows)
+    assert all(chord <= MAX_BRIDGE_MM for _, chord, roofed in rows if not roofed)
+    # Independent 3D check: flags alone cannot make the analytic audit pass.
+    flat = [face for hole in shell.source_honeycomb_cutters(values)
+            for face in hole.faces() if face.normal_at().Z > .999]
+    assert all(max(f.bounding_box().size.X, f.bounding_box().size.Y) <= MAX_BRIDGE_MM+1e-7
+               for f in flat)
+    # The bridge waiver must not hide the new 45-degree roof faces.
+    for region in shell.honeycomb_ceiling_regions(values):
+        assert (shell.AUTHOR_TO_MODEL.inverse()*region).bounding_box().size.Z < .002
+
+
+def test_panel_roof_direction_and_span_api():
+    from drawer.honeycomb import HoneycombLayout
+    from shapely.geometry import Polygon
+    opening = Polygon([(0, 0), (12, 0), (12, 8), (0, 8)])
+    layout = HoneycombLayout([opening], 'roofed', 'Bottom')
+    assert layout.ceiling_chords((0, 1)) == [('Bottom', 12, True)]
+    assert layout.ceiling_chords((1, 0)) == [('Bottom', 8, False)]
+    profile, _, _ = layout.profiles((0, 1))[0]
+    assert profile.area == pytest.approx(12*8-12**2/4)
+    panel = honeycomb_panel(50, 50, 2.4, ceiling='roofed')
+    assert panel.ceiling_chords((1, 0))
+
+
+@pytest.mark.parametrize('slot_face', shell.SLOT_FACES)
+def test_wall_clipping_stays_centred_when_mount_face_moves(slot_face):
+    # The source wall window and lattice translate together when the slot
+    # backing moves a side face. The 2D window must not apply that offset twice.
+    values = dict(shell_slot_position=slot_face, shell_top_wall_type='Honeycomb',
+                  shell_side_wall_type='Honeycomb', honeycomb_ceiling='source')
+    for _, layout in shell.honeycomb_layouts(values):
+        assert min(p.bounds[1] for p in layout.openings) == pytest.approx(
+            -max(p.bounds[3] for p in layout.openings))
