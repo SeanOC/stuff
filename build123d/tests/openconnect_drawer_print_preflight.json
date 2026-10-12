@@ -1,0 +1,76 @@
+{
+  "reference": "assets/openConnect-drawer/mesh/shell-top-slot-solid.stl",
+  "reference_sha256": "9d7986a17f436b11f7dc28dcd607d230a0bd4136ae742c0a296bb998846da1c1",
+  "reference_ray_origin": [
+    0,
+    0,
+    70
+  ],
+  "reference_ray_direction": [
+    0,
+    -1,
+    0
+  ],
+  "reference_ray_intersections": [
+    [
+      0.0,
+      -28.0,
+      70.0
+    ],
+    [
+      0.0,
+      -25.600000381469727,
+      70.0
+    ]
+  ],
+  "reference_ceiling_patch": {
+    "source_x": [
+      -60,
+      60
+    ],
+    "source_z": [
+      10,
+      130
+    ],
+    "source_y": -25.6,
+    "probe_mm": 0.1,
+    "grid_step_mm": 3.0,
+    "unsupported_cells": 1600,
+    "total_cells": 1600,
+    "measured_local_span_lower_bound_mm": 120.0,
+    "span_method": "tests.print_audit._max_local_span on mesh solid-above / void-below samples"
+  },
+  "body_stage": "Box and chamfered cavity BEFORE feature cuts and bed treatment; not a finished model audit",
+  "slot_face_down": {
+    "model": "part",
+    "orientation": [
+      0.0,
+      0.0,
+      1.0
+    ],
+    "max_overhang_deg": 90.0,
+    "longest_bridge_mm": 134.69,
+    "min_wall_mm": 2.4,
+    "downward_fillets": [],
+    "bed_chamfer": "absent",
+    "overhang_threshold_deg": 45.0,
+    "bridge_threshold_mm": 10.0,
+    "wall_threshold_mm": 0.9
+  },
+  "back_wall_down": {
+    "model": "part",
+    "orientation": [
+      0.0,
+      0.0,
+      1.0
+    ],
+    "max_overhang_deg": 0.0,
+    "longest_bridge_mm": 0.0,
+    "min_wall_mm": 2.4,
+    "downward_fillets": [],
+    "bed_chamfer": "absent",
+    "overhang_threshold_deg": 45.0,
+    "bridge_threshold_mm": 10.0,
+    "wall_threshold_mm": 0.9
+  }
+}

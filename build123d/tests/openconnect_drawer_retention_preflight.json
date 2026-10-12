@@ -1,0 +1,254 @@
+[
+  {
+    "case": "library",
+    "clearance": [
+      0.1,
+      0.1
+    ],
+    "pull_distances_mm": [
+      0,
+      0.5,
+      0.6,
+      1,
+      2
+    ],
+    "interference_mm3": [
+      0,
+      13.270995,
+      16.976495,
+      29.548743,
+      21.972507
+    ]
+  },
+  {
+    "case": "before",
+    "clearance": [
+      0.1,
+      0.1
+    ],
+    "pull_distances_mm": [
+      0,
+      0.5,
+      0.6,
+      1,
+      2
+    ],
+    "interference_mm3": [
+      0.0,
+      13.270995,
+      16.976495,
+      29.548742,
+      21.972507
+    ]
+  },
+  {
+    "case": "bevel",
+    "clearance": [
+      0.1,
+      0.1
+    ],
+    "pull_distances_mm": [
+      0,
+      0.5,
+      0.6,
+      1,
+      2
+    ],
+    "interference_mm3": [
+      0,
+      13.205214,
+      16.710548,
+      28.309154,
+      20.666146
+    ]
+  },
+  {
+    "case": "library",
+    "clearance": [
+      0.5,
+      0.1
+    ],
+    "pull_distances_mm": [
+      0,
+      0.5,
+      0.6,
+      1,
+      2
+    ],
+    "interference_mm3": [
+      0,
+      0,
+      0,
+      7.220275,
+      14.406925
+    ]
+  },
+  {
+    "case": "before",
+    "clearance": [
+      0.5,
+      0.1
+    ],
+    "pull_distances_mm": [
+      0,
+      0.5,
+      0.6,
+      1,
+      2
+    ],
+    "interference_mm3": [
+      0.0,
+      0.0,
+      0.0,
+      7.220275,
+      14.406925
+    ]
+  },
+  {
+    "case": "bevel",
+    "clearance": [
+      0.5,
+      0.1
+    ],
+    "pull_distances_mm": [
+      0,
+      0.5,
+      0.6,
+      1,
+      2
+    ],
+    "interference_mm3": [
+      0.0,
+      0.0,
+      0.0,
+      6.951696,
+      13.074286
+    ]
+  },
+  {
+    "case": "library",
+    "clearance": [
+      0.1,
+      0.5
+    ],
+    "pull_distances_mm": [
+      0,
+      0.5,
+      0.6,
+      1,
+      2
+    ],
+    "interference_mm3": [
+      0,
+      13.270995,
+      16.976495,
+      29.548743,
+      21.972507
+    ]
+  },
+  {
+    "case": "before",
+    "clearance": [
+      0.1,
+      0.5
+    ],
+    "pull_distances_mm": [
+      0,
+      0.5,
+      0.6,
+      1,
+      2
+    ],
+    "interference_mm3": [
+      0.0,
+      13.270995,
+      16.976495,
+      29.548742,
+      21.972507
+    ]
+  },
+  {
+    "case": "bevel",
+    "clearance": [
+      0.1,
+      0.5
+    ],
+    "pull_distances_mm": [
+      0,
+      0.5,
+      0.6,
+      1,
+      2
+    ],
+    "interference_mm3": [
+      0,
+      13.205214,
+      16.710548,
+      28.309154,
+      20.666146
+    ]
+  },
+  {
+    "case": "library",
+    "clearance": [
+      0.5,
+      0.5
+    ],
+    "pull_distances_mm": [
+      0,
+      0.5,
+      0.6,
+      1,
+      2
+    ],
+    "interference_mm3": [
+      0,
+      0,
+      0,
+      7.220275,
+      14.406925
+    ]
+  },
+  {
+    "case": "before",
+    "clearance": [
+      0.5,
+      0.5
+    ],
+    "pull_distances_mm": [
+      0,
+      0.5,
+      0.6,
+      1,
+      2
+    ],
+    "interference_mm3": [
+      0.0,
+      0.0,
+      0.0,
+      7.220275,
+      14.406925
+    ]
+  },
+  {
+    "case": "bevel",
+    "clearance": [
+      0.5,
+      0.5
+    ],
+    "pull_distances_mm": [
+      0,
+      0.5,
+      0.6,
+      1,
+      2
+    ],
+    "interference_mm3": [
+      0.0,
+      0.0,
+      0.0,
+      6.951696,
+      13.074286
+    ]
+  }
+]

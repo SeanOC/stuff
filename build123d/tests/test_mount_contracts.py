@@ -46,10 +46,67 @@ def test_some_model_declares_a_mount():
     assert _MOUNTED, "no registered model declares a mount type"
 
 
+@pytest.mark.parametrize('rotation', [(0, 0, 0), (0, 0, 90), (0, 0, -90),
+                                      (0, 0, 180), (90, 0, 0), (-90, 0, 0)])
+def test_openconnect_cardinal_faces_keep_backing_probe(rotation):
+    """Rotate the actual geometry and prove thin backing still fails."""
+    from openconnect.grid import fixtures, layout
+    from tests.mount_contracts import verify_openconnect_slot
+
+    original = fixtures(layout(1, 1))
+    frame = Rot(*rotation)
+    fx = MountFixtures(
+        [frame*c for c in original.cutters], [frame*p for p in original.seat_locs],
+        onramp_locs=[frame*p for p in original.onramp_locs],
+        face_normal=tuple((frame*Pos(*original.face_normal)).position),
+        entry_axis=tuple((frame*Pos(*original.entry_axis)).position),
+    )
+    for backing in (.9, .7):
+        body = Box(28, 2.7+backing, 28, align=(Align.CENTER, Align.MIN, Align.CENTER))
+        part = frame*(body-original.cutters[0])
+        if backing == .9:
+            verify_openconnect_slot(part, fx, min_backing=.8)
+        else:
+            with pytest.raises(AssertionError, match='backing'):
+                verify_openconnect_slot(part, fx, min_backing=.8)
+
+
+def test_openconnect_head_crop_preserves_full_part_intersections():
+    """The optimization preserves volumes even between path endpoints."""
+    from openconnect.grid import fixtures, layout
+    from openconnect.slot import head
+    from tests.mount_contracts import _head_path_region, _residual_vol
+
+    fx = fixtures(layout(2, 1))
+    part = Box(56, 3.6, 28, align=(Align.CENTER, Align.MIN, Align.CENTER))
+    for cutter in fx.cutters:
+        part -= cutter
+    seated = fx.seat_locs[0]*head()
+    ramp = fx.onramp_locs[0]*head()
+    a, b = fx.seat_locs[0].position, fx.onramp_locs[0].position
+    out = ramp.bounding_box().max.Y-part.bounding_box().min.Y+.5
+    shifted = Pos(a.X-b.X, 0, 0)*ramp
+    endpoints = [seated, ramp, Pos(0, -out, 0)*ramp, shifted,
+                 Pos(0, -2, 0)*seated, Pos(0, 0, 1)*seated]
+    region = _head_path_region(endpoints)
+    local = part & region
+    assert local.volume < part.volume*.75  # actually remove the distant tile
+    paths = [(ramp, (0, -out, 0)), (ramp, (a.X-b.X, 0, 0)),
+             (shifted, (0, 0, a.Z-b.Z)), (seated, (0, -2, 0)),
+             (seated, (0, 0, 1))]
+    for start, delta in paths:
+        for t in (0, .25, .5, .75, 1):
+            pose = Pos(*(d*t for d in delta))*start
+            assert (pose-region).volume < 1e-7
+            assert _residual_vol(local, pose) == pytest.approx(
+                _residual_vol(part, pose), abs=1e-5)
+    assert _residual_vol(local, Pos(0, -.5, 0)*seated) > 1
+
+
 # pst-24tr6: the spool cradle's contracts build the registry-sized cradle at
 # defaults + every preset (40-130 s each); they ride in bd123's `audit` job so
-# `fast` stays fast. Every other model's contract is seconds and stays in fast.
-_HEAVY_CONTRACT_MODELS = {"holder_spool_cradle"}
+# `fast` stays fast. Drawer contracts also sweep up to 23 slots and take minutes.
+_HEAVY_CONTRACT_MODELS = {"holder_spool_cradle", "openconnect_drawer"}
 
 
 @pytest.mark.parametrize(

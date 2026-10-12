@@ -749,6 +749,272 @@
       ]
     },
     {
+      "slug": "openconnect-drawer",
+      "engine": "build123d",
+      "title": "openConnect drawer",
+      "blurb": "mitufy's drawer shell (CC BY-SA 4.0). Print back-wall-down; solid walls. Select the mounting face independently of print orientation.",
+      "categoryId": "multiboard",
+      "params": [
+        {
+          "name": "part",
+          "group": "Drawer Size",
+          "kind": "enum",
+          "default": "shell",
+          "choices": [
+            "shell"
+          ]
+        },
+        {
+          "name": "horizontal_grids",
+          "group": "Drawer Size",
+          "kind": "integer",
+          "default": 5,
+          "min": 1,
+          "max": 8,
+          "step": 1,
+          "filename": true
+        },
+        {
+          "name": "vertical_grids",
+          "group": "Drawer Size",
+          "kind": "integer",
+          "default": 2,
+          "min": 1,
+          "max": 8,
+          "step": 1,
+          "filename": true
+        },
+        {
+          "name": "depth_grids",
+          "group": "Drawer Size",
+          "kind": "integer",
+          "default": 5,
+          "min": 1,
+          "max": 8,
+          "step": 1,
+          "filename": true
+        },
+        {
+          "name": "shell_slot_position",
+          "group": "Shell",
+          "kind": "enum",
+          "default": "Back",
+          "choices": [
+            "Back",
+            "Top",
+            "Bottom",
+            "Left",
+            "Right"
+          ]
+        },
+        {
+          "name": "shell_top_wall_type",
+          "group": "Shell",
+          "kind": "enum",
+          "default": "Solid",
+          "choices": [
+            "Solid"
+          ]
+        },
+        {
+          "name": "shell_bottom_wall_type",
+          "group": "Shell",
+          "kind": "enum",
+          "default": "Solid",
+          "choices": [
+            "Solid"
+          ]
+        },
+        {
+          "name": "shell_side_wall_type",
+          "group": "Shell",
+          "kind": "enum",
+          "default": "Solid",
+          "choices": [
+            "Solid"
+          ]
+        },
+        {
+          "name": "shell_thickness",
+          "group": "Shell",
+          "kind": "number",
+          "default": 2.4,
+          "min": 1.6,
+          "max": 4,
+          "step": 0.1
+        },
+        {
+          "name": "shell_outer_chamfer",
+          "group": "Shell",
+          "kind": "number",
+          "default": 2,
+          "min": 0,
+          "max": 4,
+          "step": 0.1
+        },
+        {
+          "name": "shell_to_slot_wall_thickness",
+          "group": "Shell",
+          "kind": "number",
+          "default": 0.9,
+          "min": 0.6,
+          "max": 2,
+          "step": 0.1
+        },
+        {
+          "name": "slot_lock_distribution",
+          "group": "Slots",
+          "kind": "enum",
+          "default": "Top Corners",
+          "choices": [
+            "All",
+            "Staggered",
+            "Corners",
+            "Top Corners",
+            "None"
+          ]
+        },
+        {
+          "name": "slot_position",
+          "group": "Slots",
+          "kind": "enum",
+          "default": "All",
+          "choices": [
+            "All",
+            "Staggered",
+            "Edge Rows",
+            "Edge Columns",
+            "Corners"
+          ]
+        },
+        {
+          "name": "slot_entryramp_flip",
+          "group": "Slots",
+          "kind": "boolean",
+          "default": false
+        },
+        {
+          "name": "slot_horizontal_offset",
+          "group": "Slots",
+          "kind": "number",
+          "default": 0,
+          "min": -14,
+          "max": 14,
+          "step": 0.1
+        },
+        {
+          "name": "slot_vertical_offset",
+          "group": "Slots",
+          "kind": "number",
+          "default": 0,
+          "min": -10,
+          "max": 10,
+          "step": 0.1
+        },
+        {
+          "name": "slot_side_clearance",
+          "group": "Advanced",
+          "kind": "number",
+          "default": 0.1,
+          "min": 0,
+          "max": 0.3,
+          "step": 0.01
+        },
+        {
+          "name": "slot_depth_clearance",
+          "group": "Advanced",
+          "kind": "number",
+          "default": 0.1,
+          "min": 0,
+          "max": 0.5,
+          "step": 0.01
+        },
+        {
+          "name": "add_back_magnet_holes",
+          "group": "Magnets",
+          "kind": "boolean",
+          "default": true
+        },
+        {
+          "name": "shell_back_magnet_thickness",
+          "group": "Magnets",
+          "kind": "number",
+          "default": 2,
+          "step": 0.1
+        },
+        {
+          "name": "back_magnet_diameter",
+          "group": "Magnets",
+          "kind": "number",
+          "default": 6,
+          "step": 0.1
+        },
+        {
+          "name": "add_side_magnet_holes",
+          "group": "Magnets",
+          "kind": "boolean",
+          "default": true
+        },
+        {
+          "name": "shell_side_magnet_thickness",
+          "group": "Magnets",
+          "kind": "number",
+          "default": 1,
+          "step": 0.1
+        },
+        {
+          "name": "side_magnet_diameter",
+          "group": "Magnets",
+          "kind": "number",
+          "default": 6,
+          "step": 0.1
+        },
+        {
+          "name": "shell_side_magnet_edge_distance",
+          "group": "Magnets",
+          "kind": "number",
+          "default": 6,
+          "step": 0.1
+        },
+        {
+          "name": "add_stopper_holes",
+          "group": "Stoppers",
+          "kind": "boolean",
+          "default": true
+        },
+        {
+          "name": "stopper_edge_distance",
+          "group": "Stoppers",
+          "kind": "number",
+          "default": 3,
+          "step": 0.1
+        }
+      ],
+      "presets": [
+        {
+          "id": "default",
+          "label": "5 \u00d7 2 \u00d7 5 solid shell",
+          "values": {}
+        },
+        {
+          "id": "small",
+          "label": "2 \u00d7 1 \u00d7 2 solid shell",
+          "values": {
+            "horizontal_grids": 2,
+            "vertical_grids": 1,
+            "depth_grids": 2
+          }
+        },
+        {
+          "id": "top-slot",
+          "label": "Underdesk shell",
+          "values": {
+            "shell_slot_position": "Top"
+          }
+        }
+      ]
+    },
+    {
       "slug": "openconnect-gridfinity-shelf",
       "engine": "build123d",
       "title": "openConnect Gridfinity shelf",

@@ -1,0 +1,153 @@
+{
+  "model": "finished default shell, mandatory 0.3 mm bed bevel",
+  "source_main": "50b2b5b",
+  "independent_side_cap": 0.3,
+  "independent_depth_cap": 0.5,
+  "paired_caps": [
+    0.3,
+    0.5
+  ],
+  "search_step_mm": 0.05,
+  "pull_distances_mm": [
+    0.5,
+    1,
+    2
+  ],
+  "measurement": "minimum interference over every seat; complete verify_openconnect_slot with min_backing=0.8; unchanged contract",
+  "rows": [
+    {
+      "side": 0.1,
+      "depth": 0.1,
+      "min_interference_mm3": [
+        12.987128805836655,
+        28.067525501112925,
+        20.666015317972125
+      ],
+      "passed": true,
+      "error": null
+    },
+    {
+      "side": 0.3,
+      "depth": 0.1,
+      "min_interference_mm3": [
+        2.3012489598991492,
+        16.557276055020694,
+        16.986121743759117
+      ],
+      "passed": true,
+      "error": null
+    },
+    {
+      "side": 0.4,
+      "depth": 0.1,
+      "min_interference_mm3": [
+        0.0,
+        11.384378464827998,
+        15.05753313890864
+      ],
+      "passed": false,
+      "error": "seated openConnect head pulls off the wall at 0.5 mm (0.000 mm^3)"
+    },
+    {
+      "side": 0.35,
+      "depth": 0.1,
+      "min_interference_mm3": [
+        0.14531654917860962,
+        13.879391661312214,
+        16.029451079652915
+      ],
+      "passed": false,
+      "error": "seated openConnect head pulls off the wall at 0.5 mm (0.145 mm^3)"
+    },
+    {
+      "side": 0.1,
+      "depth": 0.3,
+      "min_interference_mm3": [
+        12.987128805836644,
+        28.067525501112932,
+        20.6660153179721
+      ],
+      "passed": true,
+      "error": null
+    },
+    {
+      "side": 0.1,
+      "depth": 0.4,
+      "min_interference_mm3": [
+        12.98712880583663,
+        28.06752550111293,
+        20.666015317972096
+      ],
+      "passed": true,
+      "error": null
+    },
+    {
+      "side": 0.1,
+      "depth": 0.45,
+      "min_interference_mm3": [
+        12.987128805836685,
+        28.067525501112907,
+        20.666015317972104
+      ],
+      "passed": true,
+      "error": null
+    },
+    {
+      "side": 0.1,
+      "depth": 0.5,
+      "min_interference_mm3": [
+        12.987128805836631,
+        28.067525501112886,
+        20.66601531797208
+      ],
+      "passed": true,
+      "error": null
+    },
+    {
+      "side": 0.3,
+      "depth": 0.5,
+      "min_interference_mm3": [
+        2.301248959899158,
+        16.55727605502077,
+        16.98612174375911
+      ],
+      "passed": true,
+      "error": null
+    }
+  ],
+  "additional_paired_rows": [
+    {
+      "side": 0.3,
+      "depth": 0.3,
+      "min_interference_mm3": [
+        2.3012489598991492,
+        16.557276055020733,
+        16.986121743759114
+      ],
+      "passed": true,
+      "error": null
+    },
+    {
+      "side": 0.4,
+      "depth": 0.4,
+      "min_interference_mm3": [
+        0.0,
+        11.384378464827973,
+        15.057533138908655
+      ],
+      "passed": false,
+      "error": "seated openConnect head pulls off the wall at 0.5 mm (0.000 mm^3)"
+    },
+    {
+      "side": 0.35,
+      "depth": 0.35,
+      "min_interference_mm3": [
+        0.1453165491786206,
+        13.879391661312066,
+        16.029451079652965
+      ],
+      "passed": false,
+      "error": "seated openConnect head pulls off the wall at 0.5 mm (0.145 mm^3)"
+    }
+  ]
+}
