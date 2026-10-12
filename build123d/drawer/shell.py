@@ -3,8 +3,8 @@
 
 [C] assets/openConnect-drawer/openconnect_drawer_online.scad:384-394,
 1354-1357,1372-1483. Published magnet and stopper pockets are preserved;
-openConnect library cutters supply the mating profiles. The only exterior
-geometry change is the mandatory 0.3 mm bed-edge bevel.
+openConnect library cutters supply the mating profiles. Adaptations are the
+mandatory 0.3 mm bed-edge bevel and the side-slot orientation described below.
 
 Model frame: back at Y=0, open front at +Y, height along Z. A proper rotation
 maps the author frame (x,y,z) to (-x,z,y); the author's Left is consequently
@@ -12,6 +12,18 @@ model +X. Source Top/Bottom retain their +Z/-Z meaning. Worst-case load is
 a filled drawer pulling the back away from its mounts; the continuous box
 walls carry that load. Print back-wall-down in PLA/PCTG for every mounting
 face (source placement :1354-1357 and the REV 3d orientation correction).
+
+Deviations from the source
+--------------------------
+Source :1427 and :1421 attach(LEFT/RIGHT) orient the side slots along depth.
+We rotate those slots 90 degrees so the shell hangs opening-forward, with
+the head travelling up relative to the shell as it drops onto the seat
+(decided by Sean 2026-10-12). Grid positions and side-magnet exclusions are
+unchanged; the same cutters rotate in place and their footprints swap axes.
+Back, Top and Bottom retain the source orientation. The author reference
+set has no Left/Right shell meshes, so existing parity targets are unchanged;
+do not add the author's Left/Right meshes as parity targets for this fix.
+TODO(D4): move this deviation record to docs/openconnect-drawer.md.
 """
 from dataclasses import dataclass, replace
 from math import radians, sqrt
@@ -157,10 +169,13 @@ def slot_layout(values=None):
         raise ValueError('slot_horizontal offset leaves the slot face')
     if abs(dz) > 1e-7:
         raise ValueError('slot_vertical offset leaves the slot face')
+    # See "Deviations from the source" above for the :1427 side-slot rotation.
+    slide = {'Back': 'up', 'Top': 'left', 'Bottom': 'left',
+             'Left': 'left', 'Right': 'right'}[d.slot_face]
     points = layout(h, rows,
                     position=v.get('slot_position', 'All').lower().replace(' ', '-'),
                     lock=v.get('slot_lock_distribution', 'Top Corners').lower().replace(' ', '-'),
-                    slide='left' if d.slot_face in ('Top', 'Bottom') else 'up',
+                    slide=slide,
                     entryramp_flip=v.get('slot_entryramp_flip', False),
                     except_positions=excluded)
     return h, rows, [replace(p, x=p.x+dx, z=p.z+dz) for p in points]
