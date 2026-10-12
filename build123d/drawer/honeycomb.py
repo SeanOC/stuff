@@ -1,0 +1,159 @@
+# SPDX-License-Identifier: CC-BY-SA-4.0 AND BSD-2-Clause
+"""Drawer hex panels, centred in XY with thickness centred on Z.
+
+[C] drawer source :435-451 and BOSL2 walls.scad hex_panel/_honeycomb,
+distributors.scad grid_copies at the NOTICE pin b86a7584.
+BOSL2 algorithms: Copyright (c) 2017-2019 Revar Desmera, BSD-2-Clause;
+see BOSL2-LICENSE. Drawer adaptation is CC-BY-SA-4.0. The frame clips
+edge cells; it does not change the centred staggered lattice.
+"""
+from math import cos, sin, pi, floor, isfinite, sqrt
+
+from dataclasses import dataclass
+
+from build123d import Box, Face, Part, Sketch, Wire, extrude
+from shapely.affinity import affine_transform
+from shapely.geometry import Polygon, box
+
+from .constants import HONEYCOMB_UNIT, HONEYCOMB_STRUT_HYP, MAX_BRIDGE_MM
+
+
+class HoneycombPanelTooSmall(ValueError):
+    """BOSL2's strict frame*2 + spacing < size guard failed."""
+
+
+class HoneycombStrutOutOfRange(ValueError):
+    """Unit/strut values cannot form a finite, positive hex opening."""
+
+
+def strut_dimensions(strut_hyp=HONEYCOMB_STRUT_HYP, unit=HONEYCOMB_UNIT):
+    """Return spacing, perpendicular strut width, hex inradius/circumradius."""
+    if not all(isfinite(x) and x > 0 for x in (strut_hyp, unit)):
+        raise HoneycombStrutOutOfRange('honeycomb unit and strut_hyp must be finite and positive')
+    if strut_hyp < 1.1:
+        raise HoneycombStrutOutOfRange('honeycomb strut_hyp must be at least 1.1 mm')
+    spacing, strut = unit/cos(pi/6), strut_hyp*cos(pi/6)
+    ir = (spacing-strut)/2
+    if ir <= 0:
+        raise HoneycombStrutOutOfRange('honeycomb strut must be smaller than spacing')
+    return spacing, strut, ir, ir*2/sqrt(3)
+
+
+def front_alignment(width, height, unit=HONEYCOMB_UNIT):
+    """Source fronthex width/height strut counts and centred height offset.
+
+    D3's handle uses these front-panel formulas, not the BOSL2 grid counts.
+    """
+    spacing = unit/cos(pi/6)
+    nx, ny = floor(width/unit), floor(height/spacing*2)/2
+    return nx, ny, (height-ny*spacing)/2
+
+
+def hex_centres(width, height, unit=HONEYCOMB_UNIT):
+    """BOSL2 grid_copies(spacing=unit/cos(30), stagger=true)."""
+    dx, dy = unit/sqrt(3), unit
+    spacing = unit/cos(pi/6)
+    # NOTICE pin pads the lattice before centring (walls.scad:415-420).
+    nx = floor((width+2*spacing)/dx)+5
+    ny = floor((height+2*spacing)/dy)+5
+    return [((col-(nx-1)/2)*dx, (row-(ny-1)/2)*dy)
+            for row in range(ny) for col in range(row % 2, nx, 2)]
+
+
+def hole_polygons(width, height, *, strut_hyp=HONEYCOMB_STRUT_HYP,
+                  unit=HONEYCOMB_UNIT, frame=None):
+    """Clipped hex openings as XY vertex lists, including partial edge cells."""
+    spacing, strut, _, radius = strut_dimensions(strut_hyp, unit)
+    frame = strut if frame is None else frame
+    if not isfinite(frame) or frame < 0:
+        raise ValueError('honeycomb frame must be finite and nonnegative')
+    if not all(isfinite(x) and x > 2*frame+spacing for x in (width, height)):
+        raise HoneycombPanelTooSmall(
+            f'honeycomb panel axes must exceed 2*frame + spacing ({2*frame+spacing:.6f} mm)')
+    interior = box(-width/2+frame, -height/2+frame, width/2-frame, height/2-frame)
+    hexagon = [(radius*cos(pi/6+i*pi/3), radius*sin(pi/6+i*pi/3)) for i in range(6)]
+    result = []
+    for x, y in hex_centres(width, height, unit):
+        clipped = Polygon([(x+u, y+v) for u, v in hexagon]).intersection(interior)
+        if not clipped.is_empty and clipped.area > 1e-10:
+            result.append(list(clipped.exterior.coords)[:-1])
+    return result
+
+
+def roof_opening(opening, frame_up=(0, 1), *, ceiling='roofed'):
+    """Return the opening minus its over-limit ceiling triangle, and chord.
+
+    Work in (horizontal, print-up) coordinates. Intersecting the inward V
+    with the source opening naturally permits two voids in a shallow cell.
+    The source polygon must already include frame and fitting clipping.
+    """
+    if ceiling not in ('source', 'roofed'):
+        raise ValueError('honeycomb ceiling must be source or roofed')
+    ux, uy = frame_up
+    length = (ux*ux+uy*uy)**.5
+    if not isfinite(length) or length == 0:
+        raise ValueError('honeycomb print up must be a finite nonzero direction')
+    ux, uy = ux/length, uy/length
+    upright = affine_transform(opening, [uy, -ux, ux, uy, 0, 0])
+    vertices = list(upright.exterior.coords)[:-1]
+    top = max(y for _, y in vertices)
+    ends = sorted((x, y) for x, y in vertices if abs(y-top) < 1e-7)
+    chord = ends[-1][0]-ends[0][0]
+    roofed = ceiling == 'roofed' and chord > MAX_BRIDGE_MM
+    if roofed:
+        left, right = ends[0], ends[-1]
+        triangle = Polygon([left, right, ((left[0]+right[0])/2, top-chord/2)])
+        upright = upright.difference(triangle.intersection(upright))
+    return affine_transform(upright, [uy, ux, -ux, uy, 0, 0]), chord, roofed
+
+
+@dataclass
+class HoneycombLayout:
+    """2D source cells shared by panel extrusion and the analytic span audit."""
+
+    openings: list
+    ceiling: str = 'source'
+    wall: str = 'panel'
+
+    def profiles(self, frame_up=(0, 1)):
+        return [roof_opening(p, frame_up, ceiling=self.ceiling) for p in self.openings]
+
+    def ceiling_chords(self, frame_up=(0, 1)):
+        return [(self.wall, chord, roofed) for _, chord, roofed in self.profiles(frame_up)
+                if chord > 1e-7]
+
+    def cutter(self, thickness, frame_up=(0, 1)):
+        """One sketch, extrusion and cutter for the entire wall."""
+        if not isfinite(thickness) or thickness <= 0:
+            raise ValueError('honeycomb thickness must be finite and positive')
+        faces = []
+        for profile, _, _ in self.profiles(frame_up):
+            polygons = [profile] if profile.geom_type == 'Polygon' else profile.geoms
+            for polygon in polygons:
+                faces.append(Face(Wire.make_polygon(
+                    [(x, y, -thickness/2) for x, y in list(polygon.exterior.coords)[:-1]],
+                    close=True)))
+        return extrude(Sketch(children=faces), amount=thickness, dir=(0, 0, 1))
+
+
+def hole_solids(width, height, thickness, *, ceiling='source', frame_up=(0, 1), **kwargs):
+    if not isfinite(thickness) or thickness <= 0:
+        raise ValueError('honeycomb thickness must be finite and positive')
+    layout = HoneycombLayout([Polygon(p) for p in hole_polygons(width, height, **kwargs)], ceiling)
+    return list(layout.cutter(thickness, frame_up).solids())
+
+
+class HoneycombPanel(Part):
+    def ceiling_chords(self, frame_up=(0, 1)):
+        return self.layout.ceiling_chords(frame_up)
+
+
+def honeycomb_panel(width, height, thickness, *, strut_hyp=HONEYCOMB_STRUT_HYP,
+                    unit=HONEYCOMB_UNIT, frame=None, ceiling='source',
+                    frame_up=(0, 1)) -> Part:
+    layout = HoneycombLayout([Polygon(p) for p in hole_polygons(
+        width, height, strut_hyp=strut_hyp, unit=unit, frame=frame)], ceiling)
+    result = HoneycombPanel(children=[Box(width, height, thickness).cut(
+        layout.cutter(thickness, frame_up))])
+    result.layout = layout
+    return result
