@@ -15,6 +15,7 @@ import re
 import shlex
 import subprocess
 import sys
+from collections.abc import Mapping
 from pathlib import Path
 
 import ezdxf
@@ -102,6 +103,183 @@ def test_no_upstream_originals_committed():
     assert files
     bad = [p.relative_to(ROOT).as_posix() for p in files if p.suffix.lower() in UPSTREAM_SUFFIXES]
     assert not bad, f"upstream originals must never be committed (reference/FETCH.md): {bad}"
+
+
+# --- root asset exception register ------------------------------------------
+
+ASSET_SUFFIXES = {".scad", ".stl", ".step", ".3mf"}
+
+
+def exception_register_rows(document: str) -> list[str]:
+    """Read only scope cells in the exception register, never the licence table."""
+    section = document.split("### Exception register\n", 1)[1]
+    section = re.split(r"^#{1,6} ", section, maxsplit=1, flags=re.MULTILINE)[0]
+    return [line.split("|")[1].strip() for line in section.splitlines()
+            if line.startswith("|") and line.split("|")[1].strip().startswith("`assets/")]
+
+
+def _row_asset_set(row: str) -> str | None:
+    match = re.match(r"`?(assets/[^/`]+/)", row)
+    return match[1] if match else None
+
+
+def unregistered_asset_sets(asset_dirs: Mapping[str, list[str]], register_rows: list[str]) -> list[str]:
+    registered = {_row_asset_set(row) for row in register_rows}
+    return sorted(set(asset_dirs) - registered)
+
+
+def _expand_braces(path: str) -> list[str]:
+    match = re.search(r"\{([^{}]+)\}", path)
+    if not match:
+        return [path]
+    return [expanded for choice in match[1].split(",")
+            for expanded in _expand_braces(path[:match.start()] + choice + path[match.end():])]
+
+
+def _resolve_paths(path: str, asset_dir: str, existing_paths: set[str]) -> set[str]:
+    """Resolve set-relative patterns first, then repository-root paths."""
+    for pattern in (asset_dir + path, path):
+        matches = {p for p in existing_paths if len(Path(p).parts) == len(Path(pattern).parts)
+                   and Path(p).match(pattern.rstrip("/"))}
+        if matches:
+            return matches
+    return set()
+
+
+def _mentions_file(document: str, path: str) -> bool:
+    # Boundaries prevent x.stl from matching other-x.stl, subdir/x.stl or x.stl.old.
+    return re.search(r"(?<![\w./-])" + re.escape(path) + r"(?=$|[\s`'\":,;)]|\.(?:\s|$))", document) is not None
+
+
+def uncovered_asset_files(
+    asset_dirs: Mapping[str, list[str]], register_rows: list[str],
+    existing_paths: set[str], pointer_texts: Mapping[str, str],
+) -> list[str]:
+    """Pure coverage/existence check; all filesystem evidence is supplied by the caller."""
+    problems = []
+    for asset_dir, files in asset_dirs.items():
+        covered = set()
+        for row in register_rows:
+            if _row_asset_set(row) != asset_dir:
+                continue
+            for token in re.findall(r"`([^`]+)`", row):
+                # Ignore revisions and suffix-only prose (e.g. 'no .shapr').
+                if "/" not in token and Path(token).suffix.lower() not in ASSET_SUFFIXES:
+                    continue
+                for path in _expand_braces(token):
+                    matches = _resolve_paths(path, asset_dir, existing_paths)
+                    if not matches:
+                        problems.append(f"{asset_dir}: missing registered path {path}")
+                    covered.update(matches)
+
+            # A pointer grants only the files actually named by that document.
+            for pointer in re.findall(
+                r"(?:enumerated|hashes|SHA256) in [`\[]?((?:[\w-]+/)*(?:NOTICE|SHA256SUMS))", row,
+            ):
+                pointers = _resolve_paths(pointer, asset_dir, set(pointer_texts))
+                if not pointers:
+                    problems.append(f"{asset_dir}: missing register pointer {pointer}")
+                for name in pointers:
+                    hashes = set(re.findall(r"^[a-fA-F0-9]{64} [ *](.+)$", pointer_texts[name], re.MULTILINE))
+                    for file in files:
+                        candidates = {file, file.removeprefix(asset_dir)}
+                        # SHA256SUMS commonly lists names relative to its own directory.
+                        parent = str(Path(name).parent) + "/"
+                        if Path(name).name == "SHA256SUMS" and file.startswith(parent):
+                            candidates.add(file.removeprefix(parent))
+                        mentioned = (bool(candidates & hashes) if Path(name).name == "SHA256SUMS" else
+                                     any(_mentions_file(pointer_texts[name], p) for p in candidates))
+                        if mentioned:
+                            covered.add(file)
+        problems.extend(f"{file}: not covered by exception register"
+                        for file in files if Path(file).suffix.lower() in ASSET_SUFFIXES and file not in covered)
+    return sorted(problems)
+
+
+def _root_asset_evidence():
+    repo = ROOT.parent
+    out = subprocess.run(["git", "ls-files", "-z"], cwd=repo, capture_output=True, check=True)
+    tracked = [p for p in out.stdout.decode().split("\0") if p]
+    asset_dirs = {str(Path(p).parent) + "/": [] for p in tracked
+                  if re.fullmatch(r"assets/[^/]+/NOTICE", p)}
+    for directory in asset_dirs:
+        asset_dirs[directory] = [p for p in tracked if p.startswith(directory)]
+    # Include directories for adaptation paths, but do not mask deleted tracked files.
+    existing = {p for p in tracked if (repo / p).exists()}
+    existing.update(str(parent) for p in tuple(existing) for parent in Path(p).parents)
+    pointers = {p: (repo / p).read_text(encoding="utf-8")
+                for files in asset_dirs.values() for p in files
+                if Path(p).name in {"NOTICE", "SHA256SUMS"} and (repo / p).is_file()}
+    rows = exception_register_rows((ROOT / "docs/provenance.md").read_text(encoding="utf-8"))
+    return asset_dirs, rows, existing, pointers
+
+
+def test_root_asset_sets_are_registered():
+    asset_dirs, rows, _, _ = _root_asset_evidence()
+    assert asset_dirs, "expected tracked root assets with NOTICE files"
+    assert not (missing := unregistered_asset_sets(asset_dirs, rows)), missing
+
+
+def test_root_asset_files_are_covered():
+    assert not (problems := uncovered_asset_files(*_root_asset_evidence())), "\n".join(problems)
+
+
+def test_root_asset_register_negative_control():
+    directory = "assets/example-port/"
+    files = [directory + "NOTICE", directory + "mesh/x.stl"]
+    asset_dirs = {directory: files}
+    row = f"`{directory}`: `mesh/x.stl`"
+    assert unregistered_asset_sets(asset_dirs, []) == [directory]
+    assert unregistered_asset_sets(asset_dirs, [row]) == []
+    assert uncovered_asset_files(asset_dirs, [], set(files), {}) == [
+        files[1] + ": not covered by exception register",
+    ]
+    assert uncovered_asset_files(asset_dirs, [row], set(files) | {directory.rstrip('/')}, {}) == []
+
+
+@pytest.mark.parametrize("suffix", sorted(ASSET_SUFFIXES))
+def test_root_asset_directory_row_is_not_blanket_coverage(suffix):
+    directory = "assets/example-port/"
+    file = directory + "mesh/new" + suffix
+    problems = uncovered_asset_files({directory: [file]}, [f"`{directory}`"],
+                                     {directory.rstrip('/'), file}, {})
+    assert problems == [file + ": not covered by exception register"]
+
+
+@pytest.mark.parametrize("pointer", ["NOTICE", "mesh/SHA256SUMS"])
+def test_root_asset_pointer_covers_only_named_files(pointer):
+    directory = "assets/example-port/"
+    files = [directory + "mesh/x.stl", directory + "mesh/other x.stl"]
+    row = f"`{directory}`: hashes in `{pointer}`"
+    existing = set(files) | {directory.rstrip('/'), directory + pointer}
+    args = ({directory: files}, [row], existing)
+    prefix = "0" * 64 + "  " if pointer.endswith("SHA256SUMS") else ""
+    listing = prefix + "mesh/x.stl\n" + prefix + "mesh/other x.stl"
+    assert uncovered_asset_files(*args, {directory + pointer: listing}) == []
+    problems = uncovered_asset_files(*args, {directory + pointer: listing.replace("mesh/x.stl", "mesh/x.stl.old")})
+    assert problems == [files[0] + ": not covered by exception register"]
+    assert uncovered_asset_files(*args, {})  # a pointer must resolve
+
+
+def test_root_asset_enumerations_and_adaptations_must_exist():
+    directory = "assets/example-port/"
+    files = [directory + "mesh/x.stl", directory + "step/with spaces.step"]
+    row = f"`{directory}`: `mesh/{{x,y}}.stl`, `step/*.step`. Adaptation: `build123d/example/`"
+    existing = set(files) | {directory.rstrip('/')}
+    problems = uncovered_asset_files({directory: files}, [row], existing, {})
+    assert problems == [f"{directory}: missing registered path build123d/example/",
+                        f"{directory}: missing registered path mesh/y.stl"]
+    existing.update({directory + "mesh/y.stl", "build123d/example"})
+    assert uncovered_asset_files({directory: files}, [row], existing, {}) == []
+
+
+def test_exception_register_parser_uses_only_scope_cells():
+    row = "`assets/example-port/`: `mesh/x.stl`"
+    doc = ("| `assets/outside/` | MIT |\n### Exception register\n"
+           "| Exact file set / scope | Licence |\n| --- | --- |\n"
+           f"| {row} | MIT | `assets/not-a-scope/` |\n"
+           "## Next section\n| `assets/also-outside/` | MIT |\n")
+    assert exception_register_rows(doc) == [row]
 
 
 # --- values re-derived from the committed measurement JSON -------------------
