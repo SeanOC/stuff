@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: CC-BY-SA-4.0
 """Source-pinned lattice, frame and degenerate-panel contracts."""
-from math import sqrt
+from math import hypot, sqrt
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -20,7 +20,37 @@ def test_default_dimensions_and_front_alignment():
         (16.1658075373, 4.3301270189, 11.8356805184, 6.8333333333))
     assert front_alignment(134.8, 50.8) == pytest.approx((9, 3, (50.8-3*spacing)/2))
     p = next(p for p in SPEC.params if p.name == 'honeycomb_strut_hyp')
-    assert (p.default, p.step, p.min, p.max) == (5, .1, None, None)
+    assert (p.default, p.step, p.min, p.max) == (5, .1, 1.1, 16.3)
+
+
+@pytest.mark.parametrize('values', [
+    {'honeycomb_ceiling': 'source'},
+    {'honeycomb_strut_hyp': 1.09},
+    {'honeycomb_strut_hyp': 16.4},
+])
+def test_catalog_rejects_unsupported_honeycomb_settings(values):
+    with pytest.raises(ValueError, match=next(iter(values))):
+        SPEC.resolve_values(values)
+
+
+@pytest.mark.parametrize('preset', SPEC.presets, ids=lambda preset: preset.id)
+def test_maximum_strut_keeps_every_opening_at_least_2mm(preset):
+    maximum = next(p.max for p in SPEC.params if p.name == 'honeycomb_strut_hyp')
+    values = SPEC.resolve_values(preset.values | {'honeycomb_strut_hyp': maximum})
+    widths = []
+    for _, layout in shell.honeycomb_layouts(values):
+        for profile, _, _ in layout.profiles((1, 0)):
+            polygons = [profile] if profile.geom_type == 'Polygon' else profile.geoms
+            for polygon in polygons:
+                # Measure the final opening, including frame/fitting clipping.
+                # A containing rectangle narrower than 2 mm cannot fit a Ø2 hole.
+                corners = list(polygon.minimum_rotated_rectangle.exterior.coords)
+                width = min(hypot(a[0]-b[0], a[1]-b[1])
+                            for a, b in zip(corners, corners[1:]))
+                widths.append((width, layout.wall, polygon.bounds))
+    assert widths, 'preset must retain honeycomb openings'
+    narrowest = min(widths)
+    assert narrowest[0] >= 2.0, f'{preset.id}: narrowest opening {narrowest}'
 
 
 @pytest.mark.parametrize('strut', [0, -1, 1.09, float('inf'), float('nan'), 20])

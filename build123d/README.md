@@ -297,10 +297,13 @@ contract, and a test-only 84 × 84 × 5.5 demo plate. See the
 [source, render commands and reference hashes](../assets/openConnect-drawer/NOTICE).
 The `default`, `small` and `top-slot` presets use a honeycomb bottom with
 `honeycomb_ceiling=roofed`: only ceiling chords over 10 mm receive an inward
-45° roof. Set `honeycomb_ceiling=source` for the exact reference lattice.
+45° roof. The catalog accepts only `roofed`; the library-only
+`honeycomb_ceiling='source'` override reproduces the reference lattice for
+parity tests and the roof-contract diagnostic.
 Top, bottom and side walls can independently be Solid or Honeycomb; the
-slot-bearing wall stays solid. The source strut parameter has a 0.1 mm step
-and no catalog bounds; `HoneycombStrutOutOfRange` rejects values below 1.1 mm
+slot-bearing wall stays solid. The strut parameter has a 0.1 mm step
+and catalog bounds of 1.1–16.3 mm; the library's
+`HoneycombStrutOutOfRange` rejects values below 1.1 mm
 or values too large to leave an opening. Panels too small for the source frame and
 one cell raise `HoneycombPanelTooSmall` instead of silently becoming solid.
 Fitting reinforcements can still fill an entire wall when the magnet or

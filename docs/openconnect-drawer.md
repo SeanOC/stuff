@@ -24,15 +24,21 @@ it does not move the lattice or expand the panel outline. Default and
 underdesk bottoms retain 97 openings. The small bottom has 19 openings
 instead of the source's 17, because two clipped cells split.
 
-Set `honeycomb_ceiling=source` to reproduce the exact reference lattice for
-mesh parity. Source mode can contain bridges over 10 mm and is not a
-printability guarantee. The analytic `ceiling_chords(frame_up)` inventory
+The catalog accepts only `honeycomb_ceiling=roofed`. For mesh parity,
+library callers can pass `honeycomb_ceiling='source'` directly to
+`drawer.shell.build({...})`, or `ceiling='source'` to the panel helper.
+The parity tests and `scripts/check-drawer-roof-contract.py` use these
+library overrides. Source mode can contain bridges over 10 mm and is not
+available through the registry or web app.
+The analytic `ceiling_chords(frame_up)` inventory
 reports the source chord and whether the selected mode roofs it; endpoint
 audits require every unroofed chord to be at most 10 mm, alongside the
 production print audit and exposed-edge classifier. The 3D audit's local
 width alone cannot measure a through-wall ceiling span.
 
-`honeycomb_strut_hyp` retains its 0.1 mm step and no catalog min/max. Its named
+`honeycomb_strut_hyp` has catalog bounds of 1.1–16.3 mm and a 0.1 mm step.
+At the maximum, an unclipped hexagon measures 2.0496 mm flat-to-flat;
+frame-clipped openings can be smaller. Its named library
 `HoneycombStrutOutOfRange` guard rejects values below 1.1 mm (perpendicular
 strut below about 0.95 mm), nonfinite values, and values that leave no hex
 opening. `HoneycombPanelTooSmall` rejects panels smaller than the source's

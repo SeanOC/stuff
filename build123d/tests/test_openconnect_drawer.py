@@ -253,8 +253,6 @@ CASES = [(p.id, p.values) for p in m.SPEC.presets] + [
     if p.kind in ('number', 'integer') for x in (p.min, p.max) if x is not None
 ] + [
     ('1x1x1', dict(horizontal_grids=1, vertical_grids=1, depth_grids=1)),
-    ('source-default', dict(honeycomb_ceiling='source')),
-    ('honeycomb-strut-minimum', dict(honeycomb_strut_hyp=1.1)),
     ('honeycomb-strut-2', dict(honeycomb_strut_hyp=2)),
     ('all-honeycomb-strut-2', dict(honeycomb_strut_hyp=2, shell_top_wall_type='Honeycomb', shell_side_wall_type='Honeycomb')),
     ('honeycomb-strut-default', dict(honeycomb_strut_hyp=5)),
