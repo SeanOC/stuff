@@ -197,6 +197,11 @@ export const BUILD123D_CATALOG: Record<string, CatalogEntry> = {
     blurb:
       "Slide-in label card for the spool cradle label holder: your text in a fixed font, autoscaled and centred. Inlaid two-colour (face down, flush) or raised single-colour.",
   },
+  holder_tombstone_sign: {
+    categoryId: "household",
+    blurb:
+      "Song-request tombstone sign: title, headline, a QR code and two text lines as flush inlays in up to four colours, printed face down. Two pockets in the bottom edge take a separately printed stake.",
+  },
   holder_spool_cradle: {
     categoryId: "multiboard",
     blurb: "Single spool bookshelf cradle with arc saddles, closed truss webs and two full-height Multiconnect channels. Flange-rim support; standing PETG/PCTG print with support allowed only in the mount pockets.",

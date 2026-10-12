@@ -271,15 +271,15 @@ def test_part_stls_are_byte_stable_across_processes(tmp_path):
 def test_print_audit_per_preset(preset_id, capsys):
     """Unexcluded, the only failure is the flat pocket roofs (and the pin
     hole's 1.33 mm flat): measured as bridges <= POCKET_W first, then
-    excluded as exact thin planes. Raised also excludes its raised text
-    and QR modules (the label card's exclusion, same reason)."""
+    excluded as exact thin planes. Raised keeps its raised-feature slab
+    excluded in both runs (see test_raised_slab_holds_only_the_raised_features)."""
     values, parts, whole = preset_case(preset_id)
-    raised = [p for n, p, _ in parts[1:]] if values['text_style'] == 'raised' else []
+    regions = m.audit_exclusions(values)
+    raised = regions[-1:] if values['text_style'] == 'raised' else []
     raw = audit(whole, SPEC.print_orientation, exclusions=raised, model=f'{preset_id} raw')
     assert raw.longest_bridge_mm == pytest.approx(signs.POCKET_W, abs=0.5)
     assert all('overhang' in f for f in raw.failures()), raw.format()
-    report = audit(whole, SPEC.print_orientation,
-                   exclusions=m.audit_exclusions(values) + raised, model=preset_id)
+    report = audit(whole, SPEC.print_orientation, exclusions=regions, model=preset_id)
     with capsys.disabled():
         print(f'\n{preset_id:13} raw_overhang={raw.max_overhang_deg:.1f} '
               f'raw_bridge={raw.longest_bridge_mm:.2f} overhang={report.max_overhang_deg:.1f} '
@@ -287,6 +287,19 @@ def test_print_audit_per_preset(preset_id, capsys):
               f'volume={whole.volume:.0f} ok={report.ok}')
     assert report.ok, report.format()
     assert report.max_overhang_deg <= 45.0 + 1e-3
+
+
+@pytest.mark.audit
+def test_raised_slab_holds_only_the_raised_features():
+    from build123d import Box, Pos
+    values, parts, whole = preset_case('raised')
+    x0, y0, z0, x1, y1, z1 = m.audit_exclusions(values)[-1]
+    slab = Pos((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2) * Box(x1 - x0, y1 - y0, z1 - z0)
+    raised = parts[1][1]
+    assert z0 > values['thickness'] and z1 > values['thickness'] + INLAY_DEPTH
+    inside = (whole & slab).volume
+    assert inside == pytest.approx((raised & slab).volume, rel=1e-6)
+    assert inside == pytest.approx(raised.volume, rel=1e-3)  # all but the 1e-4 skin
 
 
 @pytest.mark.audit
@@ -302,12 +315,9 @@ def test_raw_audit_fails_only_on_the_excluded_ceilings():
                        for x0, y0, z0, x1, y1, z1 in boxes), c
 
 
-@pytest.mark.audit
-@pytest.mark.parametrize('preset_id', ['default', 'pinned'])
-def test_every_plate_edge_is_eased_tangent_or_a_mating_edge(preset_id):
-    """Rims carry the 0.4 chamfer; outline seams are tangent; pocket and pin
-    edges are the joint (mating, left sharp)."""
-    values, _, whole = preset_case(preset_id)
+def unfinished_edges(values, whole):
+    """Plate edges that are neither eased (on a 45-degree rim chamfer),
+    tangent (outline seams) nor joint (pocket / pin: mating, left sharp)."""
     t = values['thickness']
     joint = [(x - signs.POCKET_W / 2 - 1e-3, x + signs.POCKET_W / 2 + 1e-3) for x in signs.POCKET_XS]
     bad = []
@@ -322,4 +332,13 @@ def test_every_plate_edge_is_eased_tangent_or_a_mating_edge(preset_id):
         in_pin = values['retention'] == 'pin' and abs(c.Y - signs.PIN_FROM_BOTTOM) <= signs.PIN_D
         if not (chamfered or tangent or in_pocket or in_pin):
             bad.append((round(c.X, 2), round(c.Y, 2), round(c.Z, 2)))
-    assert not bad, bad
+    return bad
+
+
+@pytest.mark.audit
+@pytest.mark.parametrize('preset_id', ['default', 'pinned'])
+def test_every_plate_edge_is_eased_tangent_or_a_mating_edge(preset_id):
+    """Rims carry the 0.4 chamfer; outline seams are tangent; pocket and pin
+    edges are the joint (mating, left sharp)."""
+    values, _, whole = preset_case(preset_id)
+    assert not unfinished_edges(values, whole)

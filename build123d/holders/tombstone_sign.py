@@ -289,10 +289,13 @@ def build(values: dict) -> Part:
 
 
 def audit_exclusions(values: dict) -> list[tuple[float, ...]]:
-    """The approved flat ceilings, as thin exact boxes: each pocket roof (an
-    8 mm bridge) and, with a pin, the hole's 1.33 mm flat roof. The tests
-    measure every span before excluding its plane."""
-    t, w = values['thickness'], values['width']
+    """Approved regions, as thin exact boxes: each pocket roof (an 8 mm
+    bridge), with a pin the hole's 1.33 mm flat roof, and with raised text
+    the slab the raised text and QR modules stand in (the label card's
+    exclusion: tapered glyph terminals read thin by the wall march). The
+    tests measure every span before excluding its plane and check the slab
+    holds nothing but the raised features."""
+    t, w, h = values['thickness'], values['width'], values['height']
     roof = t - signs.SKIN
     out = [(x - signs.POCKET_W / 2, -0.001, roof - 0.001,
             x + signs.POCKET_W / 2, signs.POCKET_DEPTH + 0.001, roof + 0.001)
@@ -301,6 +304,8 @@ def audit_exclusions(values: dict) -> list[tuple[float, ...]]:
         z = t / 2 + signs.PIN_D / 2
         y, half = signs.PIN_FROM_BOTTOM, signs.PIN_D / 2
         out.append((-w / 2 - 0.001, y - half, z - 0.001, w / 2 + 0.001, y + half, z + 0.001))
+    if values['text_style'] == 'raised':
+        out.append((-w / 2, signs.INLAY_FLOOR, t + 1e-4, w / 2, h, t + INLAY_DEPTH + 0.001))
     return out
 
 
