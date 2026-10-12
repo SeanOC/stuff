@@ -456,6 +456,10 @@ def honeycomb_ceiling_regions(values):
     The family includes clipped frame cells as well as full hexes. Only
     chords at most MAX_BRIDGE_MM are eligible; the production local-width
     scan alone cannot bound unsupported through-wall ceiling chords.
+
+    Exception register (manual hole-size rule, no added audit exclusions):
+    | Family | Reason / measured minima | Authority / regression |
+    | Frame-clipped honeycomb cells < Ø2 mm | Decorative lattice, closed slots; default/small/top-slot minima at strut 5: 1.909/1.416/1.909 mm; at 16.3: .473 mm each | Mayor, 2026-10-12, pst-t0ob3.2 REV 7; test_frame_clipped_opening_exception_measurements |
     """
     regions = []
     for hole in source_honeycomb_cutters(values):

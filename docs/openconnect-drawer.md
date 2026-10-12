@@ -38,7 +38,10 @@ width alone cannot measure a through-wall ceiling span.
 
 `honeycomb_strut_hyp` has catalog bounds of 1.1–16.3 mm and a 0.1 mm step.
 At the maximum, an unclipped hexagon measures 2.0496 mm flat-to-flat;
-frame-clipped openings can be smaller. Its named library
+frame-clipped openings can be smaller. Under the mayor's `pst-t0ob3.2 REV 7`
+exception, Ø2 mm applies to full hexagons only: frame-clipped decorative
+closed slots are exempt and become sub-millimetre slots at large struts.
+Its named library
 `HoneycombStrutOutOfRange` guard rejects values below 1.1 mm (perpendicular
 strut below about 0.95 mm), nonfinite values, and values that leave no hex
 opening. `HoneycombPanelTooSmall` rejects panels smaller than the source's

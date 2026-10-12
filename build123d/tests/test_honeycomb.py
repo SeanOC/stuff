@@ -33,24 +33,54 @@ def test_catalog_rejects_unsupported_honeycomb_settings(values):
         SPEC.resolve_values(values)
 
 
+def _opening_width(polygon):
+    corners = list(polygon.minimum_rotated_rectangle.exterior.coords)
+    return min(hypot(a[0]-b[0], a[1]-b[1])
+               for a, b in zip(corners, corners[1:]))
+
+
 @pytest.mark.parametrize('preset', SPEC.presets, ids=lambda preset: preset.id)
-def test_maximum_strut_keeps_every_opening_at_least_2mm(preset):
-    maximum = next(p.max for p in SPEC.params if p.name == 'honeycomb_strut_hyp')
-    values = SPEC.resolve_values(preset.values | {'honeycomb_strut_hyp': maximum})
+def test_full_hex_opening_meets_minimum_across_catalog_range(preset):
+    param = next(p for p in SPEC.params if p.name == 'honeycomb_strut_hyp')
+    for tick in range(round((param.max-param.min)/param.step)+1):
+        strut = round(param.min+tick*param.step, 1)
+        values = SPEC.resolve_values(preset.values | {'honeycomb_strut_hyp': strut})
+        widths = []
+        for _, layout in shell.honeycomb_layouts(values):
+            for polygon in layout.openings:
+                corners = list(polygon.exterior.coords)
+                lengths = [hypot(a[0]-b[0], a[1]-b[1])
+                           for a, b in zip(corners, corners[1:])]
+                # Full source hexes have six equal sides; partial cells do not.
+                if len(lengths) == 6 and max(lengths)-min(lengths) < 1e-7:
+                    widths.append(_opening_width(polygon))
+        assert widths, (preset.id, strut)
+        assert min(widths) >= 2.0, (preset.id, strut, min(widths))
+    assert min(widths) == pytest.approx(2.0495934556, abs=1e-8)
+
+
+@pytest.mark.parametrize('strut,preset_id,minimum,under_2,total', [
+    (5.0, 'default', 1.9090937647, 16, 97),
+    (5.0, 'small', 1.4162909656, 10, 19),
+    (5.0, 'top-slot', 1.9090937647, 16, 97),
+    (16.3, 'default', .4730067020, 14, 63),
+    (16.3, 'small', .4730067020, 4, 5),
+    (16.3, 'top-slot', .4730067020, 14, 63),
+])
+def test_frame_clipped_opening_exception_measurements(strut, preset_id, minimum, under_2, total):
+    # pst-t0ob3.2 REV 7: decorative closed slots are exempt from Ø2.
+    # Pin final profiles after roofing, including split partial cells.
+    preset = next(p for p in SPEC.presets if p.id == preset_id)
+    values = SPEC.resolve_values(preset.values | {'honeycomb_strut_hyp': strut})
     widths = []
     for _, layout in shell.honeycomb_layouts(values):
         for profile, _, _ in layout.profiles((1, 0)):
             polygons = [profile] if profile.geom_type == 'Polygon' else profile.geoms
             for polygon in polygons:
-                # Measure the final opening, including frame/fitting clipping.
-                # A containing rectangle narrower than 2 mm cannot fit a Ø2 hole.
-                corners = list(polygon.minimum_rotated_rectangle.exterior.coords)
-                width = min(hypot(a[0]-b[0], a[1]-b[1])
-                            for a, b in zip(corners, corners[1:]))
-                widths.append((width, layout.wall, polygon.bounds))
-    assert widths, 'preset must retain honeycomb openings'
-    narrowest = min(widths)
-    assert narrowest[0] >= 2.0, f'{preset.id}: narrowest opening {narrowest}'
+                widths.append(_opening_width(polygon))
+    assert len(widths) == total
+    assert sum(width < 2 for width in widths) == under_2
+    assert min(widths) == pytest.approx(minimum, abs=1e-8)
 
 
 @pytest.mark.parametrize('strut', [0, -1, 1.09, float('inf'), float('nan'), 20])
