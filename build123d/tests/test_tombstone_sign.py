@@ -23,13 +23,15 @@ from scripts.export import export_3mf_one_object, export_stl  # noqa: E402
 SPEC = m.SPEC
 URL = 'https://poppystreetspooks.com'
 PRESETS = {p.id: p for p in SPEC.presets}
+# Geometry cases: every preset plus the one enum corner no preset covers.
+CASES = {**{p.id: p.values for p in SPEC.presets}, 'colours-two': {'colours': 'two'}}
 
 
 @functools.cache
 def preset_case(preset_id: str):
     """(values, colour parts, assembled plate) for one preset, built once."""
-    values = SPEC.resolve_values(PRESETS[preset_id].values)
-    return values, resolve_colour_parts(SPEC, PRESETS[preset_id].values), SPEC.build(values)
+    values = SPEC.resolve_values(CASES[preset_id])
+    return values, resolve_colour_parts(SPEC, CASES[preset_id]), SPEC.build(values)
 
 
 # --- registration ---------------------------------------------------------
@@ -44,7 +46,7 @@ def test_registered_as_a_multi_colour_household_model():
         assert params[name].max_length == MAX_TEXT_LENGTH
         assert params[name].charset == 'printable-ascii'
     assert params['url'].max_length == 64 and len(params['url'].default) == 29
-    assert params['width'].max <= 350 and params['height'].max <= 320
+    assert params['width'].max == m.MAX_WIDTH == 325 and params['height'].max == m.MAX_HEIGHT == 320
     assert params['thickness'].default == 6.0
     views = {p.id: p.default_view for p in SPEC.presets}
     assert views == {'default': 'bottom', 'three-colour': 'bottom', 'raised': None,
@@ -151,6 +153,28 @@ def test_height_guard_names_a_minimum_that_works():
     assert m.min_height(SPEC.resolve_values(PRESETS['small'].values)) <= 200
 
 
+def test_height_guard_says_when_the_minimum_is_above_the_cap():
+    values = SPEC.resolve_values({'width': 325.0, 'height': 320.0, 'qr_size': 200.0})
+    with pytest.raises(ValueError, match=r'above the 320 mm maximum: reduce qr_size'):
+        m.validate(values)
+
+
+def test_height_below_the_arch_radius_is_a_guard_not_a_kernel_error():
+    """Codex B2: a lens outline (arch centre below the bottom edge) used to
+    pass validate() and fail in OCCT's fillet."""
+    values = SPEC.resolve_values({'width': 325.0, 'height': 160.0, 'margin': 3.0,
+                                  'url': 'pb.co/s', 'qr_size': 58.0})
+    with pytest.raises(ValueError, match=r'height must be >= 168.5 mm for width 325 mm'):
+        m.validate(values)
+    m.plate({**values, 'height': 168.5})  # the named minimum builds
+
+
+@pytest.mark.parametrize('arch', ['round', 'shoulder'])
+@pytest.mark.parametrize('width', [100.0, 325.0])
+def test_outline_builds_at_its_minimum_height(width, arch):
+    signs.outline(width, signs.min_outline_height(width, arch), arch)
+
+
 def test_text_below_the_stroke_floor_names_the_line_and_the_longest_fit():
     values = SPEC.resolve_values({**PRESETS['small'].values, 'title': 'W' * 24})
     with pytest.raises(ValueError, match=r"^title: label text 'W{24}'.*the longest that fits is"):
@@ -169,7 +193,7 @@ def test_every_band_and_the_qr_sit_above_the_inlay_floor():
 # --- geometry (one build per preset) --------------------------------------
 
 @pytest.mark.audit
-@pytest.mark.parametrize('preset_id', list(PRESETS))
+@pytest.mark.parametrize('preset_id', list(CASES))
 def test_colour_parts_partition_the_plate(preset_id):
     values, parts, whole = preset_case(preset_id)
     names = [n for n, _, _ in parts]
@@ -177,7 +201,8 @@ def test_colour_parts_partition_the_plate(preset_id):
                 'three-colour': ['base', 'bone', 'ink'],
                 'raised': ['base', 'bone'],
                 'pinned': ['base', 'bone', 'ink', 'accent'],
-                'small': ['base', 'bone', 'ink', 'accent']}[preset_id]
+                'small': ['base', 'bone', 'ink', 'accent'],
+                'colours-two': ['base', 'ink']}[preset_id]
     assert names == expected
     assert all(p.is_valid for _, p, _ in parts) and whole.is_valid
     total = sum(p.volume for _, p, _ in parts)

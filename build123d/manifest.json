@@ -16,7 +16,7 @@
           "kind": "number",
           "default": 240.0,
           "min": 100.0,
-          "max": 350.0,
+          "max": 325.0,
           "step": 1.0
         },
         {

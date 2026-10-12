@@ -15,7 +15,7 @@ Presets:
 
 | Controls | Domain / behaviour |
 | --- | --- |
-| Width / height | 100–350 / 150–320 mm (the H2S bed, printed flat) |
+| Width / height | 100–325 / 150–320 mm (the H2S single-nozzle bed, printed flat); height must also be ≥ the arch radius + 6 mm |
 | Thickness | 5–12 mm; `retention = pin` needs ≥ 7.8 mm |
 | Arch | `round` (radius = width / 2) or `shoulder` (radius = width / 3, flat shoulders) |
 | Margin | 3–20 mm inset from the outline, and the gap between layout blocks |
@@ -28,7 +28,7 @@ Presets:
 
 Values that cannot be laid out raise a `ValueError` that names the limit
 and the minimum value that would work. This covers the width needed for the
-pockets, the QR against the inset width, the QR pitch, the pin thickness,
+pockets, a height below the arch radius, the QR against the inset width, the QR pitch, the pin thickness,
 and the height needed for the text and QR. A line whose stroke would fall
 below the stroke floor (0.7 mm inlaid, 0.9 mm raised) raises the label
 card's error, prefixed with the line's name.
@@ -60,7 +60,7 @@ modelled in the print frame and mirrored about YZ, as on the label card.
 | --- | --- | --- | --- | --- |
 | four | base (stone) | bone: headline, scan line, host, QR light field | ink: QR dark modules | accent: title |
 | three | base | bone: all text + QR light field | ink | — |
-| two | base (also the QR light field) | ink: all text + QR dark modules | — | — |
+| two | base (also the QR light field: use a light filament) | ink: all text + QR dark modules | — | — |
 
 Parts are named after their filament. The bake writes
 `<preset>-<part>.stl` for each part, plus one 3MF object with one part per

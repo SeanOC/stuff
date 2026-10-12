@@ -44,7 +44,6 @@ POCKET_OFFSET = 40.0       # pocket centres at X = +-POCKET_OFFSET
 POCKET_XS = (-POCKET_OFFSET, POCKET_OFFSET)
 SKIN = 1.2                 # plate skin on each face over a pocket
 JOINT_CLEARANCE = 0.2      # tenon to pocket, per side, every axis
-POCKET_WALL = 4.0          # minimum solid between a pocket and the plate side
 
 PIN_D = 3.2                # cross-pin hole (nail / 1.75 filament pin)
 PIN_AXIS = (1.0, 0.0, 0.0)  # the pocket-width axis
@@ -173,6 +172,12 @@ CORNER_R = 3.0             # plan-view rounding of the outline's convex corners
 def arch_radius(width: float, arch: str) -> float:
     """'round': a full semicircle over the width; 'shoulder': a third of it."""
     return width / 2 if arch == 'round' else width / 3
+
+
+def min_outline_height(width: float, arch: str) -> float:
+    """outline()'s precondition: a straight side of at least 2 x CORNER_R under
+    the arch (the bottom fillet, and the shoulder fillet for 'shoulder')."""
+    return arch_radius(width, arch) + 2 * CORNER_R
 
 
 def outline(width: float, height: float, arch: str) -> Sketch:

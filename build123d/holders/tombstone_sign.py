@@ -109,6 +109,12 @@ def _frame(values: dict, height: float | None = None) -> dict | None:
     return frame
 
 
+# The printable bed: Bambu H2S single-nozzle (an AMS multi-colour print) is
+# 325 x 320 mm; the sign prints flat, width along X.
+MAX_WIDTH = 325.0
+MAX_HEIGHT = 320.0
+
+
 def min_height(values: dict) -> float:
     """Smallest plate height (0.1 mm up) whose layout holds the text and QR."""
     lo, hi = 0.0, 2000.0
@@ -126,16 +132,25 @@ def validate(values: dict) -> None:
         raise ValueError(f'width {w:g} mm < {min_w:g} mm: the pockets at '
                          f'+-{signs.POCKET_OFFSET:g} mm need width >= 2 x '
                          f'({signs.POCKET_OFFSET:g} + {signs.POCKET_W / 2:g}) + 2 x margin')
+    floor = signs.min_outline_height(w, values['arch'])
+    if h < floor:
+        raise ValueError(f'height {h:g} mm leaves no straight side under the '
+                         f'{signs.arch_radius(w, values["arch"]):g} mm arch: height must be '
+                         f'>= {floor:g} mm for width {w:g} mm ({values["arch"]} arch)')
     if qr > w - 2 * m:
         raise ValueError(f'qr_size {qr:g} mm > width - 2 x margin = {w - 2 * m:g} mm')
     signs.qr_regions(values['url'], qr)  # the pitch guard
     if values['retention'] == 'pin':
         signs.check_pin_thickness(values['thickness'])
     if _frame(values) is None:
+        need = min_height(values)
+        advice = (f'height must be >= {need:g} mm for these values' if need <= MAX_HEIGHT else
+                  f'that needs height >= {need:g} mm, above the {MAX_HEIGHT:g} mm maximum: '
+                  f'reduce qr_size or margin')
         raise ValueError(
             f'height {h:g} mm cannot hold the {qr:g} mm QR and the four text bands '
             f'({MIN_TEXT_BUDGET:g} mm) between the {signs.INLAY_FLOOR:g} mm inlay floor and '
-            f'the arch; height must be >= {min_height(values):g} mm for these values')
+            f'the arch; {advice}')
 
 
 def plate(values: dict) -> Part:
@@ -316,9 +331,9 @@ def _text(name: str, default: str, label: str) -> Param:
 
 PARAMS = (
     Param('width', 'number', 240.0, label='Width', group='Plate', unit='mm',
-          min=100.0, max=350.0, step=1.0),
+          min=100.0, max=MAX_WIDTH, step=1.0),
     Param('height', 'number', 300.0, label='Height', group='Plate', unit='mm',
-          min=150.0, max=320.0, step=1.0),
+          min=150.0, max=MAX_HEIGHT, step=1.0),
     Param('thickness', 'number', 6.0, label='Thickness', group='Plate', unit='mm',
           min=5.0, max=12.0, step=0.2),
     Param('arch', 'enum', 'round', label='Arch', group='Plate', choices=('round', 'shoulder')),
@@ -354,6 +369,7 @@ SPEC = register(ModelSpec(
                  'pockets in the bottom edge take the separately printed stake.'),
     category_id='household',
     tags=('sign', 'multi-colour'),
+    print_orientation=(0, 0, 1),  # flat; inlaid presets face down, raised face up
     params=PARAMS,
     presets=(
         Preset('default', 'Four colours (face down)', {}, default_view='bottom'),
