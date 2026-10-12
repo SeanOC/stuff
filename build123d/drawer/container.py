@@ -24,7 +24,7 @@ into the full-height front wall, and the side walls carry the contents.
 from dataclasses import dataclass
 from math import atan2, ceil, cos, degrees, floor, pi, radians, sin, sqrt, tan
 
-from build123d import (Align, Axis, Box, Face, Plane, Pos, Rot, Solid, Wire,
+from build123d import (Align, Axis, Box, Face, GeomType, Plane, Pos, Rot, Solid, Wire,
                        loft, revolve, section)
 from shapely.geometry import Polygon, box
 from shapely.ops import unary_union
@@ -44,6 +44,7 @@ LABEL_DEPTH_CLEARANCE = 0.3  # [C] :1778
 LABEL_WALL = 0.8  # [C] :1779
 HANDLE_TURTLE_START = 0.2  # [C] :1684
 HANDLE_STEPS = 90  # [C] :1749
+BED_BEVEL = 0.3  # design-guidelines bed-contact bevel (shell.chamfer_bed)
 
 
 @dataclass(frozen=True)
@@ -699,24 +700,18 @@ def before_bed_chamfer(values=None):
     return AUTHOR_TO_MODEL * source_body(values)
 
 
-def chamfer_bed(part, values=None):
-    """0.3 mm bevel on every square edge of the bed face (print frame Z=0).
+def _bed_edges(printed):
+    """Square bed edges (print frame Z=0) as (edge, bed face, wall face).
 
     Edges whose other face is already a bevel (the outer chamfer, the
     handle's 0.4 mm profile chamfers) keep it; only vertical walls meet
-    the bed square. Falls back to the shell's exact section bevel.
+    the bed square.
     """
-    from OCP.BRepFilletAPI import BRepFilletAPI_MakeChamfer
-    from OCP.StdFail import StdFail_NotDone
-    from build123d import Part
-    frame = print_frame(values)
-    printed = frame * part
     adjacent = {}
     for face in printed.faces():
         for edge in face.edges():
             adjacent.setdefault(edge, []).append(face)
-    bevel = BRepFilletAPI_MakeChamfer(printed.wrapped)
-    count = 0
+    edges = []
     for face in printed.faces():
         bb = face.bounding_box()
         if abs(bb.max.Z) > 1e-6 or face.normal_at().Z > -.999:
@@ -726,13 +721,68 @@ def chamfer_bed(part, values=None):
                 continue  # where the handle's swept halves meet (2-wide)
             others = [f for f in adjacent.get(edge, []) if f != face]
             if len(others) == 1 and abs(others[0].normal_at(edge.position_at(.5)).Z) < 1e-3:
-                bevel.AddDA(.3, radians(45.01), edge.wrapped, face.wrapped)
-                count += 1
+                edges.append((edge, face, others[0]))
+    return edges
+
+
+def _occt_bevel(printed, edges):
+    from OCP.BRepFilletAPI import BRepFilletAPI_MakeChamfer
+    from OCP.StdFail import StdFail_NotDone
+    from build123d import Part
+    bevel = BRepFilletAPI_MakeChamfer(printed.wrapped)
+    for edge, face, _ in edges:
+        bevel.AddDA(BED_BEVEL, radians(45.01), edge.wrapped, face.wrapped)
     try:
-        result = Part(bevel.Shape()) if count else printed
-    except StdFail_NotDone:
-        result = shell._bevel_from_sections(printed)
-    if not result.is_valid or len(result.solids()) != 1:
+        result = Part(bevel.Shape())
+    except (StdFail_NotDone, ValueError):
+        return None
+    return result if result.is_valid and len(result.solids()) == 1 else None
+
+
+def _wedge_bevel(printed, edges):
+    """The same bevel as explicit cutters: {z + inset < 0.3} along each
+    straight edge, run 0.5 mm past convex ends (corners miter) and
+    stopped at concave ones (a stem root continuing the bed face)."""
+    from build123d import Vector
+    wedges = []
+    up, slack = Vector(0, 0, 1), .01
+    for edge, _, wall in edges:
+        if edge.geom_type != GeomType.LINE:
+            return None
+        a, b = edge.position_at(0), edge.position_at(1)
+        t = (b - a).normalized()
+        out = wall.normal_at(edge.position_at(.5))
+        ext = []
+        for end, sign in ((a, -1), (b, 1)):
+            probe = end + t*(sign*.15) + out*.05 + up*.05
+            ext.append(0 if printed.is_inside(probe) else .5)
+        start = a - t*ext[0]
+        # Hypotenuse exactly on z + inset = BED_BEVEL; legs overshoot.
+        tri = [start + out*slack + up*(BED_BEVEL + slack),
+               start - out*(BED_BEVEL + slack) - up*slack,
+               start + out*slack - up*slack]
+        wedges.append(Solid.extrude(Face(Wire.make_polygon(tri, close=True)),
+                                    t*((b - a).length + ext[0] + ext[1])))
+    result = printed.cut(*wedges)
+    return result if result.is_valid and len(result.solids()) == 1 else None
+
+
+def chamfer_bed(part, values=None):
+    """0.3 mm bevel on every square edge of the bed face (print frame Z=0).
+
+    OCCT's chamfer first; where it cannot end the bevel (the front edge
+    against a swept handle stem at handle_depth 6 / strut 1.1, 16.3 /
+    8 wide, or a honeycomb front with square corners at shell_thickness
+    4) the same bevel is cut as explicit wedges; last resort the shell's
+    exact section bevel.
+    """
+    frame = print_frame(values)
+    printed = frame * part
+    edges = _bed_edges(printed)
+    if not edges:
+        return part
+    result = _occt_bevel(printed, edges) or _wedge_bevel(printed, edges)
+    if result is None:
         result = shell._bevel_from_sections(printed)
     return frame.inverse() * result
 
