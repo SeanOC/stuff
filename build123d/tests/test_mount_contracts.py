@@ -46,10 +46,35 @@ def test_some_model_declares_a_mount():
     assert _MOUNTED, "no registered model declares a mount type"
 
 
+@pytest.mark.parametrize('rotation', [(0, 0, 0), (0, 0, 90), (0, 0, -90),
+                                      (0, 0, 180), (90, 0, 0), (-90, 0, 0)])
+def test_openconnect_cardinal_faces_keep_backing_probe(rotation):
+    """Rotate the actual geometry and prove thin backing still fails."""
+    from openconnect.grid import fixtures, layout
+    from tests.mount_contracts import verify_openconnect_slot
+
+    original = fixtures(layout(1, 1))
+    frame = Rot(*rotation)
+    fx = MountFixtures(
+        [frame*c for c in original.cutters], [frame*p for p in original.seat_locs],
+        onramp_locs=[frame*p for p in original.onramp_locs],
+        face_normal=tuple((frame*Pos(*original.face_normal)).position),
+        entry_axis=tuple((frame*Pos(*original.entry_axis)).position),
+    )
+    for backing in (.9, .7):
+        body = Box(28, 2.7+backing, 28, align=(Align.CENTER, Align.MIN, Align.CENTER))
+        part = frame*(body-original.cutters[0])
+        if backing == .9:
+            verify_openconnect_slot(part, fx, min_backing=.8)
+        else:
+            with pytest.raises(AssertionError, match='backing'):
+                verify_openconnect_slot(part, fx, min_backing=.8)
+
+
 # pst-24tr6: the spool cradle's contracts build the registry-sized cradle at
 # defaults + every preset (40-130 s each); they ride in bd123's `audit` job so
-# `fast` stays fast. Every other model's contract is seconds and stays in fast.
-_HEAVY_CONTRACT_MODELS = {"holder_spool_cradle"}
+# `fast` stays fast. Drawer contracts also sweep up to 23 slots and take minutes.
+_HEAVY_CONTRACT_MODELS = {"holder_spool_cradle", "openconnect_drawer"}
 
 
 @pytest.mark.parametrize(

@@ -408,6 +408,29 @@ def verify_openconnect_slot(
     """
     from openconnect import head as oc_head
     from openconnect.constants import HEAD_WIDTH
+    # Drawer mounts can live on any cardinal box face. Express the complete
+    # solid, fixtures and uncut backing envelope in the existing -Y probe
+    # frame before checking entry travel or retention. No probes are waived.
+    normal = tuple(round(v, 6) for v in fx.face_normal)
+    if normal != (0, -1, 0):
+        rotations = {
+            (0, 1, 0): Rot(0, 0, 180),
+            (1, 0, 0): Rot(0, 0, -90),
+            (-1, 0, 0): Rot(0, 0, 90),
+            (0, 0, 1): Rot(90, 0, 0),
+            (0, 0, -1): Rot(-90, 0, 0),
+        }
+        assert normal in rotations, 'openconnect face_normal must be a cardinal axis'
+        undo = rotations[normal]
+        part = undo * part
+        if backing_envelope is not None:
+            backing_envelope = undo * backing_envelope
+        fx = MountFixtures(
+            cutters=[undo * c for c in fx.cutters],
+            seat_locs=[undo * loc for loc in fx.seat_locs],
+            onramp_locs=[undo * loc for loc in fx.onramp_locs],
+            entry_axis=tuple((undo * Pos(*fx.entry_axis)).position),
+        )
     _require_y_face(fx, "openconnect-slot")
     # Express the cardinal slide direction in the existing +Z probe frame.
     # Only this contract supports sideways/downward entry; other mounts keep

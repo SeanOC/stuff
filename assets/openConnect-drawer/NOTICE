@@ -9,7 +9,7 @@ Source SHA256: 6ca565f2892f00b710050f70985cdeda724d1b590b3d4a13aa787a8141d3149a
 Credits retained from the author's header: mitufy, openConnect, and openGrid
 by David D. The drawer source and its generated meshes are distributed under
 CC BY-SA 4.0. The Python drawer adaptations retain that share-alike scope;
-embedded openConnect cutters will use the existing openconnect/ library.
+embedded openConnect cutters use the existing openconnect/ library.
 Vendoring scope: pst-t0ob3.1 rev 3 section (a), following Sean's 2026-10-11
 request recorded in parent pst-t0ob3, expressly names this SCAD and meshes.
 
@@ -118,3 +118,23 @@ The patch lies within a 1.90735e-7 mm slab about Z=0, below REV 3c's 1e-4 mm
 vertex tolerance. Best triangle-to-triangle vertex deltas are 1.90735e-7
 and 4.57764e-5 mm; this is specifically the alternate-diagonal case accepted
 by the mayor in REV 3c, rather than a blanket triangle-comparison waiver.
+
+shell-wall-1p6 — worker-rendered, no mayor baseline
+openscad --export-format=binstl -D generate_drawer_container=false -D 'shell_bottom_wall_type="Solid"' -D shell_thickness=1.6 -o assets/openConnect-drawer/mesh/shell-wall-1p6.stl assets/openConnect-drawer/openconnect_drawer_online.scad
+Worker SHA256: 2fba176aea29a2946d9f82037df8f0ba46f771c2175dd8956c88f77444b24f09
+Independent endpoint reference for published wall-family measurements.
+
+shell-wall-2p8 — worker-rendered, no mayor baseline
+openscad --export-format=binstl -D generate_drawer_container=false -D 'shell_bottom_wall_type="Solid"' -D shell_thickness=2.8 -o assets/openConnect-drawer/mesh/shell-wall-2p8.stl assets/openConnect-drawer/openconnect_drawer_online.scad
+Worker SHA256: e6f813f84f85f100bb3870ff7b44a539ca908efed88906659febb73fc9940b1a
+Independent endpoint reference for published wall-family measurements.
+
+shell-wall-4 — worker-rendered, no mayor baseline
+openscad --export-format=binstl -D generate_drawer_container=false -D 'shell_bottom_wall_type="Solid"' -D shell_thickness=4 -o assets/openConnect-drawer/mesh/shell-wall-4.stl assets/openConnect-drawer/openconnect_drawer_online.scad
+Worker SHA256: 44d1e5798a22104082b0421791197a9e037676b9ef05114eea034c1b1402ad24
+Independent endpoint reference for published wall-family measurements.
+
+shell-backing-0p8 — worker-rendered, no mayor baseline
+openscad --export-format=binstl -D generate_drawer_container=false -D 'shell_bottom_wall_type="Solid"' -D shell_to_slot_wall_thickness=0.8 -o assets/openConnect-drawer/mesh/shell-backing-0p8.stl assets/openConnect-drawer/openconnect_drawer_online.scad
+Worker SHA256: afc280510fbfb27a545d7f147be32912d70df6eb4d8421a922391812977ddf0b
+Independent endpoint reference for published wall-family measurements.
