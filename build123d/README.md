@@ -300,6 +300,8 @@ Top, bottom and side walls can independently be Solid or Honeycomb; the
 slot-bearing wall stays solid. The source strut parameter has a 0.1 mm step
 and no published finite bounds. Panels too small for the source frame and
 one cell raise `HoneycombPanelTooSmall` instead of silently becoming solid.
+Fitting reinforcements can still fill an entire wall when the magnet or
+stopper edge distance reserves all of its inner depth; that wall stays solid.
 Print every mount-face option **back-wall-down**, with the open front up,
 in PLA/PCTG. Slot pitch and mating profiles come from `openconnect/`.
 

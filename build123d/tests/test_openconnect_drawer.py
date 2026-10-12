@@ -265,7 +265,15 @@ CASES = [(p.id, p.values) for p in m.SPEC.presets] + [
 
 
 @pytest.mark.audit
-@pytest.mark.parametrize('name,values', CASES, ids=[case[0] for case in CASES])
+@pytest.mark.parametrize('name,values', [
+    # Keep presets in the regular audit job and the parameter/corner sweep
+    # in its sharded counterpart. With the honeycomb default, moving only
+    # the six extra wall-type cases still exceeds the 35-minute CI budget.
+    pytest.param(name, values, id=name,
+                 marks=pytest.mark.audit_full
+                 if name not in {p.id for p in m.SPEC.presets} else ())
+    for name, values in CASES
+])
 def test_endpoint_audit_and_edges(name, values):
     if name == 'max-clearance':
         cap = values['slot_side_clearance']

@@ -84,7 +84,7 @@ def test_reference_bottom_count_orientation_and_ceiling_span():
     assert np.ptp(hole, axis=0) == pytest.approx((13.6666667, 0, 11.8356805), abs=1e-5)
     roof = hole[np.abs(hole[:, 2]-hole[:, 2].max()) < 1e-5]
     assert np.ptp(roof, axis=0)[0] == pytest.approx(6.8333333, abs=1e-5)
-    assert np.ptp(hole, axis=0)[2] > 10  # REV 2 author-geometry bridge exception
+    assert np.ptp(hole, axis=0)[2] > 10  # Vertical opening height, not the horizontal bridge span.
     mids = ref.vertices[ref.face_adjacency_edges].mean(axis=1)
     at_frame = np.linalg.norm(mids-(65.07575989, -26.79999924, 126.44551849), axis=1) < 1e-4
     assert at_frame.sum() == 1
