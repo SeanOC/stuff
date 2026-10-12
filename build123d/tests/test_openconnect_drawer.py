@@ -88,6 +88,11 @@ def test_reject_clearance_above_retention_cap(builder):
     ('shell-all-solid', dict(shell_bottom_wall_type='Solid')),
     ('shell-1x1x1-solid', dict(horizontal_grids=1, vertical_grids=1, depth_grids=1, shell_bottom_wall_type='Solid')),
     ('shell-top-slot-solid', dict(shell_slot_position='Top', shell_bottom_wall_type='Solid')),
+    ('shell-top-honeycomb', dict(shell_top_wall_type='Honeycomb')),
+    ('shell-side-honeycomb', dict(shell_side_wall_type='Honeycomb')),
+    ('shell-all-honeycomb', dict(shell_top_wall_type='Honeycomb', shell_side_wall_type='Honeycomb')),
+    ('shell-1x1x1-all-honeycomb', dict(horizontal_grids=1, vertical_grids=1, depth_grids=1,
+                                       shell_top_wall_type='Honeycomb', shell_side_wall_type='Honeycomb')),
 ], ids=lambda case: case[0])
 def reference_case(request, tmp_path_factory):
     from build123d import export_stl
@@ -126,7 +131,9 @@ def test_reference_parity(reference_case):
         # are independently pinned below, separately from the bed band.
         contact_cap = {'shell-all-solid': .005, 'shell-1x1x1-solid': .01,
                        'shell-top-slot-solid': .12, 'shell-default': .005,
-                       'shell-top-slot': .12, 'shell-1x1x1': .01}[name]
+                       'shell-top-slot': .12, 'shell-1x1x1': .01,
+                       'shell-top-honeycomb': .005, 'shell-side-honeycomb': .005,
+                       'shell-all-honeycomb': .005, 'shell-1x1x1-all-honeycomb': .01}[name]
         assert contact.mean() < contact_cap
         points, distances = points[~contact], distances[~contact]
         band = band_mask(points, edges, radius=.5)
