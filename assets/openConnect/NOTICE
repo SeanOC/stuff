@@ -91,6 +91,9 @@ Additional plate renders use the one-tile command above with these -D values:
   openconnect_edge_none.stl: slot_edge_feature_widen="None"
 
 The additional mesh/*.scad files are this repo's wrappers, not upstream.
+Committed wrappers: mesh/openconnect_slide_down.scad,
+mesh/openconnect_slide_left.scad, mesh/openconnect_slide_right.scad,
+mesh/openconnect_excess_thickness.scad, mesh/openconnect_excess_length.scad.
 Render slide_down, slide_left, slide_right, excess_thickness and excess_length:
   OPENSCADPATH=$BOSL2_PARENT openscad --export-format=binstl \
     -o mesh/openconnect_<variant>.stl mesh/openconnect_<variant>.scad
