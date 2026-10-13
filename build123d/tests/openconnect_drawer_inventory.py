@@ -4,7 +4,7 @@ from collections import Counter
 from math import acos, degrees
 
 import numpy as np
-from build123d import Align, Box, Cylinder, Face, Pos, Solid
+from build123d import Align, Box, Cylinder, Face, Pos, Solid, Wire
 
 from drawer import shell
 from drawer import constants as c
@@ -160,3 +160,206 @@ def edge_inventory(part, values):
         if family not in ('library mount', 'magnet/stopper fit'):
             worst = max(worst, angle)
     return dict(counts), worst
+
+
+# ---------------------------------------------------------------- container
+
+def _prism(polygon, z0, z1):
+    """Shapely polygon in author XY, extruded along author Z."""
+    face = Face(Wire.make_polygon([(x, y, z0) for x, y in list(polygon.exterior.coords)[:-1]],
+                                  close=True))
+    return Solid.extrude(face, (0, 0, z1-z0))
+
+
+def label_plate_tips(values):
+    """60-degree corners of the strut-aligned label plates ([C] :1783-1793)
+    that stick into a front cell: ((x, y), unit bisector into the plate),
+    author frame."""
+    from shapely.geometry import Point
+    from shapely.ops import unary_union
+    from drawer import container
+    plates = unary_union(container.label_fills(values))
+    walls = [layout for name, _, layout, _ in container.wall_layouts(values) if name == 'Front']
+    if plates.is_empty or not walls:
+        return []
+    openings = unary_union(walls[0].openings)
+    tips = []
+    for polygon in getattr(plates, 'geoms', [plates]):
+        ring = list(polygon.exterior.coords)[:-1]
+        for i, (x, y) in enumerate(ring):
+            (px, py), (nx, ny) = ring[i-1], ring[(i+1) % len(ring)]
+            a, b = np.array([px-x, py-y]), np.array([nx-x, ny-y])
+            a, b = a/np.linalg.norm(a), b/np.linalg.norm(b)
+            angle = degrees(acos(np.clip(a@b, -1, 1)))
+            # Convex (material) corner: the bisector points into the plate.
+            bisector = (a+b)/np.linalg.norm(a+b)
+            convex = polygon.contains(Point(np.array((x, y))+.01*bisector))
+            if angle < 89 and convex and openings.distance(Point(x, y)) < 1e-6:
+                tips.append(((x, y), tuple(bisector)))
+    return tips
+
+
+def back_magnet_rims(values):
+    """Back magnet teardrops whose flat cap (radius + .2, [C] :1564) ends
+    within MIN_WALL of the back wall's top (:429): at vertical_grids 1 the
+    grid offset (:1453-1456) leaves a 0.2 mm skin over the cap across the
+    hole depth, pinned by the container-2x1x5 reference ray. Only those
+    holes are emitted, as the band from MIN_WALL below the cap to the top
+    over the hole depth: ((x, cap gap), region), author frame."""
+    from drawer import container
+    v = values or {}
+    d = container.dimensions(v)
+    top = -d.height/2+d.back_height
+    rims = []
+    for (kind, _, (x, _, _)), cut in zip(container.source_magnet_positions(v),
+                                         container.source_magnet_cutters(v)[0]):
+        box = cut.bounding_box()
+        if kind != 'back' or top-box.max.Y >= a.MIN_WALL_MM:
+            continue
+        size = (box.size.X+2*a.MIN_WALL_MM, top-box.max.Y+a.MIN_WALL_MM+.001, box.size.Z+.001)
+        rims.append(((x, top-box.max.Y), Pos(x, top+.001-size[1]/2, box.max.Z/2-.0005)
+                     * Box(*size)))
+    return rims
+
+
+def container_wall_regions(values):
+    """Source-pinned thin regions of the container (exception rows).
+
+    Magnet floors: hole depth (thickness + .15) into the wall leaves the
+    author's floor, .45 mm behind a 1.6 Solid wall (:1546-1564). The label
+    holder is built from LABEL_WALL = .8 (:1779). The label plates' 60-degree
+    corners poke into front cells (:1783-1793). Back magnet rims: see
+    back_magnet_rims. Reference rays pin all four in
+    test_published_thin_features; membership is geometric.
+    """
+    from shapely.geometry import Point
+    from shapely.ops import unary_union
+    from drawer import container
+    v = values or {}
+    d = container.dimensions(v)
+    regions = []
+    for (kind, side, (x, y, z)), cut in zip(container.source_magnet_positions(v),
+                                            container.source_magnet_cutters(v)[0]):
+        # The floor is the cutter's inner end face; the slab behind it runs
+        # to the inner surface: wall - hole, or the bulge's .45 + EPS
+        # (:1547/:1561), +-.0005 mm.
+        inward = np.array((0, 0, 1) if kind == 'back' else (-side, 0, 0))
+        floor = max(cut.faces(), key=lambda f: np.dot(tuple(f.center()), inward))
+        wall = d.back if kind == 'back' else d.side
+        hole = v.get(f'container_{kind}_magnet_thickness', 1)+.15
+        behind = max(wall-hole, .45+EPS)+.001
+        regions.append(Pos(*(-inward*.0005))*Solid.extrude(floor, tuple(inward*behind)))
+    regions += [box for _, box in back_magnet_rims(v)]
+    holder = container.source_label_holder(v)
+    if holder is not None:
+        regions.append(holder)
+    plates = unary_union(container.label_fills(v))
+    for (x, y), _ in label_plate_tips(v):
+        regions.append(_prism(Point(x, y).buffer(2).intersection(plates),
+                              d.depth-d.front-.001, d.depth+.001))
+    return [container.AUTHOR_TO_MODEL*r for r in regions]
+
+
+def container_edge_inventory(part, values):
+    """Classify every non-tangent container edge by source family.
+
+    Walls, rims, outer chamfers and fillet junctions: :1484-1500/:1528-1535
+    (`_envelope - _cavity`). Handle :1675-1773 and label holder :1774-1806
+    including their junctions with the front. Honeycomb openings (source
+    cells, D2 roofs and fills) and magnet fits :1546-1564. Every other sharp
+    edge fails; no thickness-based waiver. Returns (family counts, worst
+    convex edge angle outside the magnet fits).
+    """
+    from drawer import container
+    v = values or {}
+    d = container.dimensions(v)
+    source = container.AUTHOR_TO_MODEL.inverse()*part
+    plain = container._envelope(d)-container._cavity(d)
+    plain_edges = plain.edges()
+    cuts, bulges = container.source_magnet_cutters(v)
+    fitting_boxes = a._cutter_boxes(cuts+bulges, margin=.001)
+    def boxed(shapes):
+        return [(face, face.bounding_box()) for shape in shapes for face in shape.faces()]
+
+    honeycomb = boxed(container.source_honeycomb_wall_cutters(v))
+    plain_edges = [(e, e.bounding_box()) for e in plain_edges]
+    features = [(name, boxed([shape])) for name, shape in (
+        ('source handle', container.source_handle(v)),
+        ('source label holder', container.source_label_holder(v))) if shape is not None]
+
+    def near(p, items):
+        return any(box.min.X-1e-5 <= p.X <= box.max.X+1e-5 and
+                   box.min.Y-1e-5 <= p.Y <= box.max.Y+1e-5 and
+                   box.min.Z-1e-5 <= p.Z <= box.max.Z+1e-5 and
+                   item.distance_to(p) < 1e-5 for item, box in items)
+
+    adjacent = {}
+    for face in source.faces():
+        for edge in face.edges():
+            adjacent.setdefault(edge, []).append(face)
+    counts = Counter()
+    worst = 0.
+    bed = -d.height/2+.301
+    for edge, faces in adjacent.items():
+        if len(faces) != 2:
+            continue
+        mid = edge.position_at(.5)
+        n0, n1 = (face.normal_at(mid) for face in faces)
+        angle = degrees(acos(max(-1., min(1., n0.dot(n1)))))
+        if angle < 1:
+            continue
+        points = [edge.position_at(t) for t in (0, .5, 1)]
+        if edge.bounding_box().max.Y <= bed:
+            family = 'bed bevel'
+        elif all(a._in_any_box(*tuple(p), fitting_boxes) for p in points):
+            family = 'magnet fit'
+        elif all(near(p, honeycomb) for p in points):
+            family = 'source/roofed honeycomb opening'
+        elif all(near(p, plain_edges) for p in points):
+            family = 'published wall edge'
+        elif all(near(p, plain_edges) or near(p, honeycomb) for p in points):
+            # container_inner_fillet=0: the front window inset (side+fillet,
+            # bottom+fillet; [C] :1501-1527) lands on the cavity corner, so
+            # the inner corner edge runs on through the window unbroken.
+            family = 'published wall edge'
+        else:
+            for name, feature_faces in features:
+                if all(near(p, feature_faces) for p in points):
+                    family = name
+                    break
+            else:
+                raise AssertionError(f'uninventoried edge at {tuple(mid)}, angle {angle:.3f}, '
+                                     f'bounds {edge.bounding_box()}')
+        counts[family] += 1
+        # Report convex (material) edges: a concave air-slot corner such as
+        # the 15-degree gap beside a 45-degree roof is not an exposed edge.
+        tangent = edge.tangent_at(.5)
+        inward = tangent.cross(n0).normalized()
+        if faces[0].distance_to(mid+inward*.001) > 1e-4:
+            inward = -inward
+        if family != 'magnet fit' and n1.dot(inward) < 0:
+            worst = max(worst, angle)
+    return dict(counts), worst
+
+
+def container_skin_mask(points, normals, values, classifier):
+    """Reference CSG skins on the back-inner and front-inner wall planes.
+
+    The author fuses each wall panel into the walls with attach(...,
+    inside=true) (:1502-1527); CGAL leaves their coincident +-Y faces inside
+    the bottom and side walls. Mesh frame (author_to_mesh). Only samples on
+    those two planes, normal along Y, with material on BOTH sides in the
+    exact port qualify; a physical boundary always has air on one side.
+    """
+    from drawer import container
+    d = container.dimensions(values)
+    points, normals = np.asarray(points), np.asarray(normals)
+    plane = np.zeros(len(points), dtype=bool)
+    for y in (-d.back, -(d.depth-d.front)):
+        plane |= np.abs(points[:, 1]-y) < 1e-4
+    candidates = plane & (np.abs(normals[:, 1]) > .999)
+    result = np.zeros(len(points), dtype=bool)
+    for i in np.flatnonzero(candidates):
+        p, n = points[i], .01*normals[i]
+        result[i] = classifier.is_inside(p+n) and classifier.is_inside(p-n)
+    return result

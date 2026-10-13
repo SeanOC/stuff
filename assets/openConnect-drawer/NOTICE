@@ -25,7 +25,8 @@ Compare facet count, bbox (1e-6 mm), signed volume (1e-6 relative), and
 canonical triangle vertices (exact or within 1e-6 mm). REV 3c also accepts
 unmatched triangles when all their vertices lie within 1e-4 mm of vertices
 in the other mesh AND they form coplanar quads with the same vertex set
-split on alternate diagonals. All ten renders PASS under these rules.
+split on alternate diagonals. All ten pst-t0ob3.1 renders PASS under these
+rules; later meshes carry their own rows below.
 Committed meshes are the mayor baselines copied verbatim; SHA256SUMS records
 those baseline bytes. Both baseline and independent worker hashes follow.
 
@@ -174,3 +175,15 @@ shell-backing-0p8 — worker-rendered, no mayor baseline
 openscad --export-format=binstl -D generate_drawer_container=false -D 'shell_bottom_wall_type="Solid"' -D shell_to_slot_wall_thickness=0.8 -o assets/openConnect-drawer/mesh/shell-backing-0p8.stl assets/openConnect-drawer/openconnect_drawer_online.scad
 Worker SHA256: afc280510fbfb27a545d7f147be32912d70df6eb4d8421a922391812977ddf0b
 Independent endpoint reference for published wall-family measurements.
+
+container-2x1x5 — mayor baseline (mayor render 2026-10-13), pst-t0ob3.3
+openscad --export-format=binstl -D generate_drawer_shell=false -D horizontal_grids=2 -D vertical_grids=1 -D depth_grids=5 -o assets/openConnect-drawer/mesh/container-2x1x5.stl assets/openConnect-drawer/openconnect_drawer_online.scad
+Mayor SHA256: d2428ac0b1bf412235e4a8ff530d23fda515933108062c02cd8a97acaaaebf9c
+Worker SHA256: babd68783f5f1388ca9574e8bc8418d67c430675b595375208abf7c1cd845d3f
+Committed bytes are the worker render; the mayor render matches its facet
+count, signed volume and bbox (50.6 x 147.985 x 22.4) and differs only by
+facet order (pst-t0ob3.3 DECISION D).
+Facets: 7036; signed volume: 22753.673007086105 mm3.
+Independent endpoint reference for the back magnet rim (vertical_grids 1).
+The same environment re-rendered container-1x1x1 identical to its baseline
+(3030 facets, equal signed volume, 0 canonical triangle mismatches).
