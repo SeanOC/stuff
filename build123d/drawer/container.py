@@ -474,8 +474,11 @@ def wall_layouts(values=None):
         openings = unary_union(polygons).intersection(window)
         if fills:
             openings = openings.difference(unary_union(fills))
+        # A window edge can clip a hex row into a strip thinner than 0.1 mm
+        # (0.028 mm at back_side_height_offset 10): unprintable, and the
+        # audit cannot orient its faces. The slicer would close it; drop it.
         parts = [p for p in getattr(openings, 'geoms', [openings])
-                 if not p.is_empty and p.area > 1e-10]
+                 if not p.is_empty and p.area > 1e-10 and not p.buffer(-.05).is_empty]
         for p in parts:
             if p.interiors:
                 raise AssertionError(f'{name} honeycomb opening with an island')
@@ -758,9 +761,11 @@ def _wedge_bevel(printed, edges):
             ext.append(0 if printed.is_inside(probe) else .5)
         start = a - t*ext[0]
         # Hypotenuse exactly on z + inset = BED_BEVEL; legs overshoot.
-        tri = [start + out*slack + up*(BED_BEVEL + slack),
+        # The outer leg lies ON the wall plane: an outward overshoot would
+        # nick a swept stem's 0.4 mm root chamfer where it meets the front.
+        tri = [start + up*BED_BEVEL,
                start - out*(BED_BEVEL + slack) - up*slack,
-               start + out*slack - up*slack]
+               start - up*slack]
         wedges.append(Solid.extrude(Face(Wire.make_polygon(tri, close=True)),
                                     t*((b - a).length + ext[0] + ext[1])))
     result = printed.cut(*wedges)

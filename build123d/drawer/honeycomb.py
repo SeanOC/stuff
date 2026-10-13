@@ -103,14 +103,19 @@ def roof_opening(opening, frame_up=(0, 1), *, ceiling='roofed'):
     chord = max(x1-x0 for x0, x1, _ in spans)
     roofed = ceiling == 'roofed' and chord > MAX_BRIDGE_MM
     if roofed:
+        x0, x1, y = spans[0]
+        # The top V reaches the cell's bottom (a shallow frame-clipped cell).
+        through = x1-x0 > MAX_BRIDGE_MM and y-(x1-x0)/2 < min(y for _, y in vertices)+1e-7
         for x0, x1, y in spans:
             if x1-x0 > MAX_BRIDGE_MM:
                 triangle = Polygon([(x0, y), (x1, y), ((x0+x1)/2, y-(x1-x0)/2)])
                 upright = upright.difference(triangle.intersection(upright))
-        if any(x1-x0 > MAX_BRIDGE_MM for x0, x1, _ in spans[1:]):
+        if ((through and upright.geom_type == 'Polygon')
+                or any(x1-x0 > MAX_BRIDGE_MM for x0, x1, _ in spans[1:])):
             # A V through the cell's bottom edge can leave a ~1e-15 mm
-            # bridge between the two halves, which OCCT extrudes into an
-            # invalid cutter. A 1e-9 grid collapses it into two pieces.
+            # bridge between the two halves (one Polygon instead of two),
+            # which OCCT extrudes into an invalid cutter. A 1e-9 grid
+            # collapses it into two pieces.
             upright = set_precision(upright, 1e-9)
     return affine_transform(upright, [uy, ux, -ux, uy, 0, 0]), chord, roofed
 
