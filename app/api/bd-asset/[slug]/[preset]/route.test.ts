@@ -318,6 +318,23 @@ describe("/api/bd-asset from the bake's Blob record", () => {
     }
   });
 
+  it("a truncated record degrades to the disk path's loud 404, not a 500", async () => {
+    const missing = downloads.find((d) => d.format === "3mf")!;
+    const onDisk = path.join(BAKED_ROOT, keyOf(missing));
+    const aside = fs.existsSync(onDisk) ? fs.readFileSync(onDisk) : null;
+    fs.rmSync(onDisk, { force: true });
+    try {
+      fs.writeFileSync(recordPath, '{"schemaVersion":1,"assets":{"tru');
+      bdRender.mockClear();
+      const res = await call(missing.slug, missing.preset, missing.format);
+      expect(res.status).toBe(404);
+      expect((await res.json()).error).toContain("baked asset missing");
+      expect(bdRender).not.toHaveBeenCalled();
+    } finally {
+      if (aside) fs.writeFileSync(onDisk, aside);
+    }
+  });
+
   it("502s (no render) when the blob store can't serve a recorded artefact", async () => {
     writeRecord();
     const d = downloads[0];

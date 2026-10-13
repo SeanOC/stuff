@@ -32,7 +32,7 @@ import { CapturePanel } from "./CapturePanel";
 import type { CameraAxes } from "./StlViewer";
 import { paramsEqual, useDetailState } from "@/hooks/useDetailState";
 import { useBdRenderer } from "@/hooks/useBdRenderer";
-import type { Param, ParamValue } from "@/lib/scad-params/parse";
+import { defaultsOf, type Param, type ParamValue } from "@/lib/scad-params/parse";
 import type { BdPreset, BdView } from "@/lib/models/bd-manifest";
 import { downloadFilename } from "@/lib/models/download-name";
 import { paramErrorsFor } from "@/lib/models/bd-param-error";
@@ -117,11 +117,23 @@ export default function BdDetailPage({ model }: { model: BdDetailPageModel }) {
   }, [bd.state]);
 
   const showingLive = liveGlb !== null;
-  // The controls still hold a preset's own values, so its baked download
-  // IS the current params (pst-scmib) — no request-time render.
+  // A preset's baked bytes are export.py's resolve of defaults + that
+  // preset's own values. Serve them only when the controls hold exactly
+  // those params, and only for a MANIFEST preset — a saved user preset has
+  // no baked artefact. Anything else renders via /api/bd-render. Not
+  // `!modified`: loadPreset merges partial presets over the previous
+  // values and clears it unconditionally. (pst-scmib)
+  const bakedPreset = detail.state.activePresetId
+    ? model.presets.find((p) => p.id === detail.state.activePresetId)
+    : undefined;
   const bakedPresetId =
-    detail.state.activePresetId !== null && !detail.state.modified
-      ? detail.state.activePresetId
+    bakedPreset &&
+    paramsEqual(
+      detail.state.params,
+      { ...defaultsOf(model.params), ...bakedPreset.values },
+      model.params,
+    )
+      ? bakedPreset.id
       : null;
 
   // Staleness: does the on-screen geometry match the live controls?
@@ -359,7 +371,8 @@ export default function BdDetailPage({ model }: { model: BdDetailPageModel }) {
             })}
           </div>
 
-          {/* Download — the CURRENT params: the baked preset while unmodified,
+          {/* Download — the CURRENT params: the baked preset while the controls
+              equal its baked values,
               else a live /api/bd-render. */}
           <BdDownload
             format="stl"
@@ -427,10 +440,11 @@ const DOWNLOAD_LABEL = {
 
 // STL / 3MF download for build123d: always the CURRENT params (AC6) — a
 // tweaked download reflects the tweak, not just the baked preset. While
-// the controls still hold a preset's values, that is the preset's baked
-// file via /api/bd-asset (pst-scmib: the tombstone sign's 3MF takes
-// longer than bd-render's 90 s timeout); once modified, a live render via
-// /api/bd-render?format=<format>. No WASM fallback, so a disabled/
+// the controls equal a manifest preset's baked values (defaults + the
+// preset's own values), that is the preset's baked file via /api/bd-asset
+// (pst-scmib: the tombstone sign's 3MF takes longer than bd-render's 90 s
+// timeout); any other params — a tweak, a saved user preset — render live
+// via /api/bd-render?format=<format>. No WASM fallback, so a disabled/
 // unreachable service surfaces a friendly inline error.
 function BdDownload({
   format,

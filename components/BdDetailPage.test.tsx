@@ -175,6 +175,40 @@ describe("BdDetailPage label text + 3MF", () => {
     // Same file name as a live render of the same values.
     expect(clicked).toEqual(["holder-label-card.3mf", "holder-label-card.stl"]);
   });
+
+  it("a tweak carried past a PARTIAL preset renders live, never the baked file (pst-scmib)", async () => {
+    // loadPreset merges a partial preset over the previous values and clears
+    // `modified` — the baked file (defaults + preset values) lacks the tweak.
+    const partial: BdDetailPageModel = {
+      ...LABEL,
+      params: [
+        ...LABEL.params,
+        { name: "size", kind: "number", label: "Size", default: 10, min: 5, max: 20 },
+      ],
+      presets: [
+        { id: "inlaid", label: "Inlaid", values: { text: "Filament" } },
+        { id: "raised", label: "Raised", values: { text: "PLA" } },
+      ],
+    } as BdDetailPageModel;
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async () => new Response(new Uint8Array([0x50, 0x4b]), { status: 200 }));
+    URL.createObjectURL = vi.fn(() => "blob:x");
+    URL.revokeObjectURL = vi.fn();
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const { getByLabelText, getByTestId } = render(<BdDetailPage model={partial} />);
+    fireEvent.change(getByLabelText("Size"), { target: { value: "15" } });
+    fireEvent.click(getByTestId("bd-preset-raised"));
+    await act(async () => {
+      fireEvent.click(getByTestId("bd-download-stl"));
+    });
+    const urls = fetchMock.mock.calls.map(([url]) => String(url));
+    expect(urls.some((u) => u.startsWith("/api/bd-asset/"))).toBe(false);
+    const [url, init] = fetchMock.mock.calls.at(-1)!;
+    expect(url).toBe("/api/bd-render?format=stl");
+    const sent = JSON.parse(String((init as RequestInit).body)).params;
+    expect(sent).toMatchObject({ text: "PLA", size: 15 });
+  });
 });
 
 describe("BdDetailPage camera hint (pst-5b83s)", () => {

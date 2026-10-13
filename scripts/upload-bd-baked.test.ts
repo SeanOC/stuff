@@ -91,7 +91,7 @@ describe("bakedDownloads", () => {
     ]);
   });
 
-  it("covers the committed manifest: 34 STL + 7 3MF", () => {
+  it("covers the committed manifest: every preset STL + every multiColour 3MF", () => {
     const manifest = JSON.parse(
       fs.readFileSync(path.resolve(__dirname, "..", "build123d", "manifest.json"), "utf8"),
     );
@@ -167,6 +167,26 @@ describe("uploadBakedDownloads", () => {
         manifest: MANIFEST, bakedRoot, env: "production", store: fakeStore({ [pathname]: 1 }),
       }),
     ).rejects.toThrow(/exists with 1 bytes/);
+  });
+
+  it("accepts a key a concurrent deploy put between head() and put()", async () => {
+    const pathname = `bd-baked/production/${sha("plain-a")}/plain-a.stl`;
+    const store = fakeStore();
+    const realHead = store.head;
+    let raced = false;
+    store.head = async (p: string) => {
+      const res = await realHead(p);
+      // The other deploy writes the same bytes right after our first head().
+      if (p === pathname && !raced) {
+        raced = true;
+        await store.put(p, Buffer.from("plain-a"), "application/sla");
+      }
+      return res;
+    };
+    const { record } = await uploadBakedDownloads({
+      manifest: MANIFEST, bakedRoot, env: "production", store,
+    });
+    expect(record.assets["plain/a.stl"].url).toBe(`https://blob.test/${pathname}`);
   });
 
   it("FAILS when a preset's baked artefact is missing", async () => {

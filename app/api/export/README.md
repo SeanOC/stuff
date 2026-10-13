@@ -113,8 +113,9 @@ GLBs ship in the function bundle (pst-acoed's 250 MB limit).
   `BLOB_READ_WRITE_TOKEN`, fails the build.
 - **When rendering applies** — only to non-preset parameter sets: the
   detail page's Download buttons fetch the baked preset while the controls
-  are unmodified and POST `/api/bd-render` once a parameter is tweaked
-  (subject to the service's `BD_RENDER_TIMEOUT`).
+  equal a manifest preset's baked values (defaults + that preset's own
+  values), and POST `/api/bd-render` for anything else — a tweak, or a
+  saved user preset (subject to the service's `BD_RENDER_TIMEOUT`).
 
 ## Native render service path (st-d32)
 

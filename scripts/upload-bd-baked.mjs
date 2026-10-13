@@ -108,8 +108,16 @@ export async function uploadBakedDownloads({ manifest, bakedRoot, env, commit, s
         }
         url = existing.url;
       } else {
-        url = (await store.put(pathname, file.bytes, CONTENT_TYPE[file.format])).url;
-        uploaded++;
+        try {
+          url = (await store.put(pathname, file.bytes, CONTENT_TYPE[file.format])).url;
+          uploaded++;
+        } catch (e) {
+          // A concurrent deploy baking the same bytes may have won the race:
+          // accept its key when the size matches, else fail.
+          const raced = await store.head(pathname);
+          if (!raced || raced.size !== file.bytes.byteLength) throw e;
+          url = raced.url;
+        }
       }
       assets[recordKey(file)] = {
         url,

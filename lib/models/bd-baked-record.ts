@@ -38,6 +38,13 @@ export async function bakedBlobEntry(
     if ((e as NodeJS.ErrnoException).code === "ENOENT") return null;
     throw e;
   }
-  const record = JSON.parse(raw) as BakedBlobRecord;
-  return record.assets[`${slug}/${preset}.${format}`] ?? null;
+  let record: BakedBlobRecord;
+  try {
+    record = JSON.parse(raw) as BakedBlobRecord;
+  } catch (e) {
+    // A truncated record degrades to the disk path (and its loud 404), not a 500.
+    if (e instanceof SyntaxError) return null;
+    throw e;
+  }
+  return record.assets?.[`${slug}/${preset}.${format}`] ?? null;
 }
