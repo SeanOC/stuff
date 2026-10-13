@@ -15,7 +15,7 @@ a reinforcement plate leaves below a short horn (the container's label
 plates). Two slopes descend from the
 chord ends to a midpoint at depth chord/2. The added triangle is intersected
 with the opening; a shallow opening can therefore split into two triangular
-openings. Chords at most 10 mm remain allowed flat bridges. The slot-bearing
+openings. Chords at most 10 mm remain allowed flat bridges. The shell's slot-bearing
 wall remains solid.
 
 This redesign follows the unsupported-bridge rule in the
