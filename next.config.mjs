@@ -30,13 +30,36 @@ const nextConfig = {
     // The detail page reads accessories/ (SCAD) AND, for build123d
     // models, the committed manifest.json (loadBdModel, at request time).
     "/models/[slug]": ["./accessories/**/*.stl", "./build123d/manifest.json"],
-    // build123d baked-preset server (pst-0um9). The STL/GLB are baked
-    // into build123d/baked/ by the prebuild bake step; the tracer can't
-    // see the runtime fs reads, so include the whole baked tree in the
-    // route's function bundle, plus the manifest for the allowlist check.
+    // build123d baked-preset server (pst-0um9). The prebuild bake writes
+    // build123d/baked/; the tracer can't see the runtime fs reads, so the
+    // route's files are listed here, plus the manifest for the allowlist
+    // check. ONLY the viewer GLBs ship (pst-acoed): Vercel packs these
+    // routes into one function, and the baked STL/3MF/per-colour STLs
+    // took it to 345 MB (limit 250). The route renders a missing STL/3MF
+    // on demand via /api/bd-render. Budget guard:
+    // scripts/function-bundle-budget.test.ts.
     "/api/bd-asset/[slug]/[preset]": [
-      "./build123d/baked/**/*",
+      "./build123d/baked/**/*.glb",
       "./build123d/manifest.json",
+    ],
+  },
+
+  // Routes that resolve a path from process.cwd() plus a runtime value
+  // (accessories' entry.stlPath, export/source's model path) make the
+  // tracer pull in most of the repo, so each of those functions shipped
+  // all of build123d/baked/ and build123d/tests/: "api/accessories/[slug]"
+  // reached 345 MB against Vercel's 250 MB limit once the tombstone-sign
+  // presets were baked (pst-acoed). Drop, from EVERY function, the files
+  // no route reads at runtime: the baked STL/3MF/per-colour STLs
+  // (/api/bd-asset renders a missing STL/3MF on demand) and the build123d
+  // dev trees. Budget guard: scripts/function-bundle-budget.test.ts.
+  outputFileTracingExcludes: {
+    "/**": [
+      "./build123d/baked/**/*.stl",
+      "./build123d/baked/**/*.3mf",
+      "./build123d/tests/**/*",
+      "./build123d/docs/**/*",
+      "./build123d/out/**/*",
     ],
   },
 };
