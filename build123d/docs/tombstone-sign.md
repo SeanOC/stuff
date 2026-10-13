@@ -112,3 +112,77 @@ card does: tapered glyph terminals read thin by the wall march.
 Worst-case load is wind on the face, which bends the plate about X at the
 pockets. The plate prints flat, so the bending stress runs in-plane, along
 the layers. Use PLA or PCTG; choose PCTG for a sign left outdoors.
+
+## Stake
+
+`holder-tombstone-stake` (S2 pst-tl4ac.2, `holders/tombstone_stake.py`) is
+the ground stake. It is one flat blade, printed flat with the tenon face on
+the bed. In plan, from the bottom up:
+
+- a **shaft** `width` wide (25–60, default 40) ending in a 45° point. The
+  45° is the included angle, so each flank is 22.5° and the point is
+  width / (2 tan 22.5°) long (48.3 mm at 40). The tip stays sharp to enter
+  the ground.
+- 45° **shoulders** flaring the shaft out to the head, filleted 5 mm at the
+  concave corner where they meet the shaft.
+- a **head** `head_width` × `head_height` (87.6–140 × 20–60, default
+  90 × 30). Its top edge bears on the sign's bottom edge.
+- two **tenons** rising from the head's top edge at X = ±40
+  (`signs.POCKET_XS`), each 7.6 × 34.6 × (thickness − 2.8).
+
+`length` (150–320, default 300) is the whole printed length, tip to tenon
+ends, so ≤ 320 is the bed bound. A length too short for the point, 8 mm of
+straight shaft, the shoulders and the head is a named `ValueError` that
+gives the minimum. So is a head narrower than 2 × (40 + 7.6 / 2) = 87.6 mm,
+where the tenons would overhang the head.
+
+Presets:
+- **default**: 40 × 300 × 6, head 90 × 30.
+- **long**: 320 mm.
+- **cross-bar**: adds the cross-bar.
+- **pinned**: 8 mm blade with the pin cross-hole, for the 8 mm pinned sign.
+
+| Joint | Value |
+| --- | --- |
+| Thickness | The stake's `thickness` must equal the sign's: the tenon height is the contract's formula of it |
+| Tenon Z | Flush with the bed face: stake Z 0 … tenon_t, never centred in the blade (a centred tenon printed flat is a 7.6 × 34.6 mm flat ceiling) |
+| Assembly offset | sign Z = stake Z + 1.4 (`SKIN + JOINT_CLEARANCE`): the tenon sits centred in its pocket, 0.2 clear of every wall and 0.4 at the pocket end |
+| Consequence | The sign rides 1.4 mm off the stake's mid-plane, a 1.4 mm step at each face of the joint |
+| Pin (`retention = pin`) | `signs.pin_profile` on the sign's own axis (Y = 20 above the head top, the tenon's mid-height), so the plate hole and the tenon hole are one hole; needs thickness ≥ 7.8, so pair the **pinned** stake with the **pinned** sign |
+
+`tests/test_tombstone_stake.py` builds the real sign and the real stake,
+places the stake at the 1.4 mm offset, and checks that each tenon lies
+wholly inside its pocket. It moves each tenon toward every pocket wall to
+confirm the exact gap, at thickness 6 and 8, with and without the pin.
+
+The **cross-bar** (`cross_bar`, length `cross_length` 100–320, default 200)
+is a second blade, as wide and thick as the shaft. It is half-lapped across
+the shaft 50 mm below the shoulders: each blade loses half its thickness
+over the lap, and the pair interlock flush on both faces. It adds buried
+face area against wind. Both blades print flat side by side, as one
+two-solid part, each with its lap notch facing up so neither notch is a
+ceiling. Turn the bar over to assemble.
+
+Printability: every preset audits with no exclusion (worst overhang 45°,
+the rim chamfers; no bridge), except the pinned preset. There, each
+tenon's pin hole has the teardrop's 1.33 mm flat roof, listed in
+`audit_exclusions` as the sign lists its own. Both rims carry the 0.4 mm
+chamfer. So do the tenons' bed rims, so elephant's foot cannot eat the
+0.2 mm joint clearance. Plan corners are rounded: 3 mm, and min(3,
+head_width / 2 − 43.8) at the head top, so the rounding never reaches a
+tenon root. At head_width 87.6 that corner is square, because the tenon's
+outer face continues the head's side. Tenon, pin and lap faces are mating
+faces and stay sharp. The viewer opens on the top face, which shows the step
+down to the tenons; the bed face is one plane.
+
+Worst-case load is wind on the face of the default 240 × 300 sign, pushing
+through the blade's thickness. The sign's moment about X crosses the joint
+in the two tenons. It spreads through the head and the 45° shoulders into
+the shaft, and the soil resists it along the buried shaft. The blade prints
+flat, so the bending stress runs along the layers. The tenons are the
+weakest section. As an estimate (drag coefficient 1.2, centre of pressure
+138 mm above the bottom edge), a 15 m/s gust puts about 1.5 N·m on the
+joint. That is about 58 MPa in the two 7.6 × 3.2 tenons at thickness 6,
+near PLA's strength, against about 22 MPa in 7.6 × 5.2 tenons at thickness
+8. Use the 8 mm pinned pair where the sign faces wind. PLA or PCTG; choose
+PCTG for a stake left outdoors.
