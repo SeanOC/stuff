@@ -255,7 +255,9 @@ def test_reference_exposed_edge_angles():
         assert measured == pytest.approx(angle, abs=.001)
 
 
-CASES = [(p.id, p.values) for p in m.SPEC.presets] + [
+# Container presets are audited with their own exclusions in
+# test_openconnect_drawer_container.py.
+CASES = [(p.id, p.values) for p in m.SPEC.presets if p.values.get('part') != 'container'] + [
     (f'{p.name}={x:g}', {p.name: x}) for p in m.SPEC.params
     if p.kind in ('number', 'integer') for x in (p.min, p.max) if x is not None
 ] + [
