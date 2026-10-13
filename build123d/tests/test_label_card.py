@@ -94,6 +94,24 @@ def test_24_characters_wrap_to_two_lines():
     assert part.is_valid
 
 
+@pytest.mark.parametrize('style,below', [('inlaid', 0.005), ('inlaid', 0.0025), ('inlaid', 0.0005),
+                                         ('inlaid', 1e-5), ('raised', 0.0005), ('raised', 1e-5)])
+def test_a_rejected_stroke_never_prints_at_or_above_the_threshold(monkeypatch, style, below):
+    # pst-czf5b: a stroke just under floor + FLOOR_MARGIN must not round up
+    # to the threshold it was rejected against.
+    import labels.label_text as lt
+    stroke = STROKE_FLOOR[style] + FLOOR_MARGIN - below
+    monkeypatch.setattr(lt, 'fit_text', lambda text, *a: lt.FittedText(
+        None, 1.0, stroke, 1.0, tuple(text.split('\n'))))
+    with pytest.raises(ValueError) as err:
+        lt.layout_text('W' * 24, C.CARD_W, C.CARD_H, C.TEXT_MARGIN, C.INLAY_DEPTH,
+                       STROKE_FLOOR[style])
+    message = str(err.value)
+    shown = float(re.search(r'thinnest stroke would be ([\d.]+) mm', message).group(1))
+    threshold = float(re.search(r'below the ([\d.]+) mm minimum', message).group(1))
+    assert threshold == pytest.approx(STROKE_FLOOR[style] + FLOOR_MARGIN)
+    assert shown < threshold and shown <= stroke
+
 def test_two_lines_splits_at_the_space_nearest_the_middle():
     assert two_lines('Bambu PLA Matte Charcoal') == 'Bambu PLA\nMatte Charcoal'
     assert two_lines('a b c') == 'a\nb c'  # tie -> the earlier space
@@ -109,7 +127,8 @@ def test_text_that_fails_the_floor_on_two_lines_is_rejected(style, text):
     message = str(err.value)
     stroke = float(re.search(r'thinnest stroke would be ([\d.]+) mm', message).group(1))
     assert stroke < STROKE_FLOOR[style] + FLOOR_MARGIN
-    assert f'below the {STROKE_FLOOR[style]:g} mm floor' in message
+    assert (f'below the {STROKE_FLOOR[style] + FLOOR_MARGIN:g} mm minimum '
+            f'({STROKE_FLOOR[style]:g} mm floor + {FLOOR_MARGIN:g} mm margin)') in message
     longest = re.search(r"the longest that fits is '(.*)' \((\d+) characters\)", message)
     prefix = longest.group(1)
     assert len(prefix) == int(longest.group(2)) and 0 < len(prefix) < len(text)

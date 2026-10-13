@@ -1,0 +1,208 @@
+// Vercel function-size guard (bead pst-acoed). Vercel bundled the app's
+// routes into ONE function, so its size is the UNION of every
+// next.config.mjs outputFileTracingIncludes glob, plus the traced
+// node_modules / .next server code. When the tombstone-sign presets (#188)
+// pushed build123d/baked/ past the limit, the production deploy failed
+// ("api/accessories/[slug]" 345 MB > 250 MB uncompressed) while every CI
+// job stayed green, because nothing measured the bundle.
+//
+// Two budgets, both under Vercel's 250 MB uncompressed per-function limit:
+//  - 225 MB per traced function, read from the .nft.json files `next
+//    build` writes (the real bundle: includes + traced code − excludes).
+//    25 MB headroom because a local trace is not byte-equal to Vercel's
+//    (accessories traced 349 MB here when Vercel reported 345 MB).
+//  - 200 MB for the union of every outputFileTracingIncludes glob
+//    (250 MB − 50 MB headroom for the traced runtime code that shares the
+//    function: next's server runtime, openscad-wasm-prebuilt, …). Cheap
+//    pre-build signal; the per-function check is the authoritative one.
+//
+// Measured at ee96a3ad (pst-acoed): routes that resolve paths from
+// process.cwd() trace most of the repo, so EVERY such function carried all
+// of build123d/baked/ (198.6 MB, 139.1 MB of it the five sign presets).
+//
+// build123d/baked/ only exists after the BD_MODELS_ENABLED prebuild bake
+// (scripts/bake-bd-presets.sh). CI's test jobs do not bake, so the size
+// check skips with a loud notice there and enforces on any local bake
+// (BD_MODELS_ENABLED=1 npm run prebuild, then npm test) or a future job
+// that bakes. The per-function check likewise needs a `next build` after
+// the bake. The glob matcher itself is tested unconditionally below.
+
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { afterAll, describe, expect, it } from "vitest";
+// @ts-expect-error -- next.config.mjs is untyped JS; vitest loads it as ESM
+import nextConfig from "../next.config.mjs";
+
+const ROOT = path.resolve(__dirname, "..");
+const BAKED = path.join(ROOT, "build123d", "baked");
+const MB = 1024 * 1024;
+const baked = () => fs.existsSync(BAKED);
+export const INCLUDE_UNION_BUDGET_BYTES = 200 * MB;
+export const FUNCTION_BUDGET_BYTES = 225 * MB;
+const NEXT_SERVER = path.join(ROOT, ".next", "server");
+
+// Only the glob syntax next.config.mjs actually uses: `*`, `**/`, literal
+// segments. Anything richer fails loudly instead of being mis-measured.
+function globToRegExp(glob: string): RegExp {
+  if (/[?{}[\]!]/.test(glob)) {
+    throw new Error(`unsupported glob syntax in tracing include: ${glob}`);
+  }
+  let re = "";
+  for (let i = 0; i < glob.length; i++) {
+    if (glob.startsWith("**/", i)) {
+      re += "(?:.*/)?";
+      i += 2;
+    } else if (glob[i] === "*") {
+      re += "[^/]*";
+    } else {
+      re += glob[i].replace(/[.+^$()|\\]/g, "\\$&");
+    }
+  }
+  return new RegExp(`^${re}$`);
+}
+
+function walk(dir: string): string[] {
+  if (!fs.existsSync(dir)) return [];
+  if (!fs.statSync(dir).isDirectory()) return [dir];
+  return fs
+    .readdirSync(dir, { withFileTypes: true })
+    .flatMap((e) => walk(path.join(dir, e.name)));
+}
+
+/** Repo-relative files matched by one tracing glob (e.g. "./build123d/baked/**\/*"). */
+export function matchInclude(root: string, include: string): string[] {
+  const glob = include.replace(/^\.\//, "");
+  const segments = glob.split("/");
+  const firstWild = segments.findIndex((s) => s.includes("*"));
+  const base = firstWild === -1 ? glob : segments.slice(0, firstWild).join("/");
+  const re = globToRegExp(glob);
+  return walk(path.join(root, base))
+    .map((abs) => path.relative(root, abs).split(path.sep).join("/"))
+    .filter((rel) => re.test(rel));
+}
+
+export function includeSizes(root: string, includes: Record<string, string[]>) {
+  const union = new Map<string, number>();
+  const perGlob: { route: string; glob: string; files: number; bytes: number }[] = [];
+  for (const [route, globs] of Object.entries(includes)) {
+    for (const glob of globs) {
+      const files = matchInclude(root, glob);
+      let bytes = 0;
+      for (const rel of files) {
+        const size = fs.statSync(path.join(root, rel)).size;
+        union.set(rel, size);
+        bytes += size;
+      }
+      perGlob.push({ route, glob, files: files.length, bytes });
+    }
+  }
+  let unionBytes = 0;
+  for (const size of union.values()) unionBytes += size;
+  return { perGlob, unionFiles: union.size, unionBytes };
+}
+
+describe("tracing-include glob matcher", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "bundle-budget-"));
+  afterAll(() => fs.rmSync(tmp, { recursive: true, force: true }));
+  const files = ["a/x.png", "a/b/y.png", "a/b/y.stl", "a/m.json", "c.json"];
+  for (const rel of files) {
+    fs.mkdirSync(path.dirname(path.join(tmp, rel)), { recursive: true });
+    fs.writeFileSync(path.join(tmp, rel), "12345");
+  }
+
+  it("matches ** across depths, * within one segment, and plain files", () => {
+    expect(matchInclude(tmp, "./a/**/*.png").sort()).toEqual(["a/b/y.png", "a/x.png"]);
+    expect(matchInclude(tmp, "./a/**/*").length).toBe(4);
+    expect(matchInclude(tmp, "./a/*.json")).toEqual(["a/m.json"]);
+    expect(matchInclude(tmp, "./c.json")).toEqual(["c.json"]);
+    expect(matchInclude(tmp, "./missing/**/*")).toEqual([]);
+  });
+
+  it("counts a file matched by two routes once in the union", () => {
+    const sizes = includeSizes(tmp, { r1: ["./a/**/*"], r2: ["./a/**/*.png", "./c.json"] });
+    expect(sizes.unionFiles).toBe(5);
+    expect(sizes.unionBytes).toBe(25);
+  });
+
+  it("refuses glob syntax it cannot measure", () => {
+    expect(() => matchInclude(tmp, "./a/{x,y}.png")).toThrow(/unsupported glob/);
+  });
+});
+
+describe("Vercel function bundle budget", () => {
+  const includes = nextConfig.outputFileTracingIncludes as Record<string, string[]>;
+
+  it("every tracing include uses syntax the guard can measure", () => {
+    for (const globs of Object.values(includes)) {
+      for (const glob of globs) expect(() => globToRegExp(glob)).not.toThrow();
+    }
+  });
+
+  const isBaked = baked();
+  if (!isBaked) {
+    console.warn(
+      "\n⚠️  function-bundle-budget: build123d/baked/ is absent (no BD_MODELS_ENABLED " +
+        "bake), so the 200 MB include-union budget is NOT being enforced in this run.\n" +
+        "   Enforce it locally: BD_MODELS_ENABLED=1 npm run prebuild && npm test\n",
+    );
+  }
+
+  it.skipIf(!isBaked)("the union of every outputFileTracingIncludes glob stays under 200 MB", () => {
+    const { perGlob, unionFiles, unionBytes } = includeSizes(ROOT, includes);
+    const report = perGlob
+      .map((g) => `  ${(g.bytes / MB).toFixed(1).padStart(7)} MB ${String(g.files).padStart(5)} files  ${g.route}  ${g.glob}`)
+      .join("\n");
+    console.log(
+      `function-bundle-budget:\n${report}\n  union: ${(unionBytes / MB).toFixed(1)} MB in ` +
+        `${unionFiles} files (budget ${INCLUDE_UNION_BUDGET_BYTES / MB} MB)`,
+    );
+    expect(unionBytes).toBeLessThanOrEqual(INCLUDE_UNION_BUDGET_BYTES);
+  });
+});
+
+/** Bytes each traced function ships, deduped by real path, from .next/server/**\/*.nft.json. */
+export function tracedFunctionSizes(serverDir: string): { fn: string; bytes: number }[] {
+  return walk(serverDir)
+    .filter((f) => f.endsWith(".nft.json"))
+    .map((nft) => {
+      const dir = path.dirname(nft);
+      const seen = new Map<string, number>();
+      for (const rel of JSON.parse(fs.readFileSync(nft, "utf8")).files as string[]) {
+        const abs = path.join(dir, rel);
+        if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) continue;
+        seen.set(fs.realpathSync(abs), fs.statSync(abs).size);
+      }
+      let bytes = 0;
+      for (const size of seen.values()) bytes += size;
+      return { fn: path.relative(serverDir, nft).replace(/\.js\.nft\.json$/, ""), bytes };
+    })
+    .sort((a, b) => b.bytes - a.bytes);
+}
+
+describe("Vercel per-function size (after a baked `next build`)", () => {
+  const built = baked() && fs.existsSync(NEXT_SERVER);
+  if (!built) {
+    console.warn(
+      "\n⚠️  function-bundle-budget: no baked `next build` output (.next/server + " +
+        "build123d/baked/), so the 225 MB per-function budget is NOT being enforced.\n" +
+        "   Enforce it locally: BD_MODELS_ENABLED=1 npm run build && npm test\n",
+    );
+  }
+
+  it.skipIf(!built)("every traced function stays under 225 MB", () => {
+    const sizes = tracedFunctionSizes(NEXT_SERVER);
+    expect(sizes.length).toBeGreaterThan(0);
+    console.log(
+      "function-bundle-budget (traced functions):\n" +
+        sizes
+          .slice(0, 8)
+          .map((s) => `  ${(s.bytes / MB).toFixed(1).padStart(7)} MB  ${s.fn}`)
+          .join("\n"),
+    );
+    const over = sizes
+      .filter((s) => s.bytes > FUNCTION_BUDGET_BYTES)
+      .map((s) => `${s.fn}: ${(s.bytes / MB).toFixed(1)} MB`);
+    expect(over).toEqual([]);
+  });
+});
