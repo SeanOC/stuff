@@ -46,6 +46,7 @@ from opengrid.multiconnect import SnapInSlotCutter  # noqa: E402
 
 from holders.registry import all_models  # noqa: E402
 from tests.mount_contracts import resolve_fixtures  # noqa: E402
+from holders.printer import BED_X, BED_Y, BED_Z  # noqa: E402
 from tests.print_audit import (  # noqa: E402
     MAX_BRIDGE_MM,
     MAX_OVERHANG_DEG,
@@ -61,6 +62,8 @@ from tests.print_audit import (  # noqa: E402
     _outward_normal,
     _signed,
     audit,
+    bed_failure,
+    print_extent,
 )
 
 # One-line switch (AC 3): False = advisory (xfail on failure, report printed);
@@ -100,7 +103,9 @@ _PER_MODEL_BUDGET_S = 60.0
 # pst-bzahj: the cradle's 120 s exception (CI measured 93.2 s total) is gone —
 # reusing one solid classifier per audit cut its audit 77 s -> 11 s CPU
 # (docs/print-audit-profile.md), so it now fits the default.
-_MODEL_BUDGET_S: dict[str, float] = {}
+# pst-t0ob3.3: the drawer audit took 61.3 s at 05e18376; A/B on one host, main
+# 84.16 s vs head 77.31 s CPU, so the shared 60 s budget tipped, not the geometry.
+_MODEL_BUDGET_S: dict[str, float] = {"openconnect_drawer": 90.0}
 
 _UP_Z = (0.0, 0.0, 1.0)
 
@@ -441,6 +446,39 @@ def test_library_cutter_pocket_is_excluded():
     assert not excluded.downward_fillets
 
 
+# --- build volume (pst-p3bb3) ---------------------------------------------
+
+def test_bed_is_h2s_single_nozzle():
+    assert (BED_X, BED_Y, BED_Z) == (325.0, 320.0, 325.0)
+
+
+@pytest.mark.parametrize("size, up", [
+    ((BED_X, 20.0, 2.0), _UP_Z),           # long side exactly on X
+    ((20.0, BED_X, 2.0), _UP_Z),           # turned 90° on the plate
+    ((BED_X, BED_Y, 2.0), _UP_Z),          # the whole plate
+    ((20.0, 20.0, BED_Z), _UP_Z),          # full build height
+    ((20.0, BED_Z, 20.0), (0.0, 1.0, 0.0)),  # height along a non-Z up
+])
+def test_extent_at_bed_limit_passes(size, up):
+    report = audit(Box(*size), up, model="bed_edge")
+    assert report.ok, report.format()
+    assert sorted(report.extent_mm) == pytest.approx(sorted(size))
+
+
+@pytest.mark.parametrize("size, up, extent", [
+    ((BED_X + 0.1, 20.0, 2.0), _UP_Z, "325.1 × 20.0 × 2.0"),
+    ((321.0, 321.0, 2.0), _UP_Z, "321.0 × 321.0 × 2.0"),   # short side > BED_Y
+    ((20.0, 20.0, BED_Z + 0.1), _UP_Z, "20.0 × 20.0 × 325.1"),
+    ((20.0, 330.0, 20.0), (0.0, 1.0, 0.0), "20.0 × 20.0 × 330.0"),
+])
+def test_extent_past_bed_fails_with_measured_extent(size, up, extent):
+    report = audit(Box(*size), up, model="bed_over")
+    assert not report.ok
+    [message] = report.failures()
+    assert f"extent {extent} mm exceeds the 325 × 320 × 325 mm build volume" == message
+    assert "FAIL" in report.format().splitlines()[-2]
+
+
 # --- report shape (AC 1) --------------------------------------------------
 
 def test_report_is_typed_and_formats():
@@ -451,6 +489,7 @@ def test_report_is_typed_and_formats():
     text = report.format()
     assert "print audit: shape" in text
     assert "overhang" in text and "bridge" in text and "min wall" in text
+    assert report.extent_mm == (1.2, 20.0, 20.0) and "extent" in text
 
 
 def test_empty_part_raises():
@@ -475,7 +514,7 @@ def _cup_lid_shank_exclusion(values):
         align=(Align.CENTER, Align.CENTER, Align.MIN))
 
 
-from drawer.shell import published_ceiling_regions as drawer_ceiling_exclusions
+from holders.openconnect_drawer import audit_exclusions as drawer_exclusions
 from holders.openconnect_plate import border_exclusions
 from holders.cartridge_holder import audit_exclusions as cartridge_exclusions
 from holders.gridfinity_capture_bin import audit_exclusions as capture_bin_exclusions
@@ -485,7 +524,7 @@ from holders.underware_i_channel import audit_exclusions as underware_families
 _MODEL_EXCLUSIONS = {
     'holder_cup_lid': lambda values: [_cup_lid_shank_exclusion(values)],
     'openconnect_plate': border_exclusions,
-    'openconnect_drawer': drawer_ceiling_exclusions,
+    'openconnect_drawer': drawer_exclusions,
     'littletikes_dream_machine_cartridge_holder': cartridge_exclusions,
     'gridfinity_capture_bin': capture_bin_exclusions,
     'holder_tombstone_sign': tombstone_sign_exclusions,
@@ -637,3 +676,22 @@ def test_angle_tolerance_does_not_hide_real_overhang():
     angle = math.radians(45.01)
     cone = Pos(0, 0, 1) * Cone(3, 3+5*math.tan(angle), 5)
     assert _downward_curved_faces(cone, _UP_Z, [], -10)
+
+
+# Every preset; the defaults only for a model without presets (smoke tiles).
+_PRESET_CASES = [(spec, preset) for spec in _SPECS
+                 for preset in (spec.presets or (None,))]
+
+
+# Builds every preset of every model (no audit) -> bd123 `audit` job.
+@pytest.mark.audit
+@pytest.mark.parametrize("spec, preset", _PRESET_CASES, ids=[
+    f"{s.name}-{p.id if p else 'default'}" for s, p in _PRESET_CASES])
+def test_every_preset_fits_the_bed(spec, preset):
+    values = spec.resolve_values(preset.values if preset else None)
+    part = spec.build(values)
+    if spec.print_frame:
+        part = spec.print_frame(values) * part
+    extent = print_extent(part, _unit(spec.print_orientation))
+    print(f"BED EXTENT | {spec.name} | {preset.id if preset else 'default'} | {extent}")
+    assert bed_failure(extent) is None, f"{spec.name}: {bed_failure(extent)}"

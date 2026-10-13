@@ -8,7 +8,7 @@
 #   fast        everything that is not an audit, plus the serial budget step
 #   audit       every registry-sized print audit except the cradle corner sweep,
 #               plus the spool cradle mount contracts (registry-sized builds)
-#   audit_full  the cradle corner sweep, 3 pytest-split shards; PRs that touch
+#   audit_full  the cradle corner sweep, 6 pytest-split shards; PRs that touch
 #               model/audit code, every push to main, and nightly
 # A command-line -m REPLACES pyproject's addopts "-m 'not upstream'", so every
 # expression below ends with "and not upstream" (PR CI stays offline —
@@ -142,14 +142,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        group: [1, 2, 3]
+        group: [1, 2, 3, 4, 5, 6]
     defaults: { run: { working-directory: build123d } }
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - name: sync env (pinned via uv.lock)
         run: uv sync --frozen
-      - name: cradle corner sweep (shard ${{ matrix.group }}/3)
+      - name: cradle corner sweep (shard ${{ matrix.group }}/6)
         # tests/.test_durations balances the shards; a stale or missing entry
         # only degrades balance (pytest-split splits evenly), never coverage.
         # Nightly re-measures this shard's durations (--clean-durations keeps
@@ -159,7 +159,7 @@ jobs:
         run: >-
           uv run pytest tests/ -q -n 4 --dist load -rf --tb=short
           -m "audit_full and not upstream"
-          --splits 3 --group ${{ matrix.group }} --durations-path tests/.test_durations
+          --splits 6 --group ${{ matrix.group }} --durations-path tests/.test_durations
           $STORE
       - name: upload refreshed durations (nightly)
         if: ${{ !cancelled() && github.event_name == 'schedule' }}
