@@ -80,7 +80,10 @@ def source_contact_mask(points, values, classifier):
                   & (np.abs(x)+np.abs(y) <= (d.inner_width+d.inner_height)/2-d.inner_chamfer))
         candidates |= region
         directions[region, 2] = .01
-    for x, y, z in shell.source_stopper_positions(values):
+    # Divider walls repeat the top wall's stopper holes at their +Y face.
+    divider_tops = [(x, at+d.wall, z) for axis, at in shell.divider_walls(values) if axis == 'y'
+                    for x, _, z in shell.source_stopper_positions(values)]
+    for x, y, z in shell.source_stopper_positions(values)+divider_tops:
         for plane in (y, y-c.STOPPER_FLANK_DEPTH):
             region = ((np.abs(points[:, 1]-plane) < 1e-5)
                       & (np.abs(points[:, 0]-x) <= (c.STOPPER_WIDTH+c.STOPPER_FLANK_WIDTH)/2)
@@ -106,10 +109,13 @@ def edge_inventory(part, values):
     d = shell.dimensions(values)
     fx = shell.slot_fixtures(values)
     mount_boxes = a._cutter_boxes([shell.AUTHOR_TO_MODEL.inverse()*cut for cut in fx.cutters])
-    fitting_boxes = a._cutter_boxes(shell.source_magnet_cutters(values)+shell.source_stopper_cutters(values), margin=.001)
+    fitting_boxes = a._cutter_boxes(shell.source_magnet_cutters(values)+shell.source_stopper_cutters(values)
+                                    +shell.source_divider_feature_cutters(values), margin=.001)
     original = shell.source_body(values)
     honeycomb = [(hole.bounding_box(), hole.faces())
                  for hole in shell.source_honeycomb_cutters(values)]
+    divider_faces = [(f, f.bounding_box()) for wall in shell.source_divider_walls(values)
+                     for f in wall.faces()]
     corner_points = [(v.X, v.Y) for v in original.vertices()]
     base_edges = [e for e in original.edges() if
                   abs(e.bounding_box().min.Z-d.slot_thickness)<1e-6 and
@@ -154,6 +160,13 @@ def edge_inventory(part, values):
         elif (max(abs(p.Z-d.slot_thickness) for p in points) < 1e-5 and
               all(min(e.distance_to(p) for e in base_edges) < 1e-5 for p in points)):
             family = 'container mating base'
+        elif divider_faces and all(any(
+                box.min.X-1e-5 <= p.X <= box.max.X+1e-5 and box.min.Y-1e-5 <= p.Y <= box.max.Y+1e-5
+                and box.min.Z-1e-5 <= p.Z <= box.max.Z+1e-5 and face.distance_to(p) < 1e-5
+                for face, box in divider_faces) for p in points):
+            # [C] :1576-1673 (D4): square 2*shell_thickness walls, their front
+            # rims and their junctions with the shell, as the author's.
+            family = 'published divider wall'
         else:
             raise AssertionError(f'uninventoried edge at {tuple(mid)}, angle {angle:.3f}, bounds {bb}')
         counts[family] += 1
@@ -286,6 +299,9 @@ def container_edge_inventory(part, values):
     features = [(name, boxed([shape])) for name, shape in (
         ('source handle', container.source_handle(v)),
         ('source label holder', container.source_label_holder(v))) if shape is not None]
+    # [C] :1576-1673 (D4): square-edged 1.2 mm walls with foot fillets; their
+    # junctions with walls and openings lie on the divider's own faces.
+    features += [('source divider wall', boxed([wall])) for wall in container.source_divider_walls(v)]
 
     def near(p, items):
         return any(box.min.X-1e-5 <= p.X <= box.max.X+1e-5 and

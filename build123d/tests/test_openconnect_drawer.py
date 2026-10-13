@@ -257,11 +257,32 @@ def test_reference_exposed_edge_angles():
 
 # Container presets are audited with their own exclusions in
 # test_openconnect_drawer_container.py.
-CASES = [(p.id, p.values) for p in m.SPEC.presets if p.values.get('part') != 'container'] + [
+# Stopper clips: test_openconnect_dividers.py.
+NOT_SHELL = {'Container', 'Container Divider'}
+DIVIDERS = dict(add_shell_divider='Both', shell_width_compartment_list='3,2',
+                shell_height_compartment_list='1,1')
+CASES = [(p.id, p.values) for p in m.SPEC.presets if p.values.get('part', 'shell') == 'shell'] + [
     (f'{p.name}={x:g}', {p.name: x}) for p in m.SPEC.params
     # Container-only params leave the shell unchanged (asserted below).
-    if p.kind in ('number', 'integer') and p.group != 'Container'
+    if p.kind in ('number', 'integer') and p.group not in NOT_SHELL and p.name != 'stopper_clip_length'
     for x in (p.min, p.max) if x is not None
+] + [
+    # D4 divider corners: wall and lattice extremes, every slot face, the
+    # smallest dividable shell and an asymmetric three-way height split.
+    ('divider-height', dict(add_shell_divider='Height', shell_height_compartment_list='1,1')),
+    ('divider-both-solid', dict(DIVIDERS, shell_divider_wall_type='Solid', vertical_grids=3,
+                                shell_height_compartment_list='1,2')),
+    *((f'divider-both-{face}', dict(DIVIDERS, shell_slot_position=face, shell_width_compartment_list='1,4'))
+      for face in shell.SLOT_FACES[1:]),
+    ('divider-both-wall-1.6', dict(DIVIDERS, shell_thickness=1.6)),
+    ('divider-both-wall-4', dict(DIVIDERS, shell_thickness=4)),
+    ('divider-both-strut-1.1', dict(DIVIDERS, honeycomb_strut_hyp=1.1)),
+    ('divider-both-strut-16.3', dict(DIVIDERS, honeycomb_strut_hyp=16.3)),
+    ('divider-both-2x2x1', dict(DIVIDERS, horizontal_grids=2, depth_grids=1,
+                                shell_width_compartment_list='1,1')),
+    ('divider-height-3-way', dict(add_shell_divider='Height', vertical_grids=5,
+                                  shell_height_compartment_list='2,1,2', shell_top_wall_type='Honeycomb',
+                                  shell_side_wall_type='Honeycomb')),
 ] + [
     ('1x1x1', dict(horizontal_grids=1, vertical_grids=1, depth_grids=1)),
     ('honeycomb-strut-2', dict(honeycomb_strut_hyp=2)),
@@ -377,5 +398,7 @@ def test_mount_entry_axis_in_model_frame(face, entry_axis, face_normal, slots):
 def test_container_params_do_not_change_the_shell():
     """Why the shell endpoint sweep skips the Container group."""
     varied = {'part': 'shell', 'container_solid_wall_thickness': 3, 'label_thickness': .6,
-              'handle_depth': 20}
+              'handle_depth': 20, 'stopper_clip_length': 12, 'add_container_divider': 'Both',
+              'container_divider_wall_height_offset': 0, 'container_width_grid_count': 20,
+              'container_depth_grid_count': 1}
     assert m.build(varied).volume == m.build({'part': 'shell'}).volume

@@ -291,7 +291,7 @@ against committed renders of the author's plate and head. It provides
 contract, and a test-only 84 × 84 × 5.5 demo plate. See the
 [API and evidence](docs/openconnect-library.md).
 
-## openConnect drawer shell
+## openConnect drawer
 
 `openconnect_drawer` adapts mitufy's drawer under **CC BY-SA 4.0**; see the
 [source, render commands and reference hashes](../assets/openConnect-drawer/NOTICE).
@@ -310,6 +310,12 @@ Fitting reinforcements can still fill an entire wall when the magnet or
 stopper edge distance reserves all of its inner depth; that wall stays solid.
 Print every mount-face option **back-wall-down**, with the open front up,
 in PLA/PCTG. Slot pitch and mating profiles come from `openconnect/`.
+`part=container` builds the sliding drawer (print bottom-down) and
+`part=stopper_clips` the author's two stopper clips (flat). Shells and
+containers take comma-separated compartment lists for dividers
+(`two-compartments`, `organiser` presets); see
+[the drawer guide](docs/openconnect-drawer.md) for parts, lists, parity and
+deviations.
 
 Honeycomb geometry follows the reference NOTICE's BOSL2 `b86a7584` pin,
 including its padded, centred lattice. The default bottom has **97 openings**
@@ -327,7 +333,7 @@ at 10 mm. Only exact ceiling facets within that bound are excluded; struts
 and new roofs remain audited. The exposed-edge classifier inventories the
 source and specified roof opening rims. Shallow over-limit cells split into
 two triangular openings; small has 19 openings versus 17 in source mode.
-See [Honeycomb ceilings](../docs/openconnect-drawer.md) for the profile contract.
+See [Honeycomb ceilings](docs/openconnect-drawer.md) for the profile contract.
 Magnet and stopper reinforcements stay solid before their pockets are cut.
 
 Clearance help (pst-t0ob3.1 REV 3e): the author allows up to **0.5 mm** side
