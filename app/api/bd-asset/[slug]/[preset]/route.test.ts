@@ -9,8 +9,25 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { NextRequest } from "next/server";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { GET } from "./route";
+
+// Baked STL/3MF are not in the Vercel function (pst-acoed), so a missing
+// one is rendered on demand through /api/bd-render's handler.
+const bdRender = vi.hoisted(() =>
+  vi.fn(async (_req: Request) =>
+    new Response(new Uint8Array([9, 9, 9]), {
+      status: 200,
+      headers: {
+        "content-type": "application/sla",
+        "content-disposition": 'attachment; filename="live-name.stl"',
+        "cache-control": "public, max-age=31536000, immutable",
+        "x-cache": "HIT",
+      },
+    }),
+  ),
+);
+vi.mock("@/app/api/bd-render/route", () => ({ POST: bdRender }));
 
 const BAKED_ROOT = path.resolve(process.cwd(), "build123d", "baked");
 // A model + preset that exist in the committed manifest.json.
@@ -150,6 +167,44 @@ describe("/api/bd-asset", () => {
     expect(new Uint8Array(await res.arrayBuffer())).toEqual(THREEMF_BYTES);
   });
 
+  it("renders a baked-missing STL on demand from the preset's values, under the preset name", async () => {
+    const baked = path.join(BAKED_ROOT, LABEL_SLUG, `${LABEL_PRESET}.stl`);
+    const aside = fs.existsSync(baked) ? fs.readFileSync(baked) : null;
+    fs.rmSync(baked, { force: true });
+    try {
+      bdRender.mockClear();
+      const res = await GET(
+        new NextRequest(`http://localhost/api/bd-asset/${LABEL_SLUG}/${LABEL_PRESET}?format=stl`, {
+          headers: { "x-vercel-oidc-token": "oidc-abc" },
+        }),
+        { params: Promise.resolve({ slug: LABEL_SLUG, preset: LABEL_PRESET }) },
+      );
+      expect(res.status).toBe(200);
+      // bd-render's HIT is immutable; this preset URL is not content-addressed.
+      expect(res.headers.get("cache-control")).toBe("public, max-age=0, must-revalidate");
+      expect(res.headers.get("content-disposition")).toBe(
+        `attachment; filename="${LABEL_SLUG}-${LABEL_PRESET}.stl"`,
+      );
+      expect(new Uint8Array(await res.arrayBuffer())).toEqual(new Uint8Array([9, 9, 9]));
+      expect(bdRender).toHaveBeenCalledTimes(1);
+      const forwarded = bdRender.mock.calls[0][0];
+      expect(new URL(forwarded.url).searchParams.get("format")).toBe("stl");
+      expect(forwarded.headers.get("x-vercel-oidc-token")).toBe("oidc-abc");
+      const body = await forwarded.json();
+      expect(body.slug).toBe(LABEL_SLUG);
+      const manifest = JSON.parse(
+        fs.readFileSync(path.resolve(process.cwd(), "build123d", "manifest.json"), "utf8"),
+      );
+      const models = Array.isArray(manifest) ? manifest : manifest.models;
+      const preset = models
+        .find((m: { slug: string }) => m.slug === LABEL_SLUG)
+        .presets.find((p: { id: string }) => p.id === LABEL_PRESET);
+      expect(body.params).toEqual(preset.values);
+    } finally {
+      if (aside) fs.writeFileSync(baked, aside);
+    }
+  });
+
   it("400s a 3MF for a single-colour model (never baked, not a missing bake)", async () => {
     const res = await call(SLUG, PRESET, "3mf");
     expect(res.status).toBe(400);
@@ -181,18 +236,20 @@ describe("/api/bd-asset", () => {
     expect(res.status).toBe(404);
   });
 
-  it("404s a manifest-valid pair whose asset was never baked", async () => {
+  it("404s a manifest-valid pair whose viewer GLB was never baked (no on-demand render)", async () => {
     // Remove our fixture to reach ENOENT even when all real presets were
     // baked. Always put it back for later tests; suite cleanup separately
     // restores the original developer artifact (or its absence).
-    const stl = path.join(BAKED_ROOT, SLUG, `${PRESET}.stl`);
-    fs.rmSync(stl);
+    const glb = path.join(BAKED_ROOT, SLUG, `${PRESET}.glb`);
+    fs.rmSync(glb);
     try {
-      const res = await call(SLUG, PRESET, "stl");
+      bdRender.mockClear();
+      const res = await call(SLUG, PRESET, "glb");
       expect(res.status).toBe(404);
       expect((await res.json()).error).toContain("baked asset missing");
+      expect(bdRender).not.toHaveBeenCalled();
     } finally {
-      fs.writeFileSync(stl, STL_BYTES);
+      fs.writeFileSync(glb, GLB_BYTES);
     }
   });
 });
