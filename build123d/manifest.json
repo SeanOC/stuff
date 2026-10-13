@@ -962,7 +962,8 @@
           "choices": [
             "shell",
             "container"
-          ]
+          ],
+          "filename": true
         },
         {
           "name": "horizontal_grids",

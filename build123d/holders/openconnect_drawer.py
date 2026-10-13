@@ -69,7 +69,7 @@ SPEC = register(ModelSpec(
     build=build, mounts=(MOUNT,), mount_for_values=mount_for_values,
     print_frame=print_frame,
     params=(
-        Param('part', 'enum', 'shell', choices=('shell', 'container'), group='Drawer Size'),
+        Param('part', 'enum', 'shell', choices=('shell', 'container'), filename=True, group='Drawer Size'),
         Param('horizontal_grids', 'integer', 5, min=1, max=8, step=1, filename=True, group='Drawer Size'),
         Param('vertical_grids', 'integer', 2, min=1, max=8, step=1, filename=True, group='Drawer Size'),
         Param('depth_grids', 'integer', 5, min=1, max=8, step=1, filename=True, group='Drawer Size'),
