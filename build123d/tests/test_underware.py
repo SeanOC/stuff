@@ -211,6 +211,7 @@ def test_grip_probe(suppress):
     ({'number_of_cord_cutouts': 1}, 'crosses the grip at y=0 mm'),
     ({'number_of_cord_cutouts': 2, 'cord_cutout_width': 20}, 'crosses the grip at y=-28 mm'),
     ({'number_of_cord_cutouts': 2, 'grip_flare': 5}, 'crosses the grip at y=-28 mm'),
+    ({'number_of_cord_cutouts': 2, 'distance_between_cutouts': 14}, 'crosses the grip at y=0 mm'),
     ({'number_of_cord_cutouts': 2, 'cord_side_cutouts': 'Right Side Top', 'channel_total_height': 28},
      'below the 24.6 mm wall top'),
     ({'number_of_cord_cutouts': 2, 'cord_side_cutouts': 'Left Side Top', 'channel_total_height': 16},
@@ -249,7 +250,10 @@ CASES = {
     'cut-n12': {'number_of_cord_cutouts': 12}, 'cut-w6': {'number_of_cord_cutouts': 2, 'cord_cutout_width': 6},
     'cut-w20-suppressed': {'number_of_cord_cutouts': 1, 'cord_cutout_width': 20, 'suppress_connectors': 'NNBNN'},
     'cut-d56': {'number_of_cord_cutouts': 2, 'distance_between_cutouts': 56, 'shift_cutouts': 14},
-    'cut-d14': {'number_of_cord_cutouts': 2, 'distance_between_cutouts': 14, 'shift_cutouts': 7},
+    # d=14 cannot clear two grips (named error below), so the endpoint row
+    # suppresses the middle grip both cutouts straddle.
+    'cut-d14': {'number_of_cord_cutouts': 2, 'distance_between_cutouts': 14,
+                'suppress_connectors': 'NNBNN'},
     'cut-shift28': {'number_of_cord_cutouts': 2, 'shift_cutouts': 28},
     'cut-left': {'number_of_cord_cutouts': 2, 'cord_side_cutouts': 'Left Side'},
     'cut-right': {'number_of_cord_cutouts': 2, 'cord_side_cutouts': 'Right Side'},
