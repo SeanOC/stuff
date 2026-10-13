@@ -8,7 +8,8 @@ obvious stress point, and the mount had no tunables. These rules are the
 default; deviate only with a stated functional reason in the PR.
 
 Target printer and materials: **Bambu Lab H2S** (0.4 mm nozzle, 0.2 mm
-layers by default, 340×320×340 mm, 65 °C chamber) printing **PLA** or
+layers by default, 325×320×325 mm single-nozzle (300×320×325 when both
+nozzles are used), 65 °C chamber) printing **PLA** or
 **PCTG**. Models must print on that machine **without supports** in the
 declared orientation, in either material.
 
@@ -168,8 +169,13 @@ For any PR touching `build123d/holders/**`, check and cite the file/line:
 9. For a port: every exception row cites the reference measurement (file,
    ray/point, value) and names its face family; an exception without a
    reference measurement is blocking. Apply §8 to published geometry.
+10. Print-frame footprint ≤ 325 × 320 mm and height ≤ 325 mm (the H2S
+    single-nozzle volume) at every Param endpoint. The print audit's
+    build-volume rule checks it (`tests/print_audit.py`, `BED_X/BED_Y/BED_Z`
+    from `holders/printer.py`): the registry run covers defaults, the
+    endpoint table (item 3) the rest. A dual-nozzle part must fit 300 in X.
 
-A miss on 1–3, 7 or 9 is blocking; 4–6 and 8 are blocking when the PR claims
+A miss on 1–3, 7, 9 or 10 is blocking; 4–6 and 8 are blocking when the PR claims
 to address them and otherwise a required follow-up bead.
 A PR without the endpoint/corner audit table is a blocking omission like a
 missing `part.volume`.
