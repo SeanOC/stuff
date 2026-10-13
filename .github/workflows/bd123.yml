@@ -136,9 +136,12 @@ jobs:
     # !cancelled() so a skipped `changes` (push/schedule) does not skip this.
     if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.result != 'success' || needs.changes.outputs.cradle == 'true') }}
     runs-on: ubuntu-latest
-    # pst-bnya8: retain 30m; slowest shard in main run 38019354675 was
-    # 7m59s, already comfortably above the same 50% headroom rule.
-    timeout-minutes: 30
+    # pst-2z9ng: 6 shards on main run 38444800427 (post-#190) took
+    # 16m19/12m00/21m34/21m40/15m30/12m07; 21m40 x 1.5 = 32.5 -> 35 (the
+    # audit job's 50% headroom rule). The floor is one case,
+    # test_openconnect_drawer_container.py::test_endpoint_audit_and_edges
+    # [vertical_grids=8] (672-738 s local, ~21 min CI): no rebalance lowers it.
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:

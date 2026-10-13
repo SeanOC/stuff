@@ -161,7 +161,7 @@ The drawer keeps its three preset audits and six reference parity cases in
 The raw bridge, filtered print audit, exposed-edge inventory and mount-contract
 assertions run unchanged in both jobs.
 **audit_full** (`build123d audit (full sweep)`) runs the cradle, capture-bin and
-drawer endpoint/corner sweeps (`audit_full`) as three `pytest-split` shards,
+drawer endpoint/corner sweeps (`audit_full`) as six `pytest-split` shards,
 balanced by the committed
 `build123d/tests/.test_durations`. A PR runs it only when it touches
 `holders/`, `multibuild/`, `openconnect/`, the audit/contract helpers,
@@ -174,11 +174,18 @@ and calls `audit()` gets `@pytest.mark.audit`; a cradle corner case also gets
 `addopts`, every job's expression ends in `and not upstream`, which keeps PR CI
 offline (`reference/FETCH.md`). Nightly failures are not filed as issues
 (`issues: write` is outside this workflow's permissions); the mayor's heartbeat
-checks `gh run list --workflow bd123 --event schedule`. The nightly also
-re-measures each shard and uploads it as `bd123-test-durations-<n>`. To refresh
-the balance, download the three files, merge them with
-`jq -s add d1 d2 d3 > build123d/tests/.test_durations`, and commit the result
-(optional: a stale file only skews shard balance, never coverage).
-The drawer seed contains 12 measured endpoint durations from the local D2
-review audit; unmeasured cases use pytest-split's average-duration fallback
-until a nightly refresh supplies them.
+checks `gh run list --workflow bd123 --event schedule`. The nightly step
+`upload refreshed durations` has never produced an artifact: its path names the
+dotfile `tests/.test_durations`, which `actions/upload-artifact@v4` skips as a
+hidden file, and the step only warns (repair: pst-mv1b9). Until that lands,
+refresh the balance by a LOCAL measurement on a named `main` SHA, from
+`build123d/`:
+
+```bash
+uv run pytest tests/ -q -n 4 --dist load -m "audit_full and not upstream" \
+  --store-durations --clean-durations --durations-path tests/.test_durations
+```
+
+Then check that every `audit_full` id has an entry, and commit the file with the
+SHA and command in the PR body. A stale or missing entry only skews shard
+balance, never coverage. pst-2z9ng measured all 193 cases on `a84da775`.
