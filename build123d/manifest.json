@@ -201,6 +201,131 @@
       "multiColour": true
     },
     {
+      "slug": "holder-tombstone-stake",
+      "engine": "build123d",
+      "title": "Tombstone stake",
+      "blurb": "Ground stake for the tombstone sign: a flat blade with a 45-degree point and a flared head whose two tenons fit the sign's pockets; optional cross-pin and half-lapped cross-bar.",
+      "categoryId": "household",
+      "params": [
+        {
+          "name": "width",
+          "label": "Shaft width",
+          "group": "Stake",
+          "unit": "mm",
+          "kind": "number",
+          "default": 40.0,
+          "min": 25.0,
+          "max": 60.0,
+          "step": 1.0
+        },
+        {
+          "name": "length",
+          "label": "Length",
+          "description": "Tip to tenon ends: the whole printed length.",
+          "group": "Stake",
+          "unit": "mm",
+          "kind": "number",
+          "default": 300.0,
+          "min": 150.0,
+          "max": 320.0,
+          "step": 1.0
+        },
+        {
+          "name": "thickness",
+          "label": "Thickness",
+          "description": "Match the sign's thickness: the tenons are sized from it.",
+          "group": "Stake",
+          "unit": "mm",
+          "kind": "number",
+          "default": 6.0,
+          "min": 5.0,
+          "max": 10.0,
+          "step": 0.2
+        },
+        {
+          "name": "head_width",
+          "label": "Head width",
+          "group": "Head",
+          "unit": "mm",
+          "kind": "number",
+          "default": 90.0,
+          "min": 87.6,
+          "max": 140.0,
+          "step": 0.5
+        },
+        {
+          "name": "head_height",
+          "label": "Head height",
+          "group": "Head",
+          "unit": "mm",
+          "kind": "number",
+          "default": 30.0,
+          "min": 20.0,
+          "max": 60.0,
+          "step": 1.0
+        },
+        {
+          "name": "retention",
+          "label": "Retention",
+          "description": "'pin' drills the sign's 3.2 mm cross-hole through each tenon; needs thickness >= 7.8 mm.",
+          "group": "Joint",
+          "kind": "enum",
+          "default": "none",
+          "choices": [
+            "none",
+            "pin"
+          ]
+        },
+        {
+          "name": "cross_bar",
+          "label": "Cross-bar",
+          "group": "Cross-bar",
+          "kind": "boolean",
+          "default": false
+        },
+        {
+          "name": "cross_length",
+          "label": "Cross-bar length",
+          "group": "Cross-bar",
+          "unit": "mm",
+          "kind": "number",
+          "default": 200.0,
+          "min": 100.0,
+          "max": 320.0,
+          "step": 1.0
+        }
+      ],
+      "presets": [
+        {
+          "id": "default",
+          "label": "Stake (6 mm)",
+          "values": {}
+        },
+        {
+          "id": "long",
+          "label": "Long (320 mm)",
+          "values": {
+            "length": 320.0
+          }
+        },
+        {
+          "id": "cross-bar",
+          "label": "With cross-bar",
+          "values": {
+            "cross_bar": true
+          }
+        },
+        {
+          "id": "pinned",
+          "label": "Pinned (8 mm)",
+          "values": {
+            "thickness": 8.0,
+            "retention": "pin"
+          }
+        }
+      ]
+    },
+    {
       "slug": "holder-label-card",
       "engine": "build123d",
       "title": "Label card",
