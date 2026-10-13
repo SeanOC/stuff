@@ -495,7 +495,10 @@ def wall_layouts(values=None):
                 raise ValueError(f'container {name.lower()} wall honeycomb opening encloses an '
                                  'island; this parameter combination is unsupported')
         if parts:
-            walls.append((name, plane, HoneycombLayout(parts, wall_ceiling, name), thickness))
+            layout = HoneycombLayout(parts, wall_ceiling, name)
+            # Kept for the frame-clipped opening register (frame_clipped_openings).
+            layout.window, layout.fills = window, unary_union(fills) if fills else Polygon()
+            walls.append((name, plane, layout, thickness))
 
     def window(x0, y0, x1, y1):
         return box(x0, y0, x1, y1) if x1 > x0 and y1 > y0 else Polygon()
