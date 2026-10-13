@@ -37,6 +37,10 @@ reports and flags:
   there instead). Any such face → fail. Library cutters excluded.
 * **bed chamfer** — whether the plate-contact (bed-facing) edges carry a
   small 45° chamfer (elephant-foot relief). Advisory **warn**, never a fail.
+* **build volume** — the print-frame bounding extents: footprint long side
+  ≤ ``BED_X``, short side ≤ ``BED_Y`` (the part may be turned 90° on the
+  plate), height ≤ ``BED_Z`` — **325 × 320 × 325 mm**, the H2S single-nozzle
+  volume (``holders/printer.py``). Blocking and never excluded.
 
 Orientation convention
 ----------------------
@@ -58,10 +62,12 @@ import math
 from dataclasses import dataclass
 
 import OCP.TopAbs as ta
-from build123d import Vector
+from build123d import Plane, Vector
 from build123d.topology import Part
 from OCP.BRepClass3d import BRepClass3d_SolidClassifier
 from OCP.gp import gp_Pnt
+
+from holders.printer import BED_X, BED_Y, BED_Z
 
 # --- thresholds (design-guidelines.md §1) ---------------------------------
 # OCP approximates angle-defined chamfers on curved loops with splines.
@@ -72,6 +78,9 @@ MAX_BRIDGE_MM = 10.0      # longest unsupported flat span
 MIN_WALL_MM = 0.9         # thinnest wall (whole-part floor; load-bearing 1.6 deferred)
 BED_CHAMFER_MIN_MM = 0.3  # elephant-foot chamfer window (warn only)
 BED_CHAMFER_MAX_MM = 0.5
+# Build volume (BED_X/BED_Y/BED_Z, imported above from holders.printer): the
+# print-frame footprint must fit the bed, long side on X (the part may be
+# rotated 90° on the plate), and the height must fit BED_Z. Non-waivable.
 
 # --- probe constants ------------------------------------------------------
 WALL_CAP = 3.0            # mm: wall marching stops here (only thin walls matter)
@@ -100,6 +109,18 @@ class DownwardFillet:
     overhang_deg: float
 
 
+def bed_failure(extent, bed=(BED_X, BED_Y, BED_Z)) -> str | None:
+    """Why a print-frame ``extent`` (footprint, footprint, height) does not
+    fit the build volume ``bed``, or None when it fits. The footprint may be
+    turned 90° on the plate: long side against X, short side against Y."""
+    a, b, h = extent
+    bx, by, bz = bed
+    if max(a, b) <= bx + 1e-6 and min(a, b) <= by + 1e-6 and h <= bz + 1e-6:
+        return None
+    return (f"extent {a:.1f} × {b:.1f} × {h:.1f} mm exceeds the "
+            f"{bx:.0f} × {by:.0f} × {bz:.0f} mm build volume")
+
+
 @dataclass(frozen=True)
 class PrintAuditReport:
     """The typed audit result (AC 1). ``ok`` is False when any blocking rule
@@ -112,10 +133,13 @@ class PrintAuditReport:
     min_wall_mm: float
     downward_fillets: tuple[DownwardFillet, ...]
     bed_chamfer: str  # "present" | "absent" | "n/a"
+    # print-frame extents (footprint u1, footprint u2, height along up), mm
+    extent_mm: tuple[float, float, float] = (0.0, 0.0, 0.0)
     # thresholds echoed so a report is self-describing when pasted into a PR
     overhang_threshold_deg: float = MAX_OVERHANG_DEG
     bridge_threshold_mm: float = MAX_BRIDGE_MM
     wall_threshold_mm: float = MIN_WALL_MM
+    bed_threshold_mm: tuple[float, float, float] = (BED_X, BED_Y, BED_Z)
 
     def failures(self) -> list[str]:
         """Blocking rule violations (empty = printable). Bed chamfer excluded
@@ -135,6 +159,8 @@ class PrintAuditReport:
             out.append(
                 f"wall {self.min_wall_mm:.2f} mm < {self.wall_threshold_mm:.1f} mm minimum"
             )
+        if (bed := bed_failure(self.extent_mm, self.bed_threshold_mm)) is not None:
+            out.append(bed)
         if self.downward_fillets:
             locs = ", ".join(
                 f"{d.geom_type}@({d.location[0]:.0f},{d.location[1]:.0f},"
@@ -167,6 +193,10 @@ class PrintAuditReport:
             f"  dn fillets : {len(self.downward_fillets):5d}     (= 0)    "
             f"{'OK' if not self.downward_fillets else 'FAIL'}",
             f"  bed chamfer: {self.bed_chamfer:>7}   (warn)",
+            f"  extent     : {self.extent_mm[0]:.1f} × {self.extent_mm[1]:.1f} × "
+            f"{self.extent_mm[2]:.1f} mm (≤ {self.bed_threshold_mm[0]:.0f} × "
+            f"{self.bed_threshold_mm[1]:.0f} × {self.bed_threshold_mm[2]:.0f}) "
+            f"{'OK' if bed_failure(self.extent_mm, self.bed_threshold_mm) is None else 'FAIL'}",
             f"  => {'PASS' if self.ok else 'FAIL: ' + '; '.join(self.failures())}",
         ]
         return "\n".join(lines)
@@ -663,6 +693,15 @@ def _min_wall(part, up, boxes):
     return best
 
 
+def print_extent(part, up) -> tuple[float, float, float]:
+    """The part's bounding extents in the print frame: along the two
+    build-plate axes (``_in_plane_axes``; X and Y for up = +Z) and along
+    ``up`` (the print height)."""
+    u1, _ = _in_plane_axes(up)
+    bb = Plane(origin=(0, 0, 0), x_dir=u1, z_dir=up).to_local_coords(part).bounding_box()
+    return (round(bb.size.X, 3), round(bb.size.Y, 3), round(bb.size.Z, 3))
+
+
 def _bed_chamfer(part, up, hmin) -> str:
     """Advisory: is there a small 45° chamfer on the plate-contact edges?
 
@@ -738,6 +777,7 @@ def audit(
     if not verts:
         raise ValueError(f"{model}: part has no geometry to audit")
     hmin = min(_height(v, up) for v in verts)
+    extent = print_extent(part, up)
     part = _ClassifiedPart(part)
 
     return PrintAuditReport(
@@ -748,4 +788,5 @@ def audit(
         min_wall_mm=round(_min_wall(part, up, boxes), 3),
         downward_fillets=_downward_curved_faces(part, up, boxes, hmin),
         bed_chamfer=_bed_chamfer(part, up, hmin),
+        extent_mm=extent,
     )
