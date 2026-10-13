@@ -19,24 +19,25 @@
 // matched (already SAFE_ID_RE-validated) slug/preset, we still confirm
 // the resolved path stays under BAKED_ROOT.
 //
-// Only the baked GLBs ship in the Vercel function (pst-acoed:
-// next.config.mjs traces build123d/baked/**/*.glb; the STL/3MF/per-colour
-// STLs pushed the function past Vercel's 250 MB limit). So a baked STL or
-// 3MF that is not on disk is rendered on demand from the preset's values
-// through /api/bd-render (its live service + content-addressed cache),
-// under the same preset download name. A missing GLB stays a loud 404.
+// Only the baked GLBs ship in the Vercel function (pst-acoed: the
+// STL/3MF/per-colour STLs pushed it past Vercel's 250 MB limit). On a
+// Vercel build the bake publishes every preset STL (and 3MF, for
+// multiColour models) to Vercel Blob and records the URLs in
+// build123d/baked/blob-record.json (scripts/upload-bd-baked.mjs,
+// pst-scmib); this route streams the recorded blob, same-origin, under
+// the same headers as a disk read. Off Vercel (local dev, e2e) there is
+// no record and the bake's files are read from disk. Nothing here
+// renders on request: a preset download is ALWAYS a baked artefact, and
+// a missing one is a loud 404. Non-preset parameter sets render through
+// /api/bd-render (the detail page's download button for tweaked params).
 
 import fs from "node:fs/promises";
 import path from "node:path";
 import { NextRequest } from "next/server";
 import { loadBdModel } from "@/lib/models/bd-manifest";
-import { POST as bdRender } from "@/app/api/bd-render/route";
+import { bakedBlobEntry } from "@/lib/models/bd-baked-record";
 
 export const runtime = "nodejs";
-// An STL/3MF missing from the bundle is rendered in-process through
-// /api/bd-render, whose segment config does not travel with the call:
-// match its budget (bd-client's 100 s service timeout + headroom).
-export const maxDuration = 120;
 
 const BAKED_ROOT = path.resolve(process.cwd(), "build123d", "baked");
 
@@ -82,17 +83,33 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
     return jsonError(400, "resolved asset path escapes the baked root");
   }
 
+  if (format !== "glb") {
+    const entry = await bakedBlobEntry(BAKED_ROOT, slug, preset, format);
+    if (entry) {
+      const upstream = await fetch(entry.url);
+      if (!upstream.ok || !upstream.body) {
+        return jsonError(
+          502,
+          `baked asset ${slug}/${preset}.${format} unavailable from the blob ` +
+            `store (HTTP ${upstream.status})`,
+        );
+      }
+      return new Response(upstream.body, {
+        status: 200,
+        headers: assetHeaders(slug, preset, format, entry.size),
+      });
+    }
+  }
+
   let bytes: Buffer;
   try {
     bytes = await fs.readFile(abs);
   } catch (e) {
-    if ((e as NodeJS.ErrnoException).code === "ENOENT" && format !== "glb") {
-      return renderOnDemand(req, slug, preset, format, presetEntry.values);
-    }
     if ((e as NodeJS.ErrnoException).code === "ENOENT") {
-      // Manifest declares it but the bake didn't produce it — the build
-      // step (BD_MODELS_ENABLED bake) didn't run or failed. Loud 404 so
-      // the failure is visible rather than a silent empty viewer.
+      // Manifest declares it but the bake didn't produce (or, on Vercel,
+      // record) it — the BD_MODELS_ENABLED build step didn't run or
+      // failed. Loud 404 so the failure is visible rather than a silent
+      // empty viewer or a request-time render.
       return jsonError(
         404,
         `baked asset missing: ${slug}/${preset}.${format} — was the ` +
@@ -106,10 +123,21 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
   // BodyInit carrying no unrelated heap.
   const body = new Uint8Array(bytes.byteLength);
   body.set(bytes);
+  return new Response(body, {
+    status: 200,
+    headers: assetHeaders(slug, preset, format, body.byteLength),
+  });
+}
 
+function assetHeaders(
+  slug: string,
+  preset: string,
+  format: Format,
+  length: number,
+): Record<string, string> {
   const headers: Record<string, string> = {
     "content-type": CONTENT_TYPE[format],
-    "content-length": String(body.byteLength),
+    "content-length": String(length),
     // This URL (/api/bd-asset/<slug>/<preset>) is stable across deploys,
     // but the baked bytes behind it change whenever model geometry or a
     // preset value changes. It is NOT content-addressed (unlike /api/export's
@@ -127,36 +155,7 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
     headers["content-disposition"] =
       `attachment; filename="${slug}-${preset}.${format}"`;
   }
-
-  return new Response(body, { status: 200, headers });
-}
-
-async function renderOnDemand(
-  req: NextRequest,
-  slug: string,
-  preset: string,
-  format: "stl" | "3mf",
-  values: Record<string, unknown>,
-): Promise<Response> {
-  // bd-render authenticates to the service with the inbound Vercel OIDC
-  // header (env token is only the local-dev fallback), so forward it.
-  const fwd = new Headers({ "content-type": "application/json" });
-  const oidc = req.headers.get("x-vercel-oidc-token");
-  if (oidc) fwd.set("x-vercel-oidc-token", oidc);
-  const res = await bdRender(
-    new NextRequest(new URL(`/api/bd-render?format=${format}`, req.url), {
-      method: "POST",
-      headers: fwd,
-      body: JSON.stringify({ slug, params: values }),
-    }),
-  );
-  if (!res.ok) return res;
-  const headers = new Headers(res.headers);
-  headers.set("content-disposition", `attachment; filename="${slug}-${preset}.${format}"`);
-  // bd-render's HIT is content-addressed (immutable); this URL is not, so
-  // keep the revalidating policy the baked path uses.
-  headers.set("cache-control", "public, max-age=0, must-revalidate");
-  return new Response(res.body, { status: res.status, headers });
+  return headers;
 }
 
 function jsonError(status: number, error: string): Response {

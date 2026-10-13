@@ -117,6 +117,12 @@ export default function BdDetailPage({ model }: { model: BdDetailPageModel }) {
   }, [bd.state]);
 
   const showingLive = liveGlb !== null;
+  // The controls still hold a preset's own values, so its baked download
+  // IS the current params (pst-scmib) — no request-time render.
+  const bakedPresetId =
+    detail.state.activePresetId !== null && !detail.state.modified
+      ? detail.state.activePresetId
+      : null;
 
   // Staleness: does the on-screen geometry match the live controls?
   //   • Showing a live render → compare against its snapshot.
@@ -353,10 +359,12 @@ export default function BdDetailPage({ model }: { model: BdDetailPageModel }) {
             })}
           </div>
 
-          {/* Download — always the CURRENT live params via /api/bd-render. */}
+          {/* Download — the CURRENT params: the baked preset while unmodified,
+              else a live /api/bd-render. */}
           <BdDownload
             format="stl"
             slug={model.slug}
+            bakedPresetId={bakedPresetId}
             params={model.params}
             values={detail.state.params}
           />
@@ -364,6 +372,7 @@ export default function BdDetailPage({ model }: { model: BdDetailPageModel }) {
             <BdDownload
               format="3mf"
               slug={model.slug}
+              bakedPresetId={bakedPresetId}
               params={model.params}
               values={detail.state.params}
             />
@@ -416,18 +425,23 @@ const DOWNLOAD_LABEL = {
   "3mf": { idle: "Download 3MF (multi-colour)", busy: "Preparing 3MF…" },
 };
 
-// STL / 3MF download for build123d: always renders the CURRENT live params
-// via /api/bd-render?format=<format> (AC6) — a tweaked download reflects the
-// tweak, not just the baked preset. No WASM fallback, so a disabled/
+// STL / 3MF download for build123d: always the CURRENT params (AC6) — a
+// tweaked download reflects the tweak, not just the baked preset. While
+// the controls still hold a preset's values, that is the preset's baked
+// file via /api/bd-asset (pst-scmib: the tombstone sign's 3MF takes
+// longer than bd-render's 90 s timeout); once modified, a live render via
+// /api/bd-render?format=<format>. No WASM fallback, so a disabled/
 // unreachable service surfaces a friendly inline error.
 function BdDownload({
   format,
   slug,
+  bakedPresetId,
   params,
   values,
 }: {
   format: "stl" | "3mf";
   slug: string;
+  bakedPresetId: string | null;
   params: Param[];
   values: Record<string, ParamValue>;
 }) {
@@ -436,11 +450,13 @@ function BdDownload({
   const download = useCallback(async () => {
     setState({ kind: "exporting" });
     try {
-      const res = await fetch(`/api/bd-render?format=${format}`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ slug, params: values }),
-      });
+      const res = bakedPresetId
+        ? await fetch(`/api/bd-asset/${slug}/${bakedPresetId}?format=${format}`)
+        : await fetch(`/api/bd-render?format=${format}`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ slug, params: values }),
+          });
       if (!res.ok) {
         let message =
           res.status === 503
@@ -472,7 +488,7 @@ function BdDownload({
         message: e instanceof Error ? e.message : "network error",
       });
     }
-  }, [format, slug, params, values]);
+  }, [format, slug, bakedPresetId, params, values]);
 
   return (
     <div className={format === "stl" ? "mt-16" : "mt-8"}>

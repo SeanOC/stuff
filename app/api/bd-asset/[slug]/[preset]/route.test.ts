@@ -11,22 +11,16 @@ import os from "node:os";
 import { NextRequest } from "next/server";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { GET } from "./route";
+import { BLOB_RECORD_FILE } from "@/lib/models/bd-baked-record";
+// @ts-expect-error -- untyped JS; vitest loads it as ESM
+import { bakedDownloads } from "@/scripts/upload-bd-baked.mjs";
+// @ts-expect-error -- next.config.mjs is untyped JS; vitest loads it as ESM
+import nextConfig from "@/next.config.mjs";
 
-// Baked STL/3MF are not in the Vercel function (pst-acoed), so a missing
-// one is rendered on demand through /api/bd-render's handler.
-const bdRender = vi.hoisted(() =>
-  vi.fn(async (_req: Request) =>
-    new Response(new Uint8Array([9, 9, 9]), {
-      status: 200,
-      headers: {
-        "content-type": "application/sla",
-        "content-disposition": 'attachment; filename="live-name.stl"',
-        "cache-control": "public, max-age=31536000, immutable",
-        "x-cache": "HIT",
-      },
-    }),
-  ),
-);
+// A preset download is never rendered on request (pst-scmib). The route no
+// longer imports /api/bd-render; the mock stays so a regression that
+// re-adds a render fallback is caught by the not-called assertions.
+const bdRender = vi.hoisted(() => vi.fn(async (_req: Request) => new Response(null)));
 vi.mock("@/app/api/bd-render/route", () => ({ POST: bdRender }));
 
 const BAKED_ROOT = path.resolve(process.cwd(), "build123d", "baked");
@@ -167,39 +161,16 @@ describe("/api/bd-asset", () => {
     expect(new Uint8Array(await res.arrayBuffer())).toEqual(THREEMF_BYTES);
   });
 
-  it("renders a baked-missing STL on demand from the preset's values, under the preset name", async () => {
+  it("404s a baked-missing STL with no blob record — never renders on request", async () => {
     const baked = path.join(BAKED_ROOT, LABEL_SLUG, `${LABEL_PRESET}.stl`);
     const aside = fs.existsSync(baked) ? fs.readFileSync(baked) : null;
     fs.rmSync(baked, { force: true });
     try {
       bdRender.mockClear();
-      const res = await GET(
-        new NextRequest(`http://localhost/api/bd-asset/${LABEL_SLUG}/${LABEL_PRESET}?format=stl`, {
-          headers: { "x-vercel-oidc-token": "oidc-abc" },
-        }),
-        { params: Promise.resolve({ slug: LABEL_SLUG, preset: LABEL_PRESET }) },
-      );
-      expect(res.status).toBe(200);
-      // bd-render's HIT is immutable; this preset URL is not content-addressed.
-      expect(res.headers.get("cache-control")).toBe("public, max-age=0, must-revalidate");
-      expect(res.headers.get("content-disposition")).toBe(
-        `attachment; filename="${LABEL_SLUG}-${LABEL_PRESET}.stl"`,
-      );
-      expect(new Uint8Array(await res.arrayBuffer())).toEqual(new Uint8Array([9, 9, 9]));
-      expect(bdRender).toHaveBeenCalledTimes(1);
-      const forwarded = bdRender.mock.calls[0][0];
-      expect(new URL(forwarded.url).searchParams.get("format")).toBe("stl");
-      expect(forwarded.headers.get("x-vercel-oidc-token")).toBe("oidc-abc");
-      const body = await forwarded.json();
-      expect(body.slug).toBe(LABEL_SLUG);
-      const manifest = JSON.parse(
-        fs.readFileSync(path.resolve(process.cwd(), "build123d", "manifest.json"), "utf8"),
-      );
-      const models = Array.isArray(manifest) ? manifest : manifest.models;
-      const preset = models
-        .find((m: { slug: string }) => m.slug === LABEL_SLUG)
-        .presets.find((p: { id: string }) => p.id === LABEL_PRESET);
-      expect(body.params).toEqual(preset.values);
+      const res = await call(LABEL_SLUG, LABEL_PRESET, "stl");
+      expect(res.status).toBe(404);
+      expect((await res.json()).error).toContain("baked asset missing");
+      expect(bdRender).not.toHaveBeenCalled();
     } finally {
       if (aside) fs.writeFileSync(baked, aside);
     }
@@ -251,5 +222,123 @@ describe("/api/bd-asset", () => {
     } finally {
       fs.writeFileSync(glb, GLB_BYTES);
     }
+  });
+});
+
+// D2 (pst-scmib): on a Vercel build every preset download is served from the
+// bake's Blob record. Fixture record over the COMMITTED manifest (every
+// preset's STL + every multiColour preset's 3MF) with a stubbed blob fetch,
+// so this runs in CI where nothing is baked.
+describe("/api/bd-asset from the bake's Blob record", () => {
+  const recordPath = path.join(BAKED_ROOT, BLOB_RECORD_FILE);
+  const manifest = JSON.parse(
+    fs.readFileSync(path.resolve(process.cwd(), "build123d", "manifest.json"), "utf8"),
+  );
+  const downloads: { slug: string; preset: string; format: "stl" | "3mf" }[] =
+    bakedDownloads(manifest);
+  const keyOf = (d: { slug: string; preset: string; format: string }) =>
+    `${d.slug}/${d.preset}.${d.format}`;
+  const urlOf = (key: string) => `https://blob.test/bd-baked/production/x/${key}`;
+  const bytesOf = (key: string) => new TextEncoder().encode(`baked:${key}`);
+
+  function writeRecord(skip?: string) {
+    const assets = Object.fromEntries(
+      downloads
+        .map(keyOf)
+        .filter((key) => key !== skip)
+        .map((key) => [
+          key,
+          { url: urlOf(key), pathname: key, size: bytesOf(key).byteLength, sha256: "0" },
+        ]),
+    );
+    fs.writeFileSync(
+      recordPath,
+      JSON.stringify({ schemaVersion: 1, env: "production", commit: "c0ffee", assets }),
+    );
+  }
+
+  let originalRecord: Buffer | null = null;
+  const fetchMock = vi.fn(async (url: string | URL | Request) => {
+    const key = downloads.map(keyOf).find((k) => urlOf(k) === String(url));
+    return key
+      ? new Response(bytesOf(key), { status: 200 })
+      : new Response("not found", { status: 404 });
+  });
+  beforeAll(() => {
+    originalRecord = fs.existsSync(recordPath) ? fs.readFileSync(recordPath) : null;
+    vi.stubGlobal("fetch", fetchMock);
+  });
+  afterAll(() => {
+    vi.unstubAllGlobals();
+    if (originalRecord) fs.writeFileSync(recordPath, originalRecord);
+    else fs.rmSync(recordPath, { force: true });
+  });
+
+  it("covers every advertised download of the committed manifest", () => {
+    expect(downloads.length).toBeGreaterThan(0);
+    expect(downloads.some((d) => d.format === "3mf")).toBe(true);
+  });
+
+  it("serves every preset STL/3MF from its recorded blob, never rendering", async () => {
+    writeRecord();
+    bdRender.mockClear();
+    for (const d of downloads) {
+      const key = keyOf(d);
+      fetchMock.mockClear();
+      const res = await call(d.slug, d.preset, d.format);
+      expect(res.status, key).toBe(200);
+      expect(fetchMock).toHaveBeenCalledWith(urlOf(key));
+      expect(res.headers.get("content-type")).toBe(
+        d.format === "3mf" ? "model/3mf" : "application/sla",
+      );
+      expect(res.headers.get("content-disposition")).toBe(
+        `attachment; filename="${d.slug}-${d.preset}.${d.format}"`,
+      );
+      expect(res.headers.get("content-length")).toBe(String(bytesOf(key).byteLength));
+      expect(res.headers.get("cache-control")).toBe("public, max-age=0, must-revalidate");
+      expect(new Uint8Array(await res.arrayBuffer())).toEqual(bytesOf(key));
+    }
+    expect(bdRender).not.toHaveBeenCalled();
+  });
+
+  it("FAILS loudly (404) for a preset the record lacks and the disk doesn't hold", async () => {
+    const missing = downloads.find((d) => d.format === "3mf")!;
+    const onDisk = path.join(BAKED_ROOT, keyOf(missing));
+    const aside = fs.existsSync(onDisk) ? fs.readFileSync(onDisk) : null;
+    fs.rmSync(onDisk, { force: true });
+    try {
+      writeRecord(keyOf(missing));
+      bdRender.mockClear();
+      const res = await call(missing.slug, missing.preset, missing.format);
+      expect(res.status).toBe(404);
+      expect((await res.json()).error).toContain("baked asset missing");
+      expect(bdRender).not.toHaveBeenCalled();
+    } finally {
+      if (aside) fs.writeFileSync(onDisk, aside);
+    }
+  });
+
+  it("502s (no render) when the blob store can't serve a recorded artefact", async () => {
+    writeRecord();
+    const d = downloads[0];
+    fetchMock.mockResolvedValueOnce(new Response("gone", { status: 404 }));
+    const res = await call(d.slug, d.preset, d.format);
+    expect(res.status).toBe(502);
+    expect((await res.json()).error).toContain("unavailable from the blob store (HTTP 404)");
+    expect(bdRender).not.toHaveBeenCalled();
+  });
+
+  it("keeps serving the viewer GLB from the function bundle, not the record", async () => {
+    writeRecord();
+    fetchMock.mockClear();
+    const res = await call(SLUG, PRESET, "glb");
+    expect(res.status).toBe(200);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("ships the record in the bd-asset function (file tracing include)", () => {
+    expect(nextConfig.outputFileTracingIncludes["/api/bd-asset/[slug]/[preset]"]).toContain(
+      `./build123d/baked/${BLOB_RECORD_FILE}`,
+    );
   });
 });

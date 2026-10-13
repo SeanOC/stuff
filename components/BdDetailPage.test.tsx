@@ -151,6 +151,30 @@ describe("BdDetailPage label text + 3MF", () => {
     expect(JSON.parse(String((init as RequestInit).body)).params.text).toBe("PLA");
     expect(clicked).toEqual(["holder-label-card.3mf"]);
   });
+
+  it("an unmodified preset downloads its baked file, never a live render (pst-scmib)", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async () => new Response(new Uint8Array([0x50, 0x4b]), { status: 200 }));
+    URL.createObjectURL = vi.fn(() => "blob:x");
+    URL.revokeObjectURL = vi.fn();
+    const clicked: string[] = [];
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+      clicked.push(this.download);
+    });
+    const { getByTestId } = render(<BdDetailPage model={LABEL} />);
+    for (const format of ["3mf", "stl"]) {
+      await act(async () => {
+        fireEvent.click(getByTestId(`bd-download-${format}`));
+      });
+    }
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      "/api/bd-asset/holder-label-card/inlaid?format=3mf",
+      "/api/bd-asset/holder-label-card/inlaid?format=stl",
+    ]);
+    // Same file name as a live render of the same values.
+    expect(clicked).toEqual(["holder-label-card.3mf", "holder-label-card.stl"]);
+  });
 });
 
 describe("BdDetailPage camera hint (pst-5b83s)", () => {

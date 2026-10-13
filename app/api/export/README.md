@@ -83,6 +83,39 @@ Key composition and hit/miss/invalidation are covered by
 `lib/wasm/export-cache.test.ts` (unit) and `app/api/export/route.test.ts`
 (end-to-end with an in-memory blob mock).
 
+## build123d preset downloads: `/api/bd-asset` (pst-scmib)
+
+The build123d preset downloads (`/api/bd-asset/<slug>/<preset>?format=stl`,
+and `format=3mf` for multiColour models) are **never rendered on request**.
+They are baked at build time and served as static bytes; only the viewer
+GLBs ship in the function bundle (pst-acoed's 250 MB limit).
+
+- **Write side** — `scripts/bake-bd-presets.sh` (prebuild, only when
+  `BD_MODELS_ENABLED=1`) runs `export.py`, then
+  `scripts/upload-bd-baked.mjs`. On a Vercel build (`VERCEL_ENV` set) that
+  uploads every preset's STL, plus the 3MF of multiColour models, to the
+  linked Blob store under
+  `bd-baked/<VERCEL_ENV>/<sha256 of the bytes>/<slug>-<preset>.<fmt>` with
+  `allowOverwrite: false`, then writes `build123d/baked/blob-record.json`
+  (`"<slug>/<preset>.<fmt>" → url, size, sha256`, plus env and commit).
+  Per-colour STLs are never uploaded.
+- **Key scheme** — the environment prefix keeps a preview bake out of
+  production's keys (one token serves all environments); the content hash
+  means no key ever changes bytes, so unchanged presets re-use their key
+  (no per-deploy re-upload) and an instant rollback still finds every key
+  its record names. Nothing is deleted. This is deliberately NOT the
+  `export-cache/` idiom above (`allowOverwrite: true` on a shared path).
+- **Read side** — the route looks the download up in `blob-record.json`
+  (traced into its function by `next.config.mjs`) and streams the blob
+  same-origin under its usual headers. With no record (local dev, e2e) it
+  reads `build123d/baked/` from disk. A download in neither is a loud 404.
+- **Fails hard** — a missing baked artefact, or `VERCEL_ENV` without
+  `BLOB_READ_WRITE_TOKEN`, fails the build.
+- **When rendering applies** — only to non-preset parameter sets: the
+  detail page's Download buttons fetch the baked preset while the controls
+  are unmodified and POST `/api/bd-render` once a parameter is tweaked
+  (subject to the service's `BD_RENDER_TIMEOUT`).
+
 ## Native render service path (st-d32)
 
 When `RENDER_SERVICE_URL` is set, a cache **MISS** renders via the native
