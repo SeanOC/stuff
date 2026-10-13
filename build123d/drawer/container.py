@@ -464,8 +464,11 @@ def _back_fill(d, v):
 
 
 def opening_diameter(opening):
-    """Largest inscribed circle diameter of a through-wall opening (all parts)."""
-    return max((2*maximum_inscribed_circle(p, .001).length
+    """Inscribed circle diameter of the SMALLEST piece of a through-wall
+    opening: a 45 deg roof can split a cell in two (docs/openconnect-drawer.md),
+    and the small lobe is a real hole, so the cell is judged by it
+    (review round 5 B1, PR #190)."""
+    return min((2*maximum_inscribed_circle(p, .001).length
                 for p in getattr(opening, 'geoms', [opening]) if not p.is_empty), default=0.)
 
 

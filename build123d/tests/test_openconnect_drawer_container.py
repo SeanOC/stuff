@@ -335,6 +335,7 @@ def test_lattice_openings_under_2mm_are_closed(name, values):
         container.opening_diameter(prof) >= container.c.MIN_LATTICE_OPENING_MM
         for prof, _, _ in w[2].profiles((0, 1)))]
     kept = {name: layout for name, _, layout, _ in closed}
+    shut = []
     for wall, _, layout, _ in raw:
         keep = kept[wall].openings if wall in kept else []
         assert all(any(p.equals(q) for q in layout.openings) for p in keep), wall
@@ -343,6 +344,9 @@ def test_lattice_openings_under_2mm_are_closed(name, values):
             diameter = container.opening_diameter(profiles[id(p)][0])
             assert any(p.equals(q) for q in keep) == (diameter >= container.c.MIN_LATTICE_OPENING_MM), \
                 (wall, round(diameter, 3))
+            if diameter < container.c.MIN_LATTICE_OPENING_MM:
+                shut.append(diameter)
+    print(f'CLOSED | {name} | {len(shut)} | {min(shut, default=0):.3f}')
     # Rule 3: no through-wall opening under 2 mm in production.
     assert all(container.opening_diameter(prof) >= container.c.MIN_LATTICE_OPENING_MM
                for _, _, layout, _ in closed for prof, _, _ in layout.profiles((0, 1)))

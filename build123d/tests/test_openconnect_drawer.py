@@ -259,7 +259,9 @@ def test_reference_exposed_edge_angles():
 # test_openconnect_drawer_container.py.
 CASES = [(p.id, p.values) for p in m.SPEC.presets if p.values.get('part') != 'container'] + [
     (f'{p.name}={x:g}', {p.name: x}) for p in m.SPEC.params
-    if p.kind in ('number', 'integer') for x in (p.min, p.max) if x is not None
+    # Container-only params leave the shell unchanged (asserted below).
+    if p.kind in ('number', 'integer') and p.group != 'Container'
+    for x in (p.min, p.max) if x is not None
 ] + [
     ('1x1x1', dict(horizontal_grids=1, vertical_grids=1, depth_grids=1)),
     ('honeycomb-strut-2', dict(honeycomb_strut_hyp=2)),
@@ -370,3 +372,10 @@ def test_mount_entry_axis_in_model_frame(face, entry_axis, face_normal, slots):
     if face in ('Back', 'Left', 'Right'):
         for seat, onramp in zip(fx.seat_locs, fx.onramp_locs, strict=True):
             assert seat.position.Z - onramp.position.Z > 0
+
+
+def test_container_params_do_not_change_the_shell():
+    """Why the shell endpoint sweep skips the Container group."""
+    varied = {'part': 'shell', 'container_solid_wall_thickness': 3, 'label_thickness': .6,
+              'handle_depth': 20}
+    assert m.build(varied).volume == m.build({'part': 'shell'}).volume

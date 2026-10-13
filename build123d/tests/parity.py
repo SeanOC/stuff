@@ -85,7 +85,7 @@ def point_distances(points, target, *, signed):
     measure = (trimesh.proximity.signed_distance if signed
                else lambda mesh, chunk: trimesh.proximity.closest_point(mesh, chunk)[1])
     return np.concatenate([measure(target, points[i:i+_CHUNK])
-                           for i in range(0, len(points), _CHUNK)])
+                           for i in range(0, len(points), _CHUNK)] or [np.empty(0)])
 
 
 _CHUNK = 1000

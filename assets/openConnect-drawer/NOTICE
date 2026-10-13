@@ -25,7 +25,8 @@ Compare facet count, bbox (1e-6 mm), signed volume (1e-6 relative), and
 canonical triangle vertices (exact or within 1e-6 mm). REV 3c also accepts
 unmatched triangles when all their vertices lie within 1e-4 mm of vertices
 in the other mesh AND they form coplanar quads with the same vertex set
-split on alternate diagonals. All ten renders PASS under these rules.
+split on alternate diagonals. All ten pst-t0ob3.1 renders PASS under these
+rules; later meshes carry their own rows below.
 Committed meshes are the mayor baselines copied verbatim; SHA256SUMS records
 those baseline bytes. Both baseline and independent worker hashes follow.
 
