@@ -209,6 +209,35 @@ test("STL download uses the CURRENT live params via /api/bd-render?format=stl", 
   expect(statSync(p!).size).toBeGreaterThan(1000);
 });
 
+test("an UNMODIFIED preset downloads its baked STL via /api/bd-asset, never /api/bd-render", async ({
+  page,
+}) => {
+  // pst-scmib: a preset's download is the baked artefact — the tombstone
+  // sign's 3MF takes longer than bd-render's 90 s timeout to render.
+  let renderCalls = 0;
+  await page.route(/\/api\/bd-render/, async (route: Route) => {
+    renderCalls++;
+    await route.fulfill({ status: 500, body: "bd-render must not be called" });
+  });
+
+  await page.goto(`/models/${SLUG}`);
+  await expect(page.getByTestId("bd-detail-root")).toBeVisible();
+  await expect(page.getByTestId("bd-glb-size")).toBeVisible();
+
+  const assetResponse = page.waitForResponse(
+    (r) => r.url().includes(`/api/bd-asset/${SLUG}/`) && r.url().includes("format=stl"),
+  );
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByTestId("bd-download-stl").click(),
+  ]);
+  expect((await assetResponse).status()).toBe(200);
+  expect(renderCalls).toBe(0);
+  const p = await download.path();
+  const { statSync } = await import("node:fs");
+  expect(statSync(p!).size).toBe(bakedStl().byteLength);
+});
+
 test("a disabled/unreachable service shows a friendly error (no WASM fallback)", async ({
   page,
 }) => {

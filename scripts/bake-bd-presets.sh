@@ -53,5 +53,11 @@ uv sync --frozen
 echo "bake-bd-presets: baking presets into build123d/baked/…"
 uv run python scripts/export.py --presets-only baked
 
+# The baked STL/3MF are not in the Vercel function (pst-acoed); on a Vercel
+# build, publish them to Blob and record their URLs for /api/bd-asset
+# (pst-scmib). Off Vercel this only checks every download was baked.
+echo "bake-bd-presets: publishing baked downloads…"
+node "$ROOT/scripts/upload-bd-baked.mjs"
+
 echo "bake-bd-presets: done."
 ls -R baked

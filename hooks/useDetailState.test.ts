@@ -64,6 +64,20 @@ describe("useDetailState — preset binding", () => {
     expect(result.current.state.modified).toBe(false);
   });
 
+  it("loadPreset of a PARTIAL preset carries other tweaks forward with modified=false", () => {
+    // Every build123d model ships partial presets. `modified` therefore does
+    // NOT mean "controls == preset's baked params" — BdDetailPage compares
+    // values before serving a baked download (pst-scmib).
+    const partial: Preset[] = [{ id: "p", label: "Partial", values: { d: 46 } }];
+    const { result } = renderHook(() =>
+      useDetailState({ params: PARAMS, stockPresets: partial, slug: "m" }),
+    );
+    act(() => result.current.setParam("c", 0.9));
+    act(() => result.current.loadPreset("p"));
+    expect(result.current.state.params).toEqual({ d: 46, c: 0.9, open: true });
+    expect(result.current.state.modified).toBe(false);
+  });
+
   it("setParam flips modified when the active preset no longer matches", () => {
     const { result } = renderHook(() =>
       useDetailState({ params: PARAMS, stockPresets: STOCK, slug: "m" }),
