@@ -605,6 +605,11 @@ def test_model_print_audit(spec, capsys):
     report = _audit_model(spec)
     with capsys.disabled():
         print("\n" + report.format())
+    # The bed check is non-waivable, so it gates even an advisory smoke model.
+    # Every preset is audited by its model's own per-preset test, whose
+    # report.ok carries the same check (pst-hruv1).
+    bed = bed_failure(report.extent_mm)
+    assert bed is None, f"{spec.name}: {bed}"
     if report.ok:
         return
     gating = PRINT_AUDIT_REQUIRED and _is_production(spec)
@@ -676,20 +681,32 @@ def test_angle_tolerance_does_not_hide_real_overhang():
     assert _downward_curved_faces(cone, _UP_Z, [], -10)
 
 
-# Every preset; the defaults only for a model without presets (smoke tiles).
-_PRESET_CASES = [(spec, preset) for spec in _SPECS
-                 for preset in (spec.presets or (None,))]
+# Presets whose own per-preset audit runs only in the audit_full tier (their
+# params carry audit_full, which bd123's `-m "audit and not audit_full"` drops),
+# so the audit tier would otherwise lose their non-waivable bed check (pst-hruv1).
+_BED_ONLY_IDS = {
+    ("littletikes_dream_machine_cartridge_holder", "full_holder"),
+    ("gridfinity_capture_bin", "deep"),
+    ("gridfinity_capture_bin", "wide"),
+}
+_BED_ONLY_CASES = [(spec, preset) for spec in _SPECS for preset in spec.presets
+                   if (spec.name, preset.id) in _BED_ONLY_IDS]
 
 
-# Builds every preset of every model (no audit) -> bd123 `audit` job.
+def test_bed_only_cases_all_resolve():
+    """A renamed model or preset must not silently drop out of the bed gate."""
+    assert {(s.name, p.id) for s, p in _BED_ONLY_CASES} == _BED_ONLY_IDS
+
+
 @pytest.mark.audit
-@pytest.mark.parametrize("spec, preset", _PRESET_CASES, ids=[
-    f"{s.name}-{p.id if p else 'default'}" for s, p in _PRESET_CASES])
-def test_every_preset_fits_the_bed(spec, preset):
-    values = spec.resolve_values(preset.values if preset else None)
+@pytest.mark.parametrize("spec, preset", _BED_ONLY_CASES, ids=[
+    f"{s.name}-{p.id}" for s, p in _BED_ONLY_CASES])
+def test_audit_full_only_presets_fit_the_bed(spec, preset):
+    values = spec.resolve_values(preset.values)
     part = spec.build(values)
     if spec.print_frame:
         part = spec.print_frame(values) * part
     extent = print_extent(part, _unit(spec.print_orientation))
-    print(f"BED EXTENT | {spec.name} | {preset.id if preset else 'default'} | {extent}")
-    assert bed_failure(extent) is None, f"{spec.name}: {bed_failure(extent)}"
+    print(f"BED EXTENT | {spec.name} | {preset.id} | {extent}")
+    bed = bed_failure(extent)
+    assert bed is None, f"{spec.name}: {bed}"
