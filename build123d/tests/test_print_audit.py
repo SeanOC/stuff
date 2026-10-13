@@ -63,6 +63,7 @@ from tests.print_audit import (  # noqa: E402
     _signed,
     audit,
     bed_failure,
+    print_extent,
 )
 
 # One-line switch (AC 3): False = advisory (xfail on failure, report printed);
@@ -607,9 +608,8 @@ def test_model_print_audit(spec, capsys):
     # The bed check is non-waivable, so it gates even an advisory smoke model.
     # Every preset is audited by its model's own per-preset test, whose
     # report.ok carries the same check (pst-hruv1).
-    assert bed_failure(report.extent_mm) is None, bed_failure(report.extent_mm)
-    bed_line = next(l for l in report.format().splitlines() if l.lstrip().startswith("extent"))
-    assert bed_line.endswith("OK"), bed_line
+    bed = bed_failure(report.extent_mm)
+    assert bed is None, f"{spec.name}: {bed}"
     if report.ok:
         return
     gating = PRINT_AUDIT_REQUIRED and _is_production(spec)
@@ -679,3 +679,34 @@ def test_angle_tolerance_does_not_hide_real_overhang():
     angle = math.radians(45.01)
     cone = Pos(0, 0, 1) * Cone(3, 3+5*math.tan(angle), 5)
     assert _downward_curved_faces(cone, _UP_Z, [], -10)
+
+
+# Presets whose own per-preset audit runs only in the audit_full tier (their
+# params carry audit_full, which bd123's `-m "audit and not audit_full"` drops),
+# so the audit tier would otherwise lose their non-waivable bed check (pst-hruv1).
+_BED_ONLY_IDS = {
+    ("littletikes_dream_machine_cartridge_holder", "full_holder"),
+    ("gridfinity_capture_bin", "deep"),
+    ("gridfinity_capture_bin", "wide"),
+}
+_BED_ONLY_CASES = [(spec, preset) for spec in _SPECS for preset in spec.presets
+                   if (spec.name, preset.id) in _BED_ONLY_IDS]
+
+
+def test_bed_only_cases_all_resolve():
+    """A renamed model or preset must not silently drop out of the bed gate."""
+    assert {(s.name, p.id) for s, p in _BED_ONLY_CASES} == _BED_ONLY_IDS
+
+
+@pytest.mark.audit
+@pytest.mark.parametrize("spec, preset", _BED_ONLY_CASES, ids=[
+    f"{s.name}-{p.id}" for s, p in _BED_ONLY_CASES])
+def test_audit_full_only_presets_fit_the_bed(spec, preset):
+    values = spec.resolve_values(preset.values)
+    part = spec.build(values)
+    if spec.print_frame:
+        part = spec.print_frame(values) * part
+    extent = print_extent(part, _unit(spec.print_orientation))
+    print(f"BED EXTENT | {spec.name} | {preset.id} | {extent}")
+    bed = bed_failure(extent)
+    assert bed is None, f"{spec.name}: {bed}"
