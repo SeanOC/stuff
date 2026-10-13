@@ -32,7 +32,7 @@ import { CapturePanel } from "./CapturePanel";
 import type { CameraAxes } from "./StlViewer";
 import { paramsEqual, useDetailState } from "@/hooks/useDetailState";
 import { useBdRenderer } from "@/hooks/useBdRenderer";
-import type { Param, ParamValue } from "@/lib/scad-params/parse";
+import { defaultsOf, type Param, type ParamValue } from "@/lib/scad-params/parse";
 import type { BdPreset, BdView } from "@/lib/models/bd-manifest";
 import { downloadFilename } from "@/lib/models/download-name";
 import { paramErrorsFor } from "@/lib/models/bd-param-error";
@@ -117,6 +117,24 @@ export default function BdDetailPage({ model }: { model: BdDetailPageModel }) {
   }, [bd.state]);
 
   const showingLive = liveGlb !== null;
+  // A preset's baked bytes are export.py's resolve of defaults + that
+  // preset's own values. Serve them only when the controls hold exactly
+  // those params, and only for a MANIFEST preset — a saved user preset has
+  // no baked artefact. Anything else renders via /api/bd-render. Not
+  // `!modified`: loadPreset merges partial presets over the previous
+  // values and clears it unconditionally. (pst-scmib)
+  const bakedPreset = detail.state.activePresetId
+    ? model.presets.find((p) => p.id === detail.state.activePresetId)
+    : undefined;
+  const bakedPresetId =
+    bakedPreset &&
+    paramsEqual(
+      detail.state.params,
+      { ...defaultsOf(model.params), ...bakedPreset.values },
+      model.params,
+    )
+      ? bakedPreset.id
+      : null;
 
   // Staleness: does the on-screen geometry match the live controls?
   //   • Showing a live render → compare against its snapshot.
@@ -353,10 +371,13 @@ export default function BdDetailPage({ model }: { model: BdDetailPageModel }) {
             })}
           </div>
 
-          {/* Download — always the CURRENT live params via /api/bd-render. */}
+          {/* Download — the CURRENT params: the baked preset while the controls
+              equal its baked values,
+              else a live /api/bd-render. */}
           <BdDownload
             format="stl"
             slug={model.slug}
+            bakedPresetId={bakedPresetId}
             params={model.params}
             values={detail.state.params}
           />
@@ -364,6 +385,7 @@ export default function BdDetailPage({ model }: { model: BdDetailPageModel }) {
             <BdDownload
               format="3mf"
               slug={model.slug}
+              bakedPresetId={bakedPresetId}
               params={model.params}
               values={detail.state.params}
             />
@@ -416,18 +438,24 @@ const DOWNLOAD_LABEL = {
   "3mf": { idle: "Download 3MF (multi-colour)", busy: "Preparing 3MF…" },
 };
 
-// STL / 3MF download for build123d: always renders the CURRENT live params
-// via /api/bd-render?format=<format> (AC6) — a tweaked download reflects the
-// tweak, not just the baked preset. No WASM fallback, so a disabled/
+// STL / 3MF download for build123d: always the CURRENT params (AC6) — a
+// tweaked download reflects the tweak, not just the baked preset. While
+// the controls equal a manifest preset's baked values (defaults + the
+// preset's own values), that is the preset's baked file via /api/bd-asset
+// (pst-scmib: the tombstone sign's 3MF takes longer than bd-render's 90 s
+// timeout); any other params — a tweak, a saved user preset — render live
+// via /api/bd-render?format=<format>. No WASM fallback, so a disabled/
 // unreachable service surfaces a friendly inline error.
 function BdDownload({
   format,
   slug,
+  bakedPresetId,
   params,
   values,
 }: {
   format: "stl" | "3mf";
   slug: string;
+  bakedPresetId: string | null;
   params: Param[];
   values: Record<string, ParamValue>;
 }) {
@@ -436,11 +464,13 @@ function BdDownload({
   const download = useCallback(async () => {
     setState({ kind: "exporting" });
     try {
-      const res = await fetch(`/api/bd-render?format=${format}`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ slug, params: values }),
-      });
+      const res = bakedPresetId
+        ? await fetch(`/api/bd-asset/${slug}/${bakedPresetId}?format=${format}`)
+        : await fetch(`/api/bd-render?format=${format}`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ slug, params: values }),
+          });
       if (!res.ok) {
         let message =
           res.status === 503
@@ -472,7 +502,7 @@ function BdDownload({
         message: e instanceof Error ? e.message : "network error",
       });
     }
-  }, [format, slug, params, values]);
+  }, [format, slug, bakedPresetId, params, values]);
 
   return (
     <div className={format === "stl" ? "mt-16" : "mt-8"}>
