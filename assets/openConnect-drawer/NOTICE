@@ -187,3 +187,28 @@ Facets: 7036; signed volume: 22753.673007086105 mm3.
 Independent endpoint reference for the back magnet rim (vertical_grids 1).
 The same environment re-rendered container-1x1x1 identical to its baseline
 (3030 facets, equal signed volume, 0 canonical triangle mismatches).
+
+Divider baselines (pst-t0ob3.4, worker-3 2026-10-13). Same OpenSCAD, BOSL2
+pin and source as above. Worker renders, committed verbatim. No mayor
+baseline existed for these three. Volumes match the bead spec (138.83 /
+82.90 cm3). Like container-default, the container mesh is not watertight
+under trimesh (CGAL multi-volume output).
+
+shell-divider-width
+openscad --export-format=binstl -D generate_drawer_container=false -D 'add_shell_divider="Width"' -D 'shell_width_compartment_list="3,2"' -o assets/openConnect-drawer/mesh/shell-divider-width.stl assets/openConnect-drawer/openconnect_drawer_online.scad
+Worker SHA256: eef8f6596822ee40a37d89d803afff62bb6b3962c4825f70c0572babafc6ae82
+Facets: 7706; bbox 140 x 56 x 140; signed volume: 138830.282104 mm3.
+
+shell-divider-height
+openscad --export-format=binstl -D generate_drawer_container=false -D 'add_shell_divider="Height"' -D 'shell_height_compartment_list="1,1"' -o assets/openConnect-drawer/mesh/shell-divider-height.stl assets/openConnect-drawer/openconnect_drawer_online.scad
+Worker SHA256: 6c0ceb03a8b89f0c10da24f399df8154bfb2b20dd90a377e6d6dc718be783d90
+Facets: 9030; bbox 140 x 56 x 140; signed volume: 164821.679807 mm3.
+
+container-divider-both
+openscad --export-format=binstl -D generate_drawer_shell=false -D 'add_container_divider="Both"' -o assets/openConnect-drawer/mesh/container-divider-both.stl assets/openConnect-drawer/openconnect_drawer_online.scad
+Worker SHA256: 5363f2770164d5e976d973d02b681e5ec6eb1d5d63311c40ad58c30031167ff9
+Facets: 11952; bbox 134.600006 x 147.984542 x 50.400002; signed volume: 82899.732666 mm3.
+
+stoppers re-render (pst-t0ob3.4): 1192 facets, bbox 34.4 x 8.3 x 2.0,
+0.130 cm3; bytes differ from the mayor baseline (byte order, see above).
+The committed stoppers.stl stays the mayor baseline.
