@@ -24,6 +24,7 @@ binds a two-line label on a 20 mm card).
 """
 from __future__ import annotations
 
+import math
 from functools import lru_cache
 from pathlib import Path
 from typing import NamedTuple
@@ -218,8 +219,10 @@ def layout_text(text: str, box_w: float, box_h: float, margin: float,
                 depth: float, floor: float) -> FittedText:
     """fit_text on one line, else two (D6); ValueError if neither holds floor.
 
-    The error names the measured stroke, the floor and the longest prefix of
-    text that would fit.
+    The error names the measured stroke, the threshold it missed (floor +
+    FLOOR_MARGIN) and the longest prefix of text that would fit. The stroke is
+    truncated, not rounded, to 0.001 mm: a rejected stroke is below the
+    threshold, and rounding could print it as equal to it.
     """
     tried = []
     for candidate in (text, two_lines(text)):
@@ -232,8 +235,10 @@ def layout_text(text: str, box_w: float, box_h: float, margin: float,
     best = max(tried, key=lambda f: f.min_stroke)
     longest = _longest_fitting(text, box_w, box_h, margin, floor,
                                best.min_stroke / best.scale)
+    stroke = math.floor(best.min_stroke * 1000) / 1000
     raise ValueError(
         f'label text {text!r} is too long for a {box_w:g} x {box_h:g} mm card: '
-        f'its thinnest stroke would be {best.min_stroke:.2f} mm on '
-        f'{len(best.lines)} line(s), below the {floor:g} mm floor; '
+        f'its thinnest stroke would be {stroke:.3f} mm on '
+        f'{len(best.lines)} line(s), below the {floor + FLOOR_MARGIN:g} mm '
+        f'minimum ({floor:g} mm floor + {FLOOR_MARGIN:g} mm margin); '
         f'the longest that fits is {longest!r} ({len(longest)} characters)')
