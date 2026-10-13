@@ -10,10 +10,12 @@ Print every mount-face choice back-wall-down in PLA or PCTG.
 `honeycomb_ceiling=roofed` is the shipping default. Each top, bottom or side
 Honeycomb wall keeps the source lattice, frame and fitting reinforcements.
 After clipping each opening to those boundaries, a horizontal ceiling chord
-longer than 10 mm receives an inward 45° roof. Two slopes descend from the
+longer than 10 mm receives an inward 45° roof, including a flat ceiling that
+a reinforcement plate leaves below a short horn (the container's label
+plates). Two slopes descend from the
 chord ends to a midpoint at depth chord/2. The added triangle is intersected
 with the opening; a shallow opening can therefore split into two triangular
-openings. Chords at most 10 mm remain allowed flat bridges. The slot-bearing
+openings. Chords at most 10 mm remain allowed flat bridges. The shell's slot-bearing
 wall remains solid.
 
 This redesign follows the unsupported-bridge rule in the

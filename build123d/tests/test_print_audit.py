@@ -103,7 +103,9 @@ _PER_MODEL_BUDGET_S = 60.0
 # pst-bzahj: the cradle's 120 s exception (CI measured 93.2 s total) is gone —
 # reusing one solid classifier per audit cut its audit 77 s -> 11 s CPU
 # (docs/print-audit-profile.md), so it now fits the default.
-_MODEL_BUDGET_S: dict[str, float] = {}
+# pst-t0ob3.3: the drawer audit took 61.3 s at 05e18376; A/B on one host, main
+# 84.16 s vs head 77.31 s CPU, so the shared 60 s budget tipped, not the geometry.
+_MODEL_BUDGET_S: dict[str, float] = {"openconnect_drawer": 90.0}
 
 _UP_Z = (0.0, 0.0, 1.0)
 
@@ -512,7 +514,7 @@ def _cup_lid_shank_exclusion(values):
         align=(Align.CENTER, Align.CENTER, Align.MIN))
 
 
-from drawer.shell import published_ceiling_regions as drawer_ceiling_exclusions
+from holders.openconnect_drawer import audit_exclusions as drawer_exclusions
 from holders.openconnect_plate import border_exclusions
 from holders.cartridge_holder import audit_exclusions as cartridge_exclusions
 from holders.gridfinity_capture_bin import audit_exclusions as capture_bin_exclusions
@@ -521,7 +523,7 @@ from holders.tombstone_sign import audit_exclusions as tombstone_sign_exclusions
 _MODEL_EXCLUSIONS = {
     'holder_cup_lid': lambda values: [_cup_lid_shank_exclusion(values)],
     'openconnect_plate': border_exclusions,
-    'openconnect_drawer': drawer_ceiling_exclusions,
+    'openconnect_drawer': drawer_exclusions,
     'littletikes_dream_machine_cartridge_holder': cartridge_exclusions,
     'gridfinity_capture_bin': capture_bin_exclusions,
     'holder_tombstone_sign': tombstone_sign_exclusions,

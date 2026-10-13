@@ -76,10 +76,19 @@ def sample_surface(mesh, *, n, seed, sampler):
 
 
 def point_distances(points, target, *, signed):
-    """Measure snap external samples, or signed openConnect seated-head gaps."""
-    if signed:
-        return trimesh.proximity.signed_distance(target, points)
-    return trimesh.proximity.closest_point(target, points)[1]
+    """Measure snap external samples, or signed openConnect seated-head gaps.
+
+    Queried in chunks: each point is independent, so the result is identical,
+    but trimesh's candidate arrays stay bounded (the drawer container-all-solid
+    ref->port query peaked over 18 GB in one call, 1.1 GB chunked; pst-t0ob3.3).
+    """
+    measure = (trimesh.proximity.signed_distance if signed
+               else lambda mesh, chunk: trimesh.proximity.closest_point(mesh, chunk)[1])
+    return np.concatenate([measure(target, points[i:i+_CHUNK])
+                           for i in range(0, len(points), _CHUNK)] or [np.empty(0)])
+
+
+_CHUNK = 1000
 
 
 def surface_distance(port, ref, *, n, seed, sampler, vertices, signed):
