@@ -173,7 +173,7 @@ export const BUILD123D_CATALOG: Record<string, CatalogEntry> = {
   openconnect_drawer: {
     categoryId: "multiboard",
     blurb:
-      "mitufy's drawer shell (CC BY-SA 4.0). Print back-wall-down; a honeycomb bottom and selectable wall types. Select the mounting face independently of print orientation.",
+      "mitufy's drawer shell and container (CC BY-SA 4.0). Shell prints back-wall-down with a honeycomb bottom and selectable wall types; select its mounting face independently of print orientation. The container prints bottom-down with a handle, label holder and magnet pockets.",
   },
   gridfinity_capture_bin: {
     categoryId: "storage",
@@ -201,6 +201,11 @@ export const BUILD123D_CATALOG: Record<string, CatalogEntry> = {
     categoryId: "household",
     blurb:
       "Song-request tombstone sign: title, headline, a QR code and two text lines as flush inlays in up to four colours, printed face down. Two pockets in the bottom edge take a separately printed stake.",
+  },
+  holder_tombstone_stake: {
+    categoryId: "household",
+    blurb:
+      "Ground stake for the tombstone sign: a flat blade with a 45° point and a flared head whose two tenons slide into the sign's pockets. Optional cross-pin (8 mm sign and stake) and a half-lapped cross-bar that adds buried face area against wind. Prints flat, no supports.",
   },
   holder_spool_cradle: {
     categoryId: "multiboard",

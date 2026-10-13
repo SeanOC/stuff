@@ -593,4 +593,5 @@ def all_models() -> list[ModelSpec]:
     from holders import gridfinity_capture_bin  # noqa: F401
     from holders import cartridge_holder  # noqa: F401
     from holders import tombstone_sign  # noqa: F401
+    from holders import tombstone_stake  # noqa: F401
     return list(_REGISTRY.values())

@@ -314,3 +314,26 @@ def test_wall_clipping_stays_centred_when_mount_face_moves(slot_face):
     for _, layout in shell.honeycomb_layouts(values):
         assert min(p.bounds[1] for p in layout.openings) == pytest.approx(
             -max(p.bounds[3] for p in layout.openings))
+
+
+def test_roof_covers_a_flat_ceiling_below_a_horn():
+    """A plate can clip a cell into a 12.1 mm ceiling under a 1.3 mm horn
+    (the drawer container's label plates). That ceiling is roofed too, and
+    the split cell stays two valid pieces (no 1e-15 mm bridge)."""
+    from shapely.geometry import Polygon
+    from drawer.honeycomb import roof_opening
+    cell = Polygon([(27.833, 8.083), (24.417, 2.165), (17.583, 2.165), (14.167, 8.083),
+                    (26.292, 8.083), (27.062, 9.418)])
+    source, chord, roofed = roof_opening(cell, (0, 1), ceiling='source')
+    assert source.equals(cell) and not roofed
+    assert chord == pytest.approx(26.292-14.167)
+    profile, chord, roofed = roof_opening(cell, (0, 1))
+    assert roofed and chord == pytest.approx(12.125)
+    pieces = list(getattr(profile, 'geoms', [profile]))
+    assert len(pieces) == 2 and all(p.is_valid for p in pieces)
+    # No flat ceiling over MAX_BRIDGE_MM survives in either piece.
+    for piece in pieces:
+        ring = list(piece.exterior.coords)
+        for (x0, y0), (x1, y1) in zip(ring, ring[1:]):
+            if abs(y0-y1) < 1e-7:
+                assert abs(x1-x0) <= 10

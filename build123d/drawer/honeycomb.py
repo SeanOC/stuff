@@ -12,8 +12,9 @@ from math import cos, sin, pi, floor, isfinite, sqrt
 from dataclasses import dataclass
 
 from build123d import Box, Face, Part, Sketch, Wire, extrude
+from shapely import set_precision
 from shapely.affinity import affine_transform
-from shapely.geometry import Polygon, box
+from shapely.geometry import Point, Polygon, box
 
 from .constants import HONEYCOMB_UNIT, HONEYCOMB_STRUT_HYP, MAX_BRIDGE_MM
 
@@ -98,13 +99,69 @@ def roof_opening(opening, frame_up=(0, 1), *, ceiling='roofed'):
     vertices = list(upright.exterior.coords)[:-1]
     top = max(y for _, y in vertices)
     ends = sorted((x, y) for x, y in vertices if abs(y-top) < 1e-7)
-    chord = ends[-1][0]-ends[0][0]
+    spans = [(ends[0][0], ends[-1][0], top)] + _lower_ceilings(upright, vertices, top)
+    chord = max(x1-x0 for x0, x1, _ in spans)
     roofed = ceiling == 'roofed' and chord > MAX_BRIDGE_MM
     if roofed:
-        left, right = ends[0], ends[-1]
-        triangle = Polygon([left, right, ((left[0]+right[0])/2, top-chord/2)])
-        upright = upright.difference(triangle.intersection(upright))
+        x0, x1, y = spans[0]
+        # The top V reaches the cell's bottom (a shallow frame-clipped cell).
+        through = x1-x0 > MAX_BRIDGE_MM and y-(x1-x0)/2 < min(y for _, y in vertices)+1e-7
+        for x0, x1, y in spans:
+            if x1-x0 > MAX_BRIDGE_MM:
+                triangle = Polygon([(x0, y), (x1, y), ((x0+x1)/2, y-(x1-x0)/2)])
+                upright = upright.difference(triangle.intersection(upright))
+        if ((through and upright.geom_type == 'Polygon')
+                or any(x1-x0 > MAX_BRIDGE_MM for x0, x1, _ in spans[1:])):
+            # A V through the cell's bottom edge can leave a ~1e-15 mm
+            # bridge between the two halves (one Polygon instead of two),
+            # which OCCT extrudes into an invalid cutter. A 1e-9 grid
+            # collapses it into two pieces.
+            upright = set_precision(upright, 1e-9)
     return affine_transform(upright, [uy, ux, -ux, uy, 0, 0]), chord, roofed
+
+
+def _lower_ceilings(upright, vertices, top):
+    """Flat ceilings below the topmost one (x0, x1, y), merged along y.
+
+    A fill can clip a cell into a flat ceiling under a short horn (the
+    container's label plates); that ceiling bridges like any other.
+    """
+    spans = []
+    for (xa, ya), (xb, yb) in zip(vertices, vertices[1:]+vertices[:1]):
+        if abs(ya-yb) > 1e-7 or abs(xa-xb) < 1e-7 or ya > top-1e-7:
+            continue
+        mid = (xa+xb)/2
+        if upright.contains(Point(mid, ya-1e-4)) and not upright.contains(Point(mid, ya+1e-4)):
+            spans.append([min(xa, xb), max(xa, xb), ya])
+    spans.sort(key=lambda s: (s[2], s[0]))
+    merged = []
+    for span in spans:
+        if merged and abs(merged[-1][2]-span[2]) < 1e-7 and span[0] <= merged[-1][1]+1e-7:
+            merged[-1][1] = max(merged[-1][1], span[1])
+        else:
+            merged.append(span)
+    return [tuple(s) for s in merged]
+
+
+def _without_spikes(coords):
+    """Drop zero-area spike tips (the outline reverses along one line).
+
+    Roofing a fill-clipped cell can leave one; OCCT extrudes it into an
+    invalid cutter. Every other vertex, collinear or not, is kept.
+    """
+    points = list(coords)
+    changed = True
+    while changed and len(points) > 3:
+        changed = False
+        for i, (x, y) in enumerate(points):
+            px, py = points[i-1]
+            nx, ny = points[(i+1) % len(points)]
+            ax, ay, bx, by = x-px, y-py, nx-x, ny-y
+            if abs(ax*by-ay*bx) < 1e-9 and ax*bx+ay*by < 0:
+                del points[i]
+                changed = True
+                break
+    return points
 
 
 @dataclass
@@ -131,7 +188,8 @@ class HoneycombLayout:
             polygons = [profile] if profile.geom_type == 'Polygon' else profile.geoms
             for polygon in polygons:
                 faces.append(Face(Wire.make_polygon(
-                    [(x, y, -thickness/2) for x, y in list(polygon.exterior.coords)[:-1]],
+                    [(x, y, -thickness/2) for x, y in
+                     _without_spikes(list(polygon.exterior.coords)[:-1])],
                     close=True)))
         return extrude(Sketch(children=faces), amount=thickness, dir=(0, 0, 1))
 
