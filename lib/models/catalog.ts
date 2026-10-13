@@ -197,6 +197,11 @@ export const BUILD123D_CATALOG: Record<string, CatalogEntry> = {
     blurb:
       "Slide-in label card for the spool cradle label holder: your text in a fixed font, autoscaled and centred. Inlaid two-colour (face down, flush) or raised single-colour.",
   },
+  underware_i_channel: {
+    categoryId: "multiboard",
+    blurb:
+      'Straight Underware 2.0 "monokini" cable channel that snaps into openGrid: set width and length in 28 mm cells and the height, with optional cord exits, a debossed label and per-cell grip suppression. By Hands on Katie and BlackjackDuck, CC BY-NC-SA 4.0 (non-commercial, share-alike). Prints as shown, closed face down, no supports.',
+  },
   holder_tombstone_sign: {
     categoryId: "household",
     blurb:

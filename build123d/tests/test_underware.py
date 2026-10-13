@@ -223,6 +223,11 @@ def test_grip_probe(suppress):
     ({'filament_show': True, 'filament_depth': 0.2, 'filament_repeat': 2, 'filament_spacing': 0},
      'less than 0.9 mm between grooves'),
     ({'filament_show': True, 'filament_diameter': 0}, 'must be positive'),
+    ({'filament_show': True, 'filament_diameter': 10, 'filament_depth': 3}, 'leaves less than 0.9 mm of floor'),
+    ({'filament_show': True, 'filament_depth': -50}, 'leaves less than 0.9 mm of floor'),
+    ({'filament_show': True, 'filament_depth': 0.2, 'filament_offset': -50}, 'past the 8.37 mm flat floor'),
+    ({'filament_show': True, 'filament_depth': 0.2, 'filament_repeat': 2, 'filament_spacing': 50},
+     'past the 8.37 mm flat floor'),
 ])
 def test_named_errors(values, message):
     with pytest.raises(ValueError) as exc:
