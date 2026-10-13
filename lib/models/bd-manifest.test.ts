@@ -42,19 +42,25 @@ describe("label card (labels L2)", () => {
       maxLength: 24,
       charset: "printable-ascii",
     });
-    const others = (await loadBdManifest()).models.filter(
-      (m) => m.slug !== "holder-label-card",
-    );
+    const multi = ["holder-label-card", "holder-tombstone-sign"];
+    const others = (await loadBdManifest()).models.filter((m) => !multi.includes(m.slug));
     expect(others.some((m) => "multiColour" in m)).toBe(false);
+    expect((await loadBdModel("holder-tombstone-sign"))?.multiColour).toBe(true);
   });
 });
 
 describe("label card camera hint (pst-5b83s)", () => {
-  it("carries defaultView on the inlaid preset only", async () => {
+  it("carries defaultView on the face-down presets only", async () => {
     const hinted = (await loadBdManifest()).models.flatMap((m) =>
       m.presets.filter((p) => "defaultView" in p).map((p) => [m.slug, p.id, p.defaultView]),
     );
-    expect(hinted).toEqual([["holder-label-card", "inlaid", "bottom"]]);
+    expect(hinted).toEqual([
+      ["holder-tombstone-sign", "default", "bottom"],
+      ["holder-tombstone-sign", "three-colour", "bottom"],
+      ["holder-tombstone-sign", "pinned", "bottom"],
+      ["holder-tombstone-sign", "small", "bottom"],
+      ["holder-label-card", "inlaid", "bottom"],
+    ]);
   });
 });
 

@@ -43,5 +43,6 @@
     "tests/test_openconnect_drawer.py::test_endpoint_audit_and_edges[horizontal_grids=8]": 304.51,
     "tests/test_openconnect_drawer.py::test_endpoint_audit_and_edges[slot_depth_clearance=0.5]": 293.87,
     "tests/test_openconnect_drawer.py::test_endpoint_audit_and_edges[vertical_grids=1]": 282.02,
-    "tests/test_openconnect_drawer.py::test_endpoint_audit_and_edges[depth_grids=1]": 122.48
+    "tests/test_openconnect_drawer.py::test_endpoint_audit_and_edges[depth_grids=1]": 122.48,
+    "tests/test_tombstone_sign.py::test_colour_parts_are_pairwise_disjoint": 92.84
 }

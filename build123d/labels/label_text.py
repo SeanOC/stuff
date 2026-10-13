@@ -25,6 +25,7 @@ binds a two-line label on a 20 mm card).
 from __future__ import annotations
 
 import math
+from functools import lru_cache
 from pathlib import Path
 from typing import NamedTuple
 
@@ -146,6 +147,18 @@ def glyph_clearance(sketch: Sketch) -> float:
                default=float('inf'))
 
 
+@lru_cache(maxsize=256)
+def _nominal_measures(text: str) -> tuple[float, float, float]:
+    """(stroke, gap, clearance) at NOMINAL_SIZE: a pure function of the text.
+
+    The scan costs ~14 s for a 20-character line and fit_text's result only
+    scales it, so a model that fits the same line into several boxes (the
+    tombstone sign's presets) measures it once per process.
+    """
+    nominal = text_sketch(text)
+    return (*stroke_and_gap(nominal), glyph_clearance(nominal))
+
+
 def fit_text(text: str, box_w: float, box_h: float, margin: float,
              depth: float = 0.6, measure: bool = True) -> FittedText:
     """Text scaled to fit (box - 2 margin) in both axes, ink centred on the origin.
@@ -159,8 +172,7 @@ def fit_text(text: str, box_w: float, box_h: float, margin: float,
     nominal = text_sketch(text)
     bb = nominal.bounding_box()
     s = min(w_avail / bb.size.X, h_avail / bb.size.Y)
-    stroke, gap = stroke_and_gap(nominal) if measure else (float('nan'),) * 2
-    clearance = glyph_clearance(nominal) if measure else float('nan')
+    stroke, gap, clearance = _nominal_measures(text) if measure else (float('nan'),) * 3
     fitted = scale(nominal, s)
     c = fitted.bounding_box().center()
     part = extrude(Pos(-c.X, -c.Y, 0) * fitted, depth)
