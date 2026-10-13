@@ -209,8 +209,7 @@ def audit_exclusions(values: dict) -> list[tuple[float, ...]]:
     """Approved regions, as thin exact boxes: with a pin, each tenon's pin-hole
     roof (signs.pin_profile's 1.33 mm flat, the sign's own exclusion). No
     other preset needs one. The tests measure the span before excluding it.
-    PROVISIONAL (pst-tl4ac.2): awaiting the mayor's ruling on the spec's
-    'no audit_exclusions' clause."""
+    Approved by the mayor (pst-tl4ac.2, 2026-10-13): option A, mirror S1."""
     if values['retention'] != 'pin':
         return []
     z = signs.tenon_t(values['thickness']) / 2 + signs.PIN_D / 2
