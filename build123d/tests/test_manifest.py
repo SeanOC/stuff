@@ -221,11 +221,14 @@ def test_default_view_is_a_trailing_preset_key_only_when_set():
     assert "defaultView" not in preset_to_json(Preset(id="p", label="P", values={}))
 
 
-def test_only_the_inlaid_label_card_preset_carries_a_view_hint():
-    """pst-5b83s AC (d): the face-down inlaid card opens on its text face."""
-    hinted = [(m["slug"], p["id"], p["defaultView"])
-              for m in build_manifest()["models"] for p in m["presets"] if "defaultView" in p]
-    assert hinted == [("holder-label-card", "inlaid", "bottom")]
+def test_only_the_face_down_inlaid_presets_carry_a_view_hint():
+    """pst-5b83s AC (d): the face-down inlaid card opens on its text face;
+    pst-tl4ac.1: so does every face-down tombstone sign preset (all but raised)."""
+    hinted = sorted((m["slug"], p["id"], p["defaultView"])
+                    for m in build_manifest()["models"] for p in m["presets"] if "defaultView" in p)
+    assert hinted == [("holder-label-card", "inlaid", "bottom")] + [
+        ("holder-tombstone-sign", pid, "bottom")
+        for pid in sorted(("default", "three-colour", "pinned", "small"))]
 
 
 def test_validator_rejects_unknown_default_view():
