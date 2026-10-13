@@ -78,8 +78,11 @@ jobs:
   audit:
     name: build123d audit
     runs-on: ubuntu-latest
-    # pst-bnya8: 22m53s in run 38038626797; ~50% headroom, rounded up.
-    timeout-minutes: 35
+    # pst-hruv1: the same 164-item selection swung 18.8-32.5 min across main runs
+    # 38299848019 / 38334657942 / 38377646596 before #193 and ran 34m57s clean in
+    # 38432960766 (-n 4 on 2 physical cores = high variance). 45 = ~30% headroom
+    # over the slowest clean run; pytest-split of this tier is a separate bead.
+    timeout-minutes: 45
     defaults: { run: { working-directory: build123d } }
     steps:
       - uses: actions/checkout@v4
