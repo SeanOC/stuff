@@ -187,6 +187,9 @@ def test_mount_selection_params_are_filename_flagged():
         ("openconnect_drawer", "horizontal_grids"),
         ("openconnect_drawer", "vertical_grids"),
         ("openconnect_drawer", "depth_grids"),
+        ("underware_i_channel", "channel_width_units"),
+        ("underware_i_channel", "channel_total_height"),
+        ("underware_i_channel", "channel_length_units"),
     }
     models = {m["slug"]: m for m in build_manifest()["models"]}
     for name, param in flagged:
