@@ -6,6 +6,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import numpy as np
 import pytest
+from shapely import maximum_inscribed_circle
 
 from drawer import container, shell
 from holders import openconnect_drawer as m
@@ -347,9 +348,13 @@ def test_lattice_openings_under_2mm_are_closed(name, values):
             if diameter < container.c.MIN_LATTICE_OPENING_MM:
                 shut.append(diameter)
     print(f'CLOSED | {name} | {len(shut)} | {min(shut, default=0):.3f}')
-    # Rule 3: no through-wall opening under 2 mm in production.
-    assert all(container.opening_diameter(prof) >= container.c.MIN_LATTICE_OPENING_MM
-               for _, _, layout, _ in closed for prof, _, _ in layout.profiles((0, 1)))
+    # Rule 3: no through-wall opening under 2 mm in production. Measured
+    # piece by piece here, not through opening_diameter: a roof can split a
+    # cell in two and the small lobe is a hole too (review round 5 B1, #190).
+    pieces = [2*maximum_inscribed_circle(g, .001).length
+              for _, _, layout, _ in closed for prof, _, _ in layout.profiles((0, 1))
+              for g in getattr(prof, 'geoms', [prof]) if not g.is_empty]
+    assert min(pieces, default=2.) >= container.c.MIN_LATTICE_OPENING_MM, round(min(pieces), 3)
 
 
 NAMED = (
