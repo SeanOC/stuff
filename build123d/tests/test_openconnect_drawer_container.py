@@ -41,7 +41,10 @@ def reference_case(request, tmp_path_factory):
     return name, values, body, mesh, load_reference(path), load_reference(REFERENCES/f'{name}.stl')
 
 
+# audit_full, not the 35 min 'audit' job (codex round 4 B2 on #190: that job
+# had ~2.5 min headroom on main); the drawer's audit_full runs on 6 shards.
 @pytest.mark.audit
+@pytest.mark.audit_full
 def test_reference_parity(reference_case):
     name, values, body, mesh, port, ref = reference_case
     assert body.is_valid and len(body.solids()) == 1
@@ -287,6 +290,32 @@ CASES = [(p.id, p.values) for p in m.SPEC.presets if p.values.get('part') == 'co
     ('max-label', dict(horizontal_grids=8, vertical_grids=3, label_width=100, label_height=20, label_thickness=1.6)),
     ('no-label-no-magnets', dict(add_label_holder=False, add_back_magnet_holes=False, add_side_magnet_holes=False)),
 ]]
+@pytest.mark.parametrize('name,values', CASES, ids=[name for name, _ in CASES])
+def test_lattice_openings_under_2mm_are_closed(name, values):
+    """DECISION C (b): production closes, by size, exactly the sub-2 mm openings."""
+    try:
+        closed = container.wall_layouts(values)
+    except ValueError as exc:
+        assert any(text in str(exc) for text in NAMED), str(exc)
+        return
+    raw = container.wall_layouts(values, close_openings=False)
+    assert [w[0] for w in closed] == [w[0] for w in raw if any(
+        container.opening_diameter(prof) >= container.c.MIN_LATTICE_OPENING_MM
+        for prof, _, _ in w[2].profiles((0, 1)))]
+    kept = {name: layout for name, _, layout, _ in closed}
+    for wall, _, layout, _ in raw:
+        keep = kept[wall].openings if wall in kept else []
+        assert all(any(p.equals(q) for q in layout.openings) for p in keep), wall
+        profiles = dict(zip(map(id, layout.openings), layout.profiles((0, 1))))
+        for p in layout.openings:
+            diameter = container.opening_diameter(profiles[id(p)][0])
+            assert any(p.equals(q) for q in keep) == (diameter >= container.c.MIN_LATTICE_OPENING_MM), \
+                (wall, round(diameter, 3))
+    # Rule 3: no through-wall opening under 2 mm in production.
+    assert all(container.opening_diameter(prof) >= container.c.MIN_LATTICE_OPENING_MM
+               for _, _, layout, _ in closed for prof, _, _ in layout.profiles((0, 1)))
+
+
 NAMED = (
     'is wider than the container front',
     'shell_to_slot_wall_thickness below 0.8 mm leaves less slot backing than the openconnect-slot-shallow contract',
@@ -294,11 +323,8 @@ NAMED = (
 
 
 @pytest.mark.audit
-@pytest.mark.parametrize('name,values', [
-    pytest.param(name, values, id=name, marks=pytest.mark.audit_full
-                 if name not in {p.id for p in m.SPEC.presets} else ())
-    for name, values in CASES
-])
+@pytest.mark.audit_full
+@pytest.mark.parametrize('name,values', CASES, ids=[name for name, _ in CASES])
 def test_endpoint_audit_and_edges(name, values):
     try:
         part = m.build(values)

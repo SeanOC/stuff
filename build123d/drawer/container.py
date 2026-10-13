@@ -26,13 +26,14 @@ from math import atan2, ceil, cos, degrees, floor, pi, radians, sin, sqrt, tan
 
 from build123d import (Align, Axis, Box, Face, GeomType, Plane, Pos, Rot, Solid, Wire,
                        loft, revolve, section)
+from shapely import maximum_inscribed_circle
 from shapely.geometry import Polygon, box
 from shapely.ops import unary_union
 
 from openconnect.constants import EPS, TILE_SIZE
 from . import constants as c
 from . import shell
-from .honeycomb import HoneycombLayout, hole_polygons
+from .honeycomb import HoneycombLayout, hole_polygons, roof_opening
 
 AUTHOR_TO_MODEL = shell.AUTHOR_TO_MODEL
 WALL_TYPES = ('Honeycomb', 'Solid')
@@ -462,7 +463,13 @@ def _back_fill(d, v):
     return [box(x - width/2, -d.height/2, x + width/2, top) for x in back_magnet_columns(v)]
 
 
-def wall_layouts(values=None):
+def opening_diameter(opening):
+    """Largest inscribed circle diameter of a through-wall opening (all parts)."""
+    return max((2*maximum_inscribed_circle(p, .001).length
+                for p in getattr(opening, 'geoms', [opening]) if not p.is_empty), default=0.)
+
+
+def wall_layouts(values=None, *, close_openings=True):
     """Honeycomb walls as (name, plane, layout, thickness).
 
     [C] :1501-1527. Each source wall is: solid wall, minus a window cuboid,
@@ -471,6 +478,10 @@ def wall_layouts(values=None):
     (panel holes & window) - fills, which this returns before roofing.
     Plane local X/Y are the wall's horizontal/print-up axes (front, back,
     sides) and its normal crosses the wall; the bottom lies on the bed.
+    Production (any ceiling but 'source') closes each opening whose roofed
+    profile has an inscribed circle under MIN_LATTICE_OPENING_MM, by size
+    whatever clipped it (frame, chamfer, label/handle/magnet fills);
+    close_openings=False keeps them for the closure test.
     """
     v = values or {}
     d = dimensions(v)
@@ -494,11 +505,12 @@ def wall_layouts(values=None):
             if p.interiors:
                 raise ValueError(f'container {name.lower()} wall honeycomb opening encloses an '
                                  'island; this parameter combination is unsupported')
+        if close_openings and ceiling != 'source':
+            parts = [p for p in parts
+                     if opening_diameter(roof_opening(p, (0, 1), ceiling=wall_ceiling)[0])
+                     >= c.MIN_LATTICE_OPENING_MM]
         if parts:
-            layout = HoneycombLayout(parts, wall_ceiling, name)
-            # Kept for the frame-clipped opening register (frame_clipped_openings).
-            layout.window, layout.fills = window, unary_union(fills) if fills else Polygon()
-            walls.append((name, plane, layout, thickness))
+            walls.append((name, plane, HoneycombLayout(parts, wall_ceiling, name), thickness))
 
     def window(x0, y0, x1, y1):
         return box(x0, y0, x1, y1) if x1 > x0 and y1 > y0 else Polygon()
