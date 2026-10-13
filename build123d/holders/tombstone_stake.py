@@ -56,6 +56,7 @@ import math
 from build123d import (Axis, Box, Compound, Part, Polygon, Pos, Rectangle, Rot, chamfer,
                        extrude, fillet)
 from holders import signs
+from holders.printer import BED_Y
 from holders.registry import ModelSpec, Param, Preset, register
 from scripts.thumbnail import PlaneSpec
 
@@ -68,7 +69,7 @@ LAP_DROP = 50.0             # lap centre below the shoulders' bottom
 LAP_CLEARANCE = signs.JOINT_CLEARANCE  # each side of each lap notch, in plan
 BAR_GAP = 10.0              # bar beside the stake on the bed
 MIN_STRAIGHT = CORNER_R + SHOULDER_R  # straight shaft between the point and shoulder fillets
-MAX_LENGTH = 320.0          # H2S bed 325 x 320; the blade prints along Y
+MAX_LENGTH = BED_Y          # holders.printer; the blade prints along Y
 TENON_OUTER = signs.POCKET_OFFSET + signs.tenon_w() / 2  # 43.8
 MIN_HEAD_WIDTH = round(2 * TENON_OUTER, 6)                # 87.6
 
