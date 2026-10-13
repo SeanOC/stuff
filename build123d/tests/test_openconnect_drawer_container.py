@@ -10,8 +10,9 @@ import pytest
 from drawer import container, shell
 from holders import openconnect_drawer as m
 from tests import print_audit as audit
-from tests.openconnect_drawer_inventory import (container_edge_inventory, container_skin_mask,
-                                                container_wall_regions, label_plate_tips)
+from tests.openconnect_drawer_inventory import (back_magnet_rims, container_edge_inventory,
+                                                container_skin_mask, container_wall_regions,
+                                                label_plate_tips)
 from tests.parity import bbox_parity, load_reference, surface_distance, volume_parity
 
 REFERENCES = Path(__file__).resolve().parents[2] / 'assets/openConnect-drawer/mesh'
@@ -214,6 +215,19 @@ def test_published_thin_features():
             origin = _mesh((px, py, d.depth+1))
             hits = [h-1 for h in _hits(default, origin, (0, 1, 0)) if h < 1+d.front+.01]
             assert hits == pytest.approx(wall, abs=1e-4)
+    # Back magnet rim (vertical_grids 1 only): from inside the hole along
+    # author +Y, the teardrop's flat cap then the back wall's top bound a
+    # 0.2 mm skin over the hole depth. container-2x1x5 is the reference.
+    assert back_magnet_rims({}) == [] and back_magnet_rims(ONE) == []
+    rim = dict(horizontal_grids=2, vertical_grids=1, depth_grids=5)
+    narrow = load_reference(REFERENCES/'container-2x1x5.stl')
+    ((x, gap), _), = back_magnet_rims(rim)
+    (_, _, (_, y, _)), = [p for p in container.source_magnet_positions(rim) if p[0] == 'back']
+    assert gap == pytest.approx(.2, abs=1e-6)
+    for dx in (-1.013, .013, 1.013):
+        for z in (.313, .813):
+            hits = _hits(narrow, _mesh((x+dx, y, z), rim), (0, 0, 1))
+            assert hits[:2] == pytest.approx([3.4, 3.4+gap], abs=1e-4)
 
 
 @pytest.mark.parametrize('values', [{'shell_thickness': 4}, {'container_back_side_height_offset': 10}])

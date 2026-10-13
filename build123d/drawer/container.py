@@ -492,7 +492,8 @@ def wall_layouts(values=None):
                  if not p.is_empty and p.area > 1e-10 and not p.buffer(-.05).is_empty]
         for p in parts:
             if p.interiors:
-                raise AssertionError(f'{name} honeycomb opening with an island')
+                raise ValueError(f'container {name.lower()} wall honeycomb opening encloses an '
+                                 'island; this parameter combination is unsupported')
         if parts:
             walls.append((name, plane, HoneycombLayout(parts, wall_ceiling, name), thickness))
 

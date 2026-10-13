@@ -174,3 +174,11 @@ shell-backing-0p8 — worker-rendered, no mayor baseline
 openscad --export-format=binstl -D generate_drawer_container=false -D 'shell_bottom_wall_type="Solid"' -D shell_to_slot_wall_thickness=0.8 -o assets/openConnect-drawer/mesh/shell-backing-0p8.stl assets/openConnect-drawer/openconnect_drawer_online.scad
 Worker SHA256: afc280510fbfb27a545d7f147be32912d70df6eb4d8421a922391812977ddf0b
 Independent endpoint reference for published wall-family measurements.
+
+container-2x1x5 — worker-rendered, no mayor baseline (pst-t0ob3.3)
+openscad --export-format=binstl -D generate_drawer_shell=false -D horizontal_grids=2 -D vertical_grids=1 -D depth_grids=5 -o assets/openConnect-drawer/mesh/container-2x1x5.stl assets/openConnect-drawer/openconnect_drawer_online.scad
+Worker SHA256: babd68783f5f1388ca9574e8bc8418d67c430675b595375208abf7c1cd845d3f
+Facets: 7036; signed volume: 22753.673007086105 mm3.
+Independent endpoint reference for the back magnet rim (vertical_grids 1).
+The same environment re-rendered container-1x1x1 identical to its baseline
+(3030 facets, equal signed volume, 0 canonical triangle mismatches).

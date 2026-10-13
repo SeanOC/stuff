@@ -199,14 +199,38 @@ def label_plate_tips(values):
     return tips
 
 
+def back_magnet_rims(values):
+    """Back magnet teardrops whose flat cap (radius + .2, [C] :1564) ends
+    within MIN_WALL of the back wall's top (:429): at vertical_grids 1 the
+    grid offset (:1453-1456) leaves a 0.2 mm skin over the cap across the
+    hole depth, pinned by the container-2x1x5 reference ray. Only those
+    holes are emitted, as the band from MIN_WALL below the cap to the top
+    over the hole depth: ((x, cap gap), region), author frame."""
+    from drawer import container
+    v = values or {}
+    d = container.dimensions(v)
+    top = -d.height/2+d.back_height
+    rims = []
+    for (kind, _, (x, _, _)), cut in zip(container.source_magnet_positions(v),
+                                         container.source_magnet_cutters(v)[0]):
+        box = cut.bounding_box()
+        if kind != 'back' or top-box.max.Y >= a.MIN_WALL_MM:
+            continue
+        size = (box.size.X+2*a.MIN_WALL_MM, top-box.max.Y+a.MIN_WALL_MM+.001, box.size.Z+.001)
+        rims.append(((x, top-box.max.Y), Pos(x, top+.001-size[1]/2, box.max.Z/2-.0005)
+                     * Box(*size)))
+    return rims
+
+
 def container_wall_regions(values):
     """Source-pinned thin regions of the container (exception rows).
 
     Magnet floors: hole depth (thickness + .15) into the wall leaves the
     author's floor, .45 mm behind a 1.6 Solid wall (:1546-1564). The label
     holder is built from LABEL_WALL = .8 (:1779). The label plates' 60-degree
-    corners poke into front cells (:1783-1793). Reference rays pin all three
-    in test_container_published_thin_features; membership is geometric.
+    corners poke into front cells (:1783-1793). Back magnet rims: see
+    back_magnet_rims. Reference rays pin all four in
+    test_published_thin_features; membership is geometric.
     """
     from shapely.geometry import Point
     from shapely.ops import unary_union
@@ -225,12 +249,7 @@ def container_wall_regions(values):
         hole = v.get(f'container_{kind}_magnet_thickness', 1)+.15
         behind = max(wall-hole, .45+EPS)+.001
         regions.append(Pos(*(-inward*.0005))*Solid.extrude(floor, tuple(inward*behind)))
-        # Rim: the author's grid offset puts the teardrop within .9 mm of the
-        # back wall's top at vertical_grids 1 (.765 mm); the rim zone is the
-        # hole's outline grown by MIN_WALL over the hole depth.
-        mouth = min(cut.faces(), key=lambda f: np.dot(tuple(f.center()), inward))
-        rim = Face(mouth.outer_wire().offset_2d(a.MIN_WALL_MM))
-        regions.append(Pos(*(-inward*.0005))*Solid.extrude(rim, tuple(inward*(hole+.001))))
+    regions += [box for _, box in back_magnet_rims(v)]
     holder = container.source_label_holder(v)
     if holder is not None:
         regions.append(holder)
