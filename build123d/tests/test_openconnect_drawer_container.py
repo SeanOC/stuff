@@ -216,6 +216,18 @@ def test_published_thin_features():
             assert hits == pytest.approx(wall, abs=1e-4)
 
 
+@pytest.mark.parametrize('values', [{'shell_thickness': 4}, {'container_back_side_height_offset': 10}])
+def test_honeycomb_wall_cutters_are_valid(values):
+    """shell_thickness 4: the top V of a shallow front cell pierces its
+    bottom and used to leave a 1e-15 mm bridge (invalid cutter).
+    back_side_height_offset 10: the side window clips a hex row into a
+    0.028 mm strip, which is dropped (no opening narrower than 0.1 mm)."""
+    v = {'part': 'container', **values}
+    for name, plane, layout, thickness in container.wall_layouts(v):
+        assert layout.cutter(thickness, (0, 1)).is_valid, name
+        assert all(not p.buffer(-.05).is_empty for p in layout.openings), name
+
+
 def test_exclusions_reject_new_thin_overhang():
     from build123d import Box, Pos
     v = {'part': 'container', **ONE, 'add_label_holder': False}

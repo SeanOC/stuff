@@ -216,10 +216,21 @@ def container_wall_regions(values):
     regions = []
     for (kind, side, (x, y, z)), cut in zip(container.source_magnet_positions(v),
                                             container.source_magnet_cutters(v)[0]):
-        # The floor is the cutter's inner end face; slab it +-.0005 mm.
+        # The floor is the cutter's inner end face; the slab behind it runs
+        # to the inner surface: wall - hole, or the bulge's .45 + EPS
+        # (:1547/:1561), +-.0005 mm.
         inward = np.array((0, 0, 1) if kind == 'back' else (-side, 0, 0))
         floor = max(cut.faces(), key=lambda f: np.dot(tuple(f.center()), inward))
-        regions.append(Pos(*(-inward*.0005))*Solid.extrude(floor, tuple(inward*.001)))
+        wall = d.back if kind == 'back' else d.side
+        hole = v.get(f'container_{kind}_magnet_thickness', 1)+.15
+        behind = max(wall-hole, .45+EPS)+.001
+        regions.append(Pos(*(-inward*.0005))*Solid.extrude(floor, tuple(inward*behind)))
+        # Rim: the author's grid offset puts the teardrop within .9 mm of the
+        # back wall's top at vertical_grids 1 (.765 mm); the rim zone is the
+        # hole's outline grown by MIN_WALL over the hole depth.
+        mouth = min(cut.faces(), key=lambda f: np.dot(tuple(f.center()), inward))
+        rim = Face(mouth.outer_wire().offset_2d(a.MIN_WALL_MM))
+        regions.append(Pos(*(-inward*.0005))*Solid.extrude(rim, tuple(inward*(hole+.001))))
     holder = container.source_label_holder(v)
     if holder is not None:
         regions.append(holder)
