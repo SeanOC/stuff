@@ -37,6 +37,7 @@ dependencies = [
     "pytest>=8.0",
     "networkx>=3.7",        # section loop nesting in trimesh
     "rtree>=1.4.1",         # nested section polygon containment
+    "segno==1.6.6",         # QR module matrix for the tombstone sign (BSD-3, pure Python, no deps); pinned: the version fixes the pitch
 ]
 
 [tool.uv.sources]

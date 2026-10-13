@@ -19,8 +19,8 @@ presets and writes exactly three artifacts per preset into TARGET_DIR:
 plus, ONLY for a model tagged "multi-colour" (labels L2):
 
     TARGET_DIR/<model-slug>/<preset-id>.3mf        # one object, part i on filament i+1
-    TARGET_DIR/<model-slug>/<preset-id>-base.stl   # filament 1 body
-    TARGET_DIR/<model-slug>/<preset-id>-text.stl   # filament 2 body
+    TARGET_DIR/<model-slug>/<preset-id>-<part-name>.stl   # one per colour part,
+                                                          # named by colour_parts
 
 Single source of truth (bead pst-1vi5): the thumbnail is rendered from
 the same built part as the GLB/STL, so a model or preset change can
@@ -323,8 +323,8 @@ def export_presets_only(target: Path) -> int:
                 named = resolve_colour_parts(spec, preset.values)
                 export_3mf_one_object(named, model_dir / f"{preset.id}.3mf",
                                       f"{spec.slug}-{preset.id}")
-                for (_, shape, _), role in zip(named, ("base", "text")):
-                    export_stl(shape, str(model_dir / f"{preset.id}-{role}.stl"))
+                for name, shape, _ in named:
+                    export_stl(shape, str(model_dir / f"{preset.id}-{name}.stl"))
             baked += 1
             print(f"{spec.name}/{preset.id}: vol={part.volume:.0f}mm3 -> {stl}, {glb}, {png}")
     print(f"baked {baked} presets from {len(specs)} models into {target}")
