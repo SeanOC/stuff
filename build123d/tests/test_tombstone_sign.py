@@ -11,7 +11,9 @@ import segno
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'tests'))
-from build123d import GeomType, Plane, Vector, mirror  # noqa: E402
+from build123d import Compound, GeomType, Plane, Vector, mirror  # noqa: E402
+from OCP.BRepAlgoAPI import BRepAlgoAPI_Common  # noqa: E402
+from OCP.TopTools import TopTools_ListOfShape  # noqa: E402
 from holders import signs  # noqa: E402
 from holders import tombstone_sign as m  # noqa: E402
 from holders.registry import all_models, resolve_colour_parts, resolve_preview_parts  # noqa: E402
@@ -229,20 +231,43 @@ def _overlap(a, b) -> float:
     """Shared volume of two multi-solid parts, skipping solid pairs whose boxes only touch."""
     def boxes_meet(p, q):
         bp, bq = p.bounding_box(), q.bounding_box()
-        return all(min(bp.max.to_tuple()[k], bq.max.to_tuple()[k])
-                   - max(bp.min.to_tuple()[k], bq.min.to_tuple()[k]) > 1e-6 for k in range(3))
+        return all(min(tuple(bp.max)[k], tuple(bq.max)[k])
+                   - max(tuple(bp.min)[k], tuple(bq.min)[k]) > 1e-6 for k in range(3))
     shared = (p & q for p in a.solids() for q in b.solids() if boxes_meet(p, q))
     return sum(r.volume for r in shared if r is not None)  # an empty Solid & Solid is None
+
+
+def _common_volume(a, b) -> float:
+    """Volume of a & b by one OCCT Common run in parallel (build123d's & is serial)."""
+    args, tools = TopTools_ListOfShape(), TopTools_ListOfShape()
+    args.Append(a.wrapped)
+    tools.Append(b.wrapped)
+    op = BRepAlgoAPI_Common()
+    op.SetArguments(args)
+    op.SetTools(tools)
+    op.SetRunParallel(True)
+    op.Build()
+    assert op.IsDone()
+    return Compound(op.Shape()).volume
 
 
 @pytest.mark.audit
 @pytest.mark.audit_full
 def test_colour_parts_are_pairwise_disjoint():
-    """Full booleans on the four-colour default (~140 s): every pair, base included."""
+    """Full booleans on the four-colour default, base included.
+
+    The base meets ALL inlay solids in one parallel Common: the shared volume
+    is zero iff every base/inlay pair's is, and one pass over the 1.7k-face
+    base takes ~25 s where three serial ones took ~130 s (local). The per-pair
+    version pushed the sweep's shard 3 past its 30 min ceiling, because this
+    test sorts last and runs alone at the shard's tail.
+    """
     _, parts, _ = preset_case('default')
-    for i, (a, pa, _) in enumerate(parts):
-        for b, pb, _ in parts[i + 1:]:
-            assert (pa & pb).volume < 1e-3, (a, b)
+    base, inlays = parts[0][1], parts[1:]
+    assert _common_volume(base, Compound([s for _, p, _ in inlays for s in p.solids()])) < 1e-3
+    for i, (a, pa, _) in enumerate(inlays):
+        for b, pb, _ in inlays[i + 1:]:
+            assert _overlap(pa, pb) < 1e-3, (a, b)
 
 
 @pytest.mark.audit
