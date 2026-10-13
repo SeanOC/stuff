@@ -56,6 +56,7 @@ from build123d import (Axis, Box, Compound, Face, Part, Plane, Pos, Vector, Wire
                        extrude, mirror)
 from holders import signs
 from holders.label_card import _glyph_order
+from holders.printer import BED_X, BED_Y
 from holders.registry import ColourPart, ModelSpec, Param, Preset, register
 from labels.constants import (INLAY_DEPTH, MAX_TEXT_LENGTH, STROKE_FLOOR_INLAID,
                               STROKE_FLOOR_RAISED, TEXT_CHARSET)
@@ -109,10 +110,9 @@ def _frame(values: dict, height: float | None = None) -> dict | None:
     return frame
 
 
-# The printable bed: Bambu H2S single-nozzle (an AMS multi-colour print) is
-# 325 x 320 mm; the sign prints flat, width along X.
-MAX_WIDTH = 325.0
-MAX_HEIGHT = 320.0
+# The printable bed (holders.printer); the sign prints flat, width along X.
+MAX_WIDTH = BED_X
+MAX_HEIGHT = BED_Y
 
 
 def min_height(values: dict) -> float:
