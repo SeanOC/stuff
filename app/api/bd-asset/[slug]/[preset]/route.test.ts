@@ -21,7 +21,8 @@ const bdRender = vi.hoisted(() =>
       headers: {
         "content-type": "application/sla",
         "content-disposition": 'attachment; filename="live-name.stl"',
-        "x-bd-render-cache": "MISS",
+        "cache-control": "public, max-age=31536000, immutable",
+        "x-cache": "HIT",
       },
     }),
   ),
@@ -172,8 +173,15 @@ describe("/api/bd-asset", () => {
     fs.rmSync(baked, { force: true });
     try {
       bdRender.mockClear();
-      const res = await call(LABEL_SLUG, LABEL_PRESET, "stl");
+      const res = await GET(
+        new NextRequest(`http://localhost/api/bd-asset/${LABEL_SLUG}/${LABEL_PRESET}?format=stl`, {
+          headers: { "x-vercel-oidc-token": "oidc-abc" },
+        }),
+        { params: Promise.resolve({ slug: LABEL_SLUG, preset: LABEL_PRESET }) },
+      );
       expect(res.status).toBe(200);
+      // bd-render's HIT is immutable; this preset URL is not content-addressed.
+      expect(res.headers.get("cache-control")).toBe("public, max-age=0, must-revalidate");
       expect(res.headers.get("content-disposition")).toBe(
         `attachment; filename="${LABEL_SLUG}-${LABEL_PRESET}.stl"`,
       );
@@ -181,6 +189,7 @@ describe("/api/bd-asset", () => {
       expect(bdRender).toHaveBeenCalledTimes(1);
       const forwarded = bdRender.mock.calls[0][0];
       expect(new URL(forwarded.url).searchParams.get("format")).toBe("stl");
+      expect(forwarded.headers.get("x-vercel-oidc-token")).toBe("oidc-abc");
       const body = await forwarded.json();
       expect(body.slug).toBe(LABEL_SLUG);
       const manifest = JSON.parse(

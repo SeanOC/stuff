@@ -33,6 +33,10 @@ import { loadBdModel } from "@/lib/models/bd-manifest";
 import { POST as bdRender } from "@/app/api/bd-render/route";
 
 export const runtime = "nodejs";
+// An STL/3MF missing from the bundle is rendered in-process through
+// /api/bd-render, whose segment config does not travel with the call:
+// match its budget (bd-client's 100 s service timeout + headroom).
+export const maxDuration = 120;
 
 const BAKED_ROOT = path.resolve(process.cwd(), "build123d", "baked");
 
@@ -134,16 +138,24 @@ async function renderOnDemand(
   format: "stl" | "3mf",
   values: Record<string, unknown>,
 ): Promise<Response> {
+  // bd-render authenticates to the service with the inbound Vercel OIDC
+  // header (env token is only the local-dev fallback), so forward it.
+  const fwd = new Headers({ "content-type": "application/json" });
+  const oidc = req.headers.get("x-vercel-oidc-token");
+  if (oidc) fwd.set("x-vercel-oidc-token", oidc);
   const res = await bdRender(
     new NextRequest(new URL(`/api/bd-render?format=${format}`, req.url), {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: fwd,
       body: JSON.stringify({ slug, params: values }),
     }),
   );
   if (!res.ok) return res;
   const headers = new Headers(res.headers);
   headers.set("content-disposition", `attachment; filename="${slug}-${preset}.${format}"`);
+  // bd-render's HIT is content-addressed (immutable); this URL is not, so
+  // keep the revalidating policy the baked path uses.
+  headers.set("cache-control", "public, max-age=0, must-revalidate");
   return new Response(res.body, { status: res.status, headers });
 }
 
