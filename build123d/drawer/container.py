@@ -765,6 +765,11 @@ def _occt_bevel(printed, edges):
     from OCP.StdFail import StdFail_NotDone
     from build123d import Part
     bevel = BRepFilletAPI_MakeChamfer(printed.wrapped)
+    # 45.01, not 45: a 0.01 deg margin keeps the bevel face on the safe
+    # side of the 45 deg overhang gate against OCCT's sampled-normal noise
+    # (audit tolerance 0.001 deg, tests/print_audit.py:75). An exact 45 also
+    # passes at the default (2026-10-13). _wedge_bevel stays exactly 45; the
+    # two paths differ by ~5e-5 mm.
     for edge, face, _ in edges:
         bevel.AddDA(BED_BEVEL, radians(45.01), edge.wrapped, face.wrapped)
     try:

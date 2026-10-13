@@ -106,6 +106,38 @@ def test_presets_are_valid_single_solids():
             print(f'VOLUME | {preset.id} | {part.volume/1000:.3f} cm3')
 
 
+def test_module_fallbacks_match_registered_defaults():
+    """Every `v.get('<param>', <fallback>)` in the drawer modules repeats a
+    registered Param default; a drift in either copy would silently change
+    geometry for callers that skip resolve_values (review N2, PR #190)."""
+    import ast
+    from drawer import constants
+    defaults = m.SPEC.default_values()
+    seen = set()
+    for module in (container, shell):
+        tree = ast.parse(Path(module.__file__).read_text())
+        for node in ast.walk(tree):
+            if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                    and node.func.attr == 'get' and len(node.args) == 2):
+                continue
+            key, fallback = node.args
+            if not isinstance(key, ast.Constant):
+                continue
+            if isinstance(fallback, ast.Attribute):  # c.<CONSTANT>
+                fallback = getattr(constants, fallback.attr)
+            else:
+                fallback = ast.literal_eval(fallback)
+            where = f'{Path(module.__file__).name}:{node.lineno} {key.value}'
+            assert key.value in defaults, where
+            assert defaults[key.value] == fallback, where
+            seen.add(key.value)
+    # _wall_types reads its four keys through an f-string.
+    for name, fallback in zip(('front', 'back', 'side', 'bottom'),
+                              container._wall_types({})):
+        assert defaults[f'container_{name}_wall_type'] == fallback, name
+    assert len(seen) > 30
+
+
 @pytest.mark.parametrize('values', [{}, ONE, {'horizontal_grids': 8, 'vertical_grids': 3},
                                     {'shell_thickness': 4, 'container_width_clearance': 1,
                                      'container_height_clearance': 1, 'container_depth_clearance': 1}])
