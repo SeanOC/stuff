@@ -35,11 +35,13 @@ const nextConfig = {
     // route's files are listed here, plus the manifest for the allowlist
     // check. ONLY the viewer GLBs ship (pst-acoed): Vercel packs these
     // routes into one function, and the baked STL/3MF/per-colour STLs
-    // took it to 345 MB (limit 250). The route renders a missing STL/3MF
-    // on demand via /api/bd-render. Budget guard:
-    // scripts/function-bundle-budget.test.ts.
+    // took it to 345 MB (limit 250). The preset STL/3MF are published to
+    // Vercel Blob by the bake instead (pst-scmib), and the route finds them
+    // through blob-record.json — which must ship, or every download 404s.
+    // Budget guard: scripts/function-bundle-budget.test.ts.
     "/api/bd-asset/[slug]/[preset]": [
       "./build123d/baked/**/*.glb",
+      "./build123d/baked/blob-record.json",
       "./build123d/manifest.json",
     ],
   },
@@ -51,8 +53,8 @@ const nextConfig = {
   // reached 345 MB against Vercel's 250 MB limit once the tombstone-sign
   // presets were baked (pst-acoed). Drop, from EVERY function, the files
   // no route reads at runtime: the baked STL/3MF/per-colour STLs
-  // (/api/bd-asset renders a missing STL/3MF on demand) and the build123d
-  // dev trees. Budget guard: scripts/function-bundle-budget.test.ts.
+  // (/api/bd-asset streams the preset STL/3MF from Vercel Blob) and the
+  // build123d dev trees. Budget guard: scripts/function-bundle-budget.test.ts.
   outputFileTracingExcludes: {
     "/**": [
       "./build123d/baked/**/*.stl",
