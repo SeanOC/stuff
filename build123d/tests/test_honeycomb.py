@@ -59,28 +59,47 @@ def test_full_hex_opening_meets_minimum_across_catalog_range(preset):
     assert min(widths) == pytest.approx(2.0495934556, abs=1e-8)
 
 
-@pytest.mark.parametrize('strut,preset_id,minimum,under_2,total', [
-    (5.0, 'default', 1.9090937647, 16, 97),
-    (5.0, 'small', 1.4162909656, 10, 19),
-    (5.0, 'top-slot', 1.9090937647, 16, 97),
-    (16.3, 'default', .4730067020, 14, 63),
-    (16.3, 'small', .4730067020, 4, 5),
-    (16.3, 'top-slot', .4730067020, 14, 63),
-])
-def test_frame_clipped_opening_exception_measurements(strut, preset_id, minimum, under_2, total):
-    # pst-t0ob3.2 REV 7: decorative closed slots are exempt from Ø2.
-    # Pin final profiles after roofing, including split partial cells.
-    preset = next(p for p in SPEC.presets if p.id == preset_id)
-    values = SPEC.resolve_values(preset.values | {'honeycomb_strut_hyp': strut})
-    widths = []
-    for _, layout in shell.honeycomb_layouts(values):
-        for profile, _, _ in layout.profiles((1, 0)):
-            polygons = [profile] if profile.geom_type == 'Polygon' else profile.geoms
-            for polygon in polygons:
-                widths.append(_opening_width(polygon))
-    assert len(widths) == total
-    assert sum(width < 2 for width in widths) == under_2
-    assert min(widths) == pytest.approx(minimum, abs=1e-8)
+def _endpoint_cases():
+    from tests.test_openconnect_drawer import CASES
+    return CASES
+
+
+@pytest.mark.parametrize('name,values', _endpoint_cases(), ids=[n for n, _ in _endpoint_cases()])
+def test_shell_lattice_openings_under_2mm_are_closed(name, values):
+    """pst-t0ob3.5: production closes, by size, exactly the sub-2 mm openings
+    (the pst-t0ob3.2 REV 7 frame-clipped exception is retired)."""
+    from shapely import maximum_inscribed_circle
+    from drawer.constants import MIN_LATTICE_OPENING_MM
+    from drawer.honeycomb import opening_diameter
+    try:
+        closed = shell.honeycomb_layouts(values)
+    except ValueError as exc:
+        assert 'shell_to_slot_wall_thickness below 0.8 mm' in str(exc), str(exc)
+        return
+    raw = shell.honeycomb_layouts(values, close_openings=False)
+    kept = {layout.wall: layout for _, layout in closed}
+    assert [layout.wall for _, layout in closed] == [layout.wall for _, layout in raw if any(
+        opening_diameter(prof) >= MIN_LATTICE_OPENING_MM for prof, _, _ in layout.profiles((1, 0)))]
+    shut = []
+    for _, layout in raw:
+        keep = kept[layout.wall].openings if layout.wall in kept else []
+        assert all(any(p.equals(q) for q in layout.openings) for p in keep), layout.wall
+        for p, (prof, _, _) in zip(layout.openings, layout.profiles((1, 0))):
+            diameter = opening_diameter(prof)
+            assert any(p.equals(q) for q in keep) == (diameter >= MIN_LATTICE_OPENING_MM), \
+                (layout.wall, round(diameter, 3))
+            if diameter < MIN_LATTICE_OPENING_MM:
+                shut.append(diameter)
+    print(f'CLOSED | {name} | {len(shut)} | {min(shut, default=0):.3f}')
+    # No through-wall opening under 2 mm in production, piece by piece: a
+    # roof can split a cell in two and the small lobe is a hole too.
+    pieces = [2*maximum_inscribed_circle(g, .001).length
+              for _, layout in closed for prof, _, _ in layout.profiles((1, 0))
+              for g in getattr(prof, 'geoms', [prof]) if not g.is_empty]
+    assert min(pieces, default=2.) >= MIN_LATTICE_OPENING_MM, round(min(pieces), 3)
+    # Source mode (the parity fixture) keeps every author cell.
+    source = shell.honeycomb_layouts({**values, 'honeycomb_ceiling': 'source'})
+    assert sum(len(l.openings) for _, l in source) == sum(len(l.openings) for _, l in raw)
 
 
 @pytest.mark.parametrize('strut', [0, -1, 1.09, float('inf'), float('nan'), 20])
@@ -246,9 +265,15 @@ def test_roofed_profiles_match_independent_source_oracle(name, values, source_co
                                'scripts/check-drawer-roof-contract.py'))['inspect']
     measured = oracle(name, {**values, 'honeycomb_ceiling': 'source'}, source_count)
     assert measured['roofed_openings'] == roofed_count
-    assert len(shell.source_honeycomb_cutters(values)) == roofed_count
+    def pieces(layouts):
+        return sum(len(getattr(prof, 'geoms', [prof]))
+                   for _, layout in layouts for prof, _, _ in layout.profiles((1, 0)))
+    # The oracle roofs every source cell; production then closes sub-Ø2 ones.
+    raw = shell.honeycomb_layouts(values, close_openings=False)
+    assert pieces(raw) == roofed_count
+    assert len(shell.source_honeycomb_cutters(values)) == pieces(shell.honeycomb_layouts(values))
     removed = 0
-    for _, layout in shell.honeycomb_layouts(values):
+    for _, layout in raw:
         for source, (roofed, chord, changed) in zip(layout.openings, layout.profiles((1, 0))):
             removed += source.area-roofed.area
             assert roofed.difference(source).area < 1e-8
@@ -264,9 +289,11 @@ def test_roofed_profiles_match_independent_source_oracle(name, values, source_co
 def test_roof_volume_matches_polygon_area(values):
     source = shell.build({**values, 'honeycomb_ceiling': 'source'})
     roofed = shell.build(values)
-    removed = sum(original.area-profile.area
-                  for _, layout in shell.honeycomb_layouts(values)
-                  for original, (profile, _, _) in zip(layout.openings, layout.profiles((1, 0))))
+    # Source cuts every author cell; production cuts only the kept, roofed ones.
+    removed = (sum(original.area for _, layout in shell.honeycomb_layouts(values, close_openings=False)
+                   for original in layout.openings)
+               - sum(profile.area for _, layout in shell.honeycomb_layouts(values)
+                     for profile, _, _ in layout.profiles((1, 0))))
     expected = removed*shell.dimensions(values).wall
     assert roofed.volume-source.volume == pytest.approx(expected, rel=.01, abs=1e-6)
     print(f'VOLUME | {values} | source {source.volume:.6f} | roofed {roofed.volume:.6f}')
@@ -280,7 +307,10 @@ def test_roof_volume_matches_polygon_area(values):
 def test_roofed_geometry_has_no_over_limit_flat_ceiling(values):
     from drawer.constants import MAX_BRIDGE_MM
     rows = shell.honeycomb_ceiling_chords(values)
-    assert any(roofed for _, _, roofed in rows)
+    # At strut 4.7 the only over-limit chords are on sub-Ø2 frame cells,
+    # which production closes; the roof is exercised before the closure.
+    assert any(roofed for _, layout in shell.honeycomb_layouts(values, close_openings=False)
+               for _, _, roofed in layout.ceiling_chords((1, 0)))
     assert all(chord <= MAX_BRIDGE_MM for _, chord, roofed in rows if not roofed)
     # Independent 3D check: flags alone cannot make the analytic audit pass.
     flat = [face for hole in shell.source_honeycomb_cutters(values)
