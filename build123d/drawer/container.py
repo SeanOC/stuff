@@ -280,23 +280,34 @@ def _sweep(h, d, x, turn):
     by _start_tangent_angle about the start point. A non-positive bar length
     makes the source path fold back on itself; the reference render drops
     both sweeps there (CGAL applyUnion3D assertion), and so does the port.
+
+    The two sweeps are mirror images about X=0 (right_turtle = -left_turtle)
+    and each bar nominally ends there, but the start-tangent turn tilts the
+    end faces so they cross: overlap on one side, a ~0.01 mm V-notch on the
+    other. Each bar runs .1 past the centre and is clipped at X=0, so the
+    mirror-identical sections meet flush.
     """
     T, H = h.thickness, h.strut_height
     if h.bar_length <= 0:
         return None
     profile = _rect_face(T, H, c.HANDLE_CHAMFER)  # local X across, Y = author Y
-    # Sweep frame: author X = v, author Z = u, author Y = w; overlap the
-    # transition's end face by .05 so the joint stays one solid.
-    lead = .05
-    first = Pos(0, 0, -lead) * Solid.extrude(profile, (0, 0, HANDLE_TURTLE_START + lead))
+    # Sweep frame: author X = v, author Z = u, author Y = w. The first
+    # "move" is a ruled loft from the transition's end face (untilted, so
+    # it is that face exactly) to the tilted section at u=.2: the joint
+    # shares a face instead of an overlapping lead, whose tilted start
+    # left micrometre strips beside the stem's taper.
+    tilt = _start_tangent_angle(T, turn)
     start = Pos(0, 0, HANDLE_TURTLE_START) * profile
+    first = loft([Rot(0, tilt, 0) * profile, start], ruled=True)
     arc = revolve(start, Axis((turn*T, 0, HANDLE_TURTLE_START), (0, turn, 0)), 90)
     end = Plane(origin=(turn*T, 0, HANDLE_TURTLE_START + T), x_dir=(0, 0, -turn), z_dir=(turn, 0, 0))
-    bar = end.location * Solid.extrude(_rect_face(T, H, c.HANDLE_CHAMFER), (0, 0, h.bar_length))
+    bar = end.location * Solid.extrude(_rect_face(T, H, c.HANDLE_CHAMFER), (0, 0, h.bar_length + .1))
     body = first + arc + bar
     y = -d.height/2 + H/2
     z = d.depth + h.transition_depth - EPS
-    return Pos(x, y, z) * Rot(0, -_start_tangent_angle(T, turn), 0) * body
+    body = Pos(x, y, z) * Rot(0, -tilt, 0) * body
+    big = 4*(d.width + d.height + d.depth)
+    return body & Pos(big/2 if x > 0 else -big/2, 0, 0) * Box(big, big, big)
 
 
 def _clip(d, values):
@@ -521,8 +532,13 @@ def wall_layouts(values=None):
         # hex_panel([depth, width]) attach(TOP, LEFT): (x, z) = (py, depth/2 - px).
         holes = [Polygon([(y, d.depth/2 - x) for x, y in p.exterior.coords])
                  for p in _hex_holes(d.depth, d.width, d, min(s, d.back, d.front))]
+        # [C] :1526-1527 mirrors the side window: anchored at the back wall
+        # with both fillet margins off the front end, so it runs under the
+        # back inner fillet (a 0.09 mm feather with flat ceilings over the
+        # cells). Production starts at the fillet tangent; 'source' keeps it.
+        back_end = d.back + (0 if ceiling == 'source' else f)
         add('Bottom', Plane(origin=(0, -d.height/2 + b/2 - EPS/2, 0), x_dir=(1, 0, 0), z_dir=(0, -1, 0)),
-            holes, window(-(d.width/2 - s - f), d.back, d.width/2 - s - f, d.depth - d.front - 2*f),
+            holes, window(-(d.width/2 - s - f), back_end, d.width/2 - s - f, d.depth - d.front - 2*f),
             [], b + EPS, 'source')
     return walls
 
@@ -745,8 +761,12 @@ def _occt_bevel(printed, edges):
 def _wedge_bevel(printed, edges):
     """The same bevel as explicit cutters: {z + inset < 0.3} along each
     straight edge, run 0.5 mm past convex ends (corners miter) and
-    stopped at concave ones (a stem root continuing the bed face)."""
+    mitered at 45 deg at concave ones (a stem root continuing the bed
+    face): the stem's 0.4 mm root chamfer widens it by z at height z, so
+    a square wedge end would undercut the wall behind the stem and leave
+    a 0.3 mm triangle of the stem's back face, 0.03-0.6 mm thick."""
     from build123d import Vector
+    big = 4*max(printed.bounding_box().size)
     wedges = []
     up, slack = Vector(0, 0, 1), .01
     for edge, _, wall in edges:
@@ -755,10 +775,15 @@ def _wedge_bevel(printed, edges):
         a, b = edge.position_at(0), edge.position_at(1)
         t = (b - a).normalized()
         out = wall.normal_at(edge.position_at(.5))
-        ext = []
+        ext, miters = [], []
         for end, sign in ((a, -1), (b, 1)):
             probe = end + t*(sign*.15) + out*.05 + up*.05
-            ext.append(0 if printed.is_inside(probe) else .5)
+            concave = printed.is_inside(probe)
+            ext.append(0 if concave else .5)
+            if concave:
+                normal = (t*sign + up).normalized()
+                miters.append(Plane(origin=end, z_dir=normal).location *
+                              Box(big, big, big, align=(Align.CENTER, Align.CENTER, Align.MIN)))
         start = a - t*ext[0]
         # Hypotenuse exactly on z + inset = BED_BEVEL; legs overshoot.
         # The outer leg lies ON the wall plane: an outward overshoot would
@@ -766,8 +791,9 @@ def _wedge_bevel(printed, edges):
         tri = [start + up*BED_BEVEL,
                start - out*(BED_BEVEL + slack) - up*slack,
                start - up*slack]
-        wedges.append(Solid.extrude(Face(Wire.make_polygon(tri, close=True)),
-                                    t*((b - a).length + ext[0] + ext[1])))
+        wedge = Solid.extrude(Face(Wire.make_polygon(tri, close=True)),
+                              t*((b - a).length + ext[0] + ext[1]))
+        wedges.append(wedge.cut(*miters) if miters else wedge)
     result = printed.cut(*wedges)
     return result if result.is_valid and len(result.solids()) == 1 else None
 

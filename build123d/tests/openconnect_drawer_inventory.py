@@ -298,6 +298,11 @@ def container_edge_inventory(part, values):
             family = 'source/roofed honeycomb opening'
         elif all(near(p, plain_edges) for p in points):
             family = 'published wall edge'
+        elif all(near(p, plain_edges) or near(p, honeycomb) for p in points):
+            # container_inner_fillet=0: the front window inset (side+fillet,
+            # bottom+fillet; [C] :1501-1527) lands on the cavity corner, so
+            # the inner corner edge runs on through the window unbroken.
+            family = 'published wall edge'
         else:
             for name, feature_faces in features:
                 if all(near(p, feature_faces) for p in points):
