@@ -951,7 +951,7 @@
       "slug": "openconnect-drawer",
       "engine": "build123d",
       "title": "openConnect drawer",
-      "blurb": "mitufy's drawer shell (CC BY-SA 4.0). Print back-wall-down; a honeycomb bottom and selectable wall types. Select the mounting face independently of print orientation.",
+      "blurb": "mitufy's drawer shell and container (CC BY-SA 4.0). Shell prints back-wall-down with a honeycomb bottom and selectable wall types; select its mounting face independently of print orientation. The container prints bottom-down with a handle, label holder and magnet pockets.",
       "categoryId": "multiboard",
       "params": [
         {
@@ -960,8 +960,10 @@
           "kind": "enum",
           "default": "shell",
           "choices": [
-            "shell"
-          ]
+            "shell",
+            "container"
+          ],
+          "filename": true
         },
         {
           "name": "horizontal_grids",
@@ -1208,6 +1210,187 @@
           "kind": "number",
           "default": 3,
           "step": 0.1
+        },
+        {
+          "name": "container_front_wall_type",
+          "group": "Container",
+          "kind": "enum",
+          "default": "Honeycomb",
+          "choices": [
+            "Honeycomb",
+            "Solid"
+          ]
+        },
+        {
+          "name": "container_back_wall_type",
+          "group": "Container",
+          "kind": "enum",
+          "default": "Solid",
+          "choices": [
+            "Honeycomb",
+            "Solid"
+          ]
+        },
+        {
+          "name": "container_side_wall_type",
+          "group": "Container",
+          "kind": "enum",
+          "default": "Honeycomb",
+          "choices": [
+            "Honeycomb",
+            "Solid"
+          ]
+        },
+        {
+          "name": "container_bottom_wall_type",
+          "group": "Container",
+          "kind": "enum",
+          "default": "Solid",
+          "choices": [
+            "Honeycomb",
+            "Solid"
+          ]
+        },
+        {
+          "name": "container_solid_wall_thickness",
+          "group": "Container",
+          "kind": "number",
+          "default": 1.6,
+          "min": 1.2,
+          "max": 3,
+          "step": 0.1
+        },
+        {
+          "name": "container_honeycomb_wall_thickness",
+          "group": "Container",
+          "kind": "number",
+          "default": 2.0,
+          "min": 1.6,
+          "max": 3,
+          "step": 0.1
+        },
+        {
+          "name": "container_back_side_height_offset",
+          "group": "Container",
+          "kind": "number",
+          "default": 3,
+          "min": 0,
+          "max": 10,
+          "step": 0.1
+        },
+        {
+          "name": "container_inner_fillet",
+          "group": "Container",
+          "kind": "number",
+          "default": 2,
+          "min": 0,
+          "max": 4,
+          "step": 0.1
+        },
+        {
+          "name": "add_label_holder",
+          "group": "Container",
+          "kind": "boolean",
+          "default": true
+        },
+        {
+          "name": "label_width",
+          "group": "Container",
+          "kind": "number",
+          "default": 48,
+          "min": 20,
+          "max": 100,
+          "step": 0.1
+        },
+        {
+          "name": "label_height",
+          "group": "Container",
+          "kind": "number",
+          "default": 10,
+          "min": 6,
+          "max": 20,
+          "step": 0.1
+        },
+        {
+          "name": "label_thickness",
+          "group": "Container",
+          "kind": "number",
+          "default": 1,
+          "min": 0.6,
+          "max": 1.6,
+          "step": 0.1
+        },
+        {
+          "name": "handle_thickness",
+          "group": "Container",
+          "kind": "number",
+          "default": 2.4,
+          "min": 1.6,
+          "max": 4,
+          "step": 0.1
+        },
+        {
+          "name": "handle_depth",
+          "group": "Container",
+          "kind": "number",
+          "default": 12,
+          "min": 6,
+          "max": 20,
+          "step": 0.1
+        },
+        {
+          "name": "container_back_magnet_thickness",
+          "group": "Container",
+          "kind": "number",
+          "default": 1,
+          "min": 0.6,
+          "max": 3,
+          "step": 0.1
+        },
+        {
+          "name": "container_side_magnet_thickness",
+          "group": "Container",
+          "kind": "number",
+          "default": 1,
+          "min": 0.6,
+          "max": 3,
+          "step": 0.1
+        },
+        {
+          "name": "container_side_magnet_edge_distance",
+          "group": "Container",
+          "kind": "number",
+          "default": 6,
+          "min": 2,
+          "max": 12,
+          "step": 0.1
+        },
+        {
+          "name": "container_height_clearance",
+          "group": "Container",
+          "kind": "number",
+          "default": 0.4,
+          "min": 0.1,
+          "max": 1,
+          "step": 0.01
+        },
+        {
+          "name": "container_width_clearance",
+          "group": "Container",
+          "kind": "number",
+          "default": 0.3,
+          "min": 0.1,
+          "max": 1,
+          "step": 0.01
+        },
+        {
+          "name": "container_depth_clearance",
+          "group": "Container",
+          "kind": "number",
+          "default": 0.4,
+          "min": 0.1,
+          "max": 1,
+          "step": 0.01
         }
       ],
       "presets": [
@@ -1230,6 +1413,24 @@
           "label": "Underdesk shell",
           "values": {
             "shell_slot_position": "Top"
+          }
+        },
+        {
+          "id": "container",
+          "label": "5 \u00d7 2 \u00d7 5 container: honeycomb front and sides",
+          "values": {
+            "part": "container"
+          }
+        },
+        {
+          "id": "container-solid",
+          "label": "5 \u00d7 2 \u00d7 5 container: all walls solid",
+          "values": {
+            "part": "container",
+            "container_front_wall_type": "Solid",
+            "container_back_wall_type": "Solid",
+            "container_side_wall_type": "Solid",
+            "container_bottom_wall_type": "Solid"
           }
         }
       ]
