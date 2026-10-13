@@ -14,15 +14,22 @@ continuous extrusion on its wall). PLA or PCTG, no supports.
 Not ported: Decorative / Support_Bridging_Separation (:88-92: the author's
 render is non-manifold and its 0.4 mm feet are below the 0.9 mm wall floor),
 Text_Emboss / Text_x_coordinate / Font / colours (single-material deboss with
-the repo's Inter Bold label font). See the NOTICE deviations list.
+the repo's Inter Bold label font). Channel_Length_Units stops at 11, not the
+author's 12: 12 cells are 336 mm, past the H2S bed (holders/printer.py). See
+the NOTICE deviations list.
 """
 from labels.constants import MAX_TEXT_LENGTH, TEXT_CHARSET
+from holders.printer import BED_X
 from holders.registry import ModelSpec, Param, Preset, register
 from underware import constants as c
 from build123d import Box, Pos
 from underware.channel import (CUTOUT_SIDES, cell_centres, check_cutouts, cord_cutouts, cutout_sill_regions,
                                filament_grooves, label_cutter, present_grips, straight_channel)
 from underware.grip import end_ramp_regions, slit_floor_regions
+
+
+# Longest channel that fits the bed: 11 cells = 308 mm (the author allows 12).
+MAX_LENGTH_UNITS = int(BED_X // c.GRID)
 
 
 def dimensions(v):
@@ -105,7 +112,7 @@ SPEC = register(ModelSpec(
               group='Channel Size', label='Width (28 mm units)'),
         Param('channel_total_height', 'number', 22, min=10, max=72, step=6, filename=True,
               group='Channel Size', unit='mm', label='Height including grips'),
-        Param('channel_length_units', 'integer', 5, min=1, max=12, step=1, filename=True,
+        Param('channel_length_units', 'integer', 5, min=1, max=MAX_LENGTH_UNITS, step=1, filename=True,
               group='Channel Size', label='Length (28 mm units)'),
         Param('number_of_cord_cutouts', 'integer', 0, min=0, max=12, step=1,
               group='Cord Cutouts', label='Number of cord cutouts'),

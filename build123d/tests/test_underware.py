@@ -155,7 +155,7 @@ def test_reference_parity(name, tmp_path):
 
 # --- invariants (planner rig parts/monokini_i.invariants.py) -------------------
 
-@pytest.mark.parametrize('units,length', [(1, 5), (2, 3), (4, 1), (3, 12)])
+@pytest.mark.parametrize('units,length', [(1, 5), (2, 3), (4, 1), (3, 11)])
 def test_profile_width_grip_spacing_and_count(units, length):
     v = {'channel_width_units': units, 'channel_length_units': length}
     part = m.build(v)
@@ -242,10 +242,10 @@ CASES = {
     'default': {}, 'wide-tall': PARITY['i-2x3-h34'], 'cutouts': {'number_of_cord_cutouts': 2},
     'label': {'add_label': True},
     'width-4': {'channel_width_units': 4}, 'length-1': {'channel_length_units': 1},
-    'length-12': {'channel_length_units': 12}, 'height-10': {'channel_total_height': 10},
+    'length-11': {'channel_length_units': 11}, 'height-10': {'channel_total_height': 10},
     'height-16': {'channel_total_height': 16}, 'height-70': {'channel_total_height': 70},
     'height-72': {'channel_total_height': 72},
-    'max-corner': {'channel_width_units': 4, 'channel_length_units': 12, 'channel_total_height': 72},
+    'max-corner': {'channel_width_units': 4, 'channel_length_units': 11, 'channel_total_height': 72},
     'min-corner': {'channel_length_units': 1, 'channel_total_height': 10},
     'cut-n12': {'number_of_cord_cutouts': 12}, 'cut-w6': {'number_of_cord_cutouts': 2, 'cord_cutout_width': 6},
     'cut-w20-suppressed': {'number_of_cord_cutouts': 1, 'cord_cutout_width': 20, 'suppress_connectors': 'NNBNN'},
@@ -264,7 +264,7 @@ CASES = {
                                'cord_cutout_width': 20, 'suppress_connectors': 'NNLNN'},
     'label-s6-24ch': {'add_label': True, 'text': 'ABCDEFGHIJKLMNOPQRSTUVWX', 'text_size': 6},
     'label-s16-d1': {'add_label': True, 'text_size': 16, 'text_depth': 1},
-    'label-max-corner': {'add_label': True, 'channel_width_units': 4, 'channel_length_units': 12,
+    'label-max-corner': {'add_label': True, 'channel_width_units': 4, 'channel_length_units': 11,
                          'text_size': 16, 'text': 'Hello cables 0123'},
     'flare-5': {'grip_flare': 5}, 'flare-9.9': {'grip_flare': 9.9},
     'flare-9.9-max-corner': {'grip_flare': 9.9, 'channel_width_units': 4, 'channel_total_height': 72},

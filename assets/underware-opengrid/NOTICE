@@ -85,6 +85,8 @@ Port deviations (build123d/holders/underware_i_channel.py header):
   1/0.72 to match OpenSCAD's em; no Text_x_coordinate, colours or inlay.
 - Filament groove honours Filament_Diameter (the source hard-codes
   teardrop2d(d=1.75) at :331; identical at the 1.75 default).
+- Channel_Length_Units max 11, not the spec's 12 (:44): 12 cells are 336 mm, past
+  the 325 mm Bambu H2S single-nozzle bed (build123d/holders/printer.py).
 - Suppress_Connectors / Channel_Separators: per-index codes as in the source
   (:89 N/L/R/B/S, :92 N/S); extra or unknown codes are named errors.
 
