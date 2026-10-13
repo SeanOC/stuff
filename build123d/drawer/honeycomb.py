@@ -12,11 +12,11 @@ from math import cos, sin, pi, floor, isfinite, sqrt
 from dataclasses import dataclass
 
 from build123d import Box, Face, Part, Sketch, Wire, extrude
-from shapely import set_precision
+from shapely import maximum_inscribed_circle, set_precision
 from shapely.affinity import affine_transform
 from shapely.geometry import Point, Polygon, box
 
-from .constants import HONEYCOMB_UNIT, HONEYCOMB_STRUT_HYP, MAX_BRIDGE_MM
+from .constants import HONEYCOMB_UNIT, HONEYCOMB_STRUT_HYP, MAX_BRIDGE_MM, MIN_LATTICE_OPENING_MM
 
 
 class HoneycombPanelTooSmall(ValueError):
@@ -118,6 +118,24 @@ def roof_opening(opening, frame_up=(0, 1), *, ceiling='roofed'):
             # collapses it into two pieces.
             upright = set_precision(upright, 1e-9)
     return affine_transform(upright, [uy, ux, -ux, uy, 0, 0]), chord, roofed
+
+
+def opening_diameter(opening):
+    """Inscribed circle diameter of the SMALLEST piece of a through-wall
+    opening: a 45 deg roof can split a cell in two (docs/openconnect-drawer.md),
+    and the small lobe is a real hole, so the cell is judged by it
+    (review round 5 B1, PR #190)."""
+    return min((2*maximum_inscribed_circle(p, .001).length
+                for p in getattr(opening, 'geoms', [opening]) if not p.is_empty), default=0.)
+
+
+def close_small_openings(openings, frame_up=(0, 1), *, ceiling='roofed'):
+    """The openings whose roofed profile admits a MIN_LATTICE_OPENING_MM
+    circle; the rest are closed, by size, whatever clipped them
+    (docs/design-guidelines.md:46, pst-t0ob3.3 DECISION C rev (b))."""
+    return [p for p in openings
+            if opening_diameter(roof_opening(p, frame_up, ceiling=ceiling)[0])
+            >= MIN_LATTICE_OPENING_MM]
 
 
 def _lower_ceilings(upright, vertices, top):
