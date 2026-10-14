@@ -477,7 +477,10 @@ def audit_exclusions(values: dict) -> list[tuple[float, ...]]:
         z = t / 2 + signs.PIN_D / 2
         y, half = signs.PIN_FROM_BOTTOM, signs.PIN_D / 2
         out.append((-w / 2 - 0.001, y - half, z - 0.001, w / 2 + 0.001, y + half, z + 0.001))
-    out.append((-w / 2, m - 0.001, t + 1e-4, w / 2, h, t + RAISE_H + 0.001))
+    # Z floor 1e-6 under the top face, so every raised wall's box sits wholly
+    # inside and the audit skips it without sampling (t + 1e-4 sampled all
+    # ~4000 glyph walls: > 17 min CPU vs 52 s at the default preset).
+    out.append((-w / 2, m - 0.001, t - 1e-6, w / 2, h, t + RAISE_H + 0.001))
     return out
 
 

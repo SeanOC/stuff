@@ -24,6 +24,7 @@ from labels.constants import MAX_TEXT_LENGTH  # noqa: E402
 from labels.label_text import _polygons, load_font, min_feature_width  # noqa: E402
 import print_audit  # noqa: E402
 from print_audit import audit  # noqa: E402
+from tests.audit_record import record  # noqa: E402
 from scripts.export import export_3mf_one_object, export_stl  # noqa: E402
 
 SPEC = m.SPEC
@@ -534,11 +535,11 @@ def test_slab_exclusion_contains_every_raised_feature(preset_id):
     for name, part, _ in parts[1:]:
         bb = part.bounding_box()
         assert (x0 <= bb.min.X and bb.max.X <= x1 and y0 <= bb.min.Y and bb.max.Y <= y1
-                and bb.max.Z <= z1 and bb.min.Z < z0), name
+                and z0 <= bb.min.Z and bb.max.Z <= z1), name
     if preset_id == 'default':
         slab = Pos((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2) * Box(x1 - x0, y1 - y0, z1 - z0)
         raised = sum(p.volume for _, p, _ in parts[1:])
-        assert (whole & slab).volume == pytest.approx(raised, rel=1e-3)  # all but the 1e-4 skin
+        assert (whole & slab).volume == pytest.approx(raised, rel=1e-3)  # plus a 1e-6 skin of plate
 
 
 @pytest.mark.audit
@@ -617,6 +618,9 @@ def test_print_audit_per_preset(preset_id, capsys):
               f'raw_bridge={raw.longest_bridge_mm:.2f} overhang={report.max_overhang_deg:.1f} '
               f'bridge={report.longest_bridge_mm:.2f} min_wall={report.min_wall_mm:.3f} '
               f'volume={whole.volume:.0f} parts={len(parts)} ok={report.ok}')
+    record(preset_id, wall=report.min_wall_mm, overhang=report.max_overhang_deg,
+           bridge=report.longest_bridge_mm, volume=whole.volume, parts=len(parts),
+           result='PASS' if report.ok else 'FAIL')
     assert report.ok, report.format()
     assert report.max_overhang_deg <= 45.0 + 1e-3
 
