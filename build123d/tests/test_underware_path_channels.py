@@ -173,6 +173,64 @@ def test_reference_parity(ref_name, tmp_path):
                        for k, v in out.items()))
 
 
+MITRE_PARITY = {
+    'mitre-r1': {'added_radius': 1},
+    'mitre-mirror-r1-w2-h28-y2': {'channel_width_units': 2, 'channel_total_height': 28,
+                                  'length_y_units': 2, 'mirror_channel': True, 'added_radius': 1,
+                                  'suppress_connectors': 'NL,R'},
+    'mitre': {},
+}
+MITRE_GAP_MM3 = (1050, 1160)   # the default ref's bend deficit (measured 1105)
+
+
+def _mitre_bend_mask(points, values):
+    """The bend quadrant: past the first arm's end (y > -w/2 - STUB) and above
+    the second arm's start (z > -r), either side of x (mirror)."""
+    v = m.SPEC_MITRE.resolve_values(values)
+    w, r = c.channel_width(v['channel_width_units']), p.mitre_radius(v['channel_total_height'],
+                                                                      v['added_radius'])
+    return (points[:, 1] > -w/2 - p.STUB - 0.1) & (points[:, 2] > -r - 0.1)
+
+
+@pytest.mark.parametrize('ref_name', MITRE_PARITY)
+def test_mitre_reference_parity(ref_name, tmp_path):
+    """underware_mitre is built and parity-tested but NOT registered (mayor
+    ruling, option C; print strategy pst-1nv9a). The added-radius refs match
+    everywhere: path_extrude2d's 90 chords are 0.002 mm off the port's revolve.
+    The default ref's bend (r = h/2 = 11) leaves path_extrude2d gaps between
+    its segments (BOSL2 b86a7584), so it is matched off the bend and its bend
+    deficit is pinned; every ref->port point in the bend lies inside the port
+    (the ref's bend is a subset of the port's, never extra material)."""
+    values = MITRE_PARITY[ref_name]
+    part = m.build_mitre(values)
+    assert part.is_valid and len(part.solids()) == 1
+    ref = load_reference(ASSETS / 'mesh' / f'{ref_name}.stl')
+    port = mesh_from_part(part, tmp_path / 'port.stl', tolerance=0.002, angular_tolerance=0.05)
+    gap = ref_name == 'mitre'
+    box = part.bounding_box()
+    if not gap:
+        assert np.abs(np.array([*box.min, *box.max]) - ref.bounds.ravel()).max() <= 0.015
+        assert abs(ref.volume - part.volume) <= max(3, 1e-3*part.volume)
+    else:
+        assert MITRE_GAP_MM3[0] <= part.volume - ref.volume <= MITRE_GAP_MM3[1]
+    out = {}
+    for label, a, b in (('port->ref', port, ref), ('ref->port', ref, port)):
+        points, _ = sample_surface(a, n=20000, seed=7, sampler='even')
+        points = np.vstack([points, a.vertices])
+        d = trimesh.proximity.closest_point(b, points)[1]
+        skip = _mitre_bend_mask(points, values) if gap else np.zeros(len(points), bool)
+        if a is ref:
+            for i in np.flatnonzero((d > 0.02) & ~skip):
+                skip[i] = part.is_inside(tuple(points[i]))
+            if gap:
+                bend = np.flatnonzero(_mitre_bend_mask(points, values) & (d > 0.02))
+                assert all(part.is_inside(tuple(points[i]), tolerance=0.02) for i in bend[::7])
+        out[label] = (d[~skip].max(), skip.mean())
+        assert d[~skip].max() <= 0.02, (label, d[~skip].max(), points[~skip][np.argmax(d[~skip])])
+    print(f'PARITY | {ref_name} | ref vol {ref.volume:.1f} port {part.volume:.1f} | '
+          + ' | '.join(f'{k} max {v[0]:.4f} skipped {100*v[1]:.2f}%' for k, v in out.items()))
+
+
 def test_reference_exception_faces_are_internal():
     """The epic's lip (z = h - BASE_HEIGHT) and S z = 2.0 down-facing families
     have reference solid on the far side, so they print as nothing; the port

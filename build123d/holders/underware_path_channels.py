@@ -230,15 +230,17 @@ SPEC_PATH = register(ModelSpec(
     ),
 ))
 
-# Not registered yet: the 45 degree frame stands the mitre on two edges with
-# no bed face, and the bend fails the audit there (pst-fsk8s.3 question to
-# the mayor). The geometry and its parity tests ship; the catalog entry waits.
+# Deliberately NOT registered (mayor ruling on pst-fsk8s.3, option C): the 45
+# degree frame stands the mitre on two edges with no bed face, and the bend's
+# arch underside fails the overhang audit there (the author's own mesh too).
+# The geometry and its parity tests ship; the print strategy and the catalog
+# entry are pst-1nv9a.
 SPEC_MITRE = ModelSpec(
     name='underware_mitre',
     title='Underware mitre cable-channel corner (openGrid)',
     description='Underware "monokini" channel that turns 90° from one openGrid board onto a '
                 'perpendicular one (inside corner), with an optional larger bend radius. '
-                + BLURB + ' Prints tilted 45°, no supports.',
+                + BLURB,
     category_id='multiboard',
     build=build_mitre,
     print_frame=mitre_print_frame,
