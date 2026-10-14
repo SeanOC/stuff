@@ -65,6 +65,7 @@ def test_reject_empty_cavity_with_author_error():
 
 from holders import openconnect_drawer as m
 from tests import print_audit as audit
+from tests.audit_record import record
 from tests.openconnect_drawer_inventory import edge_inventory, source_contact_mask, wall_regions
 from tests.parity import (band_mask, bbox_parity, boundary_edges, load_reference,
                           over_cap_exclusion, surface_distance, volume_parity)
@@ -121,6 +122,7 @@ def test_reference_parity(reference_case):
     # Zero-length segments have no boundary length.
     edges = [(a, b) for a, b in edges if np.linalg.norm(np.asarray(a)-b) > 1e-8]
     classifier = audit._ClassifiedPart(source)
+    directions = {}
     for direction, a, b in [('port->ref', port, ref), ('ref->port', ref, port)]:
         points, distances = surface_distance(a, b, n=40000, seed=1, sampler='uniform',
                                              vertices=True, signed=False)
@@ -144,6 +146,9 @@ def test_reference_parity(reference_case):
         assert distances[kept].max() <= .15
         print(f'PARITY | {name} | {direction} | {ref.volume:.6f} | {port.volume:.6f} | '
               f'{distances[kept].max():.6f} | band {coverage:.4%} | bevel {excluded:.4%} | contact {contact.mean():.4%}')
+        directions[direction] = {'max': distances[kept].max(), 'band': coverage,
+                                 'bevel': excluded, 'contact': contact.mean()}
+    record(name, ref=ref.volume, port=port.volume, directions=directions)
 
 
 def test_source_contact_planes_are_opposite_csg_skins():
@@ -326,6 +331,7 @@ def test_endpoint_audit_and_edges(name, values):
             'shell_to_slot_wall_thickness below 0.8 mm leaves less slot backing than the openconnect-slot-shallow contract',
         )
         print(f'AUDIT | {name} | named error: {exc}')
+        record(name, named_error=str(exc))
         return
     assert part.is_valid and len(part.solids()) == 1
     chords = shell.honeycomb_ceiling_chords(values)
@@ -361,6 +367,11 @@ def test_endpoint_audit_and_edges(name, values):
           f'bridge {raw.longest_bridge_mm:.2f} | analytic unroofed chord {max_unroofed:.6f} | exposed edge {angle:.3f} | '
           f'filtered wall {report.min_wall_mm:.3f} / overhang {report.max_overhang_deg:.1f} | '
           f'closed {len(shut)} / min Ø {min(shut, default=0):.3f} | mount PASS | PASS {inventory}')
+    record(name, raw_wall=raw.min_wall_mm, raw_overhang=raw.max_overhang_deg,
+           bridge=raw.longest_bridge_mm, analytic_unroofed_chord=max_unroofed, exposed_edge=angle,
+           filtered_wall=report.min_wall_mm, filtered_overhang=report.max_overhang_deg,
+           closed=len(shut), closed_min_d=min(shut, default=0), mount='PASS', result='PASS',
+           inventory=inventory)
 
 
 def test_edge_inventory_rejects_unpublished_protrusion():

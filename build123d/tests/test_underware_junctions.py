@@ -21,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from holders import underware_junctions as m
 from tests import print_audit as pa
 from scripts.export import export_stl
+from tests.audit_record import record
 from tests.parity import load_reference, mesh_from_part, sample_surface
 from underware import constants as c
 from underware import junction as j
@@ -505,6 +506,11 @@ def test_endpoint_audit_and_edges(case):
           f'bridge {raw.longest_bridge_mm:.2f} | filtered wall {report.min_wall_mm:.3f} ovh '
           f'{report.max_overhang_deg:.1f} | edges worst exposed {worst:.1f} {dict(sorted(families.items()))} '
           f'| exceptions {", ".join(k for k, r in regions.items() if r) or "none"} | PASS')
+    record(case, vol=part.volume, raw_wall=raw.min_wall_mm, raw_ovh=raw.max_overhang_deg,
+           raw_bridge=raw.longest_bridge_mm, filtered_wall=report.min_wall_mm,
+           filtered_ovh=report.max_overhang_deg, edges_worst_exposed=worst,
+           edges=dict(sorted(families.items())), exceptions=[k for k, r in regions.items() if r],
+           result='PASS')
 
 
 @pytest.mark.parametrize('name', m.SPECS)

@@ -47,6 +47,7 @@ from opengrid.multiconnect import SnapInSlotCutter  # noqa: E402
 
 from holders.registry import all_models  # noqa: E402
 from tests import audit_cache  # noqa: E402
+from tests.audit_record import record
 from tests.mount_contracts import resolve_fixtures  # noqa: E402
 from holders.printer import BED_X, BED_Y, BED_Z  # noqa: E402
 from tests.print_audit import (  # noqa: E402
@@ -738,5 +739,6 @@ def test_audit_full_only_presets_fit_the_bed(spec, preset):
         part = spec.print_frame(values) * part
     extent = print_extent(part, _unit(spec.print_orientation))
     print(f"BED EXTENT | {spec.name} | {preset.id} | {extent}")
+    record(spec.name, preset=preset.id, extent=extent)
     bed = bed_failure(extent)
     assert bed is None, f"{spec.name}: {bed}"
