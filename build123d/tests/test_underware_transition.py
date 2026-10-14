@@ -353,9 +353,21 @@ CASES = {
     'hc-l2': {'part': 'height_change', 'channel_length_units': 2},
     'hc-suppress': {'part': 'height_change', 'suppress_connectors': 'NLR'},
     'hc-suppress-all': {'part': 'height_change', 'suppress_connectors': 'BBB'},
+    # bridge (base-down = model frame); rise = max(bridge, from) + to - from in 28..52 on the grid
+    'b-default': {'part': 'bridge'},   # == preset 'bridge'
+    'b-max': {'part': 'bridge', 'from_width_units': 4, 'bridge_length_units': m.MAX_BRIDGE_UNITS, 'to_height': 52},
+    'b-rise52-f72': {'part': 'bridge', 'from_height': 72, 'to_height': 52},
+    'b-f10-b16-t28': {'part': 'bridge', 'from_height': 10, 'bridge_height': 16, 'to_height': 28},
+    'b-half-l2': {'part': 'bridge', 'half_bridge': True, 'bridge_length_units': 2},
+    'b-flare-9.9': {'part': 'bridge', 'grip_flare': 9.9},
+    'b-suppress': {'part': 'bridge', 'suppress_connectors': 'L,B'},
+    'b-cutout': {'part': 'bridge', 'bridge_length_units': 3, 'number_of_cord_cutouts': 1, 'shift_cutouts': 28},
+    'b-label': {'part': 'bridge', 'bridge_length_units': 3, 'add_label': True},
 }
+# The §8 bridge-end-wedge parameter cases (defaults == preset, steepest rise, half, max size).
+WEDGE_CASES = ('b-default', 'b-rise52-f72', 'b-half-l2', 'b-max')
 # The rev 4 §8 parameter cases for the height-change step patches.
-STEP_PATCH_CASES = ('hc-raise-22-34', 'hc-default', 'hc-10-72-r3-l4', 'hc-72-10-r3-l4')
+STEP_PATCH_CASES = ('hc-raise-22-34', 'hc-default', 'hc-10-72-r3-l4', 'hc-72-10-r3-l4', 'hc-w4-l11-22-46')
 
 
 def _frame(values):
@@ -370,7 +382,7 @@ def _envelope(values):
     if v['part'] == 'width_change':
         a = (c.channel_width(v['from_width_units']), height, (width - c.channel_width(v['from_width_units']))/2, 0.)
         b = (c.channel_width(v['to_width_units']), height, (width - c.channel_width(v['to_width_units']))/2, 0.)
-    else:
+    elif v['part'] == 'height_change':
         a = (width, v['from_height'], 0., height - v['from_height'])
         b = (width, v['to_height'], 0., height - v['to_height'])
     rise = v['transition_length_units']*c.GRID
@@ -378,7 +390,14 @@ def _envelope(values):
     def outer(section, y):
         w, h, dx, dz = section
         return [pt for pt in t._points(w, h, y, dx, dz)][:6]
-    stations = [(-length/2, b), (-rise/2, b), (rise/2, a), (length/2, a)]
+    if v['part'] == 'bridge':
+        # Ends lifted by the rise to the over-bridge top; the run on the bed.
+        end, run_section = (width, v['from_height'], 0., height - v['from_height']), (width, height, 0., 0.)
+        run = t.bridge_run_length(v['bridge_length_units'], v['half_bridge'])
+        stations = ([(0., run_section), (run/2, run_section), (length, end)] if v['half_bridge'] else
+                    [(-length/2, end), (-run/2, run_section), (run/2, run_section), (length/2, end)])
+    else:
+        stations = [(-length/2, b), (-rise/2, b), (rise/2, a), (length/2, a)]
     body = None
     for (y0, s0), (y1, s1) in zip(stations, stations[1:]):
         seg = t._ruled_segment(outer(s0, y0), outer(s1, y1))
@@ -392,6 +411,7 @@ def edge_inventory(part, values):
     end face: the channel ends butt against the next part (mating).
     grip: wall tops, rails, nubs and ramps face the board (openGrid mating).
     flare / cutout / label: the author's reliefs, cord exits and glyphs.
+    tunnel: the bridge's cut for the crossed channel (mating, [B] :175-177).
     exterior: both faces on the outside of the U (the author's 45 degree
       chamfers and the rise seams where the transition turns the outside;
       the edges a user sees, left as the author drew them).
@@ -410,6 +430,12 @@ def edge_inventory(part, values):
             reach = c.SNAP_WALL + h*np.tan(np.radians(v['grip_flare'])) + 1
             half = c.GRIP_SIZE/2 + c.FLARE_SLIT + .05
             flares.append((x - reach, x + reach, gy - half, gy + half, dz + c.TOP_CHAMFER - .05, dz + h + .05))
+    # A half bridge runs y 0..length; its y=0 mid-cut butts the next part too.
+    ends = (0., length) if v['part'] == 'bridge' and v['half_bridge'] else (-length/2, length/2)
+    tunnel = None
+    if v['part'] == 'bridge':
+        run = t.bridge_run_length(v['bridge_length_units'], v['half_bridge'])
+        tunnel = t.bridge_tunnel(width, run, v['bridge_height'], height, v['grip_flare']).bounding_box()
     adjacent = {}
     for face in part.faces():
         for edge in face.edges():
@@ -431,7 +457,7 @@ def edge_inventory(part, values):
         if any(b.min.X - .05 <= mid.X <= b.max.X + .05 and b.min.Y - .05 <= mid.Y <= b.max.Y + .05
                and b.min.Z - .05 <= mid.Z <= b.max.Z + .05 for b in cuts):
             family = 'cutout'
-        elif abs(abs(mid.Y) - length/2) < 1e-4 and bb.max.Y - bb.min.Y < 1e-4:
+        elif min(abs(mid.Y - e) for e in ends) < 1e-4 and bb.max.Y - bb.min.Y < 1e-4:
             family = 'end face'
         elif v['add_label'] and mid.Z <= v['text_depth'] + 1e-4:
             family = 'label'
@@ -440,6 +466,8 @@ def edge_inventory(part, values):
         elif any(x0 <= mid.X <= x1 and y0 <= mid.Y <= y1 and z0 <= mid.Z <= z1
                  for x0, x1, y0, y1, z0, z1 in flares):
             family = 'flare'
+        elif tunnel and tunnel.min.Y - .05 <= mid.Y <= tunnel.max.Y + .05 and mid.Z >= tunnel.min.Z - .05:
+            family = 'tunnel'
         else:
             out = [outside(f, mid) for f in faces]
             if all(out):
@@ -505,10 +533,11 @@ def test_endpoint_audit_and_edges(name):
 @pytest.mark.audit
 @pytest.mark.parametrize('name', STEP_PATCH_CASES)
 def test_step_patch_row(name):
-    """rev 4 §8 height-change step patches: >= 1 and <= 8 faces totalling <=
-    40 mm2, each down-facing planar, short extent <= 1.5 mm, area <= 10 mm2;
-    every down-facing face off the bed in the standing frame is one of them
-    (exactly one per grip: the 1.30 x 1.40 mm rail end), and nothing else."""
+    """rev 4 §8 height-change step patches, as pinned by the mayor's answer
+    (2026-10-14 04:4xZ, 3b): one down-facing face per grip (2 per cell, so the
+    count scales with the length; no fixed total bound), each the 1.30 x 1.40
+    mm rail end at 90 degrees, short extent <= 1.5 mm, area <= 10 mm2; every
+    down-facing face off the bed in the standing frame is one of them."""
     values = CASES[name]
     v = m.SPEC.resolve_values(values)
     part = m.build(values)
@@ -517,8 +546,7 @@ def test_step_patch_row(name):
     down = _down_faces(part, frame)
     inside = [f for f in down if any(r.is_inside(f[3]) for r in regions)]
     assert inside == down, [f for f in down if f not in inside]
-    assert 1 <= len(down) <= 8 and len(down) == len(m.grip_list(v))
-    assert sum(f[0] for f in down) <= 40
+    assert len(down) == len(m.grip_list(v)) >= 1
     for area, short, angle, _ in down:
         assert short <= 1.5 and area <= 10
         assert area == pytest.approx((c.SNAP_WALL - c.SNAP_CAPTURE)*(c.BASE_HEIGHT - c.GRIP_RAMP), abs=1e-6)
@@ -528,6 +556,47 @@ def test_step_patch_row(name):
     print(f'STEP PATCH | {name} | {len(down)} faces, {sum(f[0] for f in down):.2f} mm2, each '
           f'{down[0][0]:.2f} mm2 / {down[0][1]:.2f} mm wide / {down[0][2]:.0f} deg | raw ovh '
           f'{raw.max_overhang_deg:.1f} bridge {raw.longest_bridge_mm:.2f}')
+
+
+def _dense_thin(part, limit=pa.MIN_WALL_MM, below=None, boxes=()):
+    """Surface points (19 x 19 UV per face, vs the audit's 3 x 3) whose
+    inward march leaves the part before `limit`, below z = `below`."""
+    cp = pa._ClassifiedPart(part)
+    uv = tuple(i/20 for i in range(1, 20))
+    hits = []
+    for face in part.faces():
+        centre, n = pa._outward_normal(cp, face)
+        for p, sn in pa._face_samples(face, uv):
+            if below is not None and p.Z >= below or pa._in_any_box(p.X, p.Y, p.Z, boxes):
+                continue
+            d = pa._signed(sn, n, face.normal_at(centre))
+            if cp.is_inside((p.X - d.X*.02, p.Y - d.Y*.02, p.Z - d.Z*.02)) and \
+                    not cp.is_inside((p.X - d.X*limit, p.Y - d.Y*limit, p.Z - d.Z*limit)):
+                hits.append(p)
+    return hits
+
+
+@pytest.mark.audit
+@pytest.mark.parametrize('name', WEDGE_CASES)
+def test_bridge_end_wedge_row(name):
+    """Mayor §8 bridge-end-wedge (2026-10-14 04:4xZ, option A): one envelope
+    per end piece; a dense probe below the grip plane finds the wedge (so the
+    family is not vacuous) and every thin point lies inside an envelope."""
+    values = CASES[name]
+    v = m.SPEC.resolve_values(values)
+    width, length, over = m.dimensions(v)
+    part = m.build(values)
+    regions = m.audit_exclusions(values)['bridge-end-wedge']
+    assert len(regions) == (1 if v['half_bridge'] else 2)
+    below = over - c.BASE_HEIGHT - 1e-3   # the grip plane: U1's grip families above it
+    hits = _dense_thin(part, below=below)
+    assert hits
+    outside = [p for p in hits if not any(r.is_inside(p) for r in regions)]
+    assert not outside, outside[:5]
+    rise = over - v['from_height']
+    print(f'END WEDGE | {name} | rise {rise:g} wedge {90 - degrees(np.arctan2(rise, c.GRID)):.1f} deg | '
+          f'{len(regions)} envelopes {width - 2*c.SNAP_WALL:.1f} x {c.SNAP_WALL:g} x {over - c.BASE_HEIGHT - rise:.1f} mm | '
+          f'{len(hits)} dense thin points, all inside')
 
 
 @pytest.mark.parametrize('values', [{}, {'grip_flare': 5}, PARITY['wc-1to2-l5-cutout'],

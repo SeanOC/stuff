@@ -152,7 +152,22 @@ Transition published exceptions (build123d/holders/underware_transition.py
 audit_exclusions; tests/test_underware_transition.py): the I channel's
 grip-end-wedge, flare-slit-fin, cutout-sill and label-recess families for the
 same author modules, plus height-change-step-patch: standing on end, the
-downward 1.30 x 1.40 mm end of each grip rail (rev 4 §8, mayor-authorised).
+downward 1.30 x 1.40 mm end of each grip rail, one per grip (rev 4 §8 as
+pinned by the mayor's answer of 2026-10-14 04:4xZ), and bridge-end-wedge: each
+one-cell bridge end ramps up from its end face, which meets the ramped floor
+and inner chamfers in a 90 - atan(rise/28) degree wedge (45 at rise 28); the
+envelope is the inner channel, SNAP_WALL deep from each end face, from the end
+face's lower edge to its wall top (mayor-authorised, option A).
+
+Bridge default deviation (parameter only; geometry untouched): the author's
+default 22/22/22 (from/to/bridge height) rises 22 mm over one 28 mm cell, so
+the reference bridge.stl's end-ramp undersides are 51.8 degrees from vertical
+(1309.9 mm2, trimesh normals) -- over the 45 degree print limit base-down. The
+port defaults to_height to 28 (on the step-6 grid), the smallest rise whose
+ramps are printable (45.0 degrees, no bridge), and bounds the rise
+max(bridge, from) + to - from to 28..55 with named errors (above 55 the 2 mm
+floor tilts under 0.9 mm). mesh/bridge-to28.stl is the parity reference for the
+port's default.
 
 SHA256 (mesh/, also in SHA256SUMS):
 01525fe3d3fa0235bbacbdf3cad6bf359168174e4c19a22ac63e57ac3a561a35  mesh/i-1x5-h22-cutouts.stl

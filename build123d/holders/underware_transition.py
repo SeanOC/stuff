@@ -35,6 +35,9 @@ Domains the author leaves unprintable are named errors, not geometry changes:
   vertical: height_change needs |from - to| <= the transition length, and
   the bridge needs its ramps (rise max(bridge, from) + to - from over one
   28 mm cell) at least that steep;
+  The author's 22/22/22 bridge default rises 22 mm (ramps 51.8 degrees from
+  vertical on the reference mesh), so to_height defaults to 28: the smallest
+  on-grid printable rise (parameter only; see the NOTICE);
 - height_change takes no cord cutouts, label or grip flare: standing, their
   slot ceilings and glyph recesses are flat overhangs;
 - grip_flare <= 9.9 and per-cell suppress codes as the I channel.
@@ -304,11 +307,18 @@ def audit_exclusions(values=None) -> dict:
       of every grip rail where it starts above the level wall top (selector:
       down-facing planar faces in the print frame, short extent <= 1.5 mm,
       area <= 10 mm2; each envelope is that face's 0.02 mm slab).
+    bridge-end-wedge (mayor answer 2026-10-14 04:4xZ, option A): each [B]
+      end piece is one cell long with a one-cell rise, so its ramp starts AT
+      the end face and the end face meets the ramped floor and inner chamfers
+      in a 90 - atan(rise/28) degree wedge (45 at the default rise 28). The
+      envelope is located by adjacency, never by thickness: the inner channel
+      (between the inner wall faces) from the end face's lower edge (z = rise)
+      to its wall top, SNAP_WALL deep from the end face.
     """
     v = check(values)
     width, length, height = dimensions(v)
     out = {'grip-end-wedge': [], 'flare-slit-fin': [], 'cutout-sill': [], 'label-recess': [],
-           'height-change-step-patch': []}
+           'height-change-step-patch': [], 'bridge-end-wedge': []}
     for y, side, flared, w, dx, dz, h in grip_list(v):
         flare = v['grip_flare'] if flared else 0.
         out['grip-end-wedge'] += [Pos(dx, 0, dz)*r for r in end_ramp_regions(w, h, y, side, flare)]
@@ -316,6 +326,8 @@ def audit_exclusions(values=None) -> dict:
             out['flare-slit-fin'] += [Pos(dx, 0, dz)*r for r in slit_floor_regions(w, h, y, side)]
     if v['part'] == 'height_change':
         out['height-change-step-patch'] = step_patch_regions(v)
+    if v['part'] == 'bridge':
+        out['bridge-end-wedge'] = bridge_end_wedge_regions(v)
     if _has_cutouts(v) and v['part'] == 'bridge':
         out['cutout-sill'] = cutout_sill_regions(width, **_cut_args(v))
     elif _has_cutouts(v):
@@ -333,6 +345,19 @@ def audit_exclusions(values=None) -> dict:
         out['label-recess'].append(Pos(bb.center().X, bb.center().Y, d/2)
                                    * Box(bb.size.X + 0.02, bb.size.Y + 0.02, d + 0.002))
     return out
+
+
+def bridge_end_wedge_regions(v, grow=0.02):
+    """Exact envelopes of the bridge end wedges (see audit_exclusions): one
+    per end piece, model frame. A half bridge keeps only the +Y end (its y=0
+    face is the run's mid-cut, which stands on the bed)."""
+    width, length, over = dimensions(v)
+    rise = over - v['from_height']
+    inner = width - 2*c.SNAP_WALL
+    z0, z1 = rise - grow, over - c.BASE_HEIGHT + grow
+    ends = [(length, -1)] if v['half_bridge'] else [(-length/2, 1), (length/2, -1)]
+    return [Pos(0, y + inward*(c.SNAP_WALL - grow)/2, (z0 + z1)/2)
+            * Box(inner + 2*grow, c.SNAP_WALL + grow, z1 - z0) for y, inward in ends]
 
 
 def step_patch_regions(v, grow=0.02):
