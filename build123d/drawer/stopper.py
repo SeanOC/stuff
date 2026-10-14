@@ -96,8 +96,8 @@ def audit_exclusions(values=None):
     The 0.7 mm flange (flank depth 0.8 - 0.1 clearance) seats in the
     shell's 0.8 mm flange recess and the 0.6 mm wedge nubs ([C] :1812) are
     the snap; both are mating dimensions of the shell's stopper hole.
-    PENDING operator approval (pst-t0ob3.4 Q2): until approved, the
-    stopper_clips audit row is not claimed as a pass.
+    Mayor-approved exception row (pst-t0ob3.4 Q2, 2026-10-14); the
+    envelope bound is enforced in tests/test_openconnect_dividers.py.
     """
     from build123d import Box
     d = dimensions(values)

@@ -2,12 +2,13 @@
 """Drawer D4: compartment lists, shell/container dividers, stopper clips."""
 from pathlib import Path
 import sys
+from math import pi
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import numpy as np
 import pytest
 
-from drawer import container, dividers, shell, stopper
+from drawer import constants as c, container, dividers, shell, stopper
 from holders import openconnect_drawer as m
 from tests import print_audit as audit
 from tests.openconnect_drawer_inventory import container_skin_mask, source_contact_mask
@@ -244,20 +245,29 @@ def test_stopper_clip_parity(tmp_path):
 
 # ------------------------------------------------------------ stopper audit
 
-def test_stopper_exclusions_cover_only_the_snap_features():
-    """Q2 (pending): only the 0.7 flange (+ flare) and 0.6 nubs miss 0.9 mm."""
-    v = m.SPEC.resolve_values({'part': 'stopper_clips'})
+@pytest.mark.parametrize('length', [4, 6, 12])
+def test_stopper_exclusions_cover_only_the_snap_features(length):
+    """Q2 exception row (mayor, 2026-10-14): only the 0.7 flange (+ flare)
+    and 0.6 nubs miss 0.9 mm, and the envelopes exclude no more material
+    than those features hold. Both printed clips are the hole_excess one."""
+    v = m.SPEC.resolve_values({'part': 'stopper_clips', 'stopper_clip_length': length})
     part = m.build(v)
     raw = audit.audit(part, m.SPEC.print_orientation, model='clips_raw', print_frame=m.print_frame(v))
-    assert raw.min_wall_mm == pytest.approx(.7, abs=.01)
+    assert raw.min_wall_mm < audit.MIN_WALL_MM
     clean = audit.audit(part, m.SPEC.print_orientation, exclusions=m.audit_exclusions(v),
                         model='clips', print_frame=m.print_frame(v))
     assert clean.ok, clean.format()
     assert clean.min_wall_mm >= 1.5
-    # Envelopes, not the clip: the shaft and both legs stay audited.
     regions = m.audit_exclusions(v)
-    assert sum(r.volume for r in regions) < .3*part.volume
     d = stopper.dimensions(v)
+    r = c.STOPPER_ROUNDING
+    feature = d['height']*(d['flange_width']*d['flange_depth'] + 2*(r*r-pi*r*r/4)
+                           + 2*d['nub_width']*d['nub_length'])
+    excluded = sum((part & region).volume for region in regions)
+    assert excluded <= 2*feature*1.002, (excluded, 2*feature)
+    print(f'EXCLUSION | L={length} | excluded {excluded:.3f} mm3 <= features {2*feature:.3f} mm3 '
+          f'| clip {part.volume:.3f} mm3 | wall {clean.min_wall_mm:.2f}')
+    # Envelopes, not the clip: the shaft and both legs stay audited.
     leg = -d['flange_depth']-d['shaft']-d['length']/2
     for x in (0, -1.4, 1.4, 28, 26.6, 29.4):
         for y in (-d['flange_depth']-d['shaft']/2-.4, leg):

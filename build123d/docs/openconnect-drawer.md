@@ -207,14 +207,20 @@ all-solid and 1x1x1 only, so none of these is a bug.
 - DECISION C(b) closes every lattice opening whose roofed profile has an
   inscribed circle under `MIN_LATTICE_OPENING_MM` = 2.0 mm.
 
-**Pending operator decisions (pst-t0ob3.4).**
+**Operator decisions (pst-t0ob3.4, mayor 2026-10-14).**
 
 - Q1, a list that sums past the grid. The port follows the author and cuts
-  it at the grid, so the remainder becomes the last compartment.
-  The alternative is a named error.
-- Q2, the stopper-clip audit waiver. The clip's 0.7 mm flange (with its
-  flare) and 0.6 mm wedge nubs ([C] :1812) mate with the shell's
-  stopper-hole recess. They are excluded by exact envelopes
-  (`drawer/stopper.py` `audit_exclusions`), and the rest of the clip
-  audits at ≥ 1.5 mm. That exception row is not approved yet.
+  it at the grid, so the remainder becomes the last compartment. This is
+  not an error. The named errors are exactly: an entry that is not a
+  positive integer, an empty list, and a grid count below 1.
+- Q2, the stopper-clip audit waiver: a mayor-approved exception row. The
+  clip's 0.7 mm flange (with its flare) and 0.6 mm wedge nubs ([C] :1812)
+  mate with the shell's stopper-hole recess, so they are not thickened
+  (stoppers.stl parity holds). They are excluded by exact envelopes
+  (`drawer/stopper.py` `audit_exclusions`). At stopper_clip_length 4, 6
+  and 12, `test_stopper_exclusions_cover_only_the_snap_features` asserts
+  that the excluded material is no more than the flange + flare + nub
+  volume and that the rest of the clip passes at MIN_WALL 0.9 (it measures
+  ≥ 1.5 mm). The hole variant's 0.8 mm flange floor is the shell's
+  registered fitting floor (`tests/openconnect_drawer_inventory.py`).
 
