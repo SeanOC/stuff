@@ -447,8 +447,12 @@ def test_colour_parts_partition_the_raised_slab(preset_id):
     base, raised = parts[0][1], parts[1:]
     assert base.volume == pytest.approx(m.plate(values).volume, rel=1e-9)
     # The raised parts fill exactly what the fused sign adds over the plate.
+    # rel 1e-5, not 1e-6: OCCT's volume integral is not exact on the ghost
+    # body's Bezier/B-spline walls — that one solid integrates to 591.846 mm^3
+    # alone and adds 591.812 when fused (its bottom face x 0.6 = 591.863), a
+    # 0.03 mm^3 drift on ~9050 mm^3 of slab; adaptive GProp eps is worse (+3).
     added = whole.volume - base.volume
-    assert sum(p.volume for _, p, _ in raised) == pytest.approx(added, rel=1e-6)
+    assert sum(p.volume for _, p, _ in raised) == pytest.approx(added, rel=1e-5)
     for i, (a, pa, _) in enumerate(raised):
         bb = pa.bounding_box()
         assert bb.min.Z == pytest.approx(t) and bb.max.Z == pytest.approx(t + m.RAISE_H), a

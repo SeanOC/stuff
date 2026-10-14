@@ -32,7 +32,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import NamedTuple
 
-from build123d import FontStyle, Part, Pos, Sketch, Text, extrude, scale
+from build123d import Compound, FontStyle, Part, Pos, Sketch, Text, extrude, scale
 from shapely.geometry import Polygon, box
 from shapely.ops import polylabel, unary_union
 
@@ -93,8 +93,13 @@ def text_sketch(text: str, size: float = NOMINAL_SIZE, path: Path | str = FONT_P
         if stack is None:
             stack = sketch
         else:
+            # The lines never touch, so collect faces rather than 2D-fuse them:
+            # the fuse re-approximates the B-spline glyph edges and the extruded
+            # second line then disagrees with its own fuse onto a plate (0.4 mm^3
+            # on the tombstone sign's two-line Lexend detail band).
             drop = stack.bounding_box().min.Y - LINE_GAP * size / NOMINAL_SIZE
-            stack += Pos(0, drop - sketch.bounding_box().max.Y) * sketch
+            below = Pos(0, drop - sketch.bounding_box().max.Y) * sketch
+            stack = Sketch(Compound(stack.faces() + below.faces()).wrapped)
     return stack
 
 
