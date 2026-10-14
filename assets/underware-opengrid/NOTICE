@@ -105,6 +105,34 @@ Worker renders (pst-fsk8s.4, 2026-10-14; no mayor baseline):
   the bridge is 0.01 mm shorter and keeps a zero-thickness seam face where
   each end piece's first profile overlaps the run end (|y| = run/2 - 0.005).
   Flared grips keep the zero-thickness ramp skin noted for the I channel.
+Worker renders (pst-fsk8s.2, 2026-10-14; no mayor baseline), same environment:
+  mesh/l-mirror-r1-y2x3.stl  monokini_L_channel.scad -D Mirror_Channel=true -D Added_Radius=1
+                             -D L_Channel_Length_in_Units_Y_Axis=2 -D L_Channel_Length_in_Units_X_Axis=3
+  mesh/l-y3-cutouts.stl      monokini_L_channel.scad -D L_Channel_Length_in_Units_Y_Axis=3
+                             -D Number_of_Cord_Cutouts=2
+  mesh/t-b1l2r1.stl          monokini_T_channel.scad -D Channel_Width_in_Units_Left=2
+  mesh/t-b2l1r1.stl          monokini_T_channel.scad -D Channel_Width_in_Units_Bottom=2
+  mesh/t-b3l2r1.stl          monokini_T_channel.scad -D Channel_Width_in_Units_Bottom=3
+                             -D Channel_Width_in_Units_Left=2
+  mesh/t-b4l2r1.stl          monokini_T_channel.scad -D Channel_Width_in_Units_Bottom=4
+                             -D Channel_Width_in_Units_Left=2  (the left corner, sized
+                             for the stem, leaves a 14 mm width step at the left arm)
+  mesh/t-s3-cutouts.stl      monokini_T_channel.scad -D T_Channel_Length_in_Units_Y_Axis=3
+                             -D Number_of_Cord_Cutouts=2
+  mesh/x-w2-b2r1l1t3.stl     monokini_X_channel.scad -D Channel_Width_in_Units=2
+                             -D X_Channel_Length_in_Units_Y_Axis_Bottom=2 -D X_Channel_Length_in_Units_Y_Axis_Top=3
+  Junction reference artefacts (build123d/tests/test_underware_junctions.py):
+  CGAL keeps touching volumes, so grip bases, each arm's junction-end cap, the
+  T stem halves' and the corner quadrants' clip faces and the corners'
+  path_extrude2d mitre joints are internal faces. At Added_Radius=0 (l.stl,
+  l-y3-cutouts.stl) the L corner's outer wall is HOLLOW above z=9.905 over two
+  ~22 degree bands (winding number 0 inside the 2 mm wall; 333 mm3 of the 8.67
+  vs 9.00 cm3 pin spread): path_extrude2d sizes its mitre and joint-fill cubes
+  from the path bounds (BOSL2 miscellaneous.scad:121-123, s = sqrt(2)*(r+0.81)
+  = 19.81 mm here, so the section beyond s/2 of the centreline or above z = s/2
+  stays unmitred); wide T corners' inside posts facet by up to 0.06 mm the
+  same way. The 456fcd8 render and every Added_Radius >= 1 render at
+  b86a7584 carry the solid wall; the port builds it solid.
 
 Frames: Z=0 is the closed, chamfered face; Y runs along the channel. The
 source's 0.01 mm Nudge makes every mesh span y = -L/2-0.015 .. L/2-0.005;
@@ -126,6 +154,21 @@ Port deviations (build123d/holders/underware_i_channel.py header):
   the 325 mm Bambu H2S single-nozzle bed (build123d/holders/printer.py).
 - Suppress_Connectors / Channel_Separators: per-index codes as in the source
   (:89 N/L/R/B/S, :92 N/S); extra or unknown codes are named errors.
+
+Junction deviations (build123d/holders/underware_junctions.py header):
+- L / T / X: no label (the author's L:65 / T:67 / X:65 label is MakerWorld-3MF-
+  only and Text_x_coordinate is one-dimensional on a multi-arm part); no
+  Decorative. Arm lengths stop where one parameter alone still fits the bed
+  (L arms 10, T stem 10, T arms 9, X arms 9); longer combinations and cutouts
+  that run past the first channel are named errors.
+- T cord cutouts cut both walls as Cord_Side_Cutouts names. The source's
+  right_half (T:143-145) wraps the stem channel AND its cutout children, so
+  its -X wall openings never cut ('Right Side' cuts nothing, 'Both Sides'
+  equals 'Left Side', Top slots stop at x=0); L and X cut both walls with the
+  same block. Parity masks exactly the clipped cutter volume (641 mm3 in
+  t-s3-cutouts.stl).
+- Corners are revolved, not mitred: path_extrude2d chains 89 straight
+  segments (chord error 0.0005 mm at r=13.2).
 
 Published exceptions (build123d/holders/underware_i_channel.py
 audit_exclusions; tests/test_underware.py test_exception_probe_matches_reference):
@@ -176,8 +219,16 @@ f44c8b22543113e42a57400bd06f277667125c32c93a5aa5932c7a4f4872753a  mesh/i-1x5-h22
 a5e5e0ae5cf1c5d5f31ad58d31064807981e1129495954863f5f9fc4c7a519f3  mesh/i-1x5-h22-label.stl
 028e5f6e59239496c253b91222b6f8996d94996fd93e9231089cf787bd967f2a  mesh/i-1x5-h22.stl
 2291073e408b4c617da9e65dbd711cfc9f60588040242628aca8092f03ce17e0  mesh/i-2x3-h34.stl
+fe5f52c4a1a27a77963b70ae026fdc7033e6f19dfa20f79cfcc38a762286f274  mesh/l-mirror-r1-y2x3.stl
+f2a8d1921055730338631a93dffdcef059dd0704037c425c8b609fbe2e2986c3  mesh/l-y3-cutouts.stl
 bbbed61e37e8525e0baecb9f4d5789ddf2d9119b099fc503f66c2d1fd195df7e  mesh/l.stl
+4ca3a04b52c0f37ecad6235b383e64284192b8751344025e4a5a305b2f8c5a05  mesh/t-b1l2r1.stl
+2ee43ecc54fbfb2df270f6477002ea6e7b7bc05628ea7a43468c659012c26982  mesh/t-b2l1r1.stl
+e60759da44ab728ae1afa466aba6e334842fb22dc637473b0096d8d3701b9cb0  mesh/t-b3l2r1.stl
+77bf19729c45d83687f7df014a256d51fce550fea9de57adb4376a174d942014  mesh/t-b4l2r1.stl
+369800a57b9ab9e3059196c35c5e325cf97d0787530137ac236cdc5c91b51f03  mesh/t-s3-cutouts.stl
 b78a8a69ebef3b02c4bcb594d98b47bf31f3e544ed5969111cf66a6c679fa606  mesh/t.stl
+225b5e71c7f057eb4ef655b34426d77e8a55120bc84b36ea965f32fbd5f923ab  mesh/x-w2-b2r1l1t3.stl
 ea0376c0d9e2723ea625475785fe9db0e6dd15ad40243d268ca131ad4ef503c9  mesh/x.stl
 59ffca22319a9baff6ef49e53a3081a7b63a03691e51aeb932142054acb60748  mesh/bridge-half-l2-b28-f16-t22-flare5.stl
 2ad232b6ba44811d466b5de5138144d76be4c45216821458c5f3651f0be5bcc2  mesh/bridge.stl
