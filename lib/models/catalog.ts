@@ -202,6 +202,21 @@ export const BUILD123D_CATALOG: Record<string, CatalogEntry> = {
     blurb:
       'Straight Underware 2.0 "monokini" cable channel that snaps into openGrid: set width and length in 28 mm cells and the height, with optional cord exits, a debossed label and per-cell grip suppression. By Hands on Katie and BlackjackDuck, CC BY-NC-SA 4.0 (non-commercial, share-alike). Prints as shown, closed face down, no supports.',
   },
+  underware_l: {
+    categoryId: "multiboard",
+    blurb:
+      '90° Underware "monokini" channel corner with two arms, optional mirroring and a larger bend radius. Snaps into openGrid; set sizes in 28 mm cells and the height, with optional cord exits on the first channel and per-cell grip suppression. By Pedro Leite (Underware 2.0), CC BY-NC-SA 4.0 (non-commercial, share-alike). Prints as shown, closed face down, no supports.',
+  },
+  underware_t: {
+    categoryId: "multiboard",
+    blurb:
+      'Underware "monokini" T junction: a stem and two arms, each with its own width and length. Snaps into openGrid; set sizes in 28 mm cells and the height, with optional cord exits on the first channel and per-cell grip suppression. By Pedro Leite (Underware 2.0), CC BY-NC-SA 4.0 (non-commercial, share-alike). Prints as shown, closed face down, no supports.',
+  },
+  underware_x: {
+    categoryId: "multiboard",
+    blurb:
+      'Underware "monokini" four-way crossing with four arm lengths. Snaps into openGrid; set sizes in 28 mm cells and the height, with optional cord exits on the first channel and per-cell grip suppression. By Pedro Leite (Underware 2.0), CC BY-NC-SA 4.0 (non-commercial, share-alike). Prints as shown, closed face down, no supports.',
+  },
   holder_tombstone_sign: {
     categoryId: "household",
     blurb:
