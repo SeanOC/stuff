@@ -311,7 +311,21 @@ CASES = [(p.id, p.values) for p in m.SPEC.presets if p.values.get('part') == 'co
     (f'{p.name}={x:g}', {'part': 'container', p.name: x}) for p in m.SPEC.params
     if p.kind in ('number', 'integer') and (p.group == 'Container' or p.name in CONTAINER_PARAMS)
     for x in (p.min, p.max) if x is not None
-] + [(name, {'part': 'container', **values}) for name, values in [
+] + [
+    # D4: divider params only act with dividers on.
+    (f'divider-{p.name}={x:g}', {'part': 'container', 'add_container_divider': 'Both', p.name: x})
+    for p in m.SPEC.params if p.group == 'Container Divider' and p.kind in ('number', 'integer')
+    for x in (p.min, p.max)
+] + [(name, {'part': 'container', 'add_container_divider': 'Both', **values}) for name, values in [
+    ('divider-1x1x1', ONE),
+    ('divider-all-honeycomb', {f'container_{w}_wall_type': 'Honeycomb' for w in ('front', 'back', 'side', 'bottom')}),
+    ('divider-fillet-0', {'container_inner_fillet': 0}),
+    ('divider-fillet-4', {'container_inner_fillet': 4}),
+    ('divider-8x8x8-fine', dict(horizontal_grids=8, vertical_grids=8, depth_grids=8,
+                                container_width_grid_count=8, container_width_compartment_list='1,1,1,1,1,1,1,1')),
+    ('divider-thick-walls-1-vertical', dict(vertical_grids=1, container_solid_wall_thickness=3,
+                                            container_honeycomb_wall_thickness=3)),
+]] + [(name, {'part': 'container', **values}) for name, values in [
     ('1x1x1-no-label', {**ONE, 'add_label_holder': False}),
     ('2-wide-label-20', {'horizontal_grids': 2, 'vertical_grids': 1, 'label_width': 20}),
     ('8x8x8', dict(horizontal_grids=8, vertical_grids=8, depth_grids=8)),

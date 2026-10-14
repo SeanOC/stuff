@@ -173,7 +173,7 @@ export const BUILD123D_CATALOG: Record<string, CatalogEntry> = {
   openconnect_drawer: {
     categoryId: "multiboard",
     blurb:
-      "mitufy's drawer shell and container (CC BY-SA 4.0). Shell prints back-wall-down with a honeycomb bottom and selectable wall types; select its mounting face independently of print orientation. The container prints bottom-down with a handle, label holder and magnet pockets.",
+      "mitufy's openConnect drawer (CC BY-SA 4.0): shell, container and stopper clips. The shell prints back-wall-down with a honeycomb bottom, selectable wall types and any mounting face; the container prints bottom-down with a handle, label holder and magnet pockets. Comma-separated compartment lists add shell dividers (one container per compartment) or container dividers; the clips print flat.",
   },
   gridfinity_capture_bin: {
     categoryId: "storage",
