@@ -27,6 +27,8 @@ is a planar quad and BOSL2's triangulated skin is the same surface.
 """
 from __future__ import annotations
 
+from math import radians, tan
+
 from build123d import (Box, Cylinder, Face, Part, Plane, Pos, Rot, Shell, Solid, Vector, Wire,
                        extrude, mirror)
 
@@ -36,6 +38,7 @@ from .grip import grip, grip_flared, grip_flared_cut
 from .profile import monokini_profile, monokini_profile_points
 
 SIDE_CUTOUTS = ('Left Side', 'Right Side', 'Both Sides', 'None')   # [W]/[H]/[B] :54
+GRIP_DEFAULT_HEIGHT = 22.0   # monokiniGrip(heightMM = 22) default; callers shift by down(22-h)
 
 
 def _points(width, height, y, dx=0., dz=0.) -> list[Vector]:
@@ -222,21 +225,50 @@ def _bridge_end(width, from_height, over, suppress, grip_flare) -> Part:
     return body
 
 
-def bridge_tunnel(width: float, run: float, bridge_height: float, over: float) -> Part:
+def _hull(points):
+    """2D convex hull, counter-clockwise (monotone chain)."""
+    pts = sorted(set(points))
+
+    def cross(o, a, b):
+        return (a[0]-o[0])*(b[1]-o[1]) - (a[1]-o[1])*(b[0]-o[0])
+    lower, upper = [], []
+    for p in pts:
+        while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 1e-12:
+            lower.pop()
+        lower.append(p)
+    for p in reversed(pts):
+        while len(upper) >= 2 and cross(upper[-2], upper[-1], p) <= 1e-12:
+            upper.pop()
+        upper.append(p)
+    return lower[:-1] + upper[:-1]
+
+
+def bridge_tunnel(width: float, run: float, bridge_height: float, over: float,
+                  grip_flare: float = 0.) -> Part:
     """[B] :175-177 hull() of the crossing monokiniChannel (length 2G + width,
     width = run, height = bridge_height, spin 90) lifted to the grip plane.
 
-    Its section across Y is the hull of the U profile and the grips' nub and
-    top corners: (u=0, h-0.4) and (u=0.7, h) (grip.py _profile). Its grips
-    span past both walls of this channel at every width (cells at 28 mm over
-    2G + width), so the hull is one prism here.
+    Its grips cover both walls of this channel at every width (28 mm cells
+    over 2G + width), so inside this channel the hull is one prism whose
+    section is the 2D hull of the U profile and the grip profile (grip.py
+    _profile). The global Grip_Flare flares the crossing channel's grips too:
+    [B]'s monokiniChannel wraps them in down(22-h) (:357-369) and [B]'s
+    monokiniGripFlared adds up(topChamfer) after its skew (:126), so each
+    flared rail is sheared by z*tan(flare) in its own frame and then lifted
+    TOP_CHAMFER + h - 22.
     """
-    r, h, z0 = run/2, bridge_height, over - bridge_height
-    k, cap, lc = c.TOP_CHAMFER, c.SNAP_CAPTURE, c.TOP_LITTLE_CHAMFER
-    half = [(r - k, 0.), (r, k), (r, h - lc), (r - cap, h)]
-    pts = half + [(-y, z) for y, z in reversed(half)]
+    from .grip import _profile
+    h, z0 = bridge_height, over - bridge_height
+    k = tan(radians(grip_flare))
+    half = [(run/2 - c.TOP_CHAMFER, 0.), (run/2, c.TOP_CHAMFER), (run/2, h - c.BASE_HEIGHT)]
+    if grip_flare > 0:
+        lift = c.TOP_CHAMFER + h - GRIP_DEFAULT_HEIGHT
+        half += [(run/2 - u + z*k, z + lift) for u, z in _profile(h, c.TOP_CHAMFER)]
+    else:
+        half += [(run/2 - u, z) for u, z in _profile(h, h - c.BASE_HEIGHT)]
+    section = _hull(half + [(-y, z) for y, z in half])
     span = 2*c.GRID + width
-    face = Face(Wire.make_polygon([Vector(-span/2, y, z + z0) for y, z in pts], close=True))
+    face = Face(Wire.make_polygon([Vector(-span/2, y, z + z0) for y, z in section], close=True))
     return extrude(face, span, dir=(1, 0, 0))
 
 
@@ -257,7 +289,7 @@ def bridge_channel(width: float, from_height: float, to_height: float, bridge_he
     if not half:
         other = Pos(0, run/2 + c.GRID/2, 0)*_bridge_end(width, from_height, over, fields[1], grip_flare)
         part += mirror(other, Plane.XZ)
-    part -= bridge_tunnel(width, run, bridge_height, over)
+    part -= bridge_tunnel(width, run, bridge_height, over, grip_flare)
     if half:
         top = run/2 + c.GRID + 1
         part &= Pos(0, top/2, over/2)*Box(width + 2*c.GRID, top, over + 2)

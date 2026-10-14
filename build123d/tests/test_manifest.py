@@ -190,6 +190,12 @@ def test_mount_selection_params_are_filename_flagged():
         ("underware_i_channel", "channel_width_units"),
         ("underware_i_channel", "channel_total_height"),
         ("underware_i_channel", "channel_length_units"),
+        ("underware_transition", "part"),
+        ("underware_transition", "from_width_units"),
+        ("underware_transition", "to_width_units"),
+        ("underware_transition", "from_height"),
+        ("underware_transition", "to_height"),
+        ("underware_transition", "channel_length_units"),
     }
     models = {m["slug"]: m for m in build_manifest()["models"]}
     for name, param in flagged:

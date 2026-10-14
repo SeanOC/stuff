@@ -520,6 +520,7 @@ from holders.cartridge_holder import audit_exclusions as cartridge_exclusions
 from holders.gridfinity_capture_bin import audit_exclusions as capture_bin_exclusions
 from holders.tombstone_sign import audit_exclusions as tombstone_sign_exclusions
 from holders.underware_i_channel import audit_exclusions as underware_families
+from holders.underware_transition import audit_exclusions as transition_families
 
 _MODEL_EXCLUSIONS = {
     'holder_cup_lid': lambda values: [_cup_lid_shank_exclusion(values)],
@@ -529,6 +530,7 @@ _MODEL_EXCLUSIONS = {
     'gridfinity_capture_bin': capture_bin_exclusions,
     'holder_tombstone_sign': tombstone_sign_exclusions,
     'underware_i_channel': lambda values: [r for f in underware_families(values).values() for r in f],
+    'underware_transition': lambda values: [r for f in transition_families(values).values() for r in f],
 }
 
 

@@ -69,6 +69,43 @@ Worker renders (pst-fsk8s.1, 2026-10-13; no mayor baseline), monokini_I_channel.
   mesh/i-1x5-h22-flare5.stl    -D Grip_Flare=5
   mesh/i-1x5-h22-flare9p9.stl  -D Grip_Flare=9.9
 
+Transitions (pst-fsk8s.4). Mayor renders (pre-flight, copied byte-for-byte;
+the mayor's baseline hashes), author defaults:
+  mesh/width-change.stl   monokini_I_width_change_channel.scad (1 -> 1 units, height 18)
+  mesh/height-change.stl  monokini_I_height_change_channel.scad (18 -> 12, Rise_Distance 25)
+  mesh/bridge.stl         monokini_I_bridge_channel.scad (22 / 22, bridge 22, 1 unit)
+  The 18 and 12 mm heights are off the 10..72 step-6 grid the port takes;
+  these three are parity references for the library (build123d/underware/
+  transition.py) and context for the pre-flight rows, not registered values.
+Worker renders (pst-fsk8s.4, 2026-10-14; no mayor baseline):
+  mesh/wc-1to2-h22.stl                   monokini_I_width_change_channel.scad
+      -D Channel_Width_in_Units_1=1 -D Channel_Width_in_Units_2=2 -D Channel_Internal_Height=22
+  mesh/wc-2to1-l4-r2-h28-flare5.stl      monokini_I_width_change_channel.scad
+      -D Channel_Width_in_Units_1=2 -D Channel_Width_in_Units_2=1 -D Channel_Length_Units=4
+      -D Rise_Distance_Units=2 -D Channel_Internal_Height=28 -D Grip_Flare=5
+  mesh/wc-1to2-l5-cutout.stl             monokini_I_width_change_channel.scad
+      -D Channel_Width_in_Units_1=1 -D Channel_Width_in_Units_2=2 -D Channel_Internal_Height=22
+      -D Channel_Length_Units=5 -D Number_of_Cord_Cutouts=1 -D Shift_Cutouts_Forward_or_Back=28
+      -D 'Suppress_Connectors="NBNNN"'
+  mesh/hc-22to34.stl                     monokini_I_height_change_channel.scad
+      -D Channel_Internal_Height_1=22 -D Channel_Internal_Height_2=34 -D Rise_Distance=28
+  mesh/hc-34to16-l4-r2.stl               monokini_I_height_change_channel.scad
+      -D Channel_Internal_Height_1=34 -D Channel_Internal_Height_2=16 -D Channel_Length_Units=4
+      -D Rise_Distance=56 -D 'Suppress_Connectors="NLRB"'
+  mesh/bridge-to28.stl                   monokini_I_bridge_channel.scad -D Channel_Internal_Height_2=28
+  mesh/bridge-half-l2-b28-f16-t22-flare5.stl  monokini_I_bridge_channel.scad
+      -D Half_Bridge=true -D Channel_Length_Units=2 -D Channel_Bridge_Height=28
+      -D Channel_Internal_Height_1=16 -D Channel_Internal_Height_2=22 -D Grip_Flare=5
+  Re-rendering hc-22to34 reproduces its bytes. The transition sources were
+  never rendered at BOSL2 456fcd8, so their pin sensitivity is unmeasured:
+  render them only at b86a7584 and never refresh them at the repo pin.
+  Transition frames: the skin spans exactly L, so width/height-change meshes
+  span y = -L/2-0.005 .. L/2-0.005 (parity shifts them +0.005). In the bridge
+  each one-cell end piece sits 0.005 toward the run (the run is exact), so
+  the bridge is 0.01 mm shorter and keeps a zero-thickness seam face where
+  each end piece's first profile overlaps the run end (|y| = run/2 - 0.005).
+  Flared grips keep the zero-thickness ramp skin noted for the I channel.
+
 Frames: Z=0 is the closed, chamfered face; Y runs along the channel. The
 source's 0.01 mm Nudge makes every mesh span y = -L/2-0.015 .. L/2-0.005;
 the port spans exactly +/-L/2 (parity shifts the references +0.005 in Y).
@@ -102,6 +139,21 @@ audit_exclusions; tests/test_underware.py test_exception_probe_matches_reference
 - label-recess: glyph recess ceilings at text depth (0.2, reference 0.205)
   are flat bridges no wider than a stroke; measured before exclusion.
 
+Transition port deviations (build123d/holders/underware_transition.py header):
+- Rise_Distance of the height change is whole 28 mm cells (the source's mm in
+  12.5 mm steps, default 25); the width change and the bridge already use cells.
+- Named-error domains where the author's geometry is unprintable: width-change
+  jog wall under 0.9 mm, a transition as long as the channel (end wedge),
+  a height change steeper than 45 degrees standing, cutouts / label / flare on
+  the standing height change, bridge rises outside 28..55 mm (45 degree ramp,
+  0.9 mm tilted floor; the bridge's to_height default is 28, not 22).
+
+Transition published exceptions (build123d/holders/underware_transition.py
+audit_exclusions; tests/test_underware_transition.py): the I channel's
+grip-end-wedge, flare-slit-fin, cutout-sill and label-recess families for the
+same author modules, plus height-change-step-patch: standing on end, the
+downward 1.30 x 1.40 mm end of each grip rail (rev 4 §8, mayor-authorised).
+
 SHA256 (mesh/, also in SHA256SUMS):
 01525fe3d3fa0235bbacbdf3cad6bf359168174e4c19a22ac63e57ac3a561a35  mesh/i-1x5-h22-cutouts.stl
 77a788c5c8eb6f3ca745ef2a749e27b8a5466228bf3daed7e91eb9dd8a043b07  mesh/i-1x5-h22-flare5.stl
@@ -112,3 +164,13 @@ a5e5e0ae5cf1c5d5f31ad58d31064807981e1129495954863f5f9fc4c7a519f3  mesh/i-1x5-h22
 bbbed61e37e8525e0baecb9f4d5789ddf2d9119b099fc503f66c2d1fd195df7e  mesh/l.stl
 b78a8a69ebef3b02c4bcb594d98b47bf31f3e544ed5969111cf66a6c679fa606  mesh/t.stl
 ea0376c0d9e2723ea625475785fe9db0e6dd15ad40243d268ca131ad4ef503c9  mesh/x.stl
+59ffca22319a9baff6ef49e53a3081a7b63a03691e51aeb932142054acb60748  mesh/bridge-half-l2-b28-f16-t22-flare5.stl
+2ad232b6ba44811d466b5de5138144d76be4c45216821458c5f3651f0be5bcc2  mesh/bridge.stl
+f997014450ff07ac6fb5f09b8c3684896eba29a3a7c22c8cd6069c2fb7f04dcd  mesh/bridge-to28.stl
+bf5a9c7a255e706ee3b156172409889b1c22901cf5abb5cc3108a5872e524dee  mesh/hc-22to34.stl
+c9c2f7d08c8367c0199950e4b4e7ae7831976d97d1812738c437ac450189a1c2  mesh/hc-34to16-l4-r2.stl
+f91452f49b78142323f9037f65e467dca8ac0116838a6f2cb23d4718f57f4bc7  mesh/height-change.stl
+9af5507bface418fe310444fbdd4e3cd18e6295f924386d1d5405c73ebbb8202  mesh/wc-1to2-h22.stl
+17631587dd0b422ef3a9899cce3dbc417d724ee89452cffc9b669221641c9a9b  mesh/wc-1to2-l5-cutout.stl
+d4cc2c8b0f01f986c2776ccad0b88823a3360a16361747068bea76eba1015c99  mesh/wc-2to1-l4-r2-h28-flare5.stl
+5fde987cc4d332757a401264fb935c5a24bd67b91bd08cfd6a2ba039c0c670f2  mesh/width-change.stl
