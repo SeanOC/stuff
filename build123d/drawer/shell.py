@@ -312,18 +312,22 @@ def source_stopper_cutters(values=None):
     return cuts
 
 
-def honeycomb_layouts(values=None):
+def honeycomb_layouts(values=None, *, close_openings=True):
     """Through-openings, preserving :1390-1415 frames and fitting infills.
 
     All four wall planes are vertical in the back-wall-down print frame.
     The openings have horizontal ceiling facets between their struts,
     including clipped cells at the frame. The slot-bearing wall stays solid.
+    Production (any ceiling but 'source') closes each opening whose roofed
+    profile has an inscribed circle under MIN_LATTICE_OPENING_MM, as the
+    container does; close_openings=False keeps them for the closure test.
     """
-    from .honeycomb import HoneycombLayout, hole_polygons
+    from .honeycomb import HoneycombLayout, HoneycombPanelTooSmall, close_small_openings, hole_polygons
     from shapely.geometry import Polygon, box
     v = values or {}
     d = dimensions(v)
     depth = d.depth+d.wall-d.slot_thickness
+    ceiling = v.get('honeycomb_ceiling', 'roofed')
     layouts = []
     for name, setting, default in (
         ('Top', 'shell_top_wall_type', 'Solid'),
@@ -360,9 +364,17 @@ def honeycomb_layouts(values=None):
                      d.slot_thickness+length-origin[2], half_width)
         openings = [Polygon(p).intersection(window) for p in polygons]
         openings = [p for p in openings if not p.is_empty and p.area > 1e-10]
+        if close_openings and ceiling != 'source':
+            kept = close_small_openings(openings, (1, 0), ceiling=ceiling)
+            # Never substitute a Solid wall for a requested Honeycomb one.
+            if openings and not kept:
+                raise HoneycombPanelTooSmall(
+                    f'honeycomb {name.lower()} wall: every opening clips under '
+                    f'{c.MIN_LATTICE_OPENING_MM:g} mm; lower honeycomb_strut_hyp '
+                    'or use the Solid wall type')
+            openings = kept
         if openings:
-            layouts.append((plane, HoneycombLayout(
-                openings, v.get('honeycomb_ceiling', 'roofed'), name)))
+            layouts.append((plane, HoneycombLayout(openings, ceiling, name)))
     return layouts
 
 
@@ -462,10 +474,8 @@ def honeycomb_ceiling_regions(values):
     The family includes clipped frame cells as well as full hexes. Only
     chords at most MAX_BRIDGE_MM are eligible; the production local-width
     scan alone cannot bound unsupported through-wall ceiling chords.
-
-    Exception register (manual hole-size rule, no added audit exclusions):
-    | Family | Reason / measured minima | Authority / regression |
-    | Frame-clipped honeycomb cells < Ø2 mm | Decorative lattice, closed slots; default/small/top-slot minima at strut 5: 1.909/1.416/1.909 mm; at 16.3: .473 mm each | Mayor, 2026-10-12, pst-t0ob3.2 REV 7; test_frame_clipped_opening_exception_measurements |
+    Production has no sub-Ø2 openings to register: honeycomb_layouts closes
+    them (pst-t0ob3.5, test_shell_lattice_openings_under_2mm_are_closed).
     """
     regions = []
     for hole in source_honeycomb_cutters(values):
