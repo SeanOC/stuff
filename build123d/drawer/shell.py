@@ -322,7 +322,7 @@ def honeycomb_layouts(values=None, *, close_openings=True):
     profile has an inscribed circle under MIN_LATTICE_OPENING_MM, as the
     container does; close_openings=False keeps them for the closure test.
     """
-    from .honeycomb import HoneycombLayout, close_small_openings, hole_polygons
+    from .honeycomb import HoneycombLayout, HoneycombPanelTooSmall, close_small_openings, hole_polygons
     from shapely.geometry import Polygon, box
     v = values or {}
     d = dimensions(v)
@@ -365,7 +365,14 @@ def honeycomb_layouts(values=None, *, close_openings=True):
         openings = [Polygon(p).intersection(window) for p in polygons]
         openings = [p for p in openings if not p.is_empty and p.area > 1e-10]
         if close_openings and ceiling != 'source':
-            openings = close_small_openings(openings, (1, 0), ceiling=ceiling)
+            kept = close_small_openings(openings, (1, 0), ceiling=ceiling)
+            # Never substitute a Solid wall for a requested Honeycomb one.
+            if openings and not kept:
+                raise HoneycombPanelTooSmall(
+                    f'honeycomb {name.lower()} wall: every opening clips under '
+                    f'{c.MIN_LATTICE_OPENING_MM:g} mm; lower honeycomb_strut_hyp '
+                    'or use the Solid wall type')
+            openings = kept
         if openings:
             layouts.append((plane, HoneycombLayout(openings, ceiling, name)))
     return layouts

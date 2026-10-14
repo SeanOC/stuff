@@ -91,6 +91,10 @@ def test_shell_lattice_openings_under_2mm_are_closed(name, values):
             if diameter < MIN_LATTICE_OPENING_MM:
                 shut.append(diameter)
     print(f'CLOSED | {name} | {len(shut)} | {min(shut, default=0):.3f}')
+    # Pinned on a84da775 (inscribed-circle metric, not the retired REV 7 widths).
+    pinned = {'default': (16, 1.771), 'small': (8, 1.338), 'honeycomb_strut_hyp=16.3': (14, .439)}
+    if name in pinned:
+        assert (len(shut), round(min(shut), 3)) == pinned[name]
     # No through-wall opening under 2 mm in production, piece by piece: a
     # roof can split a cell in two and the small lobe is a hole too.
     pieces = [2*maximum_inscribed_circle(g, .001).length
@@ -100,6 +104,24 @@ def test_shell_lattice_openings_under_2mm_are_closed(name, values):
     # Source mode (the parity fixture) keeps every author cell.
     source = shell.honeycomb_layouts({**values, 'honeycomb_ceiling': 'source'})
     assert sum(len(l.openings) for _, l in source) == sum(len(l.openings) for _, l in raw)
+
+
+def test_closure_that_empties_a_honeycomb_wall_has_named_error():
+    """codex #200 finding 1: all side-wall cells clip under Ø2 here; the
+    shell must not silently build the Solid wall the user did not pick."""
+    from drawer.honeycomb import HoneycombPanelTooSmall
+    values = dict(horizontal_grids=1, vertical_grids=1, depth_grids=1,
+                  honeycomb_strut_hyp=6.3, shell_thickness=2.8,
+                  shell_top_wall_type='Honeycomb', shell_side_wall_type='Honeycomb',
+                  shell_slot_position='Bottom')
+    raw = {l.wall: len(l.openings) for _, l in shell.honeycomb_layouts(values, close_openings=False)}
+    assert raw == {'Top': 4, 'Left': 3, 'Right': 3}
+    with pytest.raises(HoneycombPanelTooSmall, match='left wall: every opening clips under 2 mm'):
+        shell.honeycomb_layouts(values)
+    with pytest.raises(HoneycombPanelTooSmall):
+        shell.build(values)
+    # Source mode (parity) is unaffected.
+    assert shell.honeycomb_layouts({**values, 'honeycomb_ceiling': 'source'})
 
 
 @pytest.mark.parametrize('strut', [0, -1, 1.09, float('inf'), float('nan'), 20])

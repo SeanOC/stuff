@@ -132,7 +132,9 @@ def opening_diameter(opening):
 def close_small_openings(openings, frame_up=(0, 1), *, ceiling='roofed'):
     """The openings whose roofed profile admits a MIN_LATTICE_OPENING_MM
     circle; the rest are closed, by size, whatever clipped them
-    (docs/design-guidelines.md:46, pst-t0ob3.3 DECISION C rev (b))."""
+    (docs/design-guidelines.md:46, pst-t0ob3.3 DECISION C rev (b)). The
+    inscribed circle is solved to .001 mm; the catalog's closest full hex
+    is 2.0496 mm, well clear of that tolerance."""
     return [p for p in openings
             if opening_diameter(roof_opening(p, frame_up, ceiling=ceiling)[0])
             >= MIN_LATTICE_OPENING_MM]

@@ -46,11 +46,13 @@ roofed profile has a largest inscribed circle under Ø2 mm
 (`MIN_LATTICE_OPENING_MM`, `drawer.honeycomb.close_small_openings`;
 pst-t0ob3.3 DECISION C rev (b), pst-t0ob3.5). This retires the
 `pst-t0ob3.2 REV 7` frame-clipped exception. Source mode keeps every
-author cell, so parity is unchanged. Its named library
+author cell, so parity is unchanged. If the closure would leave a
+requested Honeycomb wall with no opening, the shell raises
+`HoneycombPanelTooSmall` rather than building a Solid wall. Its named library
 `HoneycombStrutOutOfRange` guard rejects values below 1.1 mm (perpendicular
 strut below about 0.95 mm), nonfinite values, and values that leave no hex
 opening. `HoneycombPanelTooSmall` rejects panels smaller than the source's
-frame-and-cell requirement; neither guard silently substitutes a solid wall.
+frame-and-cell requirement; no guard silently substitutes a solid wall.
 
 ## Deviations from the source
 
