@@ -29,6 +29,8 @@ the NOTICE: S/diagonal cord cutouts cut the bottom run's walls (the source
 cuts only its grips), and named errors bound the S bend radius and the
 diagonal mitre.
 """
+from math import radians, sin
+
 from build123d import Location, Plane, mirror
 from holders.printer import BED_X, BED_Y
 from holders.registry import ModelSpec, Param, Preset, register
@@ -76,7 +78,13 @@ def check_path(v) -> None:
                 f'the diagonal turns {turn:.1f} degrees at each corner: the inside wall ends '
                 f'{back:.1f} mm before the corner, past the {p.MAX_SETBACK:g} mm the end grip '
                 f'stands back, so its foot would overhang; raise units_up, or lower units_over or the width')
-    span_x, span_y = abs(dx) + w, (v['length_bottom_units'] + v['length_top_units'] + up)*c.GRID
+    l1, l2 = v['length_bottom_units']*c.GRID, v['length_top_units']*c.GRID
+    span_x, span_y = abs(dx) + w, l1 + l2 + up*c.GRID
+    if v['part'] == 'diagonal':
+        # the round outer fill at each vertex reaches (w/2)*sin(turn) past it,
+        # beyond a run shorter than that
+        e = w/2*sin(radians(turn))
+        span_y += max(0., e - l1) + max(0., e - l2)
     a, b = sorted((span_x, span_y), reverse=True)
     if a > BED_X or b > BED_Y:
         raise ValueError(f'the channel is {span_x:.1f} x {span_y:.1f} mm, past the {BED_X:g} x '

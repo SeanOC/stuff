@@ -168,6 +168,13 @@ each reproduces its bytes):
   parity reference, NOT a registered model (mayor ruling on pst-fsk8s.3;
   print strategy pst-1nv9a).
 
+Path channel deviations (build123d/holders/underware_path_channels.py header):
+- S / diagonal cord cutouts cut the bottom run's walls; the source's cutouts
+  cut only its grips.
+- Named errors bound the S bend radius (the inner wall would fold under the
+  half-width) and the diagonal mitre (the inside wall's setback past the end
+  grip's 6.5 mm stand-back), and every combination that runs past the bed.
+
 Frames: Z=0 is the closed, chamfered face; Y runs along the channel. The
 source's 0.01 mm Nudge makes every mesh span y = -L/2-0.015 .. L/2-0.005;
 the port spans exactly +/-L/2 (parity shifts the references +0.005 in Y).
