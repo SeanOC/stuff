@@ -216,6 +216,9 @@ def test_mount_selection_params_are_filename_flagged():
         ("underware_x", "right_length_units"),
         ("underware_x", "left_length_units"),
         ("underware_x", "top_length_units"),
+        ("underware_text_label", "label_width_units"),
+        ("underware_text_label", "label_length_units"),
+        ("underware_text_label", "text_style"),
     }
     models = {m["slug"]: m for m in build_manifest()["models"]}
     for name, param in flagged:

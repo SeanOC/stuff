@@ -159,6 +159,14 @@ def _nominal_measures(text: str) -> tuple[float, float, float]:
     return (*stroke_and_gap(nominal), glyph_clearance(nominal))
 
 
+def text_measures(text: str, size: float) -> tuple[float, float, float]:
+    """(stroke, gap, clearance) of text_sketch(text, size), mm, for a caller
+    that sets the size itself instead of fitting a box (scaled from the cached
+    NOMINAL_SIZE scan; text size scales every glyph feature linearly)."""
+    k = size / NOMINAL_SIZE
+    return tuple(v * k for v in _nominal_measures(text))
+
+
 def fit_text(text: str, box_w: float, box_h: float, margin: float,
              depth: float = 0.6, measure: bool = True) -> FittedText:
     """Text scaled to fit (box - 2 margin) in both axes, ink centred on the origin.
