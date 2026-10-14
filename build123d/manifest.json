@@ -5,7 +5,7 @@
       "slug": "holder-tombstone-sign",
       "engine": "build123d",
       "title": "Tombstone sign",
-      "blurb": "Song-request tombstone sign: title, headline, a QR code and two text lines as flush inlays in up to four colours, printed face down; two pockets in the bottom edge take the separately printed stake.",
+      "blurb": "Song-request tombstone sign in the poster look: eyebrow, Creepster title, the ghost-with-poppy, a QR code and the show details raised in up to eight colours, printed face up; two pockets in the bottom edge take the separately printed stake.",
       "categoryId": "household",
       "params": [
         {
@@ -58,14 +58,14 @@
           "group": "Plate",
           "unit": "mm",
           "kind": "number",
-          "default": 6.0,
+          "default": 8.0,
           "min": 3.0,
           "max": 20.0,
           "step": 0.5
         },
         {
-          "name": "title",
-          "label": "Title",
+          "name": "eyebrow",
+          "label": "Eyebrow (printed in capitals)",
           "group": "Text",
           "kind": "string",
           "default": "Poppy Street Spooks",
@@ -73,8 +73,8 @@
           "charset": "printable-ascii"
         },
         {
-          "name": "headline",
-          "label": "Headline",
+          "name": "title",
+          "label": "Title",
           "group": "Text",
           "kind": "string",
           "default": "Pick the next song!",
@@ -91,8 +91,26 @@
           "charset": "printable-ascii"
         },
         {
+          "name": "detail_1",
+          "label": "Detail 1",
+          "group": "Text",
+          "kind": "string",
+          "default": "The spooks sing whatever the street picks. Three requests per phone.",
+          "maxLength": 72,
+          "charset": "printable-ascii"
+        },
+        {
+          "name": "detail_2",
+          "label": "Detail 2",
+          "group": "Text",
+          "kind": "string",
+          "default": "No app needed. Or visit",
+          "maxLength": 72,
+          "charset": "printable-ascii"
+        },
+        {
           "name": "host",
-          "label": "Host",
+          "label": "Host (the QR encodes https://host)",
           "group": "Text",
           "kind": "string",
           "default": "poppystreetspooks.com",
@@ -100,12 +118,12 @@
           "charset": "printable-ascii"
         },
         {
-          "name": "url",
-          "label": "QR link",
-          "group": "QR",
+          "name": "footer_1",
+          "label": "Footer",
+          "group": "Text",
           "kind": "string",
-          "default": "https://poppystreetspooks.com",
-          "maxLength": 64,
+          "default": "Show runs dusk to 9 pm",
+          "maxLength": 24,
           "charset": "printable-ascii"
         },
         {
@@ -122,26 +140,14 @@
         },
         {
           "name": "colours",
-          "label": "Colours",
+          "label": "Colours (filaments)",
+          "description": "Filaments including the plate; fewer colours fold the extra roles.",
           "group": "Style",
-          "kind": "enum",
-          "default": "four",
-          "choices": [
-            "four",
-            "three",
-            "two"
-          ]
-        },
-        {
-          "name": "text_style",
-          "label": "Text style",
-          "group": "Style",
-          "kind": "enum",
-          "default": "inlaid",
-          "choices": [
-            "inlaid",
-            "raised"
-          ]
+          "kind": "integer",
+          "default": 8,
+          "min": 2,
+          "max": 8,
+          "step": 1
         },
         {
           "name": "retention",
@@ -159,23 +165,21 @@
       "presets": [
         {
           "id": "default",
-          "label": "Four colours (face down)",
-          "values": {},
-          "defaultView": "bottom"
+          "label": "Eight colours",
+          "values": {}
         },
         {
-          "id": "three-colour",
-          "label": "Three colours (title in bone)",
+          "id": "one-ams",
+          "label": "One AMS (four colours)",
           "values": {
-            "colours": "three"
-          },
-          "defaultView": "bottom"
+            "colours": 4
+          }
         },
         {
-          "id": "raised",
-          "label": "Raised (one colour, face up)",
+          "id": "two-colour",
+          "label": "Two colours (bone on ground)",
           "values": {
-            "text_style": "raised"
+            "colours": 2
           }
         },
         {
@@ -184,18 +188,18 @@
           "values": {
             "thickness": 8.0,
             "retention": "pin"
-          },
-          "defaultView": "bottom"
+          }
         },
         {
           "id": "small",
-          "label": "Small (160 x 200)",
+          "label": "Small (160 x 200, no detail lines)",
           "values": {
             "width": 160.0,
             "height": 200.0,
-            "qr_size": 74.0
-          },
-          "defaultView": "bottom"
+            "qr_size": 74.0,
+            "detail_1": "",
+            "detail_2": ""
+          }
         }
       ],
       "multiColour": true

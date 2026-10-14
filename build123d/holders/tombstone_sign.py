@@ -367,7 +367,23 @@ def _fit_line(name: str, values: dict, frame: dict) -> Part:
                              path, style, max_lines=1)
     except ValueError:
         raise _line_error(name, _line(values, name), chord, y_hi - y_lo) from None
-    return Pos(0, (y_lo + y_hi) / 2) * fitted.part
+    return Pos(0, (y_lo + y_hi) / 2) * _merge_overlaps(fitted.part)
+
+
+def _merge_overlaps(part: Part) -> Part:
+    """Fuse glyph solids whose boxes overlap: Creepster kerns some pairs into
+    each other ('x' into 't' by 0.015 mm^3), and two interpenetrating solids
+    in one compound make the plate fuse invalid. Disjoint glyphs pass through."""
+    groups: list[list] = []
+    for solid in part.solids():
+        bb = solid.bounding_box()
+        hits = [g for g in groups if any(bb.overlaps(o.bounding_box()) for o in g)]
+        merged = [solid] + [o for g in hits for o in g]
+        groups = [g for g in groups if g not in hits] + [merged]
+    out = []
+    for g in groups:
+        out += g if len(g) == 1 else reduce(lambda a, b: a.fuse(b), g).solids()
+    return Part(Compound(out).wrapped)
 
 
 def features(values: dict) -> dict[str, tuple[str, Part]]:

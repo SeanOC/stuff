@@ -256,7 +256,10 @@ def test_qr_panel_is_rounded_inside_the_quiet_zone(qr_size):
     assert dark.intersection(light).area < 1e-6
     panel = unary_union([dark, light])
     corner_cut = qr_size ** 2 - panel.area
-    assert corner_cut == pytest.approx((4 - math.pi) * m.QR_CORNER_R ** 2, rel=1e-3)
+    # buffer(quad_segs=32) rounds each corner with a quarter of a 128-gon,
+    # which falls short of the true arc by 0.08 mm^2 in all.
+    polygon = 64 * math.sin(2 * math.pi / 128)
+    assert corner_cut == pytest.approx((4 - polygon) * m.QR_CORNER_R ** 2, rel=1e-6)
     # The corner arcs reach 8 (1 - 1/sqrt 2) = 2.34 mm in: inside the quiet zone.
     quiet = signs.QR_QUIET * signs.qr_pitch(URL, qr_size)
     assert m.QR_CORNER_R * (1 - 1 / math.sqrt(2)) < quiet
@@ -300,7 +303,9 @@ def test_outline_builds_at_its_minimum_height(width, arch):
 
 @pytest.mark.audit
 def test_height_guard_names_a_minimum_that_works():
-    values = SPEC.resolve_values({'height': 220.0})
+    # Raised content runs down to margin, so the default copy lays out down to
+    # 199.1 mm (B at MIN_TEXT_BUDGET); below that the guard names it.
+    values = SPEC.resolve_values({'height': 190.0})
     with pytest.raises(ValueError, match=r'height must be >= ([\d.]+) mm') as err:
         m.validate(values)
     minimum = float(err.value.args[0].rsplit('>= ', 1)[1].split(' mm')[0])
@@ -326,7 +331,7 @@ def test_text_below_the_stroke_floor_names_the_line_and_the_longest_fit():
 def test_too_many_needs_name_the_hungriest_line():
     """sum of needs > B: the stroke-floor error names the line that needs most."""
     long = 'Spooks sing every request the street picks. Three requests per phone ok.'[:72]
-    values = SPEC.resolve_values({'detail_1': long, 'detail_2': long, 'height': 268.0})
+    values = SPEC.resolve_values({'detail_1': long, 'detail_2': long, 'height': 240.0})
     frame = m._frame(values)
     assert frame is not None and frame['overflow']
     hungriest = max(frame['need'], key=frame['need'].get)
