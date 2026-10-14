@@ -2702,6 +2702,98 @@
       ]
     },
     {
+      "slug": "underware-text-label",
+      "engine": "build123d",
+      "title": "Underware text label plate (openGrid)",
+      "blurb": "Underware 2.0 \"monokini\" label plate that snaps into openGrid beside your cable channels: set width and length in 28 mm cells and your text, inlaid in a second colour or debossed. By Pedro Leite after Hands on Katie and BlackjackDuck, CC BY-NC-SA 4.0 (non-commercial, share-alike). Prints text face down, no supports.",
+      "categoryId": "multiboard",
+      "params": [
+        {
+          "name": "label_width_units",
+          "label": "Width (28 mm units)",
+          "group": "Label Size",
+          "kind": "integer",
+          "default": 1,
+          "min": 1,
+          "max": 4,
+          "step": 1,
+          "filename": true
+        },
+        {
+          "name": "label_length_units",
+          "label": "Length (28 mm units)",
+          "group": "Label Size",
+          "kind": "integer",
+          "default": 5,
+          "min": 1,
+          "max": 11,
+          "step": 1,
+          "filename": true
+        },
+        {
+          "name": "text",
+          "label": "Label text",
+          "group": "Text Label",
+          "kind": "string",
+          "default": "CABLES",
+          "maxLength": 24,
+          "charset": "printable-ascii"
+        },
+        {
+          "name": "text_size",
+          "label": "Font size",
+          "group": "Text Label",
+          "unit": "mm",
+          "kind": "number",
+          "default": 10,
+          "min": 6,
+          "max": 16,
+          "step": 1
+        },
+        {
+          "name": "text_style",
+          "label": "Text style",
+          "group": "Text Label",
+          "kind": "enum",
+          "default": "inlaid",
+          "choices": [
+            "inlaid",
+            "debossed"
+          ],
+          "filename": true
+        },
+        {
+          "name": "text_depth",
+          "label": "Text depth",
+          "group": "Text Label",
+          "unit": "mm",
+          "kind": "number",
+          "default": 0.6,
+          "min": 0,
+          "max": 1,
+          "step": 0.2
+        }
+      ],
+      "presets": [
+        {
+          "id": "label-1x5",
+          "label": "1 \u00d7 5 cells, inlaid text",
+          "values": {},
+          "defaultView": "bottom"
+        },
+        {
+          "id": "label-2x3",
+          "label": "2 \u00d7 3 cells, inlaid text",
+          "values": {
+            "label_width_units": 2,
+            "label_length_units": 3
+          },
+          "defaultView": "bottom"
+        }
+      ],
+      "multiColour": true
+    },
+    {
       "slug": "underware-transition",
       "engine": "build123d",
       "title": "Underware cable channel transition (openGrid)",

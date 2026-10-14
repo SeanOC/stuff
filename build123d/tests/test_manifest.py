@@ -216,6 +216,9 @@ def test_mount_selection_params_are_filename_flagged():
         ("underware_x", "right_length_units"),
         ("underware_x", "left_length_units"),
         ("underware_x", "top_length_units"),
+        ("underware_text_label", "label_width_units"),
+        ("underware_text_label", "label_length_units"),
+        ("underware_text_label", "text_style"),
     }
     models = {m["slug"]: m for m in build_manifest()["models"]}
     for name, param in flagged:
@@ -253,12 +256,14 @@ def test_default_view_is_a_trailing_preset_key_only_when_set():
 
 def test_only_the_face_down_inlaid_presets_carry_a_view_hint():
     """pst-5b83s AC (d): the face-down inlaid card opens on its text face;
-    pst-tl4ac.1: so does every face-down tombstone sign preset (all but raised)."""
+    pst-tl4ac.1: so does every face-down tombstone sign preset (all but raised);
+    pst-fsk8s.6: and both Underware text-label plates (text in the bed face)."""
     hinted = sorted((m["slug"], p["id"], p["defaultView"])
                     for m in build_manifest()["models"] for p in m["presets"] if "defaultView" in p)
     assert hinted == [("holder-label-card", "inlaid", "bottom")] + [
         ("holder-tombstone-sign", pid, "bottom")
-        for pid in sorted(("default", "three-colour", "pinned", "small"))]
+        for pid in sorted(("default", "three-colour", "pinned", "small"))] + [
+        ("underware-text-label", pid, "bottom") for pid in ("label-1x5", "label-2x3")]
 
 
 def test_validator_rejects_unknown_default_view():
