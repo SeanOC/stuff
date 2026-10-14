@@ -753,6 +753,10 @@ def audit(
 ) -> PrintAuditReport:
     """Run the full printability audit (AC 1).
 
+    pst-sx1g3: answered from tests/audit_cache.py when this exact geometry,
+    argument set and audit code were audited before (BD_AUDIT_CACHE=off
+    disables it; docs/print-audit-profile.md "Cache").
+
     Args:
         part: the built model.
         orientation: the print-orientation unit vector — the model-frame
@@ -764,6 +768,15 @@ def audit(
             Production callers must regression-test every exception.
         model: a label for the report.
     """
+    from tests import audit_cache
+
+    return audit_cache.cached(_audit, part, orientation, cutters=list(cutters),
+                              exclusions=list(exclusions), model=model,
+                              print_frame=print_frame)
+
+
+def _audit(part, orientation, *, cutters, exclusions, model, print_frame):
+    """The uncached audit behind ``audit``."""
     if print_frame is not None:
         part = print_frame * part
         cutters = [print_frame * c for c in cutters]

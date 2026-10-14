@@ -58,7 +58,10 @@ jobs:
       - name: audit budgets (serial)
         # The per-model audit budget is a serial CPU-time measurement, so it
         # skips under xdist (test_print_audit.py); this step is where the
-        # 60 s per-model budget is enforced.
+        # 60 s per-model budget is enforced. pst-sx1g3: the budget times a COLD
+        # audit, so the audit cache is off here (the helper also asserts it).
+        env:
+          BD_AUDIT_CACHE: off
         run: uv run pytest tests/ -q -n 0 -rf --tb=short -m "budget and not upstream"
       - name: export all models (STL + GLB + PNG)
         run: uv run python scripts/export.py
@@ -91,6 +94,15 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - name: sync env (pinned via uv.lock)
         run: uv sync --frozen
+      - name: restore/save the print-audit cache
+        # pst-sx1g3: content-addressed reports (build123d/tests/audit_cache.py);
+        # one saver per key (run id + job), and the prefix restores any
+        # earlier save — a restored entry can only add hits.
+        uses: actions/cache@v4
+        with:
+          path: build123d/.cache/audit
+          key: bd-audit-${{ hashFiles('build123d/tests/print_audit.py', 'build123d/tests/audit_cache.py', 'build123d/uv.lock') }}-${{ matrix.group || 'audit' }}-${{ github.run_id }}
+          restore-keys: bd-audit-${{ hashFiles('build123d/tests/print_audit.py', 'build123d/tests/audit_cache.py', 'build123d/uv.lock') }}-${{ matrix.group || 'audit' }}-
       - name: print audits (presets, reproducers, other models)
         # pst-rir4i: one JSON row per audit item (+ measurement rows) for
         # reviewers; reader recipe in build123d/ci/README.md.
@@ -171,6 +183,15 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - name: sync env (pinned via uv.lock)
         run: uv sync --frozen
+      - name: restore/save the print-audit cache
+        # pst-sx1g3: content-addressed reports (build123d/tests/audit_cache.py);
+        # one saver per key (run id + shard), and the prefix restores any
+        # earlier save — a restored entry can only add hits.
+        uses: actions/cache@v4
+        with:
+          path: build123d/.cache/audit
+          key: bd-audit-${{ hashFiles('build123d/tests/print_audit.py', 'build123d/tests/audit_cache.py', 'build123d/uv.lock') }}-${{ matrix.group || 'audit' }}-${{ github.run_id }}
+          restore-keys: bd-audit-${{ hashFiles('build123d/tests/print_audit.py', 'build123d/tests/audit_cache.py', 'build123d/uv.lock') }}-${{ matrix.group || 'audit' }}-
       - name: cradle corner sweep (shard ${{ matrix.group }}/6)
         # tests/.test_durations balances the shards; a stale or missing entry
         # only degrades balance (pytest-split splits evenly), never coverage.
