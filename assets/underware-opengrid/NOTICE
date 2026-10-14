@@ -1,0 +1,114 @@
+Underware for openGrid (monokini) reference meshes
+==================================================
+Design: Underware 2.0 by Hands on Katie and BlackjackDuck (Andy).
+monokini_I_channel.scad: "Created by Hands on Katie and BlackjackDuck (Andy)".
+The other twelve files: "Created by Pedro Leite, inspired by the Underware 2.0
+collection by Hands on Katie and BlackjackDuck".
+Source: MakerWorld model 1329404, "Underware for openGrid" customizer upload,
+https://makerworld.com/en/models/1329404 (retrieved by the mayor 2026-10-11;
+upload ZIP UnderwareforopenGridCustomizer.zip SHA256
+c5fc5087ec363145a77b2b944150ccf56d13ae8b1ac65a0d50799825df33aa60).
+Licence: CC BY-NC-SA 4.0 ("Licensed Creative Commons 4.0 Attribution
+Non-Commercial Share-Alike (CC-BY-NC-SA)" in every file header); see
+../../build123d/reference/LICENSES/CC-BY-NC-SA-4.0.txt. Licence of record
+decided by Sean 2026-10-11 ("Go with the file headers", epic pst-fsk8s D0):
+outcome (b), the opengrid-snap precedent. NO author SCAD is committed; these
+are derived meshes. Port files carry SPDX CC-BY-NC-SA-4.0 and cite the staged
+sources by file:line. Non-commercial, share-alike.
+
+Staged sources (read-only, outside this repository, city
+assets/incoming/underware-opengrid/; per-file SHA256):
+714a07560f3a9f09eae5585c78278d0b43e99c4a9bbedd17eb4ab3c9bbb71829  monokini_diagonal_channel.scad
+d899b531771e56fd7e0377f65619d6de03468a3def649b49dd23cd123117fa65  monokini_I_bridge_channel.scad
+8d5f072860abf7927c4fd0b09d0daa011fd2c70fa57fe09d33d21c00fe9987a1  monokini_I_channel.scad
+7bad0bf540d3059ecd31242d13c55964d2829b5439a628e128d872f33be25e6a  monokini_I_channel_tex.scad
+4b6de9505ad9bc5c02d2681db604b23d7fb0a577b791c366bf48e126266070f5  monokini_I_channel_wood.scad
+408a76cbc2af4b885d73dce8156d6b6b08a715e36dd634ed263b1ac584024456  monokini_I_height_change_channel.scad
+6eaf0556d55f632b62a0a3aefcb4d4c1c60c69a547d6510c6488e8499bcdca51  monokini_I_width_change_channel.scad
+823a72a2f3f512c02fd0044e116ac0eb305f9acf69ca1ded4e66686efe8fe5a5  monokini_L_channel.scad
+8f7ce02e5c538d207fcd052916b5aab346fb6919ea48d84605f1fb9ad0bbe833  monokini_mitre_channel.scad
+a2d23e438a0c4e74a2e97e702fd50b6a2d179d2b524b22c3c8032b9e43cdb405  monokini_S_channel.scad
+e30f5b16f061c2902496d362847790d83ec63575882b44a5ee41bff4d84be828  monokini_T_channel.scad
+7949cd066881ccc7b04fe715af8fc1df86104f11627e3d83bc90f79c34acf615  monokini_text_label.scad
+8c49aaa2e924397e3581153b07609ab99ceec38c562f7fad74e760dc19a608ca  monokini_X_channel.scad
+Shared-module body hashes across these files (and the recorded divergences):
+../../build123d/tests/underware_module_hashes.json
+(scripts/underware_module_hashes.py).
+
+Render environment: OpenSCAD 2025.06.12.ai25773 (default CGAL engine), binary
+STL; BOSL2 https://github.com/BelfrySCAD/BOSL2 commit
+b86a7584db6d324eb856c2d19d041f94435e6c32 checked out at $BOSL2_PARENT/BOSL2.
+Each mesh renders the UNMODIFIED source with -D overrides only, from the
+staged directory:
+
+    OPENSCADPATH=$BOSL2_PARENT openscad --export-format=binstl -o OUT.stl FILE.scad [-D ...]
+
+Mayor renders (pre-flight, city assets/incoming/underware-ref/, copied
+byte-for-byte; the mayor's baseline hashes):
+  mesh/i-1x5-h22.stl  monokini_I_channel.scad, defaults (1 x 5 units, height 22).
+      Byte-identical under BOSL2 456fcd8 (the repo pin) and b86a7584.
+  mesh/l.stl          monokini_L_channel.scad, defaults.
+  mesh/t.stl          monokini_T_channel.scad, defaults.
+  mesh/x.stl          monokini_X_channel.scad, defaults.
+  L and T are BOSL2-pin-sensitive (L: 8.67 cm3 / 15392 facets at b86a7584 vs
+  9.00 cm3 / 14672 at 456fcd8; T facet counts differ by 4); X is
+  facet-identical but byte-different. Never re-render these at the repo pin
+  to "refresh" them. A worker re-render of L at b86a7584 reproduces 15392
+  facets / 8669.58 mm3 with a different byte order (CGAL facet order), so the
+  committed bytes are the mayor's.
+
+Worker renders (pst-fsk8s.1, 2026-10-13; no mayor baseline), monokini_I_channel.scad:
+  mesh/i-2x3-h34.stl           -D Channel_Width_in_Units=2 -D Channel_Length_Units=3 -D Channel_Total_Height=34
+  mesh/i-1x5-h22-cutouts.stl   -D Number_of_Cord_Cutouts=2   (Both Sides, width 12, spacing 28)
+  mesh/i-1x5-h22-label.stl     -D Add_Label=true -D Text_Emboss=true -D 'Text="CABLES"'
+                               -D 'Font="Inter"' -D 'Font_Style="Bold"'
+                               with OPENSCAD_FONT_PATH=build123d/assets/fonts/inter
+                               (the repo's label font; Text_Emboss=true renders the
+                               deboss cut alone, the geometry a single-material
+                               port can carry)
+  mesh/i-1x5-h22-flare5.stl    -D Grip_Flare=5
+  mesh/i-1x5-h22-flare9p9.stl  -D Grip_Flare=9.9
+
+Frames: Z=0 is the closed, chamfered face; Y runs along the channel. The
+source's 0.01 mm Nudge makes every mesh span y = -L/2-0.015 .. L/2-0.005;
+the port spans exactly +/-L/2 (parity shifts the references +0.005 in Y).
+CGAL keeps each grip as a separate volume touching the wall top ("Volumes:
+12" in the I render), so the references show 1.30 mm down-facing grip-base
+faces at z = height-3.4; the fused port has no such face.
+
+Port deviations (build123d/holders/underware_i_channel.py header):
+- Decorative / Support_Bridging_Separation (:88-92) not ported: the author's
+  Decorative=true render is non-manifold (OpenSCAD warns) and its 0.4 mm
+  feet are below the 0.9 mm wall floor.
+- Label: single-material deboss only (Text_Emboss=true geometry), Inter Bold
+  via build123d/labels/label_text.py instead of Raleway, text size scaled by
+  1/0.72 to match OpenSCAD's em; no Text_x_coordinate, colours or inlay.
+- Filament groove honours Filament_Diameter (the source hard-codes
+  teardrop2d(d=1.75) at :331; identical at the 1.75 default).
+- Channel_Length_Units max 11, not the spec's 12 (:44): 12 cells are 336 mm, past
+  the 325 mm Bambu H2S single-nozzle bed (build123d/holders/printer.py).
+- Suppress_Connectors / Channel_Separators: per-index codes as in the source
+  (:89 N/L/R/B/S, :92 N/S); extra or unknown codes are named errors.
+
+Published exceptions (build123d/holders/underware_i_channel.py
+audit_exclusions; tests/test_underware.py test_exception_probe_matches_reference):
+- grip-end-wedge: grip-end 45 degree ramp (:233-252) meets the nub undercut;
+  0.6 mm inside the outer face the wedge is 0.64 mm (both meshes).
+- flare-slit-fin / floor: flare slits (:436-437) start at topChamfer=4 under
+  the inset corner (4.83) and on the exterior chamfer tip: fin 0.41 mm at
+  z=4.4, floor 0.6 mm at 0.6 mm in (flare5 reference).
+- cutout-sill: side cutout floors (:170/:178) bottom out at z=4 where the
+  exterior chamfer starts: 0.5 mm at 0.5 mm in (cutouts reference).
+- label-recess: glyph recess ceilings at text depth (0.2, reference 0.205)
+  are flat bridges no wider than a stroke; measured before exclusion.
+
+SHA256 (mesh/, also in SHA256SUMS):
+01525fe3d3fa0235bbacbdf3cad6bf359168174e4c19a22ac63e57ac3a561a35  mesh/i-1x5-h22-cutouts.stl
+77a788c5c8eb6f3ca745ef2a749e27b8a5466228bf3daed7e91eb9dd8a043b07  mesh/i-1x5-h22-flare5.stl
+f44c8b22543113e42a57400bd06f277667125c32c93a5aa5932c7a4f4872753a  mesh/i-1x5-h22-flare9p9.stl
+a5e5e0ae5cf1c5d5f31ad58d31064807981e1129495954863f5f9fc4c7a519f3  mesh/i-1x5-h22-label.stl
+028e5f6e59239496c253b91222b6f8996d94996fd93e9231089cf787bd967f2a  mesh/i-1x5-h22.stl
+2291073e408b4c617da9e65dbd711cfc9f60588040242628aca8092f03ce17e0  mesh/i-2x3-h34.stl
+bbbed61e37e8525e0baecb9f4d5789ddf2d9119b099fc503f66c2d1fd195df7e  mesh/l.stl
+b78a8a69ebef3b02c4bcb594d98b47bf31f3e544ed5969111cf66a6c679fa606  mesh/t.stl
+ea0376c0d9e2723ea625475785fe9db0e6dd15ad40243d268ca131ad4ef503c9  mesh/x.stl

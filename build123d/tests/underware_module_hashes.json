@@ -1,0 +1,171 @@
+{
+ "divergences": {
+  "monokiniChannel": [
+   "monokini_I_bridge_channel.scad",
+   "monokini_I_channel_tex.scad",
+   "monokini_I_channel_wood.scad",
+   "monokini_I_height_change_channel.scad",
+   "monokini_I_width_change_channel.scad",
+   "monokini_L_channel.scad",
+   "monokini_S_channel.scad",
+   "monokini_T_channel.scad",
+   "monokini_X_channel.scad",
+   "monokini_diagonal_channel.scad",
+   "monokini_mitre_channel.scad"
+  ],
+  "monokiniGrip": [
+   "monokini_text_label.scad"
+  ],
+  "monokiniGripFlared": [
+   "monokini_I_bridge_channel.scad",
+   "monokini_I_height_change_channel.scad",
+   "monokini_text_label.scad"
+  ],
+  "monokiniGripFlaredCut": [
+   "monokini_text_label.scad"
+  ],
+  "monokini_midline_points": [],
+  "monokini_midline_rects": [],
+  "monokini_offset_profile": []
+ },
+ "files": {
+  "monokini_I_bridge_channel.scad": {
+   "modules": {
+    "monokiniChannel": "b34b7d75e292534d",
+    "monokiniGrip": "cc01d936e0d7ea67",
+    "monokiniGripFlared": "3385d87104a86b0c",
+    "monokiniGripFlaredCut": "b03d933cbc3601d7"
+   },
+   "sha256": "d899b531771e56fd7e0377f65619d6de03468a3def649b49dd23cd123117fa65"
+  },
+  "monokini_I_channel.scad": {
+   "modules": {
+    "monokiniChannel": "c6318ce0e97d13bb",
+    "monokiniGrip": "cc01d936e0d7ea67",
+    "monokiniGripFlared": "abb38258a8af913d",
+    "monokiniGripFlaredCut": "b03d933cbc3601d7",
+    "monokini_midline_points": "d03ed02bacb832fc",
+    "monokini_midline_rects": "f2524288280a44d4",
+    "monokini_offset_profile": "3c2ec0f2e0ffd801"
+   },
+   "sha256": "8d5f072860abf7927c4fd0b09d0daa011fd2c70fa57fe09d33d21c00fe9987a1"
+  },
+  "monokini_I_channel_tex.scad": {
+   "modules": {
+    "monokiniChannel": "b8f416e209410f8f",
+    "monokiniGrip": "cc01d936e0d7ea67",
+    "monokiniGripFlared": "abb38258a8af913d",
+    "monokiniGripFlaredCut": "b03d933cbc3601d7",
+    "monokini_midline_points": "d03ed02bacb832fc",
+    "monokini_midline_rects": "f2524288280a44d4",
+    "monokini_offset_profile": "3c2ec0f2e0ffd801"
+   },
+   "sha256": "7bad0bf540d3059ecd31242d13c55964d2829b5439a628e128d872f33be25e6a"
+  },
+  "monokini_I_channel_wood.scad": {
+   "modules": {
+    "monokiniChannel": "b03ae871442b3f56",
+    "monokiniGrip": "cc01d936e0d7ea67",
+    "monokiniGripFlared": "abb38258a8af913d",
+    "monokiniGripFlaredCut": "b03d933cbc3601d7",
+    "monokini_midline_points": "d03ed02bacb832fc",
+    "monokini_midline_rects": "f2524288280a44d4",
+    "monokini_offset_profile": "3c2ec0f2e0ffd801"
+   },
+   "sha256": "4b6de9505ad9bc5c02d2681db604b23d7fb0a577b791c366bf48e126266070f5"
+  },
+  "monokini_I_height_change_channel.scad": {
+   "modules": {
+    "monokiniChannel": "b34b7d75e292534d",
+    "monokiniGrip": "cc01d936e0d7ea67",
+    "monokiniGripFlared": "3385d87104a86b0c",
+    "monokiniGripFlaredCut": "b03d933cbc3601d7"
+   },
+   "sha256": "408a76cbc2af4b885d73dce8156d6b6b08a715e36dd634ed263b1ac584024456"
+  },
+  "monokini_I_width_change_channel.scad": {
+   "modules": {
+    "monokiniChannel": "1823b442bf15861e",
+    "monokiniGrip": "cc01d936e0d7ea67",
+    "monokiniGripFlared": "abb38258a8af913d",
+    "monokiniGripFlaredCut": "b03d933cbc3601d7"
+   },
+   "sha256": "6eaf0556d55f632b62a0a3aefcb4d4c1c60c69a547d6510c6488e8499bcdca51"
+  },
+  "monokini_L_channel.scad": {
+   "modules": {
+    "monokiniChannel": "779eaa75b9bfbdd5",
+    "monokiniGrip": "cc01d936e0d7ea67",
+    "monokiniGripFlared": "abb38258a8af913d",
+    "monokiniGripFlaredCut": "b03d933cbc3601d7",
+    "monokini_midline_points": "d03ed02bacb832fc",
+    "monokini_midline_rects": "f2524288280a44d4",
+    "monokini_offset_profile": "3c2ec0f2e0ffd801"
+   },
+   "sha256": "823a72a2f3f512c02fd0044e116ac0eb305f9acf69ca1ded4e66686efe8fe5a5"
+  },
+  "monokini_S_channel.scad": {
+   "modules": {
+    "monokiniChannel": "e873d9a258e2699c",
+    "monokiniGrip": "cc01d936e0d7ea67",
+    "monokiniGripFlared": "abb38258a8af913d",
+    "monokiniGripFlaredCut": "b03d933cbc3601d7",
+    "monokini_midline_points": "d03ed02bacb832fc",
+    "monokini_midline_rects": "f2524288280a44d4",
+    "monokini_offset_profile": "3c2ec0f2e0ffd801"
+   },
+   "sha256": "a2d23e438a0c4e74a2e97e702fd50b6a2d179d2b524b22c3c8032b9e43cdb405"
+  },
+  "monokini_T_channel.scad": {
+   "modules": {
+    "monokiniChannel": "216308085f0d0b21",
+    "monokiniGrip": "cc01d936e0d7ea67",
+    "monokiniGripFlared": "abb38258a8af913d",
+    "monokiniGripFlaredCut": "b03d933cbc3601d7"
+   },
+   "sha256": "e30f5b16f061c2902496d362847790d83ec63575882b44a5ee41bff4d84be828"
+  },
+  "monokini_X_channel.scad": {
+   "modules": {
+    "monokiniChannel": "1823b442bf15861e",
+    "monokiniGrip": "cc01d936e0d7ea67",
+    "monokiniGripFlared": "abb38258a8af913d",
+    "monokiniGripFlaredCut": "b03d933cbc3601d7"
+   },
+   "sha256": "8c49aaa2e924397e3581153b07609ab99ceec38c562f7fad74e760dc19a608ca"
+  },
+  "monokini_diagonal_channel.scad": {
+   "modules": {
+    "monokiniChannel": "2eb4c545faf43e0c",
+    "monokiniGrip": "cc01d936e0d7ea67",
+    "monokiniGripFlared": "abb38258a8af913d",
+    "monokiniGripFlaredCut": "b03d933cbc3601d7",
+    "monokini_midline_points": "d03ed02bacb832fc",
+    "monokini_midline_rects": "f2524288280a44d4",
+    "monokini_offset_profile": "3c2ec0f2e0ffd801"
+   },
+   "sha256": "714a07560f3a9f09eae5585c78278d0b43e99c4a9bbedd17eb4ab3c9bbb71829"
+  },
+  "monokini_mitre_channel.scad": {
+   "modules": {
+    "monokiniChannel": "779eaa75b9bfbdd5",
+    "monokiniGrip": "cc01d936e0d7ea67",
+    "monokiniGripFlared": "abb38258a8af913d",
+    "monokiniGripFlaredCut": "b03d933cbc3601d7",
+    "monokini_midline_points": "d03ed02bacb832fc",
+    "monokini_midline_rects": "f2524288280a44d4",
+    "monokini_offset_profile": "3c2ec0f2e0ffd801"
+   },
+   "sha256": "8f7ce02e5c538d207fcd052916b5aab346fb6919ea48d84605f1fb9ad0bbe833"
+  },
+  "monokini_text_label.scad": {
+   "modules": {
+    "monokiniGrip": "9df693beedabcc17",
+    "monokiniGripFlared": "efab113a5dbf1850",
+    "monokiniGripFlaredCut": "0c729d56948fad34"
+   },
+   "sha256": "7949cd066881ccc7b04fe715af8fc1df86104f11627e3d83bc90f79c34acf615"
+  }
+ },
+ "reference": "monokini_I_channel.scad"
+}
