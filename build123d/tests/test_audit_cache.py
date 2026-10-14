@@ -11,6 +11,7 @@ import logging
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -334,6 +335,32 @@ def test_corrupt_entry_is_a_logged_miss(store, caplog, garbage):
     assert audit_cache.load(path) == report  # rewritten
 
 
+def test_every_print_audit_constant_canonicalises():
+    """A non-numeric UPPER_CASE constant in print_audit.py would make every
+    key Uncacheable and silently demote the whole suite to 'off'."""
+    from tests import print_audit as pa
+
+    names = [n for n in vars(pa) if audit_cache._CONSTANT.fullmatch(n)]
+    assert names
+    for name in names:
+        audit_cache._exact(getattr(pa, name))  # raises Uncacheable if not
+
+
+def test_audit_s_sums_miss_seconds_only(monkeypatch):
+    """I6: audit_s is the sum of miss seconds; an off audit is counted only."""
+    monkeypatch.setattr(audit_cache, "COUNTS", {"hits": 0, "misses": 0, "off": 0, "audit_s": 0.0})
+
+    def burn():
+        end = time.process_time() + 0.05
+        while time.process_time() < end:
+            pass
+
+    audit_cache._run(burn, "off")
+    assert audit_cache.COUNTS["off"] == 1 and audit_cache.COUNTS["audit_s"] == 0.0
+    audit_cache._run(burn, "misses")
+    assert audit_cache.COUNTS["misses"] == 1 and audit_cache.COUNTS["audit_s"] > 0.0
+
+
 def test_summary_line_format():
     line = audit_cache.summary({"hits": 3, "misses": 1, "off": 2, "audit_s": 12.345})
     assert line == "AUDIT-CACHE hits=3 misses=1 off=2 audit_s=12.3"
@@ -364,7 +391,7 @@ def test_budget_helper_never_times_a_hit(store, monkeypatch):
 
 def _row_args(row):
     """(part, audit kwargs) of one production audit call."""
-    if row == "drawer":  # tests/test_openconnect_drawer.py:316-317, 1x1x1
+    if row == "drawer":  # test_openconnect_drawer.py::test_endpoint_audit_and_edges, 1x1x1
         from drawer import shell
         from holders import openconnect_drawer as m
         from tests.openconnect_drawer_inventory import wall_regions

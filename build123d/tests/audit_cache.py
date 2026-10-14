@@ -42,7 +42,7 @@ log = logging.getLogger(__name__)
 
 DEFAULT_DIR = Path(__file__).resolve().parent.parent / ".cache" / "audit"
 # Process counters for the conftest AUDIT-CACHE line. audit_s sums the CPU
-# seconds of every audit that actually ran (misses and off/uncacheable calls).
+# seconds of the cache misses (I6); off/uncacheable audits are counted, not timed.
 COUNTS = {"hits": 0, "misses": 0, "off": 0, "audit_s": 0.0}
 _forced_off = 0
 
@@ -337,7 +337,8 @@ def store(path: Path, report) -> None:
 def _run(fn, counter, *args, **kwargs):
     start = time.process_time()
     report = fn(*args, **kwargs)
-    COUNTS["audit_s"] += time.process_time() - start
+    if counter == "misses":
+        COUNTS["audit_s"] += time.process_time() - start
     COUNTS[counter] += 1
     return report
 

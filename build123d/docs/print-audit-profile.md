@@ -253,8 +253,9 @@ true.
 
 **Observability.** Every pytest session ends with this line:
 `AUDIT-CACHE hits=N misses=M off=K audit_s=S`. `audit_s` is the summed CPU
-seconds of the audits that actually ran, misses plus off. Under xdist there is
-one line per worker (`worker=gwN`) and a `worker=all` total.
+seconds of the cache misses; off/uncacheable audits count under `off` but are
+not timed. Under xdist there is one line per worker (`worker=gwN`) and a
+`worker=all` total.
 
 **CI.** The `audit` job and each `audit_full` shard restore and save
 `build123d/.cache/audit` with `actions/cache@v4`. The key is
