@@ -2261,7 +2261,8 @@
           "label": "Mirror (arm along -X)",
           "group": "Channel Size",
           "kind": "boolean",
-          "default": false
+          "default": false,
+          "filename": true
         },
         {
           "name": "added_radius",
@@ -2271,7 +2272,8 @@
           "default": 0,
           "min": 0,
           "max": 2,
-          "step": 1
+          "step": 1,
+          "filename": true
         },
         {
           "name": "number_of_cord_cutouts",
