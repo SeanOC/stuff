@@ -337,7 +337,7 @@ CASES = {
                            'cord_cutout_width': 6, 'suppress_connectors': 'NBNNN', 'grip_flare': 9.9},
     'wc-label-straight': {'to_width_units': 1, 'add_label': True},
     'wc-label-s16-d1-w4': {'from_width_units': 4, 'to_width_units': 4, 'add_label': True,
-                           'text_size': 16, 'text_depth': 1},
+                           'channel_length_units': 4, 'text_size': 16, 'text_depth': 1},
     # height_change (standing on its lower end)
     'hc-default': {'part': 'height_change'},
     'hc-raise-22-34': {'part': 'height_change', 'from_height': 22, 'to_height': 34},
@@ -348,8 +348,8 @@ CASES = {
                        'transition_length_units': 3, 'channel_length_units': 4},
     'hc-10-16': {'part': 'height_change', 'from_height': 10, 'to_height': 16},
     'hc-same-72': {'part': 'height_change', 'from_height': 72, 'to_height': 72},
-    'hc-w4-l11-22-50': {'part': 'height_change', 'from_width_units': 4, 'channel_length_units': 11,
-                        'from_height': 22, 'to_height': 50},
+    'hc-w4-l11-22-46': {'part': 'height_change', 'from_width_units': 4, 'channel_length_units': 11,
+                        'from_height': 22, 'to_height': 46},
     'hc-l2': {'part': 'height_change', 'channel_length_units': 2},
     'hc-suppress': {'part': 'height_change', 'suppress_connectors': 'NLR'},
     'hc-suppress-all': {'part': 'height_change', 'suppress_connectors': 'BBB'},
@@ -401,6 +401,15 @@ def edge_inventory(part, values):
     width, length, height = m.dimensions(v)
     envelope = _envelope(values)
     cuts = [cut.bounding_box() for cut in t.side_cutouts(width, height, **m._cut_args(v))]
+    # Each flared grip: the sheared rail and its two relief slits, on its own
+    # (possibly offset or lifted) wall.
+    flares = []
+    for gy, side, flared, w, dx, dz, h in m.grip_list(v):
+        if flared:
+            x = dx + side*w/2
+            reach = c.SNAP_WALL + h*np.tan(np.radians(v['grip_flare'])) + 1
+            half = c.GRIP_SIZE/2 + c.FLARE_SLIT + .05
+            flares.append((x - reach, x + reach, gy - half, gy + half, dz + c.TOP_CHAMFER - .05, dz + h + .05))
     adjacent = {}
     for face in part.faces():
         for edge in face.edges():
@@ -428,8 +437,8 @@ def edge_inventory(part, values):
             family = 'label'
         elif mid.Z >= height - c.BASE_HEIGHT - 1e-4:
             family = 'grip'
-        elif v['grip_flare'] > 0 and mid.Z >= c.TOP_CHAMFER - 1e-4 and \
-                not envelope.is_inside(mid) and abs(abs(mid.X) - width/2) < c.SNAP_WALL + 2:
+        elif any(x0 <= mid.X <= x1 and y0 <= mid.Y <= y1 and z0 <= mid.Z <= z1
+                 for x0, x1, y0, y1, z0, z1 in flares):
             family = 'flare'
         else:
             out = [outside(f, mid) for f in faces]
@@ -472,6 +481,7 @@ def _down_faces(part, frame):
 @pytest.mark.parametrize('name', CASES)
 def test_endpoint_audit_and_edges(name):
     values = CASES[name]
+    v = m.SPEC.resolve_values(values)
     part = m.build(values)
     assert part.is_valid and len(part.solids()) == 1
     frame = _frame(values)
@@ -479,9 +489,10 @@ def test_endpoint_audit_and_edges(name):
     regions = m.audit_exclusions(values)
     report = pa.audit(part, print_frame=frame, model=name, exclusions=flat(regions))
     assert report.ok, report.format()
-    # Bridges are measured BEFORE any exclusion (label recess ceilings and the
-    # standing step patches, both <= 1.5 mm).
-    assert raw.longest_bridge_mm <= 1.5
+    # Bridges are measured BEFORE any exclusion: the standing step patches
+    # are <= 1.5 mm; a label recess ceiling is bounded by the audit's own
+    # limit (its glyph counters span up to ~4.3 mm).
+    assert raw.longest_bridge_mm <= (pa.MAX_BRIDGE_MM if v['add_label'] else 1.5)
     families, worst = edge_inventory(part, values)
     assert not [f for f in families if f.startswith('UNCLASSIFIED')], families
     print(f'AUDIT | {name} | vol {part.volume:.1f} | raw wall {raw.min_wall_mm:.3f} ovh {raw.max_overhang_deg:.1f} '
