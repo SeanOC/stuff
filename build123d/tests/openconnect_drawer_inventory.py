@@ -244,14 +244,68 @@ def back_magnet_rims(values):
     return rims
 
 
+def magnet_floors(values):
+    """Magnet hole floors whose skin is under MIN_WALL: hole depth
+    (thickness + .15) into the wall leaves the author's floor, .45 mm behind
+    a 1.6 Solid wall or .85 behind the 2.0 Honeycomb side (:1546-1564). A
+    thicker skin (1.85 at a 3 mm wall) is audited, not emitted. The slab
+    runs from the floor to the inner surface: wall - hole, or the bulge's
+    .45 + EPS (:1547/:1561), +-.0005 mm. ((kind, region)), author frame."""
+    from drawer import container
+    v = values or {}
+    d = container.dimensions(v)
+    floors = []
+    for (kind, side, _), cut in zip(container.source_magnet_positions(v),
+                                    container.source_magnet_cutters(v)[0]):
+        wall = d.back if kind == 'back' else d.side
+        hole = v.get(f'container_{kind}_magnet_thickness', 1)+.15
+        if wall-hole >= a.MIN_WALL_MM:
+            continue
+        # The floor is the cutter's inner end face.
+        inward = np.array((0, 0, 1) if kind == 'back' else (-side, 0, 0))
+        floor = max(cut.faces(), key=lambda f: np.dot(tuple(f.center()), inward))
+        behind = max(wall-hole, .45+EPS)+.001
+        floors.append((kind, Pos(*(-inward*.0005))*Solid.extrude(floor, tuple(inward*behind))))
+    return floors
+
+
+def label_holder_slabs(values):
+    """The label holder's thin source features (:1794-1805), author frame:
+    the LABEL_WALL = .8 (:1779) L either side of the window over the pocket
+    height (the rail beside the pocket and the front lip over it, out to the
+    0.4 top-edge roundover), and the floor wedge: the pocket floor sits
+    depth + EPS above the 45-degree underside's foot, so the band within
+    MIN_WALL of the front tapers to the knife edge under the window. The
+    slabs start .001 off the front wall face so the pocket back stays
+    audited; the rest of the holder (underside, rounded corners, body under
+    the pocket) is audited too."""
+    from drawer import container
+    v = values or {}
+    if not v.get('add_label_holder', True):
+        return []
+    d = container.dimensions(v)
+    width, depth, _, y0, y1 = container._label_box(d, v)
+    wall = container.LABEL_WALL
+    pocket = v.get('label_height', 10)+container.LABEL_SIDE_CLEARANCE
+    front = d.depth+depth
+    slabs = [Pos(side*(width/2-1.5*wall), y1+.001-pocket/2, d.depth+.001+depth/2)
+             * Box(3*wall+.002, pocket, depth) for side in (-1, 1)]
+    # Floor y0 + depth + EPS over the underside y0 + (z - d.depth): thinner
+    # than MIN_WALL for z > front + EPS - MIN_WALL, up to the floor.
+    band = a.MIN_WALL_MM-EPS+.001
+    floor = y1-pocket+EPS
+    slabs.append(Pos(0, floor+.001-(band+EPS+.002)/2, front+.001-band/2)
+                 * Box(width+.002, band+EPS+.002, band))
+    return slabs
+
+
 def container_wall_regions(values):
     """Source-pinned thin regions of the container (exception rows).
 
-    Magnet floors: hole depth (thickness + .15) into the wall leaves the
-    author's floor, .45 mm behind a 1.6 Solid wall (:1546-1564). The label
-    holder is built from LABEL_WALL = .8 (:1779). The label plates' 60-degree
-    corners poke into front cells (:1783-1793). Back magnet rims: see
-    back_magnet_rims. Reference rays pin all four in
+    Magnet floors: see magnet_floors. Label holder: its .8 rails and lip
+    and its floor wedge only, see label_holder_slabs. The label plates'
+    60-degree corners poke into front cells (:1783-1793). Back magnet rims:
+    see back_magnet_rims. Reference rays pin every row in
     test_published_thin_features; membership is geometric.
     """
     from shapely.geometry import Point
@@ -259,22 +313,9 @@ def container_wall_regions(values):
     from drawer import container
     v = values or {}
     d = container.dimensions(v)
-    regions = []
-    for (kind, side, (x, y, z)), cut in zip(container.source_magnet_positions(v),
-                                            container.source_magnet_cutters(v)[0]):
-        # The floor is the cutter's inner end face; the slab behind it runs
-        # to the inner surface: wall - hole, or the bulge's .45 + EPS
-        # (:1547/:1561), +-.0005 mm.
-        inward = np.array((0, 0, 1) if kind == 'back' else (-side, 0, 0))
-        floor = max(cut.faces(), key=lambda f: np.dot(tuple(f.center()), inward))
-        wall = d.back if kind == 'back' else d.side
-        hole = v.get(f'container_{kind}_magnet_thickness', 1)+.15
-        behind = max(wall-hole, .45+EPS)+.001
-        regions.append(Pos(*(-inward*.0005))*Solid.extrude(floor, tuple(inward*behind)))
+    regions = [slab for _, slab in magnet_floors(v)]
     regions += [box for _, box in back_magnet_rims(v)]
-    holder = container.source_label_holder(v)
-    if holder is not None:
-        regions.append(holder)
+    regions += label_holder_slabs(v)
     plates = unary_union(container.label_fills(v))
     for (x, y), _ in label_plate_tips(v):
         regions.append(_prism(Point(x, y).buffer(2).intersection(plates),

@@ -11,11 +11,12 @@ from shapely import maximum_inscribed_circle
 
 from drawer import container, shell
 from holders import openconnect_drawer as m
+from openconnect.constants import EPS
 from tests import print_audit as audit
 from tests.audit_record import record
 from tests.openconnect_drawer_inventory import (back_magnet_rims, container_edge_inventory,
                                                 container_skin_mask, container_wall_regions,
-                                                label_plate_tips)
+                                                label_plate_tips, magnet_floors)
 from tests.parity import bbox_parity, load_reference, surface_distance, volume_parity
 
 REFERENCES = Path(__file__).resolve().parents[2] / 'assets/openConnect-drawer/mesh'
@@ -258,6 +259,14 @@ def test_published_thin_features():
     assert hits == pytest.approx([1, 1+wall, 1+width-wall, 1+width], abs=1e-4)
     origin = _mesh((width/2-wall-1.013, y1-3.017, d.depth+depth+1))
     assert _hits(default, origin, (0, 1, 0))[:2] == pytest.approx([1, 1+wall], abs=1e-4)
+    # Label holder floor wedge: the pocket floor sits EPS above the 45-degree
+    # underside's foot, so the floor-to-underside skin is back + EPS that
+    # far behind the front, across the window.
+    floor = y1-container.LABEL_SIDE_CLEARANCE-10+EPS
+    for x in (-.013, 17.613):
+        for back in (.113, .613):
+            origin = _mesh((x, floor+1, d.depth+depth-back))
+            assert _hits(default, origin, (0, 0, -1))[:2] == pytest.approx([1, 1+back+EPS], abs=1e-4)
     # Label plate 60-degree tips poke into front cells (:1783-1793): solid
     # 0.3 mm inside each tip, air 0.3 mm beyond it, through the wall.
     tips = label_plate_tips({})
@@ -295,17 +304,36 @@ def test_honeycomb_wall_cutters_are_valid(values):
         assert all(not p.buffer(-.05).is_empty for p in layout.openings), name
 
 
-def test_exclusions_reject_new_thin_overhang():
+@pytest.mark.parametrize('holder', [False, True])
+def test_exclusions_reject_new_thin_overhang(holder):
     from build123d import Box, Pos
-    v = {'part': 'container', **ONE, 'add_label_holder': False}
-    # A thin shelf on the back wall's inner face: no source reason exists.
+    v = {'part': 'container', **ONE, 'add_label_holder': holder, 'label_width': 20}
     d = container.dimensions(v)
-    bad = m.build(v)+container.AUTHOR_TO_MODEL*(Pos(0, 0, d.back+3)*Box(6, .6, 6))
+    if holder:
+        # A void in the label holder's body under the pocket floor, leaving
+        # a 0.5 mm skin: inside the holder's envelope, outside its slabs.
+        _, _, _, y0, _ = container._label_box(d, v)
+        void = Pos(0, y0+1.3, d.depth+.25)*Box(6, .6, .4)
+        assert container.source_label_holder(v).is_inside(void.center())
+        bad = m.build(v)-container.AUTHOR_TO_MODEL*void
+    else:
+        # A thin shelf on the back wall's inner face: no source reason exists.
+        bad = m.build(v)+container.AUTHOR_TO_MODEL*(Pos(0, 0, d.back+3)*Box(6, .6, 6))
     report = audit.audit(bad, cutters=[], print_frame=m.print_frame(v),
                          exclusions=m.audit_exclusions(v)+container_wall_regions(v))
     assert not report.ok
     assert report.max_overhang_deg > 45
     assert report.min_wall_mm < .9
+
+
+def test_magnet_floors_are_self_scoped():
+    """Only skins under MIN_WALL are waived: a 3 mm wall leaves 1.85 mm."""
+    def kinds(**values):
+        return sorted({kind for kind, _ in magnet_floors(values)})
+    solid = {f'container_{w}_wall_type': 'Solid' for w in ('front', 'back', 'side', 'bottom')}
+    assert kinds() == kinds(**solid) == ['back', 'side']
+    assert kinds(container_solid_wall_thickness=3) == ['side']
+    assert kinds(container_solid_wall_thickness=3, container_honeycomb_wall_thickness=3) == []
 
 
 def test_edge_inventory_rejects_unpublished_protrusion():
