@@ -36,13 +36,13 @@ def wall_regions(values):
     annulus = (Cylinder(r+.0005, c.STOPPER_HEIGHT, align=(Align.CENTER, Align.CENTER, Align.MIN))
                - Cylinder(r-.0005, c.STOPPER_HEIGHT, align=(Align.CENTER, Align.CENTER, Align.MIN)))
     # Height-divider holes ([C] :1634-1644) enter the 2t wall at at+t and end
-    # in a t-deep flange-width pocket (hole_excess=t): the same t-0.8 flange
-    # floor, seen from the flange and from the pocket (at shell_thickness 1.6
-    # both read 0.8 mm).
+    # in a t-deep flange-width pocket (hole_excess=t) whose ceiling sits at
+    # at-2*EPS (the shaft overshoot): the same t-0.8 flange floor, seen from
+    # the flange and from the pocket (at shell_thickness 1.6 both read 0.8 mm).
     divider_tops = [(x, at+d.wall, z) for axis, at in shell.divider_walls(v) if axis == 'y'
                     for x, _, z in shell.source_stopper_positions(v)]
     for x, y, z in divider_tops:
-        regions.append(Pos(x, y-d.wall, z+c.STOPPER_HEIGHT/2)
+        regions.append(Pos(x, y-d.wall-2*EPS, z+c.STOPPER_HEIGHT/2)
                        *Box(c.STOPPER_WIDTH+c.STOPPER_FLANK_WIDTH, .001, c.STOPPER_HEIGHT))
     for x, y, z in shell.source_stopper_positions(v)+divider_tops:
         regions.append(Pos(x, y-c.STOPPER_FLANK_DEPTH, z+c.STOPPER_HEIGHT/2)
