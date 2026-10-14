@@ -1076,7 +1076,7 @@
       "slug": "openconnect-drawer",
       "engine": "build123d",
       "title": "openConnect drawer",
-      "blurb": "mitufy's drawer shell and container (CC BY-SA 4.0). Shell prints back-wall-down with a honeycomb bottom and selectable wall types; select its mounting face independently of print orientation. The container prints bottom-down with a handle, label holder and magnet pockets.",
+      "blurb": "mitufy's openConnect drawer (CC BY-SA 4.0): shell, container and stopper clips. The shell prints back-wall-down with a honeycomb bottom, selectable wall types and any mounting face; the container prints bottom-down with a handle, label holder and magnet pockets. Comma-separated compartment lists add shell dividers (one container per compartment) or container dividers; the clips print flat.",
       "categoryId": "multiboard",
       "params": [
         {
@@ -1086,7 +1086,8 @@
           "default": "shell",
           "choices": [
             "shell",
-            "container"
+            "container",
+            "stopper_clips"
           ],
           "filename": true
         },
@@ -1337,6 +1338,109 @@
           "step": 0.1
         },
         {
+          "name": "stopper_clip_length",
+          "group": "Stoppers",
+          "kind": "number",
+          "default": 6,
+          "min": 4,
+          "max": 12,
+          "step": 0.1,
+          "filename": true
+        },
+        {
+          "name": "add_shell_divider",
+          "group": "Shell Divider",
+          "kind": "enum",
+          "default": "None",
+          "choices": [
+            "None",
+            "Width",
+            "Height",
+            "Both"
+          ]
+        },
+        {
+          "name": "shell_divider_wall_type",
+          "group": "Shell Divider",
+          "kind": "enum",
+          "default": "Honeycomb",
+          "choices": [
+            "Solid",
+            "Honeycomb"
+          ]
+        },
+        {
+          "name": "shell_width_compartment_list",
+          "group": "Shell Divider",
+          "kind": "string",
+          "default": "3,2",
+          "maxLength": 32,
+          "charset": "printable-ascii"
+        },
+        {
+          "name": "shell_height_compartment_list",
+          "group": "Shell Divider",
+          "kind": "string",
+          "default": "1,1",
+          "maxLength": 32,
+          "charset": "printable-ascii"
+        },
+        {
+          "name": "add_container_divider",
+          "group": "Container Divider",
+          "kind": "enum",
+          "default": "None",
+          "choices": [
+            "None",
+            "Width",
+            "Depth",
+            "Both"
+          ]
+        },
+        {
+          "name": "container_divider_wall_height_offset",
+          "group": "Container Divider",
+          "kind": "number",
+          "default": 10,
+          "min": 0,
+          "max": 20,
+          "step": 0.1
+        },
+        {
+          "name": "container_width_grid_count",
+          "group": "Container Divider",
+          "kind": "integer",
+          "default": 3,
+          "min": 1,
+          "max": 20,
+          "step": 1
+        },
+        {
+          "name": "container_width_compartment_list",
+          "group": "Container Divider",
+          "kind": "string",
+          "default": "1,1,1",
+          "maxLength": 32,
+          "charset": "printable-ascii"
+        },
+        {
+          "name": "container_depth_grid_count",
+          "group": "Container Divider",
+          "kind": "integer",
+          "default": 5,
+          "min": 1,
+          "max": 20,
+          "step": 1
+        },
+        {
+          "name": "container_depth_compartment_list",
+          "group": "Container Divider",
+          "kind": "string",
+          "default": "2,3",
+          "maxLength": 32,
+          "charset": "printable-ascii"
+        },
+        {
           "name": "container_front_wall_type",
           "group": "Container",
           "kind": "enum",
@@ -1545,6 +1649,33 @@
           "label": "5 \u00d7 2 \u00d7 5 container: honeycomb front and sides",
           "values": {
             "part": "container"
+          }
+        },
+        {
+          "id": "two-compartments",
+          "label": "5 \u00d7 2 \u00d7 5 shell split 3 + 2 tiles wide; build a 3- and a 2-wide container",
+          "values": {
+            "add_shell_divider": "Width",
+            "shell_width_compartment_list": "3,2"
+          }
+        },
+        {
+          "id": "organiser",
+          "label": "5 \u00d7 2 \u00d7 5 container: thirds across, 2/5 + 3/5 deep",
+          "values": {
+            "part": "container",
+            "add_container_divider": "Both",
+            "container_width_grid_count": 3,
+            "container_width_compartment_list": "1,1,1",
+            "container_depth_grid_count": 5,
+            "container_depth_compartment_list": "2,3"
+          }
+        },
+        {
+          "id": "stopper-clips",
+          "label": "Two stopper clips for 2.4 mm shell walls",
+          "values": {
+            "part": "stopper_clips"
           }
         },
         {

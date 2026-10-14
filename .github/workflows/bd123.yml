@@ -82,7 +82,9 @@ jobs:
     # 38299848019 / 38334657942 / 38377646596 before #193 and ran 34m57s clean in
     # 38432960766 (-n 4 on 2 physical cores = high variance). 45 = ~30% headroom
     # over the slowest clean run; pytest-split of this tier is a separate bead.
-    timeout-minutes: 45
+    # pst-t0ob3.4 (mayor carve-out): the D4 divider presets took this job to
+    # 37m22s in PR #199 run 38506273980; 37.4 x 1.5 = 56 -> 60.
+    timeout-minutes: 60
     defaults: { run: { working-directory: build123d } }
     steps:
       - uses: actions/checkout@v4
@@ -144,7 +146,10 @@ jobs:
     # audit job's 50% headroom rule). The floor is one case,
     # test_openconnect_drawer_container.py::test_endpoint_audit_and_edges
     # [vertical_grids=8] (672-738 s local, ~21 min CI): no rebalance lowers it.
-    timeout-minutes: 35
+    # pst-t0ob3.4 (mayor carve-out): D4 adds 25 divider corner rows (+108 min
+    # of audit, measured into tests/.test_durations); the split simulates a
+    # 22.3 min slowest shard (~26 min CI at main's 1.15x) -> 35 -> 45.
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
