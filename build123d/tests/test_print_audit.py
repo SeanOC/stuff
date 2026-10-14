@@ -108,7 +108,12 @@ _PER_MODEL_BUDGET_S = 60.0
 # (docs/print-audit-profile.md), so it now fits the default.
 # pst-t0ob3.3: the drawer audit took 61.3 s at 05e18376; A/B on one host, main
 # 84.16 s vs head 77.31 s CPU, so the shared 60 s budget tipped, not the geometry.
-_MODEL_BUDGET_S: dict[str, float] = {"openconnect_drawer": 90.0}
+# pst-tl4ac.3: the S3 tombstone sign builds ~4,500 raised faces and audits
+# them: 66.6 s CPU serial on the dev host at the default preset once its line
+# strokes come from labels/nominal_strokes.json (live scans made it 187 s,
+# codex on #206); x1.5 headroom -> 100.
+_MODEL_BUDGET_S: dict[str, float] = {"openconnect_drawer": 90.0,
+                                     "holder_tombstone_sign": 100.0}
 
 _UP_Z = (0.0, 0.0, 1.0)
 
@@ -721,6 +726,12 @@ _BED_ONLY_IDS = {
     ("littletikes_dream_machine_cartridge_holder", "full_holder"),
     ("gridfinity_capture_bin", "deep"),
     ("gridfinity_capture_bin", "wide"),
+    # holder_tombstone_sign: test_print_audit_per_preset is audit_full (#206);
+    # 'default' keeps its full audit in test_model_print_audit.
+    ("holder_tombstone_sign", "one-ams"),
+    ("holder_tombstone_sign", "two-colour"),
+    ("holder_tombstone_sign", "pinned"),
+    ("holder_tombstone_sign", "small"),
 }
 _BED_ONLY_CASES = [(spec, preset) for spec in _SPECS for preset in spec.presets
                    if (spec.name, preset.id) in _BED_ONLY_IDS]

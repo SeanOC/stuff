@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 60" width="52" height="60">
+  <!-- Poppy Street Spooks ghost (Sean's approved design, ghastly web/app/sign/page.tsx). One element per colour ROLE, id = role. Holes (eyes, mouth, poppy centre) are cut from the body: the plate colour shows through. -->
+  <path id="ghost-body" data-role="bone" d="M26 3C14 3 6 12 6 25v30c0 2 2 3 4 1l4-4 4 4c1 1 3 1 4 0l4-4 4 4c1 1 3 1 4 0l4-4 4 4c2 2 4 1 4-1V25C46 12 38 3 26 3z"/>
+  <ellipse id="eye-left" data-role="hole" cx="18" cy="24" rx="3.5" ry="5"/>
+  <ellipse id="eye-right" data-role="hole" cx="34" cy="24" rx="3.5" ry="5"/>
+  <ellipse id="mouth" data-role="hole" cx="26" cy="36" rx="4" ry="5.5"/>
+  <g transform="translate(39.5 9.5)">
+    <path id="leaf" data-role="leaf" d="M-5 5c-3.5-0.5-6.5 1.5-7.5 4.5 3.5 0.5 6.5-1.5 7.5-4.5z"/>
+    <ellipse id="petal-0" data-role="poppy" cx="0" cy="-4.4" rx="3.6" ry="4.6"/>
+    <ellipse id="petal-90" data-role="poppy" cx="0" cy="-4.4" rx="3.6" ry="4.6" transform="rotate(90)"/>
+    <ellipse id="petal-180" data-role="poppy" cx="0" cy="-4.4" rx="3.6" ry="4.6" transform="rotate(180)"/>
+    <ellipse id="petal-270" data-role="poppy" cx="0" cy="-4.4" rx="3.6" ry="4.6" transform="rotate(270)"/>
+    <ellipse id="petal-45" data-role="ember" cx="0" cy="-4.4" rx="3.6" ry="4.6" transform="rotate(45) scale(0.8)"/>
+    <ellipse id="petal-225" data-role="ember" cx="0" cy="-4.4" rx="3.6" ry="4.6" transform="rotate(225) scale(0.8)"/>
+    <circle id="poppy-centre" data-role="hole" r="2.1"/>
+  </g>
+  <!-- Dropped on purpose for 3D (below the 0.9 mm raised stroke floor at sign scale): the 0.5-wide leaf vein stroke and the three r=0.55 seed dots. -->
+</svg>
