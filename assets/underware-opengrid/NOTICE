@@ -134,6 +134,27 @@ Worker renders (pst-fsk8s.2, 2026-10-14; no mayor baseline), same environment:
   same way. The 456fcd8 render and every Added_Radius >= 1 render at
   b86a7584 carry the solid wall; the port builds it solid.
 
+Path channels (pst-fsk8s.3). Mayor renders (pre-flight, copied byte-for-byte):
+  mesh/s.stl         monokini_S_channel.scad, defaults (S_channel-b86a758.stl,
+                     SHA256 044abde5...c8569a).
+  mesh/diagonal.stl  monokini_diagonal_channel.scad, defaults
+                     (diagonal_channel-b86a758.stl, SHA256 39cb4068...8cea8423).
+Worker renders (pst-fsk8s.3, 2026-10-14; no mayor baseline; a re-render of
+each reproduces its bytes):
+  mesh/s-w2-om1-u3-b2-flare5.stl        monokini_S_channel.scad
+      -D Channel_Width_in_Units=2 -D Units_Over=-1 -D Units_Up=3
+      -D S_Channel_Length_in_Units_Y_Axis_Bottom=2 -D Grip_Flare=5
+      -D 'Suppress_Connectors="NB,L"' -D 'Channel_Separators="NS"'
+  mesh/diagonal-o1-u3-b2t3-h34-sep.stl  monokini_diagonal_channel.scad
+      -D Units_Over=1 -D Units_Up=3 -D Diagonal_Channel_Length_in_Units_Y_Axis_Bottom=2
+      -D Diagonal_Channel_Length_in_Units_Y_Axis_Top=3 -D Channel_Total_Height=34
+      -D 'Channel_Separators="S"'
+  Path reference artefacts (build123d/tests/test_underware_path_channels.py):
+  the S connector is bezpath_curve's default 16 chords per Bezier segment, so
+  its walls sit up to the chord sagitta off the port's true curve (0.27 mm
+  computed at the defaults); each diagonal joint's outside fill is a
+  rotate_extrude at $fa 12 (0.07 mm facet sagitta at r = 13.2).
+
 Frames: Z=0 is the closed, chamfered face; Y runs along the channel. The
 source's 0.01 mm Nudge makes every mesh span y = -L/2-0.015 .. L/2-0.005;
 the port spans exactly +/-L/2 (parity shifts the references +0.005 in Y).

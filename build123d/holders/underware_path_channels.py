@@ -73,9 +73,9 @@ def check_path(v) -> None:
         back = p.mitre_setback(w, turn)
         if back > p.MAX_SETBACK:
             raise ValueError(
-                f'the diagonal turns {turn:.1f} degrees at each corner: the inner wall ends '
+                f'the diagonal turns {turn:.1f} degrees at each corner: the inside wall ends '
                 f'{back:.1f} mm before the corner, past the {p.MAX_SETBACK:g} mm the end grip '
-                f'needs; raise units_up, or lower units_over or the width')
+                f'stands back, so its foot would overhang; raise units_up, or lower units_over or the width')
     span_x, span_y = abs(dx) + w, (v['length_bottom_units'] + v['length_top_units'] + up)*c.GRID
     a, b = sorted((span_x, span_y), reverse=True)
     if a > BED_X or b > BED_Y:

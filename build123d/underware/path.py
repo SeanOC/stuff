@@ -30,9 +30,10 @@ from .junction import Arm, split_fields
 PARTS = ('S', 'diagonal')
 STUB = c.CHANNEL_SEPARATION   # mitre bend's lead-out (:501 channelWidthSeparation+Nudge)
 BEZIER_SAMPLES = 2000
-# The end grip of a run starts SPACING_FROM_CHANNEL from the cell end; a mitre
-# whose inner wall stops further short of the vertex leaves that grip end
-# standing past the wall.
+# The end grip of a run stops SPACING_FROM_CHANNEL short of the vertex; past
+# the corner of the inside wall's inner face (on the mitre plane) the grip's
+# foot overhangs the channel (probe: 6.22 mm setback clean, 6.57 a 0.007 mm2
+# sliver, 6.92 a 0.42 mm one, all at z = height - BASE_HEIGHT).
 MAX_SETBACK = c.SPACING_FROM_CHANNEL
 
 
@@ -100,8 +101,9 @@ def corner_turn(dx: float, dy: float) -> float:
 
 
 def mitre_setback(width: float, turn_deg: float) -> float:
-    """How far the inner wall's outer face stops short of the vertex."""
-    return width/2*tan(radians(turn_deg/2))
+    """How far the inside wall's inner face (width/2 - SNAP_WALL off the
+    centreline) meets the mitre plane short of the vertex."""
+    return (width/2 - c.SNAP_WALL)*tan(radians(turn_deg/2))
 
 
 def centre_path(part: str, first: Run, second: Run) -> Wire:

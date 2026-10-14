@@ -119,9 +119,11 @@ def grip_parts(length_mm: float, width_mm: float, height_mm: float, suppress: st
 def path_channel(path: Wire, width_mm: float, height_mm: float, separators: str = '') -> Part:
     """monokiniChannelPath ([C] monokini_S_channel.scad:664-726): the section
     (and the separator walls the codes select) swept along a path in the XY
-    plane, gripless. The source path_extrude2d chains straight segments with
-    mitred joints; the port sweeps the path itself, so a smooth (Bezier) path
-    stays smooth and a polyline keeps its mitres (Transition.RIGHT).
+    plane, gripless. The source path_extrude2d chains straight segments,
+    mitred on the inside of each joint and filled round (a faceted
+    rotate_extrude) on the outside; the port sweeps the path itself with
+    Transition.ROUND, the same joint with a true arc, and a smooth (Bezier)
+    path stays smooth where the source samples it into chords.
 
     The section stays the channel section only while the path's radius of
     curvature is at least width_mm/2; callers check that before sweeping.
