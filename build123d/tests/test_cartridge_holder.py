@@ -8,6 +8,7 @@ from functools import lru_cache
 import pytest
 from build123d import Align, Box, Pos
 from holders import cartridge_holder as m
+from tests import audit_cache
 from tests import print_audit as pa
 from tests.audit_record import record
 from tests.mount_contracts import verify_openconnect_slot
@@ -163,7 +164,8 @@ def test_rectangular_exclusion_fast_path_is_equivalent(monkeypatch):
     regions = m.audit_exclusions({'mount_type':'blank'}) + [(-28,-.001,0,28,.401,112)]
     fast = pa.audit(part, m.SPEC.print_orientation, exclusions=regions)
     monkeypatch.setattr(pa, '_face_in_box', lambda face, boxes: False)
-    assert pa.audit(part, m.SPEC.print_orientation, exclusions=regions) == fast
+    with audit_cache.disabled():  # pst-sx1g3: a hit would skip the patched helper
+        assert pa.audit(part, m.SPEC.print_orientation, exclusions=regions) == fast
 
 
 @pytest.mark.parametrize('lite', [True, False], ids=['lite','full'])

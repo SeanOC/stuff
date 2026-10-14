@@ -238,6 +238,14 @@ predicate whose source cannot be read, and a `vars()` entry of an unknown
 type. **An exclusion predicate must be self-contained.** If its `is_inside`
 delegates to a module-level helper or constant, editing that helper changes
 the behaviour but not the key.
+**A test that monkeypatches an audit helper must turn the cache off.** The
+key covers the source bytes of `print_audit.py` and `audit_cache.py` and the
+UPPER_CASE constants, so a patched constant changes the key but a patched
+lowercase helper (for example `_face_in_box`) does not. Without the switch
+the patched call is a hit and never runs. Wrap that call in
+`audit_cache.disabled()`, as
+`test_cartridge_holder.py::test_rectangular_exclusion_fast_path_is_equivalent`
+does.
 
 **Switch.** The default store is `build123d/.cache/audit/`, which is
 gitignored. `BD_AUDIT_CACHE=<dir>` moves it and `BD_AUDIT_CACHE=off` disables
