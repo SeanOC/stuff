@@ -324,13 +324,15 @@ def load(path: Path):
 
 def store(path: Path, report) -> None:
     """Write atomically (xdist workers may store the same key at once)."""
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
         tmp.write_text(json.dumps({"key": path.stem, "report": _to_json(report)},
                                   sort_keys=True, indent=1), encoding="utf-8")
         os.replace(tmp, path)
     except OSError as exc:
+        with contextlib.suppress(OSError):
+            tmp.unlink()
         log.warning("audit cache: could not store %s (%s)", path, exc)
 
 

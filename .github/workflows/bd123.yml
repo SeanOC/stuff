@@ -101,8 +101,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: build123d/.cache/audit
-          key: bd-audit-${{ hashFiles('build123d/tests/print_audit.py', 'build123d/tests/audit_cache.py', 'build123d/uv.lock') }}-${{ github.run_id }}-${{ matrix.group || 'audit' }}
-          restore-keys: bd-audit-${{ hashFiles('build123d/tests/print_audit.py', 'build123d/tests/audit_cache.py', 'build123d/uv.lock') }}-
+          key: bd-audit-${{ hashFiles('build123d/tests/print_audit.py', 'build123d/tests/audit_cache.py', 'build123d/uv.lock') }}-${{ matrix.group || 'audit' }}-${{ github.run_id }}
+          restore-keys: bd-audit-${{ hashFiles('build123d/tests/print_audit.py', 'build123d/tests/audit_cache.py', 'build123d/uv.lock') }}-${{ matrix.group || 'audit' }}-
       - name: print audits (presets, reproducers, other models)
         # pst-rir4i: one JSON row per audit item (+ measurement rows) for
         # reviewers; reader recipe in build123d/ci/README.md.
@@ -190,8 +190,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: build123d/.cache/audit
-          key: bd-audit-${{ hashFiles('build123d/tests/print_audit.py', 'build123d/tests/audit_cache.py', 'build123d/uv.lock') }}-${{ github.run_id }}-${{ matrix.group || 'audit' }}
-          restore-keys: bd-audit-${{ hashFiles('build123d/tests/print_audit.py', 'build123d/tests/audit_cache.py', 'build123d/uv.lock') }}-
+          key: bd-audit-${{ hashFiles('build123d/tests/print_audit.py', 'build123d/tests/audit_cache.py', 'build123d/uv.lock') }}-${{ matrix.group || 'audit' }}-${{ github.run_id }}
+          restore-keys: bd-audit-${{ hashFiles('build123d/tests/print_audit.py', 'build123d/tests/audit_cache.py', 'build123d/uv.lock') }}-${{ matrix.group || 'audit' }}-
       - name: cradle corner sweep (shard ${{ matrix.group }}/6)
         # tests/.test_durations balances the shards; a stale or missing entry
         # only degrades balance (pytest-split splits evenly), never coverage.

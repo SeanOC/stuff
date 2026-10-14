@@ -186,7 +186,8 @@ CI's slower cores. The default stays at 60 s and nothing was loosened.
 `audit()` answers from `tests/audit_cache.py` (pst-sx1g3) when the same
 geometry, arguments and audit code were audited before. One JSON file per key
 holds the stored `PrintAuditReport`. A hit returns a report equal to the stored
-one, field by field, and costs milliseconds instead of the 10–80 s audit. A
+one, field by field. It costs the key build (under 1.2 s on the largest part)
+instead of the 10–80 s audit, and that key time is not counted in `audit_s`. A
 report is stored only after an audit returns; an audit that raises stores
 nothing.
 
@@ -267,9 +268,13 @@ not timed. Under xdist there is one line per worker (`worker=gwN`) and a
 
 **CI.** The `audit` job and each `audit_full` shard restore and save
 `build123d/.cache/audit` with `actions/cache@v4`. The key is
-`bd-audit-<hash of print_audit.py, audit_cache.py, uv.lock>-<run id>-<shard>`,
-and the restore prefix is `bd-audit-<hash>-`. Entries are content-addressed,
-so restoring another job's save only adds hits. The fast job does not cache.
+`bd-audit-<hash of print_audit.py, audit_cache.py, uv.lock>-<job>-<run id>`
+(`<job>` is `audit` or the shard number), and each job restores its own prefix
+`bd-audit-<hash>-<job>-`. `actions/cache` restores only the newest single
+entry that matches the prefix, not a union of entries. A prefix shared by all
+jobs therefore restored whichever job saved last, often a small shard archive,
+and on PR #204 that left the `audit` job cold until it hit its timeout. The
+fast job does not cache.
 
 **Clear it.** Run `rm -rf build123d/.cache/audit`. In CI, delete the
 `bd-audit-*` caches in the repo's Actions → Caches page, or change either
