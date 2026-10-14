@@ -263,13 +263,12 @@ def test_default_view_is_a_trailing_preset_key_only_when_set():
 
 def test_only_the_face_down_inlaid_presets_carry_a_view_hint():
     """pst-5b83s AC (d): the face-down inlaid card opens on its text face;
-    pst-tl4ac.1: so does every face-down tombstone sign preset (all but raised);
-    pst-fsk8s.6: and both Underware text-label plates (text in the bed face)."""
+    pst-fsk8s.6: and both Underware text-label plates (text in the bed face).
+    The tombstone sign prints face up since S3 (pst-tl4ac.3), so none of
+    its presets carries a hint (absent = the iso view)."""
     hinted = sorted((m["slug"], p["id"], p["defaultView"])
                     for m in build_manifest()["models"] for p in m["presets"] if "defaultView" in p)
     assert hinted == [("holder-label-card", "inlaid", "bottom")] + [
-        ("holder-tombstone-sign", pid, "bottom")
-        for pid in sorted(("default", "three-colour", "pinned", "small"))] + [
         ("underware-text-label", pid, "bottom") for pid in ("label-1x5", "label-2x3")]
 
 

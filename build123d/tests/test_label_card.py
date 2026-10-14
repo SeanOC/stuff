@@ -101,7 +101,7 @@ def test_a_rejected_stroke_never_prints_at_or_above_the_threshold(monkeypatch, s
     # to the threshold it was rejected against.
     import labels.label_text as lt
     stroke = STROKE_FLOOR[style] + FLOOR_MARGIN - below
-    monkeypatch.setattr(lt, 'fit_text', lambda text, *a: lt.FittedText(
+    monkeypatch.setattr(lt, 'fit_text', lambda text, *a, **kw: lt.FittedText(
         None, 1.0, stroke, 1.0, tuple(text.split('\n'))))
     with pytest.raises(ValueError) as err:
         lt.layout_text('W' * 24, C.CARD_W, C.CARD_H, C.TEXT_MARGIN, C.INLAY_DEPTH,

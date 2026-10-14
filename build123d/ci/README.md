@@ -174,11 +174,29 @@ and calls `audit()` gets `@pytest.mark.audit`; a cradle corner case also gets
 `addopts`, every job's expression ends in `and not upstream`, which keeps PR CI
 offline (`reference/FETCH.md`). Nightly failures are not filed as issues
 (`issues: write` is outside this workflow's permissions); the mayor's heartbeat
-checks `gh run list --workflow bd123 --event schedule`. The nightly step
-`upload refreshed durations` has never produced an artifact: its path names the
-dotfile `tests/.test_durations`, which `actions/upload-artifact@v4` skips as a
-hidden file, and the step only warns (repair: pst-mv1b9). Until that lands,
-refresh the balance by a LOCAL measurement on a named `main` SHA, from
+checks `gh run list --workflow bd123 --event schedule`.
+
+To refresh the shard balance, each nightly shard re-measures its own tests and
+uploads them as `bd123-test-durations-<group>` (1–6), the file
+`build123d/tests/.test_durations`. The step sets `include-hidden-files: true`:
+`actions/upload-artifact@v4` skips dotfiles by default (v4.4.0+), so before
+pst-mv1b9 it found nothing and only warned. It also sets
+`if-no-files-found: error`, so a shard that dies before pytest-split writes
+durations shows a second red X on the upload. That's the fix working, not a
+new failure. Each artifact is PARTIAL (`--clean-durations` keeps only that
+shard's tests), so merge all six. From the repo root:
+
+```bash
+run=$(gh run list --workflow bd123 --event schedule --status success \
+  --limit 1 --json databaseId -q '.[0].databaseId')
+gh run download "$run" -p 'bd123-test-durations-*' -D /tmp/durations
+jq -s add /tmp/durations/bd123-test-durations-*/.test_durations \
+  > build123d/tests/.test_durations
+jq length build123d/tests/.test_durations   # >= the committed key count
+```
+
+Commit the file with the run id in the PR body. If no recent nightly is
+green, refresh by a LOCAL measurement on a named `main` SHA, from
 `build123d/`:
 
 ```bash

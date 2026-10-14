@@ -197,3 +197,5 @@ jobs:
         with:
           name: bd123-test-durations-${{ matrix.group }}
           path: build123d/tests/.test_durations
+          include-hidden-files: true
+          if-no-files-found: error
