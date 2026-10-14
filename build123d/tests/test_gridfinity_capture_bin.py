@@ -16,6 +16,7 @@ from capture.encoding import encode, parse, validate
 from gridfinity import baseplate
 from gridfinity import bin as gf
 from holders import gridfinity_capture_bin as m
+from tests.audit_record import record
 from tests.parity import (
     bbox_parity,
     load_reference,
@@ -187,6 +188,7 @@ def test_endpoint_audit_edges_and_containment(name, values, error):
         with pytest.raises(ValueError, match=f'^{error.replace("+", r"\+")}$'):
             m.build(values)
         print(f'AUDIT_ROW | {name} | — | — | — | — | rejected: {error}')
+        record(name, rejected=error)
         return
     part = m.build(values)
     assert part.is_valid and len(part.solids()) == 1
@@ -207,6 +209,9 @@ def test_endpoint_audit_edges_and_containment(name, values, error):
           f'{raw.max_overhang_deg:.1f}/{report.max_overhang_deg:.1f} | '
           f'{raw.longest_bridge_mm:.2f}/{report.longest_bridge_mm:.2f} | '
           f'{worst:.3f} | PASS | volume {part.volume:.3f}')
+    record(name, wall=report.min_wall_mm, overhang_raw=raw.max_overhang_deg,
+           overhang=report.max_overhang_deg, bridge_raw=raw.longest_bridge_mm,
+           bridge=report.longest_bridge_mm, worst_edge=worst, result='PASS', volume=part.volume)
 
 
 @pytest.mark.parametrize('w,d', [(1, 1), (2, 2), (6, 6)])

@@ -189,3 +189,81 @@ uv run pytest tests/ -q -n 4 --dist load -m "audit_full and not upstream" \
 Then check that every `audit_full` id has an entry, and commit the file with the
 SHA and command in the PR body. A stale or missing entry only skews shard
 balance, never coverage. pst-2z9ng measured all 193 cases on `a84da775`.
+
+# Audit rows artefact (pst-rir4i)
+
+The `-q` job log swallows the per-case `AUDIT |` / `AUDIT_ROW |` / `BED EXTENT`
+print lines on a pass. So the **audit** and **audit_full** jobs set
+`BD_AUDIT_OUT=out/audit/rows.jsonl`, and each job uploads `build123d/out/audit/`
+(14 days; `if: always()`, so red runs upload too). Download it instead of
+re-running a sweep. The audit job's artefact is `bd123-audit-rows` and each
+shard's is `bd123-audit-rows-<group>` (1–6):
+
+```bash
+gh run download <run-id> -n bd123-audit-rows -D rows/audit
+gh run download <run-id> -p 'bd123-audit-rows-*' -D rows/full   # sweep shards, if they ran
+```
+
+Each process writes its own file: `rows.jsonl` for the pytest controller, which
+holds just its `session` row, and `rows.gw0.jsonl`…`rows.gw3.jsonl` for the
+xdist workers. **Always glob `rows*.jsonl`.** Every line is JSON with a `kind`:
+
+- `session`: `markexpr`, `group` (the pytest-split `--group`; null in the audit
+  job) and `started_at`, one per process.
+- `collection`: `collected` (this job's or shard's selected items) and `audited`
+  (how many of them carry `audit`/`audit_full`, which is the number of outcome
+  rows owed). Every xdist worker collects the whole selection, so each worker
+  file has one and they agree.
+- `outcome`: one per `audit`/`audit_full` item, written by the
+  `tests/conftest.py` hook. Fields are `nodeid`, `when`, `outcome`
+  (`passed`/`failed`/`skipped`; an xfail is `skipped` with `xfail: true`),
+  `duration_s`, `group` and `started_at`. The row is the call phase, or the
+  setup phase when setup stopped the item. A failing teardown adds a second
+  row with `when: "teardown"`.
+- `measurement`: written by `tests.audit_record.record(name, **fields)` beside
+  each per-case measurement print. Fields are `nodeid`, `name` and `fields`,
+  and the `fields` keys follow that print line's own labels. A named-error case
+  records its error text (`named_error` / `rejected`). The two parity tests
+  record one row per case, with both directions under `fields.directions`. A
+  case that fails an assert before its print line has an `outcome` row but no
+  `measurement` row.
+
+Point this at ONE job's directory. It prints the 10 slowest cases, every row for
+one case or preset (a substring of the nodeid), the counts, and, per test
+function that records measurements, its outcome rows against its measurement
+rows. Those two must be equal in a green run:
+
+```bash
+python3 - rows/audit 'standard' <<'PY'
+import json, sys
+from collections import Counter
+from pathlib import Path
+rows = [json.loads(l) for f in sorted(Path(sys.argv[1]).rglob('rows*.jsonl'))
+        for l in f.read_text(encoding='utf-8').splitlines()]
+out = [r for r in rows if r['kind'] == 'outcome']
+meas = [r for r in rows if r['kind'] == 'measurement']
+for r in sorted(out, key=lambda r: -r['duration_s'])[:10]:
+    print(f"{r['duration_s']:8.1f} s  {r['outcome']:7}  {r['nodeid']}")
+for r in out + meas:
+    if sys.argv[2] in r['nodeid']:
+        print(json.dumps(r))
+col = next(r for r in rows if r['kind'] == 'collection')
+print(sum(r['when'] != 'teardown' for r in out), 'outcome rows for', col['audited'], 'audited of',
+      col['collected'], 'collected;', len(meas), 'measurement rows;',
+      sum(r['outcome'] != 'passed' for r in out), 'not passed')
+fn = lambda r: r['nodeid'].split('[')[0]
+m = Counter(map(fn, meas))
+o = Counter(fn(r) for r in out if r['when'] != 'teardown' and fn(r) in m)
+for f in sorted(m):
+    print(f"{o[f]:4} outcome {m[f]:4} measurement  {'ok' if o[f] == m[f] else 'MISMATCH'}  {f}")
+PY
+```
+
+The `outcome` rows (excluding `when: "teardown"`) must equal `collection.audited`,
+and in the audit jobs that equals `collected`. The `-q` log prints no item
+count. Its summary's `4 skipped` are the whole-module skips of
+`tests/test_capture_*.py`, which have no items. Count per artefact directory,
+never summed across jobs. One test function can split across the audit job and the shards
+(the drawer endpoint test, per-param marks). Rows are written only when
+`BD_AUDIT_OUT` is set, so local runs write nothing. A write failure is an
+`AuditRecordWarning`, never a failed test.

@@ -14,6 +14,7 @@ from holders import openconnect_plate as m
 from holders.registry import _validate_spec, resolve_mount_fixtures
 from openconnect.constants import POCKET_DEPTH
 from scripts.export import export_glb, export_stl
+from tests.audit_record import record
 from tests.mount_contracts import CONTRACTS, _residual_vol
 from tests.parity import (bbox_parity, load_reference, mesh_from_part,
                           surface_distance, volume_parity)
@@ -221,6 +222,7 @@ def test_printable_endpoints(name, overrides):
     assert report.bed_chamfer == 'present'
     angle = assert_finished_edges(part, v)
     print(f'AUDIT_ROW | {name} | {report.min_wall_mm:.3f} | {report.max_overhang_deg:.3f} | {angle:.3f} | PASS |')
+    record(name, wall=report.min_wall_mm, overhang=report.max_overhang_deg, angle=angle, result='PASS')
 
 
 def test_maximum_clearance_retains_after_initial_free_play():
