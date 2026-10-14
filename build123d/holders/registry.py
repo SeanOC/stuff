@@ -597,4 +597,5 @@ def all_models() -> list[ModelSpec]:
     from holders import underware_i_channel  # noqa: F401
     from holders import underware_transition  # noqa: F401
     from holders import underware_junctions  # noqa: F401
+    from holders import underware_text_label  # noqa: F401
     return list(_REGISTRY.values())

@@ -212,6 +212,34 @@ max(bridge, from) + to - from to 28..55 with named errors (above 55 the 2 mm
 floor tilts under 0.9 mm). mesh/bridge-to28.stl is the parity reference for the
 port's default.
 
+Text label plate (pst-fsk8s.6). Worker renders (2026-10-14; no mayor
+baseline), same environment, monokini_text_label.scad with Add_Label=false:
+the parity oracles are the plate BODY. The author's default (Add_Label=true,
+"Hands on Katie" in Raleway, Text_Emboss=false: recess + flush inlay) re-renders
+byte-identical to the mayor's pre-flight city assets/incoming/underware-ref/
+text_label-b86a758.stl (SHA256 65ac6caa604c3261de364fe1be41bc2e32ae09aa522f0a1478719fda0d40fedc;
+26.40 x 140.01 x 5.41 mm, 8118.27 mm3, 6180 facets) and is not committed: the
+port's glyphs are Inter Bold, so text is a legibility test, not a parity test.
+  mesh/text-label-1x5.stl  -D Add_Label=false   (1 x 5 units; 8119.59 mm3, 372 facets)
+  mesh/text-label-2x3.stl  -D Add_Label=false -D Label_Width_in_Units=2 -D Label_Length_Units=3
+  The plate is topChamfer 0 (:109): a 2 mm floor with grips from z=2 to 5.4
+  ("Volumes: 2", one solid: no CGAL grip-base faces). Spans y -L/2-0.015 ..
+  L/2-0.005 like the I channel.
+
+Text label deviations (build123d/holders/underware_text_label.py header):
+- 0.4 mm 45 degree chamfer on every bed-face edge (bed-contact chamfers never
+  yield, design-guidelines 8); parity compares the plate before it and pins
+  the analytic reduction c^2/2 * perimeter - 4c^3/3.
+- Text: Inter Bold via build123d/labels/label_text.py at OpenSCAD's em
+  (1/0.72), strokes >= the labels inlay floor 0.7 mm; text_style inlaid
+  (author default Text_Emboss=false: a two-colour flush inlay, like
+  holders/label_card.py) or debossed (Text_Emboss=true). Default depth 0.6
+  (labels INLAY_DEPTH), not 0.2. No Text_x_coordinate, fonts or colours.
+- Not ported: Grip_Flare, Grip_Increase_Clearance, Suppress_Connectors,
+  Decorative. Length stops at 11 units (bed), as for the I channel.
+Published exceptions: the I channel's grip-end-wedge (every grip) and, for
+debossed text, label-recess.
+
 SHA256 (mesh/, also in SHA256SUMS):
 01525fe3d3fa0235bbacbdf3cad6bf359168174e4c19a22ac63e57ac3a561a35  mesh/i-1x5-h22-cutouts.stl
 77a788c5c8eb6f3ca745ef2a749e27b8a5466228bf3daed7e91eb9dd8a043b07  mesh/i-1x5-h22-flare5.stl
@@ -240,3 +268,5 @@ f91452f49b78142323f9037f65e467dca8ac0116838a6f2cb23d4718f57f4bc7  mesh/height-ch
 17631587dd0b422ef3a9899cce3dbc417d724ee89452cffc9b669221641c9a9b  mesh/wc-1to2-l5-cutout.stl
 d4cc2c8b0f01f986c2776ccad0b88823a3360a16361747068bea76eba1015c99  mesh/wc-2to1-l4-r2-h28-flare5.stl
 5fde987cc4d332757a401264fb935c5a24bd67b91bd08cfd6a2ba039c0c670f2  mesh/width-change.stl
+fbb6db1c6478391444b769264a6fec71716bd2b2de392401cbc3435936d6bc7e  mesh/text-label-1x5.stl
+6f2da36c9a46ace7acb3eea29ada071d27569f0a454c7d03d7dd6e87ffa43843  mesh/text-label-2x3.stl
