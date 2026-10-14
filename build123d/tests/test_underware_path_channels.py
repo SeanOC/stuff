@@ -364,8 +364,8 @@ CASES = {
     's-cut-w20': {**CUT, 'number_of_cord_cutouts': 1, 'cord_cutout_width': 20, 'suppress_connectors': 'NBN'},
     's-cut-d56': {**CUT, 'length_bottom_units': 4, 'distance_between_cutouts': 56},
     's-cut-d14': {**CUT, 'distance_between_cutouts': 14, 'suppress_connectors': 'NBN'},
-    's-cut-left-top': {**CUT, 'cord_side_cutouts': 'Left Side Top'},
-    's-cut-right-top-h10': {**CUT, 'cord_side_cutouts': 'Right Side Top', 'channel_total_height': 10},
+    's-cut-left': {**CUT, 'cord_side_cutouts': 'Left Side'},
+    's-cut-right-h10': {**CUT, 'cord_side_cutouts': 'Right Side', 'channel_total_height': 10},
     # diagonal: wider domain (width 4, |units_over| 10, 9-cell runs, up 1).
     'diag-default': D, 'diag-width-4': {**D, 'channel_width_units': 4, 'units_over': 1, 'units_up': 5},
     'diag-height-10': {**D, 'channel_total_height': 10}, 'diag-height-72': {**D, 'channel_total_height': 72},
@@ -405,7 +405,8 @@ def edge_inventory(part, values):
     and the diagonal joints), interior (inside the U), cutout / flare
     (author edges), mitre joint (diagonal only: path_extrude2d mitres each
     joint's inside on the bisector of the legs, a crease of the turn angle
-    down the wall, chamfer and floor; kept as the author's — the lids
+    down the wall and floor, shallower where the two tilted 45 degree bed
+    chamfers meet on that plane; kept as the author's — the lids
     interlock round these walls). The S Bezier meets both runs tangentially.
     """
     v, first, second = layout(values)
@@ -438,7 +439,7 @@ def edge_inventory(part, values):
             family = 'grip'
         elif any(abs(mid.Y - y) < 1e-4 and bb.size.Y < 1e-4 for y in ends):
             family = 'end face'
-        elif any(all(abs((s - q) @ n) < 1e-3 for s in samples) and abs(angle - turn) < 1
+        elif any(all(abs((s - q) @ n) < 1e-3 for s in samples) and angle < turn + 1
                  for q, n, turn in mitres):
             family = 'mitre joint'
         elif (abs(z) < 1e-4 or abs(z - c.TOP_CHAMFER) < 1e-4) and abs(angle - 45) < 1:
