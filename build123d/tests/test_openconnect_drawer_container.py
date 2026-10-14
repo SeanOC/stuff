@@ -11,6 +11,7 @@ from shapely import maximum_inscribed_circle
 from drawer import container, shell
 from holders import openconnect_drawer as m
 from tests import print_audit as audit
+from tests.audit_record import record
 from tests.openconnect_drawer_inventory import (back_magnet_rims, container_edge_inventory,
                                                 container_skin_mask, container_wall_regions,
                                                 label_plate_tips)
@@ -56,6 +57,7 @@ def test_reference_parity(reference_case):
     assert volume_parity(port, ref, rel=VOLUME_REL)
     from trimesh.proximity import closest_point
     classifier = audit._ClassifiedPart(mesh)
+    directions = {}
     for direction, a, b in [('port->ref', port, ref), ('ref->port', ref, port)]:
         points, distances = surface_distance(a, b, n=40000, seed=1, sampler='uniform',
                                              vertices=True, signed=False)
@@ -70,6 +72,8 @@ def test_reference_parity(reference_case):
         assert kept.max() <= .05, (name, direction, kept.max())
         print(f'PARITY | {name} | {direction} | ref {ref.volume:.3f} | port {port.volume:.3f} | '
               f'max {kept.max():.6f} | skin {skin.mean():.4%}')
+        directions[direction] = {'max': kept.max(), 'skin': skin.mean()}
+    record(name, ref=ref.volume, port=port.volume, directions=directions)
 
 
 def test_author_to_mesh_is_the_export_spin():
@@ -372,6 +376,7 @@ def test_endpoint_audit_and_edges(name, values):
     except ValueError as exc:
         assert any(text in str(exc) for text in NAMED), str(exc)
         print(f'AUDIT | {name} | named error: {exc}')
+        record(name, named_error=str(exc))
         return
     assert part.is_valid and len(part.solids()) == 1
     chords = container.honeycomb_ceiling_chords(values)
@@ -397,3 +402,6 @@ def test_endpoint_audit_and_edges(name, values):
     print(f'AUDIT | {name} | wall {report.min_wall_mm:.3f} | overhang {report.max_overhang_deg:.1f} | '
           f'bridge {report.longest_bridge_mm:.2f} | unroofed chord {max_unroofed:.3f} | '
           f'convex edge {angle:.3f} | vol {part.volume/1000:.3f} | PASS {inventory}')
+    record(name, wall=report.min_wall_mm, overhang=report.max_overhang_deg,
+           bridge=report.longest_bridge_mm, unroofed_chord=max_unroofed, convex_edge=angle,
+           vol_cm3=part.volume/1000, result='PASS', inventory=inventory)

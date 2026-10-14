@@ -90,7 +90,18 @@ jobs:
       - name: sync env (pinned via uv.lock)
         run: uv sync --frozen
       - name: print audits (presets, reproducers, other models)
+        # pst-rir4i: one JSON row per audit item (+ measurement rows) for
+        # reviewers; reader recipe in build123d/ci/README.md.
+        env:
+          BD_AUDIT_OUT: out/audit/rows.jsonl
         run: uv run pytest tests/ -q -n 4 --dist load -rf --tb=short -m "audit and not audit_full and not upstream"
+      - name: upload audit rows
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bd123-audit-rows
+          path: build123d/out/audit/
+          retention-days: 14
 
   changes:
     # Decides whether a PR runs the cradle corner sweep. pull_request only: on
@@ -162,11 +173,19 @@ jobs:
         # only its own tests) for the artifact below.
         env:
           STORE: ${{ github.event_name == 'schedule' && '--store-durations --clean-durations' || '' }}
+          BD_AUDIT_OUT: out/audit/rows.jsonl
         run: >-
           uv run pytest tests/ -q -n 4 --dist load -rf --tb=short
           -m "audit_full and not upstream"
           --splits 6 --group ${{ matrix.group }} --durations-path tests/.test_durations
           $STORE
+      - name: upload audit rows (shard ${{ matrix.group }}/6)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bd123-audit-rows-${{ matrix.group }}
+          path: build123d/out/audit/
+          retention-days: 14
       - name: upload refreshed durations (nightly)
         if: ${{ !cancelled() && github.event_name == 'schedule' }}
         uses: actions/upload-artifact@v4

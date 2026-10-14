@@ -9,6 +9,7 @@ import pytest
 from build123d import Align, Box, Pos
 from holders import cartridge_holder as m
 from tests import print_audit as pa
+from tests.audit_record import record
 from tests.mount_contracts import verify_openconnect_slot
 
 
@@ -91,6 +92,7 @@ CORNERS = [('full-snaps', {'snap_lite':False}),
 def test_endpoints(name, values):
     report, angle = checked(values)
     print(f'| {name} | {report.min_wall_mm:.3f} | {report.max_overhang_deg:.1f} | {angle:.1f} | {report.ok} |')
+    record(name, wall=report.min_wall_mm, overhang=report.max_overhang_deg, angle=angle, ok=report.ok)
 
 
 def test_openconnect_floor_and_contract():

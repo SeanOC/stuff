@@ -20,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from holders import underware_transition as m
 from tests import print_audit as pa
+from tests.audit_record import record
 from tests.parity import load_reference, mesh_from_part, sample_surface
 from underware import constants as c
 from underware import transition as t
@@ -528,6 +529,11 @@ def test_endpoint_audit_and_edges(name):
           f'{report.max_overhang_deg:.1f} bridge {report.longest_bridge_mm:.2f} | edges worst exposed '
           f'{worst:.1f} {dict(sorted(families.items()))} | exceptions '
           f'{", ".join(f"{k}:{len(r)}" for k, r in regions.items() if r) or "none"} | PASS')
+    record(name, vol=part.volume, raw_wall=raw.min_wall_mm, raw_ovh=raw.max_overhang_deg,
+           raw_bridge=raw.longest_bridge_mm, filtered_wall=report.min_wall_mm,
+           filtered_ovh=report.max_overhang_deg, filtered_bridge=report.longest_bridge_mm,
+           edges_worst_exposed=worst, edges=dict(sorted(families.items())),
+           exceptions={k: len(r) for k, r in regions.items() if r}, result='PASS')
 
 
 @pytest.mark.audit
@@ -556,6 +562,9 @@ def test_step_patch_row(name):
     print(f'STEP PATCH | {name} | {len(down)} faces, {sum(f[0] for f in down):.2f} mm2, each '
           f'{down[0][0]:.2f} mm2 / {down[0][1]:.2f} mm wide / {down[0][2]:.0f} deg | raw ovh '
           f'{raw.max_overhang_deg:.1f} bridge {raw.longest_bridge_mm:.2f}')
+    record(name, faces=len(down), area_mm2=sum(f[0] for f in down), each_mm2=down[0][0],
+           each_wide_mm=down[0][1], each_deg=down[0][2], raw_ovh=raw.max_overhang_deg,
+           raw_bridge=raw.longest_bridge_mm)
 
 
 def _dense_thin(part, limit=pa.MIN_WALL_MM, below=None, boxes=()):
@@ -597,6 +606,9 @@ def test_bridge_end_wedge_row(name):
     print(f'END WEDGE | {name} | rise {rise:g} wedge {90 - degrees(np.arctan2(rise, c.GRID)):.1f} deg | '
           f'{len(regions)} envelopes {width - 2*c.SNAP_WALL:.1f} x {c.SNAP_WALL:g} x {over - c.BASE_HEIGHT - rise:.1f} mm | '
           f'{len(hits)} dense thin points, all inside')
+    record(name, rise=rise, wedge_deg=90 - degrees(np.arctan2(rise, c.GRID)), envelopes=len(regions),
+           envelope_mm=(width - 2*c.SNAP_WALL, c.SNAP_WALL, over - c.BASE_HEIGHT - rise),
+           dense_thin_points=len(hits), all_inside=True)
 
 
 @pytest.mark.parametrize('values', [{}, {'grip_flare': 5}, PARITY['wc-1to2-l5-cutout'],

@@ -8,6 +8,7 @@ from build123d import Axis, Face, Solid, Wire
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from holders import gridfinity_shelf as m
+from tests.audit_record import record
 from tests.mount_contracts import verify_openconnect_slot
 from tests.parity import (band_mask, bbox_parity, boundary_edges, load_reference,
                           over_cap_exclusion, rotate_to_print_frame, sample_surface,
@@ -418,6 +419,7 @@ def test_endpoint_audit_mount_and_edges(name, values):
                             'slot_vertical offset leaves the back face')
         assert set(values) <= {'slot_horizontal_offset', 'slot_vertical_offset'}
         print(f'AUDIT_ROW | {name} | — | — | — | rejected: {exc}')
+        record(name, rejected=str(exc))
         return
     fx = m.mount_fixtures(m.MOUNT, values)
     report = audit(part, cutters=fx.cutters, print_frame=m.print_frame(values))
@@ -442,3 +444,5 @@ def test_endpoint_audit_mount_and_edges(name, values):
     worst = max((e[-1] for e in inventory), default=0)
     print(f'AUDIT_ROW | {name} | {report.min_wall_mm:.3f} | {report.max_overhang_deg:.3f} | '
           f'{worst:.3f} (E2 inventory) | {result} | volume {part.volume:.3f}')
+    record(name, wall=report.min_wall_mm, overhang=report.max_overhang_deg, worst_edge=worst,
+           result=result, volume=part.volume)
