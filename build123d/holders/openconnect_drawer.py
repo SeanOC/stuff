@@ -76,7 +76,7 @@ def mount_fixtures(mount_type, values):
 
 SPEC = register(ModelSpec(
     name='openconnect_drawer', title='openConnect drawer', category_id='multiboard',
-    description="mitufy's openConnect drawer (CC BY-SA 4.0): shell, container and stopper clips. The shell prints back-wall-down with a honeycomb bottom, selectable wall types and any mounting face; the container prints bottom-down with a handle, label holder and magnet pockets. Comma-separated compartment lists add shell dividers (one container per compartment) or container dividers; the clips print flat.",
+    description="mitufy's openConnect drawer (CC BY-SA 4.0): shell, container and stopper clips. The shell prints back-wall-down with a honeycomb bottom, selectable wall types and any mounting face; the container prints bottom-down with a handle, label holder (clipped to the body when wider than the front) and magnet pockets. Comma-separated compartment lists add shell dividers (one container per compartment) or container dividers; the clips print flat.",
     build=build, mounts=(MOUNT,), mount_for_values=mount_for_values,
     print_frame=print_frame,
     params=(
@@ -131,7 +131,8 @@ SPEC = register(ModelSpec(
         Param('container_back_side_height_offset', 'number', 3, min=0, max=10, step=.1, group='Container'),
         Param('container_inner_fillet', 'number', 2, min=0, max=4, step=.1, group='Container'),
         Param('add_label_holder', 'boolean', True, group='Container'),
-        Param('label_width', 'number', 48, min=20, max=100, step=.1, group='Container'),
+        Param('label_width', 'number', 48, min=20, max=100, step=.1, group='Container',
+              description="Wider than the container front is clipped to the body (the author's lipless ledge)."),
         Param('label_height', 'number', 10, min=6, max=20, step=.1, group='Container'),
         Param('label_thickness', 'number', 1, min=.6, max=1.6, step=.1, group='Container'),
         Param('handle_thickness', 'number', 2.4, min=1.6, max=4, step=.1, group='Container'),
