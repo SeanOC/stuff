@@ -26,24 +26,52 @@ sys.path.insert(0, str(ROOT))
 from build123d import Face, Solid  # noqa: E402
 
 from holders.registry import all_models  # noqa: E402
+from tests import audit_cache  # noqa: E402
 from tests import print_audit as pa  # noqa: E402
 from tests.mount_contracts import resolve_fixtures  # noqa: E402
 from tests.test_print_audit import _MODEL_EXCLUSIONS  # noqa: E402
 from tests.test_spool_cradle import PRINT_CORNER  # noqa: E402
 
 SPECS = {s.name: s for s in all_models()}
+
+
+def _drawer_container(values):
+    """(print_frame, exclusions) exactly as test_endpoint_audit_and_edges."""
+    from holders import openconnect_drawer as m
+    from tests.openconnect_drawer_inventory import container_wall_regions
+    return m.print_frame(values), m.audit_exclusions(values) + container_wall_regions(values)
+
+
+# name -> (spec, values[, audit_args]). audit_args(values) returns the
+# (print_frame, exclusions) of a caller that audits outside _build_and_audit;
+# such a case has no mount cutters and audits +Z after the frame.
 CASES = {
     "cradle_default": ("holder_spool_cradle", {}),
     "cradle_diagonal_root_corner": ("holder_spool_cradle", PRINT_CORNER),
     "cup_lid": ("holder_cup_lid", {}),
+    # pst-vhywk: the slowest audit_full item before D4 (738 s in .test_durations).
+    "drawer_container_vertical_grids_8": (
+        "openconnect_drawer", {"part": "container", "vertical_grids": 8}, _drawer_container),
 }
 
 
 def build_case(name):
-    """(part, up, boxes, hmin, audit kwargs) exactly as _build_and_audit."""
-    spec = SPECS[CASES[name][0]]
-    values = spec.resolve_values(CASES[name][1])
+    """(part, up, boxes, hmin, audit kwargs) exactly as the case's test audits it."""
+    spec_name, raw, *audit_args = CASES[name]
+    spec = SPECS[spec_name]
+    values = spec.resolve_values(raw)
     part = spec.build(values)
+    if audit_args:
+        # The frame is applied here as _audit applies it, so the phases see
+        # the printed part; the end-to-end audit() then needs no frame.
+        frame, exclusions = audit_args[0](raw)
+        part = frame * part
+        exclusions = [frame * e for e in exclusions]
+        kwargs = dict(cutters=[], exclusions=exclusions, model=spec.name)
+        up = pa._unit((0.0, 0.0, 1.0))
+        boxes = [pa._ExactExclusion(e) if hasattr(e, "wrapped") else e for e in exclusions]
+        hmin = min(pa._height(v, up) for v in part.vertices())
+        return part, up, boxes, hmin, kwargs
     cutters = []
     for mount in spec.mounts:
         fx = resolve_fixtures(spec, mount, values)
@@ -106,7 +134,8 @@ def run(name, counted):
         dt = time.process_time() - t0
         rows.append((label, dt, dict(COUNTS) if counted else {}))
     t0 = time.process_time()
-    pa.audit(part, **kwargs)
+    with audit_cache.disabled():  # a cache hit would time the lookup, not the audit
+        pa.audit(part, **kwargs)
     total = time.process_time() - t0
     return nfaces, len(boxes), rows, total
 
@@ -120,7 +149,8 @@ def main(argv):
             part, *_rest, kwargs = build_case(name)
             prof = cProfile.Profile()
             prof.enable()
-            pa.audit(part, **kwargs)
+            with audit_cache.disabled():
+                pa.audit(part, **kwargs)
             prof.disable()
             print(f"== cProfile {name}")
             pstats.Stats(prof).sort_stats("tottime").print_stats(15)

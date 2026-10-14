@@ -283,3 +283,35 @@ hashed file.
 **Equality proofs and timings.** Run `scripts/audit_equality_proof.py` and
 any timing work with `BD_AUDIT_CACHE=off`. Otherwise the "new CPU s" column
 times cache hits.
+
+## The slowest audit_full item (pst-vhywk)
+
+`test_openconnect_drawer_container.py::test_endpoint_audit_and_edges[vertical_grids=8]`
+had 738 s in `tests/.test_durations` and took 833–855 s on CI cold. As one pytest
+item it set the floor on its shard's wall time. The profiler now has it as
+`drawer_container_vertical_grids_8`. That case uses the test's own `print_frame`
+and exclusions (`m.audit_exclusions + container_wall_regions`, 407 regions).
+Both the profiler and the timings below run with the cache off.
+
+The test's own phases, in wall seconds, were timed in one process with
+`BD_AUDIT_CACHE=off` (2,363 faces):
+
+| phase | wall s | % |
+|---|---:|---:|
+| build (`m.build`) | 36.8 | 5 |
+| ceiling chords | 0.2 | 0 |
+| exclusion regions | 1.7 | 0 |
+| cache key (`shape_sig` of the part) | 1.3 | 0 |
+| **`audit()`** | **595.9** | **88** |
+| bed-bevel sections | 0.9 | 0 |
+| edge inventory | 40.1 | 6 |
+
+**Decision (bead V1).** `audit()` takes 88 % of the item, above the bead's 60 %
+line, so this case does not need to be split or sampled. A cache hit replaces
+those ~600 s with a key build of a few seconds, which leaves about 80 s locally
+(build + edge inventory). The exclusions are all Shapes (`Box`, `Solid`), so the
+call is cacheable. On main run 38630578619, shard 4 reported `off=0`. A
+test-level split (option (c)) could not help on its own, because the audit half
+would still hold ~600 s. The cache answers only when the container's geometry,
+exclusions and audit code are unchanged since the shard last saved. A PR that
+changes any of them runs this item cold again, at the old ~14 min CI wall.
