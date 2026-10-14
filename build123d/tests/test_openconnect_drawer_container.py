@@ -210,6 +210,28 @@ def test_label_wider_than_front_is_a_named_error(values):
     assert part.is_valid and len(part.solids()) == 1
 
 
+# Minimum label + handle on a 1x1x1 front, thin honeycomb walls (pst-t0ob3.6).
+EMPTIED = dict(ONE, label_width=20, handle_depth=6, container_honeycomb_wall_thickness=1.6)
+
+
+@pytest.mark.parametrize('values,raw,wall', [
+    ({**EMPTIED, 'container_inner_fillet': 0}, {'Front': 1, 'Left': 3, 'Right': 3}, 'front'),
+    ({**EMPTIED, 'container_inner_fillet': 4}, {'Left': 2, 'Right': 2}, 'left'),
+], ids=['front', 'both-sides'])
+def test_closure_that_empties_a_honeycomb_wall_has_named_error(values, raw, wall):
+    """codex #200 note: every cell of a requested Honeycomb wall clips under
+    Ø2 here; the container must not silently build it Solid."""
+    from drawer.honeycomb import HoneycombPanelTooSmall
+    assert {n: len(l.openings) for n, _, l, _ in container.wall_layouts(values, close_openings=False)} == raw
+    with pytest.raises(HoneycombPanelTooSmall, match=f'{wall} wall: every opening clips under 2 mm'):
+        container.wall_layouts(values)
+    with pytest.raises(HoneycombPanelTooSmall):
+        m.build({'part': 'container', **values})
+    # Source mode (parity) is unaffected. honeycomb_ceiling offers only
+    # 'roofed', so it reaches wall_layouts as a raw value.
+    assert container.wall_layouts({**values, 'honeycomb_ceiling': 'source'})
+
+
 def _mesh(author_point, values=None):
     d = container.dimensions(values)
     x, y, z = author_point
