@@ -187,6 +187,7 @@ def test_mount_selection_params_are_filename_flagged():
         ("openconnect_drawer", "horizontal_grids"),
         ("openconnect_drawer", "vertical_grids"),
         ("openconnect_drawer", "depth_grids"),
+        ("openconnect_drawer", "stopper_clip_length"),
         ("underware_i_channel", "channel_width_units"),
         ("underware_i_channel", "channel_total_height"),
         ("underware_i_channel", "channel_length_units"),

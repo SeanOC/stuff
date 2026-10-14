@@ -111,7 +111,7 @@ SPEC = register(ModelSpec(
         Param('shell_side_magnet_edge_distance', 'number', 6, step=.1, group='Magnets'),
         Param('add_stopper_holes', 'boolean', True, group='Stoppers'),
         Param('stopper_edge_distance', 'number', 3, step=.1, group='Stoppers'),
-        Param('stopper_clip_length', 'number', 6, min=4, max=12, step=.1, group='Stoppers'),
+        Param('stopper_clip_length', 'number', 6, min=4, max=12, step=.1, filename=True, group='Stoppers'),
         # Compartment lists: comma-separated tile (shell) or unit (container)
         # counts; drawer/dividers.py gives a named error for anything else.
         Param('add_shell_divider', 'enum', 'None', choices=shell.DIVIDER_MODES, group='Shell Divider'),
