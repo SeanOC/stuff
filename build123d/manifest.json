@@ -2701,6 +2701,260 @@
       ]
     },
     {
+      "slug": "underware-transition",
+      "engine": "build123d",
+      "title": "Underware cable channel transition (openGrid)",
+      "blurb": "Underware 2.0 \"monokini\" transitions that snap into openGrid: a width change between channel widths, a height change between channel heights (prints standing on end), or a bridge that lifts a channel over a crossing one. By Pedro Leite after Hands on Katie and BlackjackDuck, CC BY-NC-SA 4.0 (non-commercial, share-alike). No supports.",
+      "categoryId": "multiboard",
+      "params": [
+        {
+          "name": "part",
+          "label": "Transition",
+          "group": "Transition",
+          "kind": "enum",
+          "default": "width_change",
+          "choices": [
+            "width_change",
+            "height_change",
+            "bridge"
+          ],
+          "filename": true
+        },
+        {
+          "name": "from_width_units",
+          "label": "Width at the +Y end (28 mm units; height change and bridge: width)",
+          "group": "Channel Size",
+          "kind": "integer",
+          "default": 1,
+          "min": 1,
+          "max": 4,
+          "step": 1,
+          "filename": true
+        },
+        {
+          "name": "to_width_units",
+          "label": "Width at the -Y end (width change)",
+          "group": "Channel Size",
+          "kind": "integer",
+          "default": 2,
+          "min": 1,
+          "max": 4,
+          "step": 1,
+          "filename": true
+        },
+        {
+          "name": "from_height",
+          "label": "Height at the +Y end (width change: height; bridge: approach height)",
+          "group": "Channel Size",
+          "unit": "mm",
+          "kind": "number",
+          "default": 22,
+          "min": 10,
+          "max": 72,
+          "step": 6,
+          "filename": true
+        },
+        {
+          "name": "to_height",
+          "label": "Height at the -Y end (bridge: channel height over the crossed channel)",
+          "group": "Channel Size",
+          "unit": "mm",
+          "kind": "number",
+          "default": 28,
+          "min": 10,
+          "max": 72,
+          "step": 6,
+          "filename": true
+        },
+        {
+          "name": "channel_length_units",
+          "label": "Length (28 mm units; width and height change)",
+          "group": "Channel Size",
+          "kind": "integer",
+          "default": 3,
+          "min": 1,
+          "max": 11,
+          "step": 1,
+          "filename": true
+        },
+        {
+          "name": "transition_length_units",
+          "label": "Transition length (28 mm units)",
+          "group": "Channel Size",
+          "kind": "integer",
+          "default": 1,
+          "min": 1,
+          "max": 11,
+          "step": 1
+        },
+        {
+          "name": "bridge_height",
+          "label": "Height of the crossed channel",
+          "group": "Bridge",
+          "unit": "mm",
+          "kind": "number",
+          "default": 22,
+          "min": 10,
+          "max": 72,
+          "step": 6
+        },
+        {
+          "name": "bridge_length_units",
+          "label": "Bridge run length (28 mm units)",
+          "group": "Bridge",
+          "kind": "integer",
+          "default": 1,
+          "min": 1,
+          "max": 9,
+          "step": 1
+        },
+        {
+          "name": "half_bridge",
+          "label": "Half bridge (one ramp)",
+          "group": "Bridge",
+          "kind": "boolean",
+          "default": false
+        },
+        {
+          "name": "number_of_cord_cutouts",
+          "label": "Number of cord cutouts",
+          "group": "Cord Cutouts",
+          "kind": "integer",
+          "default": 0,
+          "min": 0,
+          "max": 12,
+          "step": 1
+        },
+        {
+          "name": "cord_side_cutouts",
+          "label": "Cutout side",
+          "group": "Cord Cutouts",
+          "kind": "enum",
+          "default": "Both Sides",
+          "choices": [
+            "Left Side",
+            "Right Side",
+            "Both Sides",
+            "None"
+          ]
+        },
+        {
+          "name": "cord_cutout_width",
+          "label": "Cutout width",
+          "group": "Cord Cutouts",
+          "unit": "mm",
+          "kind": "number",
+          "default": 12,
+          "min": 6,
+          "max": 20,
+          "step": 1
+        },
+        {
+          "name": "distance_between_cutouts",
+          "label": "Distance between cutouts",
+          "group": "Cord Cutouts",
+          "unit": "mm",
+          "kind": "number",
+          "default": 28,
+          "min": 14,
+          "max": 56,
+          "step": 1
+        },
+        {
+          "name": "shift_cutouts",
+          "label": "Shift cutouts along the channel",
+          "group": "Cord Cutouts",
+          "unit": "mm",
+          "kind": "number",
+          "default": 0,
+          "min": 0,
+          "max": 28,
+          "step": 1
+        },
+        {
+          "name": "add_label",
+          "label": "Add debossed label",
+          "group": "Text Label",
+          "kind": "boolean",
+          "default": false
+        },
+        {
+          "name": "text",
+          "label": "Label text",
+          "group": "Text Label",
+          "kind": "string",
+          "default": "CABLES",
+          "maxLength": 24,
+          "charset": "printable-ascii"
+        },
+        {
+          "name": "text_size",
+          "label": "Font size",
+          "group": "Text Label",
+          "unit": "mm",
+          "kind": "number",
+          "default": 10,
+          "min": 6,
+          "max": 16,
+          "step": 1
+        },
+        {
+          "name": "text_depth",
+          "label": "Deboss depth",
+          "group": "Text Label",
+          "unit": "mm",
+          "kind": "number",
+          "default": 0.2,
+          "min": 0,
+          "max": 1,
+          "step": 0.2
+        },
+        {
+          "name": "grip_flare",
+          "label": "Grip flare",
+          "group": "Advanced",
+          "unit": "deg",
+          "kind": "number",
+          "default": 0,
+          "min": 0,
+          "max": 15,
+          "step": 0.1
+        },
+        {
+          "name": "suppress_connectors",
+          "label": "Suppress grips per cell (N/L/R/B/S; bridge: +Y,-Y)",
+          "group": "Advanced",
+          "kind": "string",
+          "default": "",
+          "maxLength": 24,
+          "charset": "printable-ascii"
+        }
+      ],
+      "presets": [
+        {
+          "id": "widen-1-to-2",
+          "label": "1 \u2192 2 cells wide, 22 mm, 3 cells long",
+          "values": {}
+        },
+        {
+          "id": "raise-22-to-34",
+          "label": "22 \u2192 34 mm high, 1 cell wide, 3 cells long",
+          "values": {
+            "part": "height_change",
+            "from_height": 22,
+            "to_height": 34
+          }
+        },
+        {
+          "id": "bridge",
+          "label": "Over a 22 mm channel, 22 \u2192 50 mm",
+          "values": {
+            "part": "bridge"
+          }
+        }
+      ]
+    },
+    {
       "slug": "underware-x",
       "engine": "build123d",
       "title": "Underware X cable-channel crossing (openGrid)",
