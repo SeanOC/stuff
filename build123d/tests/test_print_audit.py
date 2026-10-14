@@ -106,11 +106,12 @@ _PER_MODEL_BUDGET_S = 60.0
 # (docs/print-audit-profile.md), so it now fits the default.
 # pst-t0ob3.3: the drawer audit took 61.3 s at 05e18376; A/B on one host, main
 # 84.16 s vs head 77.31 s CPU, so the shared 60 s budget tipped, not the geometry.
-# pst-tl4ac.3: the S3 tombstone sign measures every text band's stroke on three
-# vendored faces before it builds (cold: ~110 s of a 135 s build) then audits
-# ~4,500 faces (52 s): 187 s CPU serial on the dev host at the default preset.
+# pst-tl4ac.3: the S3 tombstone sign builds ~4,500 raised faces and audits
+# them: 66.6 s CPU serial on the dev host at the default preset once its line
+# strokes come from labels/nominal_strokes.json (live scans made it 187 s,
+# codex on #206); x1.5 headroom -> 100.
 _MODEL_BUDGET_S: dict[str, float] = {"openconnect_drawer": 90.0,
-                                     "holder_tombstone_sign": 240.0}
+                                     "holder_tombstone_sign": 100.0}
 
 _UP_Z = (0.0, 0.0, 1.0)
 
