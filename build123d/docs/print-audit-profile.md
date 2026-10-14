@@ -283,3 +283,39 @@ hashed file.
 **Equality proofs and timings.** Run `scripts/audit_equality_proof.py` and
 any timing work with `BD_AUDIT_CACHE=off`. Otherwise the "new CPU s" column
 times cache hits.
+
+## The slowest audit_full item (pst-vhywk)
+
+`test_openconnect_drawer_container.py::test_endpoint_audit_and_edges[vertical_grids=8]`
+had 738 s in `tests/.test_durations` and took 833–855 s on CI cold. As one pytest
+item it set the floor on its shard's wall time. The profiler now has it as
+`drawer_container_vertical_grids_8`. That case uses the test's own `print_frame`
+and exclusions (`m.audit_exclusions + container_wall_regions`, 407 regions).
+Both the profiler and the timings below run with the cache off.
+
+The test's own phases were timed in one process with `BD_AUDIT_CACHE=off`
+(2,363 faces). The host was shared, with a load average of 20–33 and the
+profiler running alongside, so read the absolute seconds as inflated (the
+quiet-host figure is 672 s for the whole item). The shares are what V1 decides
+on:
+
+| phase | wall s | CPU s | % of wall |
+|---|---:|---:|---:|
+| build (`m.build`) | 36.8 | 37.5 | 3 |
+| ceiling chords | 0.2 | 0.2 | 0 |
+| exclusion regions | 1.7 | 1.7 | 0 |
+| cache key (`shape_sig` of the part) | 1.3 | 1.6 | 0 |
+| **`audit()`** | **1089.1** | **964.4** | **92** |
+| bed-bevel sections | 4.1 | 4.0 | 0 |
+| edge inventory | 52.7 | 52.0 | 4 |
+
+**Decision (bead V1).** `audit()` takes 92 % of the item's wall time (91 % of
+its CPU time), above the bead's 60 % line, so this case does not need to be
+split or sampled. A cache hit swaps the audit for a key build of a few seconds.
+What remains is the build and the edge inventory, about 95 s on this loaded
+host and under 8 % of the item. The exclusions are all Shapes (`Box`, `Solid`), so the
+call is cacheable. On main run 38630578619, shard 4 reported `off=0`. A
+test-level split (option (c)) could not help on its own, because the audit half
+would still hold over 90 % of the item. The cache answers only when the container's geometry,
+exclusions and audit code are unchanged since the shard last saved. A PR that
+changes any of them runs this item cold again, at the old ~14 min CI wall.
