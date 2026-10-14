@@ -216,5 +216,21 @@
     "tests/test_spool_cradle.py::test_production_print_audit[guides-omitted]": 17.749137898907065,
     "tests/test_spool_cradle.py::test_production_print_audit[insufficient-crest-room]": 22.876692283898592,
     "tests/test_spool_cradle.py::test_production_print_audit[maximum-reach-minimum-height]": 22.303003134205937,
-    "tests/test_tombstone_sign.py::test_colour_parts_are_pairwise_disjoint": 70.80380400829017
+    "tests/test_tombstone_sign.py::test_colour_count_gives_exactly_the_first_n_parts": 315.157,
+    "tests/test_tombstone_sign.py::test_colour_parts_partition_the_raised_slab[default]": 286.903,
+    "tests/test_tombstone_sign.py::test_colour_parts_partition_the_raised_slab[one-ams]": 163.842,
+    "tests/test_tombstone_sign.py::test_colour_parts_partition_the_raised_slab[pinned]": 274.124,
+    "tests/test_tombstone_sign.py::test_colour_parts_partition_the_raised_slab[small]": 139.524,
+    "tests/test_tombstone_sign.py::test_colour_parts_partition_the_raised_slab[two-colour]": 64.527,
+    "tests/test_tombstone_sign.py::test_part_stls_are_byte_stable_across_processes": 284.542,
+    "tests/test_tombstone_sign.py::test_print_audit_per_preset[default]": 515.484,
+    "tests/test_tombstone_sign.py::test_print_audit_per_preset[one-ams]": 401.547,
+    "tests/test_tombstone_sign.py::test_print_audit_per_preset[pinned]": 399.572,
+    "tests/test_tombstone_sign.py::test_print_audit_per_preset[small]": 401.5,
+    "tests/test_tombstone_sign.py::test_print_audit_per_preset[two-colour]": 395.596,
+    "tests/test_tombstone_sign.py::test_slab_exclusion_contains_every_raised_feature[default]": 15.747,
+    "tests/test_tombstone_sign.py::test_slab_exclusion_contains_every_raised_feature[one-ams]": 1.059,
+    "tests/test_tombstone_sign.py::test_slab_exclusion_contains_every_raised_feature[pinned]": 1.063,
+    "tests/test_tombstone_sign.py::test_slab_exclusion_contains_every_raised_feature[small]": 0.724,
+    "tests/test_tombstone_sign.py::test_slab_exclusion_contains_every_raised_feature[two-colour]": 1.163
 }

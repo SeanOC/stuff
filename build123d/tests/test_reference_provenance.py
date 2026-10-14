@@ -107,7 +107,7 @@ def test_no_upstream_originals_committed():
 
 # --- root asset exception register ------------------------------------------
 
-ASSET_SUFFIXES = {".scad", ".stl", ".step", ".3mf"}
+ASSET_SUFFIXES = {".scad", ".stl", ".step", ".3mf", ".ttf"}
 
 
 def exception_register_rows(document: str) -> list[str]:
