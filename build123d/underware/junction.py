@@ -16,10 +16,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from build123d import Axis, Box, Location, Part, Plane, Pos, Rot, Vector, extrude, mirror, revolve
+from build123d import Axis, Box, Location, Part, Plane, Pos, Rot, extrude, mirror, revolve
 
 from . import constants as c
-from .channel import channel_section, cord_cutouts, parse_codes, present_grips, straight_channel
+from .channel import channel_section, cord_cutouts, present_grips, straight_channel
 
 STUB = c.CHANNEL_SEPARATION   # corner path's straight lead-in/out (:476 channelWidthSeparation+Nudge)
 CUTOUT_SIDES_X = ('Left Side', 'Right Side', 'Both Sides', 'None')  # [C] X:56 has no Top modes
@@ -225,17 +225,6 @@ def footprint(arms) -> tuple[float, float, float, float]:
         xs += [arm.x - half[0], arm.x + half[0]]
         ys += [arm.y - half[1], arm.y + half[1]]
     return min(xs), max(xs), min(ys), max(ys)
-
-
-def check_bed(arms) -> None:
-    """Named error past the H2S single-nozzle bed (holders/printer.py); the
-    part may be turned 90 degrees, so the long side is checked against X."""
-    from holders.printer import BED_X, BED_Y
-    x0, x1, y0, y1 = footprint(arms)
-    a, b = sorted((x1 - x0, y1 - y0), reverse=True)
-    if a > BED_X or b > BED_Y:
-        raise ValueError(f'the junction is {x1 - x0:.1f} x {y1 - y0:.1f} mm, past the '
-                         f'{BED_X:g} x {BED_Y:g} mm bed; shorten an arm or narrow a channel')
 
 
 def check_cutout_span(arm: Arm, number: int, spacing: float, shift: float, cutout_width: float) -> None:

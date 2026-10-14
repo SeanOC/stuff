@@ -24,7 +24,7 @@ Decorative / Support_Bridging_Separation (as underware_i_channel). Arm lengths
 stop where a single-parameter change still fits the H2S bed; longer
 combinations are named errors. See the NOTICE deviations list.
 """
-from holders.printer import BED_X
+from holders.printer import BED_X, BED_Y
 from holders.registry import ModelSpec, Param, Preset, register
 from build123d import Plane, mirror
 from underware import constants as c
@@ -61,11 +61,21 @@ def layout(name, v):
                     v['left_length_units'], v['top_length_units'], v['suppress_connectors'])
 
 
+def check_bed(arms) -> None:
+    """Named error past the H2S single-nozzle bed (holders/printer.py); the
+    part may be turned 90 degrees, so the long side is checked against X."""
+    x0, x1, y0, y1 = j.footprint(arms)
+    a, b = sorted((x1 - x0, y1 - y0), reverse=True)
+    if a > BED_X or b > BED_Y:
+        raise ValueError(f'the junction is {x1 - x0:.1f} x {y1 - y0:.1f} mm, past the '
+                         f'{BED_X:g} x {BED_Y:g} mm bed; shorten an arm or narrow a channel')
+
+
 def _checked(name, values):
     """Resolve, then every named error before any geometry."""
     v = SPECS[name].resolve_values(values)
     arms = layout(name, v)
-    j.check_bed(arms)
+    check_bed(arms)
     first, h = arms[0], _height(v)
     check_cutouts(first.width, h, cell_centres(first.length), first.suppress,
                   grip_flare=v['grip_flare'], **_cut_args(v))
