@@ -42,10 +42,11 @@ describe("label card (labels L2)", () => {
       maxLength: 24,
       charset: "printable-ascii",
     });
-    const multi = ["holder-label-card", "holder-tombstone-sign"];
+    const multi = ["holder-label-card", "holder-tombstone-sign", "underware-text-label"];
     const others = (await loadBdManifest()).models.filter((m) => !multi.includes(m.slug));
     expect(others.some((m) => "multiColour" in m)).toBe(false);
     expect((await loadBdModel("holder-tombstone-sign"))?.multiColour).toBe(true);
+    expect((await loadBdModel("underware-text-label"))?.multiColour).toBe(true);
   });
 });
 
@@ -55,7 +56,11 @@ describe("label card camera hint (pst-5b83s)", () => {
       m.presets.filter((p) => "defaultView" in p).map((p) => [m.slug, p.id, p.defaultView]),
     );
     // The tombstone sign prints face up since S3 (pst-tl4ac.3): no hint.
-    expect(hinted).toEqual([["holder-label-card", "inlaid", "bottom"]]);
+    expect(hinted).toEqual([
+      ["holder-label-card", "inlaid", "bottom"],
+      ["underware-text-label", "label-1x5", "bottom"],
+      ["underware-text-label", "label-2x3", "bottom"],
+    ]);
   });
 });
 

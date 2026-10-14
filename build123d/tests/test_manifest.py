@@ -216,6 +216,9 @@ def test_mount_selection_params_are_filename_flagged():
         ("underware_x", "right_length_units"),
         ("underware_x", "left_length_units"),
         ("underware_x", "top_length_units"),
+        ("underware_text_label", "label_width_units"),
+        ("underware_text_label", "label_length_units"),
+        ("underware_text_label", "text_style"),
     }
     models = {m["slug"]: m for m in build_manifest()["models"]}
     for name, param in flagged:
@@ -252,12 +255,14 @@ def test_default_view_is_a_trailing_preset_key_only_when_set():
 
 
 def test_only_the_face_down_inlaid_presets_carry_a_view_hint():
-    """pst-5b83s AC (d): the face-down inlaid card opens on its text face.
+    """pst-5b83s AC (d): the face-down inlaid card opens on its text face;
+    pst-fsk8s.6: and both Underware text-label plates (text in the bed face).
     The tombstone sign prints face up since S3 (pst-tl4ac.3), so none of
     its presets carries a hint (absent = the iso view)."""
     hinted = sorted((m["slug"], p["id"], p["defaultView"])
                     for m in build_manifest()["models"] for p in m["presets"] if "defaultView" in p)
-    assert hinted == [("holder-label-card", "inlaid", "bottom")]
+    assert hinted == [("holder-label-card", "inlaid", "bottom")] + [
+        ("underware-text-label", pid, "bottom") for pid in ("label-1x5", "label-2x3")]
 
 
 def test_validator_rejects_unknown_default_view():

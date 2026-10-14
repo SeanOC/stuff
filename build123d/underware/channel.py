@@ -66,11 +66,12 @@ def present_grips(length_mm: float, suppress: str, grip_flare: float = 0.):
     return out
 
 
-def channel_section(width_mm: float, height_mm: float, separators: str = '') -> Face:
+def channel_section(width_mm: float, height_mm: float, separators: str = '',
+                    top_chamfer: float = c.TOP_CHAMFER) -> Face:
     """The U profile plus the separator walls the codes select (:304-310)."""
     xs = midline_positions(width_mm)
     sep = parse_codes('channel_separators', separators, SEPARATOR_CODES, len(xs))
-    section = monokini_profile(width_mm, height_mm)
+    section = monokini_profile(width_mm, height_mm, top_chamfer)
     for x, code in zip(xs, sep):
         if code == 'S':
             section = section.fuse(separator_rect(x, height_mm)).clean()
@@ -78,13 +79,19 @@ def channel_section(width_mm: float, height_mm: float, separators: str = '') -> 
 
 
 def straight_channel(length_mm: float, width_mm: float, height_mm: float, *,
-                     suppress: str = '', separators: str = '', grip_flare: float = 0.) -> Part:
-    """monokiniChannel (:257-371): profile along Y, one grip per wall per cell."""
+                     suppress: str = '', separators: str = '', grip_flare: float = 0.,
+                     top_chamfer: float = c.TOP_CHAMFER) -> Part:
+    """monokiniChannel (:257-371): profile along Y, one grip per wall per cell.
+
+    top_chamfer=0 with height_mm = SNAP_WALL + BASE_HEIGHT is the text label
+    plate (monokini_text_label.scad:198-280 monokiniPlate): the floor alone,
+    the same grips per cell standing on its top face.
+    """
     if grip_flare > MAX_FLARE_DEG:
         raise ValueError(
             f'grip_flare above {MAX_FLARE_DEG:g} degrees leaves the flared grip base '
             f'overhanging the wall chamfer (a flat, unsupported ledge)')
-    section = channel_section(width_mm, height_mm, separators)
+    section = channel_section(width_mm, height_mm, separators, top_chamfer)
     body = Pos(0, -length_mm/2, 0)*extrude(section, length_mm, dir=(0, 1, 0))
     slits = []
     for y, side, flared in present_grips(length_mm, suppress, grip_flare):
@@ -209,10 +216,13 @@ def check_cutouts(width_mm: float, height_mm: float, cells: list[float], suppres
 
 
 def label_cutter(text: str, text_size: float, depth: float, width_mm: float,
-                 length_mm: float) -> Part:
+                 length_mm: float, face: tuple[float, float] | None = None) -> Part:
     """[C] :191-196: text debossed into the closed (bed) face, read from below
     along +Y, centred. Glyphs come from the repo's labels seam (Inter Bold,
-    labels/label_text.py), not the author's Raleway."""
+    labels/label_text.py), not the author's Raleway.
+
+    face: the (across, along) flat the ink must fit; default the channel's
+    closed face inside its TOP_CHAMFER."""
     from labels.label_text import text_sketch
     sketch = text_sketch(text, size=text_size*c.OPENSCAD_TEXT_SCALE)
     bb = sketch.bounding_box()
@@ -220,10 +230,10 @@ def label_cutter(text: str, text_size: float, depth: float, width_mm: float,
     # spin=-90 then orient=BOT: (x, y) -> (y, x), a mirror read from -Z.
     sketch = mirror(sketch, Plane(origin=(0, 0, 0), z_dir=(1, -1, 0)))
     bb = sketch.bounding_box()
-    flat = width_mm - 2*c.TOP_CHAMFER
-    if bb.size.X > flat or bb.size.Y > length_mm:
+    flat, along = face or (width_mm - 2*c.TOP_CHAMFER, length_mm)
+    if bb.size.X > flat or bb.size.Y > along:
         raise ValueError(f'label {text!r} at size {text_size:g} is {bb.size.Y:.1f} x '
-                         f'{bb.size.X:.1f} mm; the closed face is {length_mm:g} x {flat:g} mm')
+                         f'{bb.size.X:.1f} mm; the closed face is {along:g} x {flat:g} mm')
     return extrude(sketch, depth)
 
 

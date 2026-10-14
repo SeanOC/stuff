@@ -222,6 +222,11 @@ export const BUILD123D_CATALOG: Record<string, CatalogEntry> = {
     blurb:
       'Underware "monokini" four-way crossing with four arm lengths. Snaps into openGrid; set sizes in 28 mm cells and the height, with optional cord exits on the first channel and per-cell grip suppression. By Pedro Leite (Underware 2.0), CC BY-NC-SA 4.0 (non-commercial, share-alike). Prints as shown, closed face down, no supports.',
   },
+  underware_text_label: {
+    categoryId: "multiboard",
+    blurb:
+      'Underware 2.0 "monokini" label plate that snaps into openGrid beside your cable channels: set width and length in 28 mm cells and your text, inlaid in a second colour or debossed. By Pedro Leite after Hands on Katie and BlackjackDuck, CC BY-NC-SA 4.0 (non-commercial, share-alike). Prints text face down, no supports.',
+  },
   holder_tombstone_sign: {
     categoryId: "household",
     blurb:
