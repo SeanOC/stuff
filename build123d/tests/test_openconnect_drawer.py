@@ -351,9 +351,16 @@ def test_endpoint_audit_and_edges(name, values):
     envelope = shell.body(values)-(before-part)
     verify_openconnect_slot(part, fx, min_backing=.8, backing_envelope=envelope)
     inventory, angle = edge_inventory(part, values)
+    # pst-t0ob3.5: sub-Ø2 openings production closed, from the 2D layouts.
+    from drawer.constants import MIN_LATTICE_OPENING_MM
+    from drawer.honeycomb import opening_diameter
+    shut = [x for _, layout in shell.honeycomb_layouts(values, close_openings=False)
+            for prof, _, _ in layout.profiles((1, 0))
+            if (x := opening_diameter(prof)) < MIN_LATTICE_OPENING_MM]
     print(f'AUDIT | {name} | raw wall {raw.min_wall_mm:.3f} | raw overhang {raw.max_overhang_deg:.1f} | '
           f'bridge {raw.longest_bridge_mm:.2f} | analytic unroofed chord {max_unroofed:.6f} | exposed edge {angle:.3f} | '
-          f'filtered wall {report.min_wall_mm:.3f} / overhang {report.max_overhang_deg:.1f} | mount PASS | PASS {inventory}')
+          f'filtered wall {report.min_wall_mm:.3f} / overhang {report.max_overhang_deg:.1f} | '
+          f'closed {len(shut)} / min Ø {min(shut, default=0):.3f} | mount PASS | PASS {inventory}')
 
 
 def test_edge_inventory_rejects_unpublished_protrusion():
