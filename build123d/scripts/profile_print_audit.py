@@ -28,8 +28,7 @@ from build123d import Face, Solid  # noqa: E402
 from holders.registry import all_models  # noqa: E402
 from tests import audit_cache  # noqa: E402
 from tests import print_audit as pa  # noqa: E402
-from tests.mount_contracts import resolve_fixtures  # noqa: E402
-from tests.test_print_audit import _MODEL_EXCLUSIONS  # noqa: E402
+from tests.test_print_audit import _audit_args  # noqa: E402
 from tests.test_spool_cradle import PRINT_CORNER  # noqa: E402
 
 SPECS = {s.name: s for s in all_models()}
@@ -56,34 +55,30 @@ CASES = {
 
 
 def build_case(name):
-    """(part, up, boxes, hmin, audit kwargs) exactly as the case's test audits it."""
+    """(part, up, boxes, hmin, audit kwargs) exactly as the case's test audits it.
+
+    The part comes from the registry audit's own _audit_args. The set-up
+    below mirrors print_audit._audit (frame, then exact-exclusion wrapping),
+    so the phases see what audit() hands them. The returned part is already
+    framed, so the end-to-end audit() gets no print_frame.
+    """
     spec_name, raw, *audit_args = CASES[name]
-    spec = SPECS[spec_name]
-    values = spec.resolve_values(raw)
-    part = spec.build(values)
+    part, kwargs = _audit_args(SPECS[spec_name], raw)
     if audit_args:
-        # The frame is applied here as _audit applies it, so the phases see
-        # the printed part; the end-to-end audit() then needs no frame.
         frame, exclusions = audit_args[0](raw)
+        kwargs.update(orientation=(0.0, 0.0, 1.0), cutters=[],
+                      exclusions=exclusions, print_frame=frame)
+    frame = kwargs.pop("print_frame")
+    cutters, exclusions = list(kwargs["cutters"]), list(kwargs["exclusions"])
+    if frame is not None:
         part = frame * part
+        cutters = [frame * c for c in cutters]
         exclusions = [frame * e for e in exclusions]
-        kwargs = dict(cutters=[], exclusions=exclusions, model=spec.name)
-        up = pa._unit((0.0, 0.0, 1.0))
-        boxes = [pa._ExactExclusion(e) if hasattr(e, "wrapped") else e for e in exclusions]
-        hmin = min(pa._height(v, up) for v in part.vertices())
-        return part, up, boxes, hmin, kwargs
-    cutters = []
-    for mount in spec.mounts:
-        fx = resolve_fixtures(spec, mount, values)
-        if fx is not None:
-            cutters.extend(fx.cutters)
-    excl = _MODEL_EXCLUSIONS.get(spec.name)
-    exclusions = [excl(values)] if excl else []
-    up = pa._unit(spec.print_orientation)
-    boxes = pa._cutter_boxes(cutters) + exclusions
+    kwargs.update(cutters=cutters, exclusions=exclusions)
+    up = pa._unit(kwargs["orientation"])
+    boxes = pa._cutter_boxes(cutters) + [
+        pa._ExactExclusion(e) if hasattr(e, "wrapped") else e for e in exclusions]
     hmin = min(pa._height(v, up) for v in part.vertices())
-    kwargs = dict(orientation=spec.print_orientation, cutters=cutters,
-                  exclusions=exclusions, model=spec.name)
     return part, up, boxes, hmin, kwargs
 
 
