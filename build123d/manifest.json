@@ -2205,6 +2205,540 @@
       ]
     },
     {
+      "slug": "underware-l",
+      "engine": "build123d",
+      "title": "Underware L cable-channel corner (openGrid)",
+      "blurb": "90\u00b0 Underware \"monokini\" channel corner with two arms, optional mirroring and a larger bend radius. Snaps into openGrid; set sizes in 28 mm cells and the height, with optional cord exits on the first channel and per-cell grip suppression. By Pedro Leite (Underware 2.0), CC BY-NC-SA 4.0 (non-commercial, share-alike). Prints as shown, closed face down, no supports.",
+      "categoryId": "multiboard",
+      "params": [
+        {
+          "name": "channel_width_units",
+          "label": "Width (28 mm units)",
+          "group": "Channel Size",
+          "kind": "integer",
+          "default": 1,
+          "min": 1,
+          "max": 4,
+          "step": 1,
+          "filename": true
+        },
+        {
+          "name": "channel_total_height",
+          "label": "Height including grips",
+          "group": "Channel Size",
+          "unit": "mm",
+          "kind": "number",
+          "default": 22,
+          "min": 10,
+          "max": 72,
+          "step": 6,
+          "filename": true
+        },
+        {
+          "name": "length_y_units",
+          "label": "Arm along Y (28 mm units)",
+          "group": "Channel Size",
+          "kind": "integer",
+          "default": 1,
+          "min": 1,
+          "max": 10,
+          "step": 1,
+          "filename": true
+        },
+        {
+          "name": "length_x_units",
+          "label": "Arm along X (28 mm units)",
+          "group": "Channel Size",
+          "kind": "integer",
+          "default": 1,
+          "min": 1,
+          "max": 10,
+          "step": 1,
+          "filename": true
+        },
+        {
+          "name": "mirror_channel",
+          "label": "Mirror (arm along -X)",
+          "group": "Channel Size",
+          "kind": "boolean",
+          "default": false
+        },
+        {
+          "name": "added_radius",
+          "label": "Added bend radius (28 mm units)",
+          "group": "Channel Size",
+          "kind": "integer",
+          "default": 0,
+          "min": 0,
+          "max": 2,
+          "step": 1
+        },
+        {
+          "name": "number_of_cord_cutouts",
+          "label": "Number of cord cutouts (first channel)",
+          "group": "Cord Cutouts",
+          "kind": "integer",
+          "default": 0,
+          "min": 0,
+          "max": 12,
+          "step": 1
+        },
+        {
+          "name": "cord_side_cutouts",
+          "label": "Cutout side",
+          "group": "Cord Cutouts",
+          "kind": "enum",
+          "default": "Both Sides",
+          "choices": [
+            "Left Side",
+            "Right Side",
+            "Both Sides",
+            "None",
+            "Left Side Top",
+            "Right Side Top"
+          ]
+        },
+        {
+          "name": "cord_cutout_width",
+          "label": "Cutout width",
+          "group": "Cord Cutouts",
+          "unit": "mm",
+          "kind": "number",
+          "default": 12,
+          "min": 6,
+          "max": 20,
+          "step": 1
+        },
+        {
+          "name": "distance_between_cutouts",
+          "label": "Distance between cutouts",
+          "group": "Cord Cutouts",
+          "unit": "mm",
+          "kind": "number",
+          "default": 28,
+          "min": 14,
+          "max": 56,
+          "step": 1
+        },
+        {
+          "name": "shift_cutouts",
+          "label": "Shift cutouts along the channel",
+          "group": "Cord Cutouts",
+          "unit": "mm",
+          "kind": "number",
+          "default": 0,
+          "min": 0,
+          "max": 28,
+          "step": 1
+        },
+        {
+          "name": "grip_flare",
+          "label": "Grip flare",
+          "group": "Advanced",
+          "unit": "deg",
+          "kind": "number",
+          "default": 0,
+          "min": 0,
+          "max": 15,
+          "step": 0.1
+        },
+        {
+          "name": "suppress_connectors",
+          "label": "Suppress grips per cell (N/L/R/B/S; comma per channel: Y arm, X arm)",
+          "group": "Advanced",
+          "kind": "string",
+          "default": "",
+          "maxLength": 48,
+          "charset": "printable-ascii"
+        },
+        {
+          "name": "channel_separators",
+          "label": "Separator walls (N/S per midline)",
+          "group": "Advanced",
+          "kind": "string",
+          "default": "",
+          "maxLength": 24,
+          "charset": "printable-ascii"
+        }
+      ],
+      "presets": [
+        {
+          "id": "L",
+          "label": "1 \u00d7 1 arms, 22 mm",
+          "values": {}
+        },
+        {
+          "id": "L-mirrored",
+          "label": "Mirrored, 1 \u00d7 1 arms",
+          "values": {
+            "mirror_channel": true
+          }
+        },
+        {
+          "id": "L-tall",
+          "label": "2 wide, 2 \u00d7 2 arms, 34 mm",
+          "values": {
+            "channel_width_units": 2,
+            "length_y_units": 2,
+            "length_x_units": 2,
+            "channel_total_height": 34
+          }
+        }
+      ]
+    },
+    {
+      "slug": "underware-t",
+      "engine": "build123d",
+      "title": "Underware T cable-channel junction (openGrid)",
+      "blurb": "Underware \"monokini\" T junction: a stem and two arms, each with its own width and length. Snaps into openGrid; set sizes in 28 mm cells and the height, with optional cord exits on the first channel and per-cell grip suppression. By Pedro Leite (Underware 2.0), CC BY-NC-SA 4.0 (non-commercial, share-alike). Prints as shown, closed face down, no supports.",
+      "categoryId": "multiboard",
+      "params": [
+        {
+          "name": "width_bottom_units",
+          "label": "Stem width (28 mm units)",
+          "group": "Channel Size",
+          "kind": "integer",
+          "default": 1,
+          "min": 1,
+          "max": 4,
+          "step": 1,
+          "filename": true
+        },
+        {
+          "name": "width_left_units",
+          "label": "Left arm width (28 mm units)",
+          "group": "Channel Size",
+          "kind": "integer",
+          "default": 1,
+          "min": 1,
+          "max": 4,
+          "step": 1,
+          "filename": true
+        },
+        {
+          "name": "width_right_units",
+          "label": "Right arm width (28 mm units)",
+          "group": "Channel Size",
+          "kind": "integer",
+          "default": 1,
+          "min": 1,
+          "max": 4,
+          "step": 1,
+          "filename": true
+        },
+        {
+          "name": "channel_total_height",
+          "label": "Height including grips",
+          "group": "Channel Size",
+          "unit": "mm",
+          "kind": "number",
+          "default": 22,
+          "min": 10,
+          "max": 72,
+          "step": 6,
+          "filename": true
+        },
+        {
+          "name": "stem_length_units",
+          "label": "Stem length (28 mm units)",
+          "group": "Channel Size",
+          "kind": "integer",
+          "default": 1,
+          "min": 1,
+          "max": 10,
+          "step": 1,
+          "filename": true
+        },
+        {
+          "name": "left_length_units",
+          "label": "Left arm length (28 mm units)",
+          "group": "Channel Size",
+          "kind": "integer",
+          "default": 1,
+          "min": 1,
+          "max": 9,
+          "step": 1,
+          "filename": true
+        },
+        {
+          "name": "right_length_units",
+          "label": "Right arm length (28 mm units)",
+          "group": "Channel Size",
+          "kind": "integer",
+          "default": 1,
+          "min": 1,
+          "max": 9,
+          "step": 1,
+          "filename": true
+        },
+        {
+          "name": "number_of_cord_cutouts",
+          "label": "Number of cord cutouts (first channel)",
+          "group": "Cord Cutouts",
+          "kind": "integer",
+          "default": 0,
+          "min": 0,
+          "max": 12,
+          "step": 1
+        },
+        {
+          "name": "cord_side_cutouts",
+          "label": "Cutout side",
+          "group": "Cord Cutouts",
+          "kind": "enum",
+          "default": "Both Sides",
+          "choices": [
+            "Left Side",
+            "Right Side",
+            "Both Sides",
+            "None",
+            "Left Side Top",
+            "Right Side Top"
+          ]
+        },
+        {
+          "name": "cord_cutout_width",
+          "label": "Cutout width",
+          "group": "Cord Cutouts",
+          "unit": "mm",
+          "kind": "number",
+          "default": 12,
+          "min": 6,
+          "max": 20,
+          "step": 1
+        },
+        {
+          "name": "distance_between_cutouts",
+          "label": "Distance between cutouts",
+          "group": "Cord Cutouts",
+          "unit": "mm",
+          "kind": "number",
+          "default": 28,
+          "min": 14,
+          "max": 56,
+          "step": 1
+        },
+        {
+          "name": "shift_cutouts",
+          "label": "Shift cutouts along the channel",
+          "group": "Cord Cutouts",
+          "unit": "mm",
+          "kind": "number",
+          "default": 0,
+          "min": 0,
+          "max": 28,
+          "step": 1
+        },
+        {
+          "name": "grip_flare",
+          "label": "Grip flare",
+          "group": "Advanced",
+          "unit": "deg",
+          "kind": "number",
+          "default": 0,
+          "min": 0,
+          "max": 15,
+          "step": 0.1
+        },
+        {
+          "name": "suppress_connectors",
+          "label": "Suppress grips per cell (N/L/R/B/S; comma per channel: stem, right arm, left arm, node)",
+          "group": "Advanced",
+          "kind": "string",
+          "default": "",
+          "maxLength": 48,
+          "charset": "printable-ascii"
+        }
+      ],
+      "presets": [
+        {
+          "id": "T",
+          "label": "1 \u00d7 1 \u00d7 1 arms, 22 mm",
+          "values": {}
+        },
+        {
+          "id": "T-tall",
+          "label": "2 \u00d7 2 \u00d7 2 arms, 34 mm",
+          "values": {
+            "stem_length_units": 2,
+            "left_length_units": 2,
+            "right_length_units": 2,
+            "channel_total_height": 34
+          }
+        }
+      ]
+    },
+    {
+      "slug": "underware-x",
+      "engine": "build123d",
+      "title": "Underware X cable-channel crossing (openGrid)",
+      "blurb": "Underware \"monokini\" four-way crossing with four arm lengths. Snaps into openGrid; set sizes in 28 mm cells and the height, with optional cord exits on the first channel and per-cell grip suppression. By Pedro Leite (Underware 2.0), CC BY-NC-SA 4.0 (non-commercial, share-alike). Prints as shown, closed face down, no supports.",
+      "categoryId": "multiboard",
+      "params": [
+        {
+          "name": "channel_width_units",
+          "label": "Width (28 mm units)",
+          "group": "Channel Size",
+          "kind": "integer",
+          "default": 1,
+          "min": 1,
+          "max": 4,
+          "step": 1,
+          "filename": true
+        },
+        {
+          "name": "channel_total_height",
+          "label": "Height including grips",
+          "group": "Channel Size",
+          "unit": "mm",
+          "kind": "number",
+          "default": 22,
+          "min": 10,
+          "max": 72,
+          "step": 6,
+          "filename": true
+        },
+        {
+          "name": "bottom_length_units",
+          "label": "Bottom arm length (28 mm units)",
+          "group": "Channel Size",
+          "kind": "integer",
+          "default": 1,
+          "min": 1,
+          "max": 9,
+          "step": 1,
+          "filename": true
+        },
+        {
+          "name": "right_length_units",
+          "label": "Right arm length (28 mm units)",
+          "group": "Channel Size",
+          "kind": "integer",
+          "default": 1,
+          "min": 1,
+          "max": 9,
+          "step": 1,
+          "filename": true
+        },
+        {
+          "name": "left_length_units",
+          "label": "Left arm length (28 mm units)",
+          "group": "Channel Size",
+          "kind": "integer",
+          "default": 1,
+          "min": 1,
+          "max": 9,
+          "step": 1,
+          "filename": true
+        },
+        {
+          "name": "top_length_units",
+          "label": "Top arm length (28 mm units)",
+          "group": "Channel Size",
+          "kind": "integer",
+          "default": 1,
+          "min": 1,
+          "max": 9,
+          "step": 1,
+          "filename": true
+        },
+        {
+          "name": "number_of_cord_cutouts",
+          "label": "Number of cord cutouts (first channel)",
+          "group": "Cord Cutouts",
+          "kind": "integer",
+          "default": 0,
+          "min": 0,
+          "max": 12,
+          "step": 1
+        },
+        {
+          "name": "cord_side_cutouts",
+          "label": "Cutout side",
+          "group": "Cord Cutouts",
+          "kind": "enum",
+          "default": "Both Sides",
+          "choices": [
+            "Left Side",
+            "Right Side",
+            "Both Sides",
+            "None"
+          ]
+        },
+        {
+          "name": "cord_cutout_width",
+          "label": "Cutout width",
+          "group": "Cord Cutouts",
+          "unit": "mm",
+          "kind": "number",
+          "default": 12,
+          "min": 6,
+          "max": 20,
+          "step": 1
+        },
+        {
+          "name": "distance_between_cutouts",
+          "label": "Distance between cutouts",
+          "group": "Cord Cutouts",
+          "unit": "mm",
+          "kind": "number",
+          "default": 28,
+          "min": 14,
+          "max": 56,
+          "step": 1
+        },
+        {
+          "name": "shift_cutouts",
+          "label": "Shift cutouts along the channel",
+          "group": "Cord Cutouts",
+          "unit": "mm",
+          "kind": "number",
+          "default": 0,
+          "min": 0,
+          "max": 28,
+          "step": 1
+        },
+        {
+          "name": "grip_flare",
+          "label": "Grip flare",
+          "group": "Advanced",
+          "unit": "deg",
+          "kind": "number",
+          "default": 0,
+          "min": 0,
+          "max": 15,
+          "step": 0.1
+        },
+        {
+          "name": "suppress_connectors",
+          "label": "Suppress grips per cell (N/L/R/B/S; comma per channel: bottom, right, left, top)",
+          "group": "Advanced",
+          "kind": "string",
+          "default": "",
+          "maxLength": 48,
+          "charset": "printable-ascii"
+        }
+      ],
+      "presets": [
+        {
+          "id": "X",
+          "label": "1 \u00d7 1 \u00d7 1 \u00d7 1 arms, 22 mm",
+          "values": {}
+        },
+        {
+          "id": "X-tall",
+          "label": "2 \u00d7 2 \u00d7 2 \u00d7 2 arms, 34 mm",
+          "values": {
+            "bottom_length_units": 2,
+            "right_length_units": 2,
+            "left_length_units": 2,
+            "top_length_units": 2,
+            "channel_total_height": 34
+          }
+        }
+      ]
+    },
+    {
       "slug": "gridfinity-capture-bin",
       "engine": "build123d",
       "title": "Gridfinity capture bin",
