@@ -54,13 +54,8 @@ describe("label card camera hint (pst-5b83s)", () => {
     const hinted = (await loadBdManifest()).models.flatMap((m) =>
       m.presets.filter((p) => "defaultView" in p).map((p) => [m.slug, p.id, p.defaultView]),
     );
-    expect(hinted).toEqual([
-      ["holder-tombstone-sign", "default", "bottom"],
-      ["holder-tombstone-sign", "three-colour", "bottom"],
-      ["holder-tombstone-sign", "pinned", "bottom"],
-      ["holder-tombstone-sign", "small", "bottom"],
-      ["holder-label-card", "inlaid", "bottom"],
-    ]);
+    // The tombstone sign prints face up since S3 (pst-tl4ac.3): no hint.
+    expect(hinted).toEqual([["holder-label-card", "inlaid", "bottom"]]);
   });
 });
 
