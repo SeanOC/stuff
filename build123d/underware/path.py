@@ -32,8 +32,8 @@ STUB = c.CHANNEL_SEPARATION   # mitre bend's lead-out (:501 channelWidthSeparati
 BEZIER_SAMPLES = 2000
 # The end grip of a run stops SPACING_FROM_CHANNEL short of the vertex; past
 # the corner of the inside wall's inner face (on the mitre plane) the grip's
-# foot overhangs the channel (probe: 6.22 mm setback clean, 6.57 a 0.007 mm2
-# sliver, 6.92 a 0.42 mm one, all at z = height - BASE_HEIGHT).
+# foot overhangs the channel (probes: 6.50 mm setback clean, 6.53 a 0.0005
+# mm2 sliver, 6.92 a 0.42 mm one, at z = height - BASE_HEIGHT).
 MAX_SETBACK = c.SPACING_FROM_CHANNEL
 
 

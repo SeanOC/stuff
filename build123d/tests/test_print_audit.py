@@ -524,6 +524,7 @@ from holders.underware_i_channel import audit_exclusions as underware_families
 from holders.underware_transition import audit_exclusions as transition_families
 from holders.underware_junctions import audit_exclusions as junction_families
 from holders.underware_text_label import audit_exclusions as text_label_families
+from holders.underware_path_channels import audit_exclusions as path_families
 
 _MODEL_EXCLUSIONS = {
     'holder_cup_lid': lambda values: [_cup_lid_shank_exclusion(values)],
@@ -538,6 +539,8 @@ _MODEL_EXCLUSIONS = {
     'underware_t': lambda values: [r for f in junction_families('underware_t', values).values() for r in f],
     'underware_x': lambda values: [r for f in junction_families('underware_x', values).values() for r in f],
     'underware_text_label': lambda values: [r for f in text_label_families(values).values() for r in f],
+    'underware_path_channel': lambda values: [
+        r for f in path_families('underware_path_channel', values).values() for r in f],
 }
 
 

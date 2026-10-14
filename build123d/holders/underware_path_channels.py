@@ -40,7 +40,7 @@ from underware.grip import end_ramp_regions, slit_floor_regions
 
 MAX_RUN = 9
 MAX_OVER = 10
-MAX_UP = 10
+MAX_UP = 9      # (1 + 1 + 10) cells of the shortest part already pass the 325 mm bed
 
 
 def _cut_args(v):
@@ -230,7 +230,10 @@ SPEC_PATH = register(ModelSpec(
     ),
 ))
 
-SPEC_MITRE = register(ModelSpec(
+# Not registered yet: the 45 degree frame stands the mitre on two edges with
+# no bed face, and the bend fails the audit there (pst-fsk8s.3 question to
+# the mayor). The geometry and its parity tests ship; the catalog entry waits.
+SPEC_MITRE = ModelSpec(
     name='underware_mitre',
     title='Underware mitre cable-channel corner (openGrid)',
     description='Underware "monokini" channel that turns 90° from one openGrid board onto a '
@@ -257,4 +260,4 @@ SPEC_MITRE = register(ModelSpec(
                                                               'channel_total_height': 28,
                                                               'added_radius': 1}),
     ),
-))
+)
