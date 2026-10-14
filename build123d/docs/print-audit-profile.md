@@ -192,9 +192,22 @@ nothing.
 
 **Key.** The key is a sha256 over four parts, in this order:
 
-1. **The part's BREP bytes.** `BRepTools.Write` runs without triangulation. The
-   Free/Modified/Checked TShape bits are zeroed, because `is_valid` and
-   tessellation flip them without changing the geometry.
+1. **The part's shape signature** (`audit_cache.shape_sig`). A geometry copy
+   is meshed at tolerance 0.01. Each face contributes its sorted mesh
+   vertices and its area, both rounded to 1e-6, and the face list is sorted
+   and hashed. The audited part itself is never meshed. The I2 determinism
+   gate rejected two simpler forms:
+   - **BREP bytes.** OCCT orders topology records by TShape address, so
+     `holder-tombstone-sign/pinned`, `holder-tombstone-stake/pinned` and
+     `littletikes-dream-machine-cartridge-holder/default` write different
+     BREPs across processes, or within one process depending on what was
+     built first. The geometry is the same each time.
+   - **Sorted triangle centroids.** The tombstone presets mesh to the same
+     vertices (within 3e-14), but the mesher picks different diagonals on
+     planar faces. Per-face vertex sets do not depend on the diagonals, and
+     the area separates two faces that share a vertex set.
+
+   A signature costs under 1.2 s on the largest part.
 2. **The audit code.** This is the text of `tests/print_audit.py` and
    `tests/audit_cache.py`, plus every UPPER_CASE module constant of
    `print_audit` read at call time. It also takes `holders.printer`'s
@@ -210,13 +223,13 @@ nothing.
    - **Cutters:** each one keys as the bbox of the cutter as `_cutter_boxes`
      receives it, after `print_frame` moves it. The list is sorted.
    - **Exclusions:** sorted. The form depends on the element:
-     - A Shape keys as its BREP sha. A bbox key would make a hexagonal
+     - A Shape keys as its shape signature. A bbox key would make a hexagonal
        ceiling facet and a rectangle with the same bbox collide.
      - A 6-tuple keys as its rounded numbers.
      - An analytic predicate (`is_inside`, no `.wrapped`) keys as its
        qualified class name, the sha256 of `inspect.getsource` of its class,
        and the total canonical JSON of `vars()`. In that JSON, numbers are
-       rounded, a Shape becomes its BREP sha, a BoundBox becomes its corners,
+       rounded, a Shape becomes its shape signature, a BoundBox becomes its corners,
        and containers are walked recursively.
 
 If any argument has no faithful form, the call is **uncacheable**: it runs,

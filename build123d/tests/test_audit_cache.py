@@ -109,6 +109,18 @@ def test_same_part_rebuilt_is_a_hit_and_a_changed_dimension_a_miss(store):
     assert _delta(before) == {"hits": 0, "misses": 1, "off": 0}
 
 
+def test_key_leaves_no_mesh_on_the_part():
+    """shape_sig meshes a copy: a triangulation left on the audited part
+    would change what the cold audit after the key computation sees."""
+    from OCP.BRep import BRep_Tool
+    from OCP.TopLoc import TopLoc_Location
+
+    part = _filleted_box()
+    audit_cache.key(part, UP, exclusions=[_hex_facet()])
+    assert not any(BRep_Tool.Triangulation_s(f.wrapped, TopLoc_Location())
+                   for f in part.faces())
+
+
 def test_changed_audit_source_is_a_miss(monkeypatch):
     part = _filleted_box()
     k = audit_cache.key(part, UP)
@@ -438,13 +450,17 @@ def test_production_row_keys_identically_in_one_process(row):
 
 @pytest.mark.audit  # ~3 min: two interpreters build all 51 presets (I2's 60 s rule)
 def test_every_manifest_preset_keys_identically_across_processes():
-    """I2: BREP bytes (part + exclusion solids) and the analytic forms are
-    stable — every manifest preset yields one key in two interpreters."""
+    """I2: the shape signatures (part + exclusion solids) and the analytic
+    forms are stable — every manifest preset yields one key in two
+    interpreters."""
     procs = [_start_module("presets"), _start_module("presets")]
     first, second = (_result(p) for p in procs)
     assert sorted(first) == sorted(second)
-    unstable = sorted(k for k in first if first[k] != second[k])
+    unstable = sorted(k for k in first if first[k][1] != second[k][1])
     assert not unstable, unstable
+    # Diagnostic only (I2 notes): presets whose raw BREP bytes differ — the
+    # reason the key uses audit_cache.shape_sig instead.
+    print("BREP-UNSTABLE", sorted(k for k in first if first[k][0] != second[k][0]))
 
 
 def _main(argv):

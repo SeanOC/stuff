@@ -4,9 +4,12 @@ An audit of geometry already audited by the same audit code returns the stored
 ``PrintAuditReport`` instead of re-running the 10-80 s BRep audit. The key is a
 sha256 over, in order (docs/print-audit-profile.md "Cache"):
 
-(a) the part's BREP bytes (triangulation excluded; the TShape bookkeeping bits
-    Free/Modified/Checked zeroed — ``is_valid`` or a tessellation flips them
-    without touching geometry);
+(a) the part's canonical tessellation signature (``shape_sig``: per face,
+    the sorted mesh vertices at tolerance 0.01 and the area, rounded to 1e-6;
+    faces sorted). The I2 gate found
+    BREP bytes unstable: OCCT orders topology records by TShape address, so
+    cartridge_holder/default serialises two ways in one process depending on
+    what was allocated before it (same geometry, same volume, same mesh);
 (b) the audit CODE identity: sha256 of print_audit.py + this file, plus every
     numeric module constant of print_audit read at call time, the bed tuple
     read from ``holders.printer`` at call time and the two frozen bed defaults
@@ -22,6 +25,7 @@ disables it; ``disabled()`` forces a cold audit (the budget path).
 from __future__ import annotations
 
 import contextlib
+import copy
 import dataclasses
 import hashlib
 import inspect
@@ -75,6 +79,45 @@ def disabled():
 
 def _num(x) -> float:
     return round(float(x), 6) + 0.0  # + 0.0 folds -0.0 into 0.0
+
+
+def shape_sig(shape, tolerance=0.01) -> str:
+    """sha256 of ``shape``'s canonical tessellation signature (I2): a geometry
+    copy meshed at ``tolerance``; per face, its mesh vertices (sorted, rounded
+    to 1e-6) and its area (rounded to 1e-6); the faces sorted.
+
+    Triangle centroids (the spec's first fallback) failed the cross-process
+    gate on holder-tombstone-sign/pinned: identical vertices (3e-14) but the
+    mesher picks different diagonals on planar faces. Per-face vertex sets do
+    not depend on the diagonals, and the area separates two faces sharing one
+    vertex set (a convex and a notched outline).
+
+    Meshes a copy (``Shape.__deepcopy__`` = BRepBuilderAPI_Copy, no mesh
+    carried over), never ``shape`` itself: a triangulation left on the
+    audited part would change what a cold audit sees (non-optimal bounding
+    boxes read it)."""
+    import numpy as np
+    from OCP.BRep import BRep_Tool
+    from OCP.TopLoc import TopLoc_Location
+
+    mesh = copy.deepcopy(shape)
+    mesh.mesh(tolerance)
+    faces = []
+    for face in mesh.faces():
+        loc = TopLoc_Location()
+        poly = BRep_Tool.Triangulation_s(face.wrapped, loc)
+        if poly is None:
+            raise Uncacheable("a face has no triangulation")
+        trsf = loc.Transformation()
+        points = (poly.Node(i).Transformed(trsf) for i in range(1, poly.NbNodes() + 1))
+        v = np.array([(p.X(), p.Y(), p.Z()) for p in points], dtype=float)
+        v = np.round(v, 6) + 0.0  # + 0.0 folds -0.0
+        v = np.unique(v, axis=0)  # sorted rows; seam nodes appear twice
+        faces.append(hashlib.sha256(v.tobytes()).hexdigest()
+                     + f":{_num(face.area)}")
+    if not faces:
+        raise Uncacheable(f"{type(shape).__qualname__} without faces")
+    return hashlib.sha256("\n".join(sorted(faces)).encode()).hexdigest()
 
 
 def brep_sha(shape) -> str:
@@ -156,7 +199,7 @@ def _canon(value):
     if isinstance(value, BoundBox):
         return {"bbox": [_num(v) for v in (*value.min, *value.max)]}
     if isinstance(value, Shape):
-        return {"brep": brep_sha(value)}
+        return {"shape": shape_sig(value)}
     if isinstance(value, (list, tuple)):
         return [_canon(v) for v in value]
     if isinstance(value, dict):
@@ -168,7 +211,7 @@ def _canon(value):
 
 def _exclusion(e):
     if hasattr(e, "wrapped"):
-        return {"brep": brep_sha(e)}
+        return {"shape": shape_sig(e)}
     if hasattr(e, "is_inside"):
         cls = type(e)
         try:
@@ -224,7 +267,7 @@ def key(part, orientation=(0.0, 0.0, 1.0), *, cutters=(), exclusions=(), model="
         raise Uncacheable(f"part of type {type(part).__qualname__}")
     h = hashlib.sha256()
     for component in (
-        brep_sha(part),
+        shape_sig(part),
         {"source": _source_hash(), "thresholds": _thresholds()},
         _versions(),
         _args(orientation, list(cutters), list(exclusions), model, print_frame),
