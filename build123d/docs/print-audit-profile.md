@@ -180,3 +180,106 @@ The cradle's own 120 s entry in `test_print_audit._MODEL_BUDGET_S` is
 removed. The cradle now falls under the 60 s default: 11–12 s of audit plus
 about 3 s of build, measured serially. That leaves about 4× headroom for
 CI's slower cores. The default stays at 60 s and nothing was loosened.
+
+## Cache
+
+`audit()` answers from `tests/audit_cache.py` (pst-sx1g3) when the same
+geometry, arguments and audit code were audited before. One JSON file per key
+holds the stored `PrintAuditReport`. A hit returns a report equal to the stored
+one, field by field. It costs the key build (under 1.2 s on the largest part)
+instead of the 10–80 s audit, and that key time is not counted in `audit_s`. A
+report is stored only after an audit returns; an audit that raises stores
+nothing.
+
+**Key.** The key is a sha256 over four parts, in this order:
+
+1. **The part's shape signature** (`audit_cache.shape_sig`). A geometry copy
+   is meshed at tolerance 0.01. Each face contributes its sorted mesh
+   vertices and its area, both rounded to 1e-6, and the face list is sorted
+   and hashed. The audited part itself is never meshed. The I2 determinism
+   gate rejected two simpler forms:
+   - **BREP bytes.** OCCT orders topology records by TShape address, so
+     `holder-tombstone-sign/pinned`, `holder-tombstone-stake/pinned` and
+     `littletikes-dream-machine-cartridge-holder/default` write different
+     BREPs across processes, or within one process depending on what was
+     built first. The geometry is the same each time.
+   - **Sorted triangle centroids.** The tombstone presets mesh to the same
+     vertices (within 3e-14), but the mesher picks different diagonals on
+     planar faces. Per-face vertex sets do not depend on the diagonals, and
+     the area separates two faces that share a vertex set.
+
+   A signature costs under 1.2 s on the largest part.
+2. **The audit code.** This is the text of `tests/print_audit.py` and
+   `tests/audit_cache.py`, plus every UPPER_CASE module constant of
+   `print_audit` read at call time. It also takes `holders.printer`'s
+   `BED_X/BED_Y/BED_Z` read at call time, and the frozen bed defaults of
+   `bed_failure` and `PrintAuditReport`. A threshold change in any file
+   changes the key.
+3. **The installed versions** of build123d, OCP and Python.
+4. **Canonical JSON of the other arguments:**
+   - **Orientation:** rounded to 1e-6.
+   - **`print_frame`:** position plus Euler orientation, rounded to 1e-6.
+     Euler degeneracy can only cause a spurious miss, never a false hit.
+   - **Model label:** used as is.
+   - **Cutters:** each one keys as the bbox of the cutter as `_cutter_boxes`
+     receives it, after `print_frame` moves it. The list is sorted.
+   - **Exclusions:** sorted. The form depends on the element:
+     - A Shape keys as its shape signature. A bbox key would make a hexagonal
+       ceiling facet and a rectangle with the same bbox collide.
+     - A 6-tuple keys as its rounded numbers.
+     - An analytic predicate (`is_inside`, no `.wrapped`) keys as its
+       qualified class name, the sha256 of `inspect.getsource` of its class,
+       and the total canonical JSON of `vars()`. In that JSON, numbers are
+       rounded, a Shape becomes its shape signature, a BoundBox becomes its corners,
+       and containers are walked recursively.
+
+If any argument has no faithful form, the call is **uncacheable**: it runs,
+nothing is stored, and it counts as `off`. This covers any other type, a
+predicate whose source cannot be read, and a `vars()` entry of an unknown
+type. **An exclusion predicate must be self-contained.** If its `is_inside`
+delegates to a module-level helper or constant, editing that helper changes
+the behaviour but not the key.
+**A test that monkeypatches an audit helper must turn the cache off.** The
+key covers the source bytes of `print_audit.py` and `audit_cache.py` and the
+UPPER_CASE constants, so a patched constant changes the key but a patched
+lowercase helper (for example `_face_in_box`) does not. Without the switch
+the patched call is a hit and never runs. Wrap that call in
+`audit_cache.disabled()`, as
+`test_cartridge_holder.py::test_rectangular_exclusion_fast_path_is_equivalent`
+does.
+
+**Switch.** The default store is `build123d/.cache/audit/`, which is
+gitignored. `BD_AUDIT_CACHE=<dir>` moves it and `BD_AUDIT_CACHE=off` disables
+it. A corrupt or unreadable entry is logged and treated as a miss, and the
+next store overwrites it. Writes are atomic, so xdist workers can store the
+same key at the same time.
+
+**The budget stays cold.** bd123's serial `audit budgets` step sets
+`BD_AUDIT_CACHE: off`. Independently, `test_print_audit._timed_audit(cold=True)`
+runs the timed audit under `audit_cache.disabled()` and asserts that it was
+not a hit. A cached audit would make the 60 s and 90 s budgets trivially
+true.
+
+**Observability.** Every pytest session ends with this line:
+`AUDIT-CACHE hits=N misses=M off=K audit_s=S`. `audit_s` is the summed CPU
+seconds of the cache misses; off/uncacheable audits count under `off` but are
+not timed. Under xdist there is one line per worker (`worker=gwN`) and a
+`worker=all` total.
+
+**CI.** The `audit` job and each `audit_full` shard restore and save
+`build123d/.cache/audit` with `actions/cache@v4`. The key is
+`bd-audit-<hash of print_audit.py, audit_cache.py, uv.lock>-<job>-<run id>`
+(`<job>` is `audit` or the shard number), and each job restores its own prefix
+`bd-audit-<hash>-<job>-`. `actions/cache` restores only the newest single
+entry that matches the prefix, not a union of entries. A prefix shared by all
+jobs therefore restored whichever job saved last, often a small shard archive,
+and on PR #204 that left the `audit` job cold until it hit its timeout. The
+fast job does not cache.
+
+**Clear it.** Run `rm -rf build123d/.cache/audit`. In CI, delete the
+`bd-audit-*` caches in the repo's Actions → Caches page, or change either
+hashed file.
+
+**Equality proofs and timings.** Run `scripts/audit_equality_proof.py` and
+any timing work with `BD_AUDIT_CACHE=off`. Otherwise the "new CPU s" column
+times cache hits.

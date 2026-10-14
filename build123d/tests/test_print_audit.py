@@ -16,6 +16,7 @@ Two layers, mirroring test_mount_contracts.py:
 Flip ``PRINT_AUDIT_REQUIRED = True`` (one line) to make the registry run a
 hard gate once the holder passes its own audit (design-guidelines §6 / AC 3).
 """
+import contextlib
 import os
 import sys
 import time
@@ -45,6 +46,7 @@ from opengrid.base import Base  # noqa: E402
 from opengrid.multiconnect import SnapInSlotCutter  # noqa: E402
 
 from holders.registry import all_models  # noqa: E402
+from tests import audit_cache  # noqa: E402
 from tests.audit_record import record
 from tests.mount_contracts import resolve_fixtures  # noqa: E402
 from holders.printer import BED_X, BED_Y, BED_Z  # noqa: E402
@@ -549,11 +551,12 @@ _MODEL_EXCLUSIONS = {
 }
 
 
-# pst-mxfqk: spec.name -> (report, seconds). Both registry tests below need the
-# same build + audit; doing it once per process halves the suite's audit time.
-# Never invalidated: specs are read-only for the whole run (and each xdist
-# worker has its own copy). A test that mutates a spec must not read this.
-_AUDITS: dict[str, tuple[PrintAuditReport, float]] = {}
+# pst-mxfqk: spec.name -> (report, seconds, cache hit). Both registry tests
+# below need the same build + audit; doing it once per process halves the
+# suite's audit time. Never invalidated: specs are read-only for the whole run
+# (and each xdist worker has its own copy). A test that mutates a spec must not
+# read this.
+_AUDITS: dict[str, tuple[PrintAuditReport, float, bool]] = {}
 
 
 def _audit_model(spec) -> PrintAuditReport:
@@ -562,22 +565,35 @@ def _audit_model(spec) -> PrintAuditReport:
     return _timed_audit(spec)[0]
 
 
-def _timed_audit(spec) -> tuple[PrintAuditReport, float]:
-    """(report, CPU seconds of the first build + audit) for ``spec``.
+def _timed_audit(spec, *, cold=False) -> tuple[PrintAuditReport, float, bool]:
+    """(report, CPU seconds of the build + audit, answered from cache).
 
     process_time, not wall time, so waiting for a free core is not charged
     (pst-mxfqk). It still counts slower execution on a shared hyperthread
     core, so it is only comparable to the budget in a serial run.
+
+    ``cold`` (the budget path, pst-sx1g3): the timed audit runs with the audit
+    cache disabled — a memoised cache hit is re-timed cold — and the helper
+    asserts the audit it timed was not a hit, so the budget can never be met
+    by the cache, whatever BD_AUDIT_CACHE says.
     """
-    if spec.name not in _AUDITS:
+    entry = _AUDITS.get(spec.name)
+    if entry is None or (cold and entry[2]):
+        hits = audit_cache.COUNTS["hits"]
         start = time.process_time()
-        report = _build_and_audit(spec)
-        _AUDITS[spec.name] = (report, time.process_time() - start)
-    return _AUDITS[spec.name]
+        with audit_cache.disabled() if cold else contextlib.nullcontext():
+            report = _build_and_audit(spec)
+        entry = (report, time.process_time() - start,
+                 audit_cache.COUNTS["hits"] != hits)
+        _AUDITS[spec.name] = entry
+    if cold:
+        assert not entry[2], f"{spec.name}: the budget timed a cached audit"
+    return entry
 
 
-def _build_and_audit(spec) -> PrintAuditReport:
-    values = spec.resolve_values()
+def _audit_args(spec, values=None):
+    """(part, audit kwargs) exactly as the registry audit calls audit()."""
+    values = spec.resolve_values(values)
     part = spec.build(values)
     cutters: list = []
     for mount in spec.mounts:
@@ -585,9 +601,15 @@ def _build_and_audit(spec) -> PrintAuditReport:
         if fx is not None:  # None: this mount is absent under these values
             cutters.extend(fx.cutters)
     exclusion = _MODEL_EXCLUSIONS.get(spec.name)
-    return audit(part, spec.print_orientation, cutters=cutters,
-                 exclusions=exclusion(values) if exclusion else (), model=spec.name,
-                 print_frame=spec.print_frame(values) if spec.print_frame else None)
+    return part, dict(
+        orientation=spec.print_orientation, cutters=cutters,
+        exclusions=exclusion(values) if exclusion else (), model=spec.name,
+        print_frame=spec.print_frame(values) if spec.print_frame else None)
+
+
+def _build_and_audit(spec) -> PrintAuditReport:
+    part, kwargs = _audit_args(spec)
+    return audit(part, **kwargs)
 
 
 @pytest.mark.budget
@@ -603,7 +625,7 @@ def test_model_audit_produces_report_within_budget(spec):
     if os.environ.get("PYTEST_XDIST_WORKER"):
         pytest.skip("audit budget is a serial measurement; "
                     "run with -n 0 or in the serial budget job")
-    report, elapsed = _timed_audit(spec)
+    report, elapsed, _ = _timed_audit(spec, cold=True)
     assert isinstance(report, PrintAuditReport)
     assert report.orientation == tuple(round(o, 6) for o in
                                        _unit(spec.print_orientation))
