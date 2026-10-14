@@ -173,7 +173,7 @@ export const BUILD123D_CATALOG: Record<string, CatalogEntry> = {
   openconnect_drawer: {
     categoryId: "multiboard",
     blurb:
-      "mitufy's drawer shell and container (CC BY-SA 4.0). Shell prints back-wall-down with a honeycomb bottom and selectable wall types; select its mounting face independently of print orientation. The container prints bottom-down with a handle, label holder and magnet pockets.",
+      "mitufy's openConnect drawer (CC BY-SA 4.0): shell, container and stopper clips. The shell prints back-wall-down with a honeycomb bottom, selectable wall types and any mounting face; the container prints bottom-down with a handle, label holder and magnet pockets. Comma-separated compartment lists add shell dividers (one container per compartment) or container dividers; the clips print flat.",
   },
   gridfinity_capture_bin: {
     categoryId: "storage",
@@ -201,6 +201,11 @@ export const BUILD123D_CATALOG: Record<string, CatalogEntry> = {
     categoryId: "multiboard",
     blurb:
       'Straight Underware 2.0 "monokini" cable channel that snaps into openGrid: set width and length in 28 mm cells and the height, with optional cord exits, a debossed label and per-cell grip suppression. By Hands on Katie and BlackjackDuck, CC BY-NC-SA 4.0 (non-commercial, share-alike). Prints as shown, closed face down, no supports.',
+  },
+  underware_transition: {
+    categoryId: "multiboard",
+    blurb:
+      'Underware 2.0 "monokini" transitions that snap into openGrid: widen or narrow a channel, step its height (prints standing on end), or bridge it over a crossing channel. By Pedro Leite after Hands on Katie and BlackjackDuck, CC BY-NC-SA 4.0 (non-commercial, share-alike). No supports.',
   },
   underware_l: {
     categoryId: "multiboard",

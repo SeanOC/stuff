@@ -24,18 +24,21 @@ into the full-height front wall, and the side walls carry the contents.
 from dataclasses import dataclass
 from math import atan2, ceil, cos, degrees, floor, pi, radians, sin, sqrt, tan
 
-from build123d import (Align, Axis, Box, Face, GeomType, Plane, Pos, Rot, Solid, Wire,
-                       loft, revolve, section)
+from build123d import (Align, Axis, Box, Face, GeomType, Line, Plane, Pos, Rot, Solid,
+                       ThreePointArc, Wire, loft, revolve, section)
 from shapely.geometry import Polygon, box
 from shapely.ops import unary_union
 
 from openconnect.constants import EPS, TILE_SIZE
 from . import constants as c
 from . import shell
+from .dividers import CompartmentListError, parse
 from .honeycomb import HoneycombLayout, close_small_openings, hole_polygons, opening_diameter
 
 AUTHOR_TO_MODEL = shell.AUTHOR_TO_MODEL
 WALL_TYPES = ('Honeycomb', 'Solid')
+DIVIDER_MODES = ('None', 'Width', 'Depth', 'Both')
+DIVIDER_WALL = 1.2  # [C] :55 container_divider_wall_thickness
 # [C] :1708-1709: the third ("middle truss") handle stem is added only when
 # each swept half of the handle bar is longer than this.
 MIDDLE_TRUSS_MIN_HANDLE_WIDTH = 50
@@ -511,17 +514,22 @@ def wall_layouts(values=None, *, close_openings=True):
         return [Polygon([(-y, x) for x, y in p.exterior.coords])
                 for p in _hex_holes(d.height, size1, d, frame)]
 
+    # Divider walls run through the walls they meet (author 'keep' union
+    # after the openings): their footprints fill those openings.
+    walls_x = [w for w in divider_walls(v) if w.axis == 'x']
+    walls_z = [w for w in divider_walls(v) if w.axis == 'z']
+    across = [w.profile for w in walls_x]
     if d.front_type == 'Honeycomb':
         add('Front', Plane(origin=(0, 0, d.depth - d.front/2 + EPS/2), x_dir=(1, 0, 0), z_dir=(0, 0, 1)),
             front_back(d.width),
             window(-(d.width/2 - s - f), -d.height/2 + b + f, d.width/2 - s - f, d.height/2 - d.strut),
-            label_fills(v) + handle_fills(v), d.front + EPS, ceiling)
+            label_fills(v) + handle_fills(v) + across, d.front + EPS, ceiling)
     if d.back_type == 'Honeycomb':
         add('Back', Plane(origin=(0, 0, d.back/2 - EPS/2), x_dir=(1, 0, 0), z_dir=(0, 0, 1)),
             front_back(d.width),
             window(-(d.width/2 - s - f), -d.height/2 + b + f, d.width/2 - s - f,
                    -d.height/2 + d.back_height - d.strut),
-            _back_fill(d, v), d.back + EPS, ceiling)
+            _back_fill(d, v) + across, d.back + EPS, ceiling)
     if d.side_type == 'Honeycomb':
         # (z, y) = (py + depth/2, px): attach(FRONT, LEFT, spin=90).
         holes = [Polygon([(y + d.depth/2, x) for x, y in p.exterior.coords])
@@ -534,7 +542,8 @@ def wall_layouts(values=None, *, close_openings=True):
         side_window = window(d.back + 2*f, -d.height/2 + b + f, front_end,
                              -d.height/2 + d.side_height - d.strut)
         for name, sign in (('Left', -1), ('Right', 1)):
-            add(name, _side_plane(d, sign), holes, side_window, _side_fill(d, v), s + EPS, ceiling)
+            add(name, _side_plane(d, sign), holes, side_window,
+                _side_fill(d, v) + [w.profile for w in walls_z], s + EPS, ceiling)
     if d.bottom_type == 'Honeycomb':
         # hex_panel([depth, width]) attach(TOP, LEFT): (x, z) = (py, depth/2 - px).
         holes = [Polygon([(y, d.depth/2 - x) for x, y in p.exterior.coords])
@@ -546,7 +555,8 @@ def wall_layouts(values=None, *, close_openings=True):
         back_end = d.back + (0 if ceiling == 'source' else f)
         add('Bottom', Plane(origin=(0, -d.height/2 + b/2 - EPS/2, 0), x_dir=(1, 0, 0), z_dir=(0, -1, 0)),
             holes, window(-(d.width/2 - s - f), back_end, d.width/2 - s - f, d.depth - d.front - 2*f),
-            [], b + EPS, 'source')
+            [box(w.low, 0, w.high, d.depth) for w in walls_x]
+            + [box(-d.width/2, w.low, d.width/2, w.high) for w in walls_z], b + EPS, 'source')
     return walls
 
 
@@ -678,6 +688,123 @@ def source_magnet_cutters(values=None):
     return cuts, bulges
 
 
+@dataclass(frozen=True)
+class DividerWall:
+    """One container divider: 'x' (width) at X in [low, high], full depth;
+    'z' (depth) at Z in [low, high], full width. ``outline`` is its
+    (thickness axis, author Y) section with the foot fillets, ``profile``
+    the same as a shapely polygon (fills)."""
+    axis: str
+    low: float
+    high: float
+    outline: tuple
+    profile: Polygon
+
+
+def divider_walls(values=None):
+    """[C] :1576-1673 with is_shell=false; compartments in grid units.
+
+    Unit = inner span (less the divider walls) / grid_count; wall i stands at
+    sum*unit + first wall + i*1.2 from the left wall (width) or the front
+    wall (depth, :1597 align=TOP). Height = min(side wall height, side wall
+    height - container_divider_wall_height_offset + bottom wall) (:1606-1609),
+    from the container bottom. Foot fillets of container_inner_fillet on
+    both faces at the floor (:1650-1653). The author skips a divider whose
+    inset reaches the inner span (:1629), which only drops valid dividers
+    of many small compartments; the port keeps every divider.
+    """
+    v = values or {}
+    mode = v.get('add_container_divider', 'None')
+    if mode not in DIVIDER_MODES:
+        raise ValueError('add_container_divider must be None, Width, Depth or Both')
+    if mode == 'None':
+        return []
+    d = dimensions(v)
+    top = min(d.side_height, d.side_height - v.get('container_divider_wall_height_offset', 10) + d.bottom)
+    floor_y, r = -d.height/2 + d.bottom, max(d.fillet, 0)
+    if top - d.bottom <= r:
+        raise CompartmentListError(
+            'container divider walls do not rise above the floor fillet; reduce '
+            'container_divider_wall_height_offset or container_inner_fillet')
+    walls = []
+    for axis, wanted, name, span, first in (
+            ('x', ('Width', 'Both'), 'container_width', d.width - 2*d.side, d.side),
+            ('z', ('Depth', 'Both'), 'container_depth', d.depth - d.front - d.back, d.front)):
+        if mode not in wanted:
+            continue
+        parts = parse(v.get(f'{name}_compartment_list', '1,1,1' if axis == 'x' else '2,3'),
+                      v.get(f'{name}_grid_count', 3 if axis == 'x' else 5),
+                      f'{name}_compartment_list')
+        inner = span - DIVIDER_WALL*len(parts.positions)
+        if inner <= 0:
+            raise CompartmentListError(f'{name}_compartment_list: too many divider walls '
+                                       f'for the {span:.1f} mm inner span')
+        unit = inner/parts.count
+        for i, p in enumerate(parts.positions):
+            inset = p*unit + first + i*DIVIDER_WALL
+            low = (-d.width/2 + inset if axis == 'x' else d.depth - inset - DIVIDER_WALL)
+            outline = _divider_outline(low, low + DIVIDER_WALL, -d.height/2, floor_y,
+                                       -d.height/2 + top, r)
+            profile = Polygon(_sample_outline(outline))
+            walls.append(DividerWall(axis, low, low + DIVIDER_WALL, outline, profile))
+    return walls
+
+
+def _divider_outline(u0, u1, bottom, floor_y, top, r):
+    """Closed (u, y) outline: segments ('line', a, b) and ('arc', a, mid, b)."""
+    if r <= 0:
+        pts = [(u0, bottom), (u1, bottom), (u1, top), (u0, top)]
+        return tuple(('line', pts[i], pts[(i + 1) % 4]) for i in range(4))
+    k = r - r/sqrt(2)
+    return (('line', (u0, bottom), (u1, bottom)),
+            ('line', (u1, bottom), (u1 + r, bottom)),
+            ('line', (u1 + r, bottom), (u1 + r, floor_y)),
+            ('arc', (u1 + r, floor_y), (u1 + k, floor_y + k), (u1, floor_y + r), (u1 + r, floor_y + r)),
+            ('line', (u1, floor_y + r), (u1, top)),
+            ('line', (u1, top), (u0, top)),
+            ('line', (u0, top), (u0, floor_y + r)),
+            ('arc', (u0, floor_y + r), (u0 - k, floor_y + k), (u0 - r, floor_y), (u0 - r, floor_y + r)),
+            ('line', (u0 - r, floor_y), (u0 - r, bottom)),
+            ('line', (u0 - r, bottom), (u0, bottom)))
+
+
+def _sample_outline(outline, n=16):
+    points = []
+    for seg in outline:
+        if seg[0] == 'line':
+            points.append(seg[1])
+            continue
+        (ax, ay), _, (bx, by), (cx, cy) = seg[1:]
+        a0, a1 = atan2(ay - cy, ax - cx), atan2(by - cy, bx - cx)
+        a1 += 2*pi if a0 - a1 > pi else -2*pi if a1 - a0 > pi else 0
+        rr = sqrt((ax - cx)**2 + (ay - cy)**2)
+        points += [(cx + rr*cos(a0 + (a1 - a0)*t/n), cy + rr*sin(a0 + (a1 - a0)*t/n))
+                   for t in range(n)]
+    return points
+
+
+def source_divider_walls(values=None):
+    """Author-frame divider solids, clipped to the container envelope (mask)."""
+    v = values or {}
+    walls = divider_walls(v)
+    if not walls:
+        return []
+    d = dimensions(v)
+    envelope = _envelope(d)
+    result = []
+    for wall in walls:
+        if wall.axis == 'x':
+            to3 = lambda p: (p[0], p[1], 0)
+            direction = (0, 0, d.depth)
+        else:
+            to3 = lambda p: (d.width/2 + 1, p[1], p[0])
+            direction = (-d.width - 2, 0, 0)
+        edges = [Line(to3(seg[1]), to3(seg[2])) if seg[0] == 'line'
+                 else ThreePointArc(*(to3(q) for q in seg[1:4])) for seg in wall.outline]
+        result.append(Solid.extrude(Face(Wire(edges)), direction) & envelope)
+    return result
+
+
 def source_body(values=None):
     """Author-frame container before the bed bevel (source CSG order)."""
     v = values or {}
@@ -686,7 +813,7 @@ def source_body(values=None):
     holes = source_honeycomb_wall_cutters(v)
     if holes:
         body = body.cut(*holes)
-    for extra in (source_handle(v), source_label_holder(v)):
+    for extra in (source_handle(v), source_label_holder(v), *source_divider_walls(v)):
         if extra is not None:
             body = body + extra
     cuts, bulges = source_magnet_cutters(v)

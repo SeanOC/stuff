@@ -31,6 +31,7 @@ from . import constants as c
 
 AUTHOR_TO_MODEL = Rot(0, 0, 180) * Rot(90, 0, 0)
 SLOT_FACES = ('Back', 'Top', 'Bottom', 'Left', 'Right')
+DIVIDER_MODES = ('None', 'Width', 'Height', 'Both')
 
 
 @dataclass(frozen=True)
@@ -152,8 +153,13 @@ def slot_layout(values=None):
     h = nv if d.slot_face in ('Left', 'Right') else nh
     rows = nv if d.slot_face == 'Back' else nd
     excluded = ((0, 0), (h-1, 0)) if (
-        (d.slot_face == 'Top' and v.get('add_stopper_holes', True))
-        or (d.slot_face in ('Left', 'Right') and v.get('add_side_magnet_holes', True))) else ()
+        d.slot_face in ('Left', 'Right') and v.get('add_side_magnet_holes', True)) else ()
+    if d.slot_face == 'Top' and v.get('add_stopper_holes', True):
+        # [C] :1425-1426 frees the two corner tiles for the stopper holes. Width
+        # compartments add stopper holes at their own end tiles; the port
+        # frees those tiles too (the author's slots would collide). The Top
+        # frame turns source -X into slot column h-1 (source_slot_frame).
+        excluded = tuple((h-1-col, 0) for col in stopper_columns(v))
     dx, dz = v.get('slot_horizontal_offset', 0), v.get('slot_vertical_offset', 0)
     # The author fills the entire face with whole tiles, as on the shelf.
     if abs(dx) > 1e-7:
@@ -208,15 +214,49 @@ def slot_fixtures(values=None):
     return fx
 
 
+def compartments(values=None):
+    """Width and height compartments in tiles ([C] :399-417).
+
+    Width runs from source -X (the author's Left). Height runs from the top
+    (+Y), as the author's dividers do (:1597, align=BACK).
+    """
+    from .dividers import Compartments, parse
+    v = values or {}
+    mode = v.get('add_shell_divider', 'None')
+    if mode not in DIVIDER_MODES:
+        raise ValueError('add_shell_divider must be None, Width, Height or Both')
+    nh, nv = v.get('horizontal_grids', 5), v.get('vertical_grids', 2)
+    width = (parse(v.get('shell_width_compartment_list', '3,2'), nh, 'shell_width_compartment_list')
+             if mode in ('Width', 'Both') else Compartments(nh, (), (nh,)))
+    height = (parse(v.get('shell_height_compartment_list', '1,1'), nv, 'shell_height_compartment_list')
+              if mode in ('Height', 'Both') else Compartments(nv, (), (nv,)))
+    return width, height
+
+
+def _starts(parts):
+    return (0,)+parts.positions
+
+
 def source_back_magnet_positions(values=None):
+    """[C] :1450-1462 per compartment: tiles 1 and n-2 of each compartment.
+
+    Rows sit 4.6 mm above each compartment's bottom tile centre. The author
+    offsets rows from the BOTTOM with the top-first divider sums, which
+    misses compartments of an asymmetric height list; the port uses each
+    compartment's own bottom tile (equal for symmetric lists).
+    """
     v = values or {}
     if not v.get('add_back_magnet_holes', True):
         return []
     d = dimensions(v)
     nh, nv = v.get('horizontal_grids', 5), v.get('vertical_grids', 2)
-    return [(d.source_x-(nh-2)*TILE_SIZE/2+i*TILE_SIZE*max(nh-2, 0),
-             d.source_y-(nv-1)*TILE_SIZE/2+c.BACK_MAGNET_OCSLOT_OFFSET, 0)
-            for i in range(min(nh-1, 2))]
+    width, height = compartments(v)
+    rows = [nv-start-size for start, size in zip(_starts(height), height.sizes)]
+    return [(d.source_x-(nh-2)*TILE_SIZE/2+(start+i*max(size-2, 0))*TILE_SIZE,
+             d.source_y-(nv-1)*TILE_SIZE/2+row*TILE_SIZE+c.BACK_MAGNET_OCSLOT_OFFSET, 0)
+            for row in rows
+            for start, size in zip(_starts(width), width.sizes)
+            for i in range(min(size-1, 2))]
 
 
 def source_side_magnet_positions(values=None):
@@ -268,25 +308,33 @@ def source_magnet_cutters(values=None):
     return cuts
 
 
+def stopper_columns(values=None):
+    """Tile columns of the stopper holes: each width compartment's end tiles."""
+    width, _ = compartments(values)
+    return [start+j*(size-1) for start, size in zip(_starts(width), width.sizes)
+            for j in range(1 if size == 1 else 2)]
+
+
 def source_stopper_positions(values=None):
+    """Top-wall stopper holes [C] :1463-1469, per width compartment."""
     v = values or {}
     if not v.get('add_stopper_holes', True):
         return []
     d = dimensions(v)
-    nh = v.get('horizontal_grids', 5)
-    return [(d.source_x-d.width/2+TILE_SIZE/2+j*(nh-1)*TILE_SIZE,
+    return [(d.source_x-d.width/2+TILE_SIZE/2+col*TILE_SIZE,
              d.source_y+d.height/2,
              d.depth-v.get('stopper_edge_distance', 3)-c.STOPPER_HEIGHT)
-            for j in range(1 if nh == 1 else 2)]
+            for col in stopper_columns(v)]
 
 
-def source_stopper_cutters(values=None):
-    d = dimensions(values)
-    cuts = []
+def _stopper_hole(wall, excess=0):
+    """drawer_stopper(hole=true) [C] :1807-1837 entering -Y from Y=0.
+
+    Flange, then the shaft with the author's two concave quarter-rounds at
+    its entrance, then ``excess`` mm of flange-width hole (hole_excess).
+    """
     w, r, flange = c.STOPPER_WIDTH/2, c.STOPPER_ROUNDING, c.STOPPER_FLANK_DEPTH
-    depth = d.wall+2*EPS
-    # Shaft cross-section (X,inward depth), with the author's two concave
-    # quarter-rounds at its entrance. No printed clip geometry is ported here.
+    depth = wall+2*EPS
     section = Face(Wire([
         Line((-w-r, flange, 0), (w+r, flange, 0)),
         ThreePointArc((w+r, flange, 0),
@@ -297,19 +345,22 @@ def source_stopper_cutters(values=None):
         ThreePointArc((-w, flange+r, 0),
                       (-w-r+r/sqrt(2), flange+r-r/sqrt(2), 0), (-w-r, flange, 0)),
     ]))
-    shaft = Solid.extrude(section, (0, 0, c.STOPPER_HEIGHT))
-    cutter = shaft + Box(c.STOPPER_WIDTH+c.STOPPER_FLANK_WIDTH, flange, c.STOPPER_HEIGHT,
-                         align=(Align.CENTER, Align.MIN, Align.MIN))
-    if d.slot_face == 'Top' and d.slot_thickness > d.wall:
+    cutter = Solid.extrude(section, (0, 0, c.STOPPER_HEIGHT))
+    cutter += Box(c.STOPPER_WIDTH+c.STOPPER_FLANK_WIDTH, flange, c.STOPPER_HEIGHT,
+                  align=(Align.CENTER, Align.MIN, Align.MIN))
+    if excess > 0:
         cutter += Pos(0, depth, 0)*Box(c.STOPPER_WIDTH+c.STOPPER_FLANK_WIDTH,
-                                     d.slot_thickness-d.wall, c.STOPPER_HEIGHT,
-                                     align=(Align.CENTER, Align.MIN, Align.MIN))
+                                       excess, c.STOPPER_HEIGHT,
+                                       align=(Align.CENTER, Align.MIN, Align.MIN))
     # Reflect local inward-depth +Y to the source's inward -Y.
-    from build123d import Plane
-    cutter = cutter.mirror(Plane.XZ)
-    for p in source_stopper_positions(values):
-        cuts.append(Pos(*p)*cutter)
-    return cuts
+    return cutter.mirror(Plane.XZ)
+
+
+def source_stopper_cutters(values=None):
+    d = dimensions(values)
+    # Shaft cross-section (X,inward depth). No printed clip geometry here.
+    cutter = _stopper_hole(d.wall, d.slot_thickness-d.wall if d.slot_face == 'Top' else 0)
+    return [Pos(*p)*cutter for p in source_stopper_positions(values)]
 
 
 def honeycomb_layouts(values=None, *, close_openings=True):
@@ -378,10 +429,157 @@ def honeycomb_layouts(values=None, *, close_openings=True):
     return layouts
 
 
+def divider_walls(values=None):
+    """Shell divider planes [C] :1576-1674 (is_shell) as (axis, source coordinate).
+
+    Walls are 2*shell_thickness thick (:1577) and centred on tile
+    boundaries: 'x' walls at the width sums from the grid's -X edge, 'y'
+    walls at the height sums down from the grid top. The author's Top and
+    Bottom slot faces shift 'y' walls off the boundary by the extra slot
+    thickness (:1620-1624); the port keeps them on it.
+    """
+    v = values or {}
+    width, height = compartments(v)
+    nh, nv = width.count, height.count
+    return ([('x', (p-nh/2)*TILE_SIZE) for p in width.positions]
+            + [('y', (nv/2-p)*TILE_SIZE) for p in height.positions])
+
+
+def _polygons(shape):
+    if shape.is_empty:
+        return []
+    if shape.geom_type == 'Polygon':
+        return [shape] if shape.area > 1e-10 else []
+    return [p for g in shape.geoms for p in _polygons(g)]
+
+
+def divider_honeycomb_layouts(values=None):
+    """Per divider wall: (plane, layout) of its through-openings, or None.
+
+    [C] :1655-1670: hex_panel(frame=shell_thickness) over the full outer
+    length and the wall depth, with the front fill for the wall's own
+    stopper holes ('y') or side magnets ('x'). Same plane convention as
+    honeycomb_layouts (local X = print up). Openings are clipped to the
+    cavity and to crossing divider walls, where the union refills them.
+    """
+    from .honeycomb import HoneycombLayout, HoneycombPanelTooSmall, close_small_openings, hole_polygons
+    from shapely.geometry import Polygon, box
+    v = values or {}
+    walls = divider_walls(v)
+    if v.get('shell_divider_wall_type', 'Honeycomb') != 'Honeycomb':
+        return [None]*len(walls)
+    d = dimensions(v)
+    depth = d.depth+d.wall-d.slot_thickness
+    result = []
+    for index, (axis, at) in enumerate(walls):
+        x_wall = axis == 'x'
+        front_fill = (v.get('side_magnet_diameter', 6)+2*c.MAGNET_HOLE_SIDE_CLEARANCE+3
+                      if x_wall and v.get('add_side_magnet_holes', True) else
+                      v.get('stopper_edge_distance', 3)+c.STOPPER_HEIGHT+3
+                      if not x_wall and v.get('add_stopper_holes', True) else 0)
+        centre = d.source_y if x_wall else d.source_x
+        origin = (at, centre, d.depth-depth/2) if x_wall else (centre, at, d.depth-depth/2)
+        plane = Plane(origin=origin, x_dir=(0, 0, 1),
+                      z_dir=(-1, 0, 0) if x_wall else (0, 1, 0))
+        half = (d.inner_height if x_wall else d.inner_width)/2
+        window = box(d.slot_thickness-origin[2], -half-centre,
+                     d.depth-front_fill-origin[2], half-centre)
+        for other, cross in walls:
+            if other != axis:
+                window = window.difference(box(-depth, cross-d.wall-centre,
+                                               depth, cross+d.wall-centre))
+        polygons = hole_polygons(depth, d.height if x_wall else d.width,
+                                 strut_hyp=v.get('honeycomb_strut_hyp', c.HONEYCOMB_STRUT_HYP),
+                                 frame=d.wall)
+        openings = [o for p in polygons for o in _polygons(Polygon(p).intersection(window))]
+        ceiling = v.get('honeycomb_ceiling', 'roofed')
+        if ceiling != 'source':
+            # The same sub-Ø2 closure as the shell walls (pst-t0ob3.5).
+            kept = close_small_openings(openings, (1, 0), ceiling=ceiling)
+            if openings and not kept:
+                raise HoneycombPanelTooSmall(
+                    f'honeycomb divider wall {axis}{index}: every opening clips under '
+                    f'{c.MIN_LATTICE_OPENING_MM:g} mm; lower honeycomb_strut_hyp '
+                    'or use the Solid divider wall type')
+            openings = kept
+        result.append((plane, HoneycombLayout(openings, ceiling, f'Divider {axis}{index}'))
+                      if openings else None)
+    return result
+
+
+def source_divider_walls(values=None):
+    """Divider walls with their own cuts, before the shell's feature cuts.
+
+    [C] :1599-1673. 'x' walls carry side-magnet teardrops on both faces
+    (:1646-1653); 'y' walls carry a through stopper hole per width
+    compartment end tile (hole_excess=shell_thickness, :1634-1644). A
+    honeycomb wall is the hex panel's depth only (back frame in the back
+    wall); a solid wall spans the full depth like the author's cuboid.
+    """
+    v = values or {}
+    d = dimensions(v)
+    walls = divider_walls(v)
+    if not walls:
+        return []
+    layouts = divider_honeycomb_layouts(v)
+    honey = v.get('shell_divider_wall_type', 'Honeycomb') == 'Honeycomb'
+    z0 = d.slot_thickness-d.wall if honey else 0
+    outer = Pos(d.source_x, d.source_y, 0)*Solid.extrude(
+        _section(d.width, d.height, d.outer_chamfer, d.slot_face), (0, 0, d.depth))
+    result = []
+    for (axis, at), layout in zip(walls, layouts):
+        size = (2*d.wall, d.height, d.depth-z0) if axis == 'x' else (d.width, 2*d.wall, d.depth-z0)
+        centre = (at, d.source_y) if axis == 'x' else (d.source_x, at)
+        wall = Pos(*centre, z0)*Box(*size, align=(Align.CENTER, Align.CENTER, Align.MIN)) & outer
+        if layout is not None:
+            plane, hexes = layout
+            wall = wall.cut(plane.location*hexes.cutter(2*d.wall+2*EPS, (1, 0)))
+        for cut in _divider_feature_cutters(v, axis, at):
+            wall -= cut
+        result.append(wall)
+    return result
+
+
+def _divider_feature_cutters(v, axis, at):
+    d = dimensions(v)
+    if axis == 'y':
+        if not v.get('add_stopper_holes', True):
+            return []
+        cutter = _stopper_hole(d.wall, d.wall)
+        z = d.depth-v.get('stopper_edge_distance', 3)-c.STOPPER_HEIGHT
+        return [Pos(x, at+d.wall, z)*cutter for x, _, _ in source_stopper_positions(v)]
+    cuts = []
+    for start, y, z, depth, radius in _divider_magnets(v, at):
+        cutter = Solid.extrude(_teardrop(radius), (0, 0, depth))
+        cuts.append(Pos(start, y, z)*Rot(0, 0, 90)*Rot(90, 0, 0)*cutter)
+    return cuts
+
+
+def source_divider_feature_cutters(values=None):
+    """Every divider wall's stopper-hole and teardrop cutters (source frame)."""
+    v = values or {}
+    return [cut for axis, at in divider_walls(v) for cut in _divider_feature_cutters(v, axis, at)]
+
+
+def _divider_magnets(v, at):
+    """Teardrops on both faces of an 'x' wall ([C] :1646-1653), extended 2*EPS out."""
+    if not v.get('add_side_magnet_holes', True):
+        return []
+    d = dimensions(v)
+    radius = v.get('side_magnet_diameter', 6)/2+c.MAGNET_HOLE_SIDE_CLEARANCE
+    depth = v.get('shell_side_magnet_thickness', 1)+c.MAGNET_HOLE_DEPTH_CLEARANCE+2*EPS
+    z = d.depth-v.get('shell_side_magnet_edge_distance', 6)-radius
+    nv = v.get('vertical_grids', 2)
+    return [(start, d.source_y+(j-(nv-1)/2)*TILE_SIZE, z, depth, radius)
+            for start in (at-d.wall-2*EPS, at+d.wall+2*EPS-depth) for j in range(nv)]
+
+
 def honeycomb_ceiling_chords(values=None):
     """Analytic through-wall spans, independent of the 3D local-width scan."""
-    return [row for _, layout in honeycomb_layouts(values)
-            for row in layout.ceiling_chords((1, 0))]
+    return ([row for _, layout in honeycomb_layouts(values)
+             for row in layout.ceiling_chords((1, 0))]
+            + [row for entry in divider_honeycomb_layouts(values) if entry
+               for row in entry[1].ceiling_chords((1, 0))])
 
 
 def source_honeycomb_wall_cutters(values=None):
@@ -390,9 +588,16 @@ def source_honeycomb_wall_cutters(values=None):
             for plane, layout in honeycomb_layouts(values)]
 
 
+def source_divider_honeycomb_cutters(values=None):
+    d = dimensions(values)
+    return [plane.location*layout.cutter(2*d.wall+2*EPS, (1, 0))
+            for plane, layout in filter(None, divider_honeycomb_layouts(values))]
+
+
 def source_honeycomb_cutters(values=None):
     """Individual openings for face inventories and reference measurements."""
-    return [hole for wall in source_honeycomb_wall_cutters(values) for hole in wall.solids()]
+    return [hole for wall in source_honeycomb_wall_cutters(values)
+            + source_divider_honeycomb_cutters(values) for hole in wall.solids()]
 
 
 def before_bed_chamfer(values=None):
@@ -400,6 +605,10 @@ def before_bed_chamfer(values=None):
     holes = source_honeycomb_wall_cutters(values)
     if holes:
         part = part.cut(*holes)
+    # Divider walls are the author's 'keep' children: after the wall
+    # openings, before every rm_outer feature cut (:1373-1374).
+    for wall in source_divider_walls(values):
+        part = (part+wall).clean()
     for cut in source_magnet_cutters(values)+source_stopper_cutters(values):
         part -= cut
     part = AUTHOR_TO_MODEL*part
@@ -518,4 +727,15 @@ def published_ceiling_regions(values=None):
         regions.append(Pos(x, y-depth, z+c.STOPPER_HEIGHT)*Box(
             c.STOPPER_WIDTH+c.STOPPER_FLANK_WIDTH, depth, .001,
             align=(Align.CENTER, Align.MIN, Align.CENTER)))
+    for axis, at in divider_walls(v):
+        if axis == 'y' and v.get('add_stopper_holes', True):
+            z = d.depth-v.get('stopper_edge_distance', 3)-c.STOPPER_HEIGHT
+            for x, _, _ in source_stopper_positions(v):
+                regions.append(Pos(x, at-d.wall-EPS, z+c.STOPPER_HEIGHT)*Box(
+                    c.STOPPER_WIDTH+c.STOPPER_FLANK_WIDTH, 2*d.wall+2*EPS, .001,
+                    align=(Align.CENTER, Align.MIN, Align.CENTER)))
+        for start, y, z, depth, radius in (_divider_magnets(v, at) if axis == 'x' else ()):
+            cap = radius+.2
+            regions.append(Pos(start, y, z+cap)*Box(depth, 2*(radius*sqrt(2)-cap), .001,
+                                                  align=(Align.MIN, Align.CENTER, Align.CENTER)))
     return [AUTHOR_TO_MODEL*r for r in regions]+honeycomb_ceiling_regions(v)
