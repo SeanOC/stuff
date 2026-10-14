@@ -15,7 +15,7 @@ A drawer is three printed parts, chosen with `part`:
 | --- | --- | --- |
 | `shell` | The box that mounts on an openConnect wall: slots on the Back, Top, Bottom, Left or Right face, magnets, stopper holes, optional dividers | Back wall down, open front up, for every mount face |
 | `container` | The sliding drawer: handle, label holder, magnet pockets, optional dividers | Bottom down, handle toward −Y (`drawer/container.py` `print_frame`) |
-| `stopper_clips` | Two clips that push through the shell's stopper holes and stop the container | Flat, 2.0 mm tall, as laid out by the author |
+| `stopper_clips` | Two clips that push through the shell's stopper holes and stop the container | Flat on the bed, 2.0 mm tall, as laid out by the author. The Z=0 edge stays sharp by exception (see Deviations from the source); print with the slicer's elephant-foot compensation at 0.1–0.15 mm |
 
 All three are built from the same drawer size (`horizontal_grids`,
 `vertical_grids`, `depth_grids` in 28 mm openGrid tiles). The container is
@@ -223,4 +223,15 @@ all-solid and 1x1x1 only, so none of these is a bug.
   volume and that the rest of the clip passes at MIN_WALL 0.9 (it measures
   ≥ 1.5 mm). The hole variant's 0.8 mm flange floor is the shell's
   registered fitting floor (`tests/openconnect_drawer_inventory.py`).
+- Stopper-clip bed edge: a mayor-signed §8 exception row (pst-t0ob3.4,
+  2026-10-14) for the bed-contact chamfer rule (design-guidelines §1). The
+  family is the Z=0 profile boundary of both clips, meaning every edge of
+  the extrusion's bottom face. The author ships it sharp (stoppers.stl, bbox
+  34.4 × 8.3 × 2.0). A 0.3 mm relief would leave a 0.1 mm land on the
+  0.7 mm flange and remove the first layer of the 0.6 mm nubs, so the slicer's
+  elephant-foot compensation does that job instead.
+  `test_stopper_bed_edge_exception_is_exactly_the_profile_boundary` pins
+  the family by adjacency to the bed face at L 4/6/12.
+  `test_bed_chamfer_exception_does_not_reach_other_parts` asserts that
+  every other preset still reports a bed chamfer.
 

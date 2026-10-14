@@ -223,6 +223,7 @@ def test_stopper_clip_parity(tmp_path):
     assert a.volume == pytest.approx(b.volume, rel=1e-9)
     export_stl(part, str(tmp_path/'port.stl'), tolerance=.001, angular_tolerance=.05)
     port, ref = load_reference(tmp_path/'port.stl'), load_reference(REFERENCES/'stoppers.stl')
+    assert port.is_watertight and port.body_count == 2
     assert bbox_parity(part, ref, tol=.001, mode='ordered', rtol=0)
     assert volume_parity(port, ref, rel=1e-4)
     classifier = audit._ClassifiedPart(part)
@@ -244,6 +245,53 @@ def test_stopper_clip_parity(tmp_path):
 
 
 # ------------------------------------------------------------ stopper audit
+
+def _bed_chamfer(part, values):
+    framed = m.print_frame(values)*part
+    up = m.SPEC.print_orientation
+    hmin = min(audit._height(v, up) for v in framed.vertices())
+    return audit._bed_chamfer(framed, up, hmin)
+
+
+@pytest.mark.parametrize('length', [4, 6, 12])
+def test_stopper_bed_edge_exception_is_exactly_the_profile_boundary(length):
+    """§8 exception row (mayor, pst-t0ob3.4, 2026-10-14): the clips' Z=0
+    profile boundary stays sharp, as in stoppers.stl. A 0.3 mm relief would
+    leave a 0.1 mm land on the 0.7 mm flange and remove the 0.6 mm nubs'
+    first layer. The family is found by adjacency to the bed face, not by
+    thickness: exactly the two bed faces' boundary edges, each a whole
+    clip profile, and no other face reaches the bed."""
+    v = m.SPEC.resolve_values({'part': 'stopper_clips', 'stopper_clip_length': length})
+    part = m.build(v)
+    profile = stopper.profile(v)
+    beds = [f for f in part.faces() if f.bounding_box().max.Z < 1e-9]
+    assert len(beds) == 2
+    for bed in beds:
+        assert bed.normal_at().Z < -.999
+        assert bed.area == pytest.approx(profile.area, rel=1e-9)
+        # clean() merges the two mirror-seam pairs, so compare perimeters.
+        assert sum(e.length for e in bed.edges()) == pytest.approx(
+            profile.outer_wire().length, rel=1e-9)
+    family = {e for bed in beds for e in bed.edges()}
+    touching = {e for e in part.edges()
+                if e.bounding_box().max.Z < 1e-9}
+    assert touching == family
+    for face in part.faces():
+        if face not in beds and face.bounding_box().min.Z < 1e-9:
+            assert abs(face.normal_at(face.center()).Z) < 1e-6  # sharp: walls only
+    assert _bed_chamfer(part, v) == 'absent'
+
+
+@pytest.mark.audit
+@pytest.mark.parametrize('preset', [p for p in m.SPEC.presets if p.id != 'stopper-clips'],
+                         ids=lambda p: p.id)
+def test_bed_chamfer_exception_does_not_reach_other_parts(preset):
+    """The clip exception is the ONLY bed-chamfer miss in the drawer."""
+    v = m.SPEC.resolve_values(preset.values)
+    assert v.get('part') != 'stopper_clips'
+    assert _bed_chamfer(m.build(v), v) == 'present'
+
+
 
 @pytest.mark.parametrize('length', [4, 6, 12])
 def test_stopper_exclusions_cover_only_the_snap_features(length):

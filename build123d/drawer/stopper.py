@@ -12,6 +12,10 @@ Print frame = model frame: flat on the bed, profile in XY, 2.0 mm tall;
 clip length along -Y from the flange face at Y=0. A clip pushed through a
 shell stopper hole stops the container's rear lip; its legs load in shear
 across the layers, the nubs carry only the snap retention.
+
+Exception register (§8, bed-contact chamfer, design-guidelines §1):
+| Family | Reason / measured | Authority / regression |
+| Z=0 profile boundary of both clips (every edge of the extrusion's bottom face, found by adjacency to it) | Kept sharp as in stoppers.stl (bbox 34.4 x 8.3 x 2.0, [C] :1807-1837 has no bed treatment); a 0.3 mm relief leaves a 0.1 mm land on the 0.7 mm flange and removes the 0.6 mm nubs' first layer; print_audit bed_chamfer = absent at L 4/6/12. Elephant foot is left to the slicer's first-layer compensation (0.1-0.15 mm) | Mayor, pst-t0ob3.4, 2026-10-14; test_stopper_bed_edge_exception_is_exactly_the_profile_boundary, test_bed_chamfer_exception_does_not_reach_other_parts |
 """
 from math import sqrt
 
