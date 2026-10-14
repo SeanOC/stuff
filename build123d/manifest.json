@@ -1080,7 +1080,7 @@
       "slug": "openconnect-drawer",
       "engine": "build123d",
       "title": "openConnect drawer",
-      "blurb": "mitufy's openConnect drawer (CC BY-SA 4.0): shell, container and stopper clips. The shell prints back-wall-down with a honeycomb bottom, selectable wall types and any mounting face; the container prints bottom-down with a handle, label holder and magnet pockets. Comma-separated compartment lists add shell dividers (one container per compartment) or container dividers; the clips print flat.",
+      "blurb": "mitufy's openConnect drawer (CC BY-SA 4.0): shell, container and stopper clips. The shell prints back-wall-down with a honeycomb bottom, selectable wall types and any mounting face; the container prints bottom-down with a handle, label holder (clipped to the body when wider than the front) and magnet pockets. Comma-separated compartment lists add shell dividers (one container per compartment) or container dividers; the clips print flat.",
       "categoryId": "multiboard",
       "params": [
         {
@@ -1528,6 +1528,7 @@
         },
         {
           "name": "label_width",
+          "description": "Wider than the container front is clipped to the body (the author's lipless ledge).",
           "group": "Container",
           "kind": "number",
           "default": 48,

@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: CC-BY-SA-4.0
 """Drawer container (D3): source parity, fit, frames and published print inventory."""
+import json
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -203,11 +204,23 @@ def test_named_errors_for_source_asserts(values, message):
 
 @pytest.mark.parametrize('values', [{'horizontal_grids': 1}, {'horizontal_grids': 1, 'label_width': 21},
                                     {'horizontal_grids': 2, 'label_width': 49}])
-def test_label_wider_than_front_is_a_named_error(values):
-    with pytest.raises(ValueError, match=r'label holder \(.* mm\) is wider than the container front'):
-        m.build({'part': 'container', **values})
-    part = m.build({'part': 'container', **values, 'add_label_holder': False})
+def test_label_wider_than_front_is_clipped(values):
+    """pst-rnpvl option C: the author's mask clips an over-wide holder into a
+    lipless ledge; the registry path builds it like the library path does."""
+    full = m.SPEC.resolve_values({'part': 'container', **values})  # every default explicit, as the catalog posts
+    front = container.dimensions(full).width
+    part = m.build(full)
     assert part.is_valid and len(part.solids()) == 1
+    assert (m.print_frame(full) * part).bounding_box().size.X == pytest.approx(front, abs=1e-3)
+    part = m.build({**full, 'add_label_holder': False})
+    assert part.is_valid and len(part.solids()) == 1
+
+
+def test_label_width_clip_is_documented_in_the_manifest():
+    """The catalog reads manifest.json, not the Param: the clip note must land there."""
+    note = next(p.description for p in m.SPEC.params if p.name == 'label_width')
+    assert 'clipped to the body' in note
+    assert json.dumps(note) in (Path(__file__).parents[1] / 'manifest.json').read_text()
 
 
 def _mesh(author_point, values=None):
@@ -404,7 +417,6 @@ def test_lattice_openings_under_2mm_are_closed(name, values):
 
 
 NAMED = (
-    'is wider than the container front',
     'shell_to_slot_wall_thickness below 0.8 mm leaves less slot backing than the openconnect-slot-shallow contract',
 )
 
