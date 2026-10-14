@@ -701,6 +701,12 @@ _BED_ONLY_IDS = {
     ("littletikes_dream_machine_cartridge_holder", "full_holder"),
     ("gridfinity_capture_bin", "deep"),
     ("gridfinity_capture_bin", "wide"),
+    # holder_tombstone_sign: test_print_audit_per_preset is audit_full (#206);
+    # 'default' keeps its full audit in test_model_print_audit.
+    ("holder_tombstone_sign", "one-ams"),
+    ("holder_tombstone_sign", "two-colour"),
+    ("holder_tombstone_sign", "pinned"),
+    ("holder_tombstone_sign", "small"),
 }
 _BED_ONLY_CASES = [(spec, preset) for spec in _SPECS for preset in spec.presets
                    if (spec.name, preset.id) in _BED_ONLY_IDS]

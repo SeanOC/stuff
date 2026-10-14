@@ -268,7 +268,8 @@ def _line_error(name: str, text: str, box_w: float, box_h: float) -> ValueError:
     """The label card's stroke-floor ValueError for this line, prefixed with its name."""
     path, style = FONTS[FACE[name]]
     try:
-        layout_text(text, box_w, box_h, 0.0, RAISE_H, FLOOR, path, style, MAX_LINES[name])
+        layout_text(text, box_w, box_h, 0.0, RAISE_H, FLOOR, path, style, MAX_LINES[name],
+                    stroke_only=True)
     except ValueError as err:
         return ValueError(f'{name}: {err}')
     return ValueError(f'{name}: {text!r} does not hold the {THRESHOLD:g} mm stroke in its band')
@@ -364,7 +365,7 @@ def _fit_line(name: str, values: dict, frame: dict) -> Part:
     path, style = FONTS[FACE[name]]
     try:
         fitted = layout_text(frame['lines'][name], chord, y_hi - y_lo, 0.0, RAISE_H, FLOOR,
-                             path, style, max_lines=1)
+                             path, style, max_lines=1, stroke_only=True)
     except ValueError:
         raise _line_error(name, _line(values, name), chord, y_hi - y_lo) from None
     return Pos(0, (y_lo + y_hi) / 2) * _merge_overlaps(fitted.part)
@@ -374,15 +375,16 @@ def _merge_overlaps(part: Part) -> Part:
     """Fuse glyph solids whose boxes overlap: Creepster kerns some pairs into
     each other ('x' into 't' by 0.015 mm^3), and two interpenetrating solids
     in one compound make the plate fuse invalid. Disjoint glyphs pass through."""
-    groups: list[list] = []
+    groups: list[list] = []  # [(solid, its box)]: each box computed once
     for solid in part.solids():
         bb = solid.bounding_box()
-        hits = [g for g in groups if any(bb.overlaps(o.bounding_box()) for o in g)]
-        merged = [solid] + [o for g in hits for o in g]
+        hits = [g for g in groups if any(bb.overlaps(o) for _, o in g)]
+        merged = [(solid, bb)] + [o for g in hits for o in g]
         groups = [g for g in groups if g not in hits] + [merged]
     out = []
     for g in groups:
-        out += g if len(g) == 1 else reduce(lambda a, b: a.fuse(b), g).solids()
+        solids = [s for s, _ in g]
+        out += solids if len(solids) == 1 else reduce(lambda a, b: a.fuse(b), solids).solids()
     return Part(Compound(out).wrapped)
 
 

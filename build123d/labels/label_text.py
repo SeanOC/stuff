@@ -27,6 +27,8 @@ binds a two-line label on a 20 mm card).
 """
 from __future__ import annotations
 
+import hashlib
+import json
 import math
 from functools import lru_cache
 from pathlib import Path
@@ -48,6 +50,12 @@ LINE_GAP = 1.2
 # bisection under-reports by ~1e-5 mm, so a stroke exactly at the 0.9 raised
 # floor could fail the 0.9 MIN_WALL_MM it was meant to meet.
 FLOOR_MARGIN = 0.01
+# Committed nominal strokes (font sha256[:16]:style:text -> mm), so a cold
+# process does not rescan the tombstone sign's preset lines: ~65 s of its
+# ~105 s cold build, paid once per pytest worker, export and live render
+# (codex on #206). A miss scans live; scripts/nominal_strokes.py regenerates
+# the file and test_tombstone_sign.py re-measures every entry (audit_full).
+STROKE_CACHE = Path(__file__).with_name('nominal_strokes.json')
 
 
 class FittedText(NamedTuple):
@@ -156,6 +164,40 @@ def glyph_clearance(sketch: Sketch) -> float:
                default=float('inf'))
 
 
+def measure_stroke(text: str, path: Path | str = FONT_PATH,
+                   style: FontStyle = FONT_STYLE) -> float:
+    """Thinnest stroke at NOMINAL_SIZE, scanned live: stroke_and_gap's first
+    scan alone (about half of _nominal_measures' cost)."""
+    return min_feature_width(_polygons(text_sketch(text, path=path, style=style)))
+
+
+@lru_cache(maxsize=None)
+def _font_sha(path: str) -> str:
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()[:16]
+
+
+def stroke_key(text: str, path: Path | str, style: FontStyle) -> str:
+    """STROKE_CACHE key: the font's content, not its path (worktrees differ)."""
+    return f'{_font_sha(str(path))}:{style.name}:{text}'
+
+
+@lru_cache(maxsize=1)
+def stroke_cache() -> dict[str, float]:
+    return json.loads(STROKE_CACHE.read_text(encoding='utf-8'))
+
+
+@lru_cache(maxsize=256)
+def _nominal_stroke(text: str, path: str = str(FONT_PATH),
+                    style: FontStyle = FONT_STYLE) -> float:
+    """measure_stroke, from STROKE_CACHE when the line is there.
+
+    The tombstone sign gates on the stroke only, so its bands skip the gap
+    and clearance scans.
+    """
+    cached = stroke_cache().get(stroke_key(text, path, style))
+    return cached if cached is not None else measure_stroke(text, path, style)
+
+
 @lru_cache(maxsize=256)
 def _nominal_measures(text: str, path: str = str(FONT_PATH),
                       style: FontStyle = FONT_STYLE) -> tuple[float, float, float]:
@@ -173,16 +215,17 @@ def _nominal_measures(text: str, path: str = str(FONT_PATH),
 def nominal_stroke(text: str, path: Path | str = FONT_PATH,
                    style: FontStyle = FONT_STYLE) -> float:
     """Thinnest stroke of text at NOMINAL_SIZE in this face (cached)."""
-    return _nominal_measures(text, str(path), style)[0]
+    return _nominal_stroke(text, str(path), style)
 
 
 def fit_text(text: str, box_w: float, box_h: float, margin: float,
              depth: float = 0.6, measure: bool = True, path: Path | str = FONT_PATH,
-             style: FontStyle = FONT_STYLE) -> FittedText:
+             style: FontStyle = FONT_STYLE, stroke_only: bool = False) -> FittedText:
     """Text scaled to fit (box - 2 margin) in both axes, ink centred on the origin.
 
     The part spans Z 0..depth. measure=False skips the stroke/gap/clearance
-    measures (NaN).
+    measures (NaN); stroke_only=True measures the stroke alone (gap and
+    clearance NaN).
     """
     w_avail, h_avail = box_w - 2 * margin, box_h - 2 * margin
     if w_avail <= 0 or h_avail <= 0 or depth <= 0:
@@ -190,8 +233,12 @@ def fit_text(text: str, box_w: float, box_h: float, margin: float,
     nominal = text_sketch(text, path=path, style=style)
     bb = nominal.bounding_box()
     s = min(w_avail / bb.size.X, h_avail / bb.size.Y)
-    stroke, gap, clearance = (_nominal_measures(text, str(path), style) if measure
-                              else (float('nan'),) * 3)
+    if not measure:
+        stroke = gap = clearance = float('nan')
+    elif stroke_only:
+        stroke, gap, clearance = _nominal_stroke(text, str(path), style), float('nan'), float('nan')
+    else:
+        stroke, gap, clearance = _nominal_measures(text, str(path), style)
     fitted = scale(nominal, s)
     c = fitted.bounding_box().center()
     part = extrude(Pos(-c.X, -c.Y, 0) * fitted, depth)
@@ -238,10 +285,12 @@ def _longest_fitting(text: str, box_w: float, box_h: float, margin: float,
 
 def layout_text(text: str, box_w: float, box_h: float, margin: float,
                 depth: float, floor: float, path: Path | str = FONT_PATH,
-                style: FontStyle = FONT_STYLE, max_lines: int = 2) -> FittedText:
+                style: FontStyle = FONT_STYLE, max_lines: int = 2,
+                stroke_only: bool = False) -> FittedText:
     """fit_text on one line, else two (D6); ValueError if neither holds floor.
 
-    max_lines=1 never wraps (the tombstone sign's single-line bands).
+    max_lines=1 never wraps (the tombstone sign's single-line bands);
+    stroke_only is fit_text's (the floor gates the stroke alone).
 
     The error names the measured stroke, the threshold it missed (floor +
     FLOOR_MARGIN) and the longest prefix of text that would fit. The stroke is
@@ -252,7 +301,8 @@ def layout_text(text: str, box_w: float, box_h: float, margin: float,
     for candidate in (text, two_lines(text))[:max_lines]:
         if candidate is None:
             continue
-        fitted = fit_text(candidate, box_w, box_h, margin, depth, path=path, style=style)
+        fitted = fit_text(candidate, box_w, box_h, margin, depth, path=path, style=style,
+                          stroke_only=stroke_only)
         if fitted.min_stroke >= floor + FLOOR_MARGIN:
             return fitted
         tried.append(fitted)

@@ -12,7 +12,7 @@ import segno
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'tests'))
-from build123d import Box, Compound, GeomType, Pos, Vector  # noqa: E402
+from build123d import Box, Compound, FontStyle, GeomType, Pos, Vector  # noqa: E402
 from OCP.BRepAlgoAPI import BRepAlgoAPI_Common  # noqa: E402
 from OCP.TopTools import TopTools_ListOfShape  # noqa: E402
 from shapely.geometry import Point  # noqa: E402
@@ -21,6 +21,7 @@ from holders import sign_ghost, signs  # noqa: E402
 from holders import tombstone_sign as m  # noqa: E402
 from holders.registry import all_models, resolve_colour_parts, resolve_preview_parts  # noqa: E402
 from labels.constants import MAX_TEXT_LENGTH  # noqa: E402
+from labels import label_text as lt  # noqa: E402
 from labels.label_text import _polygons, load_font, min_feature_width  # noqa: E402
 import print_audit  # noqa: E402
 from print_audit import audit  # noqa: E402
@@ -30,6 +31,12 @@ from scripts.export import export_3mf_one_object, export_stl  # noqa: E402
 SPEC = m.SPEC
 URL = 'https://poppystreetspooks.com'
 PRESETS = {p.id: p for p in SPEC.presets}
+# Tiers (codex on #206): the five per-preset sweeps carrying audit_full
+# (colour count, partition, slab exclusion, byte-stable STLs, print audit)
+# took bd123's serial 'audit' job past its 60 min timeout, so like
+# test_cartridge_holder.test_endpoints they run in the sharded audit_full job
+# (holders/** and labels/** PRs, push to main, nightly); test_print_audit.py's
+# _BED_ONLY_IDS keeps every non-default preset's bed check in 'audit'.
 # Expected colour parts per preset: the first N roles (D3 fold chain, D9).
 PART_NAMES = {'default': m.ROLES, 'one-ams': m.ROLES[:4], 'two-colour': m.ROLES[:2],
               'pinned': m.ROLES, 'small': m.ROLES}
@@ -113,6 +120,36 @@ def test_fonts_resolve_to_the_vendored_files():
     assert {n for n, f in m.FACE.items() if f == 'lexend-bold'} == {'scan_line', 'host'}
 
 
+def test_every_preset_line_strokes_from_the_committed_cache(monkeypatch):
+    """No preset scans a stroke live (~65 s per cold process, #206): every
+    candidate the layout measures is in labels/nominal_strokes.json. A miss
+    means a preset string, font or the scan changed: run
+    scripts/nominal_strokes.py."""
+    def live(text, path, style):
+        raise AssertionError(f'{text!r} ({Path(path).name}) is not in the stroke cache')
+    monkeypatch.setattr(lt, 'measure_stroke', live)
+    lt._nominal_stroke.cache_clear()
+    m._ink.cache_clear()
+    try:
+        for preset in SPEC.presets:
+            assert m._frame(values_of(preset.id)) is not None, preset.id
+    finally:
+        lt._nominal_stroke.cache_clear()
+        m._ink.cache_clear()
+
+
+@pytest.mark.audit
+@pytest.mark.audit_full
+def test_stroke_cache_matches_a_live_scan():
+    """Every committed stroke equals the live scan on a vendored face, exactly
+    (JSON round-trips the float), so the cache never changes a layout."""
+    faces = {lt._font_sha(str(path)): path for path, _ in m.FONTS.values()}
+    for key, stroke in lt.stroke_cache().items():
+        sha, style, text = key.split(':', 2)
+        assert sha in faces, f'{key!r}: not a vendored tombstone face (stale entry)'
+        assert lt.measure_stroke(text, faces[sha], FontStyle[style]) == stroke, key
+
+
 # --- colour roles -----------------------------------------------------------
 
 def test_fold_chain_maps_every_role_for_each_colour_count():
@@ -140,6 +177,7 @@ def test_fold_chain_maps_every_role_for_each_colour_count():
 
 
 @pytest.mark.audit
+@pytest.mark.audit_full
 def test_colour_count_gives_exactly_the_first_n_parts():
     values, feats = values_of('default'), default_features()
     for n in range(2, 9):
@@ -438,6 +476,7 @@ def test_footer_is_present_unless_blank():
 # --- geometry (one build per preset) --------------------------------------
 
 @pytest.mark.audit
+@pytest.mark.audit_full
 @pytest.mark.parametrize('preset_id', list(PRESETS))
 def test_colour_parts_partition_the_raised_slab(preset_id):
     values, parts, whole = preset_case(preset_id)
@@ -525,6 +564,7 @@ def test_holes_show_the_plate_and_the_qr_reads_back(preset_id):
 
 
 @pytest.mark.audit
+@pytest.mark.audit_full
 @pytest.mark.parametrize('preset_id', list(PRESETS))
 def test_slab_exclusion_contains_every_raised_feature(preset_id):
     """The direction the S1 docstring claimed but nothing checked: the slab
@@ -585,6 +625,7 @@ for name, shape, _ in colour_parts(SPEC.resolve_values({values!r})):
 
 
 @pytest.mark.audit
+@pytest.mark.audit_full
 def test_part_stls_are_byte_stable_across_processes(tmp_path):
     values = PRESETS['small'].values
     _, parts, _ = preset_case('small')
@@ -601,6 +642,7 @@ def test_part_stls_are_byte_stable_across_processes(tmp_path):
 # --- print audit + edges --------------------------------------------------
 
 @pytest.mark.audit
+@pytest.mark.audit_full
 @pytest.mark.parametrize('preset_id', list(PRESETS))
 def test_print_audit_per_preset(preset_id, capsys):
     """Unexcluded, the only failure is the flat pocket roofs (and the pin
