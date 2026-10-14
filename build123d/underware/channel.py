@@ -66,6 +66,17 @@ def present_grips(length_mm: float, suppress: str, grip_flare: float = 0.):
     return out
 
 
+def channel_section(width_mm: float, height_mm: float, separators: str = '') -> Face:
+    """The U profile plus the separator walls the codes select (:304-310)."""
+    xs = midline_positions(width_mm)
+    sep = parse_codes('channel_separators', separators, SEPARATOR_CODES, len(xs))
+    section = monokini_profile(width_mm, height_mm)
+    for x, code in zip(xs, sep):
+        if code == 'S':
+            section = section.fuse(separator_rect(x, height_mm)).clean()
+    return section
+
+
 def straight_channel(length_mm: float, width_mm: float, height_mm: float, *,
                      suppress: str = '', separators: str = '', grip_flare: float = 0.) -> Part:
     """monokiniChannel (:257-371): profile along Y, one grip per wall per cell."""
@@ -73,12 +84,7 @@ def straight_channel(length_mm: float, width_mm: float, height_mm: float, *,
         raise ValueError(
             f'grip_flare above {MAX_FLARE_DEG:g} degrees leaves the flared grip base '
             f'overhanging the wall chamfer (a flat, unsupported ledge)')
-    xs = midline_positions(width_mm)
-    sep = parse_codes('channel_separators', separators, SEPARATOR_CODES, len(xs))
-    section = monokini_profile(width_mm, height_mm)
-    for x, code in zip(xs, sep):
-        if code == 'S':
-            section = section.fuse(separator_rect(x, height_mm)).clean()
+    section = channel_section(width_mm, height_mm, separators)
     body = Pos(0, -length_mm/2, 0)*extrude(section, length_mm, dir=(0, 1, 0))
     slits = []
     for y, side, flared in present_grips(length_mm, suppress, grip_flare):

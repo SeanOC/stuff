@@ -17,8 +17,9 @@
 # holders/openconnect_drawer.py adapt mitufy’s openConnect Drawer Generator
 # under CC BY-SA 4.0; source/reference grant in docs/provenance.md and
 # ../assets/openConnect-drawer/NOTICE.
-# Exception (Sean 2026-10-11, epic pst-fsk8s D0): underware/ and
-# holders/underware_i_channel.py adapt the Underware for openGrid upload under
+# Exception (Sean 2026-10-11, epic pst-fsk8s D0): underware/,
+# holders/underware_i_channel.py and holders/underware_junctions.py adapt the
+# Underware for openGrid upload under
 # CC BY-NC-SA 4.0 (meshes + NOTICE only; ../assets/underware-opengrid/NOTICE).
 # holders/cartridge_holder.py carries its source design CC BY-NC-SA 4.0;
 # personal/non-commercial use, see docs/provenance.md.
