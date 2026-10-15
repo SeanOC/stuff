@@ -6,6 +6,7 @@ build-item transform, plus the added Metadata/project_settings.config. The
 headless Bambu Studio round trip + slice (acceptance A1/A2) is recorded on
 the bead; these tests pin the structure it was run against.
 """
+import dataclasses
 import json
 import re
 import sys
@@ -19,8 +20,9 @@ sys.path.insert(0, str(ROOT))
 
 from holders.registry import resolve_colour_parts  # noqa: E402
 from profiles import PROFILES  # noqa: E402
+import scripts.export as export  # noqa: E402
 from scripts.export import (_place_on_plate, apply_printer_profile,  # noqa: E402
-                            export_3mf_one_object)
+                            export_3mf_one_object, max_footprint)
 from scripts.manifest import build_manifest, validate_manifest  # noqa: E402
 
 H2C = PROFILES['bambu-h2c-0.4']
@@ -160,5 +162,51 @@ def test_placement_puts_part_and_tower_on_the_h2c_plate(dx, dy, turned):
 
 
 def test_placement_refuses_a_part_the_plate_cannot_hold():
-    with pytest.raises(ValueError, match='does not fit'):
+    with pytest.raises(ValueError, match=r'does not fit the 330 x 320 mm plate .*max footprint 326 x 244 mm'):
         _place_on_plate(_box_model(320, 320), H2C.settings())
+
+
+def test_h2c_max_footprint_is_tighter_than_the_audit_build_volume():
+    """330 x 320 plate less 2 mm margins and the 70 mm tower reserve: a
+    multi-colour preset must fit 326 x 244 either way round, though the print
+    audit's build volume (325 x 320) passes e.g. 300 x 300 (pst-68fpi A1)."""
+    assert max_footprint(H2C.settings()) == (326.0, 244.0)
+
+
+@pytest.mark.parametrize('dx, dy, fits', [
+    (326, 244, True),     # the limit, as is
+    (244, 326, True),     # the limit, turned
+    (326.5, 10, False),   # wider than the plate either way
+    (245, 245, False),    # deeper than the reserve leaves either way
+    (300, 300, False),    # audit-legal, not profile-legal
+])
+def test_placement_accepts_exactly_the_max_footprint(dx, dy, fits):
+    if fits:
+        _place_on_plate(_box_model(dx, dy), H2C.settings())
+    else:
+        with pytest.raises(ValueError, match='does not fit'):
+            _place_on_plate(_box_model(dx, dy), H2C.settings())
+
+
+def test_bake_names_every_preset_a_profile_cannot_hold(tmp_path, monkeypatch, capsys):
+    """A preset too large for a profile fails the bake (every profiled 3MF is
+    expected downstream) with one line per preset x profile naming the
+    footprint and the max, not a bare traceback (pst-68fpi)."""
+    from holders.label_card import SPEC
+
+    settings = H2C.settings()
+    settings['printable_area'] = ['0x0', '50x0', '50x80', '0x80']  # max 46 x 4: holds no label
+    template = tmp_path / 'tiny.json'
+    template.write_text(json.dumps(settings), encoding='utf-8')
+    tiny = dataclasses.replace(H2C, id='tiny', template=template)
+    monkeypatch.setattr(export, 'all_models', lambda: [SPEC])
+    monkeypatch.setattr(export, 'PROFILES', {H2C.id: H2C, tiny.id: tiny})
+
+    assert export.export_presets_only(tmp_path / 'bake') == 1
+    fails = [line for line in capsys.readouterr().err.splitlines() if line.startswith('FAIL ')]
+    assert len(fails) == len(SPEC.presets) == 2
+    for preset, line in zip(SPEC.presets, fails):
+        assert line.startswith(f'FAIL {SPEC.name}/{preset.id}: printer profile tiny: part ')
+        assert 'max footprint 46 x 4 mm' in line
+    # The profile that holds the label still baked.
+    assert all((tmp_path / 'bake' / SPEC.slug / f'{p.id}.{H2C.id}.3mf').exists() for p in SPEC.presets)
