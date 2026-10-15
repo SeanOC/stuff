@@ -164,9 +164,8 @@ each reproduces its bytes):
   rotate_extrude at $fa 12 (0.07 mm facet sagitta at r = 13.2).
   The default mitre's bend (r = h/2 = 11) is path_extrude2d segments with
   gaps between them: the reference holds ~1105 mm3 less than the port's
-  revolve there, so it is matched off the bend only. The mitre is a library
-  parity reference, NOT a registered model (mayor ruling on pst-fsk8s.3;
-  print strategy pst-1nv9a).
+  revolve there, so it is matched off the bend only. Parity is measured on
+  the mitre BEFORE its bed flat (author_mitre; design-guidelines S8).
 
 Path channel deviations (build123d/holders/underware_path_channels.py header):
 - S / diagonal cord cutouts cut the bottom run's walls; the source's cutouts
@@ -174,6 +173,23 @@ Path channel deviations (build123d/holders/underware_path_channels.py header):
 - Named errors bound the S bend radius (the inner wall would fold under the
   half-width) and the diagonal mitre (the inside wall's setback past the end
   grip's 6.5 mm stand-back), and every combination that runs past the bed.
+- Mitre (underware_mitre, pst-1nv9a): one arm length (length_units) drives
+  both arms, max 7 cells, not the source's two (Channel_Length_Units /
+  Channel_Length_Units_Down). It prints rotated 45 degrees about X, where the
+  author's solid stands on one arm-tip edge with no bed face (the tips 0.566
+  mm apart); the port cuts a bed flat across both tips, 0.6 mm above the
+  higher tip (1.166 mm above the lower), parallel to the bed, which only
+  works for equal arms (unequal arms put the tips 19-40 mm apart). The cut
+  removes ~33 mm3 (0.34 % at the defaults) from the arm-end faces, which only
+  butt against the next channel. 8 cells stand past the 325 mm bed even at
+  width 1, height 10; wider or taller corners are a named error.
+- Mitre arch underside: a 90 degree bend has no support-free orientation, so
+  the bend's floor underside (the cylinder of the bend radius, 90 degrees at
+  its crown in the print frame) is printed as the author models it, supports
+  optional under the bend. It is the mitre's one published exception
+  (ArchUnderside in the header file, approver: mayor), per added_radius at the
+  22 mm default: r 11 / 39 / 67 mm, chord r*sqrt(2) = 15.6 / 55.2 / 94.8 mm,
+  across the 18.4 mm floor underside of a 1-unit channel.
 
 Frames: Z=0 is the closed, chamfered face; Y runs along the channel. The
 source's 0.01 mm Nudge makes every mesh span y = -L/2-0.015 .. L/2-0.005;
