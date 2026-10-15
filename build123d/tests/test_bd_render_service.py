@@ -51,8 +51,9 @@ def test_dockerfile_copies_registered_model_packages(monkeypatch):
         # excluding the virtualenv and pytest's top-level test modules.
         package = relative.parts[0]
         # Full-suite collection also imports helpers as tests.mount_contracts
-        # and tests.print_audit; these are not service runtime dependencies.
-        if package == "tests":
+        # and tests.print_audit, and test_bd_cli imports the bd/ dev CLI;
+        # these are not service runtime dependencies.
+        if package in ("tests", "bd"):
             continue
         if len(relative.parts) > 1 and module.__name__.split(".")[0] == package:
             imported_packages.add(package)
