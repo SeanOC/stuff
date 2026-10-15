@@ -122,8 +122,16 @@ def main() -> int:
             # The profiled file is a transform of the generic one (pst-jyey1).
             generic = out_path + ".generic.3mf"
             export_3mf_one_object(named, generic, spec.slug)
-            apply_printer_profile(generic, out_path, PROFILES[profile_id], named)
-            os.remove(generic)
+            try:
+                apply_printer_profile(generic, out_path, PROFILES[profile_id], named)
+            except ValueError as e:
+                # The part (or its part count) does not fit this printer: the
+                # client's choice of size + profile, so a 400 (pst-g4v3b F1).
+                return _fail(4, f"{e}; choose 'None (generic 3MF)' to download "
+                                f"without a printer profile")
+            finally:
+                if os.path.exists(generic):
+                    os.remove(generic)
         elif fmt == "3mf":
             export_3mf_one_object(named, out_path, spec.slug)
         elif fmt == "glb":

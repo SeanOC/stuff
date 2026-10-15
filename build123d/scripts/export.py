@@ -248,6 +248,10 @@ def _place_on_plate(model: str, settings: dict) -> tuple[str, float, float]:
     half = (x1 - x0) / 2
     centre = min(max((rx0 + rx1) / 2, px0 + PLATE_MARGIN + half), px1 - PLATE_MARGIN - half)
     tx, ty, tz = centre - (x0 + x1) / 2, py0 + PLATE_MARGIN - y0, -lo[2]
+    # Bambu Studio fills the 3x3 column-outer (bbs_3mf.cpp
+    # bbs_get_transform_from_3mf_specs_string; add_transformation writes the
+    # same order), so '0 1 0 -1 0 0 0 0 1' reads as (x, y) -> (-y, x). A
+    # row-major reader (PrusaSlicer/Orca) would turn the other way.
     rotation = '0 1 0 -1 0 0 0 0 1' if turned else '1 0 0 0 1 0 0 0 1'
     transform = f'{rotation} {tx:.4f} {ty:.4f} {tz:.4f}'
     return transform, (rx0 + rx1 - tower_w) / 2, y1 + ty + PLATE_MARGIN

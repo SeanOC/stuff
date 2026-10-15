@@ -401,6 +401,19 @@ def test_bad_printer_profile_is_400(base_url, query, message):
     assert json.loads(body)["errorMessage"] == message
 
 
+def test_a_part_too_large_for_the_profiled_printer_is_400(base_url):
+    # 300 x 300 is in the sign's param range (H2S bed) but leaves no room for
+    # the H2C prime tower in either orientation: the user's size + profile
+    # choice, so a 400 naming the generic fallback, not a 500 (pst-g4v3b F1).
+    status, _h, body = _post(
+        base_url, "/render?format=3mf&profile=bambu-h2c-0.4",
+        {"slug": "holder-tombstone-sign", "params": {"width": 300, "height": 300}},
+    )
+    assert status == 400, body
+    message = json.loads(body)["errorMessage"]
+    assert "does not fit the plate" in message and "None (generic 3MF)" in message
+
+
 def test_worker_takes_the_profile_as_its_fourth_argument(monkeypatch, tmp_path):
     import zipfile
     out = tmp_path / "out.3mf"

@@ -11,8 +11,9 @@
 // `-<name><value>` for a single flag so a bare number is never ambiguous.
 //
 // A printer profile (pst-jyey1, 3MF only) appends its id last:
-// `<stem>[-<flags>]-<profile>.3mf`, matching the bake's
-// `<slug>-<preset>-<profile>.3mf` downloads.
+// `<stem>[-<flags>]-<profile>.3mf`, matching the name /api/bd-asset gives a
+// baked preset download (`<slug>-<preset>-<profile>.3mf`). The baked FILE and
+// blob key are dot-separated, `<preset>.<profile>.3mf` (app/api/export/README.md).
 //
 // The stem is used verbatim — SCAD stems keep their underscores, build123d
 // slugs are already dash-form — only VALUES are sanitised.
