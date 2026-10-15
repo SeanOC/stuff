@@ -60,17 +60,22 @@ def _install():
     sys.path.insert(0, str(ROOT))
     OUT.mkdir(parents=True, exist_ok=True)
     ref = _load_reference()
+    from tests import audit_cache
     from tests import print_audit as new  # the module every test imports `audit` from
     fast = new.audit
     log = OUT / f"records-{os.environ.get('PYTEST_XDIST_WORKER', 'main')}-{os.getpid()}.jsonl"
 
     def audit(part, orientation=(0.0, 0.0, 1.0), **kwargs):
-        t0 = time.process_time()
-        got = fast(part, orientation, **kwargs)
-        t_new = time.process_time() - t0
-        t0 = time.process_time()
-        want = ref.audit(part, orientation, **kwargs)
-        t_ref = time.process_time() - t0
+        # pst-dyobq: both sides run cold. A hit would time the lookup, and a
+        # cache-era reference keys on the NEW print_audit.py source, so it
+        # would be answered with the report ``fast`` just stored.
+        with audit_cache.disabled():
+            t0 = time.process_time()
+            got = fast(part, orientation, **kwargs)
+            t_new = time.process_time() - t0
+            t0 = time.process_time()
+            want = ref.audit(part, orientation, **kwargs)
+            t_ref = time.process_time() - t0
         g, w = dataclasses.asdict(got), dataclasses.asdict(want)
         rec = dict(test=os.environ.get("PYTEST_CURRENT_TEST", "?").rsplit(" (", 1)[0],
                    model=got.model, ok=got.ok, t_new=t_new, t_ref=t_ref,

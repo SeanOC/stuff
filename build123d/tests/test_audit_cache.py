@@ -387,6 +387,63 @@ def test_budget_helper_never_times_a_hit(store, monkeypatch):
     assert cold_report == report
 
 
+# --- dev scripts time cold audits (pst-dyobq) -----------------------------
+
+def test_profile_print_audit_times_cold_audits(monkeypatch):
+    """scripts/profile_print_audit.py runs both its audit() calls (the timed
+    end-to-end row and --cprofile) with the cache off. Model build, phases and
+    the class-patching counters are stubbed: only the wrap is under test."""
+    prof = importlib.import_module("scripts.profile_print_audit")
+    seen = []
+
+    def recorder(part, **kwargs):
+        seen.append(audit_cache.cache_dir())
+
+    part = SimpleNamespace(faces=lambda: [])
+    monkeypatch.setattr(prof, "build_case", lambda name: (part, UP, [], 0.0, {}))
+    monkeypatch.setattr(prof, "phases", lambda *a: [])
+    monkeypatch.setattr(prof, "install_counters", lambda: None)
+    monkeypatch.setattr(prof.pa, "audit", recorder)
+    prof.main(["cup_lid"])
+    prof.main(["--cprofile", "cup_lid"])
+    assert len(seen) == 3 and seen == [None] * 3, seen  # timed + counted + cProfile
+
+
+def test_audit_equality_proof_runs_both_sides_cold(store, tmp_path, monkeypatch):
+    """scripts/audit_equality_proof.py's audit() shim runs the new AND the
+    reference audit cold. The store is primed first, so either call would
+    otherwise be a hit (a cache-era reference keys on the new source and would
+    read back the report the new side just stored)."""
+    real = pa.audit
+    seen = []
+
+    def fast(part, orientation=UP, **kwargs):
+        seen.append(audit_cache.cache_dir())
+        return real(part, orientation, **kwargs)
+
+    # The module installs its shim at import: point it at HEAD (a shallow CI
+    # checkout has no origin/main) and a private records dir, stub `fast`
+    # first, and let monkeypatch restore pa.audit / sys.path afterwards.
+    monkeypatch.setenv("AUDIT_REF", "HEAD")
+    monkeypatch.setenv("AUDIT_PROOF_DIR", str(tmp_path / "proof"))
+    monkeypatch.setattr(sys, "path", list(sys.path))
+    monkeypatch.setattr(pa, "audit", fast)
+    for name in ("scripts.audit_equality_proof", "_reference_print_audit"):
+        monkeypatch.delitem(sys.modules, name, raising=False)
+    importlib.import_module("scripts.audit_equality_proof")
+    try:
+        shim = pa.audit
+        assert shim is not fast
+        real(_filleted_box(), UP)  # prime the store
+        before = _counts()
+        shim(_filleted_box(), UP)
+        assert seen == [None]
+        assert _delta(before) == {"hits": 0, "misses": 0, "off": 2}
+    finally:
+        for name in ("scripts.audit_equality_proof", "_reference_print_audit"):
+            sys.modules.pop(name, None)
+
+
 # --- fresh-process HIT rows + I2 determinism -------------------------------
 
 def _row_args(row):

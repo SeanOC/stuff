@@ -87,7 +87,10 @@ jobs:
     # over the slowest clean run; pytest-split of this tier is a separate bead.
     # pst-t0ob3.4 (mayor carve-out): the D4 divider presets took this job to
     # 37m22s in PR #199 run 38506273980; 37.4 x 1.5 = 56 -> 60.
-    timeout-minutes: 60
+    # pst-dyobq (mayor carve-out): a cold cache (any PR touching print_audit.py,
+    # audit_cache.py or uv.lock) took this job to 51m53s in PR #204 run
+    # 38596072475; 51.9 x 1.5 = 78 -> 80.
+    timeout-minutes: 80
     defaults: { run: { working-directory: build123d } }
     steps:
       - uses: actions/checkout@v4
@@ -144,6 +147,7 @@ jobs:
               - 'build123d/multibuild/**'
               - 'build123d/openconnect/**'
               - 'build123d/tests/print_audit.py'
+              - 'build123d/tests/audit_cache.py'
               - 'build123d/tests/mount_contracts.py'
               - 'build123d/tests/test_spool_cradle.py'
               # capture-bin endpoint sweep lives in audit_full (pst-8vwop)
