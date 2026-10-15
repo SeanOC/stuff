@@ -548,6 +548,8 @@ _MODEL_EXCLUSIONS = {
     'underware_text_label': lambda values: [r for f in text_label_families(values).values() for r in f],
     'underware_path_channel': lambda values: [
         r for f in path_families('underware_path_channel', values).values() for r in f],
+    'underware_mitre': lambda values: [
+        r for f in path_families('underware_mitre', values).values() for r in f],
 }
 
 

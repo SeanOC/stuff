@@ -17,13 +17,13 @@ no exclusion beyond underware_i_channel's grip families.
 from __future__ import annotations
 
 import sys
-from math import acos, atan2, cos, degrees, hypot, radians
+from math import acos, atan2, cos, degrees, hypot, pi, radians, sin
 from pathlib import Path
 
 import numpy as np
 import pytest
 import trimesh
-from build123d import Box, Plane, Pos, Rectangle, Rot
+from build123d import Align, Box, Cylinder, Location, Plane, Pos, Rectangle, Rot, Vector, mirror
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -173,12 +173,15 @@ def test_reference_parity(ref_name, tmp_path):
                        for k, v in out.items()))
 
 
+# reference -> (registered values, the builder's arm lengths): the mirror
+# reference has the author's unequal 2 + 1 cell arms, which the registered
+# spec cannot express (one length_units drives both; the bed flat needs it).
 MITRE_PARITY = {
-    'mitre-r1': {'added_radius': 1},
-    'mitre-mirror-r1-w2-h28-y2': {'channel_width_units': 2, 'channel_total_height': 28,
-                                  'length_y_units': 2, 'mirror_channel': True, 'added_radius': 1,
-                                  'suppress_connectors': 'NL,R'},
-    'mitre': {},
+    'mitre-r1': ({'added_radius': 1}, {}),
+    'mitre-mirror-r1-w2-h28-y2': ({'channel_width_units': 2, 'channel_total_height': 28,
+                                   'mirror_channel': True, 'added_radius': 1,
+                                   'suppress_connectors': 'NL,R'}, {'length_y': 2, 'length_down': 1}),
+    'mitre': ({}, {}),
 }
 MITRE_GAP_MM3 = (1050, 1160)   # the default ref's bend deficit (measured 1105)
 
@@ -194,15 +197,17 @@ def _mitre_bend_mask(points, values):
 
 @pytest.mark.parametrize('ref_name', MITRE_PARITY)
 def test_mitre_reference_parity(ref_name, tmp_path):
-    """underware_mitre is built and parity-tested but NOT registered (mayor
-    ruling, option C; print strategy pst-1nv9a). The added-radius refs match
-    everywhere: path_extrude2d's 90 chords are 0.002 mm off the port's revolve.
+    """Parity on the author's solid BEFORE the bed flat (author_mitre;
+    design-guidelines S8: compare the pre-treatment solid, assert the
+    treatment's reduction separately in test_mitre_bed_flat). The added-radius
+    refs match everywhere: path_extrude2d's 90 chords are 0.002 mm off the
+    port's revolve.
     The default ref's bend (r = h/2 = 11) leaves path_extrude2d gaps between
     its segments (BOSL2 b86a7584), so it is matched off the bend and its bend
     deficit is pinned; every ref->port point in the bend lies inside the port
     (the ref's bend is a subset of the port's, never extra material)."""
-    values = MITRE_PARITY[ref_name]
-    part = m.build_mitre(values)
+    values, arms = MITRE_PARITY[ref_name]
+    part = m.author_mitre(values, **arms)
     assert part.is_valid and len(part.solids()) == 1
     ref = load_reference(ASSETS / 'mesh' / f'{ref_name}.stl')
     port = mesh_from_part(part, tmp_path / 'port.stl', tolerance=0.002, angular_tolerance=0.05)
@@ -541,3 +546,306 @@ def test_exclusions_still_reject_a_new_thin_fin(values):
     part = build(values) + Pos(0, -30, 4)*Box(.4, 6, 4)   # a 0.4 mm fin on the bottom run's floor
     report = pa.audit(part, SPEC.print_orientation, exclusions=flat(m.audit_exclusions(SPEC.name, values)))
     assert report.min_wall_mm < pa.MIN_WALL_MM
+
+
+# --- mitre: bed flat, arch exception, audit and edges (pst-1nv9a) -----------------
+
+MSPEC = m.SPEC_MITRE
+BED_FLAT_CAP_MM = 1.3     # above the lower tip: 1.5 mm leaves a 0.73 mm tip wall
+MIN_BED_MM2 = 60.
+MITRE_CORNERS = {
+    f'w{w}-h{h}-r{r}{"-mirror" if mir else ""}': {'channel_width_units': w, 'channel_total_height': h,
+                                                   'added_radius': r, 'mirror_channel': mir}
+    for w in (1, 2, 4) for h in (10, 22, 72) for r in (0, 1, 2) for mir in (False, True)}
+MITRE_BED_CASES = {**{pr.id: pr.values for pr in MSPEC.presets}, **MITRE_CORNERS,
+                   'length-7': {'length_units': 7},
+                   'max-corner': {'channel_width_units': 4, 'channel_total_height': 72, 'added_radius': 2,
+                                  'length_units': 2, 'mirror_channel': True}}
+
+
+def _print_frame_cut(frame, z, size=2000.):
+    """The half-space below print-frame height z, in the model frame."""
+    return frame.inverse()*Pos(0, 0, z)*Box(size, size, size, align=(Align.CENTER, Align.CENTER, Align.MAX))
+
+
+def _bed_faces(placed, z):
+    return [f for f in placed.faces()
+            if str(f.geom_type).endswith('PLANE') and f.normal_at().Z < -1 + 1e-6 and abs(f.center().Z - z) < 1e-6]
+
+
+@pytest.mark.audit
+@pytest.mark.parametrize('case', MITRE_BED_CASES)
+def test_mitre_bed_flat(case):
+    """M2: the bed flat is derived per parameter set from the print frame:
+    the plane sits BED_FLAT_MM above the higher arm tip, which equal arms put
+    (cw - w)/(2 sqrt 2) above the lower one, so it lands <= 1.3 mm above the
+    lower tip with >= 60 mm2 of bed in two strips, one per tip. S8 treatment
+    check: the finished solid is the author's minus exactly that half-space
+    (print-frame bbox: only min Z moves, by the cut depth), parity having
+    been measured on the author's solid."""
+    values = MITRE_BED_CASES[case]
+    v = m.mitre_values(values)
+    frame = MSPEC.print_frame(v)
+    author, part = m.author_mitre(values), MSPEC.build(values)
+    assert part.is_valid and len(part.solids()) == 1
+    lower, higher, plane = m.bed_plane(author, frame)
+    cw, w = v['channel_width_units']*c.GRID, c.channel_width(v['channel_width_units'])
+    assert higher - lower == pytest.approx((cw - w)/(2*2**.5), abs=1e-6)
+    assert plane == pytest.approx(higher + m.BED_FLAT_MM, abs=1e-9)
+    depth = plane - lower
+    assert depth <= BED_FLAT_CAP_MM
+    pre, fin = (frame*author).bounding_box(), (frame*part).bounding_box()
+    assert fin.min.Z == pytest.approx(plane, abs=1e-6)
+    assert np.allclose([*pre.min][:2] + [*pre.max], [*fin.min][:2] + [*fin.max], atol=1e-6)
+    assert m.mitre_extent(v) == pytest.approx((fin.size.Y, fin.size.X, fin.size.Z), abs=1e-3)
+    bed = _bed_faces(frame*part, plane)
+    assert sorted(np.sign(f.center().Y - fin.center().Y) for f in bed) == [-1, 1]
+    contact = sum(f.area for f in bed)
+    assert contact >= MIN_BED_MM2
+    removed = (author & _print_frame_cut(frame, plane)).volume
+    assert author.volume - part.volume == pytest.approx(removed, abs=1e-3)
+    assert 0 < removed < 1.5e-2*author.volume     # ~0.3 % at the default, ~1.1 % at width 4 height 10
+    print(f'MITRE BED | {case} | depth {depth:.3f} (higher tip {plane - higher:.3f}) | contact '
+          f'{contact:.2f} mm2 | vol {author.volume:.1f} -> {part.volume:.1f} (-{removed:.1f})')
+
+
+@pytest.mark.parametrize('values,message', [
+    ({'length_units': 8}, 'length_units=8 > max 7'),
+    ({'channel_width_units': 4, 'channel_total_height': 72, 'added_radius': 2, 'length_units': 3},
+     'past the 325 x 320 x 325 mm build volume'),
+    ({'length_units': 7, 'channel_total_height': 28}, 'past the 325 x 320 x 325 mm build volume'),
+    ({'length_y_units': 2}, "unknown param 'length_y_units'"),
+    ({'number_of_cord_cutouts': 1}, 'crosses the grip at y=0 mm'),
+    ({'suppress_connectors': 'N,N,N'}, 'has 3 comma fields'),
+])
+def test_mitre_named_errors(values, message):
+    with pytest.raises(ValueError) as exc:
+        MSPEC.build(values)
+    assert message in str(exc.value)
+
+
+MITRE_ARCH_CASES = {
+    'r0': {}, 'r1': {'added_radius': 1}, 'r2': {'added_radius': 2},
+    'r1-mirror-w2-h28': {'channel_width_units': 2, 'channel_total_height': 28, 'added_radius': 1,
+                         'mirror_channel': True},
+}
+
+
+@pytest.mark.audit
+@pytest.mark.parametrize('case', MITRE_ARCH_CASES)
+def test_mitre_arch_exception_is_narrow_and_exact(case):
+    """M3: the one published exception (approver: mayor) is the bend's floor
+    underside and nothing else. The envelope holds exactly one face, a
+    cylinder of the bend radius over the full 90 degrees (area = width * r *
+    pi/2); without it the audit fails on exactly that face (overhang 90 at
+    the crown, one downward curved face), with it the audit passes; the
+    print-frame placement keeps the same face; a new curved overhang beside
+    the arch is not waived. The row quotes the arch's own chord and width,
+    not a bridge span (longest_bridge reads none)."""
+    values = MITRE_ARCH_CASES[case]
+    v = m.mitre_values(values)
+    frame, part = MSPEC.print_frame(v), MSPEC.build(values)
+    regions = m.audit_exclusions(MSPEC.name, values)
+    (arch,) = regions['arch-underside']
+    r = p.mitre_radius(v['channel_total_height'], v['added_radius'])
+
+    def held(envelope, face):
+        return all(envelope.is_inside(tuple(q)) for q in (face.center(), *face.vertices(),
+                                                          *(face.position_at(*uv) for uv in ((.2, .3), (.8, .7)))))
+
+    inside = [f for f in part.faces() if held(arch, f)]
+    assert len(inside) == 1 and str(inside[0].geom_type).endswith('CYLINDER')
+    (face,) = inside
+    width = face.bounding_box().size.X
+    assert face.area == pytest.approx(width*r*pi/2, rel=1e-3)
+    placed = frame*arch
+    assert [i for i, f in enumerate((frame*part).faces()) if held(placed, f)] == \
+        [i for i, f in enumerate(part.faces()) if held(arch, f)]
+    others = [e for k, family in regions.items() if k != 'arch-underside' for e in family]
+    raw = pa.audit(part, MSPEC.print_orientation, print_frame=frame, exclusions=others)
+    assert raw.max_overhang_deg == pytest.approx(90, abs=.1)
+    assert [d.geom_type for d in raw.downward_fillets] == ['CYLINDER']
+    assert raw.longest_bridge_mm <= pa.MAX_BRIDGE_MM
+    clean = pa.audit(part, MSPEC.print_orientation, print_frame=frame, exclusions=flat(regions))
+    assert clean.ok, clean.format()
+    w = c.channel_width(v['channel_width_units'])
+    xc = -arch.x0 - w/2 if v['mirror_channel'] else arch.x0 + w/2
+    bump = Pos(xc, -w/2 - p.STUB - 4, -1)*Rot(0, 90, 0)*Cylinder(2, 6)   # under the first arm, off the arch
+    damaged = pa.audit(part + bump, MSPEC.print_orientation, print_frame=frame, exclusions=flat(regions))
+    assert not damaged.ok and damaged.downward_fillets
+    print(f'MITRE ARCH | {case} | r {r:.1f} mm | chord {r*2**.5:.1f} mm | floor width {width:.2f} mm | '
+          f'face {face.area:.1f} mm2 | raw ovh {raw.max_overhang_deg:.1f} bridge {raw.longest_bridge_mm:.2f} '
+          f'| filtered ovh {clean.max_overhang_deg:.1f} wall {clean.min_wall_mm:.3f} | signed: pending mayor')
+
+
+MCUT = {'length_units': 3, 'number_of_cord_cutouts': 2}
+MITRE_CASES = {
+    # every numeric endpoint the bed allows (length 8+, wide-tall-long corners
+    # are named errors above), both presets, the documented corners.
+    **{pr.id: pr.values for pr in MSPEC.presets},
+    'width-4': {'channel_width_units': 4}, 'height-10': {'channel_total_height': 10},
+    'height-72': {'channel_total_height': 72}, 'length-7': {'length_units': 7},
+    'radius-2': {'added_radius': 2}, 'mirror': {'mirror_channel': True},
+    'max-corner': {'channel_width_units': 4, 'channel_total_height': 72, 'added_radius': 2,
+                   'length_units': 2, 'mirror_channel': True},
+    'min-corner': {'channel_total_height': 10, 'mirror_channel': True},
+    'separators-w4': {'channel_width_units': 4, 'channel_separators': 'SSSSSSSS'},
+    'flare-9.9': {'grip_flare': 9.9}, 'flare-5-suppress': {'grip_flare': 5, 'suppress_connectors': 'S,L'},
+    'suppress-all': {'suppress_connectors': 'B,B'},
+    'cut-both': MCUT,
+    'cut-n4-w6': {**MCUT, 'length_units': 5, 'number_of_cord_cutouts': 4, 'cord_cutout_width': 6},
+    'cut-w20': {**MCUT, 'number_of_cord_cutouts': 1, 'cord_cutout_width': 20, 'suppress_connectors': 'NBN'},
+    'cut-d56': {**MCUT, 'length_units': 4, 'distance_between_cutouts': 56},
+    'cut-d14': {**MCUT, 'distance_between_cutouts': 14, 'suppress_connectors': 'NBN'},
+    'cut-shift-14': {**MCUT, 'number_of_cord_cutouts': 1, 'shift_cutouts': 14, 'suppress_connectors': 'NBN'},
+    'cut-left-mirror': {**MCUT, 'cord_side_cutouts': 'Left Side', 'mirror_channel': True},
+    'cut-right-top-h10': {**MCUT, 'cord_side_cutouts': 'Right Side Top', 'channel_total_height': 10},
+}
+
+
+def _section_frame(q, w, r, second):
+    """The piece frame an edge at model point q is read in: the first arm as
+    built, the second arm's Location, or the bend unrolled about its axis
+    onto the first arm's end (mitre_bend revolves the section by theta)."""
+    if q.Y <= -w/2 + 1e-6:
+        return Location()
+    if q.Z <= -r + 1e-6:
+        return second
+    theta = degrees(atan2(q.Y + w/2, q.Z + r))
+    return Pos(0, -w/2, -r)*Rot(-theta, 0, 0)*Pos(0, w/2, r)
+
+
+def _to(loc, q):
+    return Vector(*(loc*Location(tuple(q))).position)
+
+
+def _inside_u_at(part, loc, mid, normals):
+    """_inside_u read in a piece frame: loc maps that frame to the model."""
+    n = normals[0] + normals[1]
+    if min(q.Z for q in normals) < -1e-6:
+        return False
+    px, py = mid.X + .05*n.X, mid.Y + .05*n.Y
+    solid = lambda z: part.is_inside(tuple(_to(loc, (px, py, z))))
+    if solid(mid.Z + .05*n.Z + .5):
+        return False
+    return any(solid(z) for z in (mid.Z - .1, mid.Z - .5, mid.Z - 1, 1., .5))
+
+
+def mitre_edge_inventory(part, values):
+    """edge_inventory for the mitre, each edge read in its piece's section
+    frame (_section_frame) so the S families apply unchanged: grip, end face
+    (each arm's free tip), bed chamfer, interior, cutout / flare. Plus 'bed
+    flat': the cut's boundary on the print bed, 45 degrees to the arm-end and
+    closed faces and 60 to the author's chamfers, each a face rising off the
+    bed (the elephant-foot relief is built in). The bend revolves the section
+    and meets both arms tangentially. A mirrored part is read unmirrored (the
+    cut plane is mirror-invariant)."""
+    v = m.mitre_values(values)
+    if v['mirror_channel']:
+        part, values = mirror(part, Plane.YZ), {**values, 'mirror_channel': False}
+        v = m.mitre_values(values)
+    h, w = v['channel_total_height'], c.channel_width(v['channel_width_units'])
+    r = p.mitre_radius(h, v['added_radius'])
+    frame = MSPEC.print_frame(v)
+    plane = (frame*part).bounding_box().min.Z
+    _, first = m._checked_mitre(values)
+    second = p.mitre_second_location(v['channel_width_units'], h, v['length_down_units'], v['added_radius'])
+    tips = (-(first.length + v['channel_width_units']*c.GRID/2), -v['length_down_units']*c.GRID/2)
+    boxes = [(first.location*cut).bounding_box() for cut in cord_cutouts(w, h, **m._cut_args(v))]
+    boxes += [(loc*grip_flared_cut(w, h, y, side)).bounding_box()
+              for loc, y, side, flared in m.grips(MSPEC.name, values) if flared]
+    adjacent = {}
+    for face in part.faces():
+        for edge in face.edges():
+            adjacent.setdefault(edge, []).append(face)
+    families, worst = {}, 0.
+    for edge, faces in adjacent.items():
+        if len(faces) != 2:
+            continue
+        mid = edge.position_at(.5)
+        normals = [f.normal_at(mid) for f in faces]
+        angle = degrees(acos(max(-1., min(1., normals[0].dot(normals[1])))))
+        if angle < 1:
+            continue
+        samples = [edge.position_at(t) for t in (0, .5, 1)]
+        loc = _section_frame(mid, w, r, second)
+        back = loc.inverse()
+        ql = _to(back, mid)
+        local_y = [_to(back, q).Y for q in samples]
+        z = ql.Z
+        if all(abs(_to(frame, q).Z - plane) < 1e-4 for q in samples):
+            family = 'bed flat'
+            worst = max(worst, angle)
+        elif any(b.min.X - .05 <= mid.X <= b.max.X + .05 and b.min.Y - .05 <= mid.Y <= b.max.Y + .05
+                 and b.min.Z - .05 <= mid.Z <= b.max.Z + .05 for b in boxes):
+            family = 'cutout/flare'
+        elif z >= h - c.BASE_HEIGHT - 1e-4:
+            family = 'grip'
+        elif any(all(abs(y - tip) < 1e-4 for y in local_y)
+                 for tip in (tips[0] if loc == Location() else tips[1],)):
+            family = 'end face'
+        elif (abs(z) < 1e-4 or abs(z - c.TOP_CHAMFER) < 1e-4) and abs(angle - 45) < 1:
+            family = 'bed chamfer'
+            worst = max(worst, angle)
+        elif z >= c.SNAP_WALL - 1e-4 and _inside_u_at(part, loc, ql, [_to(back, mid + n) - ql for n in normals]):
+            family = 'interior'
+        else:
+            family = f'UNCLASSIFIED {tuple(round(q, 2) for q in mid)} {angle:.0f}'
+        families[family] = families.get(family, 0) + 1
+    return families, worst
+
+
+@pytest.mark.audit
+@pytest.mark.parametrize('case', MITRE_CASES)
+def test_mitre_endpoint_audit_and_edges(case):
+    """P4 table for underware_mitre in its 45 degree print frame: raw (only
+    the arch fails, at 90 degrees), filtered (every exception family) and the
+    exposed-edge inventory."""
+    values = MITRE_CASES[case]
+    v = m.mitre_values(values)
+    frame, part = MSPEC.print_frame(v), MSPEC.build(values)
+    assert part.is_valid and len(part.solids()) == 1
+    raw = pa.audit(part, MSPEC.print_orientation, print_frame=frame, model=case)
+    assert raw.longest_bridge_mm <= pa.MAX_BRIDGE_MM
+    regions = m.audit_exclusions(MSPEC.name, values)
+    report = pa.audit(part, MSPEC.print_orientation, print_frame=frame, model=case, exclusions=flat(regions))
+    assert report.ok, report.format()
+    families, worst = mitre_edge_inventory(part, values)
+    assert not [f for f in families if f.startswith('UNCLASSIFIED')], families
+    print(f'AUDIT | mitre {case} | vol {part.volume:.1f} | raw wall {raw.min_wall_mm:.3f} ovh {raw.max_overhang_deg:.1f} '
+          f'bridge {raw.longest_bridge_mm:.2f} | filtered wall {report.min_wall_mm:.3f} ovh '
+          f'{report.max_overhang_deg:.1f} | edges worst exposed {worst:.1f} {dict(sorted(families.items()))} '
+          f'| exceptions {", ".join(k for k, r in regions.items() if r) or "none"} | PASS')
+    record(f'mitre-{case}', vol=part.volume, raw_wall=raw.min_wall_mm, raw_ovh=raw.max_overhang_deg,
+           raw_bridge=raw.longest_bridge_mm, filtered_wall=report.min_wall_mm,
+           filtered_ovh=report.max_overhang_deg, edges_worst_exposed=worst,
+           edges=dict(sorted(families.items())), exceptions=[k for k, r in regions.items() if r],
+           result='PASS')
+
+
+@pytest.mark.parametrize('preset', [pr.id for pr in MSPEC.presets])
+def test_mitre_presets_are_single_valid_watertight_solids(preset, tmp_path):
+    values = next(pr.values for pr in MSPEC.presets if pr.id == preset)
+    part = MSPEC.build(values)
+    assert part.is_valid and len(part.solids()) == 1
+    export_stl(part, tmp_path / 'p.stl')
+    assert trimesh.load_mesh(tmp_path / 'p.stl').is_watertight
+    print(f'VOLUME | {MSPEC.name} | {preset} | {m.author_mitre(values).volume:.1f} -> {part.volume:.1f} mm3')
+
+
+def test_arch_envelope_is_the_quadrant_only():
+    """The predicate's own bounds: on the bend radius inside the quadrant and
+    the width; off it by radius, quadrant or x; frame placement round-trips."""
+    v = m.mitre_values({})
+    arch, w, r = m.arch_underside({}), c.channel_width(1), p.mitre_radius(22, 0)
+    on = (0., -w/2 + r*sin(radians(30)), -r + r*cos(radians(30)))
+    assert arch.is_inside(on)
+    assert not arch.is_inside((on[0], on[1] + .01, on[2] + .01))          # off the radius
+    assert not arch.is_inside((0., -w/2 - .5, -r + (r**2 - .25)**.5))      # before the bend (first arm side)
+    assert not arch.is_inside((0., -w/2 + (r**2 - .25)**.5, -r - .5))      # past it (second arm side)
+    assert not arch.is_inside((w/2 + .01, *on[1:]))                        # outside the width
+    frame = MSPEC.print_frame(v)
+    assert (frame*arch).is_inside(tuple(_to(frame, on)))
+    assert not (frame*arch).is_inside(on)
+    mirrored = m.arch_underside({'added_radius': 1, 'mirror_channel': True})
+    assert (mirrored.x0, mirrored.x1) == pytest.approx((c.GRID - w/2, c.GRID + w/2))
