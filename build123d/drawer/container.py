@@ -120,23 +120,6 @@ def print_frame(values=None):
     return author_to_mesh(values) * AUTHOR_TO_MODEL.inverse()
 
 
-def validate_label(values=None):
-    """Our guard (no source assert): the label holder must fit the front.
-
-    The author's mask clips an over-wide holder into a lipless ledge (the
-    1x1x1 reference). The registry rejects that; library callers keep the
-    source behaviour for reference parity.
-    """
-    v = values or {}
-    if not v.get('add_label_holder', True):
-        return
-    d = dimensions(v)
-    width = _label(v)[0]
-    if width > d.width:
-        raise ValueError(f'label holder ({width:g} mm) is wider than the container front '
-                         f'({d.width:g} mm); reduce label_width or disable add_label_holder')
-
-
 # ---------------------------------------------------------------- front hex
 
 def _front_hex(d):
@@ -404,7 +387,9 @@ def _rounded_rect(x0, x1, y0, y1, z, r, n=16):
 
 def source_label_holder(values=None):
     """[C] :1794-1805 prismoid (45 deg underside, 0.8 rounded lower corners),
-    0.4 top-edge roundovers and the label pocket/window, clipped by mask (a)."""
+    0.4 top-edge roundovers and the label pocket/window, clipped by mask (a).
+    A holder wider than the front is clipped into the author's lipless ledge
+    (the 1x1x1 reference); no guard, on any path."""
     v = values or {}
     d = dimensions(v)
     if not v.get('add_label_holder', True):
@@ -965,5 +950,4 @@ def chamfer_bed(part, values=None):
 
 
 def build(values=None):
-    validate_label(values)
     return chamfer_bed(before_bed_chamfer(values), values)
