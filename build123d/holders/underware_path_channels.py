@@ -51,7 +51,7 @@ from underware.grip import end_ramp_regions, slit_floor_regions
 MAX_RUN = 9
 MAX_OVER = 10
 MAX_UP = 9      # (1 + 1 + 10) cells of the shortest part already pass the 325 mm bed
-MAX_ARM = 7     # mitre: 8 cells stand past the 325 mm bed at 45 degrees even at width 1, h 10
+MAX_ARM = 7     # mitre: 8 cells stand past the 325 mm bed at 45 degrees even at width 1, h 10 (spec rev 1 said 1..9; mayor confirmed 7, 2026-10-15)
 
 
 def _cut_args(v):
