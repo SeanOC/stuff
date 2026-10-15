@@ -27,9 +27,10 @@ bed flat cut across the two arm tips (bed_flat): equal arms put the tips
 BED_FLAT_MM above the higher tip. Worst load: cables pulling either arm off
 its board, along that arm's grips, carried along the layers. A 90 degree bend
 has no support-free orientation: the arch underside (the floor's cylinder at
-the bend radius) is printed as the author models it, supports optional under
-the bend, through one published exception (ArchUnderside, approver: mayor,
-pst-1nv9a).
+the bend radius) is printed unsupported by design, as the author models it,
+through one published exception (ArchUnderside, signed by the mayor on
+pst-1nv9a); supports stay optional under the bend. Test-print added_radius 2
+(chord 94.8 mm) first; added_radius 0 (chord 15.6 mm) is safe.
 
 Not ported: the label (U4b, underware_text_label), Decorative /
 Support_Bridging_Separation (as underware_i_channel). Deviations are listed in
@@ -362,8 +363,8 @@ SPEC_MITRE = register(ModelSpec(
     title='Underware mitre cable-channel corner (openGrid)',
     description='Underware "monokini" channel that turns 90° from one openGrid board onto a '
                 'perpendicular one (inside corner), with an optional larger bend radius. '
-                + BLURB + ' Prints standing on its two arm tips at 45°; supports optional '
-                'under the bend.',
+                + BLURB + ' Prints standing on its two arm tips at 45°; the arch under the '
+                'bend prints unsupported by design (test-print the largest bend radius first).',
     category_id='multiboard',
     build=build_mitre,
     print_frame=mitre_print_frame,

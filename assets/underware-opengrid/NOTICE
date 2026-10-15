@@ -185,8 +185,10 @@ Path channel deviations (build123d/holders/underware_path_channels.py header):
   width 1, height 10; wider or taller corners are a named error.
 - Mitre arch underside: a 90 degree bend has no support-free orientation, so
   the bend's floor underside (the cylinder of the bend radius, 90 degrees at
-  its crown in the print frame) is printed as the author models it, supports
-  optional under the bend. It is the mitre's one published exception
+  its crown in the print frame) is printed unsupported by design, as the
+  author models it (supports stay optional under the bend). Test-print r2
+  (chord 94.8 mm) first; r0 (chord 15.6 mm) is safe. It is the mitre's one
+  published exception
   (ArchUnderside in the header file, approver: mayor), per added_radius at the
   22 mm default: r 11 / 39 / 67 mm, chord r*sqrt(2) = 15.6 / 55.2 / 94.8 mm,
   across the 18.4 mm floor underside of a 1-unit channel.

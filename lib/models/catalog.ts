@@ -235,7 +235,7 @@ export const BUILD123D_CATALOG: Record<string, CatalogEntry> = {
   underware_mitre: {
     categoryId: "multiboard",
     blurb:
-      'Underware "monokini" channel that turns 90° from one openGrid board onto a perpendicular one (inside corner), with an optional larger bend radius. Snaps into openGrid; set sizes in 28 mm cells and the height, with optional cord exits on the first channel and per-cell grip suppression. By Pedro Leite (Underware 2.0), CC BY-NC-SA 4.0 (non-commercial, share-alike). Prints standing on its two arm tips at 45°; supports optional under the bend.',
+      'Underware "monokini" channel that turns 90° from one openGrid board onto a perpendicular one (inside corner), with an optional larger bend radius. Snaps into openGrid; set sizes in 28 mm cells and the height, with optional cord exits on the first channel and per-cell grip suppression. By Pedro Leite (Underware 2.0), CC BY-NC-SA 4.0 (non-commercial, share-alike). Prints standing on its two arm tips at 45°; the arch under the bend prints unsupported by design (test-print the largest bend radius first).',
   },
   holder_tombstone_sign: {
     categoryId: "household",
