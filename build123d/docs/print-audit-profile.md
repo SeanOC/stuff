@@ -321,3 +321,67 @@ test-level split (option (c)) could not help on its own, because the audit half
 would still hold over 90 % of the item. The cache answers only when the container's geometry,
 exclusions and audit code are unchanged since the shard last saved. A PR that
 changes any of them runs this item cold again, at the old ~14 min CI wall.
+
+## The drawer shell's non-audit time (pst-we7g4)
+
+On main run 38630578619, all 36 audits on the shard that carried
+`test_openconnect_drawer.py::test_endpoint_audit_and_edges[divider-height-3-way]`
+and `[8x8x8]` were cache hits, and the shard still took 18m46. These two items
+spend most of their time outside `audit()`. Each sub-check was timed in one
+process on the worker host. The audit cache was cold for this run, so the two
+audit rows are misses here. Warm, they cost only the key build: the after-run
+below had 2 hits, `audit_s=0.0`. CPU seconds are the number to compare. CI runs
+`-n 4` on four vCPUs, so OCCT's threaded booleans get no spare cores there.
+
+**Before (origin/main acbbe00a)**
+
+| phase | divider-height-3-way CPU s | 8x8x8 CPU s |
+|---|---:|---:|
+| build (`m.build`) | 84.1 | 96.7 |
+| `slot_fixtures` (again) | 4.6 | 10.6 |
+| audit raw + filtered (cold here; warm = key only) | 190.9 | 97.7 |
+| `before_bed_chamfer` (again; `m.build` already made it) | 75.7 | 78.8 |
+| envelope `body - (before - part)` | 37.3 | 42.2 |
+| `verify_openconnect_slot` | 134.2 | 319.8 |
+| `edge_inventory` | 30.5 | 19.0 |
+| the rest (validity, chords, exclusions, sections, layouts) | 6.0 | 4.9 |
+| **non-audit total** | **372.9** | **572.0** |
+
+`verify_openconnect_slot` (cProfile, divider-height-3-way, 25 slots):
+1,431 OCCT booleans, 62 of 70 s. 25 of them crop the WHOLE part to one slot's
+head path (18.6 s), 25 intersect the whole part with a backing probe (~17 s),
+and 1,325 are small head-pose probes (~27 s).
+
+**What changed.** No assertion moved, was dropped or changed tier.
+- (a) The test spies on `shell.before_bed_chamfer` and `shell.slot_fixtures`
+  while `m.build` runs and reuses those results instead of rebuilding them.
+  Every call still runs the original.
+- (c) `verify_openconnect_slot` collects every slot's head-path region and
+  backing probe first. It then crops the part and envelope once, to a box
+  1 mm clear of all of them, and keeps one boolean and the named asserts per
+  slot. Every residual volume matched the old code exactly (max abs diff
+  0.0): 1,325 calls on divider-height-3-way and 3,392 on 8x8x8.
+- The envelope's `before - part` is taken inside a 2 mm bed slab, because
+  `chamfer_bed` removes material only below source z = 0.3. Envelope volume
+  is identical (symdiff 0) and CPU drops from 46 to 5 s.
+- (b) `cached_edge_inventory` stores the inventory under the audit cache
+  directory. Its key covers `shape_sig(part)`, the values, the OCP/build123d
+  versions, and a hash of the inventory module, `print_audit.py`,
+  `drawer/*.py` and `openconnect/*.py`. It does not use
+  `audit_cache._source_hash()`. A unit test shows that a byte edit to the
+  inventory module misses.
+
+**After (this branch, pytest item, audit cache warm, inventory cache cold)**
+
+| item | wall s | user+sys CPU s |
+|---|---:|---:|
+| divider-height-3-way | 131 | 230 |
+| 8x8x8 | 210 | 393 |
+
+With the inventory cache warm as well, a further ~30 / ~19 CPU s go. The floor
+that remains is the build (84 / 97 CPU s) and the small per-step head probes in
+`verify_openconnect_slot` (~100 / ~280 CPU s). Those probes are the entry and
+retention sweep the contract requires, one boolean per step and slot. An 8x8
+back has 64 slots, which is why 8x8x8 keeps the larger floor.
+`uv run python scripts/profile_print_audit.py --test-phases` reprints the
+per-phase table.

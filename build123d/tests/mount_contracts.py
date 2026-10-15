@@ -395,7 +395,7 @@ def channel_pairs(fx: MountFixtures) -> list[list[tuple]]:
     return result
 
 
-def _head_path_region(poses):
+def _head_path_region(poses, pad=.01):
     """Enclose translated head-path endpoints, including all linear interiors.
 
     A head translates without rotating on each tested path segment. Therefore
@@ -405,8 +405,8 @@ def _head_path_region(poses):
     Padding keeps the artificial cut planes away from coincident probe faces.
     """
     boxes = [pose.bounding_box() for pose in poses]
-    low = [min(tuple(box.min)[axis] for box in boxes)-.01 for axis in range(3)]
-    high = [max(tuple(box.max)[axis] for box in boxes)+.01 for axis in range(3)]
+    low = [min(tuple(box.min)[axis] for box in boxes)-pad for axis in range(3)]
+    high = [max(tuple(box.max)[axis] for box in boxes)+pad for axis in range(3)]
     return Pos(*((a+b)/2 for a, b in zip(low, high))) * Box(
         *(b-a for a, b in zip(low, high)))
 
@@ -479,6 +479,7 @@ def verify_openconnect_slot(
                 f'of {tuple(round(v, 2) for v in delta)}')
 
     face_y = part.bounding_box().min.Y
+    slots, queried = [], []
     for cutter, seat, ramp in zip(fx.cutters, fx.seat_locs, fx.onramp_locs):
         a, b = seat.position, ramp.position
         assert abs(a.Y - b.Y) < 1e-7, 'on-ramp and seat poses must share the insertion depth'
@@ -488,11 +489,28 @@ def verify_openconnect_slot(
         out = head.bounding_box().max.Y - face_y + 0.5
         outside = Pos(0, -out, 0) * head
         shifted = Pos(a.X-b.X, 0, 0) * head
-        probe_part = part & _head_path_region([
+        region = _head_path_region([
             seated, head, outside, shifted,
             Pos(0, -max(_PULL_DISTS), 0)*seated,
             Pos(0, 0, 1.0)*seated,
         ])
+        bb = cutter.bounding_box()
+        back_faces = [f for f in cutter.faces().filter_by(Axis.Y)
+                      if abs(f.center().Y - bb.max.Y) < 1e-7]
+        probes = [Solid.extrude(face, (0, min_backing, 0)) for face in back_faces]
+        slots.append((cutter, a, b, seated, head, out, outside, shifted, region, back_faces, probes))
+        queried += [region, *probes]
+    # pst-we7g4: every per-slot query reads the model only inside its head
+    # path region or backing probe. Crop the model and envelope ONCE to a box
+    # 1 mm clear of all of them; (part & crop) & q == part & q for each q
+    # inside it, and each per-slot boolean then meets the mount face's slab,
+    # not the whole model (64 full-model booleans on an 8x8 drawer back).
+    crop = _head_path_region(queried, pad=1.0)
+    part = part & crop
+    if backing_envelope is not None:
+        backing_envelope = backing_envelope & crop
+    for cutter, a, b, seated, head, out, outside, shifted, region, back_faces, probes in slots:
+        probe_part = part & region
         r = _residual_vol(probe_part, seated)
         assert r < _EMPTY_VOL, f'seated openConnect head fouls the model ({r:.3f} mm^3)'
         for dist in _PULL_DISTS:
@@ -512,11 +530,8 @@ def verify_openconnect_slot(
         assert 0 < surface < HEAD_WIDTH <= deep, (
             f'openconnect pocket is not retentive: {surface:.2f} mm at the face, '
             f'{deep:.2f} mm deep (flange {HEAD_WIDTH})')
-        back_faces = [f for f in cutter.faces().filter_by(Axis.Y)
-                      if abs(f.center().Y - bb.max.Y) < 1e-7]
         assert back_faces, 'openconnect cutter must expose pocket-back faces'
-        for face in back_faces:
-            probe = Solid.extrude(face, (0, min_backing, 0))
+        for probe in probes:
             if backing_envelope is not None:
                 probe = probe & backing_envelope
             missing = probe.volume - _residual_vol(part, probe)
