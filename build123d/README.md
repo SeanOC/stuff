@@ -3,7 +3,7 @@
 Parametric models in **Python + [build123d](https://github.com/gumyr/build123d)**, consuming **published
 parametric libraries as dependencies** — evaluated against our OpenSCAD workflow (see repo root).
 
-> **Design guidelines:** every model in this directory follows [docs/design-guidelines.md](docs/design-guidelines.md) (printability for the Bambu H2S in PLA/PCTG, edge treatment, material efficiency, structural integration, mount parametrics). The reviewer checks PRs against §6.
+> **Design guidelines:** every model in this directory follows [docs/design-guidelines.md](docs/design-guidelines.md) (printability for the Bambu H2S or H2C in PLA/PCTG, edge treatment, material efficiency, structural integration, mount parametrics). The reviewer checks PRs against §6.
 
 ## Hard rule
 openGrid / Multiconnect geometry comes **only** from the pinned
@@ -134,8 +134,9 @@ presets bypass this reinforcement and retain their original geometry.
 
 A watertight, contract-passing part can still be unprintable. `tests/print_audit.py`
 turns the [design-guidelines §1](docs/design-guidelines.md) rules into a standing,
-deterministic check for the target machine (**Bambu H2S, 0.4 mm nozzle, PLA/PCTG,
-no supports**) instead of a reviewer eyeball. Given a `Part` and its declared print
+deterministic check for the target machines (**Bambu H2S or H2C, 0.4 mm nozzle,
+PLA/PCTG, no supports**; the envelope is the H2S volume, see `holders/printer.py`)
+instead of a reviewer eyeball. Given a `Part` and its declared print
 orientation it returns a typed `PrintAuditReport`:
 
 - **overhang** — steepest downward face from vertical (threshold **45°**);
