@@ -66,7 +66,10 @@ def cache_dir() -> Path | None:
 
 @contextlib.contextmanager
 def disabled():
-    """Force every audit() inside the block to run cold (neither read nor store)."""
+    """Force every audit() inside the block to run cold (neither read nor store).
+
+    Anything that times audit() needs it: scripts/profile_print_audit.py and
+    scripts/audit_equality_proof.py wrap their calls (pst-dyobq)."""
     global _forced_off
     _forced_off += 1
     try:

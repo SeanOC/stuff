@@ -13,10 +13,10 @@ exactly +/-length/2 (reference meshes span -L/2-0.015 .. L/2-0.005).
 """
 from __future__ import annotations
 
-from math import radians, sqrt, tan
+from math import atan2, degrees, radians, sqrt, tan
 
-from build123d import (Box, Cylinder, Face, Part, Plane, Pos, Rot, ThreePointArc, Vector, Wire,
-                       extrude, mirror)
+from build123d import (Box, Cylinder, Face, Part, Plane, Pos, Rot, ThreePointArc, Transition, Vector,
+                       Wire, extrude, mirror, sweep)
 
 from . import constants as c
 from .grip import grip, grip_flared, grip_flared_cut
@@ -87,22 +87,51 @@ def straight_channel(length_mm: float, width_mm: float, height_mm: float, *,
     plate (monokini_text_label.scad:198-280 monokiniPlate): the floor alone,
     the same grips per cell standing on its top face.
     """
+    section = channel_section(width_mm, height_mm, separators, top_chamfer)
+    body = Pos(0, -length_mm/2, 0)*extrude(section, length_mm, dir=(0, 1, 0))
+    grips, slits = grip_parts(length_mm, width_mm, height_mm, suppress, grip_flare)
+    for g in grips:
+        body += g
+    for slit in slits:
+        body -= slit
+    return body
+
+
+def grip_parts(length_mm: float, width_mm: float, height_mm: float, suppress: str = '',
+               grip_flare: float = 0.) -> tuple[list[Part], list[Part]]:
+    """(grips, flare slits) of one straight run in its own frame: what
+    monokiniChannel adds with suppressWalls=true ([C] monokini_S_channel.scad:
+    361 skips only the walls) and its flare-slit difference set."""
     if grip_flare > MAX_FLARE_DEG:
         raise ValueError(
             f'grip_flare above {MAX_FLARE_DEG:g} degrees leaves the flared grip base '
             f'overhanging the wall chamfer (a flat, unsupported ledge)')
-    section = channel_section(width_mm, height_mm, separators, top_chamfer)
-    body = Pos(0, -length_mm/2, 0)*extrude(section, length_mm, dir=(0, 1, 0))
-    slits = []
+    grips, slits = [], []
     for y, side, flared in present_grips(length_mm, suppress, grip_flare):
         if flared:
-            body += grip_flared(width_mm, height_mm, y, side, grip_flare)
+            grips.append(grip_flared(width_mm, height_mm, y, side, grip_flare))
             slits.append(grip_flared_cut(width_mm, height_mm, y, side))
         else:
-            body += grip(width_mm, height_mm, y, side)
-    for slit in slits:
-        body -= slit
-    return body
+            grips.append(grip(width_mm, height_mm, y, side))
+    return grips, slits
+
+
+def path_channel(path: Wire, width_mm: float, height_mm: float, separators: str = '') -> Part:
+    """monokiniChannelPath ([C] monokini_S_channel.scad:664-726): the section
+    (and the separator walls the codes select) swept along a path in the XY
+    plane, gripless. The source path_extrude2d chains straight segments,
+    mitred on the inside of each joint and filled round (a faceted
+    rotate_extrude) on the outside; the port sweeps the path itself with
+    Transition.ROUND, the same joint with a true arc, and a smooth (Bezier)
+    path stays smooth where the source samples it into chords.
+
+    The section stays the channel section only while the path's radius of
+    curvature is at least width_mm/2; callers check that before sweeping.
+    """
+    start, tangent = path.position_at(0), path.tangent_at(0)
+    spin = degrees(atan2(-tangent.X, tangent.Y))
+    section = Pos(start.X, start.Y, 0)*Rot(0, 0, spin)*channel_section(width_mm, height_mm, separators)
+    return sweep(section, path, transition=Transition.ROUND)
 
 
 def cutout_centres(number: int, spacing: float, shift: float) -> list[float]:

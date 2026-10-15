@@ -38,6 +38,9 @@ MAYOR = {
     'l.stl': 'bbbed61e37e8525e0baecb9f4d5789ddf2d9119b099fc503f66c2d1fd195df7e',
     't.stl': 'b78a8a69ebef3b02c4bcb594d98b47bf31f3e544ed5969111cf66a6c679fa606',
     'x.stl': 'ea0376c0d9e2723ea625475785fe9db0e6dd15ad40243d268ca131ad4ef503c9',
+    's.stl': '044abde516b03a789d76468ce19896af144b45508c96bc640e826ca4fc8c569a',
+    'diagonal.stl': '39cb4068f9726ec75b4b8fe013a92ad247ef3070c9932490398812870cea8423',
+    'mitre.stl': 'bc576db044762714f27a09db89603c144fc3e823506abc4b651c372b84a2d478',
 }
 # Reference mesh -> port values. References span y -L/2-0.015 .. L/2-0.005
 # (the source's 0.01 Nudge); shifting them +0.005 centres the grips.
