@@ -50,11 +50,14 @@ def _fail(code: int, message: str) -> int:
 
 
 def main() -> int:
-    if len(sys.argv) != 4:
-        return _fail(6, "usage: render_worker.py <slug> <glb|stl|3mf> <out_path>")
+    if len(sys.argv) not in (4, 5):
+        return _fail(6, "usage: render_worker.py <slug> <glb|stl|3mf> <out_path> [<printer-profile>]")
     slug, fmt, out_path = sys.argv[1], sys.argv[2], sys.argv[3]
+    profile_id = sys.argv[4] if len(sys.argv) == 5 else None
     if fmt not in ("glb", "stl", "3mf"):
         return _fail(6, f"unknown format {fmt!r}")
+    if profile_id is not None and fmt != "3mf":
+        return _fail(4, "profile is only valid with format=3mf")
 
     try:
         raw = sys.stdin.read()
@@ -65,7 +68,8 @@ def main() -> int:
         return _fail(4, "params must be a JSON object")
 
     # Import inside main so a usage error above doesn't pay the OCP import.
-    from scripts.export import export_3mf_one_object, export_glb, export_stl
+    from scripts.export import apply_printer_profile, export_3mf_one_object, export_glb, export_stl
+    from profiles import PROFILES
     from holders.registry import all_models, resolve_colour_parts, resolve_preview_parts, in_print_frame
 
     spec = next(
@@ -75,6 +79,8 @@ def main() -> int:
         return _fail(3, f"unknown model slug: {slug}")
     if fmt == "3mf" and not spec.is_multi_colour:
         return _fail(4, f"{slug} is not a multi-colour model; 3mf is not available")
+    if profile_id is not None and profile_id not in PROFILES:
+        return _fail(4, f"unknown printer profile: {profile_id}")
 
     # Authoritative param contract: fills defaults, raises on unknown key or
     # out-of-range / kind-mismatched value. Same call the bake path uses.
@@ -112,7 +118,13 @@ def main() -> int:
         return _fail(5, "empty/zero-volume mesh")
 
     try:
-        if fmt == "3mf":
+        if fmt == "3mf" and profile_id is not None:
+            # The profiled file is a transform of the generic one (pst-jyey1).
+            generic = out_path + ".generic.3mf"
+            export_3mf_one_object(named, generic, spec.slug)
+            apply_printer_profile(generic, out_path, PROFILES[profile_id], named)
+            os.remove(generic)
+        elif fmt == "3mf":
             export_3mf_one_object(named, out_path, spec.slug)
         elif fmt == "glb":
             export_glb(part, out_path, preview)

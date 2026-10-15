@@ -45,6 +45,7 @@ COPY build123d/openconnect ./openconnect
 COPY build123d/gridfinity ./gridfinity
 COPY build123d/opengrid_snap ./opengrid_snap
 COPY build123d/underware ./underware
+COPY build123d/profiles ./profiles
 COPY build123d/scripts ./scripts
 
 # The service (server + one-shot render worker).

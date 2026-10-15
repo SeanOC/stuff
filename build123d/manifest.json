@@ -3908,5 +3908,11 @@
         }
       ]
     }
+  ],
+  "printerProfiles": [
+    {
+      "id": "bambu-h2c-0.4",
+      "displayName": "Bambu Lab H2C (0.4 mm nozzle)"
+    }
   ]
 }

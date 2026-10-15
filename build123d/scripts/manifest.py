@@ -21,6 +21,9 @@ it verbatim:
           "multiColour": true              # only when tagged multi-colour
         },
         ...
+      ],
+      "printerProfiles": [               # profiles.PROFILES (pst-jyey1)
+        {"id": "bambu-h2c-0.4", "displayName": "Bambu Lab H2C (0.4 mm nozzle)"}
       ]
     }
 
@@ -50,6 +53,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -59,6 +63,7 @@ sys.path.insert(0, str(ROOT))
 
 from holders.registry import CATEGORY_IDS, CHARSETS, ModelSpec, SAFE_ID_RE  # noqa: E402
 from holders.registry import DEFAULT_VIEWS, all_models  # noqa: E402
+from profiles import PROFILES  # noqa: E402
 
 SCHEMA_VERSION = 1
 MANIFEST_PATH = ROOT / "manifest.json"
@@ -72,7 +77,10 @@ _PRESET_FIELDS = ("id", "label", "values")
 # Optional trailing preset key, emitted only when set (pst-5b83s): the
 # viewer's initial camera for that preset (registry Preset.default_view).
 _PRESET_OPTIONAL = "defaultView"
-_ROOT_FIELDS = ("schemaVersion", "models")
+# printerProfiles (pst-jyey1): [{id, displayName}] from profiles.PROFILES, the
+# ?profile= values the 3MF download accepts.
+_ROOT_FIELDS = ("schemaVersion", "models", "printerProfiles")
+_PROFILE_FIELDS = ("id", "displayName")
 
 # Per-kind key rules: (optional display keys, required kind-specific keys).
 # parse.ts emits ONLY set keys, so the strict check is: key SET equals
@@ -163,7 +171,9 @@ def build_manifest(specs: list[ModelSpec] | None = None) -> dict[str, Any]:
     app_listed = [s for s in specs if not s.is_smoke]
     # Registry insertion order depends on which holder modules imported first.
     app_listed.sort(key=lambda s: (s.category_id, s.slug))
-    return {"schemaVersion": SCHEMA_VERSION, "models": [spec_to_json(s) for s in app_listed]}
+    return {"schemaVersion": SCHEMA_VERSION, "models": [spec_to_json(s) for s in app_listed],
+            "printerProfiles": [{"id": p.id, "displayName": p.display_name}
+                                for p in PROFILES.values()]}
 
 
 def manifest_text(specs: list[ModelSpec] | None = None) -> str:
@@ -200,6 +210,20 @@ def validate_manifest(doc: Any, category_ids: set[str] | None = None) -> list[st
         return errors
     if doc["schemaVersion"] != SCHEMA_VERSION:
         errors.append(f"schemaVersion must be {SCHEMA_VERSION}")
+    profile_ids: set[str] = set()
+    for i, profile in enumerate(doc["printerProfiles"]):
+        pwhere = f"printerProfiles[{i}]"
+        if not isinstance(profile, dict) or list(profile) != list(_PROFILE_FIELDS):
+            errors.append(f"{pwhere} must be an object with fields {list(_PROFILE_FIELDS)}")
+            continue
+        if not isinstance(profile["id"], str) or not re.fullmatch(r"[a-z0-9][a-z0-9.-]*", profile["id"]):
+            errors.append(f"{pwhere}.id must be a lowercase slug")
+        elif profile["id"] in profile_ids:
+            errors.append(f"{pwhere}.id {profile['id']!r} is duplicated")
+        else:
+            profile_ids.add(profile["id"])
+        if not isinstance(profile["displayName"], str) or not profile["displayName"]:
+            errors.append(f"{pwhere}.displayName must be a non-empty string")
 
     seen_slugs: set[str] = set()
     for i, model in enumerate(doc["models"]):

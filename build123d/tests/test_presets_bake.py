@@ -27,6 +27,7 @@ sys.path.insert(0, str(ROOT))
 
 from holders.registry import (all_models, resolve_colour_parts,  # noqa: E402
                               resolve_preview_parts)
+from profiles import PROFILES  # noqa: E402
 from scripts.manifest import MANIFEST_PATH  # noqa: E402
 
 
@@ -58,6 +59,8 @@ def test_presets_only_bakes_every_app_listed_preset(tmp_path):
             expected_files.add(target / spec.slug / f"{preset.id}.png")
             if spec.is_multi_colour:  # gated extras (labels L2): 3MF + one STL per filament
                 expected_files.add(target / spec.slug / f"{preset.id}.3mf")
+                for profile in PROFILES:  # + one slicer-project 3MF per printer profile (pst-jyey1)
+                    expected_files.add(target / spec.slug / f"{preset.id}.{profile}.3mf")
                 for name in colour_names[spec.slug, preset.id]:
                     expected_files.add(target / spec.slug / f"{preset.id}-{name}.stl")
 
@@ -95,8 +98,9 @@ def test_presets_only_bakes_every_app_listed_preset(tmp_path):
             assert len(materials) == (0 if parts is None else len(parts)), \
                 f"{spec.slug}/{preset.id}"
 
-    # Count: STL + GLB + PNG per preset; multi-colour adds the 3MF + one STL per part.
-    expected_count = sum(4 + len(colour_names[s.slug, p.id]) if s.is_multi_colour else 3
+    # Count: STL + GLB + PNG per preset; multi-colour adds the 3MF, one 3MF per
+    # printer profile and one STL per part.
+    expected_count = sum(4 + len(PROFILES) + len(colour_names[s.slug, p.id]) if s.is_multi_colour else 3
                          for s in specs for p in s.presets)
     assert len(actual_files) == expected_count
 
