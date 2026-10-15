@@ -1,6 +1,7 @@
 # Tombstone sign
 
-`holder-tombstone-sign` (epic pst-tl4ac; S1 pst-tl4ac.1, S3 pst-tl4ac.3) is a
+`holder-tombstone-sign` (epic pst-tl4ac; S1 pst-tl4ac.1, S3 pst-tl4ac.3, S4
+pst-tl4ac.4) is a
 3D-printable version of the Poppy Street Spooks song-request poster. It is
 a flat tombstone-shaped plate. The poster's text, the ghost-with-poppy and a
 QR code stand 0.6 mm proud of its face in up to eight colours. Two pockets
@@ -12,19 +13,19 @@ Presets:
 - **one-ams**: four colours (base, bone, pumpkin, poppy), one AMS.
 - **two-colour**: bone on ground; the QR dark modules are holes.
 - **pinned**: 8 mm plate with a pin cross-hole.
-- **small**: 160 × 200 with a 74 mm QR. Reduced content: the two detail
-  lines are blank, because the 68-character detail_1 needs 192.55 mm of
-  width on two lines against a 144 mm box. Shorter copy can fill them later.
+- **small**: 160 × 240 with a 74 mm QR. The type scale drops to s = 0.926
+  and the scan line and host shrink to the 136 mm inset box; every line
+  stays above its stroke floor. At 160 × 200 the eyebrow and footer would
+  fall under theirs.
 
 | Controls | Domain / behaviour |
 | --- | --- |
 | Width / height | 100–325 / 150–320 mm (the H2S single-nozzle bed, printed flat); height must also be ≥ the arch radius + 6 mm |
 | Thickness | 5–12 mm; `retention = pin` needs ≥ 7.8 mm |
 | Arch | `round` (radius = width / 2) or `shoulder` (radius = width / 3, flat shoulders) |
-| Margin | 3–20 mm (default 8) inset from the outline; the gap between bands is half of it |
+| Margin | 3–20 mm (default 12) inset from the outline; the rhythm unit is a third of it |
 | Eyebrow, title, scan line, host, footer | Printable ASCII, ≤ 24 characters each; a blank line is left out |
-| Detail 1, detail 2 | Printable ASCII, ≤ 72 characters each |
-| QR size | 50–300 mm square, including the 4-module quiet zone; the module pitch must be ≥ 2.0 mm |
+| QR size | 50–300 mm square (default 120), including the 4-module quiet zone; the module pitch must be ≥ 2.0 mm |
 | Colours | 2–8 filaments, including the plate (see below) |
 | Stake retention | `friction` or `pin` |
 
@@ -41,43 +42,68 @@ one text gate: no line is ever dropped silently.
 
 ## Layout
 
-From top to bottom, inside a `margin` inset of the outline:
+From top to bottom, inside a `margin` inset of the outline. Each band's
+text is set at its **class** cap height (the face's 'H') times the type
+scale s; there are no other sizes.
 
-| Band | Face | Role | Wrap | Weight |
-| --- | --- | --- | --- | --- |
-| eyebrow | Lexend Medium, capitals | dim | 1 line | 6 |
-| title | Creepster | pumpkin | 1 line, else 2 | 22 |
-| art row | ghost (left) + QR panel (right) | — | — | fixed `qr_size` |
-| scan line | Lexend Bold | bone | 1 line | 8 |
-| detail 1 | Lexend Medium | dim | 1 line, else 2 | 10 |
-| detail 2 | Lexend Medium | dim | 1 line, else 2 | 6 |
-| host | Lexend Bold | pumpkin | 1 line | 6 |
-| footer | Lexend Medium, under a 0.91 mm rule | dim | 1 line | 8 |
+| Band | Face | Role | Class (cap, mm) | Wrap | Group |
+| --- | --- | --- | --- | --- | --- |
+| eyebrow | Lexend Medium, capitals | dim | EYEBROW 7 | 1 line | 1 |
+| title | Creepster | pumpkin | TITLE 20 | 1 line, else 2 | 1 |
+| art row | ghost (left) + QR panel (right) | — | `qr_size` tall | — | 2 |
+| scan line | Lexend Bold | bone | LINE 11 | 1 line | 3 |
+| host | Lexend Bold | pumpkin | LINE 11 | 1 line | 3 |
+| footer | Lexend Medium, under a 0.91 mm rule | dim | SMALL 8 | 1 line | 4 |
 
-The content starts where the arch is half the inset width and ends
-`margin` above the bottom edge. Raised content adds material, so unlike
-the old inlays it may run over the pockets. Bands are `margin / 2` apart.
-The art row takes `qr_size`. The text budget B is what is left, and must be
-at least 40 mm.
+**Fit.** Going down the stack, each line takes the fewest lines whose
+width fits the inset chord at its band's top. A line wider than the inset
+box (width − 2 × margin) shrinks alone until it fits the box; the other
+bands keep their class. A line still wider than the chord moves down to
+the highest y whose chord holds it. That is how the eyebrow leaves the
+arch, and why the title is two lines in the arch: one line at 20 mm cap is
+196 mm wide and would push 36 mm down.
 
-Each present line first gets its **need**: the height at which its stroke
-on its own face clears 0.91 mm (the 0.9 floor plus margin), at the fewest
-lines whose width fits the chord. The rest of B is shared out by the
-weights. If the needs exceed B, the hungriest line raises the stroke-floor
-error. A line that is too wide for the chord at its band's top moves down
-until it fits. That is how the capitals eyebrow leaves the arch on
-**small**. The band tops come from one pass at the weights alone, then one
-re-pass with the needs measured at those tops.
+**Rhythm.** The unit U is `margin / 3 × s` (4 mm at the default). Gaps are
+1 U within a group and 2 U between groups. The rule has 1.5 U clear above
+and below, replacing the gaps there. The ghost-to-panel gap is 2 U. The
+content starts where the arch is half the inset width and ends exactly
+`margin` above the bottom edge. Raised content adds material, so it may
+run over the pockets. Blank lines take no band and no gap; the rule
+exists only with a footer.
 
-At the defaults, B = 140.99 mm, the needs total 76.21 mm and the bands are
-11.9 / 29.0 / 17.6 / 32.9 / 16.7 / 15.9 / 17.0 mm (eyebrow … footer).
+**Scale.** s is the largest value up to 1 at which the stack fits. It
+scales every class and U together, never the art row or the margin. At
+s = 1 the space left over is split equally between the two gaps that
+flank the art row, so the art floats between the headline and the text
+block. A plate that needs s so small that a line falls under its stroke
+floor raises the height error, naming the minimum height. A width-bound
+line that cannot hold the floor even across the full box raises the
+label card's stroke error, naming the line.
 
-The ghost is 0.47 × the panel height (the poster's ratio). Ghost and panel
-are centred as a pair with a `margin` gap between them. The panel is a bone
-square with 8 mm corners; its padding is the QR's quiet zone.
+At the defaults (240 × 300, margin 12, QR 120), s = 1 and the leftover is
+8.77 mm, so both art gaps are 12.38 mm. Bands (y, mm): eyebrow
+263.11–270.33 (pushed 3.20 out of the arch), title 214.76–259.11 (two
+lines, 105.3 wide), art 82.37–202.37, scan line 55.12–69.99, host
+35.88–51.12, rule 28.97–29.88, footer 12.00–22.97. The plate carries
+exactly four cap sizes: 20, 11, 8 and 7 mm. On **small** s = 0.926: eyebrow
+6.48, title 18.52, scan line 8.19 and host 7.94 (both bound to the 136 mm
+box), footer 7.41.
+
+The ghost is 0.65 × the panel height. Ghost and panel are centred as a
+pair. The panel is a bone square with 6 mm corners; its padding is the
+QR's quiet zone. The QR stays at 120 mm because a 130 mm row does not fit
+the default plate at any s: it needs 1.2 mm more height than the 8.8 mm
+slack, and its 211.2 mm row is wider than the 209.3 mm inset chord at its
+own top. Shrinking s raises the row into a narrower chord, so no s helps;
+about 128 mm is the largest row that keeps s = 1.
 
 Differences from the paper poster:
-- The host is its own band, not set inline after detail 2.
+- The two detail lines are gone: the title already says what they did,
+  and the site enforces its own request limit.
+- The title is two lines in the arch.
+- The ghost is 0.65 of the panel height (the poster's is 0.47), and the QR
+  is half the plate width.
+- The host is its own band.
 - The eyebrow has no letter-spacing: the poster's tracking pushed its width
   to 110.40 mm against a 112.00 mm box.
 - The sidewalk line ("Please keep the sidewalk clear for neighbors") is
@@ -102,7 +128,7 @@ Roles, in order (filament N is role N):
 | 3 | pumpkin | #ff7a1a | title, host |
 | 4 | poppy | #e5322d | petals |
 | 5 | leaf | #5b8f3a | leaf |
-| 6 | dim | #b7a9c9 | eyebrow, detail lines, footer and its rule |
+| 6 | dim | #b7a9c9 | eyebrow, footer and its rule |
 | 7 | ink | #0a0a0a | QR dark modules |
 | 8 | ember | #ff5a4e | petal highlights |
 

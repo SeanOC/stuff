@@ -1,7 +1,10 @@
-"""Tombstone sign (S1 pst-tl4ac.1, S3 pst-tl4ac.3): joint contract, QR, guards,
-the poster layout rule, colour roles and folds, the ghost, audit, edges."""
+"""Tombstone sign (S1 pst-tl4ac.1, S3 pst-tl4ac.3, S4 pst-tl4ac.4): joint
+contract, QR, guards, the type classes and rhythm, colour roles and folds,
+the ghost, audit, edges."""
 import functools
+import json
 import math
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -81,15 +84,16 @@ def test_registered_as_a_multi_colour_household_model():
     for name in m.LINES:
         assert params[name].kind == 'string'
         assert params[name].charset == 'printable-ascii'
-        limit = m.DETAIL_MAX_LENGTH if name.startswith('detail') else MAX_TEXT_LENGTH
-        assert params[name].max_length == limit == (72 if name.startswith('detail') else 24)
-        assert len(params[name].default) <= limit
-    assert 'url' not in params and 'text_style' not in params and 'footer_2' not in params
+        assert params[name].max_length == MAX_TEXT_LENGTH == 24
+        assert len(params[name].default) <= MAX_TEXT_LENGTH
+    for gone in ('url', 'text_style', 'footer_2', 'detail_1', 'detail_2'):
+        assert gone not in params, gone
     assert m.qr_data(m.DEFAULTS) == URL
     colours = params['colours']
     assert colours.kind == 'integer' and type(colours.default) is int
     assert (colours.default, colours.min, colours.max) == (8, 2, 8)
-    assert params['margin'].default == 8.0 and params['thickness'].default == 6.0
+    assert params['margin'].default == 12.0 and params['thickness'].default == 6.0
+    assert params['qr_size'].default == 120.0
     assert params['width'].max == m.MAX_WIDTH == 325 and params['height'].max == m.MAX_HEIGHT == 320
     assert list(PRESETS) == ['default', 'one-ams', 'two-colour', 'pinned', 'small']
     assert all(p.default_view is None for p in SPEC.presets)  # face up: the iso view
@@ -97,9 +101,22 @@ def test_registered_as_a_multi_colour_household_model():
     assert PRESETS['two-colour'].values == {'colours': 2}
     assert all(type(p.values.get('colours', 8)) is int for p in SPEC.presets)
     assert PRESETS['pinned'].values == {'thickness': 8.0, 'retention': 'pin'}
-    assert PRESETS['small'].values == {'width': 160.0, 'height': 200.0, 'qr_size': 74.0,
-                                       'detail_1': '', 'detail_2': ''}
+    assert PRESETS['small'].values == {'width': 160.0, 'height': 240.0, 'qr_size': 74.0}
+    assert PRESETS['small'].label == 'Small (160 x 240)'
     assert 'Trick Ghastly' not in repr(SPEC)
+
+
+def test_the_detail_lines_are_gone_from_the_copy():
+    """S4 D6/T8: no detail Param in the manifest, and no 'details' promised
+    by the published description or the web catalog blurb."""
+    manifest = json.loads((ROOT / 'manifest.json').read_text())
+    entry = next(e for e in manifest['models'] if e['slug'] == SPEC.slug)
+    assert not any(p['name'].startswith('detail') for p in entry['params'])
+    assert 'detail' not in SPEC.description
+    assert 'detail' not in entry['blurb']
+    catalog = (ROOT.parent / 'lib' / 'models' / 'catalog.ts').read_text()
+    blurb = re.search(r'holder_tombstone_sign: \{.*?blurb:\s*"([^"]*)"', catalog, re.S)[1]
+    assert 'detail' not in blurb and 'scan line' in blurb
 
 
 def test_review_sections_put_the_pocket_plane_first():
@@ -190,7 +207,7 @@ def test_colour_count_gives_exactly_the_first_n_parts():
 def test_feature_roles_follow_d3():
     roles = {name: role for name, (role, _) in default_features().items()}
     assert roles == {'eyebrow': 'dim', 'title': 'pumpkin', 'scan_line': 'bone',
-                     'detail_1': 'dim', 'detail_2': 'dim', 'host': 'pumpkin',
+                     'host': 'pumpkin',
                      'footer_1': 'dim', 'rule': 'dim', 'ghost:bone': 'bone',
                      'ghost:leaf': 'leaf', 'ghost:poppy': 'poppy', 'ghost:ember': 'ember',
                      'qr_light': 'bone', 'qr_dark': 'ink'}
@@ -220,7 +237,7 @@ def test_ghost_keeps_every_element_and_drops_only_the_holes():
     assert 'leaf vein' in sign_ghost.SVG_PATH.read_text()
 
 
-@pytest.mark.parametrize('qr_size', [74.0, 100.0])
+@pytest.mark.parametrize('qr_size', [74.0, 120.0])
 def test_ghost_regions_hold_the_raised_stroke_floor(qr_size):
     for role, region in sign_ghost.regions(m.GHOST_SHARE * qr_size).items():
         assert min_feature_width(_polygons(region), 0.6) >= m.THRESHOLD, role
@@ -281,14 +298,14 @@ def test_qr_matrix_is_segnos_matrix_at_level_m():
 
 
 def test_qr_pitch_for_the_default_and_small_presets():
-    assert round(signs.qr_pitch(URL, 100), 2) == 2.70
+    assert round(signs.qr_pitch(URL, 120), 2) == 3.24
     assert signs.qr_pitch(URL, 74) == 2.0
     assert signs.min_qr_size(URL) == 74.0
     with pytest.raises(ValueError, match=r'1\.97 mm module pitch.*>= 74 mm'):
         signs.qr_regions(URL, 73)
 
 
-@pytest.mark.parametrize('qr_size', [74.0, 100.0])
+@pytest.mark.parametrize('qr_size', [74.0, 120.0])
 def test_qr_panel_is_rounded_inside_the_quiet_zone(qr_size):
     values = {**m.DEFAULTS, 'qr_size': qr_size}
     dark, light = m.qr_panel(values)
@@ -299,7 +316,7 @@ def test_qr_panel_is_rounded_inside_the_quiet_zone(qr_size):
     # which falls short of the true arc by 0.08 mm^2 in all.
     polygon = 64 * math.sin(2 * math.pi / 128)
     assert corner_cut == pytest.approx((4 - polygon) * m.QR_CORNER_R ** 2, rel=1e-6)
-    # The corner arcs reach 8 (1 - 1/sqrt 2) = 2.34 mm in: inside the quiet zone.
+    # The corner arcs reach 6 (1 - 1/sqrt 2) = 1.76 mm in: inside the quiet zone.
     quiet = signs.QR_QUIET * signs.qr_pitch(URL, qr_size)
     assert m.QR_CORNER_R * (1 - 1 / math.sqrt(2)) < quiet
     half = qr_size / 2 - quiet
@@ -315,7 +332,7 @@ def test_width_guard_names_the_pocket_bound():
 
 def test_art_row_guard_names_the_inset_width():
     with pytest.raises(ValueError, match=r'qr_size 120 mm: the art row .* wider than '
-                                         r'width - 2 x margin = 144 mm'):
+                                         r'width - 2 x margin = 136 mm'):
         m.validate(SPEC.resolve_values({'width': 160.0, 'qr_size': 120.0}))
 
 
@@ -340,21 +357,37 @@ def test_outline_builds_at_its_minimum_height(width, arch):
     signs.outline(width, signs.min_outline_height(width, arch), arch)
 
 
+def _named_minimum(err) -> float:
+    return float(err.value.args[0].rsplit('>= ', 1)[1].split(' mm')[0])
+
+
 @pytest.mark.audit
 def test_height_guard_names_a_minimum_that_works():
-    # Raised content runs down to margin, so the default copy lays out down to
-    # 199.1 mm (B at MIN_TEXT_BUDGET); below that the guard names it.
+    # The default copy at s = 1 needs 266.1 mm; below that s shrinks until a
+    # line reaches its stroke floor, and below THAT the guard names the height.
     values = SPEC.resolve_values({'height': 190.0})
     with pytest.raises(ValueError, match=r'height must be >= ([\d.]+) mm') as err:
         m.validate(values)
-    minimum = float(err.value.args[0].rsplit('>= ', 1)[1].split(' mm')[0])
+    m.validate({**values, 'height': _named_minimum(err)})
+    assert m.min_height(values_of('small')) <= 240
+
+
+@pytest.mark.audit
+def test_the_old_small_plate_is_too_short_for_the_floors():
+    """T4: 160 x 200 needs s ~ 0.68, which puts the eyebrow and the footer
+    under their stroke floors; the guard names a height that builds."""
+    values = SPEC.resolve_values({'width': 160.0, 'height': 200.0, 'qr_size': 74.0})
+    with pytest.raises(ValueError, match=r'height 200 mm cannot hold .* height must be '
+                                         r'>= ([\d.]+) mm') as err:
+        m.validate(values)
+    minimum = _named_minimum(err)
+    assert 200 < minimum < 240
     m.validate({**values, 'height': minimum})
-    assert m.min_height(values_of('small')) <= 200
 
 
 @pytest.mark.audit
 def test_height_guard_says_when_the_minimum_is_above_the_cap():
-    values = SPEC.resolve_values({'width': 325.0, 'height': 320.0, 'qr_size': 200.0})
+    values = SPEC.resolve_values({'width': 325.0, 'height': 320.0, 'qr_size': 170.0})
     with pytest.raises(ValueError, match=r'above the 320 mm maximum: reduce qr_size'):
         m.validate(values)
 
@@ -366,102 +399,121 @@ def test_text_below_the_stroke_floor_names_the_line_and_the_longest_fit():
         m.features(values)
 
 
-@pytest.mark.audit
-def test_too_many_needs_name_the_hungriest_line():
-    """sum of needs > B: the stroke-floor error names the line that needs most."""
-    long = 'Spooks sing every request the street picks. Three requests per phone ok.'[:72]
-    values = SPEC.resolve_values({'detail_1': long, 'detail_2': long, 'height': 240.0})
-    frame = m._frame(values)
-    assert frame is not None and frame['overflow']
-    hungriest = max(frame['need'], key=frame['need'].get)
-    with pytest.raises(ValueError, match=rf'^{hungriest}: label text'):
-        m.features(values)
+# --- the D1-D4 layout (pure 2D; measures the text once per process) ---------
 
+def _gap_after(f: dict, above: str, below: str) -> float:
+    return f['bands'][above][0] - f['bands'][below][1]
 
-# --- the D4 layout rule (pure 2D; measures the text once per process) -------
 
 @pytest.mark.audit
 @pytest.mark.parametrize('preset_id', list(PRESETS))
-def test_band_rule_holds_at_every_preset(preset_id):
+def test_type_classes_and_rhythm_hold_at_every_preset(preset_id):
+    """T1: every band is set at its class x s, or (width-bound) shrinks alone
+    to the inset box; gaps are 1 U within a group, 2 U between, 1.5 U either
+    side of the rule; the leftover goes equally to the art row's flanks."""
     values, f = values_of(preset_id), frame_of(preset_id)
     w, m_, qr = values['width'], values['margin'], values['qr_size']
+    s, unit, box_w = f['s'], f['unit'], w - 2 * m_
+    assert 0 < s <= 1 and unit == pytest.approx(m_ / 3 * s)
+    assert f['leftover'] >= 0 and (s == 1 or f['leftover'] == 0)
     present = [n for n in m.LINES if values[n].strip()]
-    assert list(f['need']) == present
-    bands = f['bands']
-    texts = [n for n in bands if n != 'art']
-    # B: the content top down to margin, minus the art row and the gaps,
-    # minus any push (a band moved down out of the arch).
-    push = sum(max(0.0, prev[0] - f['gap'] - cur[1]) for prev, cur in
-               zip([(f['top'] + f['gap'], 0)] + list(bands.values()), bands.values()))
-    blocks = len(bands)
-    assert f['B'] == pytest.approx(f['top'] - m_ - qr - f['gap'] * (blocks - 1) - push)
-    assert f['gap'] == m_ / 2 and f['B'] >= m.MIN_TEXT_BUDGET
-    total = sum(f['need'].values())
-    assert total <= f['B'] and not f['overflow']
-    weights = sum(m.WEIGHT[n] for n in texts)
-    for n in texts:
-        y_lo, y_hi = bands[n]
-        # second pass pinned: need + slack x weight share
-        assert y_hi - y_lo == pytest.approx(
-            f['need'][n] + (f['B'] - total) * m.WEIGHT[n] / weights, abs=1e-9)
-        assert y_hi - y_lo >= f['need'][n] - 1e-9
-        # the chosen wrap's width need fits the chord at the band top
-        assert signs.inner_width(f['region'], y_hi) >= f['width_need'][n] - 1e-6, n
-        # the stroke the line will get clears the raised floor
-        ink_w, ink_h, stroke = m._ink(f['lines'][n], m.FACE[n])
-        scale = min(signs.inner_width(f['region'], y_hi) / ink_w, (y_hi - y_lo) / ink_h)
-        assert stroke * scale >= m.THRESHOLD - 1e-9, n
-        # the wrap is the fewest lines that fit the chord at the pass-1 top
-        chord1 = signs.inner_width(f['region'], f['pass1'][n][1])
-        fits = [c for c in m._candidates(n, m._line(values, n))
-                if m.line_need(n, c)[0] <= chord1 + 1e-9]
-        if fits:
-            assert f['lines'][n] == fits[0], n
+    assert list(f['lines']) == present
+    order = list(f['bands'])
+    assert order == [n for n in m.ORDER if n in f['bands']]
+    for n in present:
+        y_lo, y_hi = f['bands'][n]
+        path, style = m.FONTS[m.FACE[n]]
+        chord = signs.inner_width(f['region'], y_hi)
+        fitted = lt.layout_text(f['lines'][n], chord, y_hi - y_lo, 0.0, m.RAISE_H, m.FLOOR,
+                                path, style, max_lines=1, stroke_only=True)
+        cap = fitted.scale * m.cap_height(m.FACE[n])  # the 'H' at the fitted size
+        width = fitted.part.bounding_box().size.X
+        if f['bound'][n]:
+            assert width == pytest.approx(box_w, abs=1e-6) and cap < m.CAP[n] * s, n
+        else:
+            assert cap == pytest.approx(m.CAP[n] * s, rel=0.01), n
+            assert width <= box_w + 1e-6, n
+        assert width <= chord + 1e-6, n  # inside the arch
+        assert fitted.min_stroke >= m.THRESHOLD - 1e-9, n
         assert f['lines'][n].count('\n') < m.MAX_LINES[n]
-    # band order, gaps, floor
-    tops = list(bands.values())
-    for (lo_a, _), (_, hi_b) in zip(tops, tops[1:]):
-        assert hi_b <= lo_a - f['gap'] + 1e-9
-    assert tops[0][1] <= f['top'] + 1e-9 and tops[-1][0] >= m_ - 1e-6
-    assert bands['art'][1] - bands['art'][0] == pytest.approx(qr)
-    assert signs.inner_width(f['region'], bands['art'][1]) >= m.art_width(qr, m_)
-    assert w - 2 * m_ >= m.art_width(qr, m_)
+        # the wrap is the fewest lines that fit the chord at the band top
+        fits = [c for c in m._candidates(n, m._line(values, n))
+                if m.line_ink(n, c, m.CAP[n] * s)[0] <= chord + 1e-9]
+        if fits and not f['bound'][n]:
+            assert f['lines'][n] == fits[0], n
+    for above, below in zip(order, order[1:]):
+        gap = _gap_after(f, above, below)
+        if 'rule' in (above, below):
+            expected = m.RULE_CLEAR * unit
+        elif m.GROUP[above] == m.GROUP[below]:
+            expected = unit
+        else:
+            expected = 2 * unit
+        if 'art' in (above, below):
+            expected += f['leftover'] / 2
+        assert gap == pytest.approx(expected, abs=1e-6), (above, below)  # no preset pushes below the eyebrow
+    assert f['bands'][order[0]][1] <= f['top'] + 1e-9
+    assert f['bands'][order[-1]][0] == pytest.approx(m_, abs=1e-6)  # on the bottom margin
+    art = f['bands']['art']
+    assert art[1] - art[0] == pytest.approx(qr)
+    assert signs.inner_width(f['region'], art[1]) >= m.art_width(qr, 2 * unit)
+    assert box_w >= m.art_width(qr, 2 * unit)
+    rule = f['bands']['rule']
+    assert rule[1] - rule[0] == pytest.approx(m.RULE_W)
 
 
 @pytest.mark.audit
 def test_default_layout_matches_the_spec_numbers():
-    """The rev-4 expected numbers (round-3/4 measurements on the vendored fonts)."""
-    f = frame_of('default')
-    assert f['top'] == pytest.approx(276.99, abs=0.01)
-    assert f['B'] == pytest.approx(140.99, abs=0.01)
-    need = {n: round(v, 1) for n, v in f['need'].items()}
-    assert need == pytest.approx({'eyebrow': 6.0, 'title': 7.35, 'scan_line': 9.8,
-                                  'detail_1': 23.1, 'detail_2': 10.85, 'host': 10.0,
-                                  'footer_1': 9.1}, abs=0.06)
-    assert sum(f['need'].values()) == pytest.approx(76.20, abs=0.05)
-    heights = {n: hi - lo for n, (lo, hi) in f['bands'].items() if n != 'art'}
-    assert heights == pytest.approx({'eyebrow': 11.9, 'title': 29.0, 'scan_line': 17.6,
-                                     'detail_1': 32.9, 'detail_2': 16.7, 'host': 15.9,
-                                     'footer_1': 17.0}, abs=0.06)
-    assert f['lines']['title'] == 'Pick the next song!'  # one line
-    assert f['lines']['detail_1'].count('\n') == 1      # two lines
+    """T2: the S4 D8 numbers as measured on the vendored fonts (layout_text
+    at the fitted sizes): s = 1 and exactly four cap sizes, 20 / 11 / 8 / 7."""
+    f, values = frame_of('default'), values_of('default')
+    assert f['s'] == 1.0 and f['unit'] == 4.0
+    assert f['top'] == pytest.approx(273.53, abs=0.01)
+    assert f['leftover'] == pytest.approx(8.77, abs=0.01)
+    assert sorted(set(f['caps'].values())) == [7.0, 8.0, 11.0, 20.0]
+    assert not any(f['bound'].values())
+    bands = {n: (round(lo, 2), round(hi, 2)) for n, (lo, hi) in f['bands'].items()}
+    assert bands == pytest.approx({
+        'eyebrow': (263.11, 270.33), 'title': (214.76, 259.11), 'art': (82.37, 202.37),
+        'scan_line': (55.12, 69.99), 'host': (35.88, 51.12), 'rule': (28.97, 29.88),
+        'footer_1': (12.00, 22.97)}, abs=0.02)
+    upper, lower = _gap_after(f, 'title', 'art'), _gap_after(f, 'art', 'scan_line')
+    assert upper == pytest.approx(lower, abs=1e-9)
+    assert upper == pytest.approx(2 * f['unit'] + f['leftover'] / 2, abs=1e-6)
+    assert upper > 2 * f['unit'] + 4  # the leftover lands here, not on the footer
+    assert f['bands']['footer_1'][0] == pytest.approx(values['margin'], abs=1e-6)
+    assert f['lines']['title'] == 'Pick the\nnext song!'  # two lines in the arch
     assert f['lines']['eyebrow'] == 'POPPY STREET SPOOKS'  # caps
+    eyebrow_top = f['bands']['eyebrow'][1]
+    assert f['top'] - eyebrow_top == pytest.approx(3.20, abs=0.02)  # pushed out of the arch
+    assert signs.inner_width(f['region'], eyebrow_top) == pytest.approx(
+        m.line_ink('eyebrow', f['lines']['eyebrow'], 7.0)[0], abs=1e-6)
     art = f['bands']['art']
     assert art[0] + 30 < m.ART_SECTION_Y < art[1] - 30  # the review section cuts the art
 
 
 @pytest.mark.audit
-def test_small_pushes_the_eyebrow_out_of_the_arch_and_drops_the_details():
+def test_small_scales_the_type_down_and_holds_every_floor():
+    """T3: 160 x 240 needs s < 1; the scan line and host are width-bound to
+    the 136 mm box; the eyebrow is pushed out of the arch; nothing is under
+    its stroke floor (s >= every line's floor cap / class cap)."""
     f, values = frame_of('small'), values_of('small')
-    assert 'detail_1' not in f['bands'] and 'detail_2' not in f['bands']
-    assert list(f['bands']) == ['eyebrow', 'title', 'art', 'scan_line', 'host', 'footer_1']
+    assert values['width'] - 2 * values['margin'] == 136
+    assert list(f['bands']) == ['eyebrow', 'title', 'art', 'scan_line', 'host', 'rule',
+                                'footer_1']
+    assert f['s'] == pytest.approx(0.926, abs=0.001) and f['leftover'] == 0
+    assert f['bound'] == {'eyebrow': False, 'title': False, 'scan_line': True, 'host': True,
+                          'footer_1': False}
+    for n in ('scan_line', 'host'):
+        assert m.line_ink(n, f['lines'][n], f['caps'][n])[0] == pytest.approx(136, abs=1e-6)
+    for n, cap in f['caps'].items():
+        assert m.line_ink(n, f['lines'][n], cap)[2] >= m.THRESHOLD, n
     eyebrow_top = f['bands']['eyebrow'][1]
-    assert f['top'] == pytest.approx(182.35, abs=0.01)
-    assert eyebrow_top < f['top'] - 9  # pushed ~10 mm down
+    assert f['top'] == pytest.approx(218.89, abs=0.01)
+    assert f['top'] - eyebrow_top > 18  # pushed ~18.7 mm down
     assert signs.inner_width(f['region'], eyebrow_top) == pytest.approx(
-        f['width_need']['eyebrow'], abs=1e-6)
-    assert f['B'] == pytest.approx(70.8, abs=0.1)
-    assert values['width'] - 2 * values['margin'] == 144
+        m.line_ink('eyebrow', f['lines']['eyebrow'], f['caps']['eyebrow'])[0], abs=1e-6)
+    assert f['lines']['title'].count('\n') == 1
 
 
 @pytest.mark.audit
@@ -470,7 +522,8 @@ def test_footer_is_present_unless_blank():
         assert 'footer_1' in frame_of(preset_id)['bands'], preset_id
     assert 'rule' in default_features() and 'footer_1' in default_features()
     f = m._frame(SPEC.resolve_values({'footer_1': ''}))
-    assert 'footer_1' not in f['bands'] and list(f['bands'])[-1] == 'host'
+    assert 'footer_1' not in f['bands'] and 'rule' not in f['bands']
+    assert list(f['bands'])[-1] == 'host'
 
 
 # --- geometry (one build per preset) --------------------------------------

@@ -235,7 +235,7 @@ export const BUILD123D_CATALOG: Record<string, CatalogEntry> = {
   holder_tombstone_sign: {
     categoryId: "household",
     blurb:
-      "Song-request tombstone sign in the Poppy Street Spooks poster look: a Creepster title, the ghost-with-poppy, a QR code and the show details raised 0.6 mm in up to eight colours, printed face up with no supports. Two pockets in the bottom edge take a separately printed stake.",
+      "Song-request tombstone sign in the Poppy Street Spooks poster look: an eyebrow, a two-line Creepster title, the ghost-with-poppy beside a QR code, a scan line, the site and the show times, raised 0.6 mm in up to eight colours, printed face up with no supports. Two pockets in the bottom edge take a separately printed stake.",
   },
   holder_tombstone_stake: {
     categoryId: "household",

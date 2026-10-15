@@ -117,7 +117,12 @@ def _polygons(sketch: Sketch, tol: float = 0.005):
         verts, faces = face.tessellate(tol, 0.1)
         pts = [(v.X, v.Y) for v in verts]
         tris += [Polygon([pts[i] for i in t]) for t in faces]
-    return unary_union(tris).buffer(0)
+    ink = unary_union(tris).buffer(0)
+    # Overlapping glyph faces (Creepster kerns 'x' into 't') union with
+    # hairline cracks (~1e-16 mm^2) the exact fuse does not have; the sliver
+    # they cut off read as a 0.18 mm stroke. Real counters are >= 0.3 mm^2.
+    return unary_union([Polygon(p.exterior, [r for r in p.interiors if Polygon(r).area > 1e-9])
+                        for p in getattr(ink, 'geoms', [ink])])
 
 
 def _thin_feature_lost(region, r: float) -> bool:
