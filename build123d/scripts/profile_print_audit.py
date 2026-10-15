@@ -7,6 +7,12 @@ makes. The phase table lands in docs/print-audit-profile.md.
     uv run python scripts/profile_print_audit.py              # all cases
     uv run python scripts/profile_print_audit.py cup_lid      # one case
     uv run python scripts/profile_print_audit.py --cprofile cradle_default
+    uv run python scripts/profile_print_audit.py --test-phases 8x8x8
+
+``--test-phases`` times the sub-checks of the openConnect drawer's
+test_endpoint_audit_and_edges for one of DRAWER_TEST_CASES (pst-we7g4): the
+build, audit() through the cache (warm after the first run), the bed-slab
+envelope, verify_openconnect_slot and the cached edge inventory.
 
 Dev-only: imports nothing the audit itself does not already import, plus the
 stdlib profiler.
@@ -52,6 +58,58 @@ CASES = {
     "drawer_container_vertical_grids_8": (
         "openconnect_drawer", {"part": "container", "vertical_grids": 8}, _drawer_container),
 }
+
+
+# pst-we7g4: the two drawer audit_full items whose time is outside audit().
+DRAWER_TEST_CASES = ("divider-height-3-way", "8x8x8")
+
+
+def test_phases(name):
+    """(label, wall s, CPU s) per sub-check, in the test's own order."""
+    from build123d import Align, Box, Plane, Pos, section
+
+    from drawer import shell
+    from tests.mount_contracts import verify_openconnect_slot
+    from tests.openconnect_drawer_inventory import cached_edge_inventory, wall_regions
+    from tests.test_openconnect_drawer import CASES, m
+
+    values, rows, built = dict(CASES)[name], [], {}
+
+    def timed(label, fn):
+        w, c = time.perf_counter(), time.process_time()
+        result = fn()
+        rows.append((label, time.perf_counter() - w, time.process_time() - c))
+        return result
+
+    def keep(fn, result):  # first call recorded, every call answered by the original
+        built.setdefault(fn, result)
+        return result
+
+    originals = {fn: getattr(shell, fn) for fn in ("before_bed_chamfer", "slot_fixtures")}
+    for fn, orig in originals.items():
+        setattr(shell, fn, lambda *a, _fn=fn, _orig=orig, **k: keep(_fn, _orig(*a, **k)))
+    try:
+        part = timed("build (m.build)", lambda: m.build(values))
+    finally:
+        for fn, orig in originals.items():
+            setattr(shell, fn, orig)
+    fx, frame = built["slot_fixtures"], m.print_frame(values)
+    timed("audit raw (cache)", lambda: pa.audit(part, cutters=fx.cutters, print_frame=frame))
+    ex = shell.published_ceiling_regions(values) + wall_regions(values)
+    timed("audit filtered (cache)", lambda: pa.audit(part, cutters=fx.cutters, print_frame=frame, exclusions=ex))
+    source = shell.AUTHOR_TO_MODEL.inverse() * part
+    timed("bed sections", lambda: [section(source, section_by=Plane.XY.offset(z)) for z in (.001, .15, .301)])
+    before = built["before_bed_chamfer"]
+
+    def envelope():
+        bb = (shell.AUTHOR_TO_MODEL.inverse() * before).bounding_box()
+        slab = shell.AUTHOR_TO_MODEL * Pos(bb.center().X, bb.center().Y, -1) * Box(
+            bb.size.X + 2, bb.size.Y + 2, 2, align=(Align.CENTER, Align.CENTER, Align.MIN))
+        return shell.body(values) - ((before & slab) - (part & slab))
+    env = timed("envelope (bed slab)", envelope)
+    timed("verify_openconnect_slot", lambda: verify_openconnect_slot(part, fx, min_backing=.8, backing_envelope=env))
+    timed("edge inventory (cache)", lambda: cached_edge_inventory(part, values))
+    return rows
 
 
 def build_case(name):
@@ -136,6 +194,16 @@ def run(name, counted):
 
 
 def main(argv):
+    if "--test-phases" in argv:
+        for name in [a for a in argv if not a.startswith("--")] or DRAWER_TEST_CASES:
+            rows = test_phases(name)
+            total = sum(w for _l, w, _c in rows)
+            print(f"\n### {name}  {audit_cache.summary()}")
+            print("| phase | wall s | CPU s | % of wall |\n|---|---:|---:|---:|")
+            for label, w, c in rows:
+                print(f"| {label} | {w:.1f} | {c:.1f} | {100 * w / total:.0f} |")
+            print(f"| **total** | **{total:.1f}** | **{sum(c for *_x, c in rows):.1f}** | |")
+        return
     do_cprofile = "--cprofile" in argv
     names = [a for a in argv if not a.startswith("--")] or list(CASES)
     names = [n for n in CASES for a in names if a in n]
