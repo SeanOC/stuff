@@ -23,7 +23,7 @@ config saved by the slicer itself. The partial JSONs under Bambu Studio's
 
 | id | Template provenance |
 | --- | --- |
-| `bambu-h2c-0.4` | Exported by Sean from Bambu Studio 02.08.02.61 on 2026-10-15: H2C 0.4 nozzle, 0.16mm Standard @BBL H2C, 8× Bambu PLA Basic @BBL H2C. `project_settings.json` is that project's `Metadata/project_settings.config`, unchanged (581 keys; no account or device keys). |
+| `bambu-h2c-0.4` | Exported by Sean from Bambu Studio 02.08.02.61 on 2026-10-15: H2C 0.4 nozzle, 0.16mm Standard @BBL H2C, 8× Bambu PLA Basic @BBL H2C. `project_settings.json` is that project's `Metadata/project_settings.config`, unchanged (581 keys; no account or device keys). Committing it and shipping it inside profiled 3MFs is granted in [provenance.md](../docs/provenance.md#exception-register) (Sean, 2026-10-15). |
 
 ## Adding a printer
 
