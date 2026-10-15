@@ -190,10 +190,13 @@ BED_FLAT_MM = 0.6
 
 def bed_plane(part, frame) -> tuple[float, float, float]:
     """(lower tip, higher tip, cut plane) heights in the print frame. The
-    first arm's tip (y < 0 in that frame) and the second's (y > 0) each meet
-    the bed at their lowest vertex, the closed face's tip edge."""
-    vs = [tuple(v) for v in (frame*part).vertices()]
-    lower, higher = sorted(min(z for _, y, z in vs if side*y > 0) for side in (-1, 1))
+    arm tips sit at the two ends of the frame's Y span (the bend is not at
+    y = 0: it moves with the width and height), and each meets the bed at
+    its half's lowest vertex, the closed face's tip edge."""
+    placed = frame*part
+    mid = placed.bounding_box().center().Y
+    vs = [tuple(v) for v in placed.vertices()]
+    lower, higher = sorted(min(z for _, y, z in vs if side*(y - mid) > 0) for side in (-1, 1))
     return lower, higher, higher + BED_FLAT_MM
 
 

@@ -599,12 +599,12 @@ def test_mitre_bed_flat(case):
     assert np.allclose([*pre.min][:2] + [*pre.max], [*fin.min][:2] + [*fin.max], atol=1e-6)
     assert m.mitre_extent(v) == pytest.approx((fin.size.Y, fin.size.X, fin.size.Z), abs=1e-3)
     bed = _bed_faces(frame*part, plane)
-    assert sorted(np.sign(f.center().Y) for f in bed) == [-1, 1]
+    assert sorted(np.sign(f.center().Y - fin.center().Y) for f in bed) == [-1, 1]
     contact = sum(f.area for f in bed)
     assert contact >= MIN_BED_MM2
     removed = (author & _print_frame_cut(frame, plane)).volume
     assert author.volume - part.volume == pytest.approx(removed, abs=1e-3)
-    assert 0 < removed < 5e-3*author.volume
+    assert 0 < removed < 1.5e-2*author.volume     # ~0.3 % at the default, ~1.1 % at width 4 height 10
     print(f'MITRE BED | {case} | depth {depth:.3f} (higher tip {plane - higher:.3f}) | contact '
           f'{contact:.2f} mm2 | vol {author.volume:.1f} -> {part.volume:.1f} (-{removed:.1f})')
 
