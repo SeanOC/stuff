@@ -33,7 +33,7 @@ from openconnect.constants import EPS, TILE_SIZE
 from . import constants as c
 from . import shell
 from .dividers import CompartmentListError, parse
-from .honeycomb import HoneycombLayout, close_small_openings, hole_polygons, opening_diameter
+from .honeycomb import HoneycombLayout, HoneycombPanelTooSmall, close_small_openings, hole_polygons, opening_diameter
 
 AUTHOR_TO_MODEL = shell.AUTHOR_TO_MODEL
 WALL_TYPES = ('Honeycomb', 'Solid')
@@ -487,7 +487,14 @@ def wall_layouts(values=None, *, close_openings=True):
                 raise ValueError(f'container {name.lower()} wall honeycomb opening encloses an '
                                  'island; this parameter combination is unsupported')
         if close_openings and ceiling != 'source':
-            parts = close_small_openings(parts, (0, 1), ceiling=wall_ceiling)
+            kept = close_small_openings(parts, (0, 1), ceiling=wall_ceiling)
+            # Never substitute a Solid wall for a requested Honeycomb one.
+            if parts and not kept:
+                raise HoneycombPanelTooSmall(
+                    f'container honeycomb {name.lower()} wall: every opening clips under '
+                    f'{c.MIN_LATTICE_OPENING_MM:g} mm; lower honeycomb_strut_hyp, free the wall '
+                    '(label holder, handle, magnets, dividers) or use the Solid wall type')
+            parts = kept
         if parts:
             walls.append((name, plane, HoneycombLayout(parts, wall_ceiling, name), thickness))
 
