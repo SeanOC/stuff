@@ -269,7 +269,12 @@ count, volume and bounds without an enlarged exclusion box.
 
 - **Bed-contact chamfers, no downward fillets, and manifold port output**
   remain required under §§1–2 (including the existing library-cutter
-  distinction). A non-manifold author mesh is reference evidence, not an
+  distinction). The one named carve-out: a sub-0.9 mm mating-feature
+  profile boundary at Z = 0 on a snap-fit part may keep its bed edge sharp
+  through a signed exception row (the stopper clip's Z = 0 profile in
+  [drawer/stopper.py](../drawer/stopper.py), elephant foot left to the
+  slicer's 0.1–0.15 mm first-layer compensation); like every row it is
+  granted per face family and adjacency, never per thickness. A non-manifold author mesh is reference evidence, not an
   excuse for a non-manifold port: see `test_single_watertight_solid` and
   `test_published_print_inventory` in [test_opengrid_snap.py](../tests/test_opengrid_snap.py),
   and `test_endpoint_audit_mount_and_edges` in [test_gridfinity_shelf.py](../tests/test_gridfinity_shelf.py).

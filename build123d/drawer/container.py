@@ -39,6 +39,9 @@ AUTHOR_TO_MODEL = shell.AUTHOR_TO_MODEL
 WALL_TYPES = ('Honeycomb', 'Solid')
 DIVIDER_MODES = ('None', 'Width', 'Depth', 'Both')
 DIVIDER_WALL = 1.2  # [C] :55 container_divider_wall_thickness
+# Compartment dividers only separate contents; the hung load goes through the
+# shell walls and openConnect heads, so §1's 1.6 mm load-bearing floor does
+# not apply and 1.2 stands (mayor ruling, pst-t0ob3.4, 2026-10-14).
 # [C] :1708-1709: the third ("middle truss") handle stem is added only when
 # each swept half of the handle bar is longer than this.
 MIDDLE_TRUSS_MIN_HANDLE_WIDTH = 50
