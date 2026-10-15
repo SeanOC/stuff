@@ -1,4 +1,4 @@
-"""Tombstone sign (epic pst-tl4ac; S1 pst-tl4ac.1, S3 pst-tl4ac.3): the poster look.
+"""Tombstone sign (epic pst-tl4ac; S1 pst-tl4ac.1, S3 .3, S4 .4): the poster look.
 
 A plate in the classic tombstone outline (holders/signs.py outline: straight
 sides, flat bottom, a 'round' full-width arch or a 'shoulder' arch a third
@@ -11,29 +11,31 @@ Printed FACE UP: every colour feature stands RAISE_H (0.6 mm = 3 layers)
 proud of the top face, modelled unmirrored in the print frame. All raised
 regions share the one Z t..t+RAISE_H slab and never overlap.
 
-Layout, top to bottom, inside a `margin` inset of the outline (D4): eyebrow
-(caps, Lexend Medium), title (Creepster, one line else two), ART ROW (the
-ghost-with-poppy at left, the QR panel at right, centred as a pair with a
-margin gap; ghost height 0.47 x qr_size, the poster ratio), scan_line
-(Lexend Bold), detail_1 and detail_2 (Lexend Medium, one line else two),
-host (Lexend Bold, its own band: the poster sets it inline after detail_2),
-and the footer_1 line (Lexend Medium) under a thin raised rule. Blank lines
-take no band and no gap.
+Layout, top to bottom, inside a `margin` inset of the outline (S4,
+pst-tl4ac.4): eyebrow (caps, Lexend Medium), title (Creepster, one line else
+two), ART ROW (the ghost-with-poppy at left, the QR panel at right, centred
+as a pair with a 2 U gap; ghost height GHOST_SHARE x qr_size), scan_line and
+host (Lexend Bold), and the footer_1 line (Lexend Medium) under a thin
+raised rule. Blank lines take no band and no gap; the rule exists only with
+a footer.
 
-Band rule: from the content top (where the inset arch is CONTENT_CHORD of
-the inset width) down to a floor of margin, gaps margin / 2, the art row a
-fixed qr_size block. B = top - margin - qr_size - gap x (blocks - 1) must be
->= MIN_TEXT_BUDGET (else the 'minimum height' ValueError). Each text band
-needs need = (stroke floor + FLOOR_MARGIN) / nominal stroke x nominal ink
-height, measured on its own face at its wrap (the fewest lines whose width
-need fits the inset chord at the band's top); band height = need + the
-slack (B - sum of needs) shared by the poster weights. A line wider than the
-chord at its top pushes the band down to where the chord holds it (B
-shrinks by the push): that is how the eyebrow leaves the arch on the small
-plate. Pass 1 places the bands by the weights alone; the needs are
-measured at those tops; pass 2 places need + slack. A line that cannot hold
-the 0.9 raised stroke floor anywhere (or sum of needs > B: the hungriest
-line) raises the label card's stroke ValueError naming the line.
+Type classes: every line is set at a class cap height (the face's 'H'),
+TITLE_CAP 20 / LINE_CAP 11 (scan_line, host) / SMALL_CAP 8 (footer_1) /
+EYEBROW_CAP 7, times one type scale s. Rhythm: the unit U = margin x RHYTHM
+x s; groups [eyebrow, title] [art] [scan_line, host] [rule, footer_1], 1 U
+within a group, 2 U between groups, RULE_CLEAR U either side of the rule
+(replacing the gaps there). The stack runs from the content top (where the
+inset arch is CONTENT_CHORD of the inset width) down. Per line, at its top
+y: the wrap is the fewest lines whose width fits the inset chord there (else
+the most); a line wider than the inset box shrinks alone to the box
+(width-bound); a line still wider than the chord moves down to the highest y
+whose chord holds it (the arch push: the eyebrow at the default). s is the
+largest in (0, 1] whose stack bottoms out at or above the margin; s < 1
+scales the text and U, never the art row or the margin. At s = 1 the
+leftover is split equally into the two gaps flanking the art row, so the
+footer sits on the margin. A line under the raised stroke floor makes the
+plate too short (the 'minimum height' ValueError), unless it is width-bound:
+then it raises the label card's stroke ValueError naming the line.
 
 Colours (D3), rank order = filament order: base (the plate, ground purple),
 bone, pumpkin, poppy, leaf, dim, ink, ember. colours = N (2..8) activates
@@ -92,30 +94,32 @@ FLOOR = STROKE_FLOOR_RAISED
 THRESHOLD = FLOOR + FLOOR_MARGIN  # what every raised stroke must clear
 RULE_W = THRESHOLD          # the footer rule is one stroke-floor line
 EDGE_CHAMFER = 0.4          # both rims, as the label card
-DETAIL_MAX_LENGTH = 72
-QR_CORNER_R = 8.0           # bone panel rounding, inside the 4-module quiet zone
-GHOST_SHARE = 0.47          # ghost height / panel height (the poster's 172 / 368 px)
-GAP_SHARE = 0.5             # inter-band gap = margin x this
+QR_CORNER_R = 6.0           # bone panel rounding, inside the 4-module quiet zone
+GHOST_SHARE = 0.65          # ghost height / panel height (the poster's is 0.47)
 CONTENT_CHORD = 0.5         # content stops where the arch is this share of the inset width
-MIN_TEXT_BUDGET = 40.0      # mm: the floor on B (the text bands' total), never per line
+RHYTHM = 1 / 3              # rhythm unit U = margin x this x s
+RULE_CLEAR = 1.5            # U clear above and below the rule, replacing the gaps there
 
 _FONTS = Path(__file__).resolve().parent.parent / 'assets' / 'fonts'
 FONTS = {'lexend-medium': (_FONTS / 'lexend' / 'Lexend-Medium.ttf', FontStyle.REGULAR),
          'lexend-bold': (_FONTS / 'lexend' / 'Lexend-Bold.ttf', FontStyle.BOLD),
          'creepster': (_FONTS / 'creepster' / 'Creepster-Regular.ttf', FontStyle.REGULAR)}
 
-# Text bands, top to bottom; 'art' is the fixed ghost + QR row between them.
-LINES = ('eyebrow', 'title', 'scan_line', 'detail_1', 'detail_2', 'host', 'footer_1')
-ORDER = ('eyebrow', 'title', 'art', 'scan_line', 'detail_1', 'detail_2', 'host', 'footer_1')
-WEIGHT = {'eyebrow': 6, 'title': 22, 'scan_line': 8, 'detail_1': 10, 'detail_2': 6,
-          'host': 6, 'footer_1': 8}
+# Text bands, top to bottom; 'art' is the ghost + QR row, 'rule' the line
+# over the footer (present only with a footer).
+LINES = ('eyebrow', 'title', 'scan_line', 'host', 'footer_1')
+ORDER = ('eyebrow', 'title', 'art', 'scan_line', 'host', 'rule', 'footer_1')
+GROUP = {'eyebrow': 0, 'title': 0, 'art': 1, 'scan_line': 2, 'host': 2, 'rule': 3,
+         'footer_1': 3}
+# Type classes: cap height (mm, the face's 'H') at type scale s = 1.
+TITLE_CAP, LINE_CAP, SMALL_CAP, EYEBROW_CAP = 20.0, 11.0, 8.0, 7.0
+CAP = {'eyebrow': EYEBROW_CAP, 'title': TITLE_CAP, 'scan_line': LINE_CAP, 'host': LINE_CAP,
+       'footer_1': SMALL_CAP}
 FACE = {'eyebrow': 'lexend-medium', 'title': 'creepster', 'scan_line': 'lexend-bold',
-        'detail_1': 'lexend-medium', 'detail_2': 'lexend-medium', 'host': 'lexend-bold',
-        'footer_1': 'lexend-medium'}
-MAX_LINES = {'eyebrow': 1, 'title': 2, 'scan_line': 1, 'detail_1': 2, 'detail_2': 2,
-             'host': 1, 'footer_1': 1}
-LINE_ROLE = {'eyebrow': 'dim', 'title': 'pumpkin', 'scan_line': 'bone', 'detail_1': 'dim',
-             'detail_2': 'dim', 'host': 'pumpkin', 'footer_1': 'dim'}
+        'host': 'lexend-bold', 'footer_1': 'lexend-medium'}
+MAX_LINES = {'eyebrow': 1, 'title': 2, 'scan_line': 1, 'host': 1, 'footer_1': 1}
+LINE_ROLE = {'eyebrow': 'dim', 'title': 'pumpkin', 'scan_line': 'bone', 'host': 'pumpkin',
+             'footer_1': 'dim'}
 
 # D3: filament order; the preview colours are the poster's tokens (ink and
 # ember are ours: ember is the poster's inline highlight, ink is not on it).
@@ -154,11 +158,19 @@ def _ink(text: str, face: str) -> tuple[float, float, float]:
     return bb.size.X, bb.size.Y, nominal_stroke(text, path, style)
 
 
-def line_need(name: str, candidate: str) -> tuple[float, float]:
-    """(width, height) the candidate needs for its stroke to clear THRESHOLD."""
-    w, h, stroke = _ink(candidate, FACE[name])
-    k = THRESHOLD / stroke
-    return k * w, k * h
+@lru_cache(maxsize=None)
+def cap_height(face: str) -> float:
+    """The face's 'H' ink height at NOMINAL_SIZE: a band's cap is set in these units."""
+    path, style = FONTS[face]
+    return text_sketch('H', path=path, style=style).bounding_box().size.Y
+
+
+def line_ink(name: str, candidate: str, cap: float) -> tuple[float, float, float]:
+    """(width, height, stroke) of the candidate set at this cap height."""
+    face = FACE[name]
+    w, h, stroke = _ink(candidate, face)
+    k = cap / cap_height(face)
+    return k * w, k * h, k * stroke
 
 
 def _candidates(name: str, text: str) -> list[str]:
@@ -189,79 +201,99 @@ def _chord_cap(region, top: float, width: float, floor: float) -> float | None:
     return lo
 
 
-def _place(order, heights: dict, top: float, gap: float, caps: dict) -> tuple[dict, float]:
-    """Stack the blocks down from top; a capped band starts no higher than its cap.
-    Returns ({name: (y_lo, y_hi)}, total push)."""
-    out, y, push = {}, top, 0.0
-    for name in order:
-        cap = caps.get(name, y)
-        if cap < y:
-            push += y - cap
-            y = cap
-        out[name] = (y - heights[name], y)
-        y -= heights[name] + gap
-    return out, push
+def art_width(qr: float, gap: float) -> float:
+    """Ghost box + the pair gap + QR panel: the art row's width at its top."""
+    return sign_ghost.width(GHOST_SHARE * qr) + gap + qr
 
 
-def art_width(qr: float, margin: float) -> float:
-    """Ghost box + margin + QR panel: the art row's width at its top."""
-    return sign_ghost.width(GHOST_SHARE * qr) + margin + qr
+def _gap(above: str, below: str, unit: float) -> float:
+    """1 U within a group, 2 U between groups; RULE_CLEAR U either side of the rule."""
+    if 'rule' in (above, below):
+        return RULE_CLEAR * unit
+    return unit if GROUP[above] == GROUP[below] else 2 * unit
+
+
+def _stack(values: dict, region, top: float, s: float, leftover: float) -> dict | None:
+    """The bands stacked down from top at type scale s, with leftover split
+    equally into the gaps flanking the art row. None if a line cannot fit
+    the inset chord even at the margin floor."""
+    w, m, qr = values['width'], values['margin'], values['qr_size']
+    unit, box_w = m * RHYTHM * s, w - 2 * m
+    order = [n for n in ORDER if n == 'art' or values['footer_1' if n == 'rule' else n].strip()]
+    i = order.index('art')
+    flanks = [p for p in (i, i + 1) if 0 < p < len(order)]  # gaps above order[p]
+    bands, lines, caps, bound = {}, {}, {}, {}
+    y = top
+    for p, n in enumerate(order):
+        if p:
+            y -= _gap(order[p - 1], n, unit) + (leftover / len(flanks) if p in flanks else 0.0)
+        if n in ('art', 'rule'):
+            h = qr if n == 'art' else RULE_W
+        else:
+            cap, chord = CAP[n] * s, signs.inner_width(region, y)
+            cands = [(c, line_ink(n, c, cap)[0]) for c in _candidates(n, _line(values, n))]
+            text, width = next((c for c in cands if c[1] <= chord + 1e-9), cands[-1])
+            bound[n] = width > box_w
+            if bound[n]:  # width-bound: this line alone shrinks to the inset box
+                cap, width = cap * box_w / width, box_w
+            pushed = _chord_cap(region, y, width, m)
+            if pushed is None:
+                return None
+            y, lines[n], caps[n] = pushed, text, cap
+            h = line_ink(n, text, cap)[1]
+        bands[n] = (y - h, y)
+        y -= h
+    return {'bands': bands, 'lines': lines, 'caps': caps, 'bound': bound, 'unit': unit,
+            'bottom': y}
 
 
 def _frame(values: dict, height: float | None = None) -> dict | None:
     """Band placement (pure 2D), or None when height cannot hold it.
 
-    Returns region (the margin-inset outline, shapely), top, gap, B, the
-    pass-1 placement, needs / width needs / chosen wrap per present line,
-    'bands' {name: (y_lo, y_hi)} for every present line and 'art', and
-    'overflow' (sum of needs > B: features() raises for the hungriest line).
-    A line that cannot hold the stroke floor at any width raises here.
+    Returns region (the margin-inset outline, shapely), top, the type scale
+    s, leftover, unit (the rhythm unit U), and per present line its wrap
+    ('lines'), cap height ('caps') and whether it is width-bound ('bound');
+    'bands' {name: (y_lo, y_hi)} covers every present line, 'art' and 'rule'.
+    s is the largest in (0, 1] whose stack bottoms out at or above the
+    margin; leftover (s = 1 only) goes to the art row's flanking gaps. A line
+    under its stroke floor makes the height too small (None), unless it is
+    width-bound, where no height helps: that raises the line's stroke error.
     """
     w, m, qr = values['width'], values['margin'], values['qr_size']
     h = values['height'] if height is None else height
     region = signs.outline_region(w, h, values['arch']).buffer(-m)
     top = _top(region, w, h, m)
-    gap = GAP_SHARE * m
-    order = [n for n in ORDER if n == 'art' or values[n].strip()]
-    texts = [n for n in order if n != 'art']
-    base = top - m - qr - gap * (len(order) - 1)
-    if base < MIN_TEXT_BUDGET:
-        return None
-    weights = sum(WEIGHT[n] for n in texts)
-    pass1, _ = _place(order, {'art': qr, **{n: base * WEIGHT[n] / weights for n in texts}},
-                      top, gap, {})
-    lines, need, wneed, caps = {}, {}, {}, {}
-    for n in texts:
-        text = _line(values, n)
-        chord = signs.inner_width(region, pass1[n][1])
-        sizes = [(c, *line_need(n, c)) for c in _candidates(n, text)]
-        fit = next((s for s in sizes if s[1] <= chord + 1e-9), None)
-        lines[n], wneed[n], need[n] = fit or min(sizes, key=lambda s: s[1])
-        if wneed[n] > w - 2 * m:
-            raise _line_error(n, text, w - 2 * m, pass1[n][1] - pass1[n][0])
-        caps[n] = _chord_cap(region, top, wneed[n], m)
-        if caps[n] is None:
+
+    def stack(s: float, leftover: float = 0.0) -> dict | None:
+        st = _stack(values, region, top, s, leftover)
+        return st if st is not None and st['bottom'] >= m - 1e-9 else None
+
+    s, leftover, st = 1.0, 0.0, stack(1.0)
+    if st is None:
+        lo, hi = 0.0, 1.0
+        for _ in range(40):
+            mid = (lo + hi) / 2
+            lo, hi = (mid, hi) if stack(mid) else (lo, mid)
+        s, st = lo, stack(lo) if lo > 0 else None
+        if st is None:
             return None
-    total = sum(need.values())
-    push = 0.0
-    for _ in range(8):  # pushes only move bands that stay below their cap: settles fast
-        b = base - push
-        if b < MIN_TEXT_BUDGET:
+    else:
+        for _ in range(8):  # a band moved lower may need less push: settles fast
+            leftover += st['bottom'] - m
+            st = _stack(values, region, top, 1.0, leftover)
+            if st is None or abs(st['bottom'] - m) < 1e-9:
+                break
+        if st is None or st['bottom'] < m - 1e-6:
             return None
-        slack = b - total
-        heights = {n: (need[n] + slack * WEIGHT[n] / weights if slack >= 0
-                       else need[n] * b / total) for n in texts}
-        bands, pushed = _place(order, {'art': qr, **heights}, top, gap, caps)
-        if abs(pushed - push) < 1e-9:
-            break
-        push = pushed
-    if bands[order[-1]][0] < m - 1e-6:
+    for n, cap in st['caps'].items():
+        width, height_, stroke = line_ink(n, st['lines'][n], cap)
+        if stroke < THRESHOLD:
+            if st['bound'][n]:
+                raise _line_error(n, _line(values, n), w - 2 * m, height_)
+            return None
+    if signs.inner_width(region, st['bands']['art'][1]) < art_width(qr, 2 * st['unit']):
         return None
-    if signs.inner_width(region, bands['art'][1]) < art_width(qr, m):
-        return None
-    return {'region': region, 'top': top, 'gap': gap, 'B': base - push, 'pass1': pass1,
-            'need': need, 'width_need': wneed, 'lines': lines, 'bands': bands,
-            'overflow': total > base - push + 1e-9}
+    return {'region': region, 'top': top, 's': s, 'leftover': leftover, **st}
 
 
 def _line_error(name: str, text: str, box_w: float, box_h: float) -> ValueError:
@@ -304,10 +336,10 @@ def validate(values: dict) -> None:
                          f'>= {floor:g} mm for width {w:g} mm ({values["arch"]} arch)')
     if not values['host'].strip():
         raise ValueError('host is blank: the QR encodes https://{host}')
-    if art_width(qr, m) > w - 2 * m:
-        raise ValueError(f'qr_size {qr:g} mm: the art row (ghost + margin + QR) is '
-                         f'{art_width(qr, m):.1f} mm, wider than width - 2 x margin = '
-                         f'{w - 2 * m:g} mm')
+    art = art_width(qr, 2 * m * RHYTHM)
+    if art > w - 2 * m:
+        raise ValueError(f'qr_size {qr:g} mm: the art row (ghost + 2/3 margin + QR) is '
+                         f'{art:.1f} mm, wider than width - 2 x margin = {w - 2 * m:g} mm')
     signs.qr_regions(qr_data(values), qr)  # the pitch guard
     if values['retention'] == 'pin':
         signs.check_pin_thickness(values['thickness'])
@@ -317,9 +349,8 @@ def validate(values: dict) -> None:
                   f'that needs height >= {need:g} mm, above the {MAX_HEIGHT:g} mm maximum: '
                   f'reduce qr_size or margin')
         raise ValueError(
-            f'height {h:g} mm cannot hold the {qr:g} mm art row and the text bands '
-            f'({MIN_TEXT_BUDGET:g} mm) between the {m:g} mm margin floor and the arch; '
-            f'{advice}')
+            f'height {h:g} mm cannot hold the {qr:g} mm art row and the text above its '
+            f'stroke floor between the {m:g} mm margin floor and the arch; {advice}')
 
 
 def plate(values: dict) -> Part:
@@ -396,16 +427,11 @@ def features(values: dict) -> dict[str, tuple[str, Part]]:
     """
     validate(values)
     frame = _frame(values)
-    if frame['overflow']:
-        name = max(frame['need'], key=frame['need'].get)
-        y_lo, y_hi = frame['bands'][name]
-        raise _line_error(name, _line(values, name),
-                          signs.inner_width(frame['region'], y_hi), y_hi - y_lo)
     out = {n: (LINE_ROLE[n], _fit_line(n, values, frame)) for n in frame['lines']}
-    if 'footer_1' in frame['bands']:
-        y = frame['bands']['footer_1'][1] + frame['gap'] / 2
-        chord = signs.inner_width(frame['region'], y + RULE_W / 2)
-        out['rule'] = ('dim', Pos(0, y, RAISE_H / 2) * Box(chord, RULE_W, RAISE_H))
+    if 'rule' in frame['bands']:
+        y_lo, y_hi = frame['bands']['rule']
+        chord = signs.inner_width(frame['region'], y_hi)
+        out['rule'] = ('dim', Pos(0, (y_lo + y_hi) / 2, RAISE_H / 2) * Box(chord, RULE_W, RAISE_H))
     ghost_at, qr_at = art_layout(values, frame)
     for role, region in sign_ghost.regions(GHOST_SHARE * values['qr_size']).items():
         out[f'ghost:{role}'] = (role, Pos(*ghost_at) * extrude(region, RAISE_H))
@@ -417,11 +443,11 @@ def features(values: dict) -> dict[str, tuple[str, Part]]:
 
 def art_layout(values: dict, frame: dict) -> tuple[tuple[float, float], tuple[float, float]]:
     """(ghost box lower-left, QR centre): the pair centred on X = 0 with a
-    margin gap, both centred on the art row (the poster's align-items: center)."""
-    m, qr = values['margin'], values['qr_size']
+    2 U gap, both centred on the art row (the poster's align-items: center)."""
+    qr, gap = values['qr_size'], 2 * frame['unit']
     y_lo, y_hi = frame['bands']['art']
-    yc, left, gh = (y_lo + y_hi) / 2, -art_width(qr, m) / 2, GHOST_SHARE * qr
-    return (left, yc - gh / 2), (left + sign_ghost.width(gh) + m + qr / 2, yc)
+    yc, left, gh = (y_lo + y_hi) / 2, -art_width(qr, gap) / 2, GHOST_SHARE * qr
+    return (left, yc - gh / 2), (left + sign_ghost.width(gh) + gap + qr / 2, yc)
 
 
 def _union(parts: list[Part]) -> Part:
@@ -499,17 +525,14 @@ PARAMS = (
     Param('thickness', 'number', 6.0, label='Thickness', group='Plate', unit='mm',
           min=5.0, max=12.0, step=0.2),
     Param('arch', 'enum', 'round', label='Arch', group='Plate', choices=('round', 'shoulder')),
-    Param('margin', 'number', 8.0, label='Margin', group='Plate', unit='mm',
+    Param('margin', 'number', 12.0, label='Margin', group='Plate', unit='mm',
           min=3.0, max=20.0, step=0.5),
     _text('eyebrow', 'Poppy Street Spooks', 'Eyebrow (printed in capitals)'),
     _text('title', 'Pick the next song!', 'Title'),
     _text('scan_line', 'Scan to request a song', 'Scan line'),
-    _text('detail_1', 'The spooks sing whatever the street picks. Three requests per phone.',
-          'Detail 1', DETAIL_MAX_LENGTH),
-    _text('detail_2', 'No app needed. Or visit', 'Detail 2', DETAIL_MAX_LENGTH),
     _text('host', 'poppystreetspooks.com', 'Host (the QR encodes https://host)'),
     _text('footer_1', 'Show runs dusk to 9 pm', 'Footer'),
-    Param('qr_size', 'number', 100.0, label='QR size', group='QR', unit='mm',
+    Param('qr_size', 'number', 120.0, label='QR size', group='QR', unit='mm',
           min=50.0, max=300.0, step=1.0,
           description='Includes the 4-module quiet zone; modules must be >= 2 mm.'),
     Param('colours', 'integer', 8, label='Colours (filaments)', group='Style',
@@ -524,16 +547,16 @@ DEFAULTS = {p.name: p.default for p in PARAMS}
 # Through the default art row (ghost + QR); a constant because the layout
 # measures the text (about a minute) and registration must stay cheap. A test
 # pins it inside the default layout's art row.
-ART_SECTION_Y = 178.0
+ART_SECTION_Y = 142.4
 
 SPEC = register(ModelSpec(
     name='holder_tombstone_sign',
     build=build,
     title='Tombstone sign',
     description=('Song-request tombstone sign in the poster look: eyebrow, Creepster title, '
-                 'the ghost-with-poppy, a QR code and the show details raised in up to '
-                 'eight colours, printed face up; two pockets in the bottom edge take the '
-                 'separately printed stake.'),
+                 'the ghost-with-poppy, a QR code, the scan line, the site and the show '
+                 'times raised in up to eight colours, printed face up; two pockets in the '
+                 'bottom edge take the separately printed stake.'),
     category_id='household',
     tags=('sign', 'multi-colour'),
     print_orientation=(0, 0, 1),  # flat, face up
@@ -543,9 +566,8 @@ SPEC = register(ModelSpec(
         Preset('one-ams', 'One AMS (four colours)', {'colours': 4}),
         Preset('two-colour', 'Two colours (bone on ground)', {'colours': 2}),
         Preset('pinned', 'Pinned stake (8 mm plate)', {'thickness': 8.0, 'retention': 'pin'}),
-        Preset('small', 'Small (160 x 200, no detail lines)',
-               {'width': 160.0, 'height': 200.0, 'qr_size': 74.0,
-                'detail_1': '', 'detail_2': ''}),
+        Preset('small', 'Small (160 x 240)',
+               {'width': 160.0, 'height': 240.0, 'qr_size': 74.0}),
     ),
     # Pocket plane first: the review sheet goldens sections[0] (the joint cut).
     review_sections=(
