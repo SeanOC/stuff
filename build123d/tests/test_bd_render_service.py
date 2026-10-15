@@ -411,7 +411,8 @@ def test_a_part_too_large_for_the_profiled_printer_is_400(base_url):
     )
     assert status == 400, body
     message = json.loads(body)["errorMessage"]
-    assert "does not fit the plate" in message and "None (generic 3MF)" in message
+    assert "does not fit the 330 x 320 mm plate" in message and "None (generic 3MF)" in message
+    assert "max footprint 326 x 244 mm" in message  # the limit the user must size to (pst-68fpi)
 
 
 def test_worker_takes_the_profile_as_its_fourth_argument(monkeypatch, tmp_path):

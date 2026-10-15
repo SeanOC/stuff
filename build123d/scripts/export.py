@@ -215,6 +215,19 @@ def _bbox(polygon) -> tuple[float, float, float, float]:
     return min(xs), max(xs), min(ys), max(ys)
 
 
+def max_footprint(settings: dict) -> tuple[float, float]:
+    """The largest part footprint a profile's plate takes, either way round.
+
+    The part sits PLATE_MARGIN in from the plate's edges with the prime tower
+    reserve behind it, so it gets the plate's width less two margins by its
+    depth less three margins and the reserve (326 x 244 mm on the 330 x 320
+    H2C). The print audit's build volume (BED_* in tests/print_audit.py) is
+    larger: a multi-colour preset must also fit this (pst-68fpi).
+    """
+    px0, px1, py0, py1 = _bbox(settings['printable_area'])
+    return px1 - px0 - 2 * PLATE_MARGIN, py1 - py0 - 3 * PLATE_MARGIN - PRIME_TOWER_RESERVE
+
+
 def _place_on_plate(model: str, settings: dict) -> tuple[str, float, float]:
     """Build-item transform that puts the part on the plate, plus the prime
     tower's corner, deterministic for the same mesh.
@@ -235,16 +248,17 @@ def _place_on_plate(model: str, settings: dict) -> tuple[str, float, float]:
     reach = [_bbox(area.split(',')) for area in settings.get('extruder_printable_area') or []]
     rx0, rx1 = (max(b[0] for b in reach), min(b[1] for b in reach)) if reach else (px0, px1)
     tower_w = float(settings['prime_tower_width'])
+    max_w, max_d = max_footprint(settings)
     for turned in (False, True):
         # Turning +90 degrees about Z maps (x, y) to (-y, x).
         (x0, x1), (y0, y1) = (((-hi[1], -lo[1]), (lo[0], hi[0])) if turned
                               else ((lo[0], hi[0]), (lo[1], hi[1])))
-        if (x1 - x0 <= px1 - px0 - 2 * PLATE_MARGIN
-                and y1 - y0 + PLATE_MARGIN + PRIME_TOWER_RESERVE <= py1 - py0 - 2 * PLATE_MARGIN):
+        if x1 - x0 <= max_w and y1 - y0 <= max_d:
             break
     else:
         raise ValueError(f'part {hi[0] - lo[0]:.1f} x {hi[1] - lo[1]:.1f} mm does not fit the '
-                         f'plate with a prime tower behind it')
+                         f'{px1 - px0:.0f} x {py1 - py0:.0f} mm plate with a prime tower behind '
+                         f'it (max footprint {max_w:.0f} x {max_d:.0f} mm, either way round)')
     half = (x1 - x0) / 2
     centre = min(max((rx0 + rx1) / 2, px0 + PLATE_MARGIN + half), px1 - PLATE_MARGIN - half)
     tx, ty, tz = centre - (x0 + x1) / 2, py0 + PLATE_MARGIN - y0, -lo[2]
@@ -410,6 +424,7 @@ def export_presets_only(target: Path) -> int:
     if not specs:
         print("no app-listed models registered"); return 1
     baked = 0
+    unfit: list[str] = []
     for spec in specs:
         if not spec.presets:
             # Registry validation forbids app-listed models without presets,
@@ -440,12 +455,24 @@ def export_presets_only(target: Path) -> int:
                 generic = model_dir / f"{preset.id}.3mf"
                 export_3mf_one_object(named, generic, f"{spec.slug}-{preset.id}")
                 for profile in PROFILES.values():
-                    apply_printer_profile(generic, model_dir / f"{preset.id}.{profile.id}.3mf",
-                                          profile, named)
+                    try:
+                        apply_printer_profile(generic, model_dir / f"{preset.id}.{profile.id}.3mf",
+                                              profile, named)
+                    except ValueError as error:
+                        # Every profiled 3MF is expected downstream
+                        # (upload-bd-baked.mjs), so an unfit preset fails the
+                        # bake; collect them all so one run names every pair.
+                        unfit.append(f"{spec.name}/{preset.id}: printer profile {profile.id}: {error}")
                 for name, shape, _ in named:
                     export_stl(shape, str(model_dir / f"{preset.id}-{name}.stl"))
             baked += 1
             print(f"{spec.name}/{preset.id}: vol={part.volume:.0f}mm3 -> {stl}, {glb}, {png}")
+    for line in unfit:
+        print(f"FAIL {line}", file=sys.stderr)
+    if unfit:
+        print("a multi-colour preset must fit every printer profile's plate (pst-68fpi): "
+              "shrink the preset or drop it", file=sys.stderr)
+        return 1
     print(f"baked {baked} presets from {len(specs)} models into {target}")
     return 0
 

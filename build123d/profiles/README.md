@@ -47,3 +47,7 @@ config saved by the slicer itself. The partial JSONs under Bambu Studio's
    (`Metadata/slice_info.config` lists one `<filament>` per part with
    non-zero `used_g`). The Linux AppImage runs headless after
    `--appimage-extract`.
+   A plate too small for an existing multi-colour preset fails the bake
+   (`FAIL <model>/<preset>: printer profile <id>: … max footprint …`):
+   every profiled 3MF is expected downstream (`scripts/upload-bd-baked.mjs`),
+   so there is no per-profile skip (pst-68fpi).

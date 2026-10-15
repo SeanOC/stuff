@@ -174,6 +174,11 @@ For any PR touching `build123d/holders/**`, check and cite the file/line:
     build-volume rule checks it (`tests/print_audit.py`, `BED_X/BED_Y/BED_Z`
     from `holders/printer.py`): the registry run covers defaults, the
     endpoint table (item 3) the rest. A dual-nozzle part must fit 300 in X.
+    A multi-colour preset must also fit every printer profile's plate with
+    the prime tower behind it: 326 × 244 mm either way round on the H2C
+    (`max_footprint` in `scripts/export.py`). The bake fails on a preset
+    that does not (`FAIL <model>/<preset>: printer profile …`), so the
+    `audit` job's preset bake refuses it on the PR that adds it.
 
 A miss on 1–3, 7, 9 or 10 is blocking; 4–6 and 8 are blocking when the PR claims
 to address them and otherwise a required follow-up bead.
