@@ -66,7 +66,7 @@ def test_reject_empty_cavity_with_author_error():
 from holders import openconnect_drawer as m
 from tests import print_audit as audit
 from tests.audit_record import record
-from tests.openconnect_drawer_inventory import edge_inventory, source_contact_mask, wall_regions
+from tests.openconnect_drawer_inventory import cached_edge_inventory, edge_inventory, source_contact_mask, wall_regions
 from tests.parity import (band_mask, bbox_parity, boundary_edges, load_reference,
                           over_cap_exclusion, surface_distance, volume_parity)
 
@@ -334,7 +334,17 @@ DIVIDER_WALL_EDGES = {
                  if name not in {p.id for p in m.SPEC.presets} else ())
     for name, values in CASES
 ])
-def test_endpoint_audit_and_edges(name, values):
+def test_endpoint_audit_and_edges(name, values, monkeypatch):
+    # pst-we7g4: keep the before-bed-chamfer body and the slot fixtures that
+    # m.build computes on its way, instead of rebuilding both below (~80 CPU s
+    # on the largest cases). Spies only: every call still runs the original.
+    built = {}
+    for fn in ('before_bed_chamfer', 'slot_fixtures'):
+        def spy(*args, _fn=fn, _orig=getattr(shell, fn), **kwargs):
+            result = _orig(*args, **kwargs)
+            built.setdefault(_fn, result)
+            return result
+        monkeypatch.setattr(shell, fn, spy)
     if name == 'max-clearance':
         cap = values['slot_side_clearance']
         with pytest.raises(ValueError) as exc:
@@ -343,6 +353,7 @@ def test_endpoint_audit_and_edges(name, values):
             f'slot_side_clearance above {cap:g} mm leaves no openConnect head '
             'retention (openconnect-slot-shallow contract)')
     try:
+        built.clear()
         part = m.build(values)
     except ValueError as exc:
         assert str(exc) in (
@@ -353,11 +364,12 @@ def test_endpoint_audit_and_edges(name, values):
         print(f'AUDIT | {name} | named error: {exc}')
         record(name, named_error=str(exc))
         return
+    monkeypatch.undo()
     assert part.is_valid and len(part.solids()) == 1
     chords = shell.honeycomb_ceiling_chords(values)
     max_unroofed = max((chord for _, chord, roofed in chords if not roofed), default=0)
     assert max_unroofed <= audit.MAX_BRIDGE_MM
-    fx = shell.slot_fixtures(values)
+    fx = built['slot_fixtures']
     raw = audit.audit(part, cutters=fx.cutters, print_frame=m.print_frame(values))
     assert raw.longest_bridge_mm <= audit.MAX_BRIDGE_MM
     report = audit.audit(part, cutters=fx.cutters, print_frame=m.print_frame(values),
@@ -373,10 +385,17 @@ def test_endpoint_audit_and_edges(name, values):
         reduction = 2*max(0, .3-z)
         assert (box.size.X, box.size.Y) == pytest.approx((d.width-reduction, d.height-reduction), abs=.001)
     from tests.mount_contracts import verify_openconnect_slot
-    before = shell.before_bed_chamfer(values)
-    envelope = shell.body(values)-(before-part)
+    before = built['before_bed_chamfer']
+    # chamfer_bed removes material only below source z=.3, so before-part
+    # equals its restriction to a bed slab (pst-we7g4: symdiff 0 on
+    # divider-height-3-way, 46 -> 5 CPU s against the whole-body booleans).
+    from build123d import Align, Box, Pos
+    bb = (shell.AUTHOR_TO_MODEL.inverse()*before).bounding_box()
+    slab = shell.AUTHOR_TO_MODEL*Pos(bb.center().X, bb.center().Y, -1)*Box(
+        bb.size.X+2, bb.size.Y+2, 2, align=(Align.CENTER, Align.CENTER, Align.MIN))
+    envelope = shell.body(values)-((before & slab)-(part & slab))
     verify_openconnect_slot(part, fx, min_backing=.8, backing_envelope=envelope)
-    inventory, angle = edge_inventory(part, values)
+    inventory, angle = cached_edge_inventory(part, values)
     assert inventory.get('published divider wall', 0) == DIVIDER_WALL_EDGES.get(name, 0)
     # pst-t0ob3.5: sub-Ø2 openings production closed, from the 2D layouts.
     from drawer.constants import MIN_LATTICE_OPENING_MM
@@ -393,6 +412,27 @@ def test_endpoint_audit_and_edges(name, values):
            filtered_wall=report.min_wall_mm, filtered_overhang=report.max_overhang_deg,
            closed=len(shut), closed_min_d=min(shut, default=0), mount='PASS', result='PASS',
            inventory=inventory)
+
+
+def test_edge_inventory_cache_misses_after_classifier_change(tmp_path, monkeypatch):
+    """pst-we7g4: a byte edit to the inventory module re-runs the inventory."""
+    from build123d import Box
+    from tests import openconnect_drawer_inventory as inv
+    copy = tmp_path/'openconnect_drawer_inventory.py'
+    copy.write_bytes(Path(inv.__file__).read_bytes())
+    real = inv._inventory_sources()
+    assert real[0] == Path(inv.__file__)
+    monkeypatch.setattr(inv, '_inventory_sources', lambda: [copy, *real[1:]])
+    monkeypatch.setenv('BD_AUDIT_CACHE', str(tmp_path/'cache'))
+    calls = []
+    monkeypatch.setattr(inv, 'edge_inventory', lambda part, values: calls.append(1) or ({'x': 1}, 2.5))
+    part, values = Box(1, 2, 3), {'horizontal_grids': 1}
+    assert inv.cached_edge_inventory(part, values) == ({'x': 1}, 2.5)
+    assert inv.cached_edge_inventory(part, values) == ({'x': 1}, 2.5)
+    assert len(calls) == 1  # second call was a hit
+    copy.write_bytes(copy.read_bytes()+b'\n')
+    inv.cached_edge_inventory(part, values)
+    assert len(calls) == 2  # the classifier edit missed
 
 
 def test_edge_inventory_rejects_unpublished_protrusion():
