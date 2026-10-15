@@ -1,7 +1,11 @@
 # SPDX-License-Identifier: CC-BY-SA-4.0
 """Geometric inventories for the published drawer; no face-index exemptions."""
+import hashlib
+import json
+import os
 from collections import Counter
 from math import acos, degrees
+from pathlib import Path
 
 import numpy as np
 from build123d import Align, Box, Cylinder, Face, Pos, Solid, Wire
@@ -182,6 +186,52 @@ def edge_inventory(part, values):
         if family not in ('library mount', 'magnet/stopper fit'):
             worst = max(worst, angle)
     return dict(counts), worst
+
+
+def _inventory_sources():
+    """Every module edge_inventory reads: this classifier, the drawer and
+    openConnect geometry it re-derives, and the audit box helpers. NOT
+    audit_cache._source_hash(), which would miss a classifier edit."""
+    root = Path(__file__).resolve().parent.parent
+    return [Path(__file__), Path(a.__file__),
+            *sorted((root/'drawer').glob('*.py')), *sorted((root/'openconnect').glob('*.py'))]
+
+
+def inventory_key(part, values, sources=None):
+    from tests import audit_cache
+    h = hashlib.sha256()
+    for path in sources or _inventory_sources():
+        h.update(path.name.encode()+b'\0'+path.read_bytes())
+    blob = json.dumps({'shape': audit_cache.shape_sig(part), 'source': h.hexdigest(),
+                       'values': values, 'versions': audit_cache._versions()},
+                      sort_keys=True, default=repr)
+    return hashlib.sha256(blob.encode()).hexdigest()
+
+
+def cached_edge_inventory(part, values):
+    """edge_inventory(part, values) through the audit cache directory
+    (pst-we7g4): keyed on the part's tessellation signature, the values and
+    a hash of _inventory_sources(). A failing inventory raises and is never
+    stored; BD_AUDIT_CACHE=off and audit_cache.disabled() bypass it."""
+    from tests import audit_cache
+    root = audit_cache.cache_dir()
+    if root is None:
+        return edge_inventory(part, values)
+    try:
+        path = root/'edge_inventory'/f'{inventory_key(part, values)}.json'
+    except audit_cache.Uncacheable:
+        return edge_inventory(part, values)
+    try:
+        counts, worst = json.loads(path.read_text(encoding='utf-8'))
+        return counts, worst
+    except (OSError, ValueError, TypeError):
+        pass  # absent or corrupt: a miss
+    result = edge_inventory(part, values)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(f'.{os.getpid()}.tmp')
+    tmp.write_text(json.dumps(result), encoding='utf-8')
+    os.replace(tmp, path)
+    return result
 
 
 # ---------------------------------------------------------------- container
