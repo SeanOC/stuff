@@ -5,7 +5,7 @@
       "slug": "holder-tombstone-sign",
       "engine": "build123d",
       "title": "Tombstone sign",
-      "blurb": "Song-request tombstone sign in the poster look: eyebrow, Creepster title, the ghost-with-poppy, a QR code and the show details raised in up to eight colours, printed face up; two pockets in the bottom edge take the separately printed stake.",
+      "blurb": "Song-request tombstone sign in the poster look: eyebrow, Creepster title, the ghost-with-poppy, a QR code, the scan line, the site and the show times raised in up to eight colours, printed face up; two pockets in the bottom edge take the separately printed stake.",
       "categoryId": "household",
       "params": [
         {
@@ -58,7 +58,7 @@
           "group": "Plate",
           "unit": "mm",
           "kind": "number",
-          "default": 8.0,
+          "default": 12.0,
           "min": 3.0,
           "max": 20.0,
           "step": 0.5
@@ -91,24 +91,6 @@
           "charset": "printable-ascii"
         },
         {
-          "name": "detail_1",
-          "label": "Detail 1",
-          "group": "Text",
-          "kind": "string",
-          "default": "The spooks sing whatever the street picks. Three requests per phone.",
-          "maxLength": 72,
-          "charset": "printable-ascii"
-        },
-        {
-          "name": "detail_2",
-          "label": "Detail 2",
-          "group": "Text",
-          "kind": "string",
-          "default": "No app needed. Or visit",
-          "maxLength": 72,
-          "charset": "printable-ascii"
-        },
-        {
           "name": "host",
           "label": "Host (the QR encodes https://host)",
           "group": "Text",
@@ -133,7 +115,7 @@
           "group": "QR",
           "unit": "mm",
           "kind": "number",
-          "default": 100.0,
+          "default": 120.0,
           "min": 50.0,
           "max": 300.0,
           "step": 1.0
@@ -192,13 +174,11 @@
         },
         {
           "id": "small",
-          "label": "Small (160 x 200, no detail lines)",
+          "label": "Small (160 x 240)",
           "values": {
             "width": 160.0,
-            "height": 200.0,
-            "qr_size": 74.0,
-            "detail_1": "",
-            "detail_2": ""
+            "height": 240.0,
+            "qr_size": 74.0
           }
         }
       ],
