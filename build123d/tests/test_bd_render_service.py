@@ -369,6 +369,61 @@ def test_3mf_for_a_single_colour_model_is_400(base_url):
     assert "not a multi-colour model" in json.loads(body)["errorMessage"]
 
 
+# --- printer profiles (pst-jyey1) ---------------------------------------------
+
+def test_render_3mf_with_a_printer_profile_is_a_bambu_project(base_url):
+    import io
+    import zipfile
+    status, headers, body = _post(
+        base_url, "/render?format=3mf&profile=bambu-h2c-0.4",
+        {"slug": "holder-label-card", "params": {"text": "PETG-CF"}},
+    )
+    assert status == 200, body
+    assert headers["content-type"] == "model/3mf"
+    assert "holder-label-card-bambu-h2c-0.4.3mf" in headers["content-disposition"]
+    with zipfile.ZipFile(io.BytesIO(body)) as package:
+        model = package.read("3D/3dmodel.model").decode()
+        config = json.loads(package.read("Metadata/project_settings.config"))
+        settings = package.read("Metadata/model_settings.config").decode()
+    assert '<metadata name="Application">BambuStudio-02.08.02.61</metadata>' in model
+    assert config["printer_settings_id"] == "Bambu Lab H2C 0.4 nozzle"
+    assert config["filament_colour"][:2] == ["#1A1A1A", "#F5F5F5"]
+    assert re.findall(r'key="extruder" value="(\d)"', settings) == ["1", "1", "2"]
+
+
+@pytest.mark.parametrize("query, message", [
+    ("format=3mf&profile=prusa-mk4", "unknown printer profile: prusa-mk4"),
+    ("format=stl&profile=bambu-h2c-0.4", "profile is only valid with format=3mf"),
+])
+def test_bad_printer_profile_is_400(base_url, query, message):
+    status, _h, body = _post(base_url, f"/render?{query}", {"slug": "holder-label-card"})
+    assert status == 400
+    assert json.loads(body)["errorMessage"] == message
+
+
+def test_a_part_too_large_for_the_profiled_printer_is_400(base_url):
+    # 300 x 300 is in the sign's param range (H2S bed) but leaves no room for
+    # the H2C prime tower in either orientation: the user's size + profile
+    # choice, so a 400 naming the generic fallback, not a 500 (pst-g4v3b F1).
+    status, _h, body = _post(
+        base_url, "/render?format=3mf&profile=bambu-h2c-0.4",
+        {"slug": "holder-tombstone-sign", "params": {"width": 300, "height": 300}},
+    )
+    assert status == 400, body
+    message = json.loads(body)["errorMessage"]
+    assert "does not fit the plate" in message and "None (generic 3MF)" in message
+
+
+def test_worker_takes_the_profile_as_its_fourth_argument(monkeypatch, tmp_path):
+    import zipfile
+    out = tmp_path / "out.3mf"
+    assert _run_worker(monkeypatch, "holder-label-card", "3mf", {"text": "PLA"}, out,
+                       "bambu-h2c-0.4") == 0
+    with zipfile.ZipFile(out) as package:
+        assert "Metadata/project_settings.config" in package.namelist()
+    assert [p.name for p in tmp_path.iterdir()] == ["out.3mf"]  # generic temp removed
+
+
 @pytest.mark.parametrize("fmt", ["glb", "3mf"])
 def test_text_below_the_stroke_floor_is_400_with_the_models_message(base_url, fmt):
     # 24 characters pass the param contract but not the inlay stroke floor:
@@ -382,13 +437,13 @@ def test_text_below_the_stroke_floor_is_400_with_the_models_message(base_url, fm
     assert "below the" in message and "the longest that fits is" in message
 
 
-def _run_worker(monkeypatch, slug: str, fmt: str, params: dict, out) -> int:
+def _run_worker(monkeypatch, slug: str, fmt: str, params: dict, out, *profile: str) -> int:
     import io
     worker_path = REPO_ROOT / "services" / "bd-render" / "render_worker.py"
     spec = importlib.util.spec_from_file_location("bd_render_worker", worker_path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    monkeypatch.setattr(sys, "argv", ["render_worker.py", slug, fmt, str(out)])
+    monkeypatch.setattr(sys, "argv", ["render_worker.py", slug, fmt, str(out), *profile])
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(params)))
     return module.main()
 

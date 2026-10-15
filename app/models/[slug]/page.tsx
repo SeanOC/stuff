@@ -4,7 +4,7 @@
 //
 // Two engines share this route:
 //   • scad       → loadModel() + the full live-WASM DetailPage.
-//   • build123d  → loadBdModel() + BdDetailPage (P1 preset flow: baked
+//   • build123d  → loadBdManifest() + BdDetailPage (P1 preset flow: baked
 //                  GLB viewer + preset picker + STL download, no live
 //                  params). Gated on BD_MODELS_ENABLED (bead pst-0um9).
 
@@ -13,7 +13,7 @@ import DetailPage from "@/components/DetailPage";
 import BdDetailPage from "@/components/BdDetailPage";
 import { getAccessoriesForModel } from "@/lib/accessories/discover";
 import { listModels, loadModel } from "@/lib/models/discover";
-import { bdModelsEnabled, loadBdModel } from "@/lib/models/bd-manifest";
+import { bdModelsEnabled, loadBdManifest } from "@/lib/models/bd-manifest";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -33,7 +33,8 @@ export default async function ModelPage({ params }: Props) {
   // is enabled.
   if (!model) {
     if (bdModelsEnabled()) {
-      const bd = await loadBdModel(slug);
+      const manifest = await loadBdManifest();
+      const bd = manifest.models.find((m) => m.slug === slug);
       if (bd) {
         return (
           <BdDetailPage
@@ -45,6 +46,7 @@ export default async function ModelPage({ params }: Props) {
               presets: bd.presets,
               multiColour: bd.multiColour,
               capture: bd.capture,
+              printerProfiles: manifest.printerProfiles,
             }}
           />
         );

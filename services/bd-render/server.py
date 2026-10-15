@@ -177,11 +177,26 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path != "/render":
             return self._send_json(404, {"ok": False, "errorMessage": "not found"})
 
-        fmt = (parse_qs(parsed.query).get("format", ["glb"])[0]).lower()
+        query = parse_qs(parsed.query)
+        fmt = (query.get("format", ["glb"])[0]).lower()
         if fmt not in CONTENT_TYPE:
             return self._send_json(
                 400, {"ok": False, "errorMessage": f"unknown format {fmt!r}"}
             )
+        # Optional printer profile (pst-jyey1): the 3MF becomes that slicer's
+        # project. Empty = the generic 3MF.
+        profile = query.get("profile", [""])[0]
+        if profile and fmt != "3mf":
+            return self._send_json(
+                400, {"ok": False, "errorMessage": "profile is only valid with format=3mf"}
+            )
+        if profile:
+            from profiles import PROFILES
+
+            if profile not in PROFILES:
+                return self._send_json(
+                    400, {"ok": False, "errorMessage": f"unknown printer profile: {profile}"}
+                )
 
         # Guard the content-length parse: a non-numeric or negative header must
         # yield a structured 400, not a ValueError that drops the connection.
@@ -232,9 +247,9 @@ class Handler(BaseHTTPRequestHandler):
         if err is not None:
             return self._send_json(400, {"ok": False, "errorMessage": err})
 
-        self._render(slug, params, fmt)
+        self._render(slug, params, fmt, profile)
 
-    def _render(self, slug: str, params: dict, fmt: str) -> None:
+    def _render(self, slug: str, params: dict, fmt: str, profile: str = "") -> None:
         with tempfile.TemporaryDirectory(prefix="bd-render-") as d:
             out = os.path.join(d, f"out.{fmt}")
             # Hold a render slot only for the heavy OCP subprocess; the cheap
@@ -243,7 +258,7 @@ class Handler(BaseHTTPRequestHandler):
             with _RENDER_SLOTS:
                 try:
                     proc = subprocess.run(
-                        [sys.executable, WORKER, slug, fmt, out],
+                        [sys.executable, WORKER, slug, fmt, out, *([profile] if profile else [])],
                         input=json.dumps(params).encode("utf-8"),
                         capture_output=True,
                         timeout=RENDER_TIMEOUT_S,
@@ -273,7 +288,8 @@ class Handler(BaseHTTPRequestHandler):
                     500, {"ok": False, "errorMessage": "render produced an empty file"}
                 )
 
-            self._send_bytes(data, CONTENT_TYPE[fmt], f"{slug}.{fmt}")
+            stem = f"{slug}-{profile}" if profile else slug
+            self._send_bytes(data, CONTENT_TYPE[fmt], f"{stem}.{fmt}")
 
 
 def _worker_error(stderr: bytes) -> dict:

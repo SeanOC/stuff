@@ -49,6 +49,17 @@ describe("downloadFilename", () => {
     }
   });
 
+  it("appends the printer profile id last (pst-jyey1)", async () => {
+    const cradle = await loadBdModel("holder-spool-cradle");
+    expect(downloadFilename(cradle!.slug, cradle!.params, {}, "3mf", "bambu-h2c-0.4")).toBe(
+      "holder-spool-cradle-channel-bambu-h2c-0.4.3mf",
+    );
+    expect(downloadFilename("holder-label-card", [], {}, "3mf", "bambu-h2c-0.4")).toBe(
+      "holder-label-card-bambu-h2c-0.4.3mf",
+    );
+    expect(downloadFilename("holder-label-card", [], {}, "3mf")).toBe("holder-label-card.3mf");
+  });
+
   it("keeps slug.stl for an unflagged build123d model", async () => {
     const model = await loadBdModel("holder-spray-can");
     expect(model!.params.some((p) => p.filename)).toBe(false);

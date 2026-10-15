@@ -46,9 +46,28 @@ export interface BdModel {
   capture?: boolean;
 }
 
+/** A slicer project the multi-colour 3MF download can target (pst-jyey1). */
+export interface BdPrinterProfile {
+  id: string;
+  displayName: string;
+}
+
 export interface BdManifest {
   schemaVersion: number;
   models: BdModel[];
+  /** ?profile= ids the 3MF download accepts; [] when the key is absent. */
+  printerProfiles: BdPrinterProfile[];
+}
+
+function isBdPrinterProfile(value: unknown): value is BdPrinterProfile {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.id === "string" &&
+    /^[a-z0-9][a-z0-9.-]*$/.test(v.id) &&
+    typeof v.displayName === "string" &&
+    v.displayName.length > 0
+  );
 }
 
 /** True when every field on every entry satisfies the emitter contract. */
@@ -83,7 +102,7 @@ export async function loadBdManifest(): Promise<BdManifest> {
     raw = await fs.readFile(MANIFEST_PATH, "utf8");
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code === "ENOENT") {
-      return { schemaVersion: 1, models: [] };
+      return { schemaVersion: 1, models: [], printerProfiles: [] };
     }
     throw e;
   }
@@ -108,7 +127,15 @@ export async function loadBdManifest(): Promise<BdManifest> {
       );
     }
   }
-  return doc as BdManifest;
+  // Absent key = a manifest from before printer profiles: no profiles,
+  // not an error (rollback-tolerant).
+  const profiles = (doc as { printerProfiles?: unknown }).printerProfiles ?? [];
+  if (!Array.isArray(profiles) || !profiles.every(isBdPrinterProfile)) {
+    throw new Error(
+      "build123d/manifest.json: malformed printerProfiles (run build123d/scripts/manifest.py to regenerate)",
+    );
+  }
+  return { ...(doc as BdManifest), printerProfiles: profiles };
 }
 
 /**

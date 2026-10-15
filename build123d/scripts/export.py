@@ -58,6 +58,7 @@ from build123d import Color, Compound, export_stl as _native_export_stl, export_
 
 from holders.registry import (all_models, resolve_colour_parts, resolve_mount_fixtures,  # noqa: E402
                               resolve_preview_parts, in_print_frame)
+from profiles import PROFILES  # noqa: E402
 from scripts.thumbnail import PlaneSpec, ReviewContext, render_review, render_thumbnail  # noqa: E402
 
 OUT = Path(__file__).resolve().parent.parent / "out"
@@ -136,12 +137,12 @@ def export_3mf_one_object(named, path, object_name: str) -> None:
     one slicer object per glyph), so this writes the core-spec structure with
     lib3mf directly. Bambu Studio ignores mesh names and base-material
     colours; the Metadata/model_settings.config sidecar names the parts and
-    puts part i on filament i + 1. Never declare Application=BambuStudio:
-    Bambu Studio then expects a full project and crashes on this file.
+    puts part i on filament i + 1. Never declare Application=BambuStudio
+    here: Bambu Studio then expects a full project and crashes on this file.
     Without a project_settings.config Bambu Studio shows "not from Bambu Lab,
     load geometry data and color data only" but keeps each part's extruder
-    (labels D10-revised); writing one would load our print config over the
-    user's presets, which is worse than the notice.
+    (labels D10-revised). A full project for one printer is the opt-in
+    apply_printer_profile below (D10 revised, pst-jyey1).
 
     Byte-stable for the same input: lib3mf's random production-extension
     UUIDs are replaced by uuid5 of object_name + part name.
@@ -197,6 +198,117 @@ def export_3mf_one_object(named, path, object_name: str) -> None:
     entry = zipfile.ZipInfo('Metadata/model_settings.config', date_time=(1980, 1, 1, 0, 0, 0))
     with zipfile.ZipFile(path, 'a', zipfile.ZIP_DEFLATED) as package:
         package.writestr(entry, xml, compress_type=zipfile.ZIP_DEFLATED)
+
+
+# Bambu Studio project markers (bbs_3mf.cpp in bambulab/BambuStudio; checked
+# against a 02.08.02.61 project saved from the GUI, pst-jyey1 rev 1).
+BAMBU_NS = 'http://schemas.bambulab.com/package/2021'
+# Depth kept free behind the part for the prime tower: the 8-filament sign's
+# tower measured 66 x 66.2 mm with its brim on the H2C (pst-jyey1 A2).
+PRIME_TOWER_RESERVE = 70.0
+PLATE_MARGIN = 2.0
+
+
+def _bbox(polygon) -> tuple[float, float, float, float]:
+    """['0x0', '330x0', ...] (Bambu's point strings) -> x0, x1, y0, y1."""
+    xs, ys = zip(*(map(float, point.split('x')) for point in polygon))
+    return min(xs), max(xs), min(ys), max(ys)
+
+
+def _place_on_plate(model: str, settings: dict) -> tuple[str, float, float]:
+    """Build-item transform that puts the part on the plate, plus the prime
+    tower's corner, deterministic for the same mesh.
+
+    The generic 3MF has no item transform (the print frame is centred on the
+    origin), so a project would open with the part off the plate. Put the part
+    at the plate's front, centred on the area every extruder reaches, and the
+    prime tower behind it; turn the part 90 degrees about Z when only that
+    leaves room for the tower (the 240 x 300 sign on the 330 x 320 H2C bed,
+    which is what Bambu Studio's own arrange does). Never touches the mesh.
+    """
+    import numpy as np
+
+    vertices = np.array(re.findall(r'<vertex x="([^"]+)" y="([^"]+)" z="([^"]+)"', model), float)
+    lo, hi = vertices.min(0), vertices.max(0)
+    px0, px1, py0, py1 = _bbox(settings['printable_area'])
+    # Area all extruders reach (the H2C's two differ by 5 mm on each side).
+    reach = [_bbox(area.split(',')) for area in settings.get('extruder_printable_area') or []]
+    rx0, rx1 = (max(b[0] for b in reach), min(b[1] for b in reach)) if reach else (px0, px1)
+    tower_w = float(settings['prime_tower_width'])
+    for turned in (False, True):
+        # Turning +90 degrees about Z maps (x, y) to (-y, x).
+        (x0, x1), (y0, y1) = (((-hi[1], -lo[1]), (lo[0], hi[0])) if turned
+                              else ((lo[0], hi[0]), (lo[1], hi[1])))
+        if (x1 - x0 <= px1 - px0 - 2 * PLATE_MARGIN
+                and y1 - y0 + PLATE_MARGIN + PRIME_TOWER_RESERVE <= py1 - py0 - 2 * PLATE_MARGIN):
+            break
+    else:
+        raise ValueError(f'part {hi[0] - lo[0]:.1f} x {hi[1] - lo[1]:.1f} mm does not fit the '
+                         f'plate with a prime tower behind it')
+    half = (x1 - x0) / 2
+    centre = min(max((rx0 + rx1) / 2, px0 + PLATE_MARGIN + half), px1 - PLATE_MARGIN - half)
+    tx, ty, tz = centre - (x0 + x1) / 2, py0 + PLATE_MARGIN - y0, -lo[2]
+    # Bambu Studio fills the 3x3 column-outer (bbs_3mf.cpp
+    # bbs_get_transform_from_3mf_specs_string; add_transformation writes the
+    # same order), so '0 1 0 -1 0 0 0 0 1' reads as (x, y) -> (-y, x). A
+    # row-major reader (PrusaSlicer/Orca) would turn the other way.
+    rotation = '0 1 0 -1 0 0 0 0 1' if turned else '1 0 0 0 1 0 0 0 1'
+    transform = f'{rotation} {tx:.4f} {ty:.4f} {tz:.4f}'
+    return transform, (rx0 + rx1 - tower_w) / 2, y1 + ty + PLATE_MARGIN
+
+
+def apply_printer_profile(src_3mf: Path, dst_3mf: Path, profile, named) -> None:
+    """Copy the generic 3MF at src_3mf into a slicer project for profile.
+
+    A pure transform of the generic bytes (no rebuild) shared by the bake and
+    bd-render. Every member is copied unchanged except 3D/3dmodel.model, which
+    gains the Bambu Studio namespace, requiredextensions="p", the Application
+    and BambuStudio:3mfVersion metadata and a build-item transform that places
+    the part on the plate (_place_on_plate); one member is added:
+    Metadata/project_settings.config, the profile's template with
+    filament_colour[i] = part i's colour and the prime tower moved behind the
+    part. Metadata/model_settings.config stays the only part -> filament map
+    (part i on filament i + 1). [Content_Types].xml needs no entry: configs
+    are found by name. Only Application and 3mfVersion are copied from a GUI
+    project's metadata: its DesignerUserId is the saver's account id.
+    """
+    import json
+    import zipfile
+
+    if len(named) > profile.filament_slots:
+        raise ValueError(f'{len(named)} parts but printer profile {profile.id} '
+                         f'has {profile.filament_slots} filament slots')
+    settings = profile.settings()
+    with zipfile.ZipFile(src_3mf) as generic:
+        members = [(info, generic.read(info)) for info in generic.infolist()]
+    model_index = next(i for i, (info, _) in enumerate(members) if info.filename == '3D/3dmodel.model')
+    model = members[model_index][1].decode('utf-8')
+    transform, tower_x, tower_y = _place_on_plate(model, settings)
+
+    root = re.search(r'<model [^>]*>', model)
+    if root is None or 'requiredextensions' in root.group(0) or model.count('<item ') != 1:
+        raise ValueError(f'{src_3mf} is not a generic export_3mf_one_object file')
+    # String splice, not ElementTree: re-serialising renames the p: prefix
+    # that requiredextensions="p" refers to.
+    model = (model[:root.start()]
+             + root.group(0)[:-1] + f' xmlns:BambuStudio="{BAMBU_NS}" requiredextensions="p">\n'
+             + f'\t<metadata name="Application">{profile.application}</metadata>\n'
+             + '\t<metadata name="BambuStudio:3mfVersion">1</metadata>'
+             + model[root.end():]).replace('<item ', f'<item transform="{transform}" ', 1)
+    members[model_index] = (members[model_index][0], model.encode('utf-8'))
+
+    colours = list(settings['filament_colour'])
+    for slot, (_, _, rgba) in enumerate(named):
+        colours[slot] = '#' + ''.join(f'{round(c * 255):02X}' for c in rgba[:3])
+    settings['filament_colour'] = colours
+    settings['wipe_tower_x'] = [f'{tower_x:.2f}']
+    settings['wipe_tower_y'] = [f'{tower_y:.2f}']
+    config = zipfile.ZipInfo('Metadata/project_settings.config', date_time=(1980, 1, 1, 0, 0, 0))
+    config.compress_type = zipfile.ZIP_DEFLATED
+    members.append((config, (json.dumps(settings, indent=4) + '\n').encode('utf-8')))
+    with zipfile.ZipFile(dst_3mf, 'w', zipfile.ZIP_DEFLATED) as package:
+        for info, data in members:
+            package.writestr(info, data)
 
 
 def review_context(spec, values, part) -> ReviewContext:
@@ -288,7 +400,11 @@ def export_all(*, commit_review: bool = False) -> int:
 
 
 def export_presets_only(target: Path) -> int:
-    """Bake every preset of every app-listed model into target/<slug>/<preset-id>.{stl,glb,png}."""
+    """Bake every preset of every app-listed model into target/<slug>/<preset-id>.{stl,glb,png}.
+
+    Multi-colour models add <preset-id>.3mf (generic), <preset-id>.<profile-id>.3mf
+    per printer profile and one STL per part.
+    """
     target.mkdir(parents=True, exist_ok=True)
     specs = [s for s in all_models() if not s.is_smoke]
     if not specs:
@@ -321,8 +437,11 @@ def export_presets_only(target: Path) -> int:
             if spec.is_multi_colour:
                 # Gated: every other model's bake output stays exactly STL+GLB+PNG.
                 named = resolve_colour_parts(spec, preset.values)
-                export_3mf_one_object(named, model_dir / f"{preset.id}.3mf",
-                                      f"{spec.slug}-{preset.id}")
+                generic = model_dir / f"{preset.id}.3mf"
+                export_3mf_one_object(named, generic, f"{spec.slug}-{preset.id}")
+                for profile in PROFILES.values():
+                    apply_printer_profile(generic, model_dir / f"{preset.id}.{profile.id}.3mf",
+                                          profile, named)
                 for name, shape, _ in named:
                     export_stl(shape, str(model_dir / f"{preset.id}-{name}.stl"))
             baked += 1

@@ -10,7 +10,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   RECORD_FILE,
   bakedDownloads,
+  blobPathname,
   main,
+  recordKey,
   uploadBakedDownloads,
   // @ts-expect-error -- upload-bd-baked.mjs is untyped JS run by node at prebuild
 } from "./upload-bd-baked.mjs";
@@ -99,10 +101,31 @@ describe("bakedDownloads", () => {
     expect(formats.filter((f: string) => f === "stl").length).toBe(
       manifest.models.reduce((n: number, m: { presets: unknown[] }) => n + m.presets.length, 0),
     );
+    // Generic 3MF + one per printer profile (pst-jyey1).
+    expect(manifest.printerProfiles.length).toBeGreaterThan(0);
     expect(formats.filter((f: string) => f === "3mf").length).toBe(
-      manifest.models
-        .filter((m: { multiColour?: boolean }) => m.multiColour)
-        .reduce((n: number, m: { presets: unknown[] }) => n + m.presets.length, 0),
+      (1 + manifest.printerProfiles.length) *
+        manifest.models
+          .filter((m: { multiColour?: boolean }) => m.multiColour)
+          .reduce((n: number, m: { presets: unknown[] }) => n + m.presets.length, 0),
+    );
+  });
+
+  it("adds <preset>.<profile>.3mf per printer profile for multiColour models (pst-jyey1)", () => {
+    const manifest = { ...MANIFEST, printerProfiles: [{ id: "bambu-h2c-0.4", displayName: "H2C" }] };
+    const downloads = bakedDownloads(manifest);
+    expect(downloads.map(recordKey)).toEqual([
+      "plain/a.stl",
+      "plain/b.stl",
+      "sign/default.stl",
+      "sign/default.3mf",
+      "sign/default.bambu-h2c-0.4.3mf",
+      "sign/three-colour.stl",
+      "sign/three-colour.3mf",
+      "sign/three-colour.bambu-h2c-0.4.3mf",
+    ]);
+    expect(blobPathname("production", "abc", downloads[4])).toBe(
+      "bd-baked/production/abc/sign-default-bambu-h2c-0.4.3mf",
     );
   });
 });

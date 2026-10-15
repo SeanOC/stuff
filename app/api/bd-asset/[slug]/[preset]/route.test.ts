@@ -13,7 +13,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { GET } from "./route";
 import { BLOB_RECORD_FILE } from "@/lib/models/bd-baked-record";
 // @ts-expect-error -- untyped JS; vitest loads it as ESM
-import { bakedDownloads } from "@/scripts/upload-bd-baked.mjs";
+import { bakedDownloads, recordKey } from "@/scripts/upload-bd-baked.mjs";
 // @ts-expect-error -- next.config.mjs is untyped JS; vitest loads it as ESM
 import nextConfig from "@/next.config.mjs";
 
@@ -33,11 +33,15 @@ const GLB_BYTES = new Uint8Array([0x67, 0x6c, 0x54, 0x46]); // "glTF"
 const LABEL_SLUG = "holder-label-card";
 const LABEL_PRESET = "inlaid";
 const THREEMF_BYTES = new Uint8Array([0x50, 0x4b, 0x03, 0x04]); // zip "PK"
+// The bake's printer-profile 3MF (pst-jyey1), <preset>.<profile>.3mf.
+const PROFILE = "bambu-h2c-0.4";
+const PROFILED_BYTES = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x01]);
 
 const FIXTURES = [
   { file: `${SLUG}/${PRESET}.stl`, bytes: STL_BYTES },
   { file: `${SLUG}/${PRESET}.glb`, bytes: GLB_BYTES },
   { file: `${LABEL_SLUG}/${LABEL_PRESET}.3mf`, bytes: THREEMF_BYTES },
+  { file: `${LABEL_SLUG}/${LABEL_PRESET}.${PROFILE}.3mf`, bytes: PROFILED_BYTES },
 ];
 
 function installFixtures(root: string): () => void {
@@ -118,8 +122,12 @@ async function call(
   slug: string,
   preset: string,
   format?: string,
+  profile?: string,
 ): Promise<Response> {
-  const qs = format === undefined ? "" : `?format=${encodeURIComponent(format)}`;
+  const query = new URLSearchParams();
+  if (format !== undefined) query.set("format", format);
+  if (profile !== undefined) query.set("profile", profile);
+  const qs = query.size ? `?${query}` : "";
   const req = new NextRequest(
     `http://localhost/api/bd-asset/${slug}/${preset}${qs}`,
   );
@@ -159,6 +167,28 @@ describe("/api/bd-asset", () => {
       `attachment; filename="${LABEL_SLUG}-${LABEL_PRESET}.3mf"`,
     );
     expect(new Uint8Array(await res.arrayBuffer())).toEqual(THREEMF_BYTES);
+  });
+
+  it("serves the printer-profile 3MF bake under <slug>-<preset>-<profile>.3mf (pst-jyey1)", async () => {
+    const res = await call(LABEL_SLUG, LABEL_PRESET, "3mf", PROFILE);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("model/3mf");
+    expect(res.headers.get("content-disposition")).toBe(
+      `attachment; filename="${LABEL_SLUG}-${LABEL_PRESET}-${PROFILE}.3mf"`,
+    );
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(PROFILED_BYTES);
+  });
+
+  it("400s an unknown printer profile", async () => {
+    const res = await call(LABEL_SLUG, LABEL_PRESET, "3mf", "prusa-mk4");
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("unknown printer profile: prusa-mk4");
+  });
+
+  it("400s a printer profile on a non-3MF format", async () => {
+    const res = await call(LABEL_SLUG, LABEL_PRESET, "stl", PROFILE);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("profile is only valid with format=3mf");
   });
 
   it("404s a baked-missing STL with no blob record — never renders on request", async () => {
@@ -234,10 +264,10 @@ describe("/api/bd-asset from the bake's Blob record", () => {
   const manifest = JSON.parse(
     fs.readFileSync(path.resolve(process.cwd(), "build123d", "manifest.json"), "utf8"),
   );
-  const downloads: { slug: string; preset: string; format: "stl" | "3mf" }[] =
+  const downloads: { slug: string; preset: string; format: "stl" | "3mf"; profile?: string }[] =
     bakedDownloads(manifest);
-  const keyOf = (d: { slug: string; preset: string; format: string }) =>
-    `${d.slug}/${d.preset}.${d.format}`;
+  const keyOf = (d: { slug: string; preset: string; format: string; profile?: string }): string =>
+    recordKey(d);
   const urlOf = (key: string) => `https://blob.test/bd-baked/production/x/${key}`;
   const bytesOf = (key: string) => new TextEncoder().encode(`baked:${key}`);
 
@@ -277,6 +307,7 @@ describe("/api/bd-asset from the bake's Blob record", () => {
   it("covers every advertised download of the committed manifest", () => {
     expect(downloads.length).toBeGreaterThan(0);
     expect(downloads.some((d) => d.format === "3mf")).toBe(true);
+    expect(downloads.some((d) => d.profile === PROFILE)).toBe(true);
   });
 
   it("serves every preset STL/3MF from its recorded blob, never rendering", async () => {
@@ -285,14 +316,15 @@ describe("/api/bd-asset from the bake's Blob record", () => {
     for (const d of downloads) {
       const key = keyOf(d);
       fetchMock.mockClear();
-      const res = await call(d.slug, d.preset, d.format);
+      const res = await call(d.slug, d.preset, d.format, d.profile);
       expect(res.status, key).toBe(200);
       expect(fetchMock).toHaveBeenCalledWith(urlOf(key));
       expect(res.headers.get("content-type")).toBe(
         d.format === "3mf" ? "model/3mf" : "application/sla",
       );
+      const stem = d.profile ? `${d.slug}-${d.preset}-${d.profile}` : `${d.slug}-${d.preset}`;
       expect(res.headers.get("content-disposition")).toBe(
-        `attachment; filename="${d.slug}-${d.preset}.${d.format}"`,
+        `attachment; filename="${stem}.${d.format}"`,
       );
       expect(res.headers.get("content-length")).toBe(String(bytesOf(key).byteLength));
       expect(res.headers.get("cache-control")).toBe("public, max-age=0, must-revalidate");

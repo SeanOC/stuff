@@ -44,25 +44,32 @@ const UPLOAD_CONCURRENCY = 6;
 
 const CONTENT_TYPE = { stl: "application/sla", "3mf": "model/3mf" };
 
-/** Every download /api/bd-asset serves from a bake: [{slug, preset, format}]. */
+/**
+ * Every download /api/bd-asset serves from a bake: [{slug, preset, format,
+ * profile?}]. Multi-colour presets also bake one 3MF per printer profile
+ * (pst-jyey1), on disk as <preset>.<profile>.3mf.
+ */
 export function bakedDownloads(manifest) {
+  const profiles = (manifest.printerProfiles ?? []).map((p) => p.id);
   return manifest.models.flatMap((model) =>
-    model.presets.flatMap((preset) =>
-      (model.multiColour ? ["stl", "3mf"] : ["stl"]).map((format) => ({
-        slug: model.slug,
-        preset: preset.id,
-        format,
-      })),
-    ),
+    model.presets.flatMap((preset) => {
+      const base = { slug: model.slug, preset: preset.id };
+      if (!model.multiColour) return [{ ...base, format: "stl" }];
+      return [
+        { ...base, format: "stl" },
+        { ...base, format: "3mf" },
+        ...profiles.map((profile) => ({ ...base, format: "3mf", profile })),
+      ];
+    }),
   );
 }
 
-export function recordKey({ slug, preset, format }) {
-  return `${slug}/${preset}.${format}`;
+export function recordKey({ slug, preset, format, profile }) {
+  return `${slug}/${preset}${profile ? `.${profile}` : ""}.${format}`;
 }
 
-export function blobPathname(env, sha256, { slug, preset, format }) {
-  return `bd-baked/${env}/${sha256}/${slug}-${preset}.${format}`;
+export function blobPathname(env, sha256, { slug, preset, format, profile }) {
+  return `bd-baked/${env}/${sha256}/${slug}-${preset}${profile ? `-${profile}` : ""}.${format}`;
 }
 
 /** Read every baked download; throws listing ALL missing files. */
