@@ -110,6 +110,24 @@ def source_contact_mask(points, values, classifier):
     return result
 
 
+def _on_faces(p, faces):
+    return any(box.min.X-1e-5 <= p.X <= box.max.X+1e-5 and box.min.Y-1e-5 <= p.Y <= box.max.Y+1e-5
+               and box.min.Z-1e-5 <= p.Z <= box.max.Z+1e-5 and face.distance_to(p) < 1e-5
+               for face, box in faces)
+
+
+def _divider_rim_or_junction(points, walls, shell_faces, depth):
+    """An edge on a divider wall's face that is its front rim (Z = depth)
+    or its junction with the shell or another divider wall (pst-t9giy).
+    Any other edge on a wall face (a hole, boss or notch) is unpublished."""
+    on = [sum(_on_faces(p, faces) for faces in walls) for p in points]
+    if not all(on):
+        return False
+    return (max(abs(p.Z-depth) for p in points) < 1e-5
+            or all(_on_faces(p, shell_faces) for p in points)
+            or all(n >= 2 for n in on))
+
+
 def edge_inventory(part, values):
     """Classify every non-tangent edge by its geometric/source family.
 
@@ -127,8 +145,9 @@ def edge_inventory(part, values):
     original = shell.source_body(values)
     honeycomb = [(hole.bounding_box(), hole.faces())
                  for hole in shell.source_honeycomb_cutters(values)]
-    divider_faces = [(f, f.bounding_box()) for wall in shell.source_divider_walls(values)
-                     for f in wall.faces()]
+    divider_faces = [[(f, f.bounding_box()) for f in wall.faces()]
+                     for wall in shell.source_divider_walls(values)]
+    shell_faces = [(f, f.bounding_box()) for f in original.faces()]
     corner_points = [(v.X, v.Y) for v in original.vertices()]
     base_edges = [e for e in original.edges() if
                   abs(e.bounding_box().min.Z-d.slot_thickness)<1e-6 and
@@ -173,12 +192,10 @@ def edge_inventory(part, values):
         elif (max(abs(p.Z-d.slot_thickness) for p in points) < 1e-5 and
               all(min(e.distance_to(p) for e in base_edges) < 1e-5 for p in points)):
             family = 'container mating base'
-        elif divider_faces and all(any(
-                box.min.X-1e-5 <= p.X <= box.max.X+1e-5 and box.min.Y-1e-5 <= p.Y <= box.max.Y+1e-5
-                and box.min.Z-1e-5 <= p.Z <= box.max.Z+1e-5 and face.distance_to(p) < 1e-5
-                for face, box in divider_faces) for p in points):
+        elif divider_faces and _divider_rim_or_junction(points, divider_faces, shell_faces, d.depth):
             # [C] :1576-1673 (D4): square 2*shell_thickness walls, their front
-            # rims and their junctions with the shell, as the author's.
+            # rims and their junctions with the shell or another divider, as
+            # the author's; nothing else on a wall face.
             family = 'published divider wall'
         else:
             raise AssertionError(f'uninventoried edge at {tuple(mid)}, angle {angle:.3f}, bounds {bb}')

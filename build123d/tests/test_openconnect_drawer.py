@@ -304,6 +304,26 @@ CASES = [(p.id, p.values) for p in m.SPEC.presets if p.values.get('part', 'shell
 ]
 
 
+# pst-t9giy: the 'published divider wall' family is the walls' front rims
+# and their junctions with the shell or another divider. Narrowing it from
+# 'any edge on a wall face' left every count below unchanged.
+DIVIDER_WALL_EDGES = {
+    'two-compartments': 64,
+    'divider-height': 50,
+    'divider-both-solid': 64,
+    'divider-both-Top': 158,
+    'divider-both-Bottom': 138,
+    'divider-both-Left': 158,
+    'divider-both-Right': 158,
+    'divider-both-wall-1.6': 154,
+    'divider-both-wall-4': 160,
+    'divider-both-strut-1.1': 152,
+    'divider-both-strut-16.3': 28,
+    'divider-both-2x2x1': 50,
+    'divider-height-3-way': 164,
+}
+
+
 @pytest.mark.audit
 @pytest.mark.parametrize('name,values', [
     # Keep presets in the regular audit job and the parameter/corner sweep
@@ -376,6 +396,7 @@ def test_endpoint_audit_and_edges(name, values, monkeypatch):
     envelope = shell.body(values)-((before & slab)-(part & slab))
     verify_openconnect_slot(part, fx, min_backing=.8, backing_envelope=envelope)
     inventory, angle = cached_edge_inventory(part, values)
+    assert inventory.get('published divider wall', 0) == DIVIDER_WALL_EDGES.get(name, 0)
     # pst-t0ob3.5: sub-Ø2 openings production closed, from the 2D layouts.
     from drawer.constants import MIN_LATTICE_OPENING_MM
     from drawer.honeycomb import opening_diameter
@@ -421,6 +442,18 @@ def test_edge_inventory_rejects_unpublished_protrusion():
     bad = part + shell.AUTHOR_TO_MODEL*(Pos(14, 0, 12)*Box(4, 4, 4))
     with pytest.raises(AssertionError, match='uninventoried edge'):
         edge_inventory(bad, {'horizontal_grids': 1, 'vertical_grids': 1, 'depth_grids': 1})
+
+
+def test_edge_inventory_rejects_unpublished_divider_wall_hole():
+    from build123d import Cylinder, Pos, Rot
+    v = dict(DIVIDERS, horizontal_grids=2, depth_grids=1, shell_width_compartment_list='1,1',
+             shell_divider_wall_type='Solid')
+    part = m.build(v)
+    # pst-t9giy: a hole through the x divider lies wholly on its faces but
+    # is neither a front rim nor a junction, so the family must not claim it.
+    bad = part - shell.AUTHOR_TO_MODEL*(Pos(0, -14, 10)*Rot(0, 90, 0)*Cylinder(1.5, 10))
+    with pytest.raises(AssertionError, match='uninventoried edge'):
+        edge_inventory(bad, v)
 
 
 def test_published_exclusions_reject_new_thin_overhang():
