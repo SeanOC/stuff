@@ -280,9 +280,11 @@ fast job does not cache.
 `bd-audit-*` caches in the repo's Actions → Caches page, or change either
 hashed file.
 
-**Equality proofs and timings.** Run `scripts/audit_equality_proof.py` and
-any timing work with `BD_AUDIT_CACHE=off`. Otherwise the "new CPU s" column
-times cache hits.
+**Equality proofs and timings.** `scripts/audit_equality_proof.py` and
+`scripts/profile_print_audit.py` run every `audit()` they time inside
+`audit_cache.disabled()` (pst-dyobq), so they never read or store a cached
+report. Any other timing work needs the same wrap or `BD_AUDIT_CACHE=off`.
+Otherwise the "new CPU s" column times cache hits.
 
 ## The slowest audit_full item (pst-vhywk)
 
