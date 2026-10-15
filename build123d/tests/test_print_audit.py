@@ -594,14 +594,19 @@ def _timed_audit(spec, *, cold=False) -> tuple[PrintAuditReport, float, bool]:
 def _audit_args(spec, values=None):
     """(part, audit kwargs) exactly as the registry audit calls audit()."""
     values = spec.resolve_values(values)
-    part = spec.build(values)
+    return spec.build(values), _audit_kwargs(spec, values)
+
+
+def _audit_kwargs(spec, values):
+    """audit() kwargs for a resolved value set; `bd audit` (bd/audit.py)
+    calls this too, so the CLI audits exactly as the registry gate does."""
     cutters: list = []
     for mount in spec.mounts:
         fx = resolve_fixtures(spec, mount, values)
         if fx is not None:  # None: this mount is absent under these values
             cutters.extend(fx.cutters)
     exclusion = _MODEL_EXCLUSIONS.get(spec.name)
-    return part, dict(
+    return dict(
         orientation=spec.print_orientation, cutters=cutters,
         exclusions=exclusion(values) if exclusion else (), model=spec.name,
         print_frame=spec.print_frame(values) if spec.print_frame else None)
