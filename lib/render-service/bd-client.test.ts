@@ -113,6 +113,24 @@ describe("renderBdViaService (never throws)", () => {
     const url = new URL((fetchMock.mock.calls[0][0] as URL).toString());
     expect(url.pathname).toBe("/render");
     expect(url.searchParams.get("format")).toBe("stl");
+    expect(url.searchParams.has("profile")).toBe(false);
+  });
+
+  it("forwards a printer profile as ?profile= (pst-jyey1)", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(bytesResponse(new Uint8Array([1])));
+    await renderBdViaService({
+      config: CONFIG,
+      slug: "holder-label-card",
+      params: { text: "PLA" },
+      format: "3mf",
+      profile: "bambu-h2c-0.4",
+      vercelOidcToken: "t",
+    });
+    const url = new URL((fetchMock.mock.calls[0][0] as URL).toString());
+    expect(url.searchParams.get("format")).toBe("3mf");
+    expect(url.searchParams.get("profile")).toBe("bambu-h2c-0.4");
   });
 
   it("ok:false on a non-200 with the service errorMessage", async () => {

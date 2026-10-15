@@ -9,6 +9,8 @@
 //   POST /api/bd-render            body { slug, params }
 //   POST /api/bd-render?format=stl same, STL bytes for download
 //   POST /api/bd-render?format=3mf same, one-object multi-colour 3MF
+//   POST /api/bd-render?format=3mf&profile=<id> same, as that printer
+//                                   profile's slicer project (pst-jyey1)
 //                                  (multiColour models only, else 400)
 //
 // Flow:
@@ -36,7 +38,7 @@ import {
   defaultsOf,
   type ParamValue,
 } from "@/lib/scad-params/parse";
-import { bdModelsEnabled, loadBdModel, type BdParam } from "@/lib/models/bd-manifest";
+import { bdModelsEnabled, loadBdManifest, loadBdModel, type BdParam } from "@/lib/models/bd-manifest";
 import { downloadFilename } from "@/lib/models/download-name";
 import {
   getBdRenderServiceConfig,
@@ -72,6 +74,11 @@ export async function POST(req: NextRequest) {
   if (format !== "glb" && format !== "stl" && format !== "3mf") {
     return jsonError(400, `format must be "glb", "stl" or "3mf", got "${format}"`);
   }
+  // Optional printer profile (pst-jyey1): the 3MF as that slicer's project.
+  const profile = new URL(req.url).searchParams.get("profile") || undefined;
+  if (profile && format !== "3mf") {
+    return jsonError(400, "profile is only valid with format=3mf");
+  }
 
   let body: BdRenderBody;
   try {
@@ -93,6 +100,9 @@ export async function POST(req: NextRequest) {
   // 3. Manifest allowlist. The manifest is the app's source of truth for
   //    which build123d models exist; an unknown slug never reaches the
   //    service.
+  if (profile && !(await loadBdManifest()).printerProfiles.some((p) => p.id === profile)) {
+    return jsonError(400, `unknown printer profile: ${profile}`);
+  }
   const model = await loadBdModel(body.slug);
   if (!model) {
     return jsonError(404, `unknown build123d model: ${body.slug}`);
@@ -108,6 +118,8 @@ export async function POST(req: NextRequest) {
     return jsonError(400, validated.error);
   }
 
+  const filename = downloadFilename(model.slug, model.params, validated.values, format, profile);
+
   // 5. Content-addressed cache lookup.
   const store = getBdRenderCacheStore();
   let key: string | null = null;
@@ -118,10 +130,11 @@ export async function POST(req: NextRequest) {
         normalizedParams: normalizeParams(validated.values),
         modelVersion: bdModelVersion(model),
         format,
+        profile,
       });
       const hit = await store.get(key, format);
       if (hit) {
-        return bytesResponse(hit, downloadFilename(model.slug, model.params, validated.values, format), format, {
+        return bytesResponse(hit, filename, format, {
           cache: "HIT",
         });
       }
@@ -139,6 +152,7 @@ export async function POST(req: NextRequest) {
     slug: model.slug,
     params: validated.values,
     format,
+    profile,
     // Vercel delivers the OIDC token as a request header on each
     // invocation; VERCEL_OIDC_TOKEN covers `vercel env pull` local dev.
     vercelOidcToken:
@@ -165,7 +179,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  return bytesResponse(out, downloadFilename(model.slug, model.params, validated.values, format), format, {
+  return bytesResponse(out, filename, format, {
     cache: store ? "MISS" : null,
     renderMs: result.renderMs,
   });

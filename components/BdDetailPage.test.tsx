@@ -176,6 +176,41 @@ describe("BdDetailPage label text + 3MF", () => {
     expect(clicked).toEqual(["holder-label-card.3mf", "holder-label-card.stl"]);
   });
 
+  it("defaults the 3MF to the first printer profile; None restores the generic file (pst-jyey1)", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async () => new Response(new Uint8Array([0x50, 0x4b]), { status: 200 }));
+    URL.createObjectURL = vi.fn(() => "blob:x");
+    URL.revokeObjectURL = vi.fn();
+    const clicked: string[] = [];
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+      clicked.push(this.download);
+    });
+    const model = {
+      ...LABEL,
+      printerProfiles: [{ id: "bambu-h2c-0.4", displayName: "Bambu Lab H2C (0.4 mm nozzle)" }],
+    };
+    const { getByTestId } = render(<BdDetailPage model={model} />);
+    const button = getByTestId("bd-download-3mf");
+    expect(button.textContent).toBe("Download 3MF for Bambu Lab H2C (0.4 mm nozzle)");
+    expect((getByTestId("bd-printer-profile") as HTMLSelectElement).value).toBe("bambu-h2c-0.4");
+    await act(async () => {
+      fireEvent.click(button);
+    });
+    fireEvent.change(getByTestId("bd-printer-profile"), { target: { value: "" } });
+    expect(button.textContent).toBe("Download 3MF (multi-colour)");
+    await act(async () => {
+      fireEvent.click(button);
+    });
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      "/api/bd-asset/holder-label-card/inlaid?format=3mf&profile=bambu-h2c-0.4",
+      "/api/bd-asset/holder-label-card/inlaid?format=3mf",
+    ]);
+    expect(clicked).toEqual(["holder-label-card-bambu-h2c-0.4.3mf", "holder-label-card.3mf"]);
+    // The STL download has no profile.
+    expect(getByTestId("bd-download-stl").textContent).toBe("Download STL");
+  });
+
   it("a tweak carried past a PARTIAL preset renders live, never the baked file (pst-scmib)", async () => {
     // loadPreset merges a partial preset over the previous values and clears
     // `modified` — the baked file (defaults + preset values) lacks the tweak.

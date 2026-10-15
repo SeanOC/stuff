@@ -33,7 +33,7 @@ import type { CameraAxes } from "./StlViewer";
 import { paramsEqual, useDetailState } from "@/hooks/useDetailState";
 import { useBdRenderer } from "@/hooks/useBdRenderer";
 import { defaultsOf, type Param, type ParamValue } from "@/lib/scad-params/parse";
-import type { BdPreset, BdView } from "@/lib/models/bd-manifest";
+import type { BdPreset, BdPrinterProfile, BdView } from "@/lib/models/bd-manifest";
 import { downloadFilename } from "@/lib/models/download-name";
 import { paramErrorsFor } from "@/lib/models/bd-param-error";
 
@@ -46,6 +46,8 @@ export interface BdDetailPageModel {
   /** Tagged multi-colour in the registry: offers the 3MF download. */
   multiColour?: boolean;
   capture?: boolean;
+  /** Manifest printer profiles the 3MF download can target (pst-jyey1). */
+  printerProfiles?: BdPrinterProfile[];
 }
 
 function assetUrl(slug: string, presetId: string, format: "glb" | "stl"): string {
@@ -81,6 +83,8 @@ export default function BdDetailPage({ model }: { model: BdDetailPageModel }) {
   const bd = useBdRenderer(model.slug);
 
   const [viewerError, setViewerError] = useState<string | null>(null);
+  // 3MF printer profile (pst-jyey1): the manifest's first, "" = generic.
+  const [profileId, setProfileId] = useState(model.printerProfiles?.[0]?.id ?? "");
   // Loaded GLB extents, surfaced for the e2e orientation assertion and
   // shown in the stat strip. size = [x, y, z] in the GLB's units.
   const [bbox, setBbox] = useState<GlbBbox | null>(null);
@@ -382,13 +386,21 @@ export default function BdDetailPage({ model }: { model: BdDetailPageModel }) {
             values={detail.state.params}
           />
           {model.multiColour && (
-            <BdDownload
-              format="3mf"
-              slug={model.slug}
-              bakedPresetId={bakedPresetId}
-              params={model.params}
-              values={detail.state.params}
-            />
+            <>
+              <PrinterProfileSelect
+                profiles={model.printerProfiles ?? []}
+                value={profileId}
+                onChange={setProfileId}
+              />
+              <BdDownload
+                format="3mf"
+                slug={model.slug}
+                bakedPresetId={bakedPresetId}
+                params={model.params}
+                values={detail.state.params}
+                profile={model.printerProfiles?.find((p) => p.id === profileId)}
+              />
+            </>
           )}
 
           {model.capture && <CapturePanel
@@ -433,6 +445,45 @@ type DownloadState =
   | { kind: "exporting" }
   | { kind: "error"; message: string };
 
+// The 3MF's printer profile (pst-jyey1): "" = the generic 3MF. Defaults to
+// the manifest's first profile, so the download opens as a slicer project.
+function PrinterProfileSelect({
+  profiles,
+  value,
+  onChange,
+}: {
+  profiles: BdPrinterProfile[];
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  if (profiles.length === 0) return null;
+  return (
+    <div className="mt-8 flex items-center justify-between gap-8">
+      <label htmlFor="bd-printer-profile" className="text-11 text-text">
+        Printer profile
+      </label>
+      <select
+        id="bd-printer-profile"
+        data-testid="bd-printer-profile"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={clsx(
+          "rounded-3 border border-line bg-panel2 px-4 py-2",
+          "font-mono text-11 text-text",
+          "focus:border-accent-line focus:outline-none",
+        )}
+      >
+        {profiles.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.displayName}
+          </option>
+        ))}
+        <option value="">None (generic 3MF)</option>
+      </select>
+    </div>
+  );
+}
+
 const DOWNLOAD_LABEL = {
   stl: { idle: "Download STL", busy: "Preparing STL…" },
   "3mf": { idle: "Download 3MF (multi-colour)", busy: "Preparing 3MF…" },
@@ -452,21 +503,25 @@ function BdDownload({
   bakedPresetId,
   params,
   values,
+  profile,
 }: {
   format: "stl" | "3mf";
   slug: string;
   bakedPresetId: string | null;
   params: Param[];
   values: Record<string, ParamValue>;
+  /** 3MF only: the printer profile to download the slicer project for. */
+  profile?: BdPrinterProfile;
 }) {
   const [state, setState] = useState<DownloadState>({ kind: "idle" });
+  const query = profile ? `format=${format}&profile=${profile.id}` : `format=${format}`;
 
   const download = useCallback(async () => {
     setState({ kind: "exporting" });
     try {
       const res = bakedPresetId
-        ? await fetch(`/api/bd-asset/${slug}/${bakedPresetId}?format=${format}`)
-        : await fetch(`/api/bd-render?format=${format}`, {
+        ? await fetch(`/api/bd-asset/${slug}/${bakedPresetId}?${query}`)
+        : await fetch(`/api/bd-render?${query}`, {
             method: "POST",
             headers: { "content-type": "application/json" },
             body: JSON.stringify({ slug, params: values }),
@@ -490,7 +545,7 @@ function BdDownload({
       const a = document.createElement("a");
       a.href = url;
       // Same name as /api/bd-render's content-disposition.
-      a.download = downloadFilename(slug, params, values, format);
+      a.download = downloadFilename(slug, params, values, format, profile?.id);
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -502,7 +557,7 @@ function BdDownload({
         message: e instanceof Error ? e.message : "network error",
       });
     }
-  }, [format, slug, bakedPresetId, params, values]);
+  }, [format, query, slug, bakedPresetId, params, values, profile]);
 
   return (
     <div className={format === "stl" ? "mt-16" : "mt-8"}>
@@ -518,7 +573,11 @@ function BdDownload({
           "disabled:cursor-wait disabled:opacity-60",
         )}
       >
-        {state.kind === "exporting" ? DOWNLOAD_LABEL[format].busy : DOWNLOAD_LABEL[format].idle}
+        {state.kind === "exporting"
+          ? DOWNLOAD_LABEL[format].busy
+          : profile
+            ? `Download 3MF for ${profile.displayName}`
+            : DOWNLOAD_LABEL[format].idle}
       </button>
       {state.kind === "error" && (
         <p

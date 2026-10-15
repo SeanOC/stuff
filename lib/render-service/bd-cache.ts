@@ -64,6 +64,8 @@ export function computeBdCacheKey(parts: {
   normalizedParams: string;
   modelVersion: string;
   format: BdRenderFormat;
+  /** Printer profile id (pst-jyey1); absent for the generic file. */
+  profile?: string;
 }): string {
   const h = createHash("sha256");
   h.update("slug:", "utf8");
@@ -74,6 +76,11 @@ export function computeBdCacheKey(parts: {
   h.update(parts.modelVersion, "utf8");
   h.update("\nformat:", "utf8");
   h.update(parts.format, "utf8");
+  // Only when set, so every existing (profile-less) key stays the same.
+  if (parts.profile) {
+    h.update("\nprofile:", "utf8");
+    h.update(parts.profile, "utf8");
+  }
   return h.digest("hex");
 }
 

@@ -34,7 +34,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { NextRequest } from "next/server";
-import { loadBdModel } from "@/lib/models/bd-manifest";
+import { loadBdManifest } from "@/lib/models/bd-manifest";
 import { bakedBlobEntry } from "@/lib/models/bd-baked-record";
 
 export const runtime = "nodejs";
@@ -62,8 +62,19 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
     return jsonError(400, `format must be "stl", "glb" or "3mf", got "${format}"`);
   }
 
+  // Optional printer profile (pst-jyey1): the 3MF as that slicer's project,
+  // baked as <preset>.<profile>.3mf. Allowlisted by the manifest like slugs.
+  const profile = req.nextUrl.searchParams.get("profile") || null;
+  if (profile && format !== "3mf") {
+    return jsonError(400, "profile is only valid with format=3mf");
+  }
+
   // Allowlist: the model + preset must both be declared in the manifest.
-  const model = await loadBdModel(slug);
+  const manifest = await loadBdManifest();
+  if (profile && !manifest.printerProfiles.some((p) => p.id === profile)) {
+    return jsonError(400, `unknown printer profile: ${profile}`);
+  }
+  const model = manifest.models.find((m) => m.slug === slug) ?? null;
   if (!model) return jsonError(404, `unknown build123d model: ${slug}`);
   const presetEntry = model.presets.find((p) => p.id === preset);
   if (!presetEntry) {
@@ -78,25 +89,26 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
   // Path is built only from allowlist-matched, registry-validated ids
   // (SAFE_ID_RE at bake time), so it cannot contain separators or dots.
   // The confinement check below is belt-and-suspenders.
-  const abs = path.resolve(BAKED_ROOT, slug, `${preset}.${format}`);
+  const baked = profile ? `${preset}.${profile}.${format}` : `${preset}.${format}`;
+  const abs = path.resolve(BAKED_ROOT, slug, baked);
   if (!abs.startsWith(BAKED_ROOT + path.sep)) {
     return jsonError(400, "resolved asset path escapes the baked root");
   }
 
   if (format !== "glb") {
-    const entry = await bakedBlobEntry(BAKED_ROOT, slug, preset, format);
+    const entry = await bakedBlobEntry(BAKED_ROOT, slug, preset, format, profile ?? undefined);
     if (entry) {
       const upstream = await fetch(entry.url);
       if (!upstream.ok || !upstream.body) {
         return jsonError(
           502,
-          `baked asset ${slug}/${preset}.${format} unavailable from the blob ` +
+          `baked asset ${slug}/${baked} unavailable from the blob ` +
             `store (HTTP ${upstream.status})`,
         );
       }
       return new Response(upstream.body, {
         status: 200,
-        headers: assetHeaders(slug, preset, format, entry.size),
+        headers: assetHeaders(slug, preset, format, entry.size, profile),
       });
     }
   }
@@ -112,7 +124,7 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
       // empty viewer or a request-time render.
       return jsonError(
         404,
-        `baked asset missing: ${slug}/${preset}.${format} — was the ` +
+        `baked asset missing: ${slug}/${baked} — was the ` +
           `BD_MODELS_ENABLED preset bake run at build time?`,
       );
     }
@@ -125,7 +137,7 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
   body.set(bytes);
   return new Response(body, {
     status: 200,
-    headers: assetHeaders(slug, preset, format, body.byteLength),
+    headers: assetHeaders(slug, preset, format, body.byteLength, profile),
   });
 }
 
@@ -134,6 +146,7 @@ function assetHeaders(
   preset: string,
   format: Format,
   length: number,
+  profile: string | null,
 ): Record<string, string> {
   const headers: Record<string, string> = {
     "content-type": CONTENT_TYPE[format],
@@ -150,10 +163,11 @@ function assetHeaders(
   // Baked assets are named by PRESET, not via downloadFilename's flagged
   // params: a preset id already names the variant, and once pst-026m4
   // consolidates presets the id IS the mount style — so this stays
-  // `${slug}-${preset}.<format>` and never doubles the suffix.
+  // `${slug}-${preset}.<format>` and never doubles the suffix. A printer
+  // profile appends its id: `${slug}-${preset}-${profile}.3mf`.
   if (format !== "glb") {
-    headers["content-disposition"] =
-      `attachment; filename="${slug}-${preset}.${format}"`;
+    const stem = profile ? `${slug}-${preset}-${profile}` : `${slug}-${preset}`;
+    headers["content-disposition"] = `attachment; filename="${stem}.${format}"`;
   }
   return headers;
 }

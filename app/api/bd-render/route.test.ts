@@ -376,6 +376,48 @@ describe("/api/bd-render 3MF (labels L4, pst-egc3j)", () => {
     expect(bdClient.renderBdViaService).toHaveBeenCalledTimes(1);
   });
 
+  it("passes a printer profile to the service, names the download after it, caches it apart (pst-jyey1)", async () => {
+    await useRealModel("holder-label-card");
+    const generic = await call({ slug: "holder-label-card", params: { text: "PLA" } }, "?format=3mf");
+    expect(generic.res.headers.get("x-cache")).toBe("MISS");
+    const profiled = await call(
+      { slug: "holder-label-card", params: { text: "PLA" } },
+      "?format=3mf&profile=bambu-h2c-0.4",
+    );
+    expect(profiled.res.status).toBe(200);
+    // Same slug/params/format, different profile: a distinct cache key.
+    expect(profiled.res.headers.get("x-cache")).toBe("MISS");
+    expect(profiled.res.headers.get("content-disposition")).toBe(
+      'attachment; filename="holder-label-card-bambu-h2c-0.4.3mf"',
+    );
+    expect(bdClient.renderBdViaService).toHaveBeenLastCalledWith(
+      expect.objectContaining({ format: "3mf", profile: "bambu-h2c-0.4" }),
+    );
+    const again = await call(
+      { slug: "holder-label-card", params: { text: "PLA" } },
+      "?format=3mf&profile=bambu-h2c-0.4",
+    );
+    expect(again.res.headers.get("x-cache")).toBe("HIT");
+    expect(bdClient.renderBdViaService).toHaveBeenCalledTimes(2);
+  });
+
+  it("400s an unknown printer profile or a profile with stl, without calling the service", async () => {
+    await useRealModel("holder-label-card");
+    const unknown = await call(
+      { slug: "holder-label-card", params: { text: "PLA" } },
+      "?format=3mf&profile=prusa-mk4",
+    );
+    expect(unknown.res.status).toBe(400);
+    expect(unknown.json!.error).toBe("unknown printer profile: prusa-mk4");
+    const stl = await call(
+      { slug: "holder-label-card", params: { text: "PLA" } },
+      "?format=stl&profile=bambu-h2c-0.4",
+    );
+    expect(stl.res.status).toBe(400);
+    expect(stl.json!.error).toBe("profile is only valid with format=3mf");
+    expect(bdClient.renderBdViaService).not.toHaveBeenCalled();
+  });
+
   it("400s a 3MF for a single-colour model without calling the service", async () => {
     await useRealModel("holder-spray-can");
     const { res, json } = await call({ slug: "holder-spray-can", params: {} }, "?format=3mf");

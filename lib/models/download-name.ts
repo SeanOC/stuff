@@ -10,6 +10,10 @@
 // Number/integer flags are live-only (export-all fans out enums only) and read
 // `-<name><value>` for a single flag so a bare number is never ambiguous.
 //
+// A printer profile (pst-jyey1, 3MF only) appends its id last:
+// `<stem>[-<flags>]-<profile>.3mf`, matching the bake's
+// `<slug>-<preset>-<profile>.3mf` downloads.
+//
 // The stem is used verbatim — SCAD stems keep their underscores, build123d
 // slugs are already dash-form — only VALUES are sanitised.
 
@@ -33,9 +37,11 @@ export function downloadFilename(
   params: Param[],
   values: Record<string, ParamValue>,
   ext = "stl",
+  profile?: string,
 ): string {
+  const tail = profile ? `-${profile}.${ext}` : `.${ext}`;
   const flagged = params.filter((p) => p.filename);
-  if (flagged.length === 0) return `${stem}.${ext}`;
+  if (flagged.length === 0) return `${stem}${tail}`;
   const valueOf = (p: Param) => sanitize(values[p.name] ?? p.default);
   let suffix: string;
   if (flagged.length === 1) {
@@ -45,5 +51,5 @@ export function downloadFilename(
   } else {
     suffix = flagged.map((p) => `${p.name}=${valueOf(p)}`).join("-");
   }
-  return `${stem}-${suffix}.${ext}`;
+  return `${stem}-${suffix}${tail}`;
 }

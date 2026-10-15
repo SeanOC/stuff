@@ -116,6 +116,8 @@ export async function renderBdViaService(opts: {
   params: Record<string, ParamValue>;
   /** glb for the in-page viewer, stl for download. Defaults to glb. */
   format?: BdRenderFormat;
+  /** Printer profile id for a 3MF slicer project (pst-jyey1). */
+  profile?: string;
   /** This request's Vercel OIDC token, if present. */
   vercelOidcToken: string | null;
   timeoutMs?: number;
@@ -145,6 +147,7 @@ export async function renderBdViaService(opts: {
   try {
     const target = new URL("/render", config.url);
     target.searchParams.set("format", format);
+    if (opts.profile) target.searchParams.set("profile", opts.profile);
     res = await fetch(target, {
       method: "POST",
       headers: {

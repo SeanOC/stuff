@@ -4,7 +4,8 @@
 // CI's freshness gate, so a malformed-file test would be drift-prone;
 // instead we assert the real file parses into a valid BdManifest.
 
-import { describe, expect, it } from "vitest";
+import fs from "node:fs/promises";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { bdModelsEnabled, loadBdManifest, loadBdModel } from "./bd-manifest";
 
 describe("loadBdManifest", () => {
@@ -29,6 +30,31 @@ describe("loadBdManifest", () => {
         }
       }
     }
+  });
+});
+
+describe("printerProfiles (pst-jyey1)", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("lists the H2C profile from the committed manifest", async () => {
+    const manifest = await loadBdManifest();
+    expect(manifest.printerProfiles).toEqual([
+      { id: "bambu-h2c-0.4", displayName: "Bambu Lab H2C (0.4 mm nozzle)" },
+    ]);
+  });
+
+  it("defaults to [] for a manifest without the key", async () => {
+    vi.spyOn(fs, "readFile").mockResolvedValue(
+      JSON.stringify({ schemaVersion: 1, models: [] }),
+    );
+    expect((await loadBdManifest()).printerProfiles).toEqual([]);
+  });
+
+  it("throws on a malformed profile entry", async () => {
+    vi.spyOn(fs, "readFile").mockResolvedValue(
+      JSON.stringify({ schemaVersion: 1, models: [], printerProfiles: [{ id: "Bad Id" }] }),
+    );
+    await expect(loadBdManifest()).rejects.toThrow(/printerProfiles/);
   });
 });
 

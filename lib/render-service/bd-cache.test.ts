@@ -42,6 +42,9 @@ describe("computeBdCacheKey", () => {
     expect(keyFor({ normalizedParams: normalizeParams({ d: 70, wall: 2.4 }) })).not.toBe(base);
     expect(keyFor({ modelVersion: "different" })).not.toBe(base);
     expect(keyFor({ format: "stl" })).not.toBe(base);
+    expect(keyFor({ format: "3mf", profile: "bambu-h2c-0.4" })).not.toBe(keyFor({ format: "3mf" }));
+    // No profile = the pre-profile key (cached generic renders stay valid).
+    expect(keyFor({ profile: undefined })).toBe(base);
   });
 
   it("keeps glb and stl of identical params at distinct entries", () => {

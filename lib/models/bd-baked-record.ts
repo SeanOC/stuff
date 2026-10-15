@@ -30,6 +30,7 @@ export async function bakedBlobEntry(
   slug: string,
   preset: string,
   format: string,
+  profile?: string,
 ): Promise<BakedBlobEntry | null> {
   let raw: string;
   try {
@@ -46,5 +47,7 @@ export async function bakedBlobEntry(
     if (e instanceof SyntaxError) return null;
     throw e;
   }
-  return record.assets?.[`${slug}/${preset}.${format}`] ?? null;
+  // Same key as scripts/upload-bd-baked.mjs recordKey.
+  const name = profile ? `${preset}.${profile}.${format}` : `${preset}.${format}`;
+  return record.assets?.[`${slug}/${name}`] ?? null;
 }
