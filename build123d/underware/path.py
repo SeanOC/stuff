@@ -14,6 +14,10 @@ cubic Bezier between them (S:139-146); the diagonal is the polyline (D:148).
 Mitre: a 90 degree bend about the width axis (X), floor inside. The first
 channel runs along Y as in underware.channel; the second hangs down -Z with
 its closed face toward -Y and its grips toward +Y (mitre:139-217).
+build_mitre is the author's solid and keeps the source's two arm lengths (the
+parity references include an unequal pair); the registered underware_mitre
+(holders/underware_path_channels.py) drives both from one length and cuts a
+bed flat across the arm tips in its 45 degree print frame.
 """
 from __future__ import annotations
 
