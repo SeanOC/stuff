@@ -144,6 +144,20 @@ the default). The viewer GLB has one material per part. Same-filament
 bodies are unioned, and QR dark modules are shrunk 0.01 mm, so no two
 bodies of one filament meet only at an edge.
 
+### Slicing
+
+The detail page's 3MF download defaults to a printer profile (the first is
+the Bambu Lab H2C with the 0.4 mm nozzle). That file is a Bambu Studio
+project: open it and choose **Load with settings** ("Open → Load with
+settings"). It comes in with the printer, the 0.16 mm Standard process,
+eight Bambu PLA Basic filament slots with the sign's colours in slots
+1..N (N = active filaments) and every part on its filament. The sign sits
+at the front of the plate with the prime tower behind it; the 240 × 300 mm
+sign is turned 90° about Z so the tower fits on the H2C's 330 × 320 bed
+(what Bambu Studio's own Arrange does). Slots after N keep the template's
+colours and stay unused. Pick **None (generic 3MF)** for the plain file,
+which keeps each part's filament but leaves printer and colours to you.
+
 ## Fonts and art
 
 | Asset | Source | Licence |

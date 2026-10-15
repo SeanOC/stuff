@@ -87,15 +87,22 @@ Key composition and hit/miss/invalidation are covered by
 
 The build123d preset downloads (`/api/bd-asset/<slug>/<preset>?format=stl`,
 and `format=3mf` for multiColour models) are **never rendered on request**.
+A 3MF may add `&profile=<id>` (pst-jyey1; ids from the manifest's
+`printerProfiles`): the file is then that printer's slicer project, baked
+as `<preset>.<profile>.3mf` and downloaded as
+`<slug>-<preset>-<profile>.3mf`. An unknown profile, or a profile on a
+non-3MF format, is a 400. `POST /api/bd-render?format=3mf&profile=<id>`
+renders the same live; its cache key gains a `profile:` component (only
+when set, so profile-less keys are unchanged).
 They are baked at build time and served as static bytes; only the viewer
 GLBs ship in the function bundle (pst-acoed's 250 MB limit).
 
 - **Write side** — `scripts/bake-bd-presets.sh` (prebuild, only when
   `BD_MODELS_ENABLED=1`) runs `export.py`, then
   `scripts/upload-bd-baked.mjs`. On a Vercel build (`VERCEL_ENV` set) that
-  uploads every preset's STL, plus the 3MF of multiColour models, to the
-  linked Blob store under
-  `bd-baked/<VERCEL_ENV>/<sha256 of the bytes>/<slug>-<preset>.<fmt>` with
+  uploads every preset's STL, plus the 3MF of multiColour models (generic
+  and one per printer profile), to the linked Blob store under
+  `bd-baked/<VERCEL_ENV>/<sha256 of the bytes>/<slug>-<preset>[-<profile>].<fmt>` with
   `allowOverwrite: false`, then writes `build123d/baked/blob-record.json`
   (`"<slug>/<preset>.<fmt>" → url, size, sha256`, plus env and commit).
   Per-colour STLs are never uploaded.
