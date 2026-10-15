@@ -292,7 +292,9 @@ Otherwise the "new CPU s" column times cache hits.
 had 738 s in `tests/.test_durations` and took 833–855 s on CI cold. As one pytest
 item it set the floor on its shard's wall time. The profiler now has it as
 `drawer_container_vertical_grids_8`. That case uses the test's own `print_frame`
-and exclusions (`m.audit_exclusions + container_wall_regions`, 407 regions).
+and exclusions (`m.audit_exclusions + container_wall_regions`, 407 regions;
+the exception rows are listed under "openConnect drawer container: thin-feature
+exception rows" below).
 Both the profiler and the timings below run with the cache off.
 
 The test's own phases were timed in one process with `BD_AUDIT_CACHE=off`
@@ -385,3 +387,86 @@ retention sweep the contract requires, one boolean per step and slot. An 8x8
 back has 64 slots, which is why 8x8x8 keeps the larger floor.
 `uv run python scripts/profile_print_audit.py --test-phases` reprints the
 per-phase table.
+
+## openConnect drawer container: thin-feature exception rows (pst-ymysy)
+
+The container has a few thin features that it copies from the author's design.
+The print audit does not judge them. This section lists each one with its
+thickness and the committed mesh that proves the thickness is the author's.
+
+**Where the container is gated.** As PR #212 put it, the container is
+audit-gated through `test_endpoint_audit_and_edges`
+(`tests/test_openconnect_drawer_container.py:449`). It has 74 CASES (`:373-406`).
+#212 wrote 61, but CASES has not changed since #212 and collects 74.
+The test is marked audit + audit_full (`:446-447`). Because of the audit_full marker, it runs only in the
+`audit_full and not upstream` shards (`bd123.yml:209`). The unsharded
+`audit and not audit_full and not upstream` job (`bd123.yml:114`) runs the
+generic per-model audit. That audit uses the spec default, `part` = `shell`
+(`holders/openconnect_drawer.py:83`), so it never builds a container. This
+split is deliberate (pst-ymysy D3, mayor): the unsharded job already runs about
+50 min cold against a 60-min ceiling, and moving the test there would move all
+74 cases. `openconnect_drawer` is not in `_BED_ONLY_IDS`
+(`tests/test_print_audit.py:728`; see also `_BED_ONLY_CASES` `:739`,
+`test_bed_only_cases_all_resolve` `:743` and
+`test_audit_full_only_presets_fit_the_bed` `:751`). So no container preset is
+exempt from the full audit. All three container presets (`container`,
+`organiser` and `container-solid`) are among the 74 CASES.
+
+**What is excluded.** The audit call (`:462`) passes
+`m.audit_exclusions(values)` and `container_wall_regions(values)`:
+
+- `m.audit_exclusions(values)` is `container.published_ceiling_regions`. It
+  covers flat ceilings over honeycomb cells and magnet teardrop caps (overhang
+  and bridge).
+- `container_wall_regions(values)` (`tests/openconnect_drawer_inventory.py:369`)
+  covers the thin walls listed below. Each region is derived from the source
+  geometry, not from a bounding box.
+
+`test_published_thin_features` (`:259`) pins every row with a ray against a
+committed source mesh in `assets/openConnect-drawer/mesh/` (`REFERENCES`,
+`:22`), to `abs=1e-4`.
+
+**How the numbers were measured** (origin/main `31001d7b`). Each case was built
+and audited three ways:
+
+- *Gated*: the test's own exclusions, the value CI publishes as `wall`.
+- *Raw*: no exclusions at all.
+- *Exposed*: every exclusion kept except the one family's regions. This
+  attributes the raw minimum to that family.
+
+The audit samples each face on a UV grid. So a tapering feature (the label
+floor wedge or a plate tip) reads at the sample nearest its thin end, not at
+its nominal thickness.
+
+| family (inventory line) | what it is | cases carrying it (of 74) | nominal (source) | raw audit, family exposed | pinned by (test line → mesh) | reproduces |
+|---|---|---|---|---|---|---|
+| `magnet_floors`, back (`:314`) | back magnet hole floor: hole depth `container_back_magnet_thickness` + .15 into the back wall | 65, incl. all 3 presets; absent where the back wall ≥ hole + 0.9 (`thick-walls`, `mid-walls`, `container_solid_wall_thickness=3`, `divider-thick-walls-1-vertical`), on 1-wide cases (no back magnets there: `horizontal_grids=1`, `divider-1x1x1`, `1x1x1-no-label`) and with magnets off | 0.45 (1 + .15 into the 1.6 Solid back) | 0.45: `container`, `organiser`, `container-solid`, `vertical_grids=1` | `:268` → `container-default.stl`, hits [2.15, 2.6] | yes |
+| `magnet_floors`, side (`:314`) | side magnet hole floor, same rule on the side walls | 67, incl. all 3 presets | 0.85 behind the 2.0 Honeycomb side; 0.45 behind a 1.6 Solid side | 0.85: `container`, `organiser`, `horizontal_grids=1`, `vertical_grids=1`, `1x1x1-no-label`; 0.45: `container-solid` | `:274` → `container-default.stl` (2.0) and `container-all-solid.stl` (1.6), hits [2.15, 1 + wall] | yes |
+| `label_holder_slabs` (`:339`) | label holder: the `LABEL_WALL` = .8 rails beside the pocket, the .8 front lip over it, and the pocket floor wedge that tapers to a knife edge under the window | 71, incl. all 3 presets; absent with `add_label_holder` off | rails and lip 0.8; wedge = distance behind the front + EPS (0.118 at .113, 0.618 at .613) | 0.635: `container`, `organiser`, `container-solid`, `horizontal_grids=1`, `vertical_grids=1` (a wedge sample) | `:281` rails, `:283` lip, `:291` wedge → `container-default.stl` | yes |
+| `label_plate_tips` (`:263`) | 60° corners of the strut-aligned label plates that poke into a front honeycomb cell, tapering to the tip | 65, incl. `container`, `organiser`; absent on Solid fronts (`container-solid`) and wherever no plate corner meets an opening | tapers to 0 at the tip | 0.65: `container`, `organiser`, `vertical_grids=1` | `:301` → `container-default.stl`: solid 0.3 mm inside each tip, air 0.3 mm beyond it, through the front wall | yes |
+| `back_magnet_rims` (`:291`) | at `vertical_grids` 1 the back magnet teardrop's flat cap ends 0.2 mm under the back wall's top, over the hole depth | 3: `vertical_grids=1`, `divider-thick-walls-1-vertical`, `2-wide-label-20`; no preset | 0.2 | 0.2 with no exclusions at all. With only this family exposed the audit reads 0.765: the rim's samples already fall inside the teardrop cap regions of `published_ceiling_regions` | `:314` → `container-2x1x5.stl`, gap 0.2, hits [3.4, 3.6] | yes |
+
+**Reference meshes** (`assets/openConnect-drawer/SHA256SUMS`, one file for the
+whole asset directory, with `mesh/`-prefixed rows). `sha256sum -c` passes for
+all five container rows at `31001d7b`.
+
+| mesh | sha256 | pins |
+|---|---|---|
+| `mesh/container-default.stl` | `36fe2ce9de8bfbdc7604bfc9889e7b5d9b3c9abb6c3f04a10bc9aab8c13014ef` | back and side floors (Honeycomb), label holder slabs, plate tips |
+| `mesh/container-all-solid.stl` | `ed62e5700208778c75a78e67f0055c1c21a75e37c1d9618cf18790dfa044954f` | side floor behind a 1.6 Solid wall |
+| `mesh/container-2x1x5.stl` | `babd68783f5f1388ca9574e8bc8418d67c430675b595375208abf7c1cd845d3f` | back magnet rim |
+| `mesh/container-1x1x1.stl` | `e2432966b85d8d4a6f2874c2ad19a58bdeb735fa664e6d7a4b341db3b8615c95` | parity reference only (`:45`), no thin row |
+| `mesh/container-divider-both.stl` | `5363f2770164d5e976d973d02b681e5ec6eb1d5d63311c40ad58c30031167ff9` | parity reference only (`:45`), no thin row |
+
+**Gated values (what CI publishes).** With every exclusion applied, 66 of the
+74 cases read `wall` 1.055. That value is not an exception row. It is the
+thinnest audited label-holder surface: it moves with `label_thickness` (1.099
+at 0.6, 1.124 at 1.6 and on `max-label`) and becomes 1.6 when the label holder
+is off (`1x1x1-no-label`, `no-label-no-magnets`). The other gated values are
+0.953 (`honeycomb_strut_hyp=1.1`) and 0.95 (`mid-walls`).
+`shell_to_slot_wall_thickness=0.6` raises its named error and has no wall
+value. All gated values are ≥ the 0.9 floor.
+
+**D2 outcome.** All five rows reproduce on the committed meshes within
+`abs=1e-4` (`test_published_thin_features` passes at `31001d7b`). There is no
+port defect, so geometry and gates are unchanged.
