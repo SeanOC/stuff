@@ -11,8 +11,9 @@ Target printers and materials: **Bambu Lab H2S** (0.4 mm nozzle, 0.2 mm
 layers by default, 325×320×325 mm single-nozzle (300×320×325 when both
 nozzles are used), 65 °C chamber) and **Bambu Lab H2C** (same nozzle,
 layers and chamber; single-nozzle 325×320×320 on the left nozzle /
-305×320×325 on the right, 300×320×325 dual-nozzle; common to either single
-nozzle on either machine 305×320×320) printing **PLA** or **PCTG**. Models
+305×320×325 on the right, 300×320×325 dual-nozzle with only the right
+nozzle above Z 320; common to either single nozzle on either machine
+305×320×320) printing **PLA** or **PCTG**. Models
 must print on those machines **without supports** in the declared
 orientation, in either material; the audit envelope (item 10) is the H2S
 volume, so a part that uses the last 5 mm of Z or the last 20 mm of X fits

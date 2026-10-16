@@ -7,8 +7,10 @@ x Z). Using both nozzles shrinks X to 300; 350 x 320 x 325 is the enclosure,
 not a printable volume (bead pst-p3bb3).
 
 The H2C is smaller on one axis per nozzle: left 325 x 320 x 320, right
-305 x 320 x 325, dual 300 x 320 x 325 (extruder_printable_area /
-extruder_printable_height in profiles/bambu-h2c-0.4/project_settings.json).
+305 x 320 x 325, dual 300 x 320 x 325 — Bambu's published dual figure; above
+Z 320 only the right nozzle prints, so every colour on a layer there must be
+on the right nozzle (extruder_printable_area / extruder_printable_height in
+profiles/bambu-h2c-0.4/project_settings.json).
 A part that needs the last 5 mm of Z or the last 20 mm of X prints on the
 H2S, or on the H2C only with the nozzle that reaches it. The H2C printer
 profile's plate fit is checked separately at bake time (max_footprint in
