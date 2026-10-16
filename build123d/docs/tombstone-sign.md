@@ -9,7 +9,7 @@ in its bottom edge take a separately printed stake (S2,
 `holder-tombstone-stake`). It lives in the `household` catalog category.
 
 Presets:
-- **default**: 240 × 300 × 6, eight colours.
+- **default**: 240 × 300 × 8, eight colours.
 - **one-ams**: four colours (base, bone, pumpkin, poppy), one AMS.
 - **two-colour**: bone on ground; the QR dark modules are holes.
 - **pinned**: 8 mm plate with a pin cross-hole.
@@ -21,7 +21,9 @@ Presets:
 | Controls | Domain / behaviour |
 | --- | --- |
 | Width / height | 100–325 / 150–320 mm (the H2S single-nozzle bed, printed flat); height must also be ≥ the arch radius + 6 mm |
-| Thickness | 5–12 mm; `retention = pin` needs ≥ 7.8 mm |
+| Thickness | 5–12 mm (default 8, so `retention = pin` works out of the box); `retention = pin` needs ≥ 7.8 mm |
+| Top edge round-over | 0–4 mm (default 2.5); 0 is a 0.4 mm chamfer. With the stroke floor (0.9) it must stay below the margin |
+| Bed edge chamfer | 0.4–1.5 mm (default 1.0), 45°. Round-over + bed chamfer must stay below the thickness |
 | Arch | `round` (radius = width / 2) or `shoulder` (radius = width / 3, flat shoulders) |
 | Margin | 3–20 mm (default 12) inset from the outline; the rhythm unit is a third of it |
 | Eyebrow, title, scan line, host, footer | Printable ASCII, ≤ 24 characters each; a blank line is left out |
@@ -202,9 +204,26 @@ cannot drift apart.
 
 ## Printability
 
-The sign prints flat, face up. The rims of both faces carry a 0.4 mm
-chamfer (on the bed side, this relieves elephant's foot). In plan, the
-outline corners are rounded 3 mm. Every raised feature has walls ≥ 0.9 mm
+The sign prints flat, face up. In plan, the outline corners are rounded
+3 mm. The rims (pst-aw7p3, after the first test print lifted a strip along
+the edge of the top face):
+
+- **Top rim** (printed last): a round-over, `edge_round` (2.5 mm). On an
+  upper outer edge, a round-over makes every layer smaller than the one
+  below it, so it never overhangs.
+- **Bed rim**: a 45° chamfer, `bed_chamfer` (1.0 mm). The bed side never
+  gets a fillet. This is wider than the guideline's 0.3–0.5 mm on purpose:
+  it beats elephant's foot and gives a spatula a clean way under the plate.
+- **The straight bottom edge** (Y = 0, where the pockets and their 1.2 mm
+  skins meet the edge) keeps 0.4 mm on both rims. A 2.5 mm round-over there
+  would cut through the skin over each pocket mouth.
+
+The rim is one tangent-continuous loop, and OCCT eases a tangent loop as a
+whole. So each rim changes size inside the two 3 mm bottom plan corners.
+The top rim is one fillet whose radius ramps from 0.4 (a 0.4 round, not a
+chamfer, along Y = 0) to `edge_round`. The bed rim is cut by a swept 45°
+cutter whose size ramps from 0.4 to `bed_chamfer`. On the ramp the chamfer
+tilts up to about 2° steeper than 45°, which is never an overhang. Every raised feature has walls ≥ 0.9 mm
 (the stroke floor), so the thin-wall check passes without an exclusion.
 
 A pocket's roof is a flat 8 mm bridge, below `MAX_BRIDGE_MM` (10). The
@@ -248,7 +267,7 @@ gives the minimum. So is a head narrower than 2 × (40 + 7.6 / 2) = 87.6 mm,
 where the tenons would overhang the head.
 
 Presets:
-- **default**: 40 × 300 × 6, head 90 × 30.
+- **default**: 40 × 300 × 8, head 90 × 30 (the sign's default thickness; a test pins the two equal).
 - **long**: 320 mm.
 - **cross-bar**: adds the cross-bar.
 - **pinned**: 8 mm blade with the pin cross-hole, for the 8 mm pinned sign.
