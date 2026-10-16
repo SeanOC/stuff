@@ -62,10 +62,25 @@ viewer GLB's materials.
 Pockets print as flat 8 mm roofs over the void (bridges <= MAX_BRIDGE_MM;
 audit_exclusions lists those planes, measured by the tests first). The
 pin hole is a flat-topped teardrop (signs.pin_profile). Pocket mouths and
-the pin hole are mating edges and stay sharp; the plate rims carry a 0.4
-chamfer on both faces (bed: elephant's foot). Glyph, art and QR edges are
+the pin hole are mating edges and stay sharp. Glyph, art and QR edges are
 the feature and stay sharp, as on the label card. Raised features add
 material, so they may run down to the margin over the pockets.
+
+Rims (pst-aw7p3, after the first test print lifted an edge strip): the TOP
+rim (printed last) is rounded over `edge_round` (2.5): a round-over on an
+upper outer edge makes every layer smaller than the one below, so it never
+overhangs. The BED rim takes a 45-degree `bed_chamfer` (1.0, never a
+fillet on the bed side): it beats elephant's foot and gives a spatula a
+clean entry under the plate; it is wider than the guideline's 0.3-0.5 on
+purpose. The straight bottom edge (Y = 0, where the pockets enter, SKIN 1.2
+from each face) keeps EDGE_CHAMFER's 0.4 on both rims: a 2.5 round-over
+there would cut through the skin over each pocket mouth. The rim is one
+tangent-continuous loop, which OCCT eases whole, so each rim changes size
+INSIDE the two CORNER_R plan corners: the top is one evolving-radius
+fillet (0.4 along Y = 0, ramping to edge_round round each corner), so on
+that edge it is a 0.4 round, not a chamfer; the bed is cut by a swept 45-
+degree cutter whose size ramps 0.4 -> bed_chamfer the same way.
+edge_round = 0 is the former 0.4 chamfer on the whole top rim.
 
 Worst-case load: wind on the face, bending the plate about the X axis at
 the pockets; the tenons carry it into the stake. The load path runs along
@@ -77,8 +92,12 @@ from __future__ import annotations
 from functools import lru_cache, reduce
 from pathlib import Path
 
-from build123d import Axis, Box, Compound, Face, FontStyle, Part, Pos, Vector, Wire, chamfer, \
-    extrude
+from build123d import Axis, Box, Compound, Edge, Face, FontStyle, Part, Pos, Solid, Vector, \
+    Wire, chamfer, extrude
+from OCP.BRepFilletAPI import BRepFilletAPI_MakeFillet
+from OCP.BRepOffsetAPI import BRepOffsetAPI_MakePipeShell
+from OCP.gp import gp_Dir
+from OCP.TopoDS import TopoDS
 from holders import sign_ghost, signs
 from holders.label_card import _glyph_order
 from holders.printer import BED_X, BED_Y
@@ -93,7 +112,7 @@ RAISE_H = INLAY_DEPTH       # 0.6 mm = 3 layers proud of the top face
 FLOOR = STROKE_FLOOR_RAISED
 THRESHOLD = FLOOR + FLOOR_MARGIN  # what every raised stroke must clear
 RULE_W = THRESHOLD          # the footer rule is one stroke-floor line
-EDGE_CHAMFER = 0.4          # both rims, as the label card
+EDGE_CHAMFER = 0.4          # both rims of the Y = 0 pocket edge; the whole top rim at edge_round 0
 QR_CORNER_R = 6.0           # bone panel rounding, inside the 4-module quiet zone
 GHOST_SHARE = 0.65          # ghost height / panel height (the poster's is 0.47)
 CONTENT_CHORD = 0.5         # content stops where the arch is this share of the inset width
@@ -343,6 +362,14 @@ def validate(values: dict) -> None:
     signs.qr_regions(qr_data(values), qr)  # the pitch guard
     if values['retention'] == 'pin':
         signs.check_pin_thickness(values['thickness'])
+    r, d, t = values['edge_round'], values['bed_chamfer'], values['thickness']
+    if r + FLOOR >= m:
+        raise ValueError(f'edge_round {r:g} mm + the {FLOOR:g} mm stroke floor must stay '
+                         f'< margin {m:g} mm: the round-over would eat the raised features '
+                         f'at the margin; edge_round must be < {m - FLOOR:g} mm')
+    if max(r, EDGE_CHAMFER) + d >= t:
+        raise ValueError(f'edge_round {r:g} mm + bed_chamfer {d:g} mm must stay < thickness '
+                         f'{t:g} mm: the two rims would meet')
     if _frame(values) is None:
         need = min_height(values)
         advice = (f'height must be >= {need:g} mm for these values' if need <= MAX_HEIGHT else
@@ -353,12 +380,66 @@ def validate(values: dict) -> None:
             f'stroke floor between the {m:g} mm margin floor and the arch; {advice}')
 
 
+def _on_pocket_edge(point) -> bool:
+    return abs(point.Y) < 1e-6
+
+
+def _top_rim(blank: Part, r: float) -> Part:
+    """The top rim eased: a round-over r ramping to EDGE_CHAMFER on the Y = 0
+    edge across each plan corner (one evolving-radius fillet, since OCCT
+    eases the whole tangent loop), or at r = 0 a plain EDGE_CHAMFER."""
+    top = blank.faces().sort_by(Axis.Z)[-1]
+    if r == 0:
+        return chamfer(top.edges(), EDGE_CHAMFER)
+    mk = BRepFilletAPI_MakeFillet(blank.wrapped)
+    mk.Add(EDGE_CHAMFER, top.edges()[0].wrapped)  # the whole loop is one contour
+    for i in range(1, mk.NbEdges(1) + 1):
+        edge = Edge(mk.Edge(1, i))
+        r0, r1 = (EDGE_CHAMFER if _on_pocket_edge(edge.position_at(u)) else r for u in (0, 1))
+        mk.SetRadius(r0, r1, 1, i)
+    mk.Build()
+    if not mk.IsDone():
+        raise ValueError(f'edge_round {r:g} mm: the top rim round-over failed')
+    return Part(mk.Shape())
+
+
+def _bed_rim_cutter(outline: Face, d: float) -> Part:
+    """The bed rim's 45-degree chamfer as a cutter: per outline edge, a
+    swept triangle whose chamfer leg runs from (d inward, Z 0) to (the wall,
+    Z d), d being EDGE_CHAMFER at a Y = 0 vertex and `d` elsewhere, so it
+    ramps across each plan corner. The other two legs stand outside the
+    plate, so every cut crosses the bed and the wall transversally."""
+    up = Vector(0, 0, 1)
+    def section(point, tangent):
+        size = EDGE_CHAMFER if _on_pocket_edge(point) else d
+        inward = up.cross(tangent).normalized()
+        if not outline.is_inside(point + inward * 0.05):
+            inward = -inward
+        return Wire.make_polygon([point + inward * (2 * size) - up * size,
+                                  point - inward * size + up * (2 * size),
+                                  point - inward * size - up * size], close=True)
+    cutters = []
+    for edge in outline.outer_wire().edges():
+        spine = Wire([edge])
+        pipe = BRepOffsetAPI_MakePipeShell(spine.wrapped)
+        pipe.SetMode(gp_Dir(0, 0, 1))  # sections stay vertical
+        for u in (0, 1):
+            point = edge.position_at(u)
+            vertex = min(spine.vertices(), key=lambda v: (Vector(v) - point).length)
+            pipe.Add(section(point, edge.tangent_at(u)).wrapped,
+                     TopoDS.Vertex_s(vertex.wrapped), False, False)
+        pipe.Build()
+        pipe.MakeSolid()
+        cutters.append(Solid(pipe.Shape()))
+    return cutters[0].fuse(*cutters[1:]).clean()
+
+
 def plate(values: dict) -> Part:
-    """The uncoloured plate in the print frame: outline, rim chamfers, pockets, pin hole."""
+    """The uncoloured plate in the print frame: outline, eased rims, pockets, pin hole."""
     w, h, t = values['width'], values['height'], values['thickness']
-    blank = extrude(signs.outline(w, h, values['arch']), t)
-    rims = blank.faces().sort_by(Axis.Z)
-    out = chamfer(rims[0].edges() + rims[-1].edges(), EDGE_CHAMFER)
+    outline = signs.outline(w, h, values['arch'])
+    out = _top_rim(extrude(outline, t), values['edge_round'])
+    out -= _bed_rim_cutter(outline.faces()[0], values['bed_chamfer'])
     for x in signs.POCKET_XS:
         out -= Pos(x, signs.POCKET_DEPTH / 2 - 0.5, t / 2) * Box(
             signs.POCKET_W, signs.POCKET_DEPTH + 1, signs.pocket_height(t))
@@ -522,11 +603,17 @@ PARAMS = (
           min=100.0, max=MAX_WIDTH, step=1.0),
     Param('height', 'number', 300.0, label='Height', group='Plate', unit='mm',
           min=150.0, max=MAX_HEIGHT, step=1.0),
-    Param('thickness', 'number', 6.0, label='Thickness', group='Plate', unit='mm',
+    Param('thickness', 'number', 8.0, label='Thickness', group='Plate', unit='mm',
           min=5.0, max=12.0, step=0.2),
     Param('arch', 'enum', 'round', label='Arch', group='Plate', choices=('round', 'shoulder')),
     Param('margin', 'number', 12.0, label='Margin', group='Plate', unit='mm',
           min=3.0, max=20.0, step=0.5),
+    Param('edge_round', 'number', 2.5, label='Top edge round-over', group='Plate', unit='mm',
+          min=0.0, max=4.0, step=0.5,
+          description='Front-face rim; the pocket edge keeps 0.4. 0 = a 0.4 chamfer.'),
+    Param('bed_chamfer', 'number', 1.0, label='Bed edge chamfer', group='Plate', unit='mm',
+          min=0.4, max=1.5, step=0.1,
+          description='45-degree, bed-face rim; the pocket edge keeps 0.4.'),
     _text('eyebrow', 'Poppy Street Spooks', 'Eyebrow (printed in capitals)'),
     _text('title', 'Pick the next song!', 'Title'),
     _text('scan_line', 'Scan to request a song', 'Scan line'),

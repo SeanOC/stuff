@@ -51,7 +51,7 @@ def test_registered_as_a_household_sign_model():
     params = {p.name: p for p in SPEC.params}
     assert (params['width'].default, params['width'].min, params['width'].max) == (40, 25, 60)
     assert (params['length'].default, params['length'].max) == (300, 320)
-    assert (params['thickness'].default, params['thickness'].min, params['thickness'].max) == (6, 5, 10)
+    assert (params['thickness'].default, params['thickness'].min, params['thickness'].max) == (8, 5, 10)
     assert (params['head_width'].default, params['head_width'].min) == (90, pytest.approx(87.6))
     assert (params['head_height'].min, params['head_height'].max) == (20, 60)
     assert params['retention'].choices == ('none', 'pin') and params['retention'].default == 'none'
@@ -151,6 +151,13 @@ def test_point_is_45_degrees_included_and_ends_below_the_shoulders():
 
 
 # --- the 3D joint against the real sign -----------------------------------
+
+def test_stake_default_thickness_is_the_signs():
+    """The tenons are the contract's formula of the stake's OWN thickness
+    Param: a sign default that moved alone would ship a loose joint
+    (tenon_t(6) = 3.2 in an 8 mm sign's 5.6 mm pocket)."""
+    assert m.DEFAULTS['thickness'] == tombstone_sign.DEFAULTS['thickness'] == 8.0
+
 
 def _assembled(thickness: float, pin: bool):
     """(sign, stake placed in the sign frame) for one thickness."""

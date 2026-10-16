@@ -92,7 +92,9 @@ def test_registered_as_a_multi_colour_household_model():
     colours = params['colours']
     assert colours.kind == 'integer' and type(colours.default) is int
     assert (colours.default, colours.min, colours.max) == (8, 2, 8)
-    assert params['margin'].default == 12.0 and params['thickness'].default == 6.0
+    assert params['margin'].default == 12.0 and params['thickness'].default == 8.0
+    assert (params['edge_round'].default, params['edge_round'].min, params['edge_round'].max) == (2.5, 0, 4)
+    assert (params['bed_chamfer'].default, params['bed_chamfer'].min, params['bed_chamfer'].max) == (1, 0.4, 1.5)
     assert params['qr_size'].default == 120.0
     assert params['width'].max == m.MAX_WIDTH == 325 and params['height'].max == m.MAX_HEIGHT == 320
     assert list(PRESETS) == ['default', 'one-ams', 'two-colour', 'pinned', 'small']
@@ -339,6 +341,16 @@ def test_art_row_guard_names_the_inset_width():
 def test_blank_host_is_a_guard():
     with pytest.raises(ValueError, match=r'host is blank'):
         m.validate(SPEC.resolve_values({'host': '  '}))
+
+
+def test_rim_guards_name_the_margin_and_the_thickness():
+    with pytest.raises(ValueError, match=r'edge_round 3 mm \+ the 0\.9 mm stroke floor must '
+                                         r'stay < margin 3\.5 mm.*< 2\.6 mm'):
+        m.validate(SPEC.resolve_values({'edge_round': 3.0, 'margin': 3.5}))
+    m.validate(SPEC.resolve_values({'edge_round': 2.5, 'margin': 3.5}))
+    with pytest.raises(ValueError, match=r'edge_round 4 mm \+ bed_chamfer 1\.5 mm must stay '
+                                         r'< thickness 5 mm'):
+        m.validate(SPEC.resolve_values({'edge_round': 4.0, 'bed_chamfer': 1.5, 'thickness': 5.0}))
 
 
 def test_height_below_the_arch_radius_is_a_guard_not_a_kernel_error():
@@ -735,7 +747,8 @@ def test_raw_audit_fails_only_on_the_excluded_ceilings():
 
 def unfinished_edges(values, plate):
     """Plate edges that are neither eased (on a 45-degree rim chamfer),
-    tangent (outline seams) nor joint (pocket / pin: mating, left sharp)."""
+    tangent (outline seams, and every edge of the top round-over) nor joint
+    (pocket / pin: mating, left sharp)."""
     t = values['thickness']
     joint = [(x - signs.POCKET_W / 2 - 1e-3, x + signs.POCKET_W / 2 + 1e-3) for x in signs.POCKET_XS]
     bad = []
@@ -743,7 +756,9 @@ def unfinished_edges(values, plate):
         c = edge.center()
         faces = [f for f in plate.faces() if any(e.is_same(edge) for e in f.edges())]
         normals = [f.normal_at(c) for f in faces]
-        chamfered = any(abs(abs(n.Z) - math.sqrt(0.5)) < 1e-3 for n in normals)
+        # 45 degrees, or up to ~2 degrees STEEPER on the bed rim's corner
+        # ramp, whose chamfer tilts as its size changes (never an overhang)
+        chamfered = any(-0.03 < abs(n.Z) - math.sqrt(0.5) < 1e-3 for n in normals)
         tangent = len(normals) == 2 and normals[0].dot(normals[1]) > 0.999
         in_pocket = c.Y <= signs.POCKET_DEPTH + 1e-3 and any(a <= c.X <= b for a, b in joint) \
             and signs.SKIN - 1e-3 <= c.Z <= t - signs.SKIN + 1e-3
@@ -755,8 +770,44 @@ def unfinished_edges(values, plate):
 
 @pytest.mark.parametrize('preset_id', ['default', 'pinned'])
 def test_every_plate_edge_is_eased_tangent_or_a_mating_edge(preset_id):
-    """Rims carry the 0.4 chamfer; outline seams are tangent; pocket and pin
-    edges are the joint (mating, left sharp). Raised feature edges are the
-    feature (sharp, as on the label card)."""
+    """Rims carry the round-over / bed chamfer; outline seams are tangent;
+    pocket and pin edges are the joint (mating, left sharp). Raised feature
+    edges are the feature (sharp, as on the label card)."""
     values = values_of(preset_id)
     assert not unfinished_edges(values, m.plate(values))
+
+
+def _eased(plate, point, inward, up, depth):
+    """Is the rim corner at `point` cut back `depth` along the diagonal
+    (`inward` in plan, `up` = +-Z into the plate)?"""
+    return not plate.is_inside(point + inward * depth + up * depth)
+
+
+@pytest.mark.parametrize('overrides', [{}, {'arch': 'shoulder', 'edge_round': 1.5},
+                                       {'edge_round': 0.0}])
+def test_pocket_edge_keeps_04_and_the_arch_and_sides_take_edge_round_and_bed_chamfer(overrides):
+    """A rim eased by a 45-degree chamfer d is cut along its corner diagonal
+    to d / 2, a round-over r to r (1 - 1/sqrt 2); probe 10 % either side.
+    The Y = 0 pocket edge keeps 0.4 on both rims (a 0.4 round on top), so a
+    2.5 round-over cannot reach the 1.2 mm skin over the pocket mouths."""
+    values = SPEC.resolve_values(overrides)
+    plate = m.plate(values)
+    w, h, t = values['width'], values['height'], values['thickness']
+    r, d = values['edge_round'], values['bed_chamfer']
+    top_cut = r * (1 - math.sqrt(0.5)) if r else m.EDGE_CHAMFER / 2
+    pocket_top_cut = m.EDGE_CHAMFER * (1 - math.sqrt(0.5)) if r else m.EDGE_CHAMFER / 2
+    down, up = Vector(0, 0, -1), Vector(0, 0, 1)
+    rims = [  # (point on the outline at Z 0, inward, top cut, bed cut)
+        (Vector(0, 0, 0), Vector(0, 1, 0), pocket_top_cut, m.EDGE_CHAMFER / 2),
+        (Vector(signs.POCKET_OFFSET + 8, 0, 0), Vector(0, 1, 0), pocket_top_cut,
+         m.EDGE_CHAMFER / 2),
+        (Vector(w / 2, h / 3, 0), Vector(-1, 0, 0), top_cut, d / 2),
+        (Vector(-w / 2, h / 3, 0), Vector(1, 0, 0), top_cut, d / 2),
+        (Vector(0, h, 0), Vector(0, -1, 0), top_cut, d / 2),
+    ]
+    for point, inward, top, bed in rims:
+        crown = point + Vector(0, 0, t)
+        assert _eased(plate, crown, inward, down, 0.9 * top), (point, 'top')
+        assert not _eased(plate, crown, inward, down, 1.1 * top), (point, 'top')
+        assert _eased(plate, point, inward, up, 0.9 * bed), (point, 'bed')
+        assert not _eased(plate, point, inward, up, 1.1 * bed), (point, 'bed')
