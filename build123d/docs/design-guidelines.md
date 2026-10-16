@@ -7,11 +7,17 @@ but the plate was oversized, edges were hard, the cup-to-plate joint was an
 obvious stress point, and the mount had no tunables. These rules are the
 default; deviate only with a stated functional reason in the PR.
 
-Target printer and materials: **Bambu Lab H2S** (0.4 mm nozzle, 0.2 mm
+Target printers and materials: **Bambu Lab H2S** (0.4 mm nozzle, 0.2 mm
 layers by default, 325×320×325 mm single-nozzle (300×320×325 when both
-nozzles are used), 65 °C chamber) printing **PLA** or
-**PCTG**. Models must print on that machine **without supports** in the
-declared orientation, in either material.
+nozzles are used), 65 °C chamber) and **Bambu Lab H2C** (same nozzle,
+layers and chamber; single-nozzle 325×320×320 on the left nozzle /
+305×320×325 on the right, 300×320×325 dual-nozzle with only the right
+nozzle above Z 320; common to either single nozzle on either machine
+305×320×320) printing **PLA** or **PCTG**. Models
+must print on those machines **without supports** in the declared
+orientation, in either material; the audit envelope (item 10) is the H2S
+volume, so a part that uses the last 5 mm of Z or the last 20 mm of X fits
+the H2C on one nozzle only — say so in the PR.
 
 ---
 
@@ -170,7 +176,9 @@ For any PR touching `build123d/holders/**`, check and cite the file/line:
    ray/point, value) and names its face family; an exception without a
    reference measurement is blocking. Apply §8 to published geometry.
 10. Print-frame footprint ≤ 325 × 320 mm and height ≤ 325 mm (the H2S
-    single-nozzle volume) at every Param endpoint. The print audit's
+    single-nozzle volume; the H2C reaches 325 in X only on its left nozzle
+    at Z ≤ 320, and 325 in Z only on its right nozzle at X ≤ 305) at every
+    Param endpoint. The print audit's
     build-volume rule checks it (`tests/print_audit.py`, `BED_X/BED_Y/BED_Z`
     from `holders/printer.py`): the registry run covers defaults, the
     endpoint table (item 3) the rest. A dual-nozzle part must fit 300 in X.
@@ -334,4 +342,4 @@ Sources for the numbers: [Hydra Research design rules](https://www.hydraresearch
 [Layer X FDM design rules](https://layerx3d.in/blog/fdm-design-rules-wall-thickness-overhangs-bridging-tolerances),
 [Bambu Lab wiki: warping](https://wiki.bambulab.com/en/knowledge-sharing/printed-model-warping),
 [Bambu Lab wiki: PETG guide](https://wiki.bambulab.com/en/filament/petg) (PCTG is a PETG-family copolyester),
-[Bambu Lab H2S specs](https://us.store.bambulab.com/products/h2s).
+[Bambu Lab H2S specs](https://us.store.bambulab.com/products/h2s), [Bambu Lab H2C specs](https://us.store.bambulab.com/products/h2c).
