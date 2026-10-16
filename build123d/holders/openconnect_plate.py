@@ -115,7 +115,7 @@ def build(values=None, *, reference=False):
     return part
 
 
-def border_exclusions(values):
+def audit_exclusions(values):
     """Exact bands under edge-facing ramps only (approved rev 4 exception).
 
     Extrude the actual ramp-end face out to its tile edge, then require that

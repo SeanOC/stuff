@@ -56,7 +56,7 @@ def test_negative_is_exportable_author_grid_without_base(tmp_path):
     assert len(part.solids()) == len(m.placements(v)) == 6
     assert _validate_spec(m.SPEC) is None
     assert resolve_mount_fixtures(m.SPEC, m.MOUNT, v) is None
-    assert m.border_exclusions(v) == []
+    assert m.audit_exclusions(v) == []
     for i, solid in enumerate(part.solids()):
         export_stl(solid, tmp_path/f'{i}.stl')
         assert trimesh.load_mesh(tmp_path/f'{i}.stl').is_watertight
@@ -84,7 +84,7 @@ def test_preset_print_audit(preset):
         pytest.skip('negative slot grid is a CAD subtraction tool, not a print (rev 3)')
     part = m.build(v)
     fx = m.mount_fixtures(m.MOUNT, v)
-    report = audit(part, m.PRINT_ORIENTATION, cutters=fx.cutters, exclusions=m.border_exclusions(v))
+    report = audit(part, m.PRINT_ORIENTATION, cutters=fx.cutters, exclusions=m.audit_exclusions(v))
     assert report.ok, report.format()
     assert report.bed_chamfer == 'present'
     assert_finished_edges(part, v)
@@ -97,7 +97,7 @@ def test_preset_print_audit(preset):
 def test_only_exact_edge_ramp_strips_are_excluded(size, count, slide, flip):
     v = m.SPEC.resolve_values({'horizontal_size': size, 'vertical_size': size,
                                'slide': slide, 'entryramp_flip': flip})
-    exclusions = m.border_exclusions(v)
+    exclusions = m.audit_exclusions(v)
     assert len(exclusions) == count
     # Independently pinned integral of the author's ramp/channel end profile
     # at default clearances: area 54.703994949366 mm2 x 0.8 mm edge border.
@@ -115,7 +115,7 @@ def test_only_exact_edge_ramp_strips_are_excluded(size, count, slide, flip):
         else:
             assert (bb.min.X, bb.max.X) == pytest.approx((-size/2, -size/2+.8), abs=1e-7)
     v.update(horizontal_size=size+4, vertical_size=size+4)
-    assert m.border_exclusions(v) == []
+    assert m.audit_exclusions(v) == []
 
 
 def test_grid_units_alignment_and_offset():
@@ -168,7 +168,7 @@ def test_printable_corner_rounding(style):
     v = m.SPEC.resolve_values({'corner_rounding':style, 'corner_rounding_size':2})
     part = m.build(v)
     report = audit(part, m.PRINT_ORIENTATION, cutters=m._fixtures(v).cutters,
-                   exclusions=m.border_exclusions(v))
+                   exclusions=m.audit_exclusions(v))
     assert report.ok, report.format()
     assert report.bed_chamfer == 'present'
     assert_finished_edges(part, v)
@@ -217,7 +217,7 @@ def test_printable_endpoints(name, overrides):
     v = m.SPEC.resolve_values(overrides)
     part = m.build(v)
     report = audit(part, m.PRINT_ORIENTATION, cutters=m._fixtures(v).cutters,
-                   exclusions=m.border_exclusions(v))
+                   exclusions=m.audit_exclusions(v))
     assert report.ok, report.format()
     assert report.bed_chamfer == 'present'
     angle = assert_finished_edges(part, v)
