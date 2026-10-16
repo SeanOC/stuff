@@ -17,6 +17,8 @@ Flip ``PRINT_AUDIT_REQUIRED = True`` (one line) to make the registry run a
 hard gate once the holder passes its own audit (design-guidelines §6 / AC 3).
 """
 import contextlib
+import importlib
+import inspect
 import os
 import sys
 import time
@@ -523,7 +525,7 @@ def _cup_lid_shank_exclusion(values):
 
 
 from holders.openconnect_drawer import audit_exclusions as drawer_exclusions
-from holders.openconnect_plate import border_exclusions
+from holders.openconnect_plate import audit_exclusions as plate_exclusions
 from holders.cartridge_holder import audit_exclusions as cartridge_exclusions
 from holders.gridfinity_capture_bin import audit_exclusions as capture_bin_exclusions
 from holders.tombstone_sign import audit_exclusions as tombstone_sign_exclusions
@@ -536,7 +538,7 @@ from holders.underware_path_channels import audit_exclusions as path_families
 
 _MODEL_EXCLUSIONS = {
     'holder_cup_lid': lambda values: [_cup_lid_shank_exclusion(values)],
-    'openconnect_plate': border_exclusions,
+    'openconnect_plate': plate_exclusions,
     'openconnect_drawer': drawer_exclusions,
     'littletikes_dream_machine_cartridge_holder': cartridge_exclusions,
     'gridfinity_capture_bin': capture_bin_exclusions,
@@ -643,6 +645,48 @@ def test_model_audit_produces_report_within_budget(spec):
     assert elapsed < budget, (
         f"{spec.name}: audit took {elapsed:.1f}s (budget {budget}s)"
     )
+
+
+def _module_exclusions(spec, values) -> list:
+    """The spec's module-level audit_exclusions hook, flattened the way
+    _MODEL_EXCLUSIONS's lambdas flatten it; [] when the module has none."""
+    hook = getattr(importlib.import_module(spec.build.__module__),
+                   'audit_exclusions', None)
+    if hook is None:
+        return []
+    # underware_junctions / underware_path_channels serve several specs and
+    # take the spec name first.
+    first = next(iter(inspect.signature(hook).parameters))
+    regions = hook(spec.name, values) if first == 'name' else hook(values)
+    if isinstance(regions, dict):
+        return [r for family in regions.values() for r in family]
+    return list(regions)
+
+
+@pytest.mark.parametrize("spec", _SPECS, ids=[s.name for s in _SPECS])
+def test_module_audit_exclusions_are_registered(spec):
+    """A module whose audit_exclusions hook is non-empty at the defaults or
+    any preset must have its spec in _MODEL_EXCLUSIONS, which is all that
+    _audit_kwargs (and so `bd audit`) reads (pst-c4zuu).
+
+    Nothing else owned this intersection: the registry audit runs defaults
+    only, and each model's per-preset test calls its own hook directly, so a
+    missing map entry was a silent `bd audit --preset` false fail
+    (holder_tombstone_stake/pinned, pst-qeevw). One-directional on purpose:
+    holder_cup_lid's region lives only in this file, so map ⊄ hooks.
+    Non-empty exclusions at a non-preset param endpoint stay outside this
+    guard. Data-only — no build, no audit.
+    """
+    if spec.name in _MODEL_EXCLUSIONS:
+        return
+    for preset in (None, *spec.presets):
+        values = spec.resolve_values(preset.values if preset else None)
+        regions = _module_exclusions(spec, values)
+        assert not regions, (
+            f"{spec.name} ({preset.id if preset else 'defaults'}): "
+            f"{spec.build.__module__}.audit_exclusions returns "
+            f"{len(regions)} region(s) but the spec is missing from "
+            "_MODEL_EXCLUSIONS, so `bd audit` would not honour them")
 
 
 @pytest.mark.audit
