@@ -9,8 +9,9 @@ whole printed length, tip to tenon ends, so length <= 320 is the bed bound.
 
 The joint numbers come from holders/signs.py, which the sign imports too:
 each tenon is signs.tenon_w() x signs.tenon_len() x signs.tenon_t(thickness)
-(7.6 x 34.6 x 3.2 at thickness 6). `thickness` is the stake blade's and
-must equal the sign's: the tenon height is the contract's formula of it.
+(7.6 x 34.6 x 5.2 at the default thickness 8). `thickness` is the stake
+blade's and must equal the sign's: the tenon height is the contract's
+formula of it, and the two parts' defaults are pinned equal by a test.
 The tenon is FLUSH WITH THE BED FACE (stake Z in [0, tenon_t]), never
 centred in the blade, because a mid-thickness tenon printed flat would be a
 7.6 x 34.6 mm flat ceiling. Assembled, sign Z = stake Z + SKIN +
@@ -45,9 +46,9 @@ Worst-case load: wind on the face of the default 240 x 300 sign, pushing
 along Z. The sign's moment about X crosses the joint in the two tenons,
 spreads through the head and the 45-degree shoulders into the shaft, and
 is resisted by the soil along the buried shaft. The blade prints flat, so
-that bending stress runs along the layers. At thickness 6 the tenons (7.6
-x 3.2 each) are the weakest section; use 8 mm (tenons 5.2) for an exposed
-site. PLA or PCTG; PCTG for a stake left outdoors.
+that bending stress runs along the layers. The tenons (7.6 x 5.2 each at
+the default 8 mm; 3.2 at 6) are the weakest section, so keep 8 mm or more
+for an exposed site. PLA or PCTG; PCTG for a stake left outdoors.
 """
 from __future__ import annotations
 
@@ -60,7 +61,7 @@ from holders.printer import BED_Y
 from holders.registry import ModelSpec, Param, Preset, register
 from scripts.thumbnail import PlaneSpec
 
-EDGE_CHAMFER = 0.4          # both rims and the tenons' bed rims, as the sign
+EDGE_CHAMFER = 0.4          # both rims and the tenons' bed rims (the sign's pocket edge)
 CORNER_R = signs.CORNER_R   # plan rounding of convex corners (3)
 SHOULDER_R = 5.0            # plan fillet of the concave shoulder-to-shaft corners
 POINT_DEG = 45.0            # included angle of the shaft's point
@@ -225,7 +226,7 @@ PARAMS = (
     Param('length', 'number', 300.0, label='Length', group='Stake', unit='mm',
           min=150.0, max=MAX_LENGTH, step=1.0,
           description='Tip to tenon ends: the whole printed length.'),
-    Param('thickness', 'number', 6.0, label='Thickness', group='Stake', unit='mm',
+    Param('thickness', 'number', 8.0, label='Thickness', group='Stake', unit='mm',
           min=5.0, max=10.0, step=0.2,
           description="Match the sign's thickness: the tenons are sized from it."),
     Param('head_width', 'number', 90.0, label='Head width', group='Head', unit='mm',
@@ -255,7 +256,7 @@ SPEC = register(ModelSpec(
     print_orientation=(0, 0, 1),  # flat, the tenon face on the bed
     params=PARAMS,
     presets=(
-        Preset('default', 'Stake (6 mm)', {}),
+        Preset('default', 'Stake (8 mm)', {}),
         Preset('long', 'Long (320 mm)', {'length': 320.0}),
         Preset('cross-bar', 'With cross-bar', {'cross_bar': True}),
         Preset('pinned', 'Pinned (8 mm)', {'thickness': 8.0, 'retention': 'pin'}),
