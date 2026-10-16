@@ -161,21 +161,44 @@ def test_placement_puts_part_and_tower_on_the_h2c_plate(dx, dy, turned):
     assert tower_y + 66.2 < 320  # measured 8-filament tower depth (A2)
 
 
-def test_placement_refuses_a_part_the_plate_cannot_hold():
-    with pytest.raises(ValueError, match=r'does not fit the 330 x 320 mm plate .*max footprint 326 x 244 mm'):
+def test_placement_refuses_a_part_the_nozzle_cannot_reach():
+    with pytest.raises(ValueError, match=r"does not fit the printing nozzle's 325 x 320 mm reach "
+                                         r'.*max footprint 323 x 244 mm'):
         _place_on_plate(_box_model(320, 320), H2C.settings())
 
 
-def test_h2c_max_footprint_is_tighter_than_the_audit_build_volume():
-    """330 x 320 plate less 2 mm margins and the 70 mm tower reserve: a
-    multi-colour preset must fit 326 x 244 either way round, though the print
-    audit's build volume (325 x 320) passes e.g. 300 x 300 (pst-68fpi A1)."""
-    assert max_footprint(H2C.settings()) == (326.0, 244.0)
+def test_h2c_max_footprint_is_the_printing_nozzles_reach_not_the_plate():
+    """Every filament maps to extruder 1 (filament_map "1" = array index 0),
+    whose extruder_printable_area is X 0..325 of the 330 x 320 plate: one
+    2 mm plate margin at the left edge (X 2..325) by the plate's depth less
+    three margins and the 70 mm tower reserve. Tighter than both the plate
+    (326) and the print audit's build volume (325 x 320, which passes e.g.
+    300 x 300; pst-68fpi A1, pst-8tp6w)."""
+    settings = H2C.settings()
+    assert settings['filament_map'] == ['1'] * len(settings['filament_map'])
+    assert settings['extruder_printable_area'][0] == '0x0,325x0,325x320,0x320'
+    assert settings['extruder_printable_height'][0] == '320'
+    assert max_footprint(settings) == (323.0, 244.0)
+
+
+def test_a_profile_without_per_extruder_reach_falls_back_to_the_plate():
+    settings = H2C.settings()
+    del settings['extruder_printable_area'], settings['extruder_printable_height']
+    assert max_footprint(settings) == (326.0, 244.0)
+    _place_on_plate(_box_model(326, 244, 325), settings)
+    with pytest.raises(ValueError, match=r'does not fit the 330 x 320 mm plate'):
+        _place_on_plate(_box_model(326.5, 10), settings)
+    with pytest.raises(ValueError, match=r'the printer prints up to 325 mm'):
+        _place_on_plate(_box_model(10, 10, 325.5), settings)
 
 
 @pytest.mark.parametrize('dx, dy, fits', [
-    (326, 244, True),     # the limit, as is
-    (244, 326, True),     # the limit, turned
+    (323, 244, True),     # the limit, as is
+    (244, 323, True),     # the limit, turned
+    (324, 244, False),    # one past the nozzle's reach
+    (324, 100, False),    # fit the 330 mm plate before pst-8tp6w
+    (326, 244, False),    # the old plate-derived limit, as is
+    (244, 326, False),    # the old plate-derived limit, turned
     (326.5, 10, False),   # wider than the plate either way
     (245, 245, False),    # deeper than the reserve leaves either way
     (300, 300, False),    # audit-legal, not profile-legal
@@ -186,6 +209,36 @@ def test_placement_accepts_exactly_the_max_footprint(dx, dy, fits):
     else:
         with pytest.raises(ValueError, match='does not fit'):
             _place_on_plate(_box_model(dx, dy), H2C.settings())
+
+
+@pytest.mark.parametrize('dx, x0, x1', [
+    (323, 2.0, 325.0),    # the whole band
+    (320, 5.0, 325.0),    # was 8..328, past the nozzle's X 325 (pst-8tp6w)
+    (160, 95.0, 255.0),   # small sign: centred on the common reach, unchanged
+])
+def test_placement_clamps_to_the_printing_nozzles_reach(dx, x0, x1):
+    transform, tower_x, _ = _place_on_plate(_box_model(dx, 100), H2C.settings())
+    assert _placed(transform, dx, 100)[:2] == pytest.approx((x0, x1))
+    assert tower_x == pytest.approx(145.0)  # the tower corner stays on the common reach
+
+
+def test_turned_full_sign_stays_centred_on_the_common_reach():
+    # 240 x 300 turned = 300 along X: centre 175, X 25..325, tower corner 145
+    # exactly as before pst-8tp6w (the baked profiled 3MFs are byte-identical).
+    transform, tower_x, tower_y = _place_on_plate(_box_model(240, 300), H2C.settings())
+    assert transform.startswith('0 1 0 -1 0 0')
+    assert _placed(transform, 240, 300) == pytest.approx((25.0, 325.0, 2.0, 242.0))
+    assert (tower_x, tower_y) == pytest.approx((145.0, 244.0))
+
+
+@pytest.mark.parametrize('dz, fits', [(320, True), (321, False)])
+def test_placement_refuses_a_part_taller_than_the_printing_nozzle(dz, fits):
+    if fits:
+        _place_on_plate(_box_model(100, 100, dz), H2C.settings())
+    else:
+        with pytest.raises(ValueError, match=r'part 100.0 x 100.0 mm is 321.0 mm tall; '
+                                             r'the printing nozzle \(extruder 1\) prints up to 320 mm'):
+            _place_on_plate(_box_model(100, 100, dz), H2C.settings())
 
 
 def test_bake_names_every_preset_a_profile_cannot_hold(tmp_path, monkeypatch, capsys):

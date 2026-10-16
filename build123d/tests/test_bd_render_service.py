@@ -411,8 +411,10 @@ def test_a_part_too_large_for_the_profiled_printer_is_400(base_url):
     )
     assert status == 400, body
     message = json.loads(body)["errorMessage"]
-    assert "does not fit the 330 x 320 mm plate" in message and "None (generic 3MF)" in message
-    assert "max footprint 326 x 244 mm" in message  # the limit the user must size to (pst-68fpi)
+    assert "does not fit the printing nozzle's 325 x 320 mm reach" in message
+    assert "None (generic 3MF)" in message
+    # The limit the user must size to: the nozzle's reach, not the plate (pst-68fpi, pst-8tp6w).
+    assert "max footprint 323 x 244 mm" in message
 
 
 def test_worker_takes_the_profile_as_its_fourth_argument(monkeypatch, tmp_path):
@@ -447,6 +449,30 @@ def _run_worker(monkeypatch, slug: str, fmt: str, params: dict, out, *profile: s
     monkeypatch.setattr(sys, "argv", ["render_worker.py", slug, fmt, str(out), *profile])
     monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(params)))
     return module.main()
+
+
+
+def test_a_part_taller_than_the_printing_nozzle_is_400(monkeypatch, tmp_path, capsys):
+    """No multi-colour preset comes near the H2C's 320 mm, so shrink the
+    printing nozzle's height below the 1.6 mm card: the height ValueError
+    takes the same 400 path as the footprint one (pst-8tp6w)."""
+    from profiles import PrinterProfile
+
+    settings = PrinterProfile.settings
+
+    def short_nozzle(self):
+        config = settings(self)
+        config["extruder_printable_height"] = ["1", "325"]
+        return config
+
+    monkeypatch.setattr(PrinterProfile, "settings", short_nozzle)
+    out = tmp_path / "out.3mf"
+    assert _run_worker(monkeypatch, "holder-label-card", "3mf", {"text": "PLA"}, out,
+                       "bambu-h2c-0.4") == 4
+    err = capsys.readouterr().err
+    assert "mm tall; the printing nozzle (extruder 1) prints up to 1 mm" in err
+    assert "None (generic 3MF)" in err
+    assert not out.exists()
 
 
 @pytest.mark.parametrize("fault", [

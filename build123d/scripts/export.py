@@ -215,17 +215,57 @@ def _bbox(polygon) -> tuple[float, float, float, float]:
     return min(xs), max(xs), min(ys), max(ys)
 
 
-def max_footprint(settings: dict) -> tuple[float, float]:
-    """The largest part footprint a profile's plate takes, either way round.
+def _printing_nozzle(settings: dict) -> tuple[tuple[float, float, float, float], float, bool]:
+    """Reach (x0, x1, y0, y1) and height of the extruders the profile prints
+    with, plus whether they came from per-extruder keys (else the plate).
 
-    The part sits PLATE_MARGIN in from the plate's edges with the prime tower
-    reserve behind it, so it gets the plate's width less two margins by its
-    depth less three margins and the reserve (326 x 244 mm on the 330 x 320
-    H2C). The print audit's build volume (BED_* in tests/print_audit.py) is
-    larger: a multi-colour preset must also fit this (pst-68fpi).
+    The extruders are the distinct 1-based tools in filament_map (all "1" =
+    array index 0 in the H2C template: the 325 x 320 x 320 nozzle, X 0..325),
+    so the reach is the intersection of their extruder_printable_area and the
+    height the least of their extruder_printable_height. A profile without
+    those keys, or one whose map names an extruder they do not list, falls
+    back to printable_area and printable_height (pst-8tp6w).
     """
+    plate = _bbox(settings['printable_area'])
+    areas = settings.get('extruder_printable_area') or []
+    heights = settings.get('extruder_printable_height') or []
+    used = sorted({int(tool) - 1 for tool in settings.get('filament_map') or []})
+    if not used or any(i >= len(areas) for i in used):
+        return plate, float(settings['printable_height']), False
+    reach = [_bbox(areas[i].split(',')) for i in used]
+    rx0, rx1 = max(b[0] for b in reach), min(b[1] for b in reach)
+    ry0, ry1 = max(b[2] for b in reach), min(b[3] for b in reach)
+    height = min(float(heights[i]) if i < len(heights) else float(settings['printable_height'])
+                 for i in used)
+    return (rx0, rx1, ry0, ry1), height, True
+
+
+def _part_band(settings: dict) -> tuple[float, float, float, float]:
+    """X and Y band the part may occupy: the printing nozzle's reach, kept
+    PLATE_MARGIN in from the plate's edges (the margin applies at the plate's
+    edges only, so a reach edge inside the plate is used as is)."""
     px0, px1, py0, py1 = _bbox(settings['printable_area'])
-    return px1 - px0 - 2 * PLATE_MARGIN, py1 - py0 - 3 * PLATE_MARGIN - PRIME_TOWER_RESERVE
+    (rx0, rx1, ry0, ry1), _, _ = _printing_nozzle(settings)
+    return (max(px0 + PLATE_MARGIN, rx0), min(px1 - PLATE_MARGIN, rx1),
+            max(py0 + PLATE_MARGIN, ry0), min(py1 - PLATE_MARGIN, ry1))
+
+
+def max_footprint(settings: dict) -> tuple[float, float]:
+    """The largest part footprint a profile prints, either way round.
+
+    The part must sit inside the printing nozzle's reach (_printing_nozzle)
+    and PLATE_MARGIN in from the plate's edges (_part_band), with a margin
+    and the prime tower reserve behind it: width = the band's X extent, depth
+    = the band's Y extent less PLATE_MARGIN and PRIME_TOWER_RESERVE. On the
+    H2C that is 323 x 244 mm: its printing nozzle reaches X 0..325 of the
+    330 x 320 plate, so the band is X 2..325 (one plate margin, at the left
+    plate edge) by Y 2..318. Not the plate: no H2C nozzle reaches all 330 mm
+    (pst-8tp6w). The print audit's build volume (BED_* in
+    tests/print_audit.py) is larger: a multi-colour preset must also fit this
+    (pst-68fpi).
+    """
+    bx0, bx1, by0, by1 = _part_band(settings)
+    return bx1 - bx0, by1 - by0 - PLATE_MARGIN - PRIME_TOWER_RESERVE
 
 
 def _place_on_plate(model: str, settings: dict) -> tuple[str, float, float]:
@@ -238,6 +278,12 @@ def _place_on_plate(model: str, settings: dict) -> tuple[str, float, float]:
     prime tower behind it; turn the part 90 degrees about Z when only that
     leaves room for the tower (the 240 x 300 sign on the 330 x 320 H2C bed,
     which is what Bambu Studio's own arrange does). Never touches the mesh.
+
+    The height is checked first, then the footprint: a part must be no taller
+    than the printing nozzle prints and must fit max_footprint, else
+    ValueError naming the limit. The centring point and the tower stay on the
+    area every extruder reaches; only the clamp is the printing nozzle's band
+    (pst-8tp6w), so a part centred there never leaves the nozzle's reach.
     """
     import numpy as np
 
@@ -248,6 +294,13 @@ def _place_on_plate(model: str, settings: dict) -> tuple[str, float, float]:
     reach = [_bbox(area.split(',')) for area in settings.get('extruder_printable_area') or []]
     rx0, rx1 = (max(b[0] for b in reach), min(b[1] for b in reach)) if reach else (px0, px1)
     tower_w = float(settings['prime_tower_width'])
+    (nx0, nx1, ny0, ny1), height, per_nozzle = _printing_nozzle(settings)
+    bx0, bx1, by0, _ = _part_band(settings)
+    if hi[2] - lo[2] > height:
+        tools = ', '.join(sorted(set(settings['filament_map'])))
+        where = f'the printing nozzle (extruder {tools})' if per_nozzle else 'the printer'
+        raise ValueError(f'part {hi[0] - lo[0]:.1f} x {hi[1] - lo[1]:.1f} mm is {hi[2] - lo[2]:.1f} mm '
+                         f'tall; {where} prints up to {height:.0f} mm')
     max_w, max_d = max_footprint(settings)
     for turned in (False, True):
         # Turning +90 degrees about Z maps (x, y) to (-y, x).
@@ -256,12 +309,14 @@ def _place_on_plate(model: str, settings: dict) -> tuple[str, float, float]:
         if x1 - x0 <= max_w and y1 - y0 <= max_d:
             break
     else:
+        where = (f"printing nozzle's {nx1 - nx0:.0f} x {ny1 - ny0:.0f} mm reach" if per_nozzle
+                 else f'{px1 - px0:.0f} x {py1 - py0:.0f} mm plate')
         raise ValueError(f'part {hi[0] - lo[0]:.1f} x {hi[1] - lo[1]:.1f} mm does not fit the '
-                         f'{px1 - px0:.0f} x {py1 - py0:.0f} mm plate with a prime tower behind '
-                         f'it (max footprint {max_w:.0f} x {max_d:.0f} mm, either way round)')
+                         f'{where} with a prime tower behind it (max footprint '
+                         f'{max_w:.0f} x {max_d:.0f} mm, either way round)')
     half = (x1 - x0) / 2
-    centre = min(max((rx0 + rx1) / 2, px0 + PLATE_MARGIN + half), px1 - PLATE_MARGIN - half)
-    tx, ty, tz = centre - (x0 + x1) / 2, py0 + PLATE_MARGIN - y0, -lo[2]
+    centre = min(max((rx0 + rx1) / 2, bx0 + half), bx1 - half)
+    tx, ty, tz = centre - (x0 + x1) / 2, by0 - y0, -lo[2]
     # Bambu Studio fills the 3x3 column-outer (bbs_3mf.cpp
     # bbs_get_transform_from_3mf_specs_string; add_transformation writes the
     # same order), so '0 1 0 -1 0 0 0 0 1' reads as (x, y) -> (-y, x). A
