@@ -512,18 +512,7 @@ def test_empty_part_raises():
 _SPECS = all_models()
 
 
-def _cup_lid_shank_exclusion(values):
-    """Only the approved horizontal shank, exact radius and plate depth.
-
-    No bbox padding and no countersink/pin/edge-treatment exclusions.
-    """
-    from holders.cup_lid import dimensions
-    p = dimensions(values)
-    return Rot(-90, 0, 0) * Cylinder(
-        p['bolt_clearance_diameter']/2, p['plate_thickness'],
-        align=(Align.CENTER, Align.CENTER, Align.MIN))
-
-
+from holders.cup_lid import audit_exclusions as cup_lid_exclusions
 from holders.openconnect_drawer import audit_exclusions as drawer_exclusions
 from holders.openconnect_plate import audit_exclusions as plate_exclusions
 from holders.cartridge_holder import audit_exclusions as cartridge_exclusions
@@ -537,7 +526,7 @@ from holders.underware_text_label import audit_exclusions as text_label_families
 from holders.underware_path_channels import audit_exclusions as path_families
 
 _MODEL_EXCLUSIONS = {
-    'holder_cup_lid': lambda values: [_cup_lid_shank_exclusion(values)],
+    'holder_cup_lid': cup_lid_exclusions,
     'openconnect_plate': plate_exclusions,
     'openconnect_drawer': drawer_exclusions,
     'littletikes_dream_machine_cartridge_holder': cartridge_exclusions,
@@ -673,9 +662,9 @@ def test_module_audit_exclusions_are_registered(spec):
     only, and each model's per-preset test calls its own hook directly, so a
     missing map entry was a silent `bd audit --preset` false fail
     (holder_tombstone_stake/pinned, pst-qeevw). One-directional on purpose:
-    holder_cup_lid's region lives only in this file, so map ⊄ hooks.
-    Non-empty exclusions at a non-preset param endpoint stay outside this
-    guard. Data-only — no build, no audit.
+    a hook may be non-empty only at a non-preset param endpoint, which this
+    guard never visits, so "every map entry is non-empty here" would be
+    false (map ⊄ hooks stays allowed). Data-only — no build, no audit.
     """
     if spec.name in _MODEL_EXCLUSIONS:
         return
@@ -722,7 +711,7 @@ def test_cup_lid_shank_exclusion_is_the_only_miss():
     from holders.cup_lid import SPEC
     values = SPEC.resolve_values()
     part = SPEC.build(values)
-    region = _cup_lid_shank_exclusion(values)
+    region, = cup_lid_exclusions(values)
     raw = audit(part, SPEC.print_orientation, model='cup_lid_unexcluded')
     assert not raw.ok
     assert raw.max_overhang_deg > 45

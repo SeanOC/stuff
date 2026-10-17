@@ -225,6 +225,20 @@ def holder(**values):
     return (part-_center_hole(p)).clean()
 
 
+def audit_exclusions(values: dict) -> list:
+    """Only the approved horizontal shank, exact radius and plate depth.
+
+    No bbox padding and no countersink/pin/edge-treatment exclusions.
+    Accepted by the pst-vks5 spec ("the horizontal bolt shank hole is a
+    plain round hole - accepted as-is"); the exact-cylinder seam is that
+    bead's plan review, pinned in docs/cup-lid-validation.md.
+    """
+    p = dimensions(values)
+    return [Rot(-90, 0, 0) * Cylinder(
+        p['bolt_clearance_diameter']/2, p['plate_thickness'],
+        align=(Align.CENTER, Align.CENTER, Align.MIN))]
+
+
 SPEC = register(ModelSpec(
     name='holder_cup_lid', build=lambda values: holder(**values),
     title='Cup lid holder (Multibuild)', category_id='multiboard',
