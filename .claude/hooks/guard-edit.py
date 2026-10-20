@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""PreToolUse(Edit|Write|MultiEdit|NotebookEdit) guard: protected paths for worker sessions.
+"""PreToolUse(Read|Edit|Write|MultiEdit|NotebookEdit) guard: protected paths for worker sessions.
 
-Blocks writes to env files, ~/.claude/projects (mayor memory), .gc/runtime/secrets, and
-.github/workflows/ (mayor-owned; carve-out = $GC_CITY/.gc/runtime/guard-allow/workflow-edit-<rig>,
+Blocks reads AND writes of env files (.env, .env.*, <name>.env; templates .example/.sample/.template/.dist
+allowed), ~/.claude/projects (mayor memory) and .gc/runtime/secrets; blocks WRITES to .github/workflows/ (mayor-owned; carve-out = $GC_CITY/.gc/runtime/guard-allow/workflow-edit-<rig>,
 touched by the mayor when a bead carries an explicit workflow-edit authorization).
 Paths are normalized (.. segments, ~ and $HOME, relative to the hook's cwd) before matching.
 """
@@ -30,6 +30,7 @@ def main():
         payload = json.load(sys.stdin)
         ti = payload.get("tool_input", {})
         raw = ti.get("file_path") or ti.get("path") or ti.get("notebook_path") or ""
+        tool = payload.get("tool_name") or ""
         cwd = payload.get("cwd") or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
     except Exception:
         print("BLOCKED by guard-edit (parse): hook payload unreadable", file=sys.stderr)
@@ -49,12 +50,15 @@ def main():
     base = os.path.basename(p)
     for cand in {p, real}:
         b = os.path.basename(cand)
-        if b == ".env" or (b.startswith(".env.") and not b.endswith(ALLOWED_ENV_SUFFIXES)):
-            print("BLOCKED by guard-edit: never write env files from a worker session.", file=sys.stderr)
+        if b == ".env" or b.endswith(".env") or (b.startswith(".env.") and not b.endswith(ALLOWED_ENV_SUFFIXES)):
+            print("BLOCKED by guard-edit: env files are never read or written from a worker session "
+                  "(use the sanitized env the worktree setup provides).", file=sys.stderr)
             sys.exit(2)
         if "/.claude/projects/" in cand + "/" or "/.gc/runtime/secrets" in cand + "/":
-            print("BLOCKED by guard-edit: mayor memory and runtime secrets are not writable from a worker.", file=sys.stderr)
+            print("BLOCKED by guard-edit: mayor memory and runtime secrets are not readable or writable from a worker.", file=sys.stderr)
             sys.exit(2)
+        if tool == "Read":
+            continue  # workflows are readable; only writes are mayor-owned
         if "/.github/workflows/" in cand + "/" or cand.endswith("/.github/workflows"):
             rig = rig_name(cwd)
             if not (CITY / ".gc/runtime/guard-allow" / f"workflow-edit-{rig}").exists():

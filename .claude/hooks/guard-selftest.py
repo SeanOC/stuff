@@ -82,6 +82,32 @@ BASH_BLOCK = [
     "gh pr -R o/r merge 1 --admin", "gh -Ro/r pr merge 1 --admin", "gh pr checks 1 --watch=true", "gh -R o/r run watch 1",
     "vercel --scope team env pull", "vercel -S team logs app", "vercel --scope=team env ls", "vercel --token x --scope team env pull",
     "npx vercel --scope team env pull",
+    # Substitutions still execute in double quotes, word-internal # text, and
+    # unquoted heredocs (where quote and comment characters are just data).
+    'echo "# $(sudo ls)"', 'echo prefix#$(sudo ls)', r'echo \#$(sudo ls)',
+    "cat <<MSG\n`sudo ls`\nMSG", "cat <<MSG\n'$(sudo ls)'\nMSG",
+    "cat <<MSG\n# $(sudo ls)\nMSG",
+    "cat <<'MSG'\n$(sudo ls)\nMSG\nsudo ls",
+    "cat <<'FIRST' <<SECOND\n$(sudo ls)\nFIRST\n$(sudo ls)\nSECOND",
+    'echo "$(cat <<MSG\n$(sudo ls)\nMSG\n)"',
+    'echo "$(echo "# $(sudo ls)")"',
+    "echo \"<<'MSG'\"\nsudo ls\nMSG",
+    'echo "<<\'MSG\'\n$(sudo ls)\nMSG"',
+    "cat <<MSG\nMS\\\nG\nsudo ls",
+    "cat <<MSG\nMSG \n$(sudo ls)\nMSG",
+    "cat <<MSG\n\\$(echo ok) $(sudo ls)\nMSG",
+    'cat <<<"$(sudo ls)"',
+    "echo $(sleep 15); sleep 15", "echo `sleep 15`; sleep 15",
+    'echo "$(sleep 15)"; echo "$(sleep 15)"', 'echo "$(echo $(sleep 30))"',
+    "echo hi > $(printf out)", 'sleep "$(printf 1)"',
+    # Malformed executable text must still fail closed through recursive paths.
+    'echo "$(echo hi"', "eval \"echo '\"", "bash -c \"echo '\"", "env -S \"echo '\"",
+    # round 5 (ia-next gate): suffix-form env files, destructive parents, patch, grep pattern vs path
+    "cat /tmp/prod.env", "head -n 1 /tmp/runpod.env", "source scratch/prod.env", "cp ~/x.env .",
+    "rm -rf .github", "git rm -r .github", "mv .github saved-github", "rm -rf .", "rm -rf ./x/..", "git clean -fdx .github",
+    "patch -p1 < changes.diff", "patch -p1 -i x.diff", "patch .github/workflows/ci.yml x.diff",
+    "grep KEY .env", "rg KEY .env", "grep -e KEY .env", "grep -n KEY -- .env", "rg -t py KEY .env", "grep -A 3 KEY .env.local",
+    "vercel -e X=1 env pull", "vercel --env X=1 logs app",
 ]
 BASH_ALLOW = [
     "git push -u origin gc-pilot/gs-1234", "git push origin gc-ia/worker-guards", "git push", "git push origin HEAD",
@@ -123,6 +149,44 @@ BASH_ALLOW = [
     "git commit -m 'see `gc` docs'", 'echo "use \\`gc\\` here"', 'bd update x --notes "$(cat notes.md)"',
     "gh pr merge 1 --admin=false", "gh -R o/r pr view 1 --json state", "gh -R o/r pr merge 1 --squash", "gh --repo o/r pr checks 1",
     "vercel --scope team build", "vercel -S team --help", "vercel --cwd . build",
+    # Review F1: comments and quoted heredocs are literal, including when they
+    # occur inside a substitution used for a PR body or commit message.
+    'echo hi  # `sudo ls`',
+    'echo hi;# $(gh pr merge 1 --admin)\necho ok',
+    'echo hi\n# `cat .env`\necho ok',
+    "echo hi # unmatched ' $( and `",
+    'gh pr comment 39 --body "$(cat <<\'MSG\'\nNEVER run `sudo chmod 777 /`\nMSG\n)"',
+    'gh pr comment 39 --body "$(cat <<\'MSG\'\nNEVER run `gh pr merge 1 --admin`\nMSG\n)"',
+    'git commit -m "$(cat <<\'MSG\'\nunmatched ( here\nMSG\n)"',
+    "cat <<'MSG'\nsudo ls\ncat .env\nunmatched ' \" (`\nMSG",
+    'cat <<"MSG"\n$(sudo ls)\nMSG',
+    "cat <<\\MSG\n`sudo ls`\nMSG",
+    "cat <<M'S'G\n$(sudo ls)\nMSG",
+    "cat <<-'MSG'\n\t$(sudo ls)\n\tMSG",
+    "cat <<'MSG' # $(sudo ls)\n`sudo ls`\nMSG",
+    "cat <<'FIRST' <<'SECOND'\n$(sudo ls)\nFIRST\n`cat .env`\nSECOND",
+    "cat <<MSG\nsudo ls\n' \" ( # prose\n\\$(sudo ls)\nMSG",
+    'cat <<<"literal ( # text"',
+    # Quoted markers in ordinary prose must not hide later executable text.
+    "echo \"<<'MSG'\"\necho ok",
+    'echo "$(echo ok # unmatched ) \'\n)"',
+    # Review F2: parentheses inside quotes belong to the argument, not to the
+    # surrounding command substitution's depth.
+    'echo "$(sed \'s/(//\' f)"', 'echo "$(sed \'s/)//\' f)"',
+    'echo "$(awk \'{print "("}\' f)"',
+    'echo "$(printf "%s" "(")"', 'echo "$(printf "%s" ")")"',
+    'echo "$(echo "$(printf \'(\')")"',
+    # Review F3: each executable sleep contributes once, at every nesting level.
+    'echo `sleep 29`', 'echo "`sleep 29`"', 'echo $(sleep 29)',
+    'echo "$(sleep 29)"', 'echo "$(echo $(sleep 29))"',
+    'echo "$(sleep 10)"; echo `sleep 19`',
+    'cat <<MSG\n$(sleep 29)\nMSG',
+    # round 5: literal text / pattern operands are not paths; non-mutating patch; sibling files under .github
+    "bd update x --notes '.env'", "gh pr comment 1 --body '.env'", "git commit -m '.env'", "git tag -m .env v1",
+    "bd update x --notes=.env", "gc bd update x -d .env", "rg .env README.md", "grep -n .env README.md", "grep -rn '\\.env' src/",
+    "rg -n 'process.env' src/", "grep -c .env.local docs.md", "patch --dry-run -p1 < x.diff", "rm -rf .github/CODEOWNERS",
+    "rm -f .github/dependabot.yml", "rm -rf node_modules", "mv .github/CODEOWNERS .github/OWNERS", "cat .env.example",
+    "cat config.envrc", "ls .github", "cat .github/workflows/ci.yml", "git rm .github/CODEOWNERS",
 ]
 EDIT_BLOCK = [".env", ".env.local", "./.env", "sub/../.env", "/abs/.env.production", ".github/workflows/ci.yml",
               "./x/../.github/workflows/ci.yml", "~/.claude/projects/x/memory/MEMORY.md", "$HOME/.claude/projects/x/y.md",
@@ -157,6 +221,35 @@ for p in EDIT_BLOCK:
     expect("guard-edit.py", {"file_path": p}, 2, "edit " + p)
 for p in EDIT_ALLOW:
     expect("guard-edit.py", {"file_path": p}, 0, "edit " + p)
+# Read tool: secrets blocked (incl. suffix .env), templates + workflows readable
+READ_BLOCK = [".env", ".env.local", "/tmp/prod.env", "scratch/runpod.env", "~/.claude/projects/x/MEMORY.md", ".gc/runtime/secrets/x"]
+READ_ALLOW = [".env.example", ".env.local.example", ".envrc", ".github/workflows/ci.yml", "src/x.ts", "README.md"]
+def expect_read(path, want):
+    global fails
+    e = dict(env)
+    p = subprocess.run([sys.executable, os.path.join(HERE, "guard-edit.py")],
+                       input=json.dumps({"tool_name": "Read", "tool_input": {"file_path": path}, "cwd": work}),
+                       capture_output=True, text=True, env=e)
+    if p.returncode != want:
+        fails += 1
+        print(f"FAIL 'Read {path}': rc={p.returncode} want={want} :: {p.stderr.strip().splitlines()[0] if p.stderr.strip() else ''}")
+for p_ in READ_BLOCK:
+    expect_read(p_, 2)
+for p_ in READ_ALLOW:
+    expect_read(p_, 0)
+# settings-level regression: the native deny backstop must not catch the allowed templates, and Read must be hooked
+import fnmatch
+settings_path = next((p for p in (os.path.join(HERE, "settings.worker.json"), os.path.join(HERE, "..", "settings.json")) if os.path.exists(p)), None)
+with open(settings_path) as fh:
+    cfg = json.load(fh)
+deny_reads = [d[5:-1] for d in cfg["permissions"]["deny"] if d.startswith("Read(")]
+for tpl in ("./.env.example", "./.env.local.example", "./.env.sample", "./.env.template", "./.env.dist", "./.envrc"):
+    if any(fnmatch.fnmatch(tpl, pat) or fnmatch.fnmatch(tpl[2:], pat) for pat in deny_reads):
+        fails += 1
+        print(f"FAIL settings deny catches allowed template {tpl}")
+if not any("Read" in h["matcher"].split("|") for h in cfg["hooks"]["PreToolUse"]):
+    fails += 1
+    print("FAIL settings: Read is not routed to guard-edit.py")
 # carve-outs
 open(os.path.join(city, ".gc/runtime/guard-allow/workflow-edit-demo"), "w").close()
 expect("guard-edit.py", {"file_path": ".github/workflows/ci.yml"}, 0, "workflow edit with marker")
@@ -166,6 +259,6 @@ expect("guard-bash.py", {"command": "git push origin main"}, 0, "push-main with 
 open(os.path.join(city, ".gc/runtime/guard-allow/sudo"), "w").close()
 expect("guard-bash.py", {"command": "sudo ls"}, 2, "sudo has no carve-out")
 expect("guard-bash.py", {"command": "git push -f origin x"}, 2, "force-push has no carve-out")
-total = len(BASH_BLOCK) + len(BASH_ALLOW) + len(EDIT_BLOCK) + len(EDIT_ALLOW) + 8
+total = len(BASH_BLOCK) + len(BASH_ALLOW) + len(EDIT_BLOCK) + len(EDIT_ALLOW) + len(READ_BLOCK) + len(READ_ALLOW) + 8 + 7
 print(f"{total - fails}/{total} guard cases pass")
 sys.exit(1 if fails else 0)

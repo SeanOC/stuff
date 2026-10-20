@@ -8,8 +8,9 @@ The command is tokenized with shlex (quoted prose is never mistaken for options)
 split into simple statements on ; & | newlines ( ) and backticks, wrapper programs
 (env, command, nohup, timeout, xargs, npx, pnpm dlx, bash -c, ...) are unwrapped, and
 every statement is checked. Command substitutions ($(...) and backticks, including the
-quoted forms echo "$(...)") are extracted from the raw text (single quotes are literal) and
-checked as statements too. Other shell expansions are NOT evaluated: an unparseable sleep
+quoted forms echo "$(...)") are checked separately, once each. Comments and quoted
+heredoc bodies are literal; unquoted heredocs are scanned for substitutions only.
+Other shell expansions are NOT evaluated: an unparseable sleep
 argument or a redirect to an expanded variable is treated conservatively (blocked).
 
 Operator carve-outs: the mayor touches $GC_CITY/.gc/runtime/guard-allow/<marker>
@@ -44,7 +45,12 @@ RUNNERS = {"pnpm", "npm", "yarn", "bun", "uv", "poetry", "pipx", "npx"}
 SHELLS = {"bash", "sh", "zsh", "dash", "ksh", "fish"}
 GIT_GLOBAL_WITH_ARG = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path",
                        "--super-prefix", "--config-env", "--list-cmds"}
-VERCEL_GLOBAL_WITH_ARG = {"--scope", "-S", "--token", "-t", "--cwd", "--local-config", "-A",
+GREP_PROGRAMS = {"grep", "egrep", "fgrep", "rg", "ag", "ack"}
+GREP_VALUE_OPTIONS = {"-A", "-B", "-C", "-m", "-e", "-f", "--include", "--exclude", "--exclude-dir", "-t", "-T", "-g",
+                      "-j", "-M", "--type", "-d", "-D", "--color", "--colour", "--max-count", "--context", "--regexp",
+                      "--file", "--glob", "--iglob", "--max-depth", "--threads", "-E", "--encoding", "--pre", "-r", "--replace"}
+DESTRUCTIVE_PROGRAMS = {"rm", "rmdir", "mv", "unlink", "shred"}
+VERCEL_GLOBAL_WITH_ARG = {"--scope", "-S", "--token", "-t", "--cwd", "--local-config", "-A", "-e", "--env", "-b", "--build-env",
                           "--global-config", "-Q", "--team", "-T"}
 GH_ROOT_WITH_ARG = {"-R", "--repo", "--hostname"}
 PUSH_OPTS_WITH_ARG = {"-o", "--push-option", "--repo", "--receive-pack", "--exec", "--recurse-submodules"}
@@ -102,10 +108,20 @@ def norm(token):
 
 
 def is_env_file(path):
+    """`.env`, `.env.<anything>` and `<name>.env` (pulled prod envs such as /tmp/prod.env) are secret;
+    the template suffixes (.example/.sample/.template/.dist) are not."""
     base = os.path.basename(path)
-    if base == ".env":
+    if base == ".env" or base.endswith(".env"):
         return True
     return base.startswith(".env.") and not base.endswith(ALLOWED_ENV_SUFFIXES)
+
+
+def is_workflow_ancestor(path):
+    """True when removing/moving `path` would take .github/workflows with it (cwd, .github, or any parent)."""
+    if not path:
+        return False
+    workflows = os.path.normpath(os.path.join(cwd, ".github/workflows"))
+    return path != workflows and workflows.startswith(path.rstrip("/") + "/")
 
 
 def is_secret_path(path):
@@ -124,6 +140,7 @@ def is_workflow_path(path):
 
 def statements(command):
     lexer = shlex.shlex(command, posix=True, punctuation_chars=SEPARATORS)
+    lexer.commenters = ""  # shell_parts already removed comments at shell word boundaries
     lexer.whitespace = " \t\r"
     lexer.whitespace_split = True
     words, out = [], []
@@ -144,51 +161,147 @@ def statements(command):
     return out
 
 
-def expansions(text):
-    """Contents of every executable command substitution in text: $(...) and `...` outside single
-    quotes (double quotes do not stop them), nested ones included, outermost first."""
-    out, i, n = [], 0, len(text)
-    in_single = in_double = False
-    while i < n:
+def heredoc_word(text, start):
+    """Read a heredoc delimiter with quote removal, retaining whether it was quoted."""
+    i = start
+    while i < len(text) and text[i] in " \t":
+        i += 1
+    begin, quote, quoted = i, "", False
+    while i < len(text):
         ch = text[i]
-        if ch == "\\" and not in_single:
+        if not quote and ch in " \t\r\n;&|()<>":
+            break
+        if ch == "\\" and quote != "'":
+            quoted = True
             i += 2
             continue
-        if ch == "'" and not in_double:
-            in_single = not in_single
-        elif ch == '"' and not in_single:
-            in_double = not in_double
-        elif not in_single and ch == "$" and text[i + 1:i + 2] == "(":
-            depth, j = 1, i + 2
-            while j < n and depth:
-                c = text[j]
-                if c == "\\":
-                    j += 2
-                    continue
-                if c == "(":
-                    depth += 1
-                elif c == ")":
-                    depth -= 1
-                j += 1
-            body = text[i + 2:j - 1] if depth == 0 else text[i + 2:]
-            out.append(body)
-            out.extend(expansions(body))
-            i = j
-            continue
-        elif not in_single and ch == "`":
-            j = text.find("`", i + 1)
-            body = text[i + 1:j] if j != -1 else text[i + 1:]
-            out.append(body)
-            out.extend(expansions(body))
-            i = j + 1 if j != -1 else n
-            continue
+        if ch in "'\"" and (not quote or quote == ch):
+            quoted = True
+            quote = "" if quote else ch
         i += 1
-    return out
+    words = shlex.split(text[begin:i])
+    if not words:
+        raise ValueError("missing heredoc delimiter")
+    return i, words[0], quoted
+
+
+def shell_parts(text, *, heredoc=False):
+    """Separate executable shell text from literal text and command substitutions.
+
+    Each substitution gets its own quote context. Replace its occurrence in the
+    parent with an opaque expansion so shlex cannot inspect/count the body again,
+    while redirect targets and sleep operands still fail closed on unknown values.
+    This is a lexer for the guard's supported forms, not a complete shell parser.
+    """
+    n = len(text)
+
+    def scan(i, closing=False, literal=False):
+        command, children, pending = [], [], []
+        quote, depth, word_start = "", 0, True
+        while i < n:
+            ch = text[i]
+            if quote == "'":
+                command.append(ch)
+                if ch == "'":
+                    quote = ""
+                i += 1
+                continue
+            if ch == "\\" and (not (quote or literal) or text[i + 1:i + 2] in "$`\\\"\n"):
+                escaped = text[i:i + 2]
+                if escaped != "\\\n":
+                    command.append(escaped)
+                    word_start = False
+                i += 2
+                continue
+            if text.startswith("$(", i):
+                parts, i = scan(i + 2, closing=True)
+                children.extend(parts)
+                command.append("${__guard_substitution__}")
+                word_start = False
+                continue
+            if ch == "`":
+                j = i + 1
+                while j < n and text[j] != "`":
+                    j += 2 if text[j] == "\\" else 1
+                if j >= n:
+                    raise ValueError("unclosed backtick substitution")
+                body = re.sub(r"\\([$`\\])", r"\1", text[i + 1:j])
+                children.extend(shell_parts(body))
+                command.append("${__guard_substitution__}")
+                word_start = False
+                i = j + 1
+                continue
+            if not literal:
+                if ch in "'\"" and (not quote or quote == ch):
+                    quote = "" if quote else ch
+                elif not quote:
+                    if ch == "#" and word_start:
+                        end = text.find("\n", i)
+                        i = n if end == -1 else end
+                        continue
+                    if text.startswith("<<<", i):  # here-string, not a heredoc
+                        command.append("<<<")
+                        i += 3
+                        word_start = True
+                        continue
+                    if text.startswith("<<", i):
+                        strip_tabs = text.startswith("<<-", i)
+                        end, delimiter, quoted = heredoc_word(text, i + 2 + strip_tabs)
+                        pending.append((delimiter, quoted, strip_tabs))
+                        command.append(text[i:end])
+                        i = end
+                        word_start = False
+                        continue
+                    if ch == "\n" and pending:
+                        command.append(ch)
+                        i += 1
+                        for delimiter, quoted, strip_tabs in pending:
+                            body = []
+                            while i < n:
+                                end = text.find("\n", i)
+                                end = n if end == -1 else end
+                                line = text[i:end]
+                                i = min(end + 1, n)
+                                # In expanding heredocs, join escaped newlines
+                                # before checking for the closing delimiter.
+                                while (not quoted and end < n
+                                       and (len(line) - len(line.rstrip("\\"))) % 2):
+                                    end = text.find("\n", i)
+                                    end = n if end == -1 else end
+                                    line = line[:-1] + text[i:end]
+                                    i = min(end + 1, n)
+                                if (line.lstrip("\t") if strip_tabs else line) == delimiter:
+                                    break
+                                body.append(line + "\n")
+                            if not quoted:
+                                children.extend(shell_parts("".join(body), heredoc=True))
+                        pending.clear()
+                        word_start = True
+                        continue
+                    if ch == "(":
+                        depth += 1
+                    elif ch == ")":
+                        if closing and depth == 0:
+                            return ["".join(command)] + children, i + 1
+                        depth -= 1
+            command.append(ch)
+            word_start = not quote and ch in " \t\r\n;&|()<>"
+            i += 1
+        if closing:
+            raise ValueError("unclosed command substitution")
+        return ([] if literal else ["".join(command)]) + children, i
+
+    return scan(0, literal=heredoc)[0]
 
 
 def check_script(text, state):
     """Check every statement of a shell text plus every command substitution it executes."""
-    for part in [text] + expansions(text):
+    try:
+        parts = shell_parts(text)
+    except ValueError as e:
+        block("parse", f"could not tokenize '{text[:40]}' ({e}); fix the quoting", carveout=False)
+        return
+    for part in parts:
         try:
             parsed = statements(part)
         except ValueError as e:
@@ -205,12 +318,29 @@ def check_paths(words, rig):
             not any(a in words[1:] for a in ("--check", "--stat", "--numstat", "--summary", "--show-current-patch")):
         block(f"workflow-edit-{rig}", "git apply/am can rewrite .github/workflows from patch contents the guard "
               "cannot inspect; use --check/--stat to inspect, or edit files directly")
+    if program == "patch" and not any(a in {"--dry-run", "--check"} or a.startswith("--dry-run") for a in words[1:]):
+        block(f"workflow-edit-{rig}", "patch applies contents the guard cannot inspect (it can rewrite .github/workflows); "
+              "use --dry-run to inspect, or edit files directly")
+    git_sub = words[1] if program == "git" and len(words) > 1 else ""
+    destructive = program in DESTRUCTIVE_PROGRAMS or (program == "git" and git_sub in {"rm", "mv", "clean"})
+    git_prose = program == "git" and git_sub in {"commit", "tag", "notes", "merge"}
+    pattern_pending = program in GREP_PROGRAMS and not any(a in {"-e", "-f"} or a.startswith(("--regexp", "--file", "-e", "-f")) and a[:2] in {"-e", "-f"} for a in words[1:])
     i = 0
     while i < len(words):
         w = words[i]
+        prev = words[i - 1] if i > 0 else ""
+        text_value = prev in TEXT_OPTIONS and (prev.startswith("--") or program in {"bd", "gc", "gh"} or git_prose)
         prose = (" " in w or "\t" in w) and ((program not in READ_PROGRAMS and program not in WRITE_PROGRAMS)
-                                              or (i > 0 and words[i - 1] in TEXT_OPTIONS) or program == "git" and words[1:2] in (["commit"], ["tag"], ["notes"], ["merge"]))
-        if prose and not (i > 0 and ">" in words[i - 1] and all(ch in SEPARATORS for ch in words[i - 1])):
+                                              or prev in TEXT_OPTIONS or git_prose)
+        if (prose or text_value) and not (i > 0 and ">" in prev and all(ch in SEPARATORS for ch in prev)):
+            i += 1
+            continue
+        if "=" in w and w.startswith("--") and w.split("=", 1)[0] in TEXT_OPTIONS:
+            i += 1
+            continue
+        if pattern_pending and i > 0 and not w.startswith("-") and prev not in GREP_VALUE_OPTIONS \
+                and not (">" in prev and all(ch in SEPARATORS for ch in prev)):
+            pattern_pending = False  # grep/rg: the first operand is the PATTERN, not a file
             i += 1
             continue
         if ">" in w and all(ch in SEPARATORS for ch in w):
@@ -239,6 +369,8 @@ def check_paths(words, rig):
         if is_secret_path(p) and program not in {"echo", "printf", "test", "["}:
             block("secret-read", f"'{w}' is a protected secret/memory path (env files, ~/.claude/projects, "
                   ".gc/runtime/secrets); workers use the sanitized env the worktree setup provides", carveout=False)
+        elif destructive and is_workflow_ancestor(p):
+            block(f"workflow-edit-{rig}", f"removing/moving '{w}' takes .github/workflows with it (mayor-owned)")
         elif is_workflow_path(p) and program in WRITE_PROGRAMS:
             if program == "git" and not any(s in words[1:] for s in ("rm", "mv", "checkout", "restore", "apply", "am", "clean", "stash")):
                 pass
@@ -557,11 +689,6 @@ def main():
         sys.exit(2)
     if not isinstance(command, str) or not command.strip():
         return
-    try:
-        statements(command)
-    except ValueError as e:
-        print(f"BLOCKED by guard-bash (parse): could not tokenize the command ({e}); fix the quoting", file=sys.stderr)
-        sys.exit(2)
     state = {"sleep": 0.0, "loop": False}
     check_script(command, state)
     if blocked:

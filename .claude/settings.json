@@ -33,7 +33,7 @@
         ]
       },
       {
-        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "matcher": "Read|Edit|Write|MultiEdit|NotebookEdit",
         "hooks": [
           {
             "type": "command",
@@ -53,13 +53,17 @@
     ],
     "deny": [
       "Read(./.env)",
-      "Read(./.env.*)",
       "Read(~/.claude/projects/**)",
       "Read(**/.gc/runtime/secrets/**)",
       "Bash(git push --force:*)",
       "Bash(git push -f:*)",
       "Bash(sudo:*)",
-      "Bash(gh pr merge --admin:*)"
+      "Bash(gh pr merge --admin:*)",
+      "Read(./.env.local)",
+      "Read(./.env.production)",
+      "Read(./.env.development)",
+      "Read(./.env.prod)",
+      "Read(**/*.env)"
     ]
   }
 }
