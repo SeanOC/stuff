@@ -28,6 +28,7 @@ from build123d import (Align, Axis, Box, Face, GeomType, Line, Plane, Pos, Rot, 
                        ThreePointArc, Wire, loft, revolve, section)
 from shapely.geometry import Polygon, box
 from shapely.ops import unary_union
+from occt import AngledChamferInvalid, angled_chamfer
 
 from openconnect.constants import EPS, TILE_SIZE
 from . import constants as c
@@ -874,22 +875,20 @@ def _bed_edges(printed):
 
 
 def _occt_bevel(printed, edges):
-    from OCP.BRepFilletAPI import BRepFilletAPI_MakeChamfer
     from OCP.StdFail import StdFail_NotDone
-    from build123d import Part
-    bevel = BRepFilletAPI_MakeChamfer(printed.wrapped)
     # 45.01, not 45: a 0.01 deg margin keeps the bevel face on the safe
     # side of the 45 deg overhang gate against OCCT's sampled-normal noise
     # (audit tolerance 0.001 deg, tests/print_audit.py:75). An exact 45 also
     # passes at the default (2026-10-13). _wedge_bevel stays exactly 45; the
     # two paths differ by ~5e-5 mm.
-    for edge, face, _ in edges:
-        bevel.AddDA(BED_BEVEL, radians(45.01), edge.wrapped, face.wrapped)
     try:
-        result = Part(bevel.Shape())
-    except (StdFail_NotDone, ValueError):
+        result = angled_chamfer(
+            printed, [(edge, face) for edge, face, _ in edges],
+            BED_BEVEL, radians(45.01)
+        )
+    except (StdFail_NotDone, AngledChamferInvalid):
         return None
-    return result if result.is_valid and len(result.solids()) == 1 else None
+    return result if len(result.solids()) == 1 else None
 
 
 def _wedge_bevel(printed, edges):

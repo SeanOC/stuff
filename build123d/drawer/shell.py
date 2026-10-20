@@ -20,8 +20,8 @@ from dataclasses import dataclass, replace
 from math import radians, sqrt
 
 from build123d import Align, Box, Cone, Cylinder, Face, Line, Part, Plane, Pos, Rot, Solid, ThreePointArc, Wire, section
-from OCP.BRepFilletAPI import BRepFilletAPI_MakeChamfer
 from OCP.StdFail import StdFail_NotDone
+from occt import angled_chamfer
 
 from openconnect.constants import TILE_SIZE, EPS, EDGE_WALL_MIN_W, HEAD_MIDDLE_HEIGHT
 from openconnect.grid import fixtures, layout
@@ -625,7 +625,7 @@ def chamfer_bed(part, values=None):
     radius = v.get('back_magnet_diameter', 6)/2+c.MAGNET_HOLE_SIDE_CLEARANCE
     beds = [f for f in source.faces()
             if abs(f.bounding_box().max.Z) < 1e-6 and f.normal_at().Z < -.999]
-    bevel = BRepFilletAPI_MakeChamfer(source.wrapped)
+    edge_faces = []
     for face in beds:
         for edge in face.edges():
             # The author already flares magnet mouths by .2 mm at 45°.
@@ -634,9 +634,9 @@ def chamfer_bed(part, values=None):
             if (edge.geom_type.name == 'CIRCLE' and abs(edge.radius-radius-.2) < 1e-5
                     and any((edge.arc_center-Pos(*p).position).length < 1e-5 for p in magnets)):
                 continue
-            bevel.AddDA(.3, radians(45.01), edge.wrapped, face.wrapped)
+            edge_faces.append((edge, face))
     try:
-        result = Part(bevel.Shape())
+        result = angled_chamfer(source, edge_faces, .3, radians(45.01))
     except StdFail_NotDone:
         # At maximum side clearance, opposing .3 mm bevels meet at the
         # bottom of a .6 mm strip. OCCT's edge operation cannot collapse that
@@ -647,7 +647,7 @@ def chamfer_bed(part, values=None):
         result -= Pos(*point)*Cone(radius+.3, radius, .3,
                                   align=(Align.CENTER, Align.CENTER, Align.MIN))
     if not result.is_valid:
-        raise ValueError('drawer bed chamfer produced invalid geometry')
+        raise ValueError('drawer bed cones produced invalid geometry')
     return AUTHOR_TO_MODEL*result
 
 

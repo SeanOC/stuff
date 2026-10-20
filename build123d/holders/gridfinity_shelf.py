@@ -16,7 +16,6 @@ from build123d import (
     Box,
     Cylinder,
     Face,
-    Part,
     Pos,
     Rot,
     Solid,
@@ -24,7 +23,7 @@ from build123d import (
     Wire,
     fillet,
 )
-from OCP.BRepFilletAPI import BRepFilletAPI_MakeChamfer
+from occt import angled_chamfer
 
 from gridfinity import baseplate as gf
 from holders.registry import ModelSpec, Param, Preset, register
@@ -172,16 +171,9 @@ def chamfer_bed(part, values):
     bed = bed_faces[0]
     # Use OCCT's angle-based operation: build123d's angle argument converts
     # to two linear distances, which is not 45 degrees on tilted side faces.
-    bevel = BRepFilletAPI_MakeChamfer(part.wrapped)
-    for edge in bed.edges():
-        # OCCT's fitted curved bevels overshoot the nominal slope by ~0.0012
-        # degrees. A 0.01-degree inward margin keeps the actual surface below
-        # 45 degrees from vertical without weakening the production audit.
-        bevel.AddDA(0.3, radians(45.01), edge.wrapped, bed.wrapped)
-    finished = Part(bevel.Shape())
-    if not finished.is_valid:
-        raise ValueError("shelf underside chamfer produced invalid geometry")
-    return finished
+    return angled_chamfer(
+        part, [(edge, bed) for edge in bed.edges()], 0.3, radians(45.01)
+    )
 
 
 SPEC = register(ModelSpec(
