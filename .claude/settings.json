@@ -28,16 +28,16 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-bash.sh\""
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-bash.py\""
           }
         ]
       },
       {
-        "matcher": "Edit|Write|MultiEdit",
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-edit.sh\""
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-edit.py\""
           }
         ]
       }
