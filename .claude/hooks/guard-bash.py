@@ -46,9 +46,11 @@ SHELLS = {"bash", "sh", "zsh", "dash", "ksh", "fish"}
 GIT_GLOBAL_WITH_ARG = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path",
                        "--super-prefix", "--config-env", "--list-cmds"}
 GREP_PROGRAMS = {"grep", "egrep", "fgrep", "rg", "ag", "ack"}
-GREP_VALUE_OPTIONS = {"-A", "-B", "-C", "-m", "-e", "-f", "--include", "--exclude", "--exclude-dir", "-t", "-T", "-g",
-                      "-j", "-M", "--type", "-d", "-D", "--color", "--colour", "--max-count", "--context", "--regexp",
-                      "--file", "--glob", "--iglob", "--max-depth", "--threads", "-E", "--encoding", "--pre", "-r", "--replace"}
+GREP_VALUE_OPTIONS = {"-A", "-B", "-C", "-m", "-e", "-f", "--include", "--exclude", "--exclude-dir", "-t", "-g",
+                      "-j", "--type", "--type-not", "-d", "-D", "--max-count", "--context", "--regexp", "--file", "--glob",
+                      "--iglob", "--max-depth", "--threads", "--encoding", "--pre", "--replace", "--max-filesize",
+                      "--sort", "--sortr", "--after-context", "--before-context", "--max-columns", "--path-separator"}
+BD_GLOBAL_WITH_ARG = {"--db", "-C", "--config", "--actor", "--rig", "-r", "--city"}
 DESTRUCTIVE_PROGRAMS = {"rm", "rmdir", "mv", "unlink", "shred"}
 VERCEL_GLOBAL_WITH_ARG = {"--scope", "-S", "--token", "-t", "--cwd", "--local-config", "-A", "-e", "--env", "-b", "--build-env",
                           "--global-config", "-Q", "--team", "-T"}
@@ -59,12 +61,14 @@ READ_PROGRAMS = {"cat", "head", "tail", "less", "more", "grep", "rg", "awk", "cu
                  "find", "sed", "perl", "vim", "vi", "nano", "code", "open", "xdg-open", "curl", "wget", "env"}
 WRITE_PROGRAMS = {"cp", "mv", "install", "rsync", "scp", "ln", "tee", "truncate", "dd", "touch", "rm",
                   "sed", "perl", "chmod", "chown", "shred", "unlink", "rmdir", "mkdir", "patch", "git", "tar", "unzip", "zip"}
-TEXT_OPTIONS = {"--notes", "--append-notes", "--description", "-d", "--title", "-t", "--body-file",
-                "--design", "--design-file", "--acceptance", "--reason", "-r", "--close-reason",
+FILE_VALUE_OPTIONS = {"--body-file", "--design-file", "--notes-file", "--template-file", "-F", "--field"}
+TEXT_OPTIONS = {"--notes", "--append-notes", "--description", "-d", "--title", "-t",
+                "--design", "--acceptance", "--reason", "-r", "--close-reason",
                 "-m", "--message", "--body", "-b", "--comment", "-c", "--label", "-l", "--labels",
                 "--set-metadata", "--unset-metadata", "--defer", "--subject", "-s"}
 ALLOWED_ENV_SUFFIXES = (".example", ".sample", ".template", ".dist")
 cwd = os.getcwd()
+ROOT = cwd  # the worktree root the hook was invoked for (git -C changes cwd for path resolution, never ROOT)
 SPLIT_STRINGS = []  # env -S payloads, re-parsed as commands
 blocked = []  # (rule, message, carveout)
 
@@ -120,7 +124,7 @@ def is_workflow_ancestor(path):
     """True when removing/moving `path` would take .github/workflows with it (cwd, .github, or any parent)."""
     if not path:
         return False
-    workflows = os.path.normpath(os.path.join(cwd, ".github/workflows"))
+    workflows = os.path.normpath(os.path.join(ROOT, ".github/workflows"))
     return path != workflows and workflows.startswith(path.rstrip("/") + "/")
 
 
@@ -321,15 +325,41 @@ def check_paths(words, rig):
     if program == "patch" and not any(a in {"--dry-run", "--check"} or a.startswith("--dry-run") for a in words[1:]):
         block(f"workflow-edit-{rig}", "patch applies contents the guard cannot inspect (it can rewrite .github/workflows); "
               "use --dry-run to inspect, or edit files directly")
-    git_sub = words[1] if program == "git" and len(words) > 1 else ""
+    git_sub = ""
+    if program == "git":
+        rest, base = words[1:], cwd
+        while rest and rest[0].startswith("-"):
+            opt = rest.pop(0)
+            if opt in GIT_GLOBAL_WITH_ARG and rest:
+                val = rest.pop(0)
+                if opt == "-C":
+                    base = os.path.join(base, expand(val))
+            elif opt.startswith("-C") and len(opt) > 2:
+                base = os.path.join(base, expand(opt[2:]))
+        git_sub = rest[0] if rest else ""
+        if os.path.normpath(base) != os.path.normpath(cwd):
+            saved = cwd
+            globals()["cwd"] = os.path.normpath(base)
+            try:
+                return check_paths(["git"] + rest, rig)
+            finally:
+                globals()["cwd"] = saved
+        words = ["git"] + rest
     destructive = program in DESTRUCTIVE_PROGRAMS or (program == "git" and git_sub in {"rm", "mv", "clean"})
     git_prose = program == "git" and git_sub in {"commit", "tag", "notes", "merge"}
-    pattern_pending = program in GREP_PROGRAMS and not any(a in {"-e", "-f"} or a.startswith(("--regexp", "--file", "-e", "-f")) and a[:2] in {"-e", "-f"} for a in words[1:])
+    pattern_pending = program in GREP_PROGRAMS and not any(
+        a in {"-e", "-f", "--files", "--type-list", "--file", "--regexp"} or a.startswith(("--regexp=", "--file="))
+        or (a.startswith(("-e", "-f")) and not a.startswith("--") and len(a) > 2) for a in words[1:])
+    if program == "git" and git_sub == "clean":
+        rest = [a for a in words[2:] if not a.startswith("-")]
+        if not rest and "-n" not in words and "--dry-run" not in words:
+            block(f"workflow-edit-{rig}", "git clean without a pathspec defaults to the worktree root (it reaches "
+                  ".github/workflows); name the path you mean, e.g. git clean -fd src/")
     i = 0
     while i < len(words):
         w = words[i]
         prev = words[i - 1] if i > 0 else ""
-        text_value = prev in TEXT_OPTIONS and (prev.startswith("--") or program in {"bd", "gc", "gh"} or git_prose)
+        text_value = prev in TEXT_OPTIONS and prev not in FILE_VALUE_OPTIONS and (prev.startswith("--") or program in {"bd", "gc", "gh"} or git_prose)
         prose = (" " in w or "\t" in w) and ((program not in READ_PROGRAMS and program not in WRITE_PROGRAMS)
                                               or prev in TEXT_OPTIONS or git_prose)
         if (prose or text_value) and not (i > 0 and ">" in prev and all(ch in SEPARATORS for ch in prev)):
@@ -369,7 +399,7 @@ def check_paths(words, rig):
         if is_secret_path(p) and program not in {"echo", "printf", "test", "["}:
             block("secret-read", f"'{w}' is a protected secret/memory path (env files, ~/.claude/projects, "
                   ".gc/runtime/secrets); workers use the sanitized env the worktree setup provides", carveout=False)
-        elif destructive and is_workflow_ancestor(p):
+        elif destructive and is_workflow_ancestor(p) and not (program == "mv" and i == len(words) - 1 and i > 1):
             block(f"workflow-edit-{rig}", f"removing/moving '{w}' takes .github/workflows with it (mayor-owned)")
         elif is_workflow_path(p) and program in WRITE_PROGRAMS:
             if program == "git" and not any(s in words[1:] for s in ("rm", "mv", "checkout", "restore", "apply", "am", "clean", "stash")):
@@ -580,6 +610,13 @@ def check_sleep(args, total):
 
 
 def check_bd(args):
+    while args and args[0].startswith("-"):
+        opt = args.pop(0)
+        if opt in BD_GLOBAL_WITH_ARG and args:
+            args.pop(0)
+    if args[:1] == ["assign"]:
+        block("bd-assignee", "never set assignees (bd assign = update --assignee); the claim hook owns assignment", carveout=False)
+        return
     if args[:1] not in (["create"], ["update"]):
         return
     it = iter(args[1:])
@@ -609,7 +646,6 @@ def check_statement(words, state=None):
     rig = rig_name()
     if any(w in {"for", "while", "until"} for w in words[:1]):
         state["loop"] = True
-    check_paths(words, rig)
     words = [w for w in words if w not in {"!", "{", "}", "then", "do", "else", "elif", "fi", "done", "esac", "in"}]
     while words and re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]*=.*", words[0]):
         words = words[1:]
@@ -628,6 +664,17 @@ def check_statement(words, state=None):
         return
     program = os.path.basename(words[0])
     args = words[1:]
+    if program == "gc":
+        rest = list(args)
+        while rest and rest[0].startswith("-"):
+            opt = rest.pop(0)
+            if opt in {"--rig", "-r", "--city", "-C", "--config", "--profile", "--as"} and rest:
+                rest.pop(0)
+        while rest and rest[0] == "--":
+            rest.pop(0)
+        check_paths(["gc"] + rest, rig)
+    else:
+        check_paths(words, rig)
     if program in SHELLS:
         for i, a in enumerate(args):
             if a == "--":
@@ -679,11 +726,12 @@ def check_statement(words, state=None):
 
 
 def main():
-    global cwd
+    global cwd, ROOT
     try:
         payload = json.load(sys.stdin)
         command = payload.get("tool_input", {}).get("command", "")
         cwd = payload.get("cwd") or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
+        ROOT = os.environ.get("CLAUDE_PROJECT_DIR") or cwd
     except Exception:
         print("BLOCKED by guard-bash (parse): hook payload unreadable", file=sys.stderr)
         sys.exit(2)

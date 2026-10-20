@@ -4,7 +4,7 @@ Source of truth for the per-rig `.claude/hooks/guard-*.py` + `.claude/settings.j
 prompt templates' "NEVER …" prose into deterministic blocks (best-practices review 2026-10-20, hardened
 2026-10-20 after the codex gates on ia-next #376 / co-author #862 / ghastly-show #37 reproduced bypasses).
 Rolled out by mayor PRs to each rig; keep the copies IDENTICAL to these files (rigs gitignore `.claude/`,
-so the files are `git add -f`ed). Self-test: `python3 guard-selftest.py` (472 cases; exit 0 = pass).
+so the files are `git add -f`ed). Self-test: `python3 guard-selftest.py` (532 cases; exit 0 = pass).
 
 ## Threat model
 The hooks stop ACCIDENTAL and habitual rule-breaking by a cooperative agent (the forms workers have actually
@@ -24,6 +24,9 @@ by whether an adversarial form still exists — the README's "not covered" list 
   (value-bearing options such as `-H`/`--hostname` are consumed before the endpoint is picked; `-XDELETE`
   and the old `gh api POST <endpoint>` forms count). `gh api graphql` with any `mutation`, `--input` or an
   `@file` value is blocked outright (opaque payloads fail closed).
+- the path policy runs on the EFFECTIVE argv: after `command`/`env`/`nohup`/`timeout`/… wrappers, `FOO=1` assignments,
+  `gc` globals and `git -C <dir>` (paths resolve relative to that dir; the protected tree is the worktree's).
+- `bd assign`, and `-a`/`--assignee` on `bd`/`gc bd` create|update after any bd globals (`--db`, `-C`, `--config`).
 - `sudo`/`doas` anywhere: direct, through `env`/`command`/`nohup`/`timeout`/`xargs`/`nice`/`ionice` (their
   value-taking options are parsed), inside `bash -c`/`sh -c`, `eval` (re-parsed recursively), `$(…)` and
   backticks in any position — including the quoted forms `echo "$(…)"` / `-m "… $(…)"` (substitutions are
@@ -35,11 +38,13 @@ by whether an adversarial form still exists — the README's "not covered" list 
 - secret reads: `.env`, `.env.<x>` and `<name>.env` (pulled prod envs such as `/tmp/prod.env`) by any read/write
   program, `dd if=`, `source`/`.`; templates `.example`/`.sample`/`.template`/`.dist` are allowed. The first
   operand of `grep`/`rg`/`ag`/`ack` is the PATTERN (not a path) unless `-e`/`-f` is given; values of text options
-  (`--notes`, `--body`, `-m` on `git commit`, …) are never paths.
+  (`--notes`, `--body`, `-m` on `git commit`, …) are never paths; FILE-valued options (`--body-file`, `--design-file`,
+  `-F body=@file`) are, so `gh pr comment --body-file .env` blocks.
 - workflow tree: besides direct writes, `rm`/`rmdir`/`mv`/`unlink`/`shred` and `git rm|mv|clean` on `.github`, the
-  worktree root or any parent (they take `.github/workflows` with them), and `patch` without `--dry-run`
+  worktree root or any parent (they take `.github/workflows` with them; `mv`'s destination is exempt), pathspec-less
+  `git clean`, and `patch` without `--dry-run`
   (uninspectable contents, like `git apply`/`am`). Sibling files such as `.github/CODEOWNERS` stay editable.
-- the Read tool is hooked too (guard-edit.py): env files, mayor memory and runtime secrets are unreadable;
+- the Read, Grep and Glob tools are hooked too (guard-edit.py, on their `path`): env files, mayor memory and runtime secrets are unreadable;
   `.github/workflows/` stays READABLE. The native `permissions.deny` list is a fixed-name backstop
   (`./.env`, `./.env.local|production|development|prod`, `**/*.env`) chosen so it cannot catch the templates.
 - waiting loops: `gh … --watch`, `gh run watch`, `watch`, `tail -f`/`--follow`, `journalctl -f`; `sleep`
@@ -60,7 +65,8 @@ by whether an adversarial form still exists — the README's "not covered" list 
 
 Not covered (documented limits): commands hidden inside `python -c`/`node -e` strings, scripts executed
 from files, process substitutions (`<(…)`), and anything a shell expansion produces at runtime.
-Known CLI gaps include clustered `gh` root short flags (such as `-vR`), Vercel `-e`/`--env` globals,
+Known gaps include clustered `gh` root short flags (such as `-vR`), a native Grep over a DIRECTORY that contains an
+env file (only the `path` operand is checked),
 and writes to the singular `/commits/<sha>/status` endpoint. The `permissions.deny` rules in
 settings.worker.json are the backstop for the worst cases (force push, sudo, admin merge, secret Reads).
 
