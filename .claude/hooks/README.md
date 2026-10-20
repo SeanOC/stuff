@@ -4,7 +4,7 @@ Source of truth for the per-rig `.claude/hooks/guard-*.py` + `.claude/settings.j
 prompt templates' "NEVER …" prose into deterministic blocks (best-practices review 2026-10-20, hardened
 2026-10-20 after the codex gates on ia-next #376 / co-author #862 / ghastly-show #37 reproduced bypasses).
 Rolled out by mayor PRs to each rig; keep the copies IDENTICAL to these files (rigs gitignore `.claude/`,
-so the files are `git add -f`ed). Self-test: `python3 guard-selftest.py` (936 cases; exit 0 = pass).
+so the files are `git add -f`ed). Self-test: `python3 guard-selftest.py` (1056 cases; exit 0 = pass).
 
 ## Threat model
 The hooks stop ACCIDENTAL and habitual rule-breaking by a cooperative agent (the forms workers have actually
@@ -28,12 +28,14 @@ by whether an adversarial form still exists — the README's "not covered" list 
   `gc` globals and `git -C <dir>` (paths resolve relative to that dir; the protected tree is the worktree's).
   Package-runner options that take a value are parsed (`npx --package vercel vercel env pull`, `npx -p vercel …`,
   `npm exec --package vercel -- vercel …`, `pnpm --filter web exec …`, `-w`/`--workspace`, `--`), so the value is
-  never mistaken for the executable. Wrapper options whose value is a FILE are checked by effect before the wrapper
+  never mistaken for the executable, and the value itself — separate, `--opt=value` or `-Xvalue`, also behind
+  `npx`/`pnpx`/`bunx`/`uvx` — is checked like a file the runner reads before the runner is unwrapped
+  (`uv run --env-file=.env gh …`, `pnpm --dir=.env exec …`, `uvx --env-file .env …` block). Wrapper options whose value is a FILE are checked by effect before the wrapper
   is stripped: `xargs -a|--arg-file <f>` is a read of f (`.env` blocks), `time -o|--output <f>` is a write (`.env`
   and `.github/workflows/…` block).
 - a statement led by `if`/`elif`/`while`/`until`/`!` is checked as its condition command (`if git push origin main;
   then …`, `while sudo true; do …`, `until gh pr merge --admin 1; do …`); `for` is not a command.
-- the cwd is tracked through the command: a literal `cd`/`pushd`/`popd`/`cd -` (also `command cd`/`builtin cd`) statement changes the directory the
+- the cwd is tracked through the command: a literal `cd`/`pushd`/`popd`/`cd -` (also `command [-p] [--] cd`/`builtin cd`, whose wrapper options are consumed first) statement changes the directory the
   FOLLOWING statements resolve relative paths against (`cd .github/workflows && touch evil.yml`, `cd .github; rm -rf
   workflows`, `pushd .github/workflows && …`), and `env -C|--chdir <dir> cmd` resolves that one command's operands in
   dir. Conservatively a `cd` inside `( … )` carries too; `bash -c '…'` does not (a subprocess). After an unresolvable
@@ -53,17 +55,31 @@ by whether an adversarial form still exists — the README's "not covered" list 
   operand of `grep`/`rg`/`ag`/`ack` is the PATTERN (not a path) unless `-e`/`-f` is given; grep/rg option values are text
   (patterns, globs, types, colours; rg's `-T`/`-M`/`-E`/`-r` take values, grep's do not) except `-f`/`--file`/`--pre`/`--ignore-file`,
   which are files and are checked — including the attached and clustered spellings `grep -f.env`, `grep -rf.env .`,
-  `grep -rf .env .`, `rg -if.env` (a cluster's first `-f`/`-e` takes the rest of the cluster, or the next word, as its
-  value); values of text options
+  `grep -rf .env .`, `rg -if.env`. A short cluster is parsed left-to-right with the PROGRAM's value-option arity: the
+  first value-taking option takes the rest of the cluster (or the next word) as its value and ends the scan, so an
+  `f`/`e` inside another option's value is not a fresh flag — `rg -rf.env` is `--replace=f.env` (reads nothing) while
+  `grep -rf.env` is `-r -f.env` (reads `.env`), because `-r` takes a value in ripgrep but not in grep; for grep the
+  arity is the letters BOTH GNU grep and ugrep consume, so a letter only one eats still reaches a real `f` (fail
+  closed); values of text options
   (`--notes`, `--body`, `-m` on `git commit`, …) are never paths; FILE-valued options (`--body-file`, `--design-file`,
   `-F body=@file`) are, so `gh pr comment --body-file .env` blocks.
 - workflow tree: besides direct writes, `rm`/`rmdir`/`mv`/`unlink`/`shred` and `git rm|mv|clean` on `.github`, the
   worktree root or any parent, `find <root> … -delete` whose root is `.github`, the worktree root or a parent — unless
-  every `-name`/`-path` test is a literal or carries a non-yml/yaml extension (`find . -name '*.pyc' -delete` passes,
-  `find . -delete` and `find . -name '*.yml' -delete` block), the worktree-updating `git reset --hard|--merge|--keep <ref>`
+  the expression is a plain conjunction and every `-name`/`-path` test before the first `-delete` carries a
+  non-yml/yaml extension or is a non-workflow literal AND cannot match the protected `.github`/`workflows`
+  directory name itself (`find . -name '*.pyc' -delete` passes; `find . -delete`, `find . -name '*.yml' -delete`,
+  `find . -name workflows -delete` / `-iname WORKFLOWS` / `-path '*/.github'` (the dir's own -delete removes the
+  tree), `find . -delete -name '*.pyc'` and any `!`/`-not`, `-o`/`-or`, `,`, `( … )` or `-exec` in the expression —
+  `find . -name '*.pyc' -o -delete` — block, and ANY `-regex`/`-iregex` fails closed (regex operators such as `+`
+  or `|` match more than their literal characters); an escaped or quoted `(`/`)`/`;` is an
+  argument, not an operator, so grouping and `-exec … \;` stay inside the find), the worktree-updating `git reset --hard|--merge|--keep <ref>`
   (any ref other than HEAD replaces the workflow tree with that commit's) and the same modes without a ref while
   `.github/workflows` is dirty (`--soft`/`--mixed`/`git reset HEAD -- path` touch the index only), and
-  `git restore --staged <workflow path>` is ALLOWED (index only; `--staged --worktree` still blocks). These take
+  `git restore --staged <workflow path>` is ALLOWED only without an explicit source (it un-stages to HEAD; `--source`/`-s` writes the selected tree into the index and blocks, as does `--staged --worktree`). The
+  index-only exemption reads `--staged`/`-S` only BEFORE the first `--`: past it the token is a pathspec, not the
+  mode, so `git restore -- --staged .github/workflows/ci.yml` (which git restores into the WORKTREE) still blocks.
+  git's unambiguous long-option abbreviations are normalized first (stopping at `--`), so `--har`==`--hard`, `--work`==`--worktree`,
+  `--no-dry`==`--no-dry-run` and `--excl`==`--exclude` cannot slip past these reset/restore/clean checks. These take
   `.github/workflows` with them (`mv`'s destination is exempt). Also blocked: a directory
   copied/moved INTO `.github/` whose effective path is the workflow tree (`cp -R workflows .github/`), destructive operands
   that are unresolved shell expansions (`rm -r "$OLDPWD"`; `$PWD`/`$HOME` are resolved), pathspec-less
@@ -107,7 +123,7 @@ from files, process substitutions (`<(…)`), and anything a shell expansion pro
 Known gaps include clustered `gh` root short flags (such as `-vR`), a native Grep over a DIRECTORY that contains an
 env file (only the `path` operand is checked),
 writes to the singular `/commits/<sha>/status` endpoint, `git stash pop|apply` re-creating a workflow change that an
-earlier (pre-guard) stash holds, and the stash dirty-check being scoped to the hook's own worktree (`git -C <other> stash`). The `permissions.deny` rules in
+earlier (pre-guard) stash holds, and the stash dirty-check being scoped to the hook's own worktree (`git -C <other> stash`). FROZEN 2026-10-20 17:45Z (operator decision after 13 gate rounds on ia-next #387): the hooks are no longer iterated per gate finding — new findings on guard-hook PRs are appended to the city backlog bead ci-guhbd instead of minting FIX rounds. Residual (recorded, accepted, not fixed): `find . -name '*.yml' -exec rm {} +` is not treated like `-delete`; `npx -c '<cmd>'` / `npm exec -c '<cmd>'` payloads are not parsed as scripts; `gh -vR` style option clusters, `<(…)` process substitutions and runtime expansions are not resolved; GNU find's leading options (`-D <dbg>`, `-H`/`-L`/`-P`, `-O<n>`) before the roots hide the real root from the `-delete` guard (`cd src && find -D tree .. -name ci.yml -delete` passes); npm/npx unique long-option PREFIXES bypass the runner-value secret check (`npx --userc=.env gh pr view 1` passes — npm expands `--userc` to `--userconfig`); and the grep short-cluster pattern heuristic over-blocks `rg -rabcde .env README.md` (a FALSE BLOCK, not a bypass: `-r` consumes `abcde`, `.env` is the pattern). The `permissions.deny` rules in
 settings.worker.json are the backstop for the worst cases (force push, sudo, admin merge, secret Reads).
 
 ## Carve-outs (mayor touches `.gc/runtime/guard-allow/<marker>`, removes it after the bead lands)

@@ -18,6 +18,7 @@ Operator carve-outs: the mayor touches $GC_CITY/.gc/runtime/guard-allow/<marker>
 admin merges, status/protection API writes, secret reads and bead assignment have NO
 carve-out: the matching permissions.deny rules apply regardless of a marker.
 """
+import fnmatch
 import json
 import os
 import re
@@ -28,6 +29,7 @@ from pathlib import Path
 
 CITY = Path(os.environ.get("GC_CITY") or Path.home() / "gc-pilot/city")
 SEPARATORS = ";&|\n()`<>"
+LITERAL_SEPARATORS = {"(": "\x00lparen\x00", ")": "\x00rparen\x00", ";": "\x00semicolon\x00"}  # quoted/escaped: arguments
 WRAPPERS = {"command", "builtin", "exec", "nohup", "time", "nice", "ionice", "env", "xargs",
             "timeout", "eval", "npx", "pnpx", "bunx", "uvx", "doas", "chroot"}
 WRAPPER_OPT_ARITY = {
@@ -58,6 +60,8 @@ RUNNER_OPT_ARITY = {  # package-runner options that take a SEPARATE value (so th
 WRAPPER_OPT_ARITY.update({"npx": RUNNER_OPT_ARITY["npx"], "pnpx": RUNNER_OPT_ARITY["pnpm"], "bunx": RUNNER_OPT_ARITY["bun"],
                           "uvx": RUNNER_OPT_ARITY["uv"]})  # the *x runners are unwrapped as wrappers: same value-taking options
 WRAPPER_READ_FILE_OPTIONS = {"xargs": {"-a", "--arg-file"}}  # wrapper options whose value is a file the wrapper READS
+# … and every value a runner-wrapper option takes, in any spelling (`uvx --env-file .env`, `npx --userconfig=.env`)
+WRAPPER_READ_FILE_OPTIONS.update({w: WRAPPER_OPT_ARITY[w] for w in ("npx", "pnpx", "bunx", "uvx")})
 WRAPPER_WRITE_FILE_OPTIONS = {"time": {"-o", "--output"}}  # … or WRITES
 SHELLS = {"bash", "sh", "zsh", "dash", "ksh", "fish"}
 GIT_GLOBAL_WITH_ARG = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path",
@@ -71,9 +75,38 @@ RG_VALUE_OPTIONS = {"-T", "-M", "-E", "-r", "--color", "--colour", "--type-add",
                     "--context-separator", "--field-context-separator", "--field-match-separator", "--ignore-file",
                     "--max-columns", "--engine", "--generate", "--hostname-bin", "--path-separator"}
 GREP_PATH_VALUE_OPTIONS = {"-f", "--file", "--pre", "--ignore-file"}  # these values ARE files (checked); the rest are text
+# value-taking SHORT options per program, so a short cluster can be parsed left-to-right: the first one consumes the
+# rest of the cluster (or the next word) as its value, and an `f`/`e` sitting INSIDE that value is not a fresh flag
+# (codex on #387: rg `-rabcde` is --replace=abcde, so `.env` after it is a path operand, not -e's pattern file).
+# `f` is the pattern-FILE option (its value is a path), `e` the pattern (text); every other letter here is a
+# text/number value that is consumed and ignored. For grep/ag/ack the set is the letters that take a value in BOTH
+# GNU grep and ugrep (the worker shell's `grep`), so a letter only one of them consumes still lets the scan reach a
+# real `f` and fail closed (e.g. ugrep's `-Xf.env` reads .env; GNU's `-X` would eat it — the guard blocks).
+GREP_SHORT_VALUE = {
+    "rg": set("ABCdEefgjMmrtT"),
+    "grep": set("ABCDdefm"), "egrep": set("ABCDdefm"), "fgrep": set("ABCDdefm"),
+    "ag": set("ABCdefm"), "ack": set("ABCdefm"),
+}
 COPY_PROGRAMS = {"cp", "mv", "rsync", "install"}
 WATCH_W_PROGRAMS = {"vitest", "tsc", "tsc-alias"}  # programs whose `-w` means --watch (jest's -w is --maxWorkers: NOT here)
 CHECKOUT_VALUE_OPTIONS = {"-b", "-B", "--orphan", "-s", "--source", "--conflict", "--pathspec-from-file"}
+# git accepts any UNAMBIGUOUS prefix of a long option (`--work`==`--worktree`, `--har`==`--hard`,
+# `--no-dry`==`--no-dry-run`), so the restore/reset/clean/checkout security checks below must compare against
+# the canonical name, not the exact spelling (codex on #387). Each set lists the subcommand's real long options
+# so a prefix git itself would call ambiguous stays ambiguous (and therefore unexpanded) here too.
+GIT_SUBCOMMAND_OPTIONS = {
+    "reset": {"--quiet", "--soft", "--mixed", "--hard", "--merge", "--keep", "--patch",
+              "--intent-to-add", "--recurse-submodules", "--pathspec-from-file", "--pathspec-file-nul"},
+    "restore": {"--source", "--staged", "--worktree", "--quiet", "--progress", "--ours", "--theirs",
+                "--merge", "--conflict", "--ignore-unmerged", "--ignore-skip-worktree-bits",
+                "--recurse-submodules", "--overlay", "--no-overlay", "--pathspec-from-file",
+                "--pathspec-file-nul"},
+    "clean": {"--force", "--interactive", "--dry-run", "--no-dry-run", "--quiet", "--exclude"},
+    "checkout": {"--quiet", "--detach", "--force", "--merge", "--conflict", "--orphan", "--ours", "--theirs",
+                 "--track", "--guess", "--overlay", "--no-overlay", "--patch", "--ignore-skip-worktree-bits",
+                 "--ignore-other-worktrees", "--recurse-submodules", "--overwrite-ignore", "--progress",
+                 "--pathspec-from-file", "--pathspec-file-nul"},
+}
 STASH_READONLY = {"list", "show", "drop", "clear", "branch", "create", "store", "apply", "pop"}
 BD_GLOBAL_WITH_ARG = {"--db", "-C", "--config", "--actor", "--rig", "-r", "--city"}
 DESTRUCTIVE_PROGRAMS = {"rm", "rmdir", "mv", "unlink", "shred"}
@@ -159,6 +192,20 @@ def workflows_dirty(include_untracked):
     return out.returncode == 0 and bool(out.stdout.strip())
 
 
+def restore_is_staged_only(words):
+    """Whether restore targets only the index; an explicit source may still change index content.
+    Only options BEFORE the first `--` count: a `--staged` after it is a pathspec, not the mode (codex on #387)."""
+    pre = []
+    for a in words[2:]:
+        if a == "--":
+            break
+        if a.startswith("-"):
+            pre.append(a)
+    opts = set(pre)
+    return words[:2] == ["git", "restore"] and bool(opts & {"-S", "--staged"}) \
+        and not opts & {"-W", "--worktree"}
+
+
 def git_pathspecs(words, git_sub):
     """Indices of the operands that are PATHSPECS of git checkout/restore/stash (the ones that rewrite the worktree).
     checkout: operands after `--`, every operand after the first, and a first operand that cannot be a ref (starts with
@@ -179,8 +226,7 @@ def git_pathspecs(words, git_sub):
             continue
         ops.append((j, a, after))
     if git_sub == "restore":
-        opts = set(words[2:])
-        if opts & {"-S", "--staged"} and not opts & {"-W", "--worktree"}:
+        if restore_is_staged_only(words):
             return set()
         return {j for j, _, _ in ops}
     if git_sub == "checkout":
@@ -222,8 +268,29 @@ def is_workflow_path(path):
     return bool(path) and ("/.github/workflows/" in path + "/" or path.endswith("/.github/workflows"))
 
 
+def literal_separators(command):
+    """An escaped or quoted `(`, `)`, `;` is an ARGUMENT (find's grouping and -exec terminator), never an operator,
+    but shlex's punctuation_chars splits on it all the same, so `find . \\( … \\) -delete` reached check_find as
+    `find .` (codex on ia-next #387). Swap it for a placeholder word that statements() restores."""
+    out, quote, i = [], "", 0
+    while i < len(command):
+        ch = command[i]
+        if ch == "\\" and quote != "'" and i + 1 < len(command):
+            nxt = command[i + 1]
+            out.append(LITERAL_SEPARATORS[nxt] if not quote and nxt in LITERAL_SEPARATORS else command[i:i + 2])
+            i += 2
+            continue
+        if ch in "'\"" and (not quote or quote == ch):
+            quote = "" if quote else ch
+        elif quote and ch in LITERAL_SEPARATORS:
+            ch = LITERAL_SEPARATORS[ch]
+        out.append(ch)
+        i += 1
+    return "".join(out)
+
+
 def statements(command):
-    lexer = shlex.shlex(command, posix=True, punctuation_chars=SEPARATORS)
+    lexer = shlex.shlex(literal_separators(command), posix=True, punctuation_chars=SEPARATORS)
     lexer.commenters = ""  # shell_parts already removed comments at shell word boundaries
     lexer.whitespace = " \t\r"
     lexer.whitespace_split = True
@@ -239,6 +306,8 @@ def statements(command):
                     out.append(words)
                 words = []
         else:
+            for sep, placeholder in LITERAL_SEPARATORS.items():
+                word = word.replace(placeholder, sep)
             words.append(word)
     if words:
         out.append(words)
@@ -415,7 +484,13 @@ def apply_chdir(words, state):
     while words and re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]*=.*", words[0]):
         words = words[1:]
     while len(words) > 1 and os.path.basename(words[0]) in {"command", "builtin"}:
-        words = words[1:]  # `command cd …` / `builtin cd …` change the cwd exactly like `cd` (ghastly #41 advisory)
+        # `command [-p] [--] cd …` / `builtin cd …` change the cwd exactly like `cd`; consume the wrapper's
+        # options and `--` the way unwrap does, so `command -p cd` is still recognized (codex on #387)
+        words = words[1:]
+        while words and words[0].startswith("-") and words[0] != "--":
+            words = words[1:]
+        while words and words[0] == "--":
+            words = words[1:]
     if not words:
         return
     program = os.path.basename(words[0])
@@ -445,6 +520,32 @@ def apply_chdir(words, state):
         cwd, CWD_UNKNOWN = os.path.normpath(os.path.join(cwd, t)), True
         return
     cwd = os.path.normpath(t if os.path.isabs(t) else os.path.join(cwd, t))
+
+
+def git_expand_opts(words, subcommand):
+    """Expand git's unambiguous long-option abbreviations to the canonical spelling for `subcommand`
+    (git accepts `--work` for `--worktree`, `--har` for `--hard`), so the security checks match real
+    behavior. Short options, `--opt=value`, `--`, and ambiguous/unknown prefixes are returned unchanged;
+    token count never changes, so pathspec indices stay valid."""
+    candidates = GIT_SUBCOMMAND_OPTIONS.get(subcommand)
+    if not candidates:
+        return list(words)
+    out, after_sep = [], False
+    for w in words:
+        if after_sep:  # everything past `--` is a pathspec, never an option to expand (codex on #387)
+            out.append(w)
+            continue
+        if w == "--":
+            after_sep = True
+            out.append(w)
+            continue
+        if w.startswith("--") and "=" not in w and w not in candidates:
+            matches = [c for c in candidates if c.startswith(w)]
+            if len(matches) == 1:
+                out.append(matches[0])
+                continue
+        out.append(w)
+    return out
 
 
 def check_paths(words, rig):
@@ -477,6 +578,8 @@ def check_paths(words, rig):
             finally:
                 globals()["cwd"] = saved
         words = ["git"] + rest
+        if git_sub:  # normalize unambiguous long-option abbreviations before the restore/reset/clean checks
+            words = ["git", git_sub] + git_expand_opts(rest[1:], git_sub)
     destructive = program in DESTRUCTIVE_PROGRAMS or (program == "git" and git_sub in {"rm", "mv", "clean"})
     # git checkout/restore/stash WITH an ancestor pathspec (., .github, ..) rewrite .github/workflows the way rm/mv
     # would; a PATHLESS stash takes an uncommitted workflow change out of the worktree, so it is blocked only while
@@ -492,8 +595,13 @@ def check_paths(words, rig):
                                     for a in words[2:])):
             block(f"workflow-edit-{rig}", "git stash without a pathspec would take your uncommitted .github/workflows "
                   "change out of the worktree (mayor-owned); stash the paths you mean, e.g. git stash push -- src/")
-    staged_only = program == "git" and git_sub == "restore" and bool(set(words[2:]) & {"-S", "--staged"}) \
-        and not set(words[2:]) & {"-W", "--worktree"}
+    # Only the default HEAD source merely unstages a named workflow (ghastly #42 gate): `--source`/`-s` writes THAT
+    # commit's version into the index. The worktree-only ancestor policy in git_pathspecs is unchanged.
+    unstage_only = restore_is_staged_only(words) and not any(
+        a == "--source" or a.startswith("--source=") or
+        (a.startswith("-") and not a.startswith("--") and "s" in a[1:])
+        for a in words[2:]
+    )
     if program == "git" and git_sub == "reset":
         # worktree-updating reset modes rewrite .github/workflows: from another commit when a ref is named, or by
         # discarding an uncommitted workflow change (ia-next gate round 10). --soft/--mixed touch the index only.
@@ -582,18 +690,24 @@ def check_paths(words, rig):
                       carveout=False)
             i += 1
             continue
-        if program in GREP_PROGRAMS and w.startswith("-") and not w.startswith("--") and len(w) > 2 \
-                and ("f" in w[1:] or "e" in w[1:]):
-            # a short cluster: everything after the first -f/-e flag is its value (`grep -rf.env .`, `grep -ie KEY`),
-            # or the next word is (`grep -rf .env .`) — round 11 attached-value finding
+        if program in GREP_PROGRAMS and w.startswith("-") and not w.startswith("--") and len(w) > 2:
+            # parse the short cluster left-to-right with this program's value-option arity: the FIRST value-taking
+            # option takes the rest of the cluster (or, if it is the last char, the next word) as its value and ends
+            # the scan, so an `f`/`e` inside another option's value is not mistaken for the pattern-file/pattern flag
+            # (codex on #387: rg `-rf.env` is --replace=f.env and reads nothing; grep `-rf.env` is -r -f.env and reads
+            # .env — `r` takes a value in rg but not in grep, so the arity is per-program). A cluster of pure boolean
+            # flags matches nothing here and falls through: its next word is handled as an ordinary operand.
+            arity = GREP_SHORT_VALUE.get(program, set("ABCdefm"))
             cluster = w[1:]
-            j = min(k for k in (cluster.find("f"), cluster.find("e")) if k >= 0)
-            value, kind = cluster[j + 1:], "file" if cluster[j] == "f" else "text"
-            if value:
-                if kind == "file" and is_secret_path(norm(value)):
-                    block("secret-read", f"'{w}' reads a protected secret/memory path as the pattern file", carveout=False)
-            else:
-                grep_next = kind
+            for k, ch in enumerate(cluster):
+                if ch in arity:
+                    value = cluster[k + 1:]
+                    if value:
+                        if ch == "f" and is_secret_path(norm(value)):
+                            block("secret-read", f"'{w}' reads a protected secret/memory path as the pattern file", carveout=False)
+                    else:
+                        grep_next = "file" if ch == "f" else "text"
+                    break
             i += 1
             continue
         text_value = prev in TEXT_OPTIONS and prev not in FILE_VALUE_OPTIONS and (prev.startswith("--") or program in {"bd", "gc", "gh"} or git_prose)
@@ -656,8 +770,8 @@ def check_paths(words, rig):
         elif is_workflow_path(p) and program in WRITE_PROGRAMS:
             if program == "git" and not any(s in words[1:] for s in ("rm", "mv", "checkout", "restore", "apply", "am", "clean", "stash")):
                 pass
-            elif staged_only:
-                pass  # `git restore --staged <workflow path>` only un-stages: the worktree copy is untouched
+            elif unstage_only:
+                pass  # `git restore --staged <workflow path>` resets the index entry to HEAD
             elif program in {"sed", "perl"} and not any(a.startswith("--in-place") or (a.startswith("-") and not a.startswith("--") and "i" in a[1:]) for a in words[1:]):
                 pass
             else:
@@ -678,7 +792,8 @@ def unwrap(words):
     changed = True
     while changed and words:
         changed = False
-        while words and re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]*=.*", words[0]):
+        # `time ! sudo ls`: the pipeline after the reserved word `time` may carry its own `!`
+        while words and (words[0] == "!" or re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]*=.*", words[0])):
             words = words[1:]
         if not words:
             return words
@@ -750,11 +865,17 @@ def strip_runner(program, rest):
             break
         if a.startswith("-"):
             rest.pop(0)
-            if "=" not in a and a in arity and rest:
-                # unwrapping may replace argv: inspect the value before it is discarded (ghastly gs-18hj:
-                # `uv run --env-file .env gh …` passed once the runner was unwrapped to gh)
-                check_paths([program, a, rest[0]], rig_name())
-                rest.pop(0)
+            # unwrapping may replace argv: inspect the value before it is discarded, in every spelling (ghastly
+            # gs-18hj: `uv run --env-file .env gh …` passed once the runner was unwrapped to gh; codex on ia-next
+            # #387: the attached `--env-file=.env` / `pnpm --dir=.env` / `-C.env` did too)
+            if a.startswith("--") and "=" in a:
+                name, value = a.split("=", 1)
+                if name in arity:
+                    wrapper_file(name, value, False)
+            elif a in arity and rest:
+                wrapper_file(a, rest.pop(0), False)
+            elif not a.startswith("--") and len(a) > 2 and a[:2] in arity:
+                wrapper_file(a[:2], a[2:], False)
             continue
         if not seen_sub and a in {"dlx", "exec", "x", "run"}:
             rest.pop(0)
@@ -944,11 +1065,32 @@ def check_bd(args):
 
 
 FIND_NAME_TESTS = {"-name", "-iname", "-path", "-ipath", "-wholename", "-iwholename", "-regex", "-iregex"}
+# anything but a plain conjunction: a `*.pyc` test then proves nothing about what reaches -delete (an -exec's own
+# arguments are not parsed, and its `+` ends it only right after `{}`)
+FIND_NOT_CONJUNCTION = {"!", "-not", "-o", "-or", ",", "(", ")", "-exec", "-execdir", "-ok", "-okdir"}
 
 
-def find_filter_excludes_workflows(pattern):
-    """True when a -name/-path pattern can never match a workflow file: a literal (no glob metacharacters) that is
-    not a yml/yaml name, or a pattern whose literal extension is something other than yml/yaml (`*.pyc`)."""
+def find_filter_excludes_workflows(test, pattern):
+    """True when a -name/-path test can never match a workflow file OR the protected directory itself. A
+    regex is NEVER proven safe: operators like `+`, `.` or alternation match far more than their literal
+    characters, and `re.search(r"[*?[]")` treats them as literals (codex on #387: `-regex '.+'` and
+    `-regex '.*|x.pyc'` both slipped through). A -name/-path glob is safe only when it carries a literal
+    non-yml/yaml extension (`*.pyc`) or is a non-workflow literal, AND cannot match the `.github`/`workflows`
+    directory names — whose -delete removes the whole tree (codex on #387: `-name workflows`, incl. -iname)."""
+    if test in {"-regex", "-iregex"}:
+        return False
+    if "\\" in pattern:
+        # find treats a backslash as an escape (`ci.y\ml` matches `ci.yml`); Python fnmatch treats it as a literal
+        # char, so a "can't match" proof here is unsound — fail closed on any backslash (codex on #387).
+        return False
+    icase = test in {"-iname", "-ipath"}
+    probes = ["workflows", ".github"]
+    if test in {"-path", "-ipath"}:  # -path matches the whole path: a trailing /workflows or /.github counts
+        probes += [f"{d}/{n}" for n in ("workflows", ".github") for d in (".", "x", "/a")]
+    for probe in probes:
+        pats = [pattern, pattern.lower()] if icase else [pattern]
+        if any(fnmatch.fnmatchcase(probe, pat) for pat in pats):
+            return False
     ext = re.search(r"\.([A-Za-z0-9_]+)$", pattern)
     if ext and ext.group(1).lower() not in {"yml", "yaml"}:
         return True
@@ -965,17 +1107,23 @@ def check_find(words):
             if a.startswith("-") or a in {"(", "!", ")"}:
                 break
             roots.append(a)
+        # the filter carve-out holds for a plain conjunction only, and only the tests BEFORE the first -delete gate
+        # it (codex on ia-next #387: `find . -name '*.pyc' -o -delete`, `! -name '*.pyc'`, `-delete -name '*.pyc'`)
         filters, it = [], iter(words)
         for a in it:
+            if a == "-delete":
+                break
             if a in FIND_NAME_TESTS:
-                filters.append(next(it, ""))
-        if not (filters and all(find_filter_excludes_workflows(f) for f in filters)):
+                filters.append((a, next(it, "")))
+        plain = not any(a in FIND_NOT_CONJUNCTION for a in words)
+        if not (plain and filters and all(find_filter_excludes_workflows(t, f) for t, f in filters)):
             for r in roots or ["."]:
                 q = norm(r)
                 if is_workflow_ancestor(q) or is_workflow_path(q) or \
                         (CWD_UNKNOWN and re.search(r"(^|/)(\.github|workflows)(/|$)", r)):
                     block(f"workflow-edit-{rig_name()}", f"find {r} … -delete reaches .github/workflows (mayor-owned); "
-                          "add a -name filter with a non-workflow extension (e.g. '*.pyc') or start below .github")
+                          "put a -name filter with a non-workflow extension (e.g. '*.pyc') before -delete in a plain "
+                          "conjunction (no !/-not, -o/-or, ',', ( ), -exec: one find per pattern) or start below .github")
     for key in ("-exec", "-execdir", "-ok", "-okdir"):
         while key in words:
             i = words.index(key)
@@ -1001,7 +1149,9 @@ def _check_statement(words, state=None):
     rig = rig_name()
     if any(w in {"for", "while", "until"} for w in words[:1]):
         state["loop"] = True
-    words = [w for w in words if w not in {"!", "{", "}", "then", "do", "else", "elif", "fi", "done", "esac", "in"}]
+    # a `!` stays inside the statement (find's negation: `find . ! -name '*.pyc' -delete`, codex on ia-next #387);
+    # strip_condition_keywords drops a leading one
+    words = [w for w in words if w not in {"{", "}", "then", "do", "else", "elif", "fi", "done", "esac", "in"}]
     words = strip_condition_keywords(words)
     while words and re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]*=.*", words[0]):
         words = words[1:]

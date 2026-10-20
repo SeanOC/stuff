@@ -129,12 +129,26 @@ BASH_BLOCK = [
     # round 10: runner option values keep the secret check when the payload is unwrapped (ghastly gs-18hj)
     "uv run --env-file .env gh pr comment 1 -b hi", "uv --env-file .env run git status", "pnpm exec --dir .env gh pr view 1",
     "npx --package vercel vercel env pull", "uv run --env-file ../.env git status",
+    # codex on #387: the attached spellings (`--opt=value`, `-Xvalue`) and the *x runners' option values too
+    "uv run --env-file=.env git status", "pnpm --dir=.env exec gh pr view 1", "pnpm exec --dir=.env gh pr view 1",
+    "uv --env-file=../.env run git status", "pnpm -C.env exec gh pr view 1", "uvx --env-file .env gh pr view 1",
+    "uvx --env-file=.env gh pr view 1", "npx --userconfig=.env gh pr view 1", "pnpx --dir .env gh pr view 1",
+    "bunx --config=.env gh pr view 1",
     # round 10: worktree-updating git reset with a ref replaces .github/workflows wholesale
     "git reset --hard main", "git reset --hard origin/main", "git reset --merge main", "git reset --keep HEAD~1", "git reset --hard HEAD~2",
     # round 10: find -delete roots go through the workflow-ancestor policy
     "find .github -type f -delete", "find .github/workflows -mindepth 1 -delete", "find . -name '*.yml' -delete", "find . -delete",
     "find . -type f -delete", "find .. -name '*.yaml' -delete", "find . -name 'ci.yml' -delete", "find . -name '*~' -delete",
     "find -delete", "find . -path '*/workflows/*' -delete", "find .github -name '*.yml' -type f -delete",
+    # codex on #387: the filter carve-out needs a plain conjunction with its tests before the first -delete; an
+    # escaped/quoted ( ) ; is an argument, so grouping and `-exec … \;` no longer split the -delete off
+    'find . -name "*.pyc" -o -delete', 'find . ! -name "*.pyc" -delete', "find . -not -name '*.pyc' -delete",
+    "find . -name '*.pyc' -or -delete", "find . -name '*.pyc' , -delete", "find . -delete -name '*.pyc'",
+    "find . -name '*.pyc' -delete -o -delete", r"find . \( -name '*.pyc' -o -true \) -delete", "find . '(' -true ')' -delete",
+    r"find . \( -name '*.pyc' -o -name '*.pyo' \) -delete", r"find . -exec true {} \; -delete",
+    r"find . -name '*.pyc' -exec echo {} \; -delete", r"find . -regex '.*\|.*\.pyc' -delete",
+    r"find . -regextype posix-extended -regex '.*|x\.pyc' -delete", "cd .github && find . ! -name '*.pyc' -delete",
+    "time ! sudo ls",
     # round 10 (gate round 11): if/while/until conditions are commands
     "if git push origin main; then echo ok; fi", "while sudo true; do echo x; done", "until gh pr merge --admin 1; do echo w; done",
     "if ! git push origin main; then echo x; fi", "if cat .env; then :; fi", "if true; then :; elif sudo ls; then :; fi",
@@ -145,6 +159,17 @@ BASH_BLOCK = [
     # round 10: `command cd` / `builtin cd` change the cwd like cd (ghastly #41 advisory)
     "command cd .github/workflows && touch x.yml", "builtin cd .github && touch workflows/x.yml", "command cd .github; rm -rf workflows",
     "git restore --staged --worktree .github/workflows/ci.yml", "git restore -SW .github/workflows/ci.yml", "git restore .github/workflows/ci.yml",
+    # ghastly #42 gate (gs-rtbb): an explicit source stages tree content instead of merely unstaging
+    "git restore --source main --staged .github/workflows/ci.yml", "git restore -s main --staged .github/workflows/ci.yml",
+    "git restore --staged --source=main .github/workflows/ci.yml", "git restore --staged -smain .github/workflows/ci.yml",
+    "git restore --staged -qs main .github/workflows/ci.yml", "git restore -S --source main -- .github/workflows/ci.yml",
+    "git -C . restore --staged --source=main .github/workflows/ci.yml",
+    # ghastly #42 (gs-rtbb) + co-author #867 (co-jwz8z) extra find/-delete and runner-value cases
+    "command find . ! -name '*.pyc' -delete", "! find . ! -name '*.pyc' -delete", "find . -name '*.pyc' -delete -o -name '*.yml' -delete",
+    "find . -type d -empty -delete", "find . -empty -delete", "find . -name '*.pyc' -prune -o -delete", r"find . \! -name '*.pyc' -delete",
+    "find . -path '*.pyc' -o -delete", "find .github -iname '*.orig' -or -delete",
+    "npm exec --workspace=.env gh pr view 1", 'uv run --env-file="my dir/.env" git status', "pnpm --dir=../.env exec git status",
+    'uv run --env-file "my dir/.env" git status', 'pnpm exec --dir="my dir/.env" gh pr view 1',
     # round 8: checkout/restore ancestor pathspecs, vitest/tsc -w aliases behind runners, mv -t source vs destination
     "git checkout main -- .", "git checkout main -- .github", "git restore --source main .", "git checkout main .",
     "git checkout -- .", "git restore .", "git checkout origin/main -- ./", "git restore --source=main -- .github/",
@@ -183,6 +208,26 @@ BASH_BLOCK = [
     "git clean -fdeignored", "git clean -fd -e -n", "git clean -fd --dry-run --no-dry-run", "git clean -fd -e build/ --exclude '*.log' -e '*.tmp'",
     "command git clean -fdx -e node_modules",
     "jest --watchAll=true", "vitest --watch=falsehood", "tsc --watch-all=1",
+    # codex on #387 (gate round 11): a -regex / protected-dir-name find filter is never a safe -delete carve-out
+    "find . -regextype posix-extended -regex '.+' -delete", "find . -regex '.+' -delete",
+    "find . -name workflows -delete", "find . -iname WORKFLOWS -delete", "find . -name .github -delete",
+    "find . -path '*/.github' -delete",
+    # codex on #387 (gate round 11): git accepts unambiguous long-option abbreviations (--work==--worktree,
+    # --har==--hard, --no-dry==--no-dry-run, --excl==--exclude)
+    "git reset --har main", "git reset --mer origin/main", "git reset --kee HEAD~1",
+    "git restore --staged --work .github/workflows/ci.yml",
+    "git clean -fd --dry-run --no-dry", "git clean -fd --no-dry", "git clean -fd --excl node_modules",
+    # codex on #387 (gate round 11): `command` options must not hide the cd from cwd tracking
+    "command -p cd .github && touch workflows/x.yml", "command -- cd .github && touch workflows/x.yml",
+    # codex on #387 (gate round 12): a value-taking short option BEFORE -f/-e in a grep cluster must consume its
+    # value, so the real path operand is still checked (rg -r is --replace, grep -r is recursive: per-program arity)
+    "rg -e SECRET -rabcde .env", "rg -nf.env .", "rg -if.env .", "grep -rnf.env .",
+    # codex on #387 (gate round 12): a backslash in a find -name/-path pattern is a find escape (`ci.y\\ml` matches
+    # `ci.yml`), so the fnmatch safe-filter proof is unsound — fail closed, no -delete carve-out
+    r'find . -name "ci.y\\ml" -delete', r"find . -iname 'C\\I.yml' -delete", r"find . -path '*/workflo\\ws' -delete",
+    # codex on #387 (gate round 12): `--` ends options, so a `--staged`/`--worktree` AFTER it is a pathspec and the
+    # restore still rewrites the worktree copy
+    "git restore -- --staged .github/workflows/ci.yml", "git restore -- --worktree .github/workflows/ci.yml",
 ]
 BASH_ALLOW = [
     "git push -u origin gc-pilot/gs-1234", "git push origin gc-ia/worker-guards", "git push", "git push origin HEAD",
@@ -282,6 +327,13 @@ BASH_ALLOW = [
     "find . -name '*.pyc' -delete", "find build -delete", "find . -name '*.pyc' -type f -delete", "find src -type f -delete",
     "find . -name '*.yml'", "find .github -name '*.yml'", "find . -name __pycache__ -delete", "find . -iname '*.orig' -delete",
     "find node_modules -name '*.map' -delete", "find .github -name '*.yml' -exec cat {} \\;", "find /tmp/x -delete",
+    # codex on #387
+    "uv run --env-file=.env.example git status", "pnpm --dir=app exec gh pr view 1", "pnpm -Capp exec gh pr view 1",
+    "uvx --env-file=.env.example gh pr view 1", "npx --userconfig=.npmrc gh pr view 1", "uvx --from=ruff ruff check .",
+    "find . -name '*.pyc' -a -delete", "find . -type f -name '*.pyc' -and -delete", "find . -name '*.pyc' -print -delete",
+    r"find build \( -name '*.o' -o -name '*.a' \) -delete", "find src ! -name '*.ts' -delete", "find . ! -name '*.ts' -print",
+    r"find . -name '*.ts' -exec grep -l ';' {} \;", "if [ ! -f .env ]; then echo missing; fi", "time ! false",
+    "printf '%s\\n' '(' ')' ';'",
     "if grep -q x README.md; then echo y; fi", "while read -r l; do echo $l; done < list.txt", "if git push origin gc-ia/x; then echo ok; fi",
     "until curl -sf http://localhost; do echo w; done", "if [ -f .env ]; then echo present; fi", "if test -e .env; then :; fi",
     "if ! grep -q x README.md; then echo n; fi", "while ! curl -sf http://localhost; do echo w; done",
@@ -289,6 +341,15 @@ BASH_ALLOW = [
     "grep -rif pats.txt .", "grep -c -e .env README.md", "grep -ie .env README.md", "grep -rn KEY src/", "grep -A3 KEY src/x.ts",
     "command cd src && touch x.ts", "builtin cd docs && cat README.md", "command cd .github && cat workflows/ci.yml",
     "git restore --staged .github/workflows/ci.yml", "git restore --staged -- .github/workflows/ci.yml", "git restore -S .github/workflows/ci.yml",
+    # ghastly #42 (gs-rtbb): index-only ancestor and ordinary source restores stay as on main
+    "git restore --source main --staged .", "git restore -s main --staged .", "git restore --staged --source=main -- .github",
+    "git restore --staged --source=main src/x.ts",
+    # ghastly #42 + co-author #867 extra allow cases
+    "find . -name '*.pyc' -delete -print", "find build -type d -empty -delete", "find build ! -name '*.pyc' -delete", "find build -delete -name '*.pyc'",
+    "find . -name '*.pyc' -and -type f -delete", "find . -path '*.pyc' -delete", "find . -name '*.pyc' -iname '*.pyc' -delete",
+    r"find build \! -name '*.pyc' -delete", "find build -name '*.pyc' , -delete", "find . -name '*.pyc' -o -name '*.yaml'",
+    "npm exec --workspace=app gh pr view 1", 'uv run --env-file="my dir/.env.example" git status', 'uv run --env-file "my dir/.env.example" git status',
+    'pnpm exec --dir="my dir/app" gh pr view 1', "uv run --env-file= gh pr view 1",
     # round 8
     "git checkout main", "git checkout -b x", "git checkout -- src/", "git checkout main -- src/x.ts", "git restore src/x.ts",
     "git restore --source main src/", "git restore --staged .", "git checkout main -- .github/CODEOWNERS", "git checkout -b x main",
@@ -319,7 +380,16 @@ BASH_ALLOW = [
     "git clean -fdn", "git clean -nd", "git clean -fdne node_modules", "git clean -fd -e node_modules -n", "git clean -fd --exclude node_modules --dry-run",
     "jest --watchAll=false", "vitest --watch=0", "pnpm test -- --watch=false", "jest --watchAll=OFF", "tsc --watch-all=no", "vitest -t --watch",
     "bd update x --notes '--watchAll=true'",
-]
+    # codex on #387 (gate round 11): abbreviations of index-only / safe git options stay allowed; so do
+    # non-workflow find name filters and the abbreviated command-wrapper cd
+    "git reset --sof HEAD~1", "git reset --mix HEAD", "git restore --stag .github/workflows/ci.yml",
+    "git clean -fd --dry", "command -p cd src && touch x.ts", "find . -iname '*.ORIG' -delete",
+    "find . -name 'readme.md' -delete",
+    # codex on #387 (gate round 12): with the per-program arity, a value-taking short option that eats the `f`/`e`
+    # means NO path is read — rg -r (replace) and grep -m (max-count) both swallow the cluster tail
+    "rg -rf.env .", "grep -m5f.env x", "rg -tf.env src/",
+    # the `--staged`/`-S` BEFORE `--` is the real mode: index-only restores stay allowed
+    "git restore --staged -- .github/workflows/ci.yml", "git restore -S -- .github/workflows/ci.yml",]
 EDIT_BLOCK = [".env", ".env.local", "./.env", "sub/../.env", "/abs/.env.production", ".github/workflows/ci.yml",
               "./x/../.github/workflows/ci.yml", "~/.claude/projects/x/memory/MEMORY.md", "$HOME/.claude/projects/x/y.md",
               ".gc/runtime/secrets/x", ".github/workflows"]
@@ -373,11 +443,11 @@ for c in ("git stash -u", "git stash --include-untracked", "git stash --all", "g
     expect("guard-bash.py", {"command": c}, 2, c + " [workflow untracked]", cwd=untracked, extra_env={"CLAUDE_PROJECT_DIR": untracked})
 for c in ("git stash", "git stash push", "git stash push -m x"):
     expect("guard-bash.py", {"command": c}, 0, c + " [workflow untracked only]", cwd=untracked, extra_env={"CLAUDE_PROJECT_DIR": untracked})
-for c in ("git reset --hard HEAD", "git reset --hard", "git reset --merge", "git reset --keep HEAD"):
+for c in ("git reset --hard HEAD", "git reset --hard", "git reset --merge", "git reset --keep HEAD", "git reset --har HEAD"):
     expect("guard-bash.py", {"command": c}, 2, c + " [workflows dirty]", cwd=dirty, extra_env={"CLAUDE_PROJECT_DIR": dirty})
-for c in ("git reset --soft HEAD~1", "git reset HEAD -- src/x", "git reset", "git reset --mixed"):
+for c in ("git reset --soft HEAD~1", "git reset HEAD -- src/x", "git reset", "git reset --mixed", "git reset --sof HEAD~1"):
     expect("guard-bash.py", {"command": c}, 0, c + " [workflows dirty]", cwd=dirty, extra_env={"CLAUDE_PROJECT_DIR": dirty})
-STASH_CASES = 7 + 5 + 5 + 3 + 4 + 4
+STASH_CASES = 7 + 5 + 5 + 3 + 5 + 5
 for p in EDIT_BLOCK:
     expect("guard-edit.py", {"file_path": p}, 2, "edit " + p)
 for p in EDIT_ALLOW:
