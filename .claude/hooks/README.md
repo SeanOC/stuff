@@ -4,7 +4,7 @@ Source of truth for the per-rig `.claude/hooks/guard-*.py` + `.claude/settings.j
 prompt templates' "NEVER …" prose into deterministic blocks (best-practices review 2026-10-20, hardened
 2026-10-20 after the codex gates on ia-next #376 / co-author #862 / ghastly-show #37 reproduced bypasses).
 Rolled out by mayor PRs to each rig; keep the copies IDENTICAL to these files (rigs gitignore `.claude/`,
-so the files are `git add -f`ed). Self-test: `python3 guard-selftest.py` (834 cases; exit 0 = pass).
+so the files are `git add -f`ed). Self-test: `python3 guard-selftest.py` (936 cases; exit 0 = pass).
 
 ## Threat model
 The hooks stop ACCIDENTAL and habitual rule-breaking by a cooperative agent (the forms workers have actually
@@ -31,7 +31,9 @@ by whether an adversarial form still exists — the README's "not covered" list 
   never mistaken for the executable. Wrapper options whose value is a FILE are checked by effect before the wrapper
   is stripped: `xargs -a|--arg-file <f>` is a read of f (`.env` blocks), `time -o|--output <f>` is a write (`.env`
   and `.github/workflows/…` block).
-- the cwd is tracked through the command: a literal `cd`/`pushd`/`popd`/`cd -` statement changes the directory the
+- a statement led by `if`/`elif`/`while`/`until`/`!` is checked as its condition command (`if git push origin main;
+  then …`, `while sudo true; do …`, `until gh pr merge --admin 1; do …`); `for` is not a command.
+- the cwd is tracked through the command: a literal `cd`/`pushd`/`popd`/`cd -` (also `command cd`/`builtin cd`) statement changes the directory the
   FOLLOWING statements resolve relative paths against (`cd .github/workflows && touch evil.yml`, `cd .github; rm -rf
   workflows`, `pushd .github/workflows && …`), and `env -C|--chdir <dir> cmd` resolves that one command's operands in
   dir. Conservatively a `cd` inside `( … )` carries too; `bash -c '…'` does not (a subprocess). After an unresolvable
@@ -50,11 +52,19 @@ by whether an adversarial form still exists — the README's "not covered" list 
   program, `dd if=`, `source`/`.`; templates `.example`/`.sample`/`.template`/`.dist` are allowed. The first
   operand of `grep`/`rg`/`ag`/`ack` is the PATTERN (not a path) unless `-e`/`-f` is given; grep/rg option values are text
   (patterns, globs, types, colours; rg's `-T`/`-M`/`-E`/`-r` take values, grep's do not) except `-f`/`--file`/`--pre`/`--ignore-file`,
-  which are files and are checked; values of text options
+  which are files and are checked — including the attached and clustered spellings `grep -f.env`, `grep -rf.env .`,
+  `grep -rf .env .`, `rg -if.env` (a cluster's first `-f`/`-e` takes the rest of the cluster, or the next word, as its
+  value); values of text options
   (`--notes`, `--body`, `-m` on `git commit`, …) are never paths; FILE-valued options (`--body-file`, `--design-file`,
   `-F body=@file`) are, so `gh pr comment --body-file .env` blocks.
 - workflow tree: besides direct writes, `rm`/`rmdir`/`mv`/`unlink`/`shred` and `git rm|mv|clean` on `.github`, the
-  worktree root or any parent (they take `.github/workflows` with them; `mv`'s destination is exempt), a directory
+  worktree root or any parent, `find <root> … -delete` whose root is `.github`, the worktree root or a parent — unless
+  every `-name`/`-path` test is a literal or carries a non-yml/yaml extension (`find . -name '*.pyc' -delete` passes,
+  `find . -delete` and `find . -name '*.yml' -delete` block), the worktree-updating `git reset --hard|--merge|--keep <ref>`
+  (any ref other than HEAD replaces the workflow tree with that commit's) and the same modes without a ref while
+  `.github/workflows` is dirty (`--soft`/`--mixed`/`git reset HEAD -- path` touch the index only), and
+  `git restore --staged <workflow path>` is ALLOWED (index only; `--staged --worktree` still blocks). These take
+  `.github/workflows` with them (`mv`'s destination is exempt). Also blocked: a directory
   copied/moved INTO `.github/` whose effective path is the workflow tree (`cp -R workflows .github/`), destructive operands
   that are unresolved shell expansions (`rm -r "$OLDPWD"`; `$PWD`/`$HOME` are resolved), pathspec-less
   `git clean` (exclusion patterns `-e`/`--exclude` are not pathspecs; dry-run flags are honoured inside clusters such as
@@ -97,10 +107,7 @@ from files, process substitutions (`<(…)`), and anything a shell expansion pro
 Known gaps include clustered `gh` root short flags (such as `-vR`), a native Grep over a DIRECTORY that contains an
 env file (only the `path` operand is checked),
 writes to the singular `/commits/<sha>/status` endpoint, `git stash pop|apply` re-creating a workflow change that an
-earlier (pre-guard) stash holds, and the stash dirty-check being scoped to the hook's own worktree (`git -C <other> stash`). Recorded 2026-10-20 after the final gate round (accepted by Sean, fix pending in the next rollout): worktree-updating
-`git reset --hard|--merge|--keep` is not classified as a workflow-tree mutator; `find <root> … -delete` does not route its roots
-through the destructive path policy (only `-exec`/`-ok` are inspected); and `git restore --staged <workflow path>` is over-blocked
-although staged-only restores are meant to pass. The `permissions.deny` rules in
+earlier (pre-guard) stash holds, and the stash dirty-check being scoped to the hook's own worktree (`git -C <other> stash`). The `permissions.deny` rules in
 settings.worker.json are the backstop for the worst cases (force push, sudo, admin merge, secret Reads).
 
 ## Carve-outs (mayor touches `.gc/runtime/guard-allow/<marker>`, removes it after the bead lands)

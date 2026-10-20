@@ -378,6 +378,15 @@ def shell_parts(text, *, heredoc=False):
     return scan(0, literal=heredoc)[0]
 
 
+def strip_condition_keywords(words):
+    """`if git push origin main; then …` / `while sudo true; do …` / `until gh pr merge --admin 1; do …`: the
+    condition IS a command — drop the leading keyword(s) so it is checked like any other statement (gate round 11).
+    `for` keeps its word: `for i in …` names no command."""
+    while words and words[0] in {"if", "elif", "while", "until", "!", "{"}:
+        words = words[1:]
+    return words
+
+
 def check_script(text, state):
     """Check every statement of a shell text plus every command substitution it executes."""
     try:
@@ -402,8 +411,11 @@ def apply_chdir(words, state):
     carries too. An unresolvable target (`cd $DIR`) marks the cwd unknown for the rest of the command."""
     global cwd, CWD_UNKNOWN
     words = [w for w in words if w not in {"!", "{", "}", "then", "do", "else", "elif", "fi", "done", "esac"}]
+    words = strip_condition_keywords(words)
     while words and re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]*=.*", words[0]):
         words = words[1:]
+    while len(words) > 1 and os.path.basename(words[0]) in {"command", "builtin"}:
+        words = words[1:]  # `command cd …` / `builtin cd …` change the cwd exactly like `cd` (ghastly #41 advisory)
     if not words:
         return
     program = os.path.basename(words[0])
@@ -480,6 +492,25 @@ def check_paths(words, rig):
                                     for a in words[2:])):
             block(f"workflow-edit-{rig}", "git stash without a pathspec would take your uncommitted .github/workflows "
                   "change out of the worktree (mayor-owned); stash the paths you mean, e.g. git stash push -- src/")
+    staged_only = program == "git" and git_sub == "restore" and bool(set(words[2:]) & {"-S", "--staged"}) \
+        and not set(words[2:]) & {"-W", "--worktree"}
+    if program == "git" and git_sub == "reset":
+        # worktree-updating reset modes rewrite .github/workflows: from another commit when a ref is named, or by
+        # discarding an uncommitted workflow change (ia-next gate round 10). --soft/--mixed touch the index only.
+        mode = next((a for a in words[2:] if a in {"--hard", "--merge", "--keep"}), None)
+        if mode:
+            ops = []
+            for a in words[2:]:
+                if a == "--":
+                    break
+                if not a.startswith("-"):
+                    ops.append(a)
+            if ops and ops[0] != "HEAD":
+                block(f"workflow-edit-{rig}", f"git reset {mode} {ops[0]} replaces .github/workflows with that commit's "
+                      "version (mayor-owned); use --soft/--mixed, or restore the paths you mean")
+            elif workflows_dirty(False):
+                block(f"workflow-edit-{rig}", f"git reset {mode} discards your uncommitted .github/workflows change "
+                      "(mayor-owned); commit it, or stash the paths you mean")
     grep_values = GREP_VALUE_OPTIONS | (RG_VALUE_OPTIONS if program == "rg" else set())
     # mv: with -t/--target-directory the last operand is a source, not the destination (gs-geb1)
     mv_positional_destination = program == "mv" and not any(
@@ -508,7 +539,8 @@ def check_paths(words, rig):
     git_prose = program == "git" and git_sub in {"commit", "tag", "notes", "merge"}
     pattern_pending = program in GREP_PROGRAMS and not any(
         a in {"-e", "-f", "--files", "--type-list", "--file", "--regexp"} or a.startswith(("--regexp=", "--file="))
-        or (a.startswith(("-e", "-f")) and not a.startswith("--") and len(a) > 2) for a in words[1:])
+        or (a.startswith("-") and not a.startswith("--") and len(a) > 2 and ("e" in a[1:] or "f" in a[1:]))
+        for a in words[1:])
     if program == "git" and git_sub == "clean":
         # exclusion patterns (-e/--exclude) are NOT pathspecs; dry-run may sit inside a cluster (-fdn) — ghastly gs-28ql
         rest, dry_run = [], False
@@ -536,10 +568,34 @@ def check_paths(words, rig):
         if not rest and not dry_run:
             block(f"workflow-edit-{rig}", "git clean without a pathspec defaults to the worktree root (it reaches "
                   ".github/workflows); name the path you mean, e.g. git clean -fd src/")
-    i = 0
+    i, grep_next = 0, None
     while i < len(words):
         w = words[i]
         prev = words[i - 1] if i > 0 else ""
+        if grep_next is not None:
+            kind, grep_next = grep_next, None
+            if kind == "text":
+                i += 1
+                continue
+            if is_secret_path(norm(w)):
+                block("secret-read", f"'{w}' is a protected secret/memory path (grep -f reads it as the pattern file)",
+                      carveout=False)
+            i += 1
+            continue
+        if program in GREP_PROGRAMS and w.startswith("-") and not w.startswith("--") and len(w) > 2 \
+                and ("f" in w[1:] or "e" in w[1:]):
+            # a short cluster: everything after the first -f/-e flag is its value (`grep -rf.env .`, `grep -ie KEY`),
+            # or the next word is (`grep -rf .env .`) — round 11 attached-value finding
+            cluster = w[1:]
+            j = min(k for k in (cluster.find("f"), cluster.find("e")) if k >= 0)
+            value, kind = cluster[j + 1:], "file" if cluster[j] == "f" else "text"
+            if value:
+                if kind == "file" and is_secret_path(norm(value)):
+                    block("secret-read", f"'{w}' reads a protected secret/memory path as the pattern file", carveout=False)
+            else:
+                grep_next = kind
+            i += 1
+            continue
         text_value = prev in TEXT_OPTIONS and prev not in FILE_VALUE_OPTIONS and (prev.startswith("--") or program in {"bd", "gc", "gh"} or git_prose)
         prose = (" " in w or "\t" in w) and ((program not in READ_PROGRAMS and program not in WRITE_PROGRAMS)
                                               or prev in TEXT_OPTIONS or git_prose)
@@ -600,6 +656,8 @@ def check_paths(words, rig):
         elif is_workflow_path(p) and program in WRITE_PROGRAMS:
             if program == "git" and not any(s in words[1:] for s in ("rm", "mv", "checkout", "restore", "apply", "am", "clean", "stash")):
                 pass
+            elif staged_only:
+                pass  # `git restore --staged <workflow path>` only un-stages: the worktree copy is untouched
             elif program in {"sed", "perl"} and not any(a.startswith("--in-place") or (a.startswith("-") and not a.startswith("--") and "i" in a[1:]) for a in words[1:]):
                 pass
             else:
@@ -693,6 +751,9 @@ def strip_runner(program, rest):
         if a.startswith("-"):
             rest.pop(0)
             if "=" not in a and a in arity and rest:
+                # unwrapping may replace argv: inspect the value before it is discarded (ghastly gs-18hj:
+                # `uv run --env-file .env gh …` passed once the runner was unwrapped to gh)
+                check_paths([program, a, rest[0]], rig_name())
                 rest.pop(0)
             continue
         if not seen_sub and a in {"dlx", "exec", "x", "run"}:
@@ -882,7 +943,39 @@ def check_bd(args):
             block("bd-assignee", "never set assignees; the claim hook owns assignment", carveout=False)
 
 
+FIND_NAME_TESTS = {"-name", "-iname", "-path", "-ipath", "-wholename", "-iwholename", "-regex", "-iregex"}
+
+
+def find_filter_excludes_workflows(pattern):
+    """True when a -name/-path pattern can never match a workflow file: a literal (no glob metacharacters) that is
+    not a yml/yaml name, or a pattern whose literal extension is something other than yml/yaml (`*.pyc`)."""
+    ext = re.search(r"\.([A-Za-z0-9_]+)$", pattern)
+    if ext and ext.group(1).lower() not in {"yml", "yaml"}:
+        return True
+    if not re.search(r"[*?\[]", pattern):
+        return not pattern.lower().endswith((".yml", ".yaml")) and not is_workflow_path(norm(pattern))
+    return False
+
+
 def check_find(words):
+    if "-delete" in words:
+        # the built-in action deletes everything under the roots the tests let through (ia-next gate round 10)
+        roots = []
+        for a in words:
+            if a.startswith("-") or a in {"(", "!", ")"}:
+                break
+            roots.append(a)
+        filters, it = [], iter(words)
+        for a in it:
+            if a in FIND_NAME_TESTS:
+                filters.append(next(it, ""))
+        if not (filters and all(find_filter_excludes_workflows(f) for f in filters)):
+            for r in roots or ["."]:
+                q = norm(r)
+                if is_workflow_ancestor(q) or is_workflow_path(q) or \
+                        (CWD_UNKNOWN and re.search(r"(^|/)(\.github|workflows)(/|$)", r)):
+                    block(f"workflow-edit-{rig_name()}", f"find {r} … -delete reaches .github/workflows (mayor-owned); "
+                          "add a -name filter with a non-workflow extension (e.g. '*.pyc') or start below .github")
     for key in ("-exec", "-execdir", "-ok", "-okdir"):
         while key in words:
             i = words.index(key)
@@ -909,6 +1002,7 @@ def _check_statement(words, state=None):
     if any(w in {"for", "while", "until"} for w in words[:1]):
         state["loop"] = True
     words = [w for w in words if w not in {"!", "{", "}", "then", "do", "else", "elif", "fi", "done", "esac", "in"}]
+    words = strip_condition_keywords(words)
     while words and re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]*=.*", words[0]):
         words = words[1:]
     if words and os.path.basename(words[0]) in {"eval", "source", "."} and len(words) > 1:
