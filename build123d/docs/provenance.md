@@ -135,9 +135,11 @@ PR:
 - that every [V] value re-derives from these JSON files
 - that every MultiBuild constant is [V] and equals its measured value
 
-The trusted workflow's `upstream` run regenerates each JSON and SVG
-byte-for-byte from the mirror. DXF bytes embed save timestamps, so only
-their content is compared.
+The trusted workflow's `upstream` run regenerates each SVG byte-for-byte
+from the mirror and compares each JSON measurement exactly, apart from
+the recorded build123d version stamp. The measurement-tool stamp is
+checked separately against the current tool version. DXF bytes embed
+save timestamps, so only their content is compared.
 
 The JSON `bbox` is OpenCascade's optimal box. For B-spline faces, such as
 threads, it can overshoot the trimmed face: `mb-small-thread-hole-positive`

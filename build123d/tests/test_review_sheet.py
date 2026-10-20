@@ -19,9 +19,10 @@ from scripts.export import review_context, section_svg
 SPECS = [s for s in all_models() if not s.is_smoke]
 
 
-@pytest.fixture(scope="module")
-def parts():
-    return {s.slug: s.build(s.resolve_values()) for s in SPECS}
+@pytest.fixture(scope="module", params=SPECS, ids=lambda s: s.slug)
+def review_part(request):
+    spec = request.param
+    return spec, spec.build(spec.resolve_values())
 
 
 @pytest.fixture
@@ -92,28 +93,29 @@ def test_resolve_mount_fixtures_absent_style():
     assert resolve_mount_fixtures(spec, "openconnect-slot", oc).cutters
 
 
-def test_default_plane_mounted_model(parts):
+def test_default_plane_mounted_model():
     candidates = ((s, resolve_mount_fixtures(s, mount, s.resolve_values()))
                   for s in SPECS if not s.review_sections for mount in s.mounts)
     # A declared mount may be inactive for the default values (the cartridge
     # holder defaults to positive snaps, not its optional receiver fixtures).
     spec, fx = next((s, fx) for s, fx in candidates if fx is not None)
-    ctx = review_context(spec, spec.resolve_values(), parts[spec.slug])
+    ctx = review_context(spec, spec.resolve_values(), spec.build(spec.resolve_values()))
     assert len(ctx.sections) == 1
     assert ctx.sections[0].origin == tuple(fx.seat_locs[0].position)
     np.testing.assert_array_equal(ctx.sections[0].normal, np.cross(fx.face_normal, fx.entry_axis))
 
 
-def test_default_plane_no_mount_model(parts):
+def test_default_plane_no_mount_model():
     spec = cup_lid.SPEC
-    ctx = review_context(spec, spec.resolve_values(), parts[spec.slug])
-    assert ctx.sections[0].origin == tuple(parts[spec.slug].bounding_box().center())
+    part = spec.build(spec.resolve_values())
+    ctx = review_context(spec, spec.resolve_values(), part)
+    assert ctx.sections[0].origin == tuple(part.bounding_box().center())
     assert ctx.sections[0].normal == (1, 0, 0)
 
 
-def test_declared_plane_used(parts):
+def test_declared_plane_used():
     spec = spool_cradle.SPEC
-    ctx = review_context(spec, spec.resolve_values(), parts[spec.slug])
+    ctx = review_context(spec, spec.resolve_values(), spec.build(spec.resolve_values()))
     assert ctx.sections is spec.review_sections
     assert ctx.sections[0].origin == (0, spool_cradle.dimensions()["center_y"], 0)
 
@@ -154,9 +156,8 @@ def test_context_requires_resolved_sections():
         th.ReviewContext("empty", (0, 0, 1), (), ())
 
 
-@pytest.mark.parametrize("spec", SPECS, ids=lambda s: s.slug)
-def test_section_golden(spec, parts, file_regression):
-    part = parts[spec.slug]
+def test_section_golden(review_part, file_regression):
+    spec, part = review_part
     values = spec.resolve_values()
     plane = review_context(spec, values, part).sections[0]
     part = in_print_frame(spec, values, part)
