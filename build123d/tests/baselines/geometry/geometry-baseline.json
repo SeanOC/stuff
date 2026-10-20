@@ -71,9 +71,8 @@
       "underware-x/X",
       "underware-x/X-tall"
     ],
-    "provisional": "geometry only; bake + audit-rows regenerated from the first successful CI capture",
     "schema_version": 1,
-    "source_sha": "48b2757532758ebb31013c5f0ddbdf1485e5e2e5",
+    "source_sha": "5dc9c28f3e45b8c3aacb50d139438feb23e95456",
     "why": "pst-ml7f9: countersink cone clamped to 45\u00b0 half-angle (Sean 2026-10-20 option a)"
   },
   "rows": {

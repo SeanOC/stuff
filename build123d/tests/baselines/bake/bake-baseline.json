@@ -25,8 +25,8 @@
       "vertex_coordinates": "c9ae19cffd9c805bd875bb6afbc028f47e7f8b820ea6a6ff4a9df2d908d2a0dc"
     },
     "holder-cup-lid/sippy_cup_85mm.stl": {
-      "oriented_triangles": "d7350f5803812d0e16397a02fb50c49820cf251794f0d7f0c404ccd1403e308d",
-      "vertex_coordinates": "2403ac460f0641c533db9abcbf7736f33e67a9723859eeb47bc932f28d7990e0"
+      "oriented_triangles": "c741559198856fb77a4b1645868146883a70d27e6a6596b3dd713e512cd4547b",
+      "vertex_coordinates": "9db9006495dad138170c50888dfbf2a3b6952526191123a898acc724089defde"
     },
     "holder-label-card/inlaid-base.stl": {
       "oriented_triangles": "56d117e6a1a6b70f37857c69acabe4cebe1b5eeca3575f29f5f200118ea7b79d",
@@ -165,7 +165,7 @@
       "vertex_coordinates": "3da212b9f3941e613fed67242698584b25d6070b083a772b66dfa2fd4fecc680"
     },
     "holder-tombstone-sign/pinned.stl": {
-      "oriented_triangles": "3e4522f39694fda12e3a8a0ff284cf4a41b7e330cdf3e544e651f1ada02cf17d",
+      "oriented_triangles": "a8f1bb84c63a9273da9907952c6a79bfd2e54452225a46a5cec685aefb2a9c40",
       "vertex_coordinates": "a92ca443fcac815e013aac70c242987368bf52169b8afc6ee03a22b97160e2db"
     },
     "holder-tombstone-sign/small-base.stl": {
@@ -229,7 +229,7 @@
       "vertex_coordinates": "12073d2bc8dc601212b7d3fde3c7d60a33f3cf1184bb3c0df94a8888fc8153c4"
     },
     "holder-tombstone-stake/pinned.stl": {
-      "oriented_triangles": "8282a8485b25b701f0dd9e2f06950b1e977042bee6f6dc8ff6cd22aca845a406",
+      "oriented_triangles": "1bed194640a831f73e5abd723875b984b3327935988e9f97ca071444badfce4a",
       "vertex_coordinates": "33a4e20df49fff1b0dc5fa00f22f27111a4d0de1e16bcc1e416950cfb233faf0"
     },
     "littletikes-dream-machine-cartridge-holder/blank_back.stl": {
@@ -486,8 +486,8 @@
       "underware-x/X-tall"
     ],
     "schema_version": 1,
-    "source_sha": "0e74990470c9741b631062f98424020be93aff33",
-    "why": "pst-6dhmb: initial app-preset baseline on 0.13 after migration merge 8d17fbe5; implements pst-cdd2c hand-off"
+    "source_sha": "5dc9c28f3e45b8c3aacb50d139438feb23e95456",
+    "why": "pst-ml7f9: countersink cone clamped to 45\u00b0 half-angle (Sean 2026-10-20 option a)"
   },
   "rows": {
     "gridfinity-capture-bin/deep.glb": {
@@ -1756,7 +1756,7 @@
       ],
       "triangles": 10380,
       "vertices": 5190,
-      "volume_mm3": 16082.190637060,
+      "volume_mm3": 16076.106069091,
       "watertight": true,
       "winding_consistent": true
     },
