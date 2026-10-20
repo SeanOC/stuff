@@ -127,6 +127,28 @@ def _matte_glb_materials(path: Path) -> None:
                      + struct.pack('<I4s', len(chunk), b'JSON') + chunk + rest)
 
 
+def _weld_3mf_mesh(vertices, triangles):
+    """Weld face seams on a 1e-6 mm coordinate grid, preserving first-seen order.
+
+    Emit the rounded positions and discard triangles collapsed by the weld.
+    This freezes the previous build123d 0.13 Mesher behaviour locally.
+    """
+    import ctypes
+    from lib3mf import Lib3MF
+
+    vertex_to_idx, remap = {}, []
+    for vertex in vertices:
+        key = tuple(round(coordinate, 6) for coordinate in vertex)
+        remap.append(vertex_to_idx.setdefault(key, len(vertex_to_idx)))
+    positions = [Lib3MF.Position((ctypes.c_float * 3)(*v)) for v in vertex_to_idx]
+    faces = []
+    for triangle in triangles:
+        a, b, c = (remap[i] for i in triangle)
+        if a != b and b != c and c != a:
+            faces.append(Lib3MF.Triangle((ctypes.c_uint * 3)(a, b, c)))
+    return positions, faces
+
+
 def export_3mf_one_object(named, path, object_name: str) -> None:
     """ONE 3MF build item: a components object whose parts are the named meshes.
 
@@ -150,24 +172,28 @@ def export_3mf_one_object(named, path, object_name: str) -> None:
     import locale
     import uuid
     import zipfile
-    from build123d import Mesher
+    import lib3mf
+    from lib3mf import Lib3MF
 
     def stable_uuid(*key: str) -> str:
         return str(uuid.uuid5(uuid.NAMESPACE_URL, '/'.join(('stuff-3mf', object_name, *key))))
 
-    mesher = Mesher()  # owns the lib3mf wrapper + model; its _mesh helpers weld vertices
-    wrapper, model = mesher.wrapper, mesher.model
+    wrapper = lib3mf.get_wrapper()
+    model = wrapper.CreateModel()
+    model.SetUnit(Lib3MF.ModelUnit.MilliMeter)
     group = model.AddBaseMaterialGroup()
     assembly = model.AddComponentsObject()
     assembly.SetName(object_name)
     assembly.SetUUID(stable_uuid('object'))
     part_ids = []
     for name, shape, rgba in named:
-        verts, tris = Mesher._mesh_shape(copy.deepcopy(shape), 0.005, 0.1)
+        # Same relative linear/angular deflections as the former Mesher path.
+        # Tessellation mutates its shape: keep the caller's STL/GLB mesh untouched.
+        verts, tris = copy.deepcopy(shape).tessellate(0.005, 0.1)
         mesh = model.AddMeshObject()
         mesh.SetName(name)
         mesh.SetUUID(stable_uuid('part', name))
-        mesh.SetGeometry(*Mesher._create_3mf_mesh(verts, tris))
+        mesh.SetGeometry(*_weld_3mf_mesh(verts, tris))
         mat = group.AddMaterial(name, wrapper.FloatRGBAToColor(*rgba))
         mesh.SetObjectLevelProperty(group.GetResourceID(), mat)
         if not mesh.IsManifoldAndOriented():
@@ -179,7 +205,7 @@ def export_3mf_one_object(named, path, object_name: str) -> None:
     model.SetBuildUUID(stable_uuid('build'))
     saved = locale.setlocale(locale.LC_ALL)
     try:
-        mesher.write(str(path))
+        model.QueryWriter('3mf').WriteToFile(str(path))
     finally:
         locale.setlocale(locale.LC_ALL, saved)  # lib3mf resets the process locale to C
     settings = [f'<object id="{assembly.GetResourceID()}">',

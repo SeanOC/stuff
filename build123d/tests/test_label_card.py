@@ -257,6 +257,7 @@ def test_3mf_is_one_object_with_base_and_inlay_on_two_filaments(tmp_path):
     with zipfile.ZipFile(path) as package:
         model = package.read('3D/3dmodel.model').decode()
         settings = package.read('Metadata/model_settings.config').decode()
+    assert 'unit="millimeter"' in model
     assert 'name="Application"' not in model
     extruders = re.findall(r'<part id="\d+".*?key="name" value="(\w+)".*?key="extruder" value="(\d)"',
                            settings, re.S)
