@@ -36,6 +36,10 @@ Contract (validated by tests/test_presets_bake.py):
   - exactly STL + GLB + PNG per preset (thumbnail is a bake output, not
     a separate committed review artifact), plus 3MF + -base/-text STLs for
     multi-colour models only.
+
+Deterministic paths do not imply whole-bake byte identity on OCCT 8.
+See docs/bake-repeatability.md for the fresh-process evidence and the
+geometry comparison contract; existing model-specific byte pins still apply.
 """
 import argparse
 import copy
