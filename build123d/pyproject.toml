@@ -64,6 +64,7 @@ dev = [
 # A command-line -m REPLACES addopts, so every CI -m expression repeats
 # 'and not upstream'.
 markers = [
+    "baseline: recomputes all app-preset BREPs against the committed geometry baseline",
     "slow: expensive geometry contracts, opt in with --run-slow",
     "upstream: needs build123d/reference/upstream/ pulled from the private GCS mirror",
     "audit: builds a registry-sized model and runs the BRep print audit (tens of seconds each); bd123 'audit' job",
