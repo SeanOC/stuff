@@ -1,0 +1,973 @@
+{
+  "bead": "pst-cdd2c",
+  "current_source": "b38d60c5dc9c73b05d13086afe26e13e519a6fe4",
+  "date": "2026-10-20",
+  "environment": {
+    "packages": {
+      "build123d": "0.13.0",
+      "cadquery-ocp-novtk": "8.0.1.1.0",
+      "numpy": "2.5.2",
+      "trimesh": "5.0.0"
+    },
+    "platform": "Linux-6.17.0-35-generic-x86_64-with-glibc2.39",
+    "python": "3.14.4"
+  },
+  "fixed_pinned_brep_stl_sha256": [
+    "eda0f02a466f08942cbb3ed81a73753da9d365c7ae2ab78628e2cd1ef6cc5cf1",
+    "eda0f02a466f08942cbb3ed81a73753da9d365c7ae2ab78628e2cd1ef6cc5cf1",
+    "eda0f02a466f08942cbb3ed81a73753da9d365c7ae2ab78628e2cd1ef6cc5cf1",
+    "eda0f02a466f08942cbb3ed81a73753da9d365c7ae2ab78628e2cd1ef6cc5cf1"
+  ],
+  "fresh_targeted_builds_before_meshing": [
+    {
+      "case": "stopper-clips",
+      "hashes": {
+        ".brep": "b5480f769d7d4d2811e62b5a60335bbfdb69fa6569f8e2314f53491f25a00448",
+        ".stl": "568f9f36eb0ae464e3b708137a4d54a655bd1b4a1c6d881e11ddba222e9ee995"
+      }
+    },
+    {
+      "case": "pinned",
+      "hashes": {
+        ".brep": "c478196cc65d369270e724eb933be0dbf9cf0e700cba1323b7e21dd2c10dc836",
+        ".stl": "8c4510074b55483b306314763129631bf0571015f42231f1409cf0a111886941"
+      }
+    },
+    {
+      "case": "stopper-clips",
+      "hashes": {
+        ".brep": "64af828900c3a96871df81d88f5d92aa9082f4252a425328bbfb4ae61e309b2c",
+        ".stl": "df77ee8b51d85ecc6c10739fc396f75e994126d258604a31521df628dff4e620"
+      }
+    },
+    {
+      "case": "pinned",
+      "hashes": {
+        ".brep": "9656d6b9934a5db1f8b5577e4852d66b206fcd9f794cf93b0dd3527d065c3eaa",
+        ".stl": "52fbff422826155d45ea29cd021d59a34f6ba329c41019c8cb40b7ecd691ae3c"
+      }
+    },
+    {
+      "case": "stopper-clips",
+      "hashes": {
+        ".brep": "094ccc836cac69ee36e6ca55035c25a9a8388bba4bb4053d69001724e1d5b404",
+        ".stl": "12a972324d5fc41ee93baaedd471e0e8ce5d8834c4dd74cb9bff20b50250298b"
+      }
+    },
+    {
+      "case": "pinned",
+      "hashes": {
+        ".brep": "c478196cc65d369270e724eb933be0dbf9cf0e700cba1323b7e21dd2c10dc836",
+        ".stl": "8c4510074b55483b306314763129631bf0571015f42231f1409cf0a111886941"
+      }
+    },
+    {
+      "case": "stopper-clips",
+      "hashes": {
+        ".brep": "c0d7d261365da9da802b4dca585d1310ed145cc919b3fd50b069397edc423ed9",
+        ".stl": "c236944dde3d99f717d78e6bdecee645d8ba43723b1a0eddd96e33a457ffb13e"
+      }
+    },
+    {
+      "case": "pinned",
+      "hashes": {
+        ".brep": "c478196cc65d369270e724eb933be0dbf9cf0e700cba1323b7e21dd2c10dc836",
+        ".stl": "8c4510074b55483b306314763129631bf0571015f42231f1409cf0a111886941"
+      }
+    }
+  ],
+  "png_differences_with_identical_glb": [
+    {
+      "changed_pixels": 1,
+      "max_channel_delta": 13,
+      "pair": "discovery_before_vs_current_baseline_a",
+      "pixels": 160000,
+      "preset": "holder-tombstone-sign/default"
+    },
+    {
+      "changed_pixels": 1,
+      "max_channel_delta": 18,
+      "pair": "current_baseline_a_vs_b",
+      "pixels": 160000,
+      "preset": "holder-tombstone-sign/two-colour"
+    }
+  ],
+  "presets_per_full_bake": 65,
+  "reports": {
+    "discovery_unmodified_8d17fbe5": {
+      "byte_identical": false,
+      "changes": {
+        "holder-tombstone-sign/default.png": {
+          "sha256": [
+            "8365290fe0c5bf2b24eb5f83705fa0e44523d7d7b7e7a5508b46613caba7f0d3",
+            "b718546ddff1c2068a2ac43a31ce6db884dbd873a240486a88fcef13592cdf18"
+          ]
+        },
+        "holder-tombstone-stake/pinned.glb": {
+          "sha256": [
+            "f1f2d0d185be04eb2a58b95b88990e46832607c9c788d69a3fc9c8351bf94ba6",
+            "8fdacc30b708510f4a83552c067e6f4499bbef50adc982e14735c1d9e930ca94"
+          ]
+        },
+        "holder-tombstone-stake/pinned.stl": {
+          "after": {
+            "bounds_mm": [
+              [
+                -45.0,
+                -1.3183898417423734e-15,
+                -1.534883331544279e-14
+              ],
+              [
+                45.0,
+                300.0,
+                8.0
+              ]
+            ],
+            "triangles": 2760,
+            "vertices": 1378,
+            "volume_mm3": 96699.11018038432,
+            "watertight": true,
+            "winding_consistent": true
+          },
+          "before": {
+            "bounds_mm": [
+              [
+                -45.0,
+                -1.3183898417423734e-15,
+                -1.534883331544279e-14
+              ],
+              [
+                45.0,
+                300.0,
+                8.0
+              ]
+            ],
+            "triangles": 2760,
+            "vertices": 1378,
+            "volume_mm3": 96699.11018038432,
+            "watertight": true,
+            "winding_consistent": true
+          },
+          "classification": "connectivity-or-winding",
+          "same_oriented_triangles": false,
+          "same_vertex_coordinates": true,
+          "sha256": [
+            "1e5e2da029c65f09c74b356c0fb35ecfdea227e69f4ff092196db5ea38ae0fbc",
+            "8c4510074b55483b306314763129631bf0571015f42231f1409cf0a111886941"
+          ]
+        },
+        "openconnect-drawer/stopper-clips.glb": {
+          "sha256": [
+            "8c8d699809a09920322938b398f1174250b58fd1071e34b94d13ceb471297d92",
+            "5cf1a1a08f9f01d17c78ac46c77e9cd4077e13edd1fefc709df3c13fe69746e7"
+          ]
+        },
+        "openconnect-drawer/stopper-clips.stl": {
+          "after": {
+            "bounds_mm": [
+              [
+                -3.200000047683716,
+                -8.300000190734863,
+                0.0
+              ],
+              [
+                31.200000762939453,
+                0.0,
+                2.0
+              ]
+            ],
+            "triangles": 2184,
+            "vertices": 1096,
+            "volume_mm3": 130.08000833761682,
+            "watertight": true,
+            "winding_consistent": true
+          },
+          "before": {
+            "bounds_mm": [
+              [
+                -3.200000047683716,
+                -8.300000190734863,
+                0.0
+              ],
+              [
+                31.200000762939453,
+                0.0,
+                2.0
+              ]
+            ],
+            "triangles": 2184,
+            "vertices": 1096,
+            "volume_mm3": 130.08000833761682,
+            "watertight": true,
+            "winding_consistent": true
+          },
+          "classification": "same-oriented-triangles",
+          "same_oriented_triangles": true,
+          "same_vertex_coordinates": true,
+          "sha256": [
+            "3441fd8e882599e40580d68cdb19156241867e10d1ece084a587aaa0ed29f42d",
+            "568f9f36eb0ae464e3b708137a4d54a655bd1b4a1c6d881e11ddba222e9ee995"
+          ]
+        }
+      },
+      "file_counts": [
+        251,
+        251
+      ],
+      "missing_after": [],
+      "missing_before": []
+    },
+    "one_occt_thread_b38d60c5": {
+      "byte_identical": false,
+      "changes": {
+        "holder-tombstone-sign/pinned.glb": {
+          "sha256": [
+            "4ccc564c31602cdd9c7095a9f8843d5b5110724b34402930db66614f4ff5071c",
+            "49c512b307b1b5761b539e2394418c1f4895a464908232e45d4af2f50d64f1dd"
+          ]
+        },
+        "holder-tombstone-sign/pinned.png": {
+          "sha256": [
+            "2a49dd5ce8e6fe50b48d5286ecc0a82248aef59272b6b8d0013fc510edd94124",
+            "e323f09315eed7ec4dd0aa2a093154b203be4a3661d37299ebe31ae2fb51cf78"
+          ]
+        },
+        "holder-tombstone-sign/pinned.stl": {
+          "after": {
+            "bounds_mm": [
+              [
+                -120.0,
+                -5.551115123125783e-17,
+                -5.551115123125783e-17
+              ],
+              [
+                120.0,
+                299.96270751953125,
+                8.600000381469727
+              ]
+            ],
+            "triangles": 392278,
+            "vertices": 196135,
+            "volume_mm3": 533457.456753663,
+            "watertight": true,
+            "winding_consistent": true
+          },
+          "before": {
+            "bounds_mm": [
+              [
+                -120.0,
+                -5.551115123125783e-17,
+                -5.551115123125783e-17
+              ],
+              [
+                120.0,
+                299.96270751953125,
+                8.600000381469727
+              ]
+            ],
+            "triangles": 392278,
+            "vertices": 196135,
+            "volume_mm3": 533457.456753663,
+            "watertight": true,
+            "winding_consistent": true
+          },
+          "classification": "connectivity-or-winding",
+          "same_oriented_triangles": false,
+          "same_vertex_coordinates": true,
+          "sha256": [
+            "644e59bae983f1cc6d9101bf5ca43c47fa95611a0b8384636dc99cae76024a94",
+            "ecc95addaf819eff3adcbff47b07ee14599f41afac977147bf051e9807a4e252"
+          ]
+        },
+        "holder-tombstone-stake/pinned.glb": {
+          "sha256": [
+            "f1f2d0d185be04eb2a58b95b88990e46832607c9c788d69a3fc9c8351bf94ba6",
+            "f65bd3ebd85437035353f35d5753096a161f4ae1906bdf1238ea9a74085508e1"
+          ]
+        },
+        "holder-tombstone-stake/pinned.stl": {
+          "after": {
+            "bounds_mm": [
+              [
+                -45.0,
+                -1.3183898417423734e-15,
+                -1.534883331544279e-14
+              ],
+              [
+                45.0,
+                300.0,
+                8.0
+              ]
+            ],
+            "triangles": 2760,
+            "vertices": 1378,
+            "volume_mm3": 96699.11018038432,
+            "watertight": true,
+            "winding_consistent": true
+          },
+          "before": {
+            "bounds_mm": [
+              [
+                -45.0,
+                -1.3183898417423734e-15,
+                -1.534883331544279e-14
+              ],
+              [
+                45.0,
+                300.0,
+                8.0
+              ]
+            ],
+            "triangles": 2760,
+            "vertices": 1378,
+            "volume_mm3": 96699.11018038432,
+            "watertight": true,
+            "winding_consistent": true
+          },
+          "classification": "connectivity-or-winding",
+          "same_oriented_triangles": false,
+          "same_vertex_coordinates": true,
+          "sha256": [
+            "1e5e2da029c65f09c74b356c0fb35ecfdea227e69f4ff092196db5ea38ae0fbc",
+            "52fbff422826155d45ea29cd021d59a34f6ba329c41019c8cb40b7ecd691ae3c"
+          ]
+        },
+        "openconnect-drawer/stopper-clips.glb": {
+          "sha256": [
+            "068ef04f1298996dabef491e11d8ea4cf4f58339bcf5525a5f80226435f6292e",
+            "0fa166d5d931a0947871d8b19aa7489bbf72f667f0a66589c0b9c32292697f07"
+          ]
+        },
+        "openconnect-drawer/stopper-clips.stl": {
+          "after": {
+            "bounds_mm": [
+              [
+                -3.200000047683716,
+                -8.300000190734863,
+                0.0
+              ],
+              [
+                31.200000762939453,
+                0.0,
+                2.0
+              ]
+            ],
+            "triangles": 2184,
+            "vertices": 1096,
+            "volume_mm3": 130.08000833761682,
+            "watertight": true,
+            "winding_consistent": true
+          },
+          "before": {
+            "bounds_mm": [
+              [
+                -3.200000047683716,
+                -8.300000190734863,
+                0.0
+              ],
+              [
+                31.200000762939453,
+                0.0,
+                2.0
+              ]
+            ],
+            "triangles": 2184,
+            "vertices": 1096,
+            "volume_mm3": 130.08000833761682,
+            "watertight": true,
+            "winding_consistent": true
+          },
+          "classification": "same-oriented-triangles",
+          "same_oriented_triangles": true,
+          "same_vertex_coordinates": true,
+          "sha256": [
+            "df77ee8b51d85ecc6c10739fc396f75e994126d258604a31521df628dff4e620",
+            "56591f8b504a6dc966b56e389376fef135499c111c376d6670db088c897d15f2"
+          ]
+        }
+      },
+      "file_counts": [
+        251,
+        251
+      ],
+      "missing_after": [],
+      "missing_before": []
+    },
+    "serial_meshing_b38d60c5": {
+      "byte_identical": false,
+      "changes": {
+        "holder-tombstone-sign/pinned-base.stl": {
+          "after": {
+            "bounds_mm": [
+              [
+                -120.0,
+                -5.551115123125783e-17,
+                -5.551115123125783e-17
+              ],
+              [
+                120.0,
+                299.96270751953125,
+                8.0
+              ]
+            ],
+            "triangles": 12046,
+            "vertices": 6019,
+            "volume_mm3": 520110.4337591774,
+            "watertight": true,
+            "winding_consistent": true
+          },
+          "before": {
+            "bounds_mm": [
+              [
+                -120.0,
+                -5.551115123125783e-17,
+                -5.551115123125783e-17
+              ],
+              [
+                120.0,
+                299.96270751953125,
+                8.0
+              ]
+            ],
+            "triangles": 12046,
+            "vertices": 6019,
+            "volume_mm3": 520110.4337591774,
+            "watertight": true,
+            "winding_consistent": true
+          },
+          "classification": "connectivity-or-winding",
+          "same_oriented_triangles": false,
+          "same_vertex_coordinates": true,
+          "sha256": [
+            "1dcc1a855b43dcb1b0403e1fdcb4001b22e90828c5494c46720e1dd81c3ba23c",
+            "2545e2ab3d0c2dcce0a624973f237c5a311a2cd49f53ab6bbaf968770244821e"
+          ]
+        },
+        "holder-tombstone-sign/pinned.3mf": {
+          "sha256": [
+            "0cbb887aee83d4034bc70984bd0086eb2416e54acc5b304f89821dc7f0caa2f9",
+            "e33d79b19921106059b2573791f68955f203211f7a30c264170d47253961ee75"
+          ]
+        },
+        "holder-tombstone-sign/pinned.bambu-h2c-0.4.3mf": {
+          "sha256": [
+            "2728bf092035f3d44ec25faff5a053db27dbf4291eef19819c3a0f02b884ce52",
+            "8805eed97e282546f1e07680aa3ce537adb1aa576f0e4c0a5a7de64e93dddf37"
+          ]
+        },
+        "holder-tombstone-sign/pinned.glb": {
+          "sha256": [
+            "4ccc564c31602cdd9c7095a9f8843d5b5110724b34402930db66614f4ff5071c",
+            "7a62df51d3f0178bb9a43fbc53c81db2ec34af9e6d52cb614b47ceccd22851cf"
+          ]
+        },
+        "holder-tombstone-sign/pinned.stl": {
+          "after": {
+            "bounds_mm": [
+              [
+                -120.0,
+                -5.551115123125783e-17,
+                -5.551115123125783e-17
+              ],
+              [
+                120.0,
+                299.96270751953125,
+                8.600000381469727
+              ]
+            ],
+            "triangles": 392278,
+            "vertices": 196135,
+            "volume_mm3": 533457.456753663,
+            "watertight": true,
+            "winding_consistent": true
+          },
+          "before": {
+            "bounds_mm": [
+              [
+                -120.0,
+                -5.551115123125783e-17,
+                -5.551115123125783e-17
+              ],
+              [
+                120.0,
+                299.96270751953125,
+                8.600000381469727
+              ]
+            ],
+            "triangles": 392278,
+            "vertices": 196135,
+            "volume_mm3": 533457.456753663,
+            "watertight": true,
+            "winding_consistent": true
+          },
+          "classification": "connectivity-or-winding",
+          "same_oriented_triangles": false,
+          "same_vertex_coordinates": true,
+          "sha256": [
+            "7e4708be6f8c10f01d4d4fddbd41a3d5621a857e6a1be8874da553bec408bf2c",
+            "ecc95addaf819eff3adcbff47b07ee14599f41afac977147bf051e9807a4e252"
+          ]
+        },
+        "holder-tombstone-sign/two-colour.png": {
+          "sha256": [
+            "a578e7ae57613feb280a156d982064a31c0cdd27f7d75d10826552b02dd1251d",
+            "3b8bb72bc7bc037cceca0e680b83c466585e3e47f4ebed93202bc57b191e0200"
+          ]
+        },
+        "holder-tombstone-stake/pinned.glb": {
+          "sha256": [
+            "f65bd3ebd85437035353f35d5753096a161f4ae1906bdf1238ea9a74085508e1",
+            "f1f2d0d185be04eb2a58b95b88990e46832607c9c788d69a3fc9c8351bf94ba6"
+          ]
+        },
+        "holder-tombstone-stake/pinned.stl": {
+          "after": {
+            "bounds_mm": [
+              [
+                -45.0,
+                -1.3183898417423734e-15,
+                -1.534883331544279e-14
+              ],
+              [
+                45.0,
+                300.0,
+                8.0
+              ]
+            ],
+            "triangles": 2760,
+            "vertices": 1378,
+            "volume_mm3": 96699.11018038432,
+            "watertight": true,
+            "winding_consistent": true
+          },
+          "before": {
+            "bounds_mm": [
+              [
+                -45.0,
+                -1.3183898417423734e-15,
+                -1.534883331544279e-14
+              ],
+              [
+                45.0,
+                300.0,
+                8.0
+              ]
+            ],
+            "triangles": 2760,
+            "vertices": 1378,
+            "volume_mm3": 96699.11018038432,
+            "watertight": true,
+            "winding_consistent": true
+          },
+          "classification": "connectivity-or-winding",
+          "same_oriented_triangles": false,
+          "same_vertex_coordinates": true,
+          "sha256": [
+            "52fbff422826155d45ea29cd021d59a34f6ba329c41019c8cb40b7ecd691ae3c",
+            "1e5e2da029c65f09c74b356c0fb35ecfdea227e69f4ff092196db5ea38ae0fbc"
+          ]
+        },
+        "littletikes-dream-machine-cartridge-holder/default.glb": {
+          "sha256": [
+            "e18551d8f9baece95d3939bf40f11aa310315c62ecac30ca9b5338541aded73d",
+            "18af608100fba6a31d75fe0ee1ad6d82ce5c7efc755d39f49119906d06d11799"
+          ]
+        },
+        "littletikes-dream-machine-cartridge-holder/default.stl": {
+          "after": {
+            "bounds_mm": [
+              [
+                -28.0,
+                -2.3727700170341273e-14,
+                8.115730246482423e-16
+              ],
+              [
+                28.0,
+                44.380001068115234,
+                112.0
+              ]
+            ],
+            "triangles": 32528,
+            "vertices": 16202,
+            "volume_mm3": 155025.83091547695,
+            "watertight": true,
+            "winding_consistent": true
+          },
+          "before": {
+            "bounds_mm": [
+              [
+                -28.0,
+                -2.3727700170341273e-14,
+                8.115730246482423e-16
+              ],
+              [
+                28.0,
+                44.380001068115234,
+                112.0
+              ]
+            ],
+            "triangles": 32528,
+            "vertices": 16202,
+            "volume_mm3": 155025.83091547692,
+            "watertight": true,
+            "winding_consistent": true
+          },
+          "classification": "same-oriented-triangles",
+          "same_oriented_triangles": true,
+          "same_vertex_coordinates": true,
+          "sha256": [
+            "d928712e3f37485843ff6bff520f47666185869239a7322ddc311437278884e3",
+            "aaeb6b644aa965cc0fd14f83bccf46a8b3d1da67a176a35cd74cd715278c0931"
+          ]
+        },
+        "openconnect-drawer/stopper-clips.glb": {
+          "sha256": [
+            "94e59724cf0291377caf473b0e1c68b835a577b1b764bcea1b5173fa90820047",
+            "068ef04f1298996dabef491e11d8ea4cf4f58339bcf5525a5f80226435f6292e"
+          ]
+        },
+        "openconnect-drawer/stopper-clips.stl": {
+          "after": {
+            "bounds_mm": [
+              [
+                -3.200000047683716,
+                -8.300000190734863,
+                0.0
+              ],
+              [
+                31.200000762939453,
+                0.0,
+                2.0
+              ]
+            ],
+            "triangles": 2184,
+            "vertices": 1096,
+            "volume_mm3": 130.08000833761682,
+            "watertight": true,
+            "winding_consistent": true
+          },
+          "before": {
+            "bounds_mm": [
+              [
+                -3.200000047683716,
+                -8.300000190734863,
+                0.0
+              ],
+              [
+                31.200000762939453,
+                0.0,
+                2.0
+              ]
+            ],
+            "triangles": 2184,
+            "vertices": 1096,
+            "volume_mm3": 130.08000833761682,
+            "watertight": true,
+            "winding_consistent": true
+          },
+          "classification": "same-oriented-triangles",
+          "same_oriented_triangles": true,
+          "same_vertex_coordinates": true,
+          "sha256": [
+            "3441fd8e882599e40580d68cdb19156241867e10d1ece084a587aaa0ed29f42d",
+            "df77ee8b51d85ecc6c10739fc396f75e994126d258604a31521df628dff4e620"
+          ]
+        },
+        "openconnect-drawer/top-slot.png": {
+          "sha256": [
+            "49c5d45e1425c311d5e9098aee11b293ee3befe97e0d3dfa4b19d30573fbdc7f",
+            "50275d08e1bcbbf9abd54a05a4776fd681433f697491d16f052dc1dde81d92e0"
+          ]
+        }
+      },
+      "file_counts": [
+        251,
+        251
+      ],
+      "missing_after": [],
+      "missing_before": []
+    },
+    "unmodified_b38d60c5": {
+      "byte_identical": false,
+      "changes": {
+        "holder-tombstone-sign/pinned.glb": {
+          "sha256": [
+            "49c512b307b1b5761b539e2394418c1f4895a464908232e45d4af2f50d64f1dd",
+            "7a62df51d3f0178bb9a43fbc53c81db2ec34af9e6d52cb614b47ceccd22851cf"
+          ]
+        },
+        "holder-tombstone-sign/pinned.stl": {
+          "after": {
+            "bounds_mm": [
+              [
+                -120.0,
+                -5.551115123125783e-17,
+                -5.551115123125783e-17
+              ],
+              [
+                120.0,
+                299.96270751953125,
+                8.600000381469727
+              ]
+            ],
+            "triangles": 392278,
+            "vertices": 196135,
+            "volume_mm3": 533457.456753663,
+            "watertight": true,
+            "winding_consistent": true
+          },
+          "before": {
+            "bounds_mm": [
+              [
+                -120.0,
+                -5.551115123125783e-17,
+                -5.551115123125783e-17
+              ],
+              [
+                120.0,
+                299.96270751953125,
+                8.600000381469727
+              ]
+            ],
+            "triangles": 392278,
+            "vertices": 196135,
+            "volume_mm3": 533457.456753663,
+            "watertight": true,
+            "winding_consistent": true
+          },
+          "classification": "connectivity-or-winding",
+          "same_oriented_triangles": false,
+          "same_vertex_coordinates": true,
+          "sha256": [
+            "ecc95addaf819eff3adcbff47b07ee14599f41afac977147bf051e9807a4e252",
+            "644e59bae983f1cc6d9101bf5ca43c47fa95611a0b8384636dc99cae76024a94"
+          ]
+        },
+        "holder-tombstone-sign/two-colour.png": {
+          "sha256": [
+            "a578e7ae57613feb280a156d982064a31c0cdd27f7d75d10826552b02dd1251d",
+            "dfa016245b311af875cd407ad093b67a58efb4ef219fd0cd3785f6c44997e0cd"
+          ]
+        },
+        "holder-tombstone-stake/pinned.glb": {
+          "sha256": [
+            "8fdacc30b708510f4a83552c067e6f4499bbef50adc982e14735c1d9e930ca94",
+            "f65bd3ebd85437035353f35d5753096a161f4ae1906bdf1238ea9a74085508e1"
+          ]
+        },
+        "holder-tombstone-stake/pinned.stl": {
+          "after": {
+            "bounds_mm": [
+              [
+                -45.0,
+                -1.3183898417423734e-15,
+                -1.534883331544279e-14
+              ],
+              [
+                45.0,
+                300.0,
+                8.0
+              ]
+            ],
+            "triangles": 2760,
+            "vertices": 1378,
+            "volume_mm3": 96699.11018038432,
+            "watertight": true,
+            "winding_consistent": true
+          },
+          "before": {
+            "bounds_mm": [
+              [
+                -45.0,
+                -1.3183898417423734e-15,
+                -1.534883331544279e-14
+              ],
+              [
+                45.0,
+                300.0,
+                8.0
+              ]
+            ],
+            "triangles": 2760,
+            "vertices": 1378,
+            "volume_mm3": 96699.11018038432,
+            "watertight": true,
+            "winding_consistent": true
+          },
+          "classification": "connectivity-or-winding",
+          "same_oriented_triangles": false,
+          "same_vertex_coordinates": true,
+          "sha256": [
+            "8c4510074b55483b306314763129631bf0571015f42231f1409cf0a111886941",
+            "52fbff422826155d45ea29cd021d59a34f6ba329c41019c8cb40b7ecd691ae3c"
+          ]
+        },
+        "littletikes-dream-machine-cartridge-holder/default.glb": {
+          "sha256": [
+            "18af608100fba6a31d75fe0ee1ad6d82ce5c7efc755d39f49119906d06d11799",
+            "e18551d8f9baece95d3939bf40f11aa310315c62ecac30ca9b5338541aded73d"
+          ]
+        },
+        "littletikes-dream-machine-cartridge-holder/default.stl": {
+          "after": {
+            "bounds_mm": [
+              [
+                -28.0,
+                -2.3727700170341273e-14,
+                8.115730246482423e-16
+              ],
+              [
+                28.0,
+                44.380001068115234,
+                112.0
+              ]
+            ],
+            "triangles": 32528,
+            "vertices": 16202,
+            "volume_mm3": 155025.83091547692,
+            "watertight": true,
+            "winding_consistent": true
+          },
+          "before": {
+            "bounds_mm": [
+              [
+                -28.0,
+                -2.3727700170341273e-14,
+                8.115730246482423e-16
+              ],
+              [
+                28.0,
+                44.380001068115234,
+                112.0
+              ]
+            ],
+            "triangles": 32528,
+            "vertices": 16202,
+            "volume_mm3": 155025.83091547695,
+            "watertight": true,
+            "winding_consistent": true
+          },
+          "classification": "same-oriented-triangles",
+          "same_oriented_triangles": true,
+          "same_vertex_coordinates": true,
+          "sha256": [
+            "aaeb6b644aa965cc0fd14f83bccf46a8b3d1da67a176a35cd74cd715278c0931",
+            "d928712e3f37485843ff6bff520f47666185869239a7322ddc311437278884e3"
+          ]
+        },
+        "littletikes-dream-machine-cartridge-holder/full_holder.glb": {
+          "sha256": [
+            "68c16cf964e52490755cf055840dc9b36720a35a60e32988df2e249bd8d0d367",
+            "8e8a1f1de6c4f9247fe0b4e843274196f86160ce4e29b827dfab81491c5788a0"
+          ]
+        },
+        "littletikes-dream-machine-cartridge-holder/full_holder.stl": {
+          "after": {
+            "bounds_mm": [
+              [
+                -126.0,
+                -4.859669592194478e-14,
+                -3.561040330309366e-16
+              ],
+              [
+                126.0,
+                44.380001068115234,
+                224.0
+              ]
+            ],
+            "triangles": 215648,
+            "vertices": 107250,
+            "volume_mm3": 1338819.7190942452,
+            "watertight": true,
+            "winding_consistent": true
+          },
+          "before": {
+            "bounds_mm": [
+              [
+                -126.0,
+                -4.859669592194478e-14,
+                -3.561040330309366e-16
+              ],
+              [
+                126.0,
+                44.380001068115234,
+                224.0
+              ]
+            ],
+            "triangles": 215648,
+            "vertices": 107250,
+            "volume_mm3": 1338819.7190942452,
+            "watertight": true,
+            "winding_consistent": true
+          },
+          "classification": "same-oriented-triangles",
+          "same_oriented_triangles": true,
+          "same_vertex_coordinates": true,
+          "sha256": [
+            "b504eac4871df9a5666e064ccd55639198e5dc3a4a37eb302d6f24bca9dda702",
+            "05d3f2444ce6afb03f7139141c5bb998c6226e82d7a87ca3e0f337e8960ca184"
+          ]
+        },
+        "openconnect-drawer/stopper-clips.glb": {
+          "sha256": [
+            "0f31e5dc45d098cd31c88d0f04cc3a132d8a8d8600b2638bc64a09074828776a",
+            "af9933ff118097035af18601ce02e15608c2249a1839cb217f41acfe9b6c7242"
+          ]
+        },
+        "openconnect-drawer/stopper-clips.stl": {
+          "after": {
+            "bounds_mm": [
+              [
+                -3.200000047683716,
+                -8.300000190734863,
+                0.0
+              ],
+              [
+                31.200000762939453,
+                0.0,
+                2.0
+              ]
+            ],
+            "triangles": 2184,
+            "vertices": 1096,
+            "volume_mm3": 130.08000833761682,
+            "watertight": true,
+            "winding_consistent": true
+          },
+          "before": {
+            "bounds_mm": [
+              [
+                -3.200000047683716,
+                -8.300000190734863,
+                0.0
+              ],
+              [
+                31.200000762939453,
+                0.0,
+                2.0
+              ]
+            ],
+            "triangles": 2184,
+            "vertices": 1096,
+            "volume_mm3": 130.08000833761682,
+            "watertight": true,
+            "winding_consistent": true
+          },
+          "classification": "same-oriented-triangles",
+          "same_oriented_triangles": true,
+          "same_vertex_coordinates": true,
+          "sha256": [
+            "9ea3f9370dd38595e7c885dd62ea75bc38d12b2067a7d69f8d203ba536244194",
+            "c236944dde3d99f717d78e6bdecee645d8ba43723b1a0eddd96e33a457ffb13e"
+          ]
+        }
+      },
+      "file_counts": [
+        251,
+        251
+      ],
+      "missing_after": [],
+      "missing_before": []
+    }
+  }
+}
