@@ -45,6 +45,15 @@ triangulations.
    counts, volumes and the reason; a volume change is a geometry change,
    not an ordering exception.
 
+For intended geometry changes, run `uv run python scripts/rebaseline.py
+--geometry-only --why "<reason>"` first: it checks the manifest/preset inventory
+and writes only a provisional geometry baseline, leaving bake and audit rows
+untouched. This lets the geometry assertion pass in CI. After the first
+successful CI capture, run the full rebaseline with the same `--why`,
+`--audit-rows <downloaded-artifact-directory>` and `--audit-source "<run-id> @
+<sha>"`; it regenerates all three documents and removes the provisional header.
+Review both diffs to confirm only the intended models changed.
+
 `scripts/bake_repeatability.py` is a diagnostic for points 2–4. It reports
 every changed file and classifies changed STLs. Its metrics use a welded
 copy, matching the production watertightness check; its exact triangle

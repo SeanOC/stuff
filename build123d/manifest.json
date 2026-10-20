@@ -530,7 +530,7 @@
       "slug": "holder-cup-lid",
       "engine": "build123d",
       "title": "Cup lid holder (Multibuild)",
-      "blurb": "Planar circular-segment cradle with mirrored arc tabs, inward lips and cone locating pins with adjustable interference. Standing print; recessed tapered seat and flat shoulder match the measured bolt head, pending physical validation.",
+      "blurb": "Planar circular-segment cradle with mirrored arc tabs, inward lips and cone locating pins with adjustable interference. Standing print; relieved countersink roof with a flat shoulder for the measured bolt head. Physical re-validation of the relieved seat pending.",
       "categoryId": "multiboard",
       "params": [
         {

@@ -25,8 +25,8 @@
       "vertex_coordinates": "c9ae19cffd9c805bd875bb6afbc028f47e7f8b820ea6a6ff4a9df2d908d2a0dc"
     },
     "holder-cup-lid/sippy_cup_85mm.stl": {
-      "oriented_triangles": "d7350f5803812d0e16397a02fb50c49820cf251794f0d7f0c404ccd1403e308d",
-      "vertex_coordinates": "2403ac460f0641c533db9abcbf7736f33e67a9723859eeb47bc932f28d7990e0"
+      "oriented_triangles": "c741559198856fb77a4b1645868146883a70d27e6a6596b3dd713e512cd4547b",
+      "vertex_coordinates": "9db9006495dad138170c50888dfbf2a3b6952526191123a898acc724089defde"
     },
     "holder-label-card/inlaid-base.stl": {
       "oriented_triangles": "56d117e6a1a6b70f37857c69acabe4cebe1b5eeca3575f29f5f200118ea7b79d",
@@ -486,8 +486,8 @@
       "underware-x/X-tall"
     ],
     "schema_version": 1,
-    "source_sha": "0e74990470c9741b631062f98424020be93aff33",
-    "why": "pst-6dhmb: initial app-preset baseline on 0.13 after migration merge 8d17fbe5; implements pst-cdd2c hand-off"
+    "source_sha": "5dc9c28f3e45b8c3aacb50d139438feb23e95456",
+    "why": "pst-ml7f9: countersink cone clamped to 45\u00b0 half-angle (Sean 2026-10-20 option a)"
   },
   "rows": {
     "gridfinity-capture-bin/deep.glb": {
@@ -1756,7 +1756,7 @@
       ],
       "triangles": 10380,
       "vertices": 5190,
-      "volume_mm3": 16082.190637060,
+      "volume_mm3": 16076.106069091,
       "watertight": true,
       "winding_consistent": true
     },

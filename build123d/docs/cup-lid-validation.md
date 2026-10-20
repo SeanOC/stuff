@@ -6,7 +6,8 @@ head. The pins are Ø7.7 mm (default `pin_fit` −0.15: 0.15 mm per side
 clearance against the measured Ø8 mouth, pst-ozpae; originally labelled
 0.1 mm interference against the cited Ø7.5). The tapered seat ends at a flat shoulder, 2.3 mm below the front.
 The plate returns to 5 mm with 2.7 mm backing. Sean confirmed the v2.3 print and fit on 2026-09-27; see the
-physical-validation record below (**pst-mvno**, closed).
+physical-validation record below (**pst-mvno**, closed). The pst-ml7f9 roof
+relief described under Bolt seat awaits physical re-validation.
 
 ## Geometry, orientation and material
 
@@ -172,12 +173,15 @@ or tip blunting is performed.
 | `head_clearance` | 0.2 mm per side | 0–0.4 mm |
 | `head_recess` | 0.2 mm | 0–0.5 mm |
 
-Sean measured a head tapering from Ø16 to Ø12 over 2.1 mm. One conical
-cutter follows that slope, `(16−12)/(2*2.1)`, from a Ø16.781 front opening
-to Ø12.4 at depth 2.3 mm. At that depth a flat annular shoulder steps down
-to the Ø8 through-hole. There is no straight head bore. The head's top rim
-sits 0.2 mm below the front with 0.2 mm radial clearance (about 0.19 mm
-normal to the tapered surface).
+Sean measured a head tapering from Ø16 to Ø12 over 2.1 mm. Its slope is
+`(16−12)/(2*2.1)` (43.60° half-angle). The cutter uses
+`cone_slope = max(bolt_slope, 1.0)`: at least a 45° half-angle, so the roof
+is at most 45° from vertical at every public endpoint. At the default the
+roof is exactly 45°, with a Ø17.0 front opening and Ø12.4 at depth 2.3 mm.
+The cone no longer hugs the measured taper: the head bears on the flat
+annular shoulder stepping down to the Ø8 through-hole. There is no straight
+head bore. The head's top rim sits 0.2 mm below the front; its radial
+clearance grows from 0.20 to 0.30 mm. Bottom radial clearance stays 0.2 mm.
 
 Guards require head top > bottom, at least 1 mm shoulder per side, and at
 least 2.4 mm backing. Defaults leave 2.7 mm backing and a 2.2 mm shoulder.
@@ -185,10 +189,23 @@ Every individual public endpoint builds; incompatible combinations raise.
 Tests accept exactly 2.4 mm backing and 1 mm shoulder. The removed
 `countersink_diameter` and `countersink_angle` controls raise as unknown.
 
-The cone half-angle is 43.60°; its upper roof is 46.40° from vertical over
-only 2.3 mm. This functional slope matches the measured bolt and is retained.
-The sampled audit adds no seat finding, so the round horizontal shank is
-still the sole accepted finding.
+The relieved opening must fit the flat front: its radius must be no greater
+than `mount_height/2 − max(0.5, bed_chamfer)`. It must also clear the tab
+junction (`opening_radius + circle_center_z <= wall_radius − 1`) and pin
+footprints (`opening_radius + pin_base_diameter/2 <= 25`). These bounds come
+from the chord chamfers, R1 junction and fixed pin positions. For example,
+head top 18, bottom 10, thickness 1.8, recess 0.5 and mount height 20 gives
+an opening of Ø20.622 mm, exceeding the 19 mm flat-face bound, and now raises
+`ValueError` naming `mount_height`. Public ranges are unchanged. Endpoint
+and accepted-corner tests check the full cone-plus-shank removal volume and
+one valid solid, alongside the production print audit and edge classifier.
+No countersink exclusion is added; the round horizontal shank remains the
+sole approved audit exception.
+
+[P] **Physical re-validation PENDING (pst-ml7f9, 2026-10-20):** Sean must
+print the relieved default and confirm the bolt seats on the flat shoulder,
+the head rim lies below the front, and there is no rocking. The 2026-09-27
+validation records the earlier seat, not this relieved geometry.
 
 ## Digital print audit
 
@@ -229,7 +246,7 @@ the renderer's usual Y-up vector; the top view is unchanged. These camera
 directions replace the default rear-facing views for this review image.
 The STL keeps the assembly/print coordinate frame above.
 
-Validation for pst-rlnc:
+Historical validation for pst-rlnc (before the pst-ml7f9 roof relief):
 
 - Cup-lid geometry and print-audit suites: **136 passed**, including all
   **40 individual parameter endpoints**, Ø16.781 front opening, the

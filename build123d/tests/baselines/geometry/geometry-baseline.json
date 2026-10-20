@@ -72,8 +72,8 @@
       "underware-x/X-tall"
     ],
     "schema_version": 1,
-    "source_sha": "0e74990470c9741b631062f98424020be93aff33",
-    "why": "pst-6dhmb: initial app-preset baseline on 0.13 after migration merge 8d17fbe5; implements pst-cdd2c hand-off"
+    "source_sha": "5dc9c28f3e45b8c3aacb50d139438feb23e95456",
+    "why": "pst-ml7f9: countersink cone clamped to 45\u00b0 half-angle (Sean 2026-10-20 option a)"
   },
   "rows": {
     "gridfinity-capture-bin/deep": {
@@ -1184,9 +1184,9 @@
         ]
       ],
       "print_center": [
-        0.000000161,
-        5.288684737,
-        0.506309631
+        0.000000162,
+        5.289070403,
+        0.506501430
       ],
       "raw_bounds": [
         [
@@ -1201,7 +1201,7 @@
         ]
       ],
       "solids": 1,
-      "volume": 16085.414802328
+      "volume": 16079.323672102
     },
     "holder-label-card/inlaid": {
       "containment": [

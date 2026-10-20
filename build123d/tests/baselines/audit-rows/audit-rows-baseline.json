@@ -1,6 +1,6 @@
 {
   "header": {
-    "audit_source": "GitHub bd123 run 39403041801 at b38d60c5dc9c73b05d13086afe26e13e519a6fe4; audit plus audit_full shards 1-6",
+    "audit_source": "39489979733 @ 5dc9c28f3e45b8c3aacb50d139438feb23e95456",
     "build123d": "0.13.0",
     "cadquery-ocp-novtk": "8.0.1.1.0",
     "job_scope": [
@@ -83,8 +83,8 @@
     ],
     "row_scope": "measurement rows joined by (nodeid, name) in the declared CI jobs, including endpoint/corner tests beyond the app presets; session/collection/outcome rows validate capture integrity",
     "schema_version": 1,
-    "source_sha": "0e74990470c9741b631062f98424020be93aff33",
-    "why": "pst-6dhmb: initial app-preset baseline on 0.13 after migration merge 8d17fbe5; implements pst-cdd2c hand-off"
+    "source_sha": "5dc9c28f3e45b8c3aacb50d139438feb23e95456",
+    "why": "pst-ml7f9: countersink cone clamped to 45\u00b0 half-angle (Sean 2026-10-20 option a)"
   },
   "rows": {
     "[\"tests/test_cartridge_holder.py::test_endpoints[body_corner_r=0.5]\",\"body_corner_r=0.5\"]": {
@@ -302,6 +302,374 @@
       "ok": true,
       "overhang": 45.000000000,
       "wall": 3.000000000
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[bed_chamfer=0.3]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.641000000,
+      "ok": true,
+      "volume": 16095.354537537
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[bed_chamfer=0.5]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.561000000,
+      "ok": true,
+      "volume": 16059.739806763
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[bolt_clearance_diameter=7.8]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.601000000,
+      "ok": true,
+      "volume": 16086.024689232
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[bolt_clearance_diameter=8.5]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.601000000,
+      "ok": true,
+      "volume": 16061.828928012
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[corner-bolt_clearance_diameter=8-head_bottom_diameter=10-head_clearance=0]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 16.571428571,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.601000000,
+      "ok": true,
+      "volume": 16147.505913919
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[corner-head_thickness=2.4-head_recess=0.2]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.600000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.601000000,
+      "ok": true,
+      "volume": 16023.877707901
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[corner-lid_diameter=84-mount_height=30-top_chord_offset=2]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.528000000,
+      "ok": true,
+      "volume": 15801.753803975
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[corner-pin_fit=-0.1-pin_tip_diameter=0.8-pin_cone_half_angle=49]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.601000000,
+      "ok": true,
+      "volume": 16067.685107434
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[corner-shoulder_depth=2.2-lid_clearance=0.6]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.601000000,
+      "ok": true,
+      "volume": 15769.381066708
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[head_bottom_diameter=10]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 16.971428571,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.601000000,
+      "ok": true,
+      "volume": 16128.017268292
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[head_bottom_diameter=14]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 19.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.601000000,
+      "ok": true,
+      "volume": 15965.880761381
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[head_clearance=0.4]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.400000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.601000000,
+      "ok": true,
+      "volume": 16057.791196054
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[head_clearance=0]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 16.600000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.601000000,
+      "ok": true,
+      "volume": 16100.278095101
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[head_recess=0.5]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.600000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.601000000,
+      "ok": true,
+      "volume": 16023.877707901
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[head_recess=0]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 16.600000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.601000000,
+      "ok": true,
+      "volume": 16113.606822504
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[head_thickness=1.8]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 16.844444444,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.601000000,
+      "ok": true,
+      "volume": 16119.341054998
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[head_thickness=2.4]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.600000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.601000000,
+      "ok": true,
+      "volume": 16023.877707901
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[head_top_diameter=15]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.601000000,
+      "ok": true,
+      "volume": 16079.323672102
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[head_top_diameter=18]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 18.971428571,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.601000000,
+      "ok": true,
+      "volume": 16021.903244433
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[lid_clearance=0.1]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.574000000,
+      "ok": true,
+      "volume": 15868.209392258
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[lid_clearance=0.8]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.612000000,
+      "ok": true,
+      "volume": 16161.775299152
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[lid_diameter=130]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.739000000,
+      "ok": true,
+      "volume": 23075.120532641
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[lid_diameter=84]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.566000000,
+      "ok": true,
+      "volume": 15861.990289928
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[lip_end_margin=1]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.601000000,
+      "ok": true,
+      "volume": 16109.384757206
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[lip_end_margin=5]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.601000000,
+      "ok": true,
+      "volume": 15992.653635582
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[lip_thickness=2]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.583000000,
+      "ok": true,
+      "volume": 15688.301306277
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[lip_thickness=5]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.601000000,
+      "ok": true,
+      "volume": 16861.368403751
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[mount_height=20]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.683000000,
+      "ok": true,
+      "volume": 10901.577538209
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[mount_height=30]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.601000000,
+      "ok": true,
+      "volume": 16079.323672102
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[pin_cone_half_angle=45]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.601000000,
+      "ok": true,
+      "volume": 16079.323672102
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[pin_cone_half_angle=49]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.601000000,
+      "ok": true,
+      "volume": 16063.700810094
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[pin_fit=-0.2]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.601000000,
+      "ok": true,
+      "volume": 16074.727259745
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[pin_fit=0.3]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.601000000,
+      "ok": true,
+      "volume": 16126.322688140
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[pin_tip_diameter=0.8]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.601000000,
+      "ok": true,
+      "volume": 16079.189708277
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[pin_tip_diameter=0]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.601000000,
+      "ok": true,
+      "volume": 16079.323672102
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[plate_thickness=5]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.601000000,
+      "ok": true,
+      "volume": 16079.323672102
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[plate_thickness=9]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.601000000,
+      "ok": true,
+      "volume": 25994.725720226
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[shoulder_depth=10]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.601000000,
+      "ok": true,
+      "volume": 16501.819784299
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[shoulder_depth=2.2]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.601000000,
+      "ok": true,
+      "volume": 15769.381066708
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[shoulder_height=25]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.601000000,
+      "ok": true,
+      "volume": 18465.260416900
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[shoulder_height=6]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.601000000,
+      "ok": true,
+      "volume": 14687.527237636
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[sippy_cup_85mm]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.601000000,
+      "ok": true,
+      "volume": 16079.323672102
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[tab_thickness=2]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.005000000,
+      "ok": true,
+      "volume": 14637.046097505
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[tab_thickness=5]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 2.583000000,
+      "ok": true,
+      "volume": 18935.188507926
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[top_chord_offset=0.5]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.679000000,
+      "ok": true,
+      "volume": 16190.082746696
+    },
+    "[\"tests/test_cup_lid.py::test_endpoint_countersink_audit[top_chord_offset=2.0]\",\"cup-lid-endpoint\"]": {
+      "exposed_edge_angle": 45.000000000,
+      "front_opening": 17.000000000,
+      "max_overhang": 45.000000000,
+      "min_wall": 1.564000000,
+      "ok": true,
+      "volume": 16020.628667851
     },
     "[\"tests/test_gridfinity_capture_bin.py::test_endpoint_audit_edges_and_containment[1x1]\",\"1x1\"]": {
       "bridge": 0.000000000,
