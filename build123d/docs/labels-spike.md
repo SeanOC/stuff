@@ -132,6 +132,39 @@ complement inside the padded bbox.
 There is one known artefact: Inter's 'M' crotch reads as a 0.18 mm gap at
 10 pt (the 0.08 in the last row), which is an acute notch, not a real gap.
 
+**Committed nominal strokes (pst-0qiwx).** The tombstone sign's six layout
+candidates are recorded in `labels/nominal_strokes.json`. Keys contain the font
+SHA, style, build123d and fontTools distribution versions, `OCP.__version__`
+(the installed distribution may be `cadquery-ocp-novtk`), Shapely version,
+and SHA-256 of the live scan function sources and their numerical constants.
+Paths are excluded so worktrees share keys. A changed engine, font or scan
+misses the old row and measures live; preset-coverage and live-comparison tests
+require deliberately regenerating the committed baseline. From `build123d/`:
+
+```bash
+uv run python -m labels.strokes --regen
+```
+
+This bypasses cached strokes, visits every preset layout candidate, and replaces
+the sorted JSON with fresh measurements. Review and commit that diff together
+with the corresponding dependency/scan change. Repeating the command with
+unchanged inputs is byte-identical. `scripts/nominal_strokes.py` forwards to the
+same implementation for compatibility. The first versioned regeneration keeps
+**6 → 6 rows** on build123d 0.11.1 / OCP 7.9.3.1; measurements are unchanged.
+
+The regular `audit` tier compares fresh measurements for Lexend Medium's
+`Show runs dusk to 9 pm`, Lexend Bold's `Scan to request a song` (the longest
+preset label), and Creepster's `Pick the next song!`. The `audit_full` tier also
+compares all six rows. Both report per-string cached/live differences and fail
+on stale provenance, even when the measured value happens to remain identical.
+The three-face test measured **71.68 s** locally with the full suite running
+concurrently (all-six scan: 50.20 s in the same warmed process). These are
+measurements, not a timing gate. Their absolute tolerance is
+**3.9968028886505635e-14 mm**, computed as the maximum
+error of the scanner's repeated binary-float additions versus its exact decimal
+grid over the default 3 mm radius range. It absorbs only arithmetic noise;
+it is far below the 0.02 mm stroke quantization, so a one-step change fails.
+
 **Why Inter, not Atkinson.** At 10 pt the strokes are similar, but the gaps
 are not:
 
