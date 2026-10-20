@@ -4,7 +4,7 @@ Source of truth for the per-rig `.claude/hooks/guard-*.py` + `.claude/settings.j
 prompt templates' "NEVER …" prose into deterministic blocks (best-practices review 2026-10-20, hardened
 2026-10-20 after the codex gates on ia-next #376 / co-author #862 / ghastly-show #37 reproduced bypasses).
 Rolled out by mayor PRs to each rig; keep the copies IDENTICAL to these files (rigs gitignore `.claude/`,
-so the files are `git add -f`ed). Self-test: `python3 guard-selftest.py` (320 cases; exit 0 = pass).
+so the files are `git add -f`ed). Self-test: `python3 guard-selftest.py` (354 cases; exit 0 = pass).
 
 ## Threat model
 The hooks stop ACCIDENTAL and habitual rule-breaking by a cooperative agent (the forms workers have actually
@@ -19,16 +19,17 @@ by whether an adversarial form still exists — the README's "not covered" list 
 - push to main/master in any spelling (positional, `HEAD:main`, `refs/heads/main`, `--all`/`--mirror`,
   matching `:` and wildcard `*` refspecs, `git -c …`/`-C …` global options, bare `git push` while the
   checkout is on main/master); force pushes (`-f`, `--force*`, combined `-fu`, `+refspec`).
-- `gh pr merge --admin`; `gh api` writes (POST/PUT/PATCH/DELETE or `-f/-F/--input`) to `/statuses/`,
+- `gh pr merge --admin` (also `--admin=true` and with `-R`/`--repo` root options anywhere); `gh api` writes (POST/PUT/PATCH/DELETE or `-f/-F/--input`) to `/statuses/`,
   `/check-runs`, `/protection`, `/rulesets`, and the GraphQL branch-protection / commit-status mutations
   (value-bearing options such as `-H`/`--hostname` are consumed before the endpoint is picked; `-XDELETE`
   and the old `gh api POST <endpoint>` forms count). `gh api graphql` with any `mutation`, `--input` or an
   `@file` value is blocked outright (opaque payloads fail closed).
 - `sudo`/`doas` anywhere: direct, through `env`/`command`/`nohup`/`timeout`/`xargs`/`nice`/`ionice` (their
-  value-taking options are parsed), inside `bash -c`/`sh -c`, `eval` (re-parsed recursively), `$(…)`,
-  backticks, `find -exec`, `timeout 30 -- …`, a leading `--`, pipelines and `;`/`&&` chains; shell `-lc`/`-xc`
+  value-taking options are parsed), inside `bash -c`/`sh -c`, `eval` (re-parsed recursively), `$(…)` and
+  backticks in any position — including the quoted forms `echo "$(…)"` / `-m "… $(…)"` (substitutions are
+  extracted from the raw text; single-quoted text is literal and not checked) — `find -exec`, `timeout 30 -- …`, a leading `--`, pipelines and `;`/`&&` chains; shell `-lc`/`-xc`
   clusters and `env -S "…"` payloads are re-parsed.
-- `vercel env|logs|pull` (also via `npx`/`pnpm dlx`/`pnpm vercel`).
+- `vercel env|logs|pull` (also via `npx`/`pnpm dlx`/`pnpm vercel`; global options such as `--scope team`/`--token` before the subcommand are consumed).
 - waiting loops: `gh … --watch`, `gh run watch`, `watch`, `tail -f`/`--follow`, `journalctl -f`; `sleep`
   whose literal total in the command (all operands, all statements) is ≥ 30 s, non-literal sleep args (`$X`, `$((30))`), any sleep inside
   a `for`/`while`/`until` loop.

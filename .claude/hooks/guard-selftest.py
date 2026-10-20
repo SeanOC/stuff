@@ -76,6 +76,12 @@ BASH_BLOCK = [
     "gc bd -- create -a worker", "gh pr merge -- 1 --admin", "gh pr -- view 1 --watch", "bd -- update x -a w",
     "cat 'my dir/.env'", "head -n 1 '.gc/runtime/secrets/my secret'", "cp 'ci file.yml' '.github/workflows/ci file.yml'",
     "echo hi > '.github/workflows/my check.yml'",
+    'echo "$(sudo ls)"', 'printf "%s\\n" "$(cat .env)"', 'git commit -m "$(cat .env)"', 'X="$(sudo id)"; echo $X',
+    'echo "`sudo ls`"', 'echo "$(echo "$(sudo ls)")"', 'echo "it\'s $(sudo ls)"', 'bd update x --notes "$(cat .env.local)"',
+    "gh -R SeanOC/ia-next pr merge 376 --admin", "gh pr merge 376 --admin=true", "gh --repo o/r pr merge 1 --admin",
+    "gh pr -R o/r merge 1 --admin", "gh -Ro/r pr merge 1 --admin", "gh pr checks 1 --watch=true", "gh -R o/r run watch 1",
+    "vercel --scope team env pull", "vercel -S team logs app", "vercel --scope=team env ls", "vercel --token x --scope team env pull",
+    "npx vercel --scope team env pull",
 ]
 BASH_ALLOW = [
     "git push -u origin gc-pilot/gs-1234", "git push origin gc-ia/worker-guards", "git push", "git push origin HEAD",
@@ -113,6 +119,10 @@ BASH_ALLOW = [
     "git commit -m 'sudo is banned; git push origin main is banned'", "gh api graphql -f query='query { viewer { login } }'",
     "timeout 30 -- pnpm test", "env -S 'pnpm test'", "gc --rig x bd show y", "gc bd update x --notes 'x'",
     "bash -lc 'pnpm test'", "git clean -fd src/", "sed --in-place=.bak s/a/b/ src/x.ts", "cp -t dist/ x.js", "git -c core.pager=cat log -1", "git -C .. status", "curl -s https://x/y",
+    'echo "$(git status)"', 'git commit -m "built at $(date)"', 'echo "price (approx) \\$5"', "bd update x --notes 'run $(sudo ls) never'",
+    "git commit -m 'see `gc` docs'", 'echo "use \\`gc\\` here"', 'bd update x --notes "$(cat notes.md)"',
+    "gh pr merge 1 --admin=false", "gh -R o/r pr view 1 --json state", "gh -R o/r pr merge 1 --squash", "gh --repo o/r pr checks 1",
+    "vercel --scope team build", "vercel -S team --help", "vercel --cwd . build",
 ]
 EDIT_BLOCK = [".env", ".env.local", "./.env", "sub/../.env", "/abs/.env.production", ".github/workflows/ci.yml",
               "./x/../.github/workflows/ci.yml", "~/.claude/projects/x/memory/MEMORY.md", "$HOME/.claude/projects/x/y.md",

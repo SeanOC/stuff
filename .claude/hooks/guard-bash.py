@@ -7,7 +7,9 @@ Exit 2 = block (stderr is fed back to the agent); exit 0 = allow. Hook JSON on s
 The command is tokenized with shlex (quoted prose is never mistaken for options),
 split into simple statements on ; & | newlines ( ) and backticks, wrapper programs
 (env, command, nohup, timeout, xargs, npx, pnpm dlx, bash -c, ...) are unwrapped, and
-every statement is checked. Shell expansions are NOT evaluated: an unparseable sleep
+every statement is checked. Command substitutions ($(...) and backticks, including the
+quoted forms echo "$(...)") are extracted from the raw text (single quotes are literal) and
+checked as statements too. Other shell expansions are NOT evaluated: an unparseable sleep
 argument or a redirect to an expanded variable is treated conservatively (blocked).
 
 Operator carve-outs: the mayor touches $GC_CITY/.gc/runtime/guard-allow/<marker>
@@ -42,6 +44,9 @@ RUNNERS = {"pnpm", "npm", "yarn", "bun", "uv", "poetry", "pipx", "npx"}
 SHELLS = {"bash", "sh", "zsh", "dash", "ksh", "fish"}
 GIT_GLOBAL_WITH_ARG = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path",
                        "--super-prefix", "--config-env", "--list-cmds"}
+VERCEL_GLOBAL_WITH_ARG = {"--scope", "-S", "--token", "-t", "--cwd", "--local-config", "-A",
+                          "--global-config", "-Q", "--team", "-T"}
+GH_ROOT_WITH_ARG = {"-R", "--repo", "--hostname"}
 PUSH_OPTS_WITH_ARG = {"-o", "--push-option", "--repo", "--receive-pack", "--exec", "--recurse-submodules"}
 READ_PROGRAMS = {"cat", "head", "tail", "less", "more", "grep", "rg", "awk", "cut", "sort", "xxd", "od", "strings",
                  "base64", "source", ".", "python3", "python", "node", "wc", "jq", "yq", "diff", "file", "stat", "ls",
@@ -137,6 +142,60 @@ def statements(command):
     if words:
         out.append(words)
     return out
+
+
+def expansions(text):
+    """Contents of every executable command substitution in text: $(...) and `...` outside single
+    quotes (double quotes do not stop them), nested ones included, outermost first."""
+    out, i, n = [], 0, len(text)
+    in_single = in_double = False
+    while i < n:
+        ch = text[i]
+        if ch == "\\" and not in_single:
+            i += 2
+            continue
+        if ch == "'" and not in_double:
+            in_single = not in_single
+        elif ch == '"' and not in_single:
+            in_double = not in_double
+        elif not in_single and ch == "$" and text[i + 1:i + 2] == "(":
+            depth, j = 1, i + 2
+            while j < n and depth:
+                c = text[j]
+                if c == "\\":
+                    j += 2
+                    continue
+                if c == "(":
+                    depth += 1
+                elif c == ")":
+                    depth -= 1
+                j += 1
+            body = text[i + 2:j - 1] if depth == 0 else text[i + 2:]
+            out.append(body)
+            out.extend(expansions(body))
+            i = j
+            continue
+        elif not in_single and ch == "`":
+            j = text.find("`", i + 1)
+            body = text[i + 1:j] if j != -1 else text[i + 1:]
+            out.append(body)
+            out.extend(expansions(body))
+            i = j + 1 if j != -1 else n
+            continue
+        i += 1
+    return out
+
+
+def check_script(text, state):
+    """Check every statement of a shell text plus every command substitution it executes."""
+    for part in [text] + expansions(text):
+        try:
+            parsed = statements(part)
+        except ValueError as e:
+            block("parse", f"could not tokenize '{part[:40]}' ({e}); fix the quoting", carveout=False)
+            continue
+        for st in parsed:
+            check_statement(st, state)
 
 
 def check_paths(words, rig):
@@ -316,11 +375,30 @@ def check_git(args):
             block("push-main", "you are on main; workers push feature branches only")
 
 
+def flag_on(args, flag):
+    """True when a boolean flag is given, including the --flag=true spelling the CLI accepts."""
+    for a in args:
+        if a == flag:
+            return True
+        if a.startswith(flag + "=") and a.split("=", 1)[1].lower() not in {"false", "0", "f", "no", "n", "off"}:
+            return True
+    return False
+
+
 def check_gh(args):
-    args = [a for a in args if a != "--"]
-    if args[:2] == ["pr", "merge"] and "--admin" in args:
+    raw = [a for a in args if a != "--"]
+    args = []  # root options (-R/--repo/--hostname, accepted anywhere) removed so the subcommand is args[0]
+    it = iter(raw)
+    for a in it:
+        if a in GH_ROOT_WITH_ARG:
+            next(it, None)
+        elif a.startswith("--repo=") or a.startswith("--hostname=") or (a.startswith("-R") and len(a) > 2 and not a.startswith("--")):
+            pass
+        else:
+            args.append(a)
+    if args[:2] == ["pr", "merge"] and flag_on(args, "--admin"):
         block("admin-merge", "never bypass branch protection", carveout=False)
-    if args[:1] in (["pr"], ["run"]) and ("--watch" in args or args[:2] == ["run", "watch"]):
+    if args[:1] in (["pr"], ["run"]) and (flag_on(args, "--watch") or args[:2] == ["run", "watch"]):
         block("watch", "no --watch loops; check once and end your turn (the mayor merges)")
     if args[:1] == ["api"]:
         method = "GET"
@@ -405,15 +483,13 @@ def check_statement(words, state=None):
         words = words[1:]
     if words and os.path.basename(words[0]) in {"eval", "source", "."} and len(words) > 1:
         if os.path.basename(words[0]) == "eval":
-            for st in statements(" ".join(words[1:])):
-                check_statement(st, state)
+            check_script(" ".join(words[1:]), state)
             return
     while words and words[0] == "--":
         words = words[1:]
     words = unwrap(list(words))
     while SPLIT_STRINGS:
-        for st in statements(SPLIT_STRINGS.pop()):
-            check_statement(st, state)
+        check_script(SPLIT_STRINGS.pop(), state)
     while words and words[0] == "--":
         words = words[1:]
     if not words:
@@ -426,8 +502,7 @@ def check_statement(words, state=None):
                 break
             if a.startswith("-") and not a.startswith("--") and "c" in a[1:]:
                 script = args[i + 1] if i + 1 < len(args) else ""
-                for st in statements(script):
-                    check_statement(st, state)
+                check_script(script, state)
                 return
     if program == "gc":
         rest = list(args)
@@ -443,8 +518,14 @@ def check_statement(words, state=None):
         check_git(["push"] + args if program == "git-push" else list(args))
     elif program == "gh":
         check_gh(list(args))
-    elif program == "vercel" and args[:1] in (["env"], ["logs"], ["pull"]):
-        block("vercel-env", "production env/logs are mayor-only; use the sanitized env the worktree setup provides")
+    elif program == "vercel":
+        rest = list(args)
+        while rest and rest[0].startswith("-"):
+            opt = rest.pop(0)
+            if opt in VERCEL_GLOBAL_WITH_ARG and rest:
+                rest.pop(0)
+        if rest[:1] in (["env"], ["logs"], ["pull"]):
+            block("vercel-env", "production env/logs are mayor-only; use the sanitized env the worktree setup provides")
     elif program == "sleep":
         state["sleep"] = check_sleep(args, state["sleep"])
         if state["loop"]:
@@ -477,13 +558,12 @@ def main():
     if not isinstance(command, str) or not command.strip():
         return
     try:
-        parsed = statements(command)
+        statements(command)
     except ValueError as e:
         print(f"BLOCKED by guard-bash (parse): could not tokenize the command ({e}); fix the quoting", file=sys.stderr)
         sys.exit(2)
     state = {"sleep": 0.0, "loop": False}
-    for st in parsed:
-        check_statement(st, state)
+    check_script(command, state)
     if blocked:
         seen = set()
         for rule, message, carveout in blocked:
