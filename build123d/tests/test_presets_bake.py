@@ -120,15 +120,17 @@ def test_baked_count_matches_manifest():
 # per-part STL names (pst-tl4ac.1). The generalisation only renames the
 # inlaid preset's filament-2 STL (-text -> -inlay, its colour part name);
 # every byte stays the same. A deliberate OCCT / lib3mf bump re-pins these.
+# pst-jhpqk: build123d 0.13 / OCCT 8 re-pins the six base-STL/GLB/3MF
+# exports after two identical bakes; the inlay/text STL pins are unchanged.
 LABEL_CARD_BAKE_SHA256 = {
-    "inlaid-base.stl": "b7b7a2b6de634c64849fb2dabe278755eea7c87f830073847685ce3595e57af0",
+    "inlaid-base.stl": "652bfe7302ea46d5f1f27799b87fa0bc3b938c3545725bb39e878bb14ba559f9",
     "inlaid-inlay.stl": "4b93c5af55cb64c06988f0d92ff410bc900b8ab25ce6f4d65ebe49ada54703b8",
-    "inlaid.3mf": "cbd8d53e918cacd3ebd0c9f6770d1f73c6dec7a0815e01dc111092686ef2bd6b",
-    "inlaid.glb": "f41f6ed78d27ae30e98196ec6b51f587c8a81e304f54adca3c20d2bddf4b27b8",
-    "raised-base.stl": "b1d00fc5feb7cd875c933f5e1004fe2111fafbec2ca00be03517a565b979041c",
+    "inlaid.3mf": "31285f50ca71ee756992ed1244ba8072bea19ae9c2ddc4b1b8b2066cb9fc65a2",
+    "inlaid.glb": "0025d4ef06338150637d21390651837d7ab74fedb54589eae77b6c5db69f7fcb",
+    "raised-base.stl": "0ec892480b7db346ab2d66b96e604d5e80c8b46afbd71b86815d8e22faf8fe25",
     "raised-text.stl": "5b59e46e2dc89e552bc24141432efec9330975e99e08ce45bf24e342bb722517",
-    "raised.3mf": "c4f858b69b8934f398962764d542a0d24fb1727320a4c248c576c57555c57881",
-    "raised.glb": "803ddae6a192e134963936c47246f9173d3f049b21426f8c57cdd1b0006bc2c2",
+    "raised.3mf": "e376c6666dc37902e9b91d0f618ae3c939b463d89ee73e322982c5bc997c9d3c",
+    "raised.glb": "1e01b6e0719db5417d69fb03a2a40a7a510768d826c1e7541fc4ca8635ce143b",
 }
 
 

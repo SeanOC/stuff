@@ -17,7 +17,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'tests'))
 from build123d import Box, Compound, FontStyle, GeomType, Pos, Vector  # noqa: E402
 from OCP.BRepAlgoAPI import BRepAlgoAPI_Common  # noqa: E402
-from OCP.TopTools import TopTools_ListOfShape  # noqa: E402
+from OCP.collections import List_TopoDS_Shape  # noqa: E402
 from shapely.geometry import Point  # noqa: E402
 from shapely.ops import unary_union  # noqa: E402
 from holders import sign_ghost, signs  # noqa: E402
@@ -577,7 +577,7 @@ def _overlap(a, b) -> float:
 
 def _common_volume(a, b) -> float:
     """Volume of a & b by one OCCT Common run in parallel (build123d's & is serial)."""
-    args, tools = TopTools_ListOfShape(), TopTools_ListOfShape()
+    args, tools = List_TopoDS_Shape(), List_TopoDS_Shape()
     args.Append(a.wrapped)
     tools.Append(b.wrapped)
     op = BRepAlgoAPI_Common()
