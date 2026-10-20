@@ -1,4 +1,10 @@
-"""Deliberately regenerate ALL THREE baselines; a reason and audit provenance are required."""
+"""Deliberately regenerate baselines with a required reason.
+
+For intended geometry changes, first use --geometry-only to write a provisional
+geometry baseline before CI. Then regenerate all three baselines using
+--audit-rows and --audit-source from the first successful CI capture. This avoids
+the stale geometry assertion failing the capture needed for a full rebaseline.
+"""
 import argparse
 import importlib.metadata
 import json
@@ -39,12 +45,20 @@ def validate_inventory(rows):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--why", required=True, type=nonempty)
-    parser.add_argument("--audit-rows", required=True, type=Path)
-    parser.add_argument("--audit-source", required=True, type=nonempty,
+    parser.add_argument("--geometry-only", action="store_true",
+                        help="write only a provisional geometry baseline before CI")
+    parser.add_argument("--audit-rows", type=Path)
+    parser.add_argument("--audit-source", type=nonempty,
                         help="CI run id and source SHA for the downloaded jobs")
     args = parser.parse_args(argv)
+    if args.geometry_only:
+        if args.audit_rows is not None or args.audit_source is not None:
+            parser.error("--geometry-only cannot be combined with --audit-rows or --audit-source")
+    elif args.audit_rows is None or args.audit_source is None:
+        parser.error("--audit-rows and --audit-source are required unless --geometry-only is used")
     load_waivers()  # Fail on malformed waiver policy before expensive work.
-    audit, scope = compare_audit_rows.collect(args.audit_rows)
+    if not args.geometry_only:
+        audit, scope = compare_audit_rows.collect(args.audit_rows)
     keys = geometry_baseline.preset_keys()
     manifest = json.loads((ROOT / "manifest.json").read_text())
     manifest_keys = sorted(f"{model['slug']}/{preset['id']}"
@@ -64,6 +78,14 @@ def main(argv=None):
     geometry = geometry_baseline.collect()
     print(f"geometry baseline: {len(geometry)} presets, {time.monotonic() - start:.3f}s",
           flush=True)
+    if args.geometry_only:
+        write_json(BASELINES / "geometry" / "geometry-baseline.json", {
+            "header": {**header, "kind": "geometry",
+                       "provisional": "geometry only; bake + audit-rows regenerated from the first successful CI capture"},
+            "rows": geometry,
+        })
+        print(f"wrote provisional geometry: {len(geometry)} rows")
+        return 0
     with tempfile.TemporaryDirectory(prefix="bd123-baseline-") as temporary:
         directory = Path(temporary) / "bake"
         subprocess.run([sys.executable, str(ROOT / "scripts/export.py"),

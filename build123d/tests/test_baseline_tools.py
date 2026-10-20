@@ -243,6 +243,62 @@ def test_rebaseline_requires_reason_and_provenance():
         rebaseline.main(["--why", " ", "--audit-rows", "absent", "--audit-source", "run fixture"])
 
 
+@pytest.mark.parametrize("arguments", [
+    ["--geometry-only"],
+    ["--why", "fixture"],
+    ["--why", "fixture", "--audit-rows", "absent"],
+    ["--why", "fixture", "--audit-source", "run fixture"],
+    ["--why", "fixture", "--geometry-only", "--audit-rows", "absent"],
+    ["--why", "fixture", "--geometry-only", "--audit-source", "run fixture"],
+])
+def test_rebaseline_rejects_invalid_modes(arguments):
+    with pytest.raises(SystemExit) as error:
+        rebaseline.main(arguments)
+    assert error.value.code == 2
+
+
+def test_rebaseline_geometry_only_preserves_other_baselines(tmp_path, monkeypatch):
+    baselines = tmp_path / "baselines"
+    preserved = {}
+    for kind in ("bake", "audit-rows"):
+        path = baselines / kind / f"{kind}-baseline.json"
+        write_json(path, {"rows": {"untouched": kind}})
+        preserved[path] = path.read_bytes()
+    (tmp_path / "manifest.json").write_text(json.dumps({
+        "models": [{"slug": "box", "presets": [{"id": "default"}]}],
+    }))
+    rows = {"box/default": {"volume": 24.0, "solids": 1}}
+    monkeypatch.setattr(rebaseline, "ROOT", tmp_path)
+    monkeypatch.setattr(rebaseline, "BASELINES", baselines)
+    monkeypatch.setattr(rebaseline, "load_waivers", lambda: [])
+    monkeypatch.setattr(rebaseline.subprocess, "check_output", lambda *a, **kw: "fixture-sha\n")
+    monkeypatch.setattr(geometry, "preset_keys", lambda: ["box/default"])
+    monkeypatch.setattr(geometry, "collect", lambda: rows)
+
+    def unexpected(*args, **kwargs):
+        pytest.fail("geometry-only must not collect audit rows or export a bake")
+
+    monkeypatch.setattr(audit, "collect", unexpected)
+    monkeypatch.setattr(rebaseline.subprocess, "run", unexpected)
+    assert rebaseline.main(["--geometry-only", "--why", "fixture change"]) == 0
+    path = baselines / "geometry/geometry-baseline.json"
+    result = json.loads(path.read_text())
+    assert result["rows"] == rows
+    assert result["header"]["why"] == "fixture change"
+    assert result["header"]["source_sha"] == "fixture-sha"
+    assert result["header"]["provisional"] == (
+        "geometry only; bake + audit-rows regenerated from the first successful CI capture")
+    assert set(baselines.rglob("*.json")) == {path, *preserved}
+    for other, before in preserved.items():
+        assert other.read_bytes() == before
+    # The inventory check also applies in provisional mode, before any write.
+    before = path.read_bytes()
+    monkeypatch.setattr(geometry, "preset_keys", lambda: ["other/default"])
+    with pytest.raises(ValueError, match="registry app presets differ from manifest"):
+        rebaseline.main(["--geometry-only", "--why", "fixture change"])
+    assert path.read_bytes() == before
+
+
 def test_rebaseline_rejects_incomplete_preset_bake(monkeypatch):
     spec = SimpleNamespace(slug="box", is_multi_colour=False)
     preset = SimpleNamespace(id="default")
