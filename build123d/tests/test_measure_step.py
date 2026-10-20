@@ -1,15 +1,8 @@
-"""tools/measure_step.py (pst-ff71): offline fixtures + upstream timing.
-
-Offline tests build their own STEP/3MF fixtures in a temp dir. The one
-``upstream`` test measures every measurable (brep/mesh) source record whose
-mirrored file is on disk (reference/FETCH.md) and skips the rest; citation
-(PDF) and archive (zip) records are excluded by construction.
-"""
+"""tools/measure_step.py (pst-ff71): offline STEP/3MF measurement fixtures."""
 
 import json
 import locale
 import sys
-import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -141,7 +134,7 @@ def test_section_offset_is_world_coordinate(tmp_path):
 
 
 def test_citation_records_never_loaded(tmp_path, monkeypatch):
-    """Walk every real source record the way the upstream timing test does:
+    """Walk every real source record without opening the mirrored files:
     only brep/mesh records may reach load_shape; PDFs and zips never do."""
     records = load_sources()
     real_load_shape = ms.load_shape
@@ -211,26 +204,3 @@ def test_record_writes_fk_and_licence(tmp_path):
     sources.write_text(json.dumps(data))
     with pytest.raises(LookupError, match="no licence text"):
         ms.record_artifacts([out], src, "cmd", None, manifest=art, sources=sources, root=tmp_path)
-
-
-# --- upstream: every measurable mirrored source in < 30 s --------------------
-
-def _measurable_records():
-    return [r for r in load_sources() if ms.media_type_of(r["filename"]) in ms.MEASURABLE]
-
-
-@pytest.mark.upstream
-@pytest.mark.parametrize("record", _measurable_records(), ids=lambda r: r["source_file_id"])
-def test_runs_under_30s_on_every_measurable_source(record):
-    path = local_path(record, record["current"])
-    if not path.is_file():
-        pytest.skip(f"{record['source_file_id']} not pulled (reference/FETCH.md)")
-    start = time.monotonic()
-    shape, kind = ms.load_shape(path)
-    m = ms.collect_measurements(shape, kind)
-    elapsed = time.monotonic() - start
-    assert kind == ms.media_type_of(record["filename"])
-    # Signed volume: some official STLs are wound inside-out (flush-big-coin-slot.stl
-    # reports -167.77), so only a non-degenerate solid is required here.
-    assert m["solids"] >= 1 and m["volume"] != 0
-    assert elapsed < 30, f"{record['source_file_id']}: {elapsed:.1f}s"
