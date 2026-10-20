@@ -64,7 +64,7 @@ def media_type_of(filename: str | Path) -> str:
 def load_shape(path: str | Path):
     """Return ``(shape, kind)``; kind is 'brep' or 'mesh'.
 
-    Mesh input goes through ``Mesher().read`` (list[Shape] in build123d 0.11.1);
+    Mesh input goes through ``Mesher().read``;
     several objects are combined into one Compound."""
     from build123d import Compound, Mesher, import_brep, import_step
 
