@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PreToolUse(Read|Edit|Write|MultiEdit|NotebookEdit) guard: protected paths for worker sessions.
+"""PreToolUse(Read|Grep|Glob|Edit|Write|MultiEdit|NotebookEdit) guard: protected paths for worker sessions.
 
 Blocks reads AND writes of env files (.env, .env.*, <name>.env; templates .example/.sample/.template/.dist
 allowed), ~/.claude/projects (mayor memory) and .gc/runtime/secrets; blocks WRITES to .github/workflows/ (mayor-owned; carve-out = $GC_CITY/.gc/runtime/guard-allow/workflow-edit-<rig>,
@@ -38,6 +38,7 @@ def main():
     if not raw:
         return
     p = raw.replace("$HOME", str(Path.home())).replace("${HOME}", str(Path.home()))
+    p = p.replace("${PWD}", cwd).replace("$PWD", cwd)
     if p == "~" or p.startswith("~/"):
         p = str(Path.home()) + p[1:]
     if not os.path.isabs(p):
@@ -57,7 +58,7 @@ def main():
         if "/.claude/projects/" in cand + "/" or "/.gc/runtime/secrets" in cand + "/":
             print("BLOCKED by guard-edit: mayor memory and runtime secrets are not readable or writable from a worker.", file=sys.stderr)
             sys.exit(2)
-        if tool == "Read":
+        if tool in {"Read", "Grep", "Glob"}:
             continue  # workflows are readable; only writes are mayor-owned
         if "/.github/workflows/" in cand + "/" or cand.endswith("/.github/workflows"):
             rig = rig_name(cwd)
