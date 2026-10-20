@@ -1,0 +1,252 @@
+{
+  "note": "Measurements only; deliberately unmanifested and outside reference/measured/: not a measure_step/1 geometry artifact. No source text or SCAD argument identifiers.",
+  "tool": "freeze-opengrid-snap-constants/1",
+  "build123d": "0.11.1",
+  "source_url": "https://raw.githubusercontent.com/AndyLevesque/QuackWorks/6123129/openGrid/opengrid-snap.scad",
+  "source_commit": "6123129",
+  "source_sha256": "cff6326f672398b607dcaa4f26dbb2653362130f5b8399091bc3efd880c6e325",
+  "generated_at": "2026-10-20T03:47:42.700537+00:00",
+  "attribution": "Values derived from AndyLevesque/QuackWorks openGrid/opengrid-snap.scad @6123129, CC BY-NC-SA 4.0; numbers only, no source text",
+  "constants": {
+    "CORE_WIDTH": {
+      "value": 24.8,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L37"
+    },
+    "FULL_EXTRA": {
+      "value": 3.4,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L38"
+    },
+    "LITE_HEIGHT": {
+      "value": 3.4,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L39"
+    },
+    "CORE_HEIGHT": {
+      "value": 3.0,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L42"
+    },
+    "TOP_HEIGHT": {
+      "value": 0.4,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L43"
+    },
+    "TOP_NUB_HEIGHT": {
+      "value": 1.1,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L44"
+    },
+    "TOP_CORNER": {
+      "value": 3.262743,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L48"
+    },
+    "CORE_CORNER": {
+      "value": 4.81837,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L50"
+    },
+    "TOP_NUB_OFFSET": {
+      "value": 2.02,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L52"
+    },
+    "TOP_NUB_WIDTH": {
+      "value": 6.817,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L55"
+    },
+    "OVERLAP": {
+      "value": 0.01,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L26"
+    },
+    "NUB_TOP": {
+      "value": 2.0,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L26"
+    },
+    "NUB_HEIGHT": {
+      "value": 0.2,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L62"
+    },
+    "NUB_WIDTH": {
+      "value": 11.0,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L63"
+    },
+    "NUB_DEPTH": {
+      "value": 0.4,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L64"
+    },
+    "NUB_TOP_WEDGE": {
+      "value": 0.6,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L65"
+    },
+    "NUB_BOTTOM_WEDGE": {
+      "value": 0.6,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L66"
+    },
+    "NUB_ROUND_X": {
+      "value": -12.36,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L67"
+    },
+    "NUB_ROUND_SCALE": {
+      "value": 1.36,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L68"
+    },
+    "NUB_ROUND_RADIUS": {
+      "value": 13.025,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L69"
+    },
+    "BOTTOM_WEDGE_DEPTH": {
+      "value": 0.4,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L30"
+    },
+    "FRONT_HEIGHT": {
+      "value": 0.0,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L77"
+    },
+    "FRONT_WIDTH": {
+      "value": 14.0,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L78"
+    },
+    "FRONT_DEPTH": {
+      "value": 0.8,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L79"
+    },
+    "FRONT_TOP_WEDGE": {
+      "value": 1.0,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L80"
+    },
+    "FRONT_BOTTOM_WEDGE": {
+      "value": 0.4,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L81"
+    },
+    "FRONT_ROUND_X": {
+      "value": -11.75,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L82"
+    },
+    "FRONT_ROUND_SCALE": {
+      "value": 1.26,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L83"
+    },
+    "FRONT_ROUND_RADIUS": {
+      "value": 13.025,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L84"
+    },
+    "FRONT_BOTTOM_SHIFT": {
+      "value": -0.4,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L85"
+    },
+    "REAR_HEIGHT": {
+      "value": 0.65,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L91"
+    },
+    "REAR_WIDTH": {
+      "value": 10.8,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L92"
+    },
+    "REAR_DEPTH": {
+      "value": 0.4,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L93"
+    },
+    "REAR_TOP_WEDGE": {
+      "value": 0.6,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L94"
+    },
+    "REAR_BOTTOM_WEDGE": {
+      "value": 0.6,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L95"
+    },
+    "REAR_ROUND_X": {
+      "value": -12.41,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L96"
+    },
+    "REAR_ROUND_SCALE": {
+      "value": 1.37,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L97"
+    },
+    "REAR_ROUND_RADIUS": {
+      "value": 13.025,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L98"
+    },
+    "CLICK_OFFSET": {
+      "value": 1.0,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L105"
+    },
+    "CLICK_DEPTH": {
+      "value": 0.6,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L107"
+    },
+    "CLICK_WIDTH": {
+      "value": 12.4,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L107"
+    },
+    "CLICK_RADIUS": {
+      "value": 0.3,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L107"
+    },
+    "CLICK_ROOF": {
+      "value": 2.8,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L107"
+    },
+    "REAR_CLICK_START": {
+      "value": 0.599,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L110"
+    },
+    "REAR_CLICK_HEIGHT": {
+      "value": 2.2,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L110"
+    },
+    "REAR_CLICK_OFFSET": {
+      "value": 1.2,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L111"
+    },
+    "REAR_CLICK_RISE": {
+      "value": 0.6,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L111"
+    },
+    "REAR_CLICK_SHIFT": {
+      "value": 0.2,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L111"
+    },
+    "REAR_RELIEF_OFFSET": {
+      "value": 0.1,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L112"
+    },
+    "REAR_RELIEF_DEPTH": {
+      "value": 0.2,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L112"
+    },
+    "REAR_RELIEF_WIDTH": {
+      "value": 20.0,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L112"
+    },
+    "REAR_RELIEF_HEIGHT": {
+      "value": 0.6,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L112"
+    },
+    "WALL_CLICK_HEIGHT": {
+      "value": 2.2,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L117"
+    },
+    "WALL_CLICK_DEPTH": {
+      "value": 1.4,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L119"
+    },
+    "WALL_CLICK_WIDTH": {
+      "value": 12.0,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L119"
+    },
+    "WALL_CLICK_THICKNESS": {
+      "value": 0.4,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L119"
+    },
+    "INDICATOR_X": {
+      "value": 9.5,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L122"
+    },
+    "INDICATOR_BOTTOM_RADIUS": {
+      "value": 2.0,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L122"
+    },
+    "INDICATOR_TOP_RADIUS": {
+      "value": 1.5,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L122"
+    },
+    "INDICATOR_HEIGHT": {
+      "value": 0.4,
+      "locator": "https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad#L122"
+    }
+  }
+}
