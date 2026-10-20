@@ -38,6 +38,7 @@ def main():
     if not raw:
         return
     p = raw.replace("$HOME", str(Path.home())).replace("${HOME}", str(Path.home()))
+    p = p.replace("${PWD}", cwd).replace("$PWD", cwd)
     if p == "~" or p.startswith("~/"):
         p = str(Path.home()) + p[1:]
     if not os.path.isabs(p):

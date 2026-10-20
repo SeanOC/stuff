@@ -50,6 +50,11 @@ GREP_VALUE_OPTIONS = {"-A", "-B", "-C", "-m", "-e", "-f", "--include", "--exclud
                       "-j", "--type", "--type-not", "-d", "-D", "--max-count", "--context", "--regexp", "--file", "--glob",
                       "--iglob", "--max-depth", "--threads", "--encoding", "--pre", "--replace", "--max-filesize",
                       "--sort", "--sortr", "--after-context", "--before-context", "--max-columns", "--path-separator"}
+RG_VALUE_OPTIONS = {"-T", "-M", "-E", "-r", "--color", "--colour", "--type-add", "--dfa-size-limit", "--regex-size-limit",
+                    "--context-separator", "--field-context-separator", "--field-match-separator", "--ignore-file",
+                    "--max-columns", "--engine", "--generate", "--hostname-bin", "--path-separator"}
+GREP_PATH_VALUE_OPTIONS = {"-f", "--file", "--pre", "--ignore-file"}  # these values ARE files (checked); the rest are text
+COPY_PROGRAMS = {"cp", "mv", "rsync", "install"}
 BD_GLOBAL_WITH_ARG = {"--db", "-C", "--config", "--actor", "--rig", "-r", "--city"}
 DESTRUCTIVE_PROGRAMS = {"rm", "rmdir", "mv", "unlink", "shred"}
 VERCEL_GLOBAL_WITH_ARG = {"--scope", "-S", "--token", "-t", "--cwd", "--local-config", "-A", "-e", "--env", "-b", "--build-env",
@@ -96,6 +101,7 @@ def rig_name():
 
 def expand(token):
     t = token.replace("$HOME", str(Path.home())).replace("${HOME}", str(Path.home()))
+    t = t.replace("${PWD}", cwd).replace("$PWD", cwd)
     if t == "~" or t.startswith("~/"):
         t = str(Path.home()) + t[1:]
     return t
@@ -346,6 +352,31 @@ def check_paths(words, rig):
                 globals()["cwd"] = saved
         words = ["git"] + rest
     destructive = program in DESTRUCTIVE_PROGRAMS or (program == "git" and git_sub in {"rm", "mv", "clean"})
+    grep_values = GREP_VALUE_OPTIONS | (RG_VALUE_OPTIONS if program == "rg" else set())
+    # mv: with -t/--target-directory the last operand is a source, not the destination (gs-geb1)
+    mv_positional_destination = program == "mv" and not any(
+        a == "--target-directory" or a.startswith("--target-directory=")
+        or (a.startswith("-") and not a.startswith("--") and "t" in a[1:]) for a in words[1:])
+    if program in COPY_PROGRAMS:
+        # a directory copied/moved INTO .github/ lands at dest/basename(src): that is where the policy applies
+        positional, target = [], None
+        it = iter(words[1:])
+        for a in it:
+            if a in {"-t", "--target-directory"}:
+                target = next(it, None)
+            elif a.startswith("--target-directory="):
+                target = a.split("=", 1)[1]
+            elif a.startswith("-") or (">" in a and all(ch in SEPARATORS for ch in a)):
+                continue
+            else:
+                positional.append(a)
+        if target is None and len(positional) >= 2:
+            target, positional = positional[-1], positional[:-1]
+        if target is not None:
+            for src in positional:
+                eff = os.path.join(norm(target), os.path.basename(src.rstrip("/")))
+                if is_workflow_path(eff):
+                    block(f"workflow-edit-{rig}", f"'{src}' would land at {os.path.relpath(eff, cwd)} (.github/workflows is mayor-owned)")
     git_prose = program == "git" and git_sub in {"commit", "tag", "notes", "merge"}
     pattern_pending = program in GREP_PROGRAMS and not any(
         a in {"-e", "-f", "--files", "--type-list", "--file", "--regexp"} or a.startswith(("--regexp=", "--file="))
@@ -368,7 +399,11 @@ def check_paths(words, rig):
         if "=" in w and w.startswith("--") and w.split("=", 1)[0] in TEXT_OPTIONS:
             i += 1
             continue
-        if pattern_pending and i > 0 and not w.startswith("-") and prev not in GREP_VALUE_OPTIONS \
+        if program in GREP_PROGRAMS and ((i > 0 and prev in grep_values - GREP_PATH_VALUE_OPTIONS and not w.startswith("-"))
+                                         or w.startswith(("--regexp=", "--glob=", "--iglob=", "--type=", "--include=", "--exclude="))):
+            i += 1  # a text value (pattern, glob, type, colour, separator…), never a file
+            continue
+        if pattern_pending and i > 0 and not w.startswith("-") and prev not in grep_values \
                 and not (">" in prev and all(ch in SEPARATORS for ch in prev)):
             pattern_pending = False  # grep/rg: the first operand is the PATTERN, not a file
             i += 1
@@ -399,8 +434,11 @@ def check_paths(words, rig):
         if is_secret_path(p) and program not in {"echo", "printf", "test", "["}:
             block("secret-read", f"'{w}' is a protected secret/memory path (env files, ~/.claude/projects, "
                   ".gc/runtime/secrets); workers use the sanitized env the worktree setup provides", carveout=False)
-        elif destructive and is_workflow_ancestor(p) and not (program == "mv" and i == len(words) - 1 and i > 1):
+        elif destructive and is_workflow_ancestor(p) and not (mv_positional_destination and i == len(words) - 1 and i > 1):
             block(f"workflow-edit-{rig}", f"removing/moving '{w}' takes .github/workflows with it (mayor-owned)")
+        elif destructive and "$" in expand(w) and not w.startswith("-"):
+            block(f"workflow-edit-{rig}", f"destructive operand '{w}' is a shell expansion the guard cannot resolve; "
+                  "use a literal path")
         elif is_workflow_path(p) and program in WRITE_PROGRAMS:
             if program == "git" and not any(s in words[1:] for s in ("rm", "mv", "checkout", "restore", "apply", "am", "clean", "stash")):
                 pass
@@ -711,6 +749,10 @@ def check_statement(words, state=None):
             block("long-sleep", "no sleep inside a shell loop; end your turn and let the next event resume you")
     elif program == "watch":
         block("watch", "no watch loops; check once and end your turn")
+    if program != "gh" and any((a in {"--watch", "--watchAll", "--watch-all"} or a.startswith(("--watch=", "--watchAll=")))
+                               and not (i > 0 and args[i - 1] in TEXT_OPTIONS) and not a.startswith("--watch=false")
+                               for i, a in enumerate(args)):
+        block("watch", "no --watch loops (test runners/bundlers); run once and end your turn")
     elif program in {"tail", "journalctl"} and any(a in {"-f", "-F"} or a.startswith("--follow") or (a.startswith("-") and not a.startswith("--") and ("f" in a[1:] or "F" in a[1:])) for a in args):
         block("watch", "no follow loops; read a bounded slice and end your turn")
     elif program == "find":

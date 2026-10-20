@@ -4,7 +4,7 @@ Source of truth for the per-rig `.claude/hooks/guard-*.py` + `.claude/settings.j
 prompt templates' "NEVER …" prose into deterministic blocks (best-practices review 2026-10-20, hardened
 2026-10-20 after the codex gates on ia-next #376 / co-author #862 / ghastly-show #37 reproduced bypasses).
 Rolled out by mayor PRs to each rig; keep the copies IDENTICAL to these files (rigs gitignore `.claude/`,
-so the files are `git add -f`ed). Self-test: `python3 guard-selftest.py` (532 cases; exit 0 = pass).
+so the files are `git add -f`ed). Self-test: `python3 guard-selftest.py` (587 cases; exit 0 = pass).
 
 ## Threat model
 The hooks stop ACCIDENTAL and habitual rule-breaking by a cooperative agent (the forms workers have actually
@@ -37,17 +37,21 @@ by whether an adversarial form still exists — the README's "not covered" list 
 - `vercel env|logs|pull` (also via `npx`/`pnpm dlx`/`pnpm vercel`; global options such as `--scope team`/`--token` before the subcommand are consumed).
 - secret reads: `.env`, `.env.<x>` and `<name>.env` (pulled prod envs such as `/tmp/prod.env`) by any read/write
   program, `dd if=`, `source`/`.`; templates `.example`/`.sample`/`.template`/`.dist` are allowed. The first
-  operand of `grep`/`rg`/`ag`/`ack` is the PATTERN (not a path) unless `-e`/`-f` is given; values of text options
+  operand of `grep`/`rg`/`ag`/`ack` is the PATTERN (not a path) unless `-e`/`-f` is given; grep/rg option values are text
+  (patterns, globs, types, colours; rg's `-T`/`-M`/`-E`/`-r` take values, grep's do not) except `-f`/`--file`/`--pre`/`--ignore-file`,
+  which are files and are checked; values of text options
   (`--notes`, `--body`, `-m` on `git commit`, …) are never paths; FILE-valued options (`--body-file`, `--design-file`,
   `-F body=@file`) are, so `gh pr comment --body-file .env` blocks.
 - workflow tree: besides direct writes, `rm`/`rmdir`/`mv`/`unlink`/`shred` and `git rm|mv|clean` on `.github`, the
-  worktree root or any parent (they take `.github/workflows` with them; `mv`'s destination is exempt), pathspec-less
+  worktree root or any parent (they take `.github/workflows` with them; `mv`'s destination is exempt), a directory
+  copied/moved INTO `.github/` whose effective path is the workflow tree (`cp -R workflows .github/`), destructive operands
+  that are unresolved shell expansions (`rm -r "$OLDPWD"`; `$PWD`/`$HOME` are resolved), pathspec-less
   `git clean`, and `patch` without `--dry-run`
   (uninspectable contents, like `git apply`/`am`). Sibling files such as `.github/CODEOWNERS` stay editable.
 - the Read, Grep and Glob tools are hooked too (guard-edit.py, on their `path`): env files, mayor memory and runtime secrets are unreadable;
   `.github/workflows/` stays READABLE. The native `permissions.deny` list is a fixed-name backstop
   (`./.env`, `./.env.local|production|development|prod`, `**/*.env`) chosen so it cannot catch the templates.
-- waiting loops: `gh … --watch`, `gh run watch`, `watch`, `tail -f`/`--follow`, `journalctl -f`; `sleep`
+- waiting loops: `gh … --watch`, `gh run watch`, `watch`, any program's `--watch`/`--watchAll` (test runners, `tsc`), `tail -f`/`--follow`, `journalctl -f`; `sleep`
   whose literal total in the command (all operands, all statements) is ≥ 30 s, non-literal sleep args (`$X`, `$((30))`), any sleep inside
   a `for`/`while`/`until` loop.
 - `bd|gc bd create|update` with `-a`, `-aX`, `-a=X`, `--assignee[=…]` (text option values are skipped; `gc`
