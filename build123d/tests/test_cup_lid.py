@@ -212,7 +212,7 @@ def test_bolt_hole_through_and_countersunk(part):
     for y in (0.5, seat_start-0.1):
         assert part.is_inside((p['bolt_clearance_diameter']/2+0.05, y, 0))
     # Measure the circular opening at each finished plate face.
-    for y, diameter in ((0, 8), (p['plate_thickness'], 16.78095238), (seat_start, 12.4), (seat_start, 8)):
+    for y, diameter in ((0, 8), (p['plate_thickness'], 17.0), (seat_start, 12.4), (seat_start, 8)):
         rim = [e for e in part.edges() if e.geom_type.name == 'CIRCLE'
                and abs(e.center().Y-y) < 1e-6
                and abs(e.radius-diameter/2) < 0.025]
@@ -227,7 +227,7 @@ def test_bolt_hole_through_and_countersunk(part):
         assert not part.is_inside((radius, seat_start+0.01, 0))
     for fraction in (0.1, 0.5, 0.9):
         y = seat_start+fraction*p['seat_depth']
-        radius = 6.2+fraction*(16.78095238-12.4)/2
+        radius = 6.2+fraction*(17.0-12.4)/2
         assert not part.is_inside((radius-0.05, y, 0))
         assert part.is_inside((radius+0.05, y, 0))
 
@@ -310,8 +310,7 @@ def test_joint_overlaps_solid(part):
         assert BRepAdaptor_Surface(f.wrapped).Torus().MinorRadius() >= 1-1e-6
 
 
-def test_edge_classification(part):
-    p = dimensions({})
+def assert_finished_edges(part, p):
     # Upper front/back chord edges have a 0.5 mm chamfer.
     for y in (0.25, p['plate_thickness']-0.25):
         assert any(f.geom_type.name == 'PLANE'
@@ -327,6 +326,10 @@ def test_edge_classification(part):
         assert sorted(f.geom_type.name for f in adjacent) == ['CYLINDER', 'PLANE']
         plane = next(f for f in adjacent if f.geom_type.name == 'PLANE')
         assert plane.normal_at().Y == pytest.approx(-1)
+
+
+def test_edge_classification(part):
+    assert_finished_edges(part, dimensions({}))
 
 
 @pytest.mark.parametrize('name,value', [(q.name, v) for q in PARAMS for v in (q.min, q.max)])
@@ -360,6 +363,8 @@ def test_outside_param_range_raises(name, value):
     ({'top_chord_offset': 2, 'mount_height': 30, 'lid_clearance': 0.1, 'tab_thickness': 2}, 'wall outward lean'),
     ({'shoulder_depth': 2.2, 'lid_clearance': 0.7}, '>= 1.6'),
     ({'head_thickness': 2.4, 'head_recess': 0.5}, 'leave 2.4'),
+    ({'head_top_diameter': 18, 'head_bottom_diameter': 10,
+      'head_thickness': 1.8, 'head_recess': 0.5, 'mount_height': 20}, 'mount_height'),
     ({'head_bottom_diameter': 10, 'head_clearance': 0, 'bolt_clearance_diameter': 8.5}, 'head shoulder'),
     ({'countersink_diameter': 16}, 'unknown parameters'),
     ({'countersink_angle': 90}, 'unknown parameters'),
@@ -376,13 +381,16 @@ def test_cross_constraints_raise(values, message):
         holder(**values)
 
 
-@pytest.mark.parametrize('values', [
+ACCEPTED_CORNERS = [
     {'lid_diameter': 84, 'mount_height': 30, 'top_chord_offset': 2},  # tightest specified legal build
     {'shoulder_depth': 2.2, 'lid_clearance': 0.6},
     {'head_thickness': 2.4, 'head_recess': 0.2},
     {'bolt_clearance_diameter': 8, 'head_bottom_diameter': 10, 'head_clearance': 0},
     {'pin_fit': -0.1, 'pin_tip_diameter': 0.8, 'pin_cone_half_angle': 49},
-])
+]
+
+
+@pytest.mark.parametrize('values', ACCEPTED_CORNERS)
 def test_cross_constraint_accepted_cases(values):
     p = dimensions(values)
     if values.get('head_thickness') == 2.4:
@@ -418,3 +426,54 @@ def test_pin_length_helper():
         pin_length_mm(4, 0, 45)
     with pytest.raises(ValueError, match='pin length above 6.0'):
         pin_length_mm(13, 0, 45)
+
+
+# Defaults/preset, every numeric endpoint, and all documented accepted corners.
+SEAT_AUDIT_CASES = [pytest.param({}, id='sippy_cup_85mm')] + [
+    pytest.param({q.name: v}, id=f'{q.name}={v}')
+    for q in PARAMS for v in (q.min, q.max)
+] + [pytest.param(v, id='corner-' + '-'.join(f'{k}={x}' for k, x in v.items()))
+     for v in ACCEPTED_CORNERS]
+
+
+@pytest.mark.audit
+@pytest.mark.parametrize('values', SEAT_AUDIT_CASES)
+def test_endpoint_countersink_audit(values):
+    from holders.cup_lid import _uncut_holder, audit_exclusions
+    from tests.print_audit import audit
+    from tests.audit_record import record
+
+    p = dimensions(values)
+    assert p['seat_face_diameter']-p['seat_bottom_diameter'] >= 2*p['seat_depth']-1e-9
+    uncut = _uncut_holder(p)
+    part = holder(**values)
+    assert part.is_valid and len(part.solids()) == 1
+    # Analytic cone + backed shank volume: any breach of the plate/tab/pin
+    # envelope loses cutter volume and fails independently of audit sampling.
+    r0, r1 = p['seat_bottom_diameter']/2, p['seat_face_diameter']/2
+    backing = p['plate_thickness']-p['seat_depth']
+    removed = math.pi*(p['seat_depth']*(r0*r0+r0*r1+r1*r1)/3
+                       + backing*(p['bolt_clearance_diameter']/2)**2)
+    # Integrating the two large spline-bearing bodies separately introduces
+    # sub-millimetre-cubed numerical noise; measure the actual removed solid
+    # tightly as well as checking conservation at the BREP baseline tolerance.
+    assert (uncut-part).volume == pytest.approx(removed, abs=1e-5)
+    assert uncut.volume == pytest.approx(part.volume+removed, rel=1e-6)
+    # Shoulder plane, bottom radial clearance and recessed head top stay put.
+    shoulder = [f for f in part.faces() if f.geom_type.name == 'PLANE'
+                and abs(f.center().Y-backing) < 1e-6 and f.normal_at().Y > 0.99]
+    assert len(shoulder) == 1
+    assert shoulder[0].area == pytest.approx(
+        math.pi*(r0*r0-(p['bolt_clearance_diameter']/2)**2))
+    assert r0-p['head_bottom_diameter']/2 == pytest.approx(p['head_clearance'])
+    head_top_y = backing+p['head_thickness']
+    assert p['plate_thickness']-head_top_y == pytest.approx(p['head_recess'])
+    assert_finished_edges(part, p)
+    report = audit(part, SPEC.print_orientation, exclusions=audit_exclusions(values))
+    assert report.ok, report.format()
+    assert not report.downward_fillets
+    record('cup-lid-endpoint', min_wall=report.min_wall_mm,
+           max_overhang=report.max_overhang_deg, exposed_edge_angle=45.0,
+           front_opening=p['seat_face_diameter'], volume=part.volume, ok=report.ok)
+    print(f"ENDPOINT {values or 'sippy_cup_85mm'}: min_wall={report.min_wall_mm:.3f} "
+          f"overhang={report.max_overhang_deg:.1f} edge=45.0 ok={report.ok}")

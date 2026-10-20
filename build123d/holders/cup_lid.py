@@ -22,9 +22,10 @@ to the Ø6 thread minor at 1 mm depth; see docs/cup-lid-validation.md.
 The rear cones engage the mouth with a tunable per-side fit. The default
 -0.15 mm (clearance) is the Ø7.7 pin Sean validated in v2.3, re-expressed
 against the measured Ø8 mouth (pst-ozpae). Their bases and the plate back
-are coplanar. The bolt clamps. The seat follows Sean's measured head:
-16 to 12 mm taper over 2.1 mm, recessed 0.2 mm, with a flat shoulder to
-the 8 mm shank. Sean confirmed physical fit on 2026-09-27 (pst-mvno, v2.3).
+are coplanar. The bolt clamps. Sean's measured head is 16 to 12 mm over
+2.1 mm, recessed 0.2 mm, bearing on a flat shoulder to the 8 mm shank.
+The seat cone is relieved to at least a 45-degree half-angle for printing.
+Sean validated v2.3 on 2026-09-27; the relieved seat awaits a new print.
 
 Functional sharp edges: lip shoulder-contact arc and wall seating arc.
 Cone pin surfaces and countersink are functional. All bed-contact edges
@@ -103,9 +104,10 @@ def dimensions(values: dict) -> dict:
     if p['head_top_diameter'] <= p['head_bottom_diameter']:
         raise ValueError('head_top_diameter must exceed head_bottom_diameter')
     slope = (p['head_top_diameter']-p['head_bottom_diameter'])/(2*p['head_thickness'])
+    cone_slope = max(slope, 1.0)  # Roof <= 45 degrees; shoulder still locates the head.
     seat = p['head_thickness'] + p['head_recess']
     p.update(seat_bottom_diameter=seat_bottom,
-             seat_face_diameter=seat_bottom+2*seat*slope,
+             seat_face_diameter=seat_bottom+2*seat*cone_slope,
              pin_base_diameter=MOUTH+2*p['pin_fit'])
     if p['plate_thickness']-seat < 2.4 - 1e-9:
         raise ValueError('plate_thickness must leave 2.4 mm behind the countersink')
@@ -131,6 +133,15 @@ def dimensions(values: dict) -> dict:
     # atan(b / sqrt(R²-b²)) is maximal at the bottom chord.
     p['wall_lean_deg'] = math.degrees(math.atan(b/math.sqrt(r*r-b*b)))
     p['circle_center_z'] = p['top_chord_offset'] + p['mount_height']/2
+    # Keep the opening on the flat front, clear of chord relief, R1 tab
+    # junctions and the rear pin footprints. Test the full cut volume too.
+    opening_radius = p['seat_face_diameter']/2
+    if opening_radius > p['mount_height']/2 - max(0.5, p['bed_chamfer']) + 1e-9:
+        raise ValueError('mount_height must contain the countersink inside the flat front face')
+    if opening_radius + p['circle_center_z'] > inner - JOINT_RADIUS + 1e-9:
+        raise ValueError('lid_diameter must keep the countersink clear of the tab junctions')
+    if opening_radius + p['pin_base_diameter']/2 > PITCH + 1e-9:
+        raise ValueError('head_top_diameter must keep the countersink clear of the pins')
     lip_depth = min(b, p['lip_radius']/math.sqrt(2)) - p['lip_end_margin']
     p['lip_stop_z'] = p['circle_center_z'] - lip_depth
     p['lip_lean_deg'] = math.degrees(math.asin(lip_depth/p['lip_radius']))
@@ -160,8 +171,8 @@ def _center_hole(p):
     return shank.fuse(seat)
 
 
-def holder(**values):
-    p = dimensions(values)
+def _uncut_holder(p):
+    """Finished plate, tabs and pins before the central bolt cut."""
     r, ri, rl = p['radius'], p['wall_radius'], p['lip_radius']
     t, h, bottom, top = p['plate_thickness'], p['mount_height'], p['lip_bottom'], p['lip_top']
     # A single revolved section is equivalent to overlapping the wall into
@@ -217,9 +228,14 @@ def holder(**values):
     # at opposite ends otherwise differ by measurable boolean slivers.
     half = part & Box(r+1, 2*top+2, h+2, align=(Align.MIN, Align.CENTER, Align.CENTER))
     part = half.fuse(half.mirror(Plane.YZ)).clean()
-    for x, y, z in pin_centers(values):
-        part = part.fuse(Pos(x, y, z) * _pin(p))
-    return (part-_center_hole(p)).clean()
+    for x in (-PITCH, PITCH):
+        part = part.fuse(Pos(x, 0, 0) * _pin(p))
+    return part
+
+
+def holder(**values):
+    p = dimensions(values)
+    return (_uncut_holder(p)-_center_hole(p)).clean()
 
 
 def audit_exclusions(values: dict) -> list:
@@ -239,7 +255,7 @@ def audit_exclusions(values: dict) -> list:
 SPEC = register(ModelSpec(
     name='holder_cup_lid', build=lambda values: holder(**values),
     title='Cup lid holder (Multibuild)', category_id='multiboard',
-    description='Planar circular-segment cradle with mirrored arc tabs, inward lips and cone locating pins with adjustable interference. Standing print; recessed tapered seat and flat shoulder match the measured bolt head, pending physical validation.',
+    description='Planar circular-segment cradle with mirrored arc tabs, inward lips and cone locating pins with adjustable interference. Standing print; relieved countersink roof with a flat shoulder for the measured bolt head. Physical re-validation of the relieved seat pending.',
     tags=('holder', 'multiboard', 'cup-lid'), params=PARAMS,
     presets=(Preset(id='sippy_cup_85mm', label='Sippy cup (85.3 mm)', values={}),),
     print_orientation=(0.0, 0.0, 1.0),
