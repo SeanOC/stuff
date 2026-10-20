@@ -27,6 +27,17 @@ CITY = Path(os.environ.get("GC_CITY") or Path.home() / "gc-pilot/city")
 SEPARATORS = ";&|\n()`<>"
 WRAPPERS = {"command", "builtin", "exec", "nohup", "time", "nice", "ionice", "env", "xargs",
             "timeout", "eval", "npx", "pnpx", "bunx", "uvx", "doas", "chroot"}
+WRAPPER_OPT_ARITY = {
+    "timeout": {"-k", "--kill-after", "-s", "--signal"},
+    "ionice": {"-c", "--class", "-n", "--classdata", "-p", "--pid", "-P", "--pgid", "-u", "--uid"},
+    "nice": {"-n", "--adjustment"},
+    "env": {"-u", "--unset", "-C", "--chdir", "-S", "--split-string", "--block-signal", "--default-signal",
+            "--ignore-signal", "-a", "--argv0"},
+    "xargs": {"-I", "-n", "-P", "-L", "-s", "-d", "-a", "-E", "--max-args", "--max-procs", "--replace",
+              "--delimiter", "--arg-file", "--eof", "--max-chars", "--max-lines"},
+    "nohup": set(), "command": set(), "builtin": set(), "exec": {"-a"}, "time": {"-f", "-o"},
+    "chroot": {"--userspec", "--groups"}, "doas": {"-u", "-C"},
+}
 RUNNERS = {"pnpm", "npm", "yarn", "bun", "uv", "poetry", "pipx", "npx"}
 SHELLS = {"bash", "sh", "zsh", "dash", "ksh", "fish"}
 GIT_GLOBAL_WITH_ARG = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path",
@@ -127,12 +138,13 @@ def statements(command):
 def check_paths(words, rig):
     """Secret reads anywhere; writes (redirects + write programs) into .github/workflows."""
     program = os.path.basename(words[0]) if words else ""
+    if program == "git" and any(a in words[1:] for a in ("apply", "am")) and \
+            not any(a in words[1:] for a in ("--check", "--stat", "--numstat", "--summary", "--show-current-patch")):
+        block(f"workflow-edit-{rig}", "git apply/am can rewrite .github/workflows from patch contents the guard "
+              "cannot inspect; use --check/--stat to inspect, or edit files directly")
     i = 0
     while i < len(words):
         w = words[i]
-        if " " in w or "\t" in w:  # a quoted multi-word string: prose, not a path
-            i += 1
-            continue
         if ">" in w and all(ch in SEPARATORS for ch in w):
             target = words[i + 1] if i + 1 < len(words) else ""
             if w.endswith("&") and target.isdigit():
@@ -161,8 +173,13 @@ def check_paths(words, rig):
             else:
                 block(f"workflow-edit-{rig}", ".github/workflows/ is mayor-owned; a bead with an explicit "
                       "workflow-edit authorization gets a carve-out marker from the mayor")
-        elif program == "dd" and w.startswith("of=") and is_workflow_path(norm(w[3:])):
-            block(f"workflow-edit-{rig}", ".github/workflows/ is mayor-owned (dd of=)")
+        elif program == "dd" and w.startswith(("of=", "if=")):
+            q = norm(w[3:])
+            if is_secret_path(q):
+                block("secret-write" if w.startswith("of=") else "secret-read",
+                      f"dd {w[:3]}{w[3:]} touches a protected secret path", carveout=False)
+            elif is_workflow_path(q) and w.startswith("of="):
+                block(f"workflow-edit-{rig}", ".github/workflows/ is mayor-owned (dd of=)")
         i += 1
 
 
@@ -182,19 +199,21 @@ def unwrap(words):
             changed = True
         elif program in WRAPPERS:
             rest = words[1:]
-            if program == "timeout":
-                rest = [a for a in rest if not a.startswith("-")][1:] if rest else []
-            elif program == "nice" and rest[:1] == ["-n"]:
-                rest = rest[2:]
-            elif program == "eval":
-                return rest  # checked as a joined command by the caller
-            else:
-                while rest and rest[0].startswith("-"):
-                    opt = rest.pop(0)
-                    if program == "xargs" and opt in {"-I", "-n", "-P", "-L", "-s", "-d", "-a", "-E"} and rest:
-                        rest.pop(0)
-                    if program == "env" and opt in {"-u", "-C", "-S"} and rest:
-                        rest.pop(0)
+            arity = WRAPPER_OPT_ARITY.get(program, set())
+            while rest and rest[0].startswith("-") and rest[0] != "--":
+                opt = rest.pop(0)
+                if "=" in opt and opt.startswith("--"):
+                    continue
+                if opt in arity and rest:
+                    rest.pop(0)
+                elif program == "nice" and re.fullmatch(r"-\d+", opt):
+                    pass
+                elif len(opt) > 2 and not opt.startswith("--") and opt[:2] in arity:
+                    pass  # -k1 / -n10 style: value attached
+            if rest and rest[0] == "--":
+                rest.pop(0)
+            if program == "timeout" and rest:
+                rest = rest[1:]  # the duration operand
             words = rest
             changed = True
         elif program in RUNNERS and len(words) > 1:
@@ -254,6 +273,9 @@ def check_git(args):
         else:
             refspecs.append(a)
     for spec in refspecs:
+        if spec in {":", "+:"} or "*" in spec:
+            block("push-main", f"matching/wildcard refspec '{spec}' can advance main; push one named feature branch")
+            continue
         if spec.startswith("+"):
             block("force-push", "a '+' refspec is a force push", carveout=False)
             spec = spec[1:]
@@ -276,6 +298,8 @@ def check_gh(args):
     if args[:1] == ["api"]:
         method = "GET"
         endpoint = ""
+        value_opts = {"-H", "--header", "--hostname", "-p", "--preview", "-q", "--jq", "-t", "--template",
+                      "--cache", "-i", "--include"} - {"-i", "--include"}
         it = iter(args[1:])
         for a in it:
             if a in {"-X", "--method"}:
@@ -287,6 +311,10 @@ def check_gh(args):
                 method = method if method != "GET" else "POST"
             elif a.startswith(("-f", "-F", "--field=", "--raw-field=", "--input=")) and method == "GET":
                 method = "POST"
+            elif a in value_opts:
+                next(it, None)
+            elif a.startswith("-") and not a.startswith("--") and len(a) > 2 and a[:2] in value_opts:
+                pass  # -Hvalue attached form
             elif not a.startswith("-") and not endpoint:
                 endpoint = a
         if method != "GET" and re.search(r"/statuses/|/check-runs|/protection|/rulesets", endpoint):
@@ -298,15 +326,16 @@ def check_gh(args):
 
 
 def check_sleep(args, total):
-    if not args:
-        return total
-    m = re.fullmatch(r"\+?(\d+(?:\.\d*)?|\.\d+)([smhd]?)", args[0])
-    if not m:
-        block("long-sleep", f"sleep '{args[0]}' is not a literal number the guard can bound; use a literal "
-              "under 30 s or end your turn and let the next event resume you")
-        return total
-    secs = float(m.group(1)) * {"": 1, "s": 1, "m": 60, "h": 3600, "d": 86400}[m.group(2)]
-    return total + secs
+    for a in args:
+        if a.startswith("-"):
+            continue
+        m = re.fullmatch(r"\+?(\d+(?:\.\d*)?|\.\d+)([smhd]?)", a)
+        if not m:
+            block("long-sleep", f"sleep '{a}' is not a literal number the guard can bound; use a literal "
+                  "under 30 s or end your turn and let the next event resume you")
+            continue
+        total += float(m.group(1)) * {"": 1, "s": 1, "m": 60, "h": 3600, "d": 86400}[m.group(2)]
+    return total
 
 
 def check_bd(args):
@@ -343,6 +372,13 @@ def check_statement(words, state=None):
         state["loop"] = True
     check_paths(words, rig)
     words = [w for w in words if w not in {"!", "{", "}", "then", "do", "else", "elif", "fi", "done", "esac", "in"}]
+    while words and re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]*=.*", words[0]):
+        words = words[1:]
+    if words and os.path.basename(words[0]) in {"eval", "source", "."} and len(words) > 1:
+        if os.path.basename(words[0]) == "eval":
+            for st in statements(" ".join(words[1:])):
+                check_statement(st, state)
+            return
     words = unwrap(list(words))
     if not words:
         return

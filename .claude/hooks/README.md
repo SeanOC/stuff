@@ -4,27 +4,30 @@ Source of truth for the per-rig `.claude/hooks/guard-*.py` + `.claude/settings.j
 prompt templates' "NEVER …" prose into deterministic blocks (best-practices review 2026-10-20, hardened
 2026-10-20 after the codex gates on ia-next #376 / co-author #862 / ghastly-show #37 reproduced bypasses).
 Rolled out by mayor PRs to each rig; keep the copies IDENTICAL to these files (rigs gitignore `.claude/`,
-so the files are `git add -f`ed). Self-test: `python3 guard-selftest.py` (229 cases; exit 0 = pass).
+so the files are `git add -f`ed). Self-test: `python3 guard-selftest.py` (270 cases; exit 0 = pass).
 
 ## What is blocked (guard-bash.py, tokenized with shlex — quoted prose never trips a rule)
 - push to main/master in any spelling (positional, `HEAD:main`, `refs/heads/main`, `--all`/`--mirror`,
-  `git -c …`/`-C …` global options, bare `git push` while the checkout is on main/master); force pushes
-  (`-f`, `--force*`, combined `-fu`, `+refspec`).
+  matching `:` and wildcard `*` refspecs, `git -c …`/`-C …` global options, bare `git push` while the
+  checkout is on main/master); force pushes (`-f`, `--force*`, combined `-fu`, `+refspec`).
 - `gh pr merge --admin`; `gh api` writes (POST/PUT/PATCH/DELETE or `-f/-F/--input`) to `/statuses/`,
-  `/check-runs`, `/protection`, `/rulesets`, and the GraphQL branch-protection / commit-status mutations.
-- `sudo`/`doas` anywhere: direct, through `env`/`command`/`nohup`/`timeout`/`xargs`/`nice`, inside
-  `bash -c`/`sh -c`, `$(…)`, backticks, `find -exec`, pipelines and `;`/`&&` chains.
+  `/check-runs`, `/protection`, `/rulesets`, and the GraphQL branch-protection / commit-status mutations
+  (value-bearing options such as `-H`/`--hostname` are consumed before the endpoint is picked).
+- `sudo`/`doas` anywhere: direct, through `env`/`command`/`nohup`/`timeout`/`xargs`/`nice`/`ionice` (their
+  value-taking options are parsed), inside `bash -c`/`sh -c`, `eval` (re-parsed recursively), `$(…)`,
+  backticks, `find -exec`, pipelines and `;`/`&&` chains.
 - `vercel env|logs|pull` (also via `npx`/`pnpm dlx`/`pnpm vercel`).
 - waiting loops: `gh … --watch`, `gh run watch`, `watch`, `tail -f`/`--follow`, `journalctl -f`; `sleep`
-  whose literal total in the command is ≥ 30 s, non-literal sleep args (`$X`, `$((30))`), any sleep inside
+  whose literal total in the command (all operands, all statements) is ≥ 30 s, non-literal sleep args (`$X`, `$((30))`), any sleep inside
   a `for`/`while`/`until` loop.
 - `bd|gc bd create|update` with `-a`, `-aX`, `-a=X`, `--assignee[=…]` (text option values are skipped).
 - reads of secrets/memory by any program: `.env`, `.env.*` (except `.example/.sample/.template/.dist`),
   `~/.claude/projects/**`, `**/.gc/runtime/secrets/**` — paths are normalized (`..`, `~`, `$HOME`, cwd),
-  so `src/../.env` is caught; `echo`/`printf` are exempt.
+  so `src/../.env` and quoted paths with spaces are caught; `dd if=/of=` too; `echo`/`printf` are exempt.
 - writes into `.github/workflows/`: redirects (`>`, `>>`, `&>`, heredocs), `tee`, `cp/mv/install/rsync/ln`,
-  `dd of=`, `truncate`, `sed -i`/`perl -i`, `rm`, `touch`, `git rm/mv/checkout/restore`; redirects to an
-  unresolvable expansion (`> $OUT`) are blocked too. guard-edit.py covers Edit/Write/MultiEdit/NotebookEdit
+  `dd of=`, `truncate`, `sed -i`/`perl -i`, `rm`, `touch`, `git rm/mv/checkout/restore`, and `git apply`/`git am`
+  (patch contents cannot be inspected; `--check`/`--stat` stay allowed); redirects to an unresolvable
+  expansion (`> $OUT`) are blocked too. guard-edit.py covers Edit/Write/MultiEdit/NotebookEdit
   with the same normalization (plus realpath, so a symlink does not help).
 
 Not covered (documented limits): commands hidden inside `python -c`/`node -e` strings, scripts executed
