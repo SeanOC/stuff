@@ -126,6 +126,25 @@ BASH_BLOCK = [
     "grep -f /tmp/prod.env x", "rg --pre /tmp/prod.env x", "grep -f .env README.md", "rg --file .env README.md", "rg --ignore-file .env x",
     "gh issue create --body-file /tmp/prod.env", "bd update co-x --body-file /tmp/prod.env", "gh pr comment 1 --body-file=.env",
     "echo foo # x\nsudo ls", 'echo "# x"; sudo ls', "echo foo # x\ngit push origin main",
+    # round 10: runner option values keep the secret check when the payload is unwrapped (ghastly gs-18hj)
+    "uv run --env-file .env gh pr comment 1 -b hi", "uv --env-file .env run git status", "pnpm exec --dir .env gh pr view 1",
+    "npx --package vercel vercel env pull", "uv run --env-file ../.env git status",
+    # round 10: worktree-updating git reset with a ref replaces .github/workflows wholesale
+    "git reset --hard main", "git reset --hard origin/main", "git reset --merge main", "git reset --keep HEAD~1", "git reset --hard HEAD~2",
+    # round 10: find -delete roots go through the workflow-ancestor policy
+    "find .github -type f -delete", "find .github/workflows -mindepth 1 -delete", "find . -name '*.yml' -delete", "find . -delete",
+    "find . -type f -delete", "find .. -name '*.yaml' -delete", "find . -name 'ci.yml' -delete", "find . -name '*~' -delete",
+    "find -delete", "find . -path '*/workflows/*' -delete", "find .github -name '*.yml' -type f -delete",
+    # round 10 (gate round 11): if/while/until conditions are commands
+    "if git push origin main; then echo ok; fi", "while sudo true; do echo x; done", "until gh pr merge --admin 1; do echo w; done",
+    "if ! git push origin main; then echo x; fi", "if cat .env; then :; fi", "if true; then :; elif sudo ls; then :; fi",
+    "while vercel env pull; do :; done", "if command -v x; then sudo ls; fi",
+    # round 10 (gate round 11): attached / clustered grep -f reads the pattern FILE
+    "grep -f.env pat", "rg -f.env", "grep -r -f.env .", "grep -rf.env .", "grep -rf .env .", "rg -if.env .", "grep -rnf .env src/",
+    "grep -f./.env x", "fgrep -f.env.local x",
+    # round 10: `command cd` / `builtin cd` change the cwd like cd (ghastly #41 advisory)
+    "command cd .github/workflows && touch x.yml", "builtin cd .github && touch workflows/x.yml", "command cd .github; rm -rf workflows",
+    "git restore --staged --worktree .github/workflows/ci.yml", "git restore -SW .github/workflows/ci.yml", "git restore .github/workflows/ci.yml",
     # round 8: checkout/restore ancestor pathspecs, vitest/tsc -w aliases behind runners, mv -t source vs destination
     "git checkout main -- .", "git checkout main -- .github", "git restore --source main .", "git checkout main .",
     "git checkout -- .", "git restore .", "git checkout origin/main -- ./", "git restore --source=main -- .github/",
@@ -255,6 +274,21 @@ BASH_ALLOW = [
     "rm -rf node_modules/.cache", "rm -rf $HOME/tmp/x",
     # bash semantics: a # comment runs to END OF LINE, so ; and && inside it do not separate statements (co-author gate P1 was wrong)
     "echo foo # x; sudo ls", "echo foo # x && sudo ls",
+    # round 10
+    "uv run --env-file .env.example gh pr comment 1 -b hi", "uv --env-file .env.example run git status", "pnpm exec --dir app gh pr view 1",
+    "uv run --env-file scratch/dev.env.example pytest", "npx --package typescript tsc --noEmit",
+    "git reset", "git reset --soft HEAD~1", "git reset --mixed HEAD", "git reset HEAD -- src/x.ts", "git reset -- .github/workflows/ci.yml",
+    "git reset --hard", "git reset --hard HEAD", "git reset --keep", "git reset HEAD~1", "git reset origin/main -- src/",
+    "find . -name '*.pyc' -delete", "find build -delete", "find . -name '*.pyc' -type f -delete", "find src -type f -delete",
+    "find . -name '*.yml'", "find .github -name '*.yml'", "find . -name __pycache__ -delete", "find . -iname '*.orig' -delete",
+    "find node_modules -name '*.map' -delete", "find .github -name '*.yml' -exec cat {} \\;", "find /tmp/x -delete",
+    "if grep -q x README.md; then echo y; fi", "while read -r l; do echo $l; done < list.txt", "if git push origin gc-ia/x; then echo ok; fi",
+    "until curl -sf http://localhost; do echo w; done", "if [ -f .env ]; then echo present; fi", "if test -e .env; then :; fi",
+    "if ! grep -q x README.md; then echo n; fi", "while ! curl -sf http://localhost; do echo w; done",
+    "grep -fpatterns.txt .", "grep -rf patterns.txt src/", "grep -ie KEY src/x.ts", "grep -rne KEY src/", "rg -f pats.txt src/",
+    "grep -rif pats.txt .", "grep -c -e .env README.md", "grep -ie .env README.md", "grep -rn KEY src/", "grep -A3 KEY src/x.ts",
+    "command cd src && touch x.ts", "builtin cd docs && cat README.md", "command cd .github && cat workflows/ci.yml",
+    "git restore --staged .github/workflows/ci.yml", "git restore --staged -- .github/workflows/ci.yml", "git restore -S .github/workflows/ci.yml",
     # round 8
     "git checkout main", "git checkout -b x", "git checkout -- src/", "git checkout main -- src/x.ts", "git restore src/x.ts",
     "git restore --source main src/", "git restore --staged .", "git checkout main -- .github/CODEOWNERS", "git checkout -b x main",
@@ -339,7 +373,11 @@ for c in ("git stash -u", "git stash --include-untracked", "git stash --all", "g
     expect("guard-bash.py", {"command": c}, 2, c + " [workflow untracked]", cwd=untracked, extra_env={"CLAUDE_PROJECT_DIR": untracked})
 for c in ("git stash", "git stash push", "git stash push -m x"):
     expect("guard-bash.py", {"command": c}, 0, c + " [workflow untracked only]", cwd=untracked, extra_env={"CLAUDE_PROJECT_DIR": untracked})
-STASH_CASES = 7 + 5 + 5 + 3
+for c in ("git reset --hard HEAD", "git reset --hard", "git reset --merge", "git reset --keep HEAD"):
+    expect("guard-bash.py", {"command": c}, 2, c + " [workflows dirty]", cwd=dirty, extra_env={"CLAUDE_PROJECT_DIR": dirty})
+for c in ("git reset --soft HEAD~1", "git reset HEAD -- src/x", "git reset", "git reset --mixed"):
+    expect("guard-bash.py", {"command": c}, 0, c + " [workflows dirty]", cwd=dirty, extra_env={"CLAUDE_PROJECT_DIR": dirty})
+STASH_CASES = 7 + 5 + 5 + 3 + 4 + 4
 for p in EDIT_BLOCK:
     expect("guard-edit.py", {"file_path": p}, 2, "edit " + p)
 for p in EDIT_ALLOW:
