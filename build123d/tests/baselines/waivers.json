@@ -1,0 +1,4 @@
+{
+  "policy": "Sean approves waivers by merging the PR. The mayor proposes; the PR body names each waiver. Exact JSON-pointer row/field paths only; every waiver requires a reason and bead id.",
+  "waivers": []
+}

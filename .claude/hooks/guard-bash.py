@@ -38,17 +38,44 @@ WRAPPER_OPT_ARITY = {
             "--ignore-signal", "-a", "--argv0"},
     "xargs": {"-I", "-n", "-P", "-L", "-s", "-d", "-a", "-E", "--max-args", "--max-procs", "--replace",
               "--delimiter", "--arg-file", "--eof", "--max-chars", "--max-lines"},
-    "nohup": set(), "command": set(), "builtin": set(), "exec": {"-a"}, "time": {"-f", "-o"},
+    "nohup": set(), "command": set(), "builtin": set(), "exec": {"-a"}, "time": {"-f", "--format", "-o", "--output"},
     "chroot": {"--userspec", "--groups"}, "doas": {"-u", "-C"},
 }
 RUNNERS = {"pnpm", "npm", "yarn", "bun", "uv", "poetry", "pipx", "npx"}
+RUNNER_OPT_ARITY = {  # package-runner options that take a SEPARATE value (so the value is never taken for the executable)
+    "npx": {"-p", "--package", "-c", "--call", "--shell", "--node-options", "--loglevel", "--registry", "--cache", "--prefix",
+            "-w", "--workspace", "--userconfig", "--script-shell"},
+    "npm": {"-p", "--package", "-c", "--call", "-w", "--workspace", "--prefix", "-C", "--loglevel", "--registry", "--cache",
+            "--userconfig", "--script-shell", "--node-options", "--shell"},
+    "pnpm": {"--filter", "-F", "-C", "--dir", "--package", "-p", "--loglevel", "--reporter", "--shell-mode", "--config"},
+    "yarn": {"--cwd", "-p", "--package", "--cache-folder", "--mutex"},
+    "bun": {"--package", "-p", "--cwd", "--shell", "--config", "-c"},
+    "uv": {"--with", "--with-requirements", "--with-editable", "--python", "-p", "--directory", "--project", "--from",
+           "--index", "--extra", "--group", "--only-group", "--cache-dir", "--config-file", "--env-file", "--exclude-newer"},
+    "pipx": {"--spec", "--python", "--pip-args", "--index-url", "-i"},
+    "poetry": {"-C", "--directory", "-P", "--project"},
+}
+WRAPPER_OPT_ARITY.update({"npx": RUNNER_OPT_ARITY["npx"], "pnpx": RUNNER_OPT_ARITY["pnpm"], "bunx": RUNNER_OPT_ARITY["bun"],
+                          "uvx": RUNNER_OPT_ARITY["uv"]})  # the *x runners are unwrapped as wrappers: same value-taking options
+WRAPPER_READ_FILE_OPTIONS = {"xargs": {"-a", "--arg-file"}}  # wrapper options whose value is a file the wrapper READS
+WRAPPER_WRITE_FILE_OPTIONS = {"time": {"-o", "--output"}}  # … or WRITES
 SHELLS = {"bash", "sh", "zsh", "dash", "ksh", "fish"}
 GIT_GLOBAL_WITH_ARG = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path",
                        "--super-prefix", "--config-env", "--list-cmds"}
 GREP_PROGRAMS = {"grep", "egrep", "fgrep", "rg", "ag", "ack"}
-GREP_VALUE_OPTIONS = {"-A", "-B", "-C", "-m", "-e", "-f", "--include", "--exclude", "--exclude-dir", "-t", "-T", "-g",
-                      "-j", "-M", "--type", "-d", "-D", "--color", "--colour", "--max-count", "--context", "--regexp",
-                      "--file", "--glob", "--iglob", "--max-depth", "--threads", "-E", "--encoding", "--pre", "-r", "--replace"}
+GREP_VALUE_OPTIONS = {"-A", "-B", "-C", "-m", "-e", "-f", "--include", "--exclude", "--exclude-dir", "-t", "-g",
+                      "-j", "--type", "--type-not", "-d", "-D", "--max-count", "--context", "--regexp", "--file", "--glob",
+                      "--iglob", "--max-depth", "--threads", "--encoding", "--pre", "--replace", "--max-filesize",
+                      "--sort", "--sortr", "--after-context", "--before-context", "--max-columns", "--path-separator"}
+RG_VALUE_OPTIONS = {"-T", "-M", "-E", "-r", "--color", "--colour", "--type-add", "--dfa-size-limit", "--regex-size-limit",
+                    "--context-separator", "--field-context-separator", "--field-match-separator", "--ignore-file",
+                    "--max-columns", "--engine", "--generate", "--hostname-bin", "--path-separator"}
+GREP_PATH_VALUE_OPTIONS = {"-f", "--file", "--pre", "--ignore-file"}  # these values ARE files (checked); the rest are text
+COPY_PROGRAMS = {"cp", "mv", "rsync", "install"}
+WATCH_W_PROGRAMS = {"vitest", "tsc", "tsc-alias"}  # programs whose `-w` means --watch (jest's -w is --maxWorkers: NOT here)
+CHECKOUT_VALUE_OPTIONS = {"-b", "-B", "--orphan", "-s", "--source", "--conflict", "--pathspec-from-file"}
+STASH_READONLY = {"list", "show", "drop", "clear", "branch", "create", "store", "apply", "pop"}
+BD_GLOBAL_WITH_ARG = {"--db", "-C", "--config", "--actor", "--rig", "-r", "--city"}
 DESTRUCTIVE_PROGRAMS = {"rm", "rmdir", "mv", "unlink", "shred"}
 VERCEL_GLOBAL_WITH_ARG = {"--scope", "-S", "--token", "-t", "--cwd", "--local-config", "-A", "-e", "--env", "-b", "--build-env",
                           "--global-config", "-Q", "--team", "-T"}
@@ -59,13 +86,16 @@ READ_PROGRAMS = {"cat", "head", "tail", "less", "more", "grep", "rg", "awk", "cu
                  "find", "sed", "perl", "vim", "vi", "nano", "code", "open", "xdg-open", "curl", "wget", "env"}
 WRITE_PROGRAMS = {"cp", "mv", "install", "rsync", "scp", "ln", "tee", "truncate", "dd", "touch", "rm",
                   "sed", "perl", "chmod", "chown", "shred", "unlink", "rmdir", "mkdir", "patch", "git", "tar", "unzip", "zip"}
-TEXT_OPTIONS = {"--notes", "--append-notes", "--description", "-d", "--title", "-t", "--body-file",
-                "--design", "--design-file", "--acceptance", "--reason", "-r", "--close-reason",
+FILE_VALUE_OPTIONS = {"--body-file", "--design-file", "--notes-file", "--template-file", "-F", "--field"}
+TEXT_OPTIONS = {"--notes", "--append-notes", "--description", "-d", "--title", "-t",
+                "--design", "--acceptance", "--reason", "-r", "--close-reason",
                 "-m", "--message", "--body", "-b", "--comment", "-c", "--label", "-l", "--labels",
                 "--set-metadata", "--unset-metadata", "--defer", "--subject", "-s"}
 ALLOWED_ENV_SUFFIXES = (".example", ".sample", ".template", ".dist")
 cwd = os.getcwd()
+ROOT = cwd  # the worktree root the hook was invoked for (git -C changes cwd for path resolution, never ROOT)
 SPLIT_STRINGS = []  # env -S payloads, re-parsed as commands
+CWD_UNKNOWN = False  # a literal `cd $X` happened earlier in the command: relative operands cannot be resolved
 blocked = []  # (rule, message, carveout)
 
 
@@ -92,6 +122,7 @@ def rig_name():
 
 def expand(token):
     t = token.replace("$HOME", str(Path.home())).replace("${HOME}", str(Path.home()))
+    t = t.replace("${PWD}", cwd).replace("$PWD", cwd)
     if t == "~" or t.startswith("~/"):
         t = str(Path.home()) + t[1:]
     return t
@@ -116,11 +147,64 @@ def is_env_file(path):
     return base.startswith(".env.") and not base.endswith(ALLOWED_ENV_SUFFIXES)
 
 
+def workflows_dirty(include_untracked):
+    """True when the protected worktree has uncommitted changes under .github/workflows (a pathless `git stash`
+    would take them out of the worktree). Any failure to ask git (not a repo, timeout) counts as clean."""
+    args = ["git", "-C", cwd, "status", "--porcelain", "--untracked-files=" + ("all" if include_untracked else "no"),
+            "--", os.path.join(ROOT, ".github/workflows")]
+    try:
+        out = subprocess.run(args, capture_output=True, text=True, timeout=5)
+    except Exception:
+        return False
+    return out.returncode == 0 and bool(out.stdout.strip())
+
+
+def git_pathspecs(words, git_sub):
+    """Indices of the operands that are PATHSPECS of git checkout/restore/stash (the ones that rewrite the worktree).
+    checkout: operands after `--`, every operand after the first, and a first operand that cannot be a ref (starts with
+    `.`, `/` or `~`). restore: every operand (unless --staged without --worktree: index only). stash push/bare: operands
+    after `--` or after `push`; `save` takes a message, the read-only subcommands take none."""
+    ops, after, skip = [], False, False
+    for j in range(2, len(words)):
+        a = words[j]
+        if skip:
+            skip = False
+            continue
+        if not after and a == "--":
+            after = True
+            continue
+        if not after and a.startswith("-"):
+            if a in CHECKOUT_VALUE_OPTIONS or (git_sub == "stash" and a in {"-m", "--message"}):
+                skip = True
+            continue
+        ops.append((j, a, after))
+    if git_sub == "restore":
+        opts = set(words[2:])
+        if opts & {"-S", "--staged"} and not opts & {"-W", "--worktree"}:
+            return set()
+        return {j for j, _, _ in ops}
+    if git_sub == "checkout":
+        if any(a in {"-b", "-B", "--orphan", "--detach", "-d"} for a in words[2:]):
+            return set()
+        idx = {j for j, _, aft in ops if aft}
+        plain = [(j, a) for j, a, aft in ops if not aft]
+        idx.update(j for j, _ in plain[1:])
+        if plain and plain[0][1].startswith((".", "/", "~")):
+            idx.add(plain[0][0])
+        return idx
+    # stash
+    if ops and not ops[0][2] and ops[0][1] in STASH_READONLY | {"save", "push"}:
+        sub_, ops = ops[0][1], ops[1:]
+        if sub_ in STASH_READONLY or sub_ == "save":
+            return None  # read-only / message operand: nothing to check, and no dirty-tree check either
+    return {j for j, _, _ in ops}
+
+
 def is_workflow_ancestor(path):
     """True when removing/moving `path` would take .github/workflows with it (cwd, .github, or any parent)."""
     if not path:
         return False
-    workflows = os.path.normpath(os.path.join(cwd, ".github/workflows"))
+    workflows = os.path.normpath(os.path.join(ROOT, ".github/workflows"))
     return path != workflows and workflows.startswith(path.rstrip("/") + "/")
 
 
@@ -294,6 +378,15 @@ def shell_parts(text, *, heredoc=False):
     return scan(0, literal=heredoc)[0]
 
 
+def strip_condition_keywords(words):
+    """`if git push origin main; then …` / `while sudo true; do …` / `until gh pr merge --admin 1; do …`: the
+    condition IS a command — drop the leading keyword(s) so it is checked like any other statement (gate round 11).
+    `for` keeps its word: `for i in …` names no command."""
+    while words and words[0] in {"if", "elif", "while", "until", "!", "{"}:
+        words = words[1:]
+    return words
+
+
 def check_script(text, state):
     """Check every statement of a shell text plus every command substitution it executes."""
     try:
@@ -309,6 +402,49 @@ def check_script(text, state):
             continue
         for st in parsed:
             check_statement(st, state)
+            apply_chdir(st, state)
+
+
+def apply_chdir(words, state):
+    """A literal `cd`/`pushd`/`popd` statement changes the cwd that LATER statements resolve relative paths
+    against (ia-next gate round 9: `cd .github/workflows && touch evil.yml`). Conservative: a cd inside `( … )`
+    carries too. An unresolvable target (`cd $DIR`) marks the cwd unknown for the rest of the command."""
+    global cwd, CWD_UNKNOWN
+    words = [w for w in words if w not in {"!", "{", "}", "then", "do", "else", "elif", "fi", "done", "esac"}]
+    words = strip_condition_keywords(words)
+    while words and re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]*=.*", words[0]):
+        words = words[1:]
+    while len(words) > 1 and os.path.basename(words[0]) in {"command", "builtin"}:
+        words = words[1:]  # `command cd …` / `builtin cd …` change the cwd exactly like `cd` (ghastly #41 advisory)
+    if not words:
+        return
+    program = os.path.basename(words[0])
+    if program not in {"cd", "pushd", "popd"}:
+        return
+    stack = state.setdefault("dirs", [])
+    if program == "popd":
+        if stack:
+            cwd, CWD_UNKNOWN = stack.pop()
+        return
+    target = next((a for a in words[1:] if not a.startswith("-") or a == "-"), None)
+    prev = state.get("prev_dir")
+    if program == "pushd":
+        stack.append((cwd, CWD_UNKNOWN))
+    else:
+        state["prev_dir"] = (cwd, CWD_UNKNOWN)
+    if target is None:
+        if program == "cd":
+            cwd, CWD_UNKNOWN = str(Path.home()), False
+        return
+    if target == "-":
+        if prev is not None:
+            cwd, CWD_UNKNOWN = prev
+        return
+    t = expand(target)
+    if "$" in t or "`" in t:
+        cwd, CWD_UNKNOWN = os.path.normpath(os.path.join(cwd, t)), True
+        return
+    cwd = os.path.normpath(t if os.path.isabs(t) else os.path.join(cwd, t))
 
 
 def check_paths(words, rig):
@@ -321,15 +457,146 @@ def check_paths(words, rig):
     if program == "patch" and not any(a in {"--dry-run", "--check"} or a.startswith("--dry-run") for a in words[1:]):
         block(f"workflow-edit-{rig}", "patch applies contents the guard cannot inspect (it can rewrite .github/workflows); "
               "use --dry-run to inspect, or edit files directly")
-    git_sub = words[1] if program == "git" and len(words) > 1 else ""
+    git_sub = ""
+    if program == "git":
+        rest, base = words[1:], cwd
+        while rest and rest[0].startswith("-"):
+            opt = rest.pop(0)
+            if opt in GIT_GLOBAL_WITH_ARG and rest:
+                val = rest.pop(0)
+                if opt == "-C":
+                    base = os.path.join(base, expand(val))
+            elif opt.startswith("-C") and len(opt) > 2:
+                base = os.path.join(base, expand(opt[2:]))
+        git_sub = rest[0] if rest else ""
+        if os.path.normpath(base) != os.path.normpath(cwd):
+            saved = cwd
+            globals()["cwd"] = os.path.normpath(base)
+            try:
+                return check_paths(["git"] + rest, rig)
+            finally:
+                globals()["cwd"] = saved
+        words = ["git"] + rest
     destructive = program in DESTRUCTIVE_PROGRAMS or (program == "git" and git_sub in {"rm", "mv", "clean"})
+    # git checkout/restore/stash WITH an ancestor pathspec (., .github, ..) rewrite .github/workflows the way rm/mv
+    # would; a PATHLESS stash takes an uncommitted workflow change out of the worktree, so it is blocked only while
+    # the workflow tree is dirty (ia-next gate round 8)
+    restore_idx = set()
+    if program == "git" and git_sub in {"checkout", "restore", "stash"}:
+        spec = git_pathspecs(words, git_sub)
+        if spec is not None:
+            restore_idx = spec
+        if git_sub == "stash" and spec is not None and not spec and \
+                workflows_dirty(any(a in {"-u", "--include-untracked", "-a", "--all"} or
+                                    (a.startswith("-") and not a.startswith("--") and ("u" in a[1:] or "a" in a[1:]))
+                                    for a in words[2:])):
+            block(f"workflow-edit-{rig}", "git stash without a pathspec would take your uncommitted .github/workflows "
+                  "change out of the worktree (mayor-owned); stash the paths you mean, e.g. git stash push -- src/")
+    staged_only = program == "git" and git_sub == "restore" and bool(set(words[2:]) & {"-S", "--staged"}) \
+        and not set(words[2:]) & {"-W", "--worktree"}
+    if program == "git" and git_sub == "reset":
+        # worktree-updating reset modes rewrite .github/workflows: from another commit when a ref is named, or by
+        # discarding an uncommitted workflow change (ia-next gate round 10). --soft/--mixed touch the index only.
+        mode = next((a for a in words[2:] if a in {"--hard", "--merge", "--keep"}), None)
+        if mode:
+            ops = []
+            for a in words[2:]:
+                if a == "--":
+                    break
+                if not a.startswith("-"):
+                    ops.append(a)
+            if ops and ops[0] != "HEAD":
+                block(f"workflow-edit-{rig}", f"git reset {mode} {ops[0]} replaces .github/workflows with that commit's "
+                      "version (mayor-owned); use --soft/--mixed, or restore the paths you mean")
+            elif workflows_dirty(False):
+                block(f"workflow-edit-{rig}", f"git reset {mode} discards your uncommitted .github/workflows change "
+                      "(mayor-owned); commit it, or stash the paths you mean")
+    grep_values = GREP_VALUE_OPTIONS | (RG_VALUE_OPTIONS if program == "rg" else set())
+    # mv: with -t/--target-directory the last operand is a source, not the destination (gs-geb1)
+    mv_positional_destination = program == "mv" and not any(
+        a == "--target-directory" or a.startswith("--target-directory=")
+        or (a.startswith("-") and not a.startswith("--") and "t" in a[1:]) for a in words[1:])
+    if program in COPY_PROGRAMS:
+        # a directory copied/moved INTO .github/ lands at dest/basename(src): that is where the policy applies
+        positional, target = [], None
+        it = iter(words[1:])
+        for a in it:
+            if a in {"-t", "--target-directory"}:
+                target = next(it, None)
+            elif a.startswith("--target-directory="):
+                target = a.split("=", 1)[1]
+            elif a.startswith("-") or (">" in a and all(ch in SEPARATORS for ch in a)):
+                continue
+            else:
+                positional.append(a)
+        if target is None and len(positional) >= 2:
+            target, positional = positional[-1], positional[:-1]
+        if target is not None:
+            for src in positional:
+                eff = os.path.join(norm(target), os.path.basename(src.rstrip("/")))
+                if is_workflow_path(eff):
+                    block(f"workflow-edit-{rig}", f"'{src}' would land at {os.path.relpath(eff, cwd)} (.github/workflows is mayor-owned)")
     git_prose = program == "git" and git_sub in {"commit", "tag", "notes", "merge"}
-    pattern_pending = program in GREP_PROGRAMS and not any(a in {"-e", "-f"} or a.startswith(("--regexp", "--file", "-e", "-f")) and a[:2] in {"-e", "-f"} for a in words[1:])
-    i = 0
+    pattern_pending = program in GREP_PROGRAMS and not any(
+        a in {"-e", "-f", "--files", "--type-list", "--file", "--regexp"} or a.startswith(("--regexp=", "--file="))
+        or (a.startswith("-") and not a.startswith("--") and len(a) > 2 and ("e" in a[1:] or "f" in a[1:]))
+        for a in words[1:])
+    if program == "git" and git_sub == "clean":
+        # exclusion patterns (-e/--exclude) are NOT pathspecs; dry-run may sit inside a cluster (-fdn) — ghastly gs-28ql
+        rest, dry_run = [], False
+        options = iter(words[2:])
+        for opt in options:
+            if opt == "--":
+                rest.extend(options)
+                break
+            if opt in {"-e", "--exclude"}:
+                next(options, None)
+            elif opt == "--dry-run":
+                dry_run = True
+            elif opt == "--no-dry-run":
+                dry_run = False
+            elif opt.startswith("-") and not opt.startswith("--"):
+                for j, flag in enumerate(opt[1:], 1):
+                    if flag == "e":
+                        if j == len(opt) - 1:
+                            next(options, None)
+                        break  # the rest of the cluster is the exclusion pattern
+                    if flag == "n":
+                        dry_run = True
+            elif not opt.startswith("-"):
+                rest.append(opt)
+        if not rest and not dry_run:
+            block(f"workflow-edit-{rig}", "git clean without a pathspec defaults to the worktree root (it reaches "
+                  ".github/workflows); name the path you mean, e.g. git clean -fd src/")
+    i, grep_next = 0, None
     while i < len(words):
         w = words[i]
         prev = words[i - 1] if i > 0 else ""
-        text_value = prev in TEXT_OPTIONS and (prev.startswith("--") or program in {"bd", "gc", "gh"} or git_prose)
+        if grep_next is not None:
+            kind, grep_next = grep_next, None
+            if kind == "text":
+                i += 1
+                continue
+            if is_secret_path(norm(w)):
+                block("secret-read", f"'{w}' is a protected secret/memory path (grep -f reads it as the pattern file)",
+                      carveout=False)
+            i += 1
+            continue
+        if program in GREP_PROGRAMS and w.startswith("-") and not w.startswith("--") and len(w) > 2 \
+                and ("f" in w[1:] or "e" in w[1:]):
+            # a short cluster: everything after the first -f/-e flag is its value (`grep -rf.env .`, `grep -ie KEY`),
+            # or the next word is (`grep -rf .env .`) — round 11 attached-value finding
+            cluster = w[1:]
+            j = min(k for k in (cluster.find("f"), cluster.find("e")) if k >= 0)
+            value, kind = cluster[j + 1:], "file" if cluster[j] == "f" else "text"
+            if value:
+                if kind == "file" and is_secret_path(norm(value)):
+                    block("secret-read", f"'{w}' reads a protected secret/memory path as the pattern file", carveout=False)
+            else:
+                grep_next = kind
+            i += 1
+            continue
+        text_value = prev in TEXT_OPTIONS and prev not in FILE_VALUE_OPTIONS and (prev.startswith("--") or program in {"bd", "gc", "gh"} or git_prose)
         prose = (" " in w or "\t" in w) and ((program not in READ_PROGRAMS and program not in WRITE_PROGRAMS)
                                               or prev in TEXT_OPTIONS or git_prose)
         if (prose or text_value) and not (i > 0 and ">" in prev and all(ch in SEPARATORS for ch in prev)):
@@ -338,7 +605,11 @@ def check_paths(words, rig):
         if "=" in w and w.startswith("--") and w.split("=", 1)[0] in TEXT_OPTIONS:
             i += 1
             continue
-        if pattern_pending and i > 0 and not w.startswith("-") and prev not in GREP_VALUE_OPTIONS \
+        if program in GREP_PROGRAMS and ((i > 0 and prev in grep_values - GREP_PATH_VALUE_OPTIONS and not w.startswith("-"))
+                                         or w.startswith(("--regexp=", "--glob=", "--iglob=", "--type=", "--include=", "--exclude="))):
+            i += 1  # a text value (pattern, glob, type, colour, separator…), never a file
+            continue
+        if pattern_pending and i > 0 and not w.startswith("-") and prev not in grep_values \
                 and not (">" in prev and all(ch in SEPARATORS for ch in prev)):
             pattern_pending = False  # grep/rg: the first operand is the PATTERN, not a file
             i += 1
@@ -369,11 +640,24 @@ def check_paths(words, rig):
         if is_secret_path(p) and program not in {"echo", "printf", "test", "["}:
             block("secret-read", f"'{w}' is a protected secret/memory path (env files, ~/.claude/projects, "
                   ".gc/runtime/secrets); workers use the sanitized env the worktree setup provides", carveout=False)
-        elif destructive and is_workflow_ancestor(p):
+        elif i in restore_idx and is_workflow_ancestor(p):
+            block(f"workflow-edit-{rig}", f"git {git_sub} of '{w}' rewrites .github/workflows with it (mayor-owned); "
+                  "name the paths you mean, e.g. src/")
+        elif destructive and is_workflow_ancestor(p) and not (mv_positional_destination and i == len(words) - 1 and i > 1) \
+                and not (program == "mv" and prev in {"-t", "--target-directory"}):
             block(f"workflow-edit-{rig}", f"removing/moving '{w}' takes .github/workflows with it (mayor-owned)")
+        elif destructive and "$" in expand(w) and not w.startswith("-"):
+            block(f"workflow-edit-{rig}", f"destructive operand '{w}' is a shell expansion the guard cannot resolve; "
+                  "use a literal path")
+        elif CWD_UNKNOWN and (destructive or program in WRITE_PROGRAMS) and not w.startswith("-") and \
+                (re.search(r"(^|/)(\.github|workflows)(/|$)", w) or (destructive and w.rstrip("/") in {".", ".."})):
+            block(f"workflow-edit-{rig}", f"'{w}' is relative to a cwd the guard cannot resolve (an earlier `cd $…`) and "
+                  "names a protected tree; cd to a literal path or use an absolute path")
         elif is_workflow_path(p) and program in WRITE_PROGRAMS:
             if program == "git" and not any(s in words[1:] for s in ("rm", "mv", "checkout", "restore", "apply", "am", "clean", "stash")):
                 pass
+            elif staged_only:
+                pass  # `git restore --staged <workflow path>` only un-stages: the worktree copy is untouched
             elif program in {"sed", "perl"} and not any(a.startswith("--in-place") or (a.startswith("-") and not a.startswith("--") and "i" in a[1:]) for a in words[1:]):
                 pass
             else:
@@ -406,21 +690,35 @@ def unwrap(words):
         elif program in WRAPPERS:
             rest = words[1:]
             arity = WRAPPER_OPT_ARITY.get(program, set())
+            reads, writes = WRAPPER_READ_FILE_OPTIONS.get(program, set()), WRAPPER_WRITE_FILE_OPTIONS.get(program, set())
             while rest and rest[0].startswith("-") and rest[0] != "--":
                 opt = rest.pop(0)
                 if program == "env" and (opt.startswith("--split-string=") or opt.startswith("-S")) and len(opt) > 2:
                     SPLIT_STRINGS.append(opt.split("=", 1)[1] if opt.startswith("--") else opt[2:])
                     continue
+                if program == "env" and opt.startswith("--chdir="):
+                    wrapper_chdir(opt.split("=", 1)[1])
+                    continue
                 if "=" in opt and opt.startswith("--"):
+                    name, val = opt.split("=", 1)
+                    if name in reads or name in writes:
+                        wrapper_file(name, val, name in writes)
                     continue
                 if opt in arity and rest:
                     val = rest.pop(0)
                     if program == "env" and opt in {"-S", "--split-string"}:
                         SPLIT_STRINGS.append(val)
+                    elif program == "env" and opt in {"-C", "--chdir"}:
+                        wrapper_chdir(val)
+                    elif opt in reads or opt in writes:
+                        wrapper_file(opt, val, opt in writes)
                 elif program == "nice" and re.fullmatch(r"-\d+", opt):
                     pass
                 elif len(opt) > 2 and not opt.startswith("--") and opt[:2] in arity:
-                    pass  # -k1 / -n10 style: value attached
+                    if program == "env" and opt[:2] == "-C":
+                        wrapper_chdir(opt[2:])
+                    elif opt[:2] in reads or opt[:2] in writes:
+                        wrapper_file(opt[:2], opt[2:], opt[:2] in writes)
             if rest and rest[0] == "--":
                 rest.pop(0)
             if program == "timeout" and rest:
@@ -432,15 +730,59 @@ def unwrap(words):
             words = rest
             changed = True
         elif program in RUNNERS and len(words) > 1:
-            rest = words[1:]
-            if rest and rest[0] in {"dlx", "exec", "x", "run"}:
-                rest = rest[1:]
-            while rest and rest[0].startswith("-"):
-                rest.pop(0)
+            rest = strip_runner(program, words[1:])
             if rest and rest[0] in {"vercel", "gh", "git", "bd", "gc", "sleep", "sudo"}:
                 words = rest
                 changed = True
     return words
+
+
+def strip_runner(program, rest):
+    """Drop a package runner's options (with their separate values: `npx --package vercel`, `npm exec -w app`),
+    its `dlx`/`exec`/`x`/`run` subcommand and the `--` separator, so rest[0] is the executable it runs."""
+    arity = RUNNER_OPT_ARITY.get(program, set())
+    rest = list(rest)
+    seen_sub = False
+    while rest:
+        a = rest[0]
+        if a == "--":
+            rest.pop(0)
+            break
+        if a.startswith("-"):
+            rest.pop(0)
+            if "=" not in a and a in arity and rest:
+                # unwrapping may replace argv: inspect the value before it is discarded (ghastly gs-18hj:
+                # `uv run --env-file .env gh …` passed once the runner was unwrapped to gh)
+                check_paths([program, a, rest[0]], rig_name())
+                rest.pop(0)
+            continue
+        if not seen_sub and a in {"dlx", "exec", "x", "run"}:
+            rest.pop(0)
+            seen_sub = True
+            continue
+        break
+    return rest
+
+
+def wrapper_chdir(target):
+    """`env -C dir cmd …` runs cmd in dir: resolve this statement's relative operands against it (restored by
+    check_statement when the statement is done)."""
+    global cwd, CWD_UNKNOWN
+    t = expand(target)
+    if "$" in t or "`" in t:
+        cwd, CWD_UNKNOWN = os.path.normpath(os.path.join(cwd, t)), True
+    else:
+        cwd = os.path.normpath(t if os.path.isabs(t) else os.path.join(cwd, t))
+
+
+def wrapper_file(opt, value, write):
+    """A wrapper option whose value is a file the wrapper itself reads (`xargs -a`) or writes (`time -o`)."""
+    p = norm(value)
+    if is_secret_path(p):
+        block("secret-write" if write else "secret-read", f"'{opt} {value}' {'writes' if write else 'reads'} a protected "
+              "secret/memory path", carveout=False)
+    elif write and is_workflow_path(p):
+        block(f"workflow-edit-{rig_name()}", f"'{opt} {value}' writes into .github/workflows/ (mayor-owned)")
 
 
 def current_branch(path):
@@ -580,6 +922,13 @@ def check_sleep(args, total):
 
 
 def check_bd(args):
+    while args and args[0].startswith("-"):
+        opt = args.pop(0)
+        if opt in BD_GLOBAL_WITH_ARG and args:
+            args.pop(0)
+    if args[:1] == ["assign"]:
+        block("bd-assignee", "never set assignees (bd assign = update --assignee); the claim hook owns assignment", carveout=False)
+        return
     if args[:1] not in (["create"], ["update"]):
         return
     it = iter(args[1:])
@@ -594,7 +943,39 @@ def check_bd(args):
             block("bd-assignee", "never set assignees; the claim hook owns assignment", carveout=False)
 
 
+FIND_NAME_TESTS = {"-name", "-iname", "-path", "-ipath", "-wholename", "-iwholename", "-regex", "-iregex"}
+
+
+def find_filter_excludes_workflows(pattern):
+    """True when a -name/-path pattern can never match a workflow file: a literal (no glob metacharacters) that is
+    not a yml/yaml name, or a pattern whose literal extension is something other than yml/yaml (`*.pyc`)."""
+    ext = re.search(r"\.([A-Za-z0-9_]+)$", pattern)
+    if ext and ext.group(1).lower() not in {"yml", "yaml"}:
+        return True
+    if not re.search(r"[*?\[]", pattern):
+        return not pattern.lower().endswith((".yml", ".yaml")) and not is_workflow_path(norm(pattern))
+    return False
+
+
 def check_find(words):
+    if "-delete" in words:
+        # the built-in action deletes everything under the roots the tests let through (ia-next gate round 10)
+        roots = []
+        for a in words:
+            if a.startswith("-") or a in {"(", "!", ")"}:
+                break
+            roots.append(a)
+        filters, it = [], iter(words)
+        for a in it:
+            if a in FIND_NAME_TESTS:
+                filters.append(next(it, ""))
+        if not (filters and all(find_filter_excludes_workflows(f) for f in filters)):
+            for r in roots or ["."]:
+                q = norm(r)
+                if is_workflow_ancestor(q) or is_workflow_path(q) or \
+                        (CWD_UNKNOWN and re.search(r"(^|/)(\.github|workflows)(/|$)", r)):
+                    block(f"workflow-edit-{rig_name()}", f"find {r} … -delete reaches .github/workflows (mayor-owned); "
+                          "add a -name filter with a non-workflow extension (e.g. '*.pyc') or start below .github")
     for key in ("-exec", "-execdir", "-ok", "-okdir"):
         while key in words:
             i = words.index(key)
@@ -605,12 +986,23 @@ def check_find(words):
 
 
 def check_statement(words, state=None):
+    """Check one statement; the cwd an `env -C` set for it is restored afterwards (a literal `cd` statement is
+    applied by check_script AFTER this returns, so it carries to the following statements)."""
+    global cwd, CWD_UNKNOWN
+    saved = (cwd, CWD_UNKNOWN)
+    try:
+        _check_statement(words, state)
+    finally:
+        cwd, CWD_UNKNOWN = saved
+
+
+def _check_statement(words, state=None):
     state = state if state is not None else {"sleep": 0.0, "loop": False}
     rig = rig_name()
     if any(w in {"for", "while", "until"} for w in words[:1]):
         state["loop"] = True
-    check_paths(words, rig)
     words = [w for w in words if w not in {"!", "{", "}", "then", "do", "else", "elif", "fi", "done", "esac", "in"}]
+    words = strip_condition_keywords(words)
     while words and re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]*=.*", words[0]):
         words = words[1:]
     if words and os.path.basename(words[0]) in {"eval", "source", "."} and len(words) > 1:
@@ -628,6 +1020,17 @@ def check_statement(words, state=None):
         return
     program = os.path.basename(words[0])
     args = words[1:]
+    if program == "gc":
+        rest = list(args)
+        while rest and rest[0].startswith("-"):
+            opt = rest.pop(0)
+            if opt in {"--rig", "-r", "--city", "-C", "--config", "--profile", "--as"} and rest:
+                rest.pop(0)
+        while rest and rest[0] == "--":
+            rest.pop(0)
+        check_paths(["gc"] + rest, rig)
+    else:
+        check_paths(words, rig)
     if program in SHELLS:
         for i, a in enumerate(args):
             if a == "--":
@@ -664,7 +1067,19 @@ def check_statement(words, state=None):
             block("long-sleep", "no sleep inside a shell loop; end your turn and let the next event resume you")
     elif program == "watch":
         block("watch", "no watch loops; check once and end your turn")
-    elif program in {"tail", "journalctl"} and any(a in {"-f", "-F"} or a.startswith("--follow") or (a.startswith("-") and not a.startswith("--") and ("f" in a[1:] or "F" in a[1:])) for a in args):
+    if program != "gh" and any(flag_on([a], flag) and not (i > 0 and args[i - 1] in TEXT_OPTIONS)
+                               for i, a in enumerate(args) for flag in ("--watch", "--watchAll", "--watch-all")):
+        block("watch", "no --watch loops (test runners/bundlers); run once and end your turn")
+    # program-specific watch spellings: vitest `watch`/`dev`/`-w`, tsc/tsc-alias `-w` — direct or behind a package runner
+    tool, targs = program, list(args)
+    if program in RUNNERS:
+        rest = strip_runner(program, args)
+        if rest:
+            tool, targs = os.path.basename(rest[0]), rest[1:]
+    if (tool in WATCH_W_PROGRAMS and "-w" in targs) or \
+            (tool == "vitest" and next((a for a in targs if not a.startswith("-")), "") in {"watch", "dev"}):
+        block("watch", f"{tool} watch mode never ends; run once (`vitest run` / `tsc` without -w) and end your turn")
+    if program in {"tail", "journalctl"} and any(a in {"-f", "-F"} or a.startswith("--follow") or (a.startswith("-") and not a.startswith("--") and ("f" in a[1:] or "F" in a[1:])) for a in args):
         block("watch", "no follow loops; read a bounded slice and end your turn")
     elif program == "find":
         check_find(list(args))
@@ -679,11 +1094,12 @@ def check_statement(words, state=None):
 
 
 def main():
-    global cwd
+    global cwd, ROOT
     try:
         payload = json.load(sys.stdin)
         command = payload.get("tool_input", {}).get("command", "")
         cwd = payload.get("cwd") or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
+        ROOT = os.environ.get("CLAUDE_PROJECT_DIR") or cwd
     except Exception:
         print("BLOCKED by guard-bash (parse): hook payload unreadable", file=sys.stderr)
         sys.exit(2)
