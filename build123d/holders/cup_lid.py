@@ -36,7 +36,7 @@ from __future__ import annotations
 import math
 
 from build123d import Align, Axis, Box, BuildSketch, Cone, Cylinder, Plane, Polygon, Pos, Rot, extrude, revolve
-from OCP.BRepFilletAPI import BRepFilletAPI_MakeChamfer
+from occt import angled_chamfer
 from holders.registry import ModelSpec, Param, Preset, register
 from multibuild.constants import PITCH, SMALL_HOLE_MOUTH_D as MOUTH, SMALL_HOLE_TAPER_DEPTH, SMALL_HOLE_THROAT_D
 
@@ -200,12 +200,9 @@ def holder(**values):
         if z > 0:
             part = part.chamfer(amount, None, face.edges())
             continue
-        builder = BRepFilletAPI_MakeChamfer(part.wrapped)
-        for edge in face.edges():
-            builder.AddDA(amount, math.pi/4, edge.wrapped, face.wrapped)
-        part = part._make_3d_result(builder.Shape()).clean().fix()
-        if not part.is_valid:
-            raise ValueError('invalid chord chamfer')
+        part = angled_chamfer(
+            part, [(edge, face) for edge in face.edges()], amount, math.pi/4
+        ).clean()
     # Arcs exposed to handling: rear perimeter and both front lip rims.
     arcs = [e for e in part.edges() if e.geom_type.name == 'CIRCLE'
             and (abs(e.center().Y) < 1e-6 or abs(e.center().Y-top) < 1e-6)]
