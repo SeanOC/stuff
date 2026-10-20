@@ -69,27 +69,20 @@ secret) — it is the first thing to confirm after activation.
 
 ---
 
-# Staged workflow — trusted reference-mirror measurement (pst-m9k6)
+# Trusted reference-mirror measurement (pst-m9k6) — ACTIVE
 
-`reference-measure.yml` is the trusted push-to-main workflow for the private
-upstream reference mirror (see `build123d/reference/FETCH.md`). The worker
-policy forbids adding it under `.github/workflows/`, so it is staged here and
-stays inert until an operator activates it.
+`.github/workflows/reference-measure.yml` (activated by the mayor 2026-10-20;
+staged here first because the worker policy forbids editing `.github/workflows/`)
+pulls the private upstream reference mirror (see `build123d/reference/FETCH.md`)
+and runs the `upstream`-marked tests. Triggers: push to `main` touching
+`build123d/{reference,tools,multibuild,tests}/**`, `pyproject.toml`, `uv.lock`,
+or the workflow itself; and `workflow_dispatch`. Never on `pull_request`: the
+reader SA's WIF binding is pinned to `repo:SeanOC/stuff:ref:refs/heads/main`,
+and PR CI (`bd123.yml`) stays offline (`pyproject` addopts deselect `upstream`).
 
-## Activate (operator)
-
-```bash
-uvx --from actionlint-py==1.7.12.25 actionlint build123d/ci/reference-measure.yml   # exits 0
-git mv build123d/ci/reference-measure.yml .github/workflows/reference-measure.yml
-git commit -m "ops(reference-measure): activate trusted reference-mirror workflow (pst-m9k6)"
-```
-
-The file needs no edits when it moves. Its header comment still says STAGED,
-so you can delete those first four lines as part of the move. Prerequisites
-already exist (mayor, 2026-09-29):
-
-- the repo variables `GCP_WIF_PROVIDER` and `GCP_REFERENCE_READER_SA`
-- the read-only SA's WIF binding to `repo:SeanOC/stuff:ref:refs/heads/main`
+Prerequisites (mayor, 2026-09-29): repo variables `GCP_WIF_PROVIDER` and
+`GCP_REFERENCE_READER_SA`, and the read-only SA's WIF binding above. Run the
+tests locally with the mirror pulled: `uv run pytest -m upstream`.
 
 The move itself matches the workflow's own path filter, so the activating push
 to `main` triggers the first run. That run pulls every source in
