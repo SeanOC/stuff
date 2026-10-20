@@ -28,11 +28,15 @@ binds a two-line label on a 20 mm card).
 from __future__ import annotations
 
 import hashlib
+import inspect
 import json
 import math
 from functools import lru_cache
+from importlib.metadata import version
 from pathlib import Path
 from typing import NamedTuple
+
+import OCP
 
 from build123d import Compound, FontStyle, Part, Pos, Sketch, Text, extrude, scale
 from shapely.geometry import Polygon, box
@@ -50,11 +54,11 @@ LINE_GAP = 1.2
 # bisection under-reports by ~1e-5 mm, so a stroke exactly at the 0.9 raised
 # floor could fail the 0.9 MIN_WALL_MM it was meant to meet.
 FLOOR_MARGIN = 0.01
-# Committed nominal strokes (font sha256[:16]:style:text -> mm), so a cold
+# Committed nominal strokes (font:style:engine+scan fingerprint:text -> mm), so a cold
 # process does not rescan the tombstone sign's preset lines: ~65 s of its
 # ~105 s cold build, paid once per pytest worker, export and live render
-# (codex on #206). A miss scans live; scripts/nominal_strokes.py regenerates
-# the file and test_tombstone_sign.py re-measures every entry (audit_full).
+# (codex on #206). A miss scans live; python -m labels.strokes --regen
+# regenerates the file. CI compares three faces live (all entries in audit_full).
 STROKE_CACHE = Path(__file__).with_name('nominal_strokes.json')
 
 
@@ -181,9 +185,25 @@ def _font_sha(path: str) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()[:16]
 
 
+def _stroke_fingerprint() -> str:
+    """Version the complete live scan path, including its numerical constants.
+
+    Keep this uncached so a changed function or engine is visible in-process,
+    too. Hash functions rather than the module: unrelated layout edits do not
+    invalidate measurements. Shapely performs the morphological scan itself.
+    """
+    functions = (load_font, text_sketch, _polygons, _thin_feature_lost,
+                 min_feature_width, measure_stroke)
+    source = '\n'.join(inspect.getsource(fn) for fn in functions)
+    constants = (NOMINAL_SIZE, LINE_GAP, _SCAN_START, _SCAN_STEP)
+    digest = hashlib.sha256((source + repr(constants)).encode()).hexdigest()
+    return (f'build123d={version("build123d")};OCP={OCP.__version__};'
+            f'fontTools={version("fonttools")};shapely={version("shapely")};scan={digest}')
+
+
 def stroke_key(text: str, path: Path | str, style: FontStyle) -> str:
-    """STROKE_CACHE key: the font's content, not its path (worktrees differ)."""
-    return f'{_font_sha(str(path))}:{style.name}:{text}'
+    """Font content, face, text and measurement provenance; independent of path."""
+    return f'{_font_sha(str(path))}:{style.name}:{_stroke_fingerprint()}:{text}'
 
 
 @lru_cache(maxsize=1)

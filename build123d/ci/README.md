@@ -156,6 +156,10 @@ including each cradle style's presets, `PRINT_CORNER` and the reproducers,
 plus the other registry-sized cradle checks that made `fast` 9m48s on the
 runner: the mount-contract tests (20–130 s each), the dense-probe rear-knife
 tests (outboard rear end and inboard cap) and the preset bake.
+The label stroke cache's three-face live comparison also runs in **audit** on
+every build123d PR (no `slow` opt-in); all six cached rows run in **audit_full**.
+The fast tier separately checks every preset candidate has a current key and
+that changed scan code or engine versions invalidate it.
 The drawer keeps its three preset audits and six reference parity cases in
 **audit**; its 34 parameter endpoint/corner audits run in **audit_full**.
 The raw bridge, filtered print audit, exposed-edge inventory and mount-contract

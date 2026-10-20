@@ -7,6 +7,7 @@ import math
 import re
 import subprocess
 import sys
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -140,33 +141,126 @@ def test_fonts_resolve_to_the_vendored_files():
 
 
 def test_every_preset_line_strokes_from_the_committed_cache(monkeypatch):
-    """No preset scans a stroke live (~65 s per cold process, #206): every
-    candidate the layout measures is in labels/nominal_strokes.json. A miss
-    means a preset string, font or the scan changed: run
-    scripts/nominal_strokes.py."""
-    def live(text, path, style):
-        raise AssertionError(f'{text!r} ({Path(path).name}) is not in the stroke cache')
-    monkeypatch.setattr(lt, 'measure_stroke', live)
-    lt._nominal_stroke.cache_clear()
+    """Every layout candidate has a current row; misses must be regenerated."""
+    nominal = lt._nominal_stroke
+
+    def checked(text, path, style):
+        assert lt.stroke_key(text, path, style) in lt.stroke_cache(), (
+            f'{text!r} ({Path(path).name}) missing: '
+            'run uv run python -m labels.strokes --regen')
+        return nominal(text, path, style)
+
+    monkeypatch.setattr(lt, '_nominal_stroke', checked)
+    nominal.cache_clear()
     m._ink.cache_clear()
     try:
         for preset in SPEC.presets:
             assert m._frame(values_of(preset.id)) is not None, preset.id
     finally:
-        lt._nominal_stroke.cache_clear()
+        nominal.cache_clear()
         m._ink.cache_clear()
+
+
+def _scan_float_noise():
+    """Bound observed float accumulation against the exact decimal scan grid.
+
+    Scan all radii up to min_feature_width's default 3 mm limit. This is
+    3.9968028886505635e-14 mm today, far below one 0.02 mm stroke step.
+    """
+    radius, index, noise = lt._SCAN_START, 0, 0.0
+    while radius < 3.0:
+        exact = 2 * (Decimal(str(lt._SCAN_START))
+                     + (index - 1) * Decimal(str(lt._SCAN_STEP)))
+        noise = max(noise, abs(2 * (radius - lt._SCAN_STEP) - float(exact)))
+        radius += lt._SCAN_STEP
+        index += 1
+    return noise
+
+
+# Three faces (two style names), including the longest preset label (22 chars).
+_STROKE_CASES = (('lexend-medium', 'Show runs dusk to 9 pm'),
+                 ('lexend-bold', 'Scan to request a song'),
+                 ('creepster', 'Pick the next song!'))
+
+
+def _assert_live_strokes(cases):
+    cache = lt.stroke_cache()
+    differences = []
+    tolerance = _scan_float_noise()
+    for face, text in cases:
+        path, style = m.FONTS[face]
+        key = lt.stroke_key(text, path, style)
+        live = lt.measure_stroke(text, path, style)  # never nominal_stroke/cache
+        cached = cache.get(key)
+        if cached is None:
+            # Retain old rows in the failure message when provenance changed.
+            prefix = f'{lt._font_sha(str(path))}:{style.name}:'
+            old = [v for k, v in cache.items()
+                   if k.startswith(prefix) and k.split(':', 3)[-1] == text]
+            differences.append(f'{face} {text!r}: missing current key; '
+                               f'cached(old)={old!r}, live={live:.17g}')
+        elif not math.isfinite(live) or abs(cached - live) > tolerance:
+            differences.append(f'{face} {text!r}: cached={cached:.17g}, '
+                               f'live={live:.17g}, delta={live - cached:+.17g} mm')
+    assert not differences, ('stroke cache differs (absolute tolerance '
+                             f'{tolerance:.17g} mm):\n' + '\n'.join(differences))
+
+
+@pytest.mark.audit
+def test_representative_stroke_cache_matches_live_scans():
+    _assert_live_strokes(_STROKE_CASES)
 
 
 @pytest.mark.audit
 @pytest.mark.audit_full
 def test_stroke_cache_matches_a_live_scan():
-    """Every committed stroke equals the live scan on a vendored face, exactly
-    (JSON round-trips the float), so the cache never changes a layout."""
-    faces = {lt._font_sha(str(path)): path for path, _ in m.FONTS.values()}
-    for key, stroke in lt.stroke_cache().items():
-        sha, style, text = key.split(':', 2)
-        assert sha in faces, f'{key!r}: not a vendored tombstone face (stale entry)'
-        assert lt.measure_stroke(text, faces[sha], FontStyle[style]) == stroke, key
+    faces = {(lt._font_sha(str(path)), style.name): face
+             for face, (path, style) in m.FONTS.items()}
+    cases = []
+    for key in lt.stroke_cache():
+        sha, style, _, text = key.split(':', 3)
+        assert (sha, style) in faces, f'{key!r}: stale face'
+        cases.append((faces[sha, style], text))
+    _assert_live_strokes(cases)
+
+
+def test_changed_scan_changes_key_and_comparison_reports_each_string(monkeypatch):
+    before = [lt.stroke_key(text, *m.FONTS[face]) for face, text in _STROKE_CASES]
+
+    def perturbed_scan(text, path, style):
+        return 123.0  # deliberate scan-code perturbation, no expensive geometry
+
+    monkeypatch.setattr(lt, 'measure_stroke', perturbed_scan)
+    assert all(lt.stroke_key(text, *m.FONTS[face]) != key
+               for (face, text), key in zip(_STROKE_CASES, before))
+    with pytest.raises(AssertionError) as exc:
+        _assert_live_strokes(_STROKE_CASES)
+    for face, text in _STROKE_CASES:
+        assert f'{face} {text!r}: missing current key;' in str(exc.value)
+    assert 'cached(old)=' in str(exc.value) and 'live=123' in str(exc.value)
+
+
+def test_comparison_detects_value_drift_with_current_keys(monkeypatch):
+    # Keep the fingerprint current for the fake scanner: exercise the numeric
+    # comparison independently of the missing-provenance failure above.
+    monkeypatch.setattr(lt, 'measure_stroke', lambda *args, **kwargs: 0.9)
+    rows = {lt.stroke_key(text, *m.FONTS[face]): 0.92 for face, text in _STROKE_CASES}
+    monkeypatch.setattr(lt, 'stroke_cache', lambda: rows)
+    with pytest.raises(AssertionError, match='delta=') as exc:
+        _assert_live_strokes(_STROKE_CASES)
+    assert all(f'{face} {text!r}: cached=' in str(exc.value) for face, text in _STROKE_CASES)
+
+
+@pytest.mark.parametrize('dependency', ['build123d', 'fonttools', 'shapely', 'OCP'])
+def test_stroke_key_tracks_engine_versions(monkeypatch, dependency):
+    before = lt.stroke_key('probe', lt.FONT_PATH, lt.FONT_STYLE)
+    version = lt.version
+    if dependency == 'OCP':
+        monkeypatch.setattr(lt.OCP, '__version__', 'changed')
+    else:
+        monkeypatch.setattr(lt, 'version', lambda name: 'changed' if name == dependency
+                            else version(name))
+    assert lt.stroke_key('probe', lt.FONT_PATH, lt.FONT_STYLE) != before
 
 
 # --- colour roles -----------------------------------------------------------
