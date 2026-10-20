@@ -4,7 +4,16 @@ Source of truth for the per-rig `.claude/hooks/guard-*.py` + `.claude/settings.j
 prompt templates' "NEVER …" prose into deterministic blocks (best-practices review 2026-10-20, hardened
 2026-10-20 after the codex gates on ia-next #376 / co-author #862 / ghastly-show #37 reproduced bypasses).
 Rolled out by mayor PRs to each rig; keep the copies IDENTICAL to these files (rigs gitignore `.claude/`,
-so the files are `git add -f`ed). Self-test: `python3 guard-selftest.py` (270 cases; exit 0 = pass).
+so the files are `git add -f`ed). Self-test: `python3 guard-selftest.py` (320 cases; exit 0 = pass).
+
+## Threat model
+The hooks stop ACCIDENTAL and habitual rule-breaking by a cooperative agent (the forms workers have actually
+typed: pushing main by reflex, `sudo apt`, `vercel env pull`, `--watch`, long sleeps, assigning beads,
+cat-ing `.env`). They are not a sandbox against an agent trying to evade them: a shell-syntax deny-list
+cannot be complete (scripts, `python -c`, runtime expansions, aliases). The backstops for the cases that
+matter most are branch protection + required checks, `permissions.deny`, and the sanitized worktree env.
+Gate reviewers: judge a change by whether it closes forms a cooperative agent would plausibly type, not
+by whether an adversarial form still exists — the README's "not covered" list is the accepted boundary.
 
 ## What is blocked (guard-bash.py, tokenized with shlex — quoted prose never trips a rule)
 - push to main/master in any spelling (positional, `HEAD:main`, `refs/heads/main`, `--all`/`--mirror`,
@@ -12,20 +21,26 @@ so the files are `git add -f`ed). Self-test: `python3 guard-selftest.py` (270 ca
   checkout is on main/master); force pushes (`-f`, `--force*`, combined `-fu`, `+refspec`).
 - `gh pr merge --admin`; `gh api` writes (POST/PUT/PATCH/DELETE or `-f/-F/--input`) to `/statuses/`,
   `/check-runs`, `/protection`, `/rulesets`, and the GraphQL branch-protection / commit-status mutations
-  (value-bearing options such as `-H`/`--hostname` are consumed before the endpoint is picked).
+  (value-bearing options such as `-H`/`--hostname` are consumed before the endpoint is picked; `-XDELETE`
+  and the old `gh api POST <endpoint>` forms count). `gh api graphql` with any `mutation`, `--input` or an
+  `@file` value is blocked outright (opaque payloads fail closed).
 - `sudo`/`doas` anywhere: direct, through `env`/`command`/`nohup`/`timeout`/`xargs`/`nice`/`ionice` (their
   value-taking options are parsed), inside `bash -c`/`sh -c`, `eval` (re-parsed recursively), `$(…)`,
-  backticks, `find -exec`, pipelines and `;`/`&&` chains.
+  backticks, `find -exec`, `timeout 30 -- …`, a leading `--`, pipelines and `;`/`&&` chains; shell `-lc`/`-xc`
+  clusters and `env -S "…"` payloads are re-parsed.
 - `vercel env|logs|pull` (also via `npx`/`pnpm dlx`/`pnpm vercel`).
 - waiting loops: `gh … --watch`, `gh run watch`, `watch`, `tail -f`/`--follow`, `journalctl -f`; `sleep`
   whose literal total in the command (all operands, all statements) is ≥ 30 s, non-literal sleep args (`$X`, `$((30))`), any sleep inside
   a `for`/`while`/`until` loop.
-- `bd|gc bd create|update` with `-a`, `-aX`, `-a=X`, `--assignee[=…]` (text option values are skipped).
+- `bd|gc bd create|update` with `-a`, `-aX`, `-a=X`, `--assignee[=…]` (text option values are skipped; `gc`
+  global options such as `--rig X` and stray `--` separators are stripped first, as for `gh`).
 - reads of secrets/memory by any program: `.env`, `.env.*` (except `.example/.sample/.template/.dist`),
   `~/.claude/projects/**`, `**/.gc/runtime/secrets/**` — paths are normalized (`..`, `~`, `$HOME`, cwd),
-  so `src/../.env` and quoted paths with spaces are caught; `dd if=/of=` too; `echo`/`printf` are exempt.
+  so `src/../.env`, `--opt=path` values and quoted paths with spaces are caught when they are operands of a
+  reader/writer program; `dd if=/of=` too. Prose values (`-m`, `--body`, `--notes`, `echo`) are never paths.
 - writes into `.github/workflows/`: redirects (`>`, `>>`, `&>`, heredocs), `tee`, `cp/mv/install/rsync/ln`,
-  `dd of=`, `truncate`, `sed -i`/`perl -i`, `rm`, `touch`, `git rm/mv/checkout/restore`, and `git apply`/`git am`
+  `dd of=`, `truncate`, `sed -i`/`--in-place=`, `perl -i`, `rm`, `touch`, `tar -C`/`unzip`, `cp/mv/install -t`/
+  `--target-directory=`, `git rm/mv/checkout/restore/clean/stash`, and `git apply`/`git am`
   (patch contents cannot be inspected; `--check`/`--stat` stay allowed); redirects to an unresolvable
   expansion (`> $OUT`) are blocked too. guard-edit.py covers Edit/Write/MultiEdit/NotebookEdit
   with the same normalization (plus realpath, so a symlink does not help).

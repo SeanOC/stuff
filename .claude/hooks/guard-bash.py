@@ -43,14 +43,18 @@ SHELLS = {"bash", "sh", "zsh", "dash", "ksh", "fish"}
 GIT_GLOBAL_WITH_ARG = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path",
                        "--super-prefix", "--config-env", "--list-cmds"}
 PUSH_OPTS_WITH_ARG = {"-o", "--push-option", "--repo", "--receive-pack", "--exec", "--recurse-submodules"}
+READ_PROGRAMS = {"cat", "head", "tail", "less", "more", "grep", "rg", "awk", "cut", "sort", "xxd", "od", "strings",
+                 "base64", "source", ".", "python3", "python", "node", "wc", "jq", "yq", "diff", "file", "stat", "ls",
+                 "find", "sed", "perl", "vim", "vi", "nano", "code", "open", "xdg-open", "curl", "wget", "env"}
 WRITE_PROGRAMS = {"cp", "mv", "install", "rsync", "scp", "ln", "tee", "truncate", "dd", "touch", "rm",
-                  "sed", "perl", "chmod", "chown", "shred", "unlink", "rmdir", "mkdir", "patch", "git"}
+                  "sed", "perl", "chmod", "chown", "shred", "unlink", "rmdir", "mkdir", "patch", "git", "tar", "unzip", "zip"}
 TEXT_OPTIONS = {"--notes", "--append-notes", "--description", "-d", "--title", "-t", "--body-file",
                 "--design", "--design-file", "--acceptance", "--reason", "-r", "--close-reason",
                 "-m", "--message", "--body", "-b", "--comment", "-c", "--label", "-l", "--labels",
                 "--set-metadata", "--unset-metadata", "--defer", "--subject", "-s"}
 ALLOWED_ENV_SUFFIXES = (".example", ".sample", ".template", ".dist")
 cwd = os.getcwd()
+SPLIT_STRINGS = []  # env -S payloads, re-parsed as commands
 blocked = []  # (rule, message, carveout)
 
 
@@ -145,6 +149,11 @@ def check_paths(words, rig):
     i = 0
     while i < len(words):
         w = words[i]
+        prose = (" " in w or "\t" in w) and ((program not in READ_PROGRAMS and program not in WRITE_PROGRAMS)
+                                              or (i > 0 and words[i - 1] in TEXT_OPTIONS) or program == "git" and words[1:2] in (["commit"], ["tag"], ["notes"], ["merge"]))
+        if prose and not (i > 0 and ">" in words[i - 1] and all(ch in SEPARATORS for ch in words[i - 1])):
+            i += 1
+            continue
         if ">" in w and all(ch in SEPARATORS for ch in w):
             target = words[i + 1] if i + 1 < len(words) else ""
             if w.endswith("&") and target.isdigit():
@@ -162,13 +171,19 @@ def check_paths(words, rig):
             i += 2
             continue
         p = norm(w)
+        if "=" in w and not p.startswith(os.path.join(cwd, "-")):
+            q = norm(w.split("=", 1)[1])
+            if is_secret_path(q) and program not in {"echo", "printf", "test", "[", "export"}:
+                block("secret-read", f"'{w}' names a protected secret/memory path", carveout=False)
+            elif is_workflow_path(q) and program in WRITE_PROGRAMS:
+                block(f"workflow-edit-{rig}", ".github/workflows/ is mayor-owned (option value)")
         if is_secret_path(p) and program not in {"echo", "printf", "test", "["}:
             block("secret-read", f"'{w}' is a protected secret/memory path (env files, ~/.claude/projects, "
                   ".gc/runtime/secrets); workers use the sanitized env the worktree setup provides", carveout=False)
         elif is_workflow_path(p) and program in WRITE_PROGRAMS:
-            if program == "git" and not any(s in words[1:] for s in ("rm", "mv", "checkout", "restore", "apply", "am")):
+            if program == "git" and not any(s in words[1:] for s in ("rm", "mv", "checkout", "restore", "apply", "am", "clean", "stash")):
                 pass
-            elif program in {"sed", "perl"} and not any(a == "--in-place" or (a.startswith("-") and not a.startswith("--") and "i" in a[1:]) for a in words[1:]):
+            elif program in {"sed", "perl"} and not any(a.startswith("--in-place") or (a.startswith("-") and not a.startswith("--") and "i" in a[1:]) for a in words[1:]):
                 pass
             else:
                 block(f"workflow-edit-{rig}", ".github/workflows/ is mayor-owned; a bead with an explicit "
@@ -202,10 +217,15 @@ def unwrap(words):
             arity = WRAPPER_OPT_ARITY.get(program, set())
             while rest and rest[0].startswith("-") and rest[0] != "--":
                 opt = rest.pop(0)
+                if program == "env" and (opt.startswith("--split-string=") or opt.startswith("-S")) and len(opt) > 2:
+                    SPLIT_STRINGS.append(opt.split("=", 1)[1] if opt.startswith("--") else opt[2:])
+                    continue
                 if "=" in opt and opt.startswith("--"):
                     continue
                 if opt in arity and rest:
-                    rest.pop(0)
+                    val = rest.pop(0)
+                    if program == "env" and opt in {"-S", "--split-string"}:
+                        SPLIT_STRINGS.append(val)
                 elif program == "nice" and re.fullmatch(r"-\d+", opt):
                     pass
                 elif len(opt) > 2 and not opt.startswith("--") and opt[:2] in arity:
@@ -214,6 +234,10 @@ def unwrap(words):
                 rest.pop(0)
             if program == "timeout" and rest:
                 rest = rest[1:]  # the duration operand
+                if rest and rest[0] == "--":
+                    rest.pop(0)
+            while rest and rest[0] == "--":
+                rest.pop(0)
             words = rest
             changed = True
         elif program in RUNNERS and len(words) > 1:
@@ -251,6 +275,8 @@ def check_git(args):
         return
     refspecs, remote = [], None
     rest = args[1:]
+    if any(a == "--repo" or a.startswith("--repo=") for a in rest):
+        remote = "(--repo)"
     while rest:
         a = rest.pop(0)
         if a == "--":
@@ -291,6 +317,7 @@ def check_git(args):
 
 
 def check_gh(args):
+    args = [a for a in args if a != "--"]
     if args[:2] == ["pr", "merge"] and "--admin" in args:
         block("admin-merge", "never bypass branch protection", carveout=False)
     if args[:1] in (["pr"], ["run"]) and ("--watch" in args or args[:2] == ["run", "watch"]):
@@ -304,8 +331,10 @@ def check_gh(args):
         for a in it:
             if a in {"-X", "--method"}:
                 method = (next(it, "") or "").upper()
-            elif a.startswith("--method="):
-                method = a.split("=", 1)[1].upper()
+            elif a.startswith("--method=") or (a.startswith("-X") and len(a) > 2):
+                method = a.split("=", 1)[1].upper() if a.startswith("--") else a[2:].upper()
+            elif not a.startswith("-") and not endpoint and a.upper() in {"GET", "POST", "PUT", "PATCH", "DELETE"}:
+                method = a.upper()
             elif a in {"-f", "-F", "--field", "--raw-field", "--input"}:
                 next(it, None)
                 method = method if method != "GET" else "POST"
@@ -320,9 +349,11 @@ def check_gh(args):
         if method != "GET" and re.search(r"/statuses/|/check-runs|/protection|/rulesets", endpoint):
             block("protected-api", "never POST commit statuses/check-runs or edit branch protection "
                   "(it pollutes the SHA / bypasses the gate)", carveout=False)
-        if endpoint == "graphql" and any(re.search(r"(create|update|delete)BranchProtectionRule|createCommitStatus", a)
-                                         for a in args):
-            block("protected-api", "never edit branch protection or post statuses via GraphQL", carveout=False)
+        if endpoint == "graphql":
+            opaque = any(a in {"--input"} or a.startswith("--input=") or "=@" in a or a.startswith("@") for a in args)
+            if opaque or any(re.search(r"\bmutation\b", a) for a in args):
+                block("protected-api", "GraphQL mutations and opaque GraphQL payloads (--input / @file) are not "
+                      "allowed from a worker (they can post statuses or edit protection)", carveout=False)
 
 
 def check_sleep(args, total):
@@ -347,8 +378,6 @@ def check_bd(args):
             continue
         if a in TEXT_OPTIONS:
             next(it, None)
-        elif a == "--":
-            return
         elif a == "--assignee" or a.startswith(("--assignee=", "-a")) and not a.startswith("--a"):
             block("bd-assignee", "never set assignees; the claim hook owns assignment", carveout=False)
         elif a.startswith("--assignee"):
@@ -379,16 +408,37 @@ def check_statement(words, state=None):
             for st in statements(" ".join(words[1:])):
                 check_statement(st, state)
             return
+    while words and words[0] == "--":
+        words = words[1:]
     words = unwrap(list(words))
+    while SPLIT_STRINGS:
+        for st in statements(SPLIT_STRINGS.pop()):
+            check_statement(st, state)
+    while words and words[0] == "--":
+        words = words[1:]
     if not words:
         return
     program = os.path.basename(words[0])
     args = words[1:]
-    if program in SHELLS and "-c" in args:
-        script = args[args.index("-c") + 1] if args.index("-c") + 1 < len(args) else ""
-        for st in statements(script):
-            check_statement(st, state)
-        return
+    if program in SHELLS:
+        for i, a in enumerate(args):
+            if a == "--":
+                break
+            if a.startswith("-") and not a.startswith("--") and "c" in a[1:]:
+                script = args[i + 1] if i + 1 < len(args) else ""
+                for st in statements(script):
+                    check_statement(st, state)
+                return
+    if program == "gc":
+        rest = list(args)
+        while rest and rest[0].startswith("-"):
+            opt = rest.pop(0)
+            if opt in {"--rig", "-r", "--city", "-C", "--config", "--profile", "--as"} and rest:
+                rest.pop(0)
+        while rest and rest[0] == "--":
+            rest.pop(0)
+        args = rest
+        program = "gc"
     if program in {"git", "git-push"}:
         check_git(["push"] + args if program == "git-push" else list(args))
     elif program == "gh":
@@ -406,9 +456,9 @@ def check_statement(words, state=None):
     elif program == "find":
         check_find(list(args))
     elif program == "gc" and args[:1] == ["bd"]:
-        check_bd(list(args[1:]))
+        check_bd([a for a in args[1:] if a != "--"])
     elif program == "bd":
-        check_bd(list(args))
+        check_bd([a for a in args if a != "--"])
     if state["sleep"] >= 30:
         block("long-sleep", f"total literal sleep in this command is {state['sleep']:.0f} s (limit 30); "
               "end your turn and let the next event resume you")
