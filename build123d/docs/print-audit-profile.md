@@ -11,6 +11,8 @@ from 77.1 s to 11.3 s of CPU (−85 %).
 
 ## Method
 
+These profiling runs predate the build123d 0.13 / OCP 8 migration.
+
 - `scripts/profile_print_audit.py` builds each case the same way as
   `test_print_audit._build_and_audit`: registry values, mount-fixture cutters
   and the cup-lid shank exclusion. It then times each audit phase on its own

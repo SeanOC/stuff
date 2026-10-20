@@ -5,8 +5,9 @@ reference/measured/, every sha256 matches, every artefact's foreign key
 ``(source_file_id, source_sha256)`` resolves to one source version, the
 licence text is committed, no upstream original is committed, and every
 [V] value is re-derived from the committed measurement JSON.
-Upstream (trusted workflow): the JSON/SVG artefacts regenerate byte-for-byte
-from the mirrored originals.
+Upstream (trusted workflow): the JSON measurements regenerate exactly from
+the mirrored originals, independent of the recorded build123d version;
+the measurement-tool version must match and SVG bytes remain identical.
 """
 
 import datetime
@@ -450,7 +451,13 @@ def test_artifacts_regenerate(artifact, tmp_path):
     m = ms.measure(path, axis=axis, plane=plane, offset=offset,
                    dxf=dxf if plane else None, svg=svg if plane else None)
     committed = json.loads((ROOT / artifact["file"]).read_text(encoding="utf-8"))
-    assert json.loads(json.dumps(m)) == committed
+    # The library stamp records provenance, not geometry. Keep every measured
+    # field exact and require the same measurement-tool schema separately.
+    assert m["tool"] == committed["tool"] == ms.TOOL_VERSION
+    provenance = {"tool", "build123d"}
+    measured = {k: v for k, v in json.loads(json.dumps(m)).items() if k not in provenance}
+    expected = {k: v for k, v in committed.items() if k not in provenance}
+    assert measured == expected
     if plane:
         assert svg.read_bytes() == stem.with_suffix(".svg").read_bytes()
         # DXF bytes embed save timestamps; compare the drawing content.

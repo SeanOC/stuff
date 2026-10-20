@@ -78,7 +78,7 @@ def test_reference_parity(name, tmp_path):
     k = m.BED_CHAMFER
     chamfer = k*k/2*2*(width + length) - 4*k**3/3
     assert body.volume - finished.volume == pytest.approx(chamfer, abs=1e-3)
-    assert finished.bounding_box().size.to_tuple() == pytest.approx(box.size.to_tuple(), abs=1e-6)
+    assert tuple(finished.bounding_box().size) == pytest.approx(tuple(box.size), abs=1e-6)
     print(f'PARITY | {name} | +y {REF_SHIFT[1]} | ref vol {ref.volume:.3f} body {body.volume:.3f} '
           f'nudge {nudge:.3f} | finished {finished.volume:.3f} chamfer {chamfer:.3f} | '
           + ' | '.join(f'{k_} max {d:.4f}' for k_, d in worst.items()))

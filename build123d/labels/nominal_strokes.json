@@ -1,8 +1,8 @@
 {
- "402aeb734586c74a:REGULAR:build123d=0.11.1;OCP=7.9.3.1;fontTools=4.63.0;shapely=2.1.2;scan=5d419726c295cfa3b292cb3627dbc1f231dba7ddcc8dabe9ee0cb8107ea19661:Pick the\nnext song!": 0.9800000000000006,
- "402aeb734586c74a:REGULAR:build123d=0.11.1;OCP=7.9.3.1;fontTools=4.63.0;shapely=2.1.2;scan=5d419726c295cfa3b292cb3627dbc1f231dba7ddcc8dabe9ee0cb8107ea19661:Pick the next song!": 0.9800000000000006,
- "4509838acc21f2c0:BOLD:build123d=0.11.1;OCP=7.9.3.1;fontTools=4.63.0;shapely=2.1.2;scan=5d419726c295cfa3b292cb3627dbc1f231dba7ddcc8dabe9ee0cb8107ea19661:Scan to request a song": 0.8800000000000006,
- "4509838acc21f2c0:BOLD:build123d=0.11.1;OCP=7.9.3.1;fontTools=4.63.0;shapely=2.1.2;scan=5d419726c295cfa3b292cb3627dbc1f231dba7ddcc8dabe9ee0cb8107ea19661:poppystreetspooks.com": 0.8800000000000006,
- "ac109d3848ff23f1:REGULAR:build123d=0.11.1;OCP=7.9.3.1;fontTools=4.63.0;shapely=2.1.2;scan=5d419726c295cfa3b292cb3627dbc1f231dba7ddcc8dabe9ee0cb8107ea19661:POPPY STREET SPOOKS": 1.1000000000000008,
- "ac109d3848ff23f1:REGULAR:build123d=0.11.1;OCP=7.9.3.1;fontTools=4.63.0;shapely=2.1.2;scan=5d419726c295cfa3b292cb3627dbc1f231dba7ddcc8dabe9ee0cb8107ea19661:Show runs dusk to 9 pm": 0.9600000000000006
+ "402aeb734586c74a:REGULAR:build123d=0.13.0;OCP=8.0.1.1;fontTools=4.63.0;shapely=2.1.2;scan=5d419726c295cfa3b292cb3627dbc1f231dba7ddcc8dabe9ee0cb8107ea19661:Pick the\nnext song!": 0.9800000000000006,
+ "402aeb734586c74a:REGULAR:build123d=0.13.0;OCP=8.0.1.1;fontTools=4.63.0;shapely=2.1.2;scan=5d419726c295cfa3b292cb3627dbc1f231dba7ddcc8dabe9ee0cb8107ea19661:Pick the next song!": 0.9800000000000006,
+ "4509838acc21f2c0:BOLD:build123d=0.13.0;OCP=8.0.1.1;fontTools=4.63.0;shapely=2.1.2;scan=5d419726c295cfa3b292cb3627dbc1f231dba7ddcc8dabe9ee0cb8107ea19661:Scan to request a song": 0.8800000000000006,
+ "4509838acc21f2c0:BOLD:build123d=0.13.0;OCP=8.0.1.1;fontTools=4.63.0;shapely=2.1.2;scan=5d419726c295cfa3b292cb3627dbc1f231dba7ddcc8dabe9ee0cb8107ea19661:poppystreetspooks.com": 0.8800000000000006,
+ "ac109d3848ff23f1:REGULAR:build123d=0.13.0;OCP=8.0.1.1;fontTools=4.63.0;shapely=2.1.2;scan=5d419726c295cfa3b292cb3627dbc1f231dba7ddcc8dabe9ee0cb8107ea19661:POPPY STREET SPOOKS": 1.1000000000000008,
+ "ac109d3848ff23f1:REGULAR:build123d=0.13.0;OCP=8.0.1.1;fontTools=4.63.0;shapely=2.1.2;scan=5d419726c295cfa3b292cb3627dbc1f231dba7ddcc8dabe9ee0cb8107ea19661:Show runs dusk to 9 pm": 0.9600000000000006
 }

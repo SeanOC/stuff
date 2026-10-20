@@ -34,7 +34,7 @@ def slot_cutter(travel: float = PITCH, *, snap: bool = False) -> Part:
         cutter = SnapInSlotCutter(slot_cutter=TravelCutter)
     else:
         # Library snap assembly without detent triangles; retain both seat heads.
-        spacing = signature(SnapInSlotCutter).parameters['head_spacing'].default
+        spacing = signature(SnapInSlotCutter.__init__).parameters['head_spacing'].default
         with BuildPart() as assembly:
             TravelCutter(align=(Align.CENTER, Align.MAX, Align.MIN))
             with Locations((0, 0, 0), (0, -spacing, 0)):

@@ -112,7 +112,7 @@ def test_pinned_profile_and_allowances(travel, snap):
                          (SlotCutter, {'bottom_width_clearance':.3,'top_width_clearance':.3})]:
         fields.update(bottom_height_clearance=.212132034, top_height_clearance=-.062132034)
         for key, value in fields.items():
-            assert inspect.signature(cls).parameters[key].default == value
+            assert inspect.signature(cls.__init__).parameters[key].default == value
     assert POCKET_DEPTH == pytest.approx(4.15)
     before = (oc.OPEN_GRID_UNIT_SIZE, oc.MULTICONNECT_SLOT_LENGTH)
     cutter = slot_cutter(travel, snap=snap)

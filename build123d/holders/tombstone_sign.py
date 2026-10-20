@@ -427,7 +427,7 @@ def _bed_rim_cutter(outline: Face, d: float) -> Part:
             point = edge.position_at(u)
             vertex = min(spine.vertices(), key=lambda v: (Vector(v) - point).length)
             pipe.Add(section(point, edge.tangent_at(u)).wrapped,
-                     TopoDS.Vertex_s(vertex.wrapped), False, False)
+                     TopoDS.Vertex(vertex.wrapped), False, False)
         pipe.Build()
         pipe.MakeSolid()
         cutters.append(Solid(pipe.Shape()))
