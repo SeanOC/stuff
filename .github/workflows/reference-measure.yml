@@ -1,7 +1,5 @@
-# STAGED WORKFLOW (pst-m9k6) — inert here. The stuff/worker policy forbids the
-# agent editing .github/workflows/, so an operator activates it with:
-#   git mv build123d/ci/reference-measure.yml .github/workflows/reference-measure.yml
-# See build123d/ci/README.md.
+# Activated by the mayor 2026-10-20 (staged by pst-m9k6 under build123d/ci/;
+# see build123d/ci/README.md). Repo vars GCP_WIF_PROVIDER + GCP_REFERENCE_READER_SA.
 #
 # TRUSTED reference-mirror workflow: pulls the private upstream reference files
 # (build123d/reference/source-manifest.json) and runs the `upstream`-marked
