@@ -187,6 +187,14 @@ The fast tier separately checks every preset candidate has a current key and
 that changed scan code or engine versions invalidate it.
 The drawer keeps its three preset audits and six reference parity cases in
 **audit**; its 34 parameter endpoint/corner audits run in **audit_full**.
+The `baseline` marker identifies the all-app-preset BREP comparison
+(`tests/test_geometry_baseline.py`). It also carries `audit`: measuring the
+65 presets and their 125 containment samples took **324.289 s** during initial
+local generation, exceeding the 60 s fast-job allowance. Its CI
+`outcome.duration_s` in `bd123-audit-rows` measures
+runner cost independently of the rest of the job. No bake or downloaded audit
+rows are consumed by this test; the two offline comparators have tiny fixture
+tests in **fast**.
 The raw bridge, filtered print audit, exposed-edge inventory and mount-contract
 assertions run unchanged in both jobs.
 **audit_full** (`build123d audit (full sweep)`) runs the cradle, capture-bin and
@@ -250,6 +258,122 @@ shard's is `bd123-audit-rows-<group>` (1–6):
 gh run download <run-id> -n bd123-audit-rows -D rows/audit
 gh run download <run-id> -p 'bd123-audit-rows-*' -D rows/full   # sweep shards, if they ran
 ```
+
+## Upstream bump: numerical baselines (pst-6dhmb)
+
+This is the baseline/tolerance hand-off from
+[`docs/bake-repeatability.md` §6](../docs/bake-repeatability.md).
+There is **one in-CI gate**, the BREP geometry test. It builds every non-smoke
+registry preset (the 65 app presets in the initial manifest), records volume,
+face/solid counts, raw and print-frame bounds, print-frame centre, and
+containment at all 125 combinations of normalized 0.1/0.3/0.5/0.7/0.9
+bounding-box coordinates. It never re-runs a bake.
+
+Run the other comparisons **offline**, from `build123d/`, after the selected
+CI jobs finish. Use fresh, empty directories for each run:
+
+```bash
+gh run download <run-id> -p 'bd123-audit-rows*' -D ../.tmp-upgrade/rows
+uv run python scripts/compare_audit_rows.py ../.tmp-upgrade/rows
+uv run python scripts/export.py --presets-only ../.tmp-upgrade/bake
+uv run python scripts/compare_bake.py ../.tmp-upgrade/bake
+uv run python scripts/geometry_baseline.py
+```
+
+**Do not use `bd123-models` as the bake input.** That artifact contains models
+at defaults (including smoke), not the app-preset bake with its 3MF outputs.
+`compare_bake` compares the complete file inventory, welded STL metrics,
+GLB scene/material/accessor/transform structure, and 3MF mesh metrics,
+build items, components, material assignments and printer-profile settings.
+GLB primitives are grouped per mesh by material/mode/attribute schema, with
+exact primitive counts, accessor-count inventories and aggregate bounds; the
+baseline does not pin per-face primitive/accessor ordering or per-face bounds.
+PNG signature/dimensions are checked; pixels and GLB binary attributes are
+outside this numerical comparison. Byte ordering, buffer packing and ZIP
+timestamps are not semantic differences. The STL classification column uses
+the existing raw oriented-triangle/vertex diagnostic from
+`scripts/bake_repeatability.py`; it does **not** use the welded copy to infer
+coordinate identity. A changed connectivity/coordinate diagnostic still needs
+surface review even if the numerical comparator passes: equal volume and
+counts do not prove equivalent surfaces. See the repeatability contract.
+
+All three tools use **only** `scripts/baseline_common.py:TOLERANCES`:
+
+| Fields | Mode | Tolerance |
+| --- | --- | --- |
+| BREP volume | relative to baseline | 1e-6 |
+| Bounds, centres and other geometry/bake floating measurements | absolute, native units (mm for BREP/STL/3MF; glTF units for GLB) | 1e-6 |
+| Baked STL/3MF volume and audit floating measurements (including volumes) | absolute, native units (the spike join) | 1e-6 |
+| Counts/inventories, containment, booleans, strings and types | exact | 0 |
+
+Baselines have sorted keys and floats formatted to nine decimal places.
+Diffs name the preset/file or `(nodeid, name)`, the field's JSON pointer,
+old/new values and tolerance mode. Exit **0** is a numerical/structural pass,
+**1** is a difference or invalid input. Audit exit **2**, **NOT COMPARABLE**,
+means a declared job/shard never supplied a session: e.g. an upstream PR
+without the conditional `audit_full` job. The audit baseline header declares
+the exact marker expressions and shard groups (initially audit plus all six
+full-sweep shards), source run and SHA. Extra jobs outside that scope are
+ignored. Within scope, a missing measurement row fails unless explicitly
+waived; duplicate rows and malformed sessions fail. Sessions are read from
+every `rows*.jsonl`, regardless of directory names or worker assignment.
+The numerical baseline joins **measurement** rows by `(nodeid, name)`, matching
+the spike. Collection/outcome rows validate capture completeness and reject
+failed tests; adding infrastructure tests (such as the BREP gate itself)
+does not add numerical rows. An incomplete/failed capture is invalid input,
+not a waivable measurement difference. Times/durations are excluded; shard
+balancing may move tests without changing the globally joined measurements.
+
+The initial geometry/bake source is main `0e749904`, after the 0.13 migration
+PR #231's **merge** `8d17fbe504bb8010ed9acaf26d67fe358338ca7d` (its branch head
+`456e3e0c` is not a main ancestor). Initial audit rows come from successful
+run `39403041801` at `b38d60c5`; the intervening #238 is documentation and the
+bake diagnostic, with no model/audit change.
+
+### Deliberate re-baselining and waivers
+
+One command regenerates **all three** committed files, using fresh local
+BREPs, a fresh production presets-only bake, and a completed downloaded audit
+capture. It refuses an empty reason/provenance, an incomplete outcome capture,
+failed outcomes, or registry/manifest preset drift:
+
+```bash
+uv run python scripts/rebaseline.py \
+  --audit-rows ../.tmp-upgrade/rows \
+  --audit-source 'GitHub bd123 run <run-id> at <source-sha>; audit + full shards 1-6' \
+  --why 'pst-xxxxx: deliberate old -> new kernel baseline; reviewed changes ...'
+git diff -- tests/baselines/
+```
+
+`--why`, source SHA, engine versions and preset scope are written into every
+baseline header; audit provenance/scope are additionally written in the rows
+header. All three measurements complete before any baseline is replaced.
+Commit the generated JSON, inspect the numerical/structural changes and explain
+them in the PR. A re-baseline is deliberate acceptance, never a silent fallback.
+
+Fields or entire rows may be waived **only** in the committed
+`tests/baselines/waivers.json`. Each entry requires `kind` (`geometry`, `bake`,
+`audit-rows`), an exact JSON-pointer `path` copied from the diff, a `reason`
+and a `bead` id; no wildcard paths. For example, a row named `holder/foo`
+has pointer `/holder~1foo`. A field waiver adds `/volume`. Waived paths are
+reported explicitly. The mayor proposes, the PR body names every waiver, and
+**Sean's merge is the approval**. The initial waiver list is empty.
+
+To read the CI timing after a run completes:
+
+```bash
+python3 - ../.tmp-upgrade/rows <<'PY'
+import json, sys
+from pathlib import Path
+for path in Path(sys.argv[1]).rglob('rows*.jsonl'):
+    for line in path.read_text().splitlines():
+        row = json.loads(line)
+        if row.get('kind') == 'outcome' and 'test_app_preset_geometry_baseline' in row['nodeid']:
+            print(row['nodeid'], row['outcome'], row['duration_s'], 'seconds')
+PY
+```
+
+### Audit row schema and inspection
 
 Each process writes its own file: `rows.jsonl` for the pytest controller, which
 holds just its `session` row, and `rows.gw0.jsonl`…`rows.gw3.jsonl` for the
