@@ -81,19 +81,51 @@ reader SA's WIF binding is pinned to `repo:SeanOC/stuff:ref:refs/heads/main`,
 and PR CI (`bd123.yml`) stays offline (`pyproject` addopts deselect `upstream`).
 
 Prerequisites (mayor, 2026-09-29): repo variables `GCP_WIF_PROVIDER` and
-`GCP_REFERENCE_READER_SA`, and the read-only SA's WIF binding above. Run the
-tests locally with the mirror pulled: `uv run pytest -m upstream`.
+`GCP_REFERENCE_READER_SA`, and the read-only SA's WIF binding above. To run
+the three tests locally, from `build123d/` with bucket access as described in
+[`reference/FETCH.md`](../reference/FETCH.md):
 
-The move itself matches the workflow's own path filter, so the activating push
-to `main` triggers the first run. That run pulls every source in
-`source-manifest.json` (210 at the time of writing) and runs
-`pytest -m upstream`. The upstream tests are:
+```bash
+uv run tools/reference_pull.py && uv run pytest tests/ -q -m upstream
+```
 
-- `test_every_manifest_source_is_present_and_verified`
-- pst-ff71's `test_runs_under_30s_on_every_measurable_source`, which covers
-  every STEP/STL source
-- `test_artifacts_regenerate`, which rebuilds the committed
-  `reference/measured/` JSON/SVG from the mirror
+The workflow pulls every source in `source-manifest.json` (214 at the time of
+writing), verifies its SHA256, then runs these 13 upstream cases:
+
+- `test_reference_upstream.py::test_every_manifest_source_is_present_and_verified`
+  checks that every manifest source is present and verified (1 case).
+- `test_fixpoint.py::test_rebuild_equals_original` compares our Fix-Point
+  slot/head with the original MultiBuild STEP (2 cases).
+- `test_reference_provenance.py::test_artifacts_regenerate` rebuilds the
+  committed `reference/measured/` JSON/SVG from the mirror (10 cases).
+
+The [first activated run](https://github.com/SeanOC/stuff/actions/runs/39364677323)
+verified all 214 sources and passed all 221 then-selected upstream cases.
+The 207 per-source 30-second timing cases have since been removed: shared
+runner wall-clock timing is not a reliable correctness check. A future
+performance guard should use the existing serial `budget` pattern.
+
+QuackWorks snap constants are checked in the ordinary offline suite against
+[`reference/opengrid-snap-constants.json`](../reference/opengrid-snap-constants.json).
+This table freezes 60 scalar values keyed by port constant name, each with its
+pinned source locator; it stores no source text or SCAD argument identifiers.
+It is deliberately unmanifested and outside `reference/measured/`, whose
+artifacts follow the `measure_step/1` geometry command contract and source
+manifest (which has no SCAD records). The former live-fetch test and its
+FRONT/REAR argument-binding checks are removed; exact values, locators and
+the complete key set are checked offline instead.
+
+The mayor/operator runs the generator only for an explicit reference refresh,
+from the repo root (it is not part of tests or CI):
+
+```bash
+uv run --project build123d python scripts/freeze-opengrid-snap-constants.py
+```
+
+The generator reads pinned commit `6123129` into memory, extracts numeric
+literals by line/token position independently of the port constants, and
+writes only measurements and provenance metadata, including the source hash.
+Review and commit the resulting JSON; never commit fetched QuackWorks text.
 
 **No `bd123.yml` change is needed.** The spec proposed adding
 `-m 'not upstream'` to bd123's pytest line. Instead, `build123d/pyproject.toml`
