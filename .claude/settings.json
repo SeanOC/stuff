@@ -21,6 +21,26 @@
         ],
         "matcher": ""
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-bash.sh\""
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-edit.sh\""
+          }
+        ]
+      }
     ]
   },
   "permissions": {
@@ -30,6 +50,16 @@
       "Bash(python3 .claude/skills/_lib/*.py:*)",
       "Bash(python3 .claude/skills/*/scripts/*.py:*)",
       "Bash(python3 -m pytest .claude/skills/**:*)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(~/.claude/projects/**)",
+      "Read(**/.gc/runtime/secrets/**)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(sudo:*)",
+      "Bash(gh pr merge --admin:*)"
     ]
   }
 }
