@@ -11,6 +11,17 @@ This is **P2a** of the build123d integration epic (`pst-7srz`) — the render
 UI are separate beads (**P2b** `pst-6ugb`, **P2c**). Presets stay baked and
 served from `build123d/baked/` (P1c); this service is for on-the-fly tweaks.
 
+The Dockerfile uses an explicit allow-list of packages, top-level modules
+(including `occt.py`), and runtime assets (`assets/fonts` and `assets/art`).
+Keep its COPY sources and the deployment workflow's paths filter in sync.
+A build-time smoke reuses `server._app_slugs()`, checks expected model slugs,
+and imports the worker's dependencies before the image can be published.
+Lazy asset reads are covered by `validate.sh` renders of the cup lid,
+tombstone sign, spray-can holder, and label card, not by the import smoke.
+Deliberately excluded: `build123d/baked/` is served by the app;
+`build123d/tests/fixtures/capture` is tooling-only data for `capture/`;
+`tests/` and `docs/` are never baked into this service image.
+
 ## Contract
 
 `POST /render?format=glb|stl|3mf` (default `glb`)

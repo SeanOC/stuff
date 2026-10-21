@@ -42,6 +42,16 @@ curl -fsS -X POST "$BASE/render" \
 head -c 4 /tmp/bd-out.glb | grep -q 'glTF' || fail "not a binary glTF (bad magic)"
 echo "    GLB bytes: $(wc -c < /tmp/bd-out.glb)"
 
+for slug in holder-cup-lid holder-tombstone-sign; do
+  echo "==> default GLB render ($slug)"
+  curl -fsS -X POST "$BASE/render" \
+    -H 'content-type: application/json' \
+    -d "{\"slug\":\"$slug\"}" -o "/tmp/bd-$slug.glb"
+  [ -s "/tmp/bd-$slug.glb" ] || fail "empty GLB ($slug)"
+  head -c 4 "/tmp/bd-$slug.glb" | grep -q 'glTF' || fail "bad GLB magic ($slug)"
+  echo "    GLB bytes: $(wc -c < "/tmp/bd-$slug.glb")"
+done
+
 echo "==> STL render (?format=stl)"
 curl -fsS -X POST "$BASE/render?format=stl" \
   -H 'content-type: application/json' \
