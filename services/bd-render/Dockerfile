@@ -35,11 +35,15 @@ COPY build123d/pyproject.toml build123d/uv.lock ./
 RUN uv sync --frozen --no-install-project
 
 # Bake the model tree: registry + holders (models) + shared geometry + export helpers.
+# Top-level modules AND any sibling asset/data directory a package reads via
+# Path(__file__).parent.parent must be listed here.
+COPY build123d/occt.py ./occt.py
 COPY build123d/holders ./holders
 COPY build123d/capture ./capture
 COPY build123d/drawer ./drawer
 COPY build123d/labels ./labels
 COPY build123d/assets/fonts ./assets/fonts
+COPY build123d/assets/art ./assets/art
 COPY build123d/multibuild ./multibuild
 COPY build123d/openconnect ./openconnect
 COPY build123d/gridfinity ./gridfinity
@@ -60,4 +64,19 @@ ENV BD_BUILD123D_ROOT=/build123d \
     BD_RENDER_TIMEOUT=90
 
 EXPOSE 8080
+
+# Fail before publishing if the baked tree cannot serve the expected app models.
+# Mirror the worker's request-time imports too; lazy asset reads need validate.sh.
+RUN /build123d/.venv/bin/python -c "import sys; \
+sys.path[:0] = ['/build123d', '/services/bd-render']; \
+from server import _app_slugs; \
+import render_worker; \
+from scripts.export import apply_printer_profile, export_3mf_one_object, export_glb, export_stl; \
+from profiles import PROFILES; \
+from holders.registry import all_models, resolve_colour_parts, resolve_preview_parts, in_print_frame; \
+slugs = set(_app_slugs()); \
+missing = {'holder-spray-can', 'holder-cup-lid', 'holder-tombstone-sign'} - slugs; \
+assert not missing, f'missing app slugs: {missing}'; \
+print(len(slugs), 'app models importable')"
+
 CMD ["/build123d/.venv/bin/python", "/services/bd-render/server.py"]

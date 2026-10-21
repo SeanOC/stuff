@@ -22,10 +22,10 @@
 # Optional (defaults in env below):
 #   GCP_REGION, GAR_REPOSITORY, BD_RENDER_SERVICE_NAME
 #
-# The image bakes the build123d env + holders, multibuild and openconnect
-# (the COPY lines in services/bd-render/Dockerfile),
-# so a change to the service, the models, or the pinned lockfile needs a
-# redeploy — hence the paths filter.
+# The image bakes the build123d env, occt.py, holders, capture, drawer,
+# labels, assets/{fonts,art}, multibuild, openconnect, gridfinity,
+# opengrid_snap, underware, profiles and scripts. Keep this paths filter
+# in sync with the COPY sources in services/bd-render/Dockerfile.
 
 name: deploy-bd-render-service
 
@@ -36,13 +36,18 @@ on:
       - "services/bd-render/**"
       - "build123d/holders/**"
       - "build123d/capture/**"
+      - "build123d/drawer/**"
       - "build123d/labels/**"
       - "build123d/assets/fonts/**"
+      - "build123d/assets/art/**"
       - "build123d/multibuild/**"
       - "build123d/openconnect/**"
       - "build123d/gridfinity/**"
       - "build123d/opengrid_snap/**"
+      - "build123d/underware/**"
+      - "build123d/profiles/**"
       - "build123d/scripts/**"
+      - "build123d/occt.py"
       - "build123d/pyproject.toml"
       - "build123d/uv.lock"
       - ".github/workflows/deploy-bd-render-service.yml"
