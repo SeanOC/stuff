@@ -59,7 +59,7 @@ def test_registered_as_a_household_sign_model():
     assert (params['cross_length'].default, params['cross_length'].max) == (200, 320)
     assert {p.id: p.values for p in SPEC.presets} == {
         'default': {}, 'long': {'length': 320.0}, 'cross-bar': {'cross_bar': True},
-        'pinned': {'thickness': 8.0, 'retention': 'pin'}}
+        'pinned': {'thickness': 8.0, 'retention': 'pin'}, 'post': {'ground': 'post'}}
     assert all(p.default_view is None for p in SPEC.presets)  # see the module docstring
 
 
@@ -146,6 +146,8 @@ def test_point_is_45_degrees_included_and_ends_below_the_shoulders():
     assert m.taper_run(40.0) == pytest.approx(20 / math.tan(math.radians(22.5)))
     assert round(m.taper_run(40.0), 1) == 48.3
     for preset in PRESETS.values():
+        if preset.id == 'post':
+            continue
         values = SPEC.resolve_values(preset.values)
         assert m.taper_run(values['width']) < m.shoulder_bottom(values)
 
@@ -159,12 +161,12 @@ def test_stake_default_thickness_is_the_signs():
     assert m.DEFAULTS['thickness'] == tombstone_sign.DEFAULTS['thickness'] == 8.0
 
 
-def _assembled(thickness: float, pin: bool):
+def _assembled(thickness: float, pin: bool, ground="blade"):
     """(sign, stake placed in the sign frame) for one thickness."""
     retention = {'sign': 'pin' if pin else 'friction', 'stake': 'pin' if pin else 'none'}
     sign_values = tombstone_sign.SPEC.resolve_values(
         {'thickness': thickness, 'retention': retention['sign']})
-    stake_values = SPEC.resolve_values({'thickness': thickness, 'retention': retention['stake']})
+    stake_values = SPEC.resolve_values({'thickness': thickness, 'retention': retention['stake'], 'ground': ground})
     sign = tombstone_sign.plate(sign_values)
     placed = Pos(0, -m.head_top(stake_values), OFFSET) * m.stake(stake_values)
     return sign_values, sign, placed
@@ -172,8 +174,9 @@ def _assembled(thickness: float, pin: bool):
 
 @pytest.mark.audit
 @pytest.mark.parametrize('thickness,pin', [(6.0, False), (8.0, False), (8.0, True)])
-def test_tenons_fill_the_real_pockets_with_the_contract_clearance(thickness, pin):
-    sign_values, sign, placed = _assembled(thickness, pin)
+@pytest.mark.parametrize('ground', ['blade', 'post'])
+def test_tenons_fill_the_real_pockets_with_the_contract_clearance(thickness, pin, ground):
+    sign_values, sign, placed = _assembled(thickness, pin, ground)
     assert common(sign, placed) < 1e-6  # no interference anywhere
     tenons = placed & Pos(0, 25, thickness / 2) * Box(300, 50, 3 * thickness)  # Y > 0
     assert len(tenons.solids()) == 2
@@ -195,7 +198,7 @@ def test_tenons_fill_the_real_pockets_with_the_contract_clearance(thickness, pin
     assert common(Pos(0, eps, 0) * placed, sign) > 1e-3
     if pin:  # one hole by construction: the tenon's hole is the sign's hole
         hole = signs.pin_hole(sign_values['width'], thickness)
-        _, _, plain = _assembled(thickness, pin=False)
+        _, _, plain = _assembled(thickness, pin=False, ground=ground)
         plain_tenons = plain & Pos(0, 25, thickness / 2) * Box(300, 50, 3 * thickness)
         assert common(tenons, hole) < 1e-6
         removed = (plain_tenons - tenons).volume
@@ -308,6 +311,10 @@ def stake_mating(values):
     out = [(x - signs.tenon_w() / 2, yh - m.TENON_OVERLAP, 0,
             x + signs.tenon_w() / 2, values['length'], t) for x in signs.POCKET_XS]
     out.append((-1e-3, -1e-3, 0, 1e-3, 1e-3, t))  # the tip's vertical edge
+    if values['ground'] == 'post':
+        y, half = m.stub_pin_y(values), signs.PIN_D / 2
+        out.append((-values['width'] / 2, y - half, t / 2 - half,
+                    values['width'] / 2, y + half, t / 2 + half))
     if values['cross_bar']:
         y, half = m.lap_centre(values), m.lap_span(values) / 2
         out.append((-values['width'], y - half, t / 2, values['width'], y + half, t))

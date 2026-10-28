@@ -242,10 +242,15 @@ export const BUILD123D_CATALOG: Record<string, CatalogEntry> = {
     blurb:
       "Song-request tombstone sign in the Poppy Street Spooks poster look: an eyebrow, a two-line Creepster title, the ghost-with-poppy beside a QR code, a scan line, the site and the show times, raised 0.6 mm in up to eight colours, printed face up with no supports. Two pockets in the bottom edge take a separately printed stake.",
   },
+  holder_tombstone_base: {
+    categoryId: "household",
+    blurb:
+      "Hard-ground base for the tombstone sign: two drill-in screw stakes clamp the plate, and a cross-pin holds the separately printed post in its braced mortise. Set the round head and shaft sizes to your screw stakes. Both parts print flat, no supports; PCTG for outdoors.",
+  },
   holder_tombstone_stake: {
     categoryId: "household",
     blurb:
-      "Ground stake for the tombstone sign: a flat blade with a 45° point and a flared head whose two tenons slide into the sign's pockets. Optional cross-pin (8 mm sign and stake) and a half-lapped cross-bar that adds buried face area against wind. Prints flat, no supports.",
+      "Ground stake for the tombstone sign: a flat blade with a 45° point, or a post for the hard-ground base plate, with a flared head whose two tenons slide into the sign's pockets. Optional cross-pin (8 mm sign and stake) and a half-lapped cross-bar that adds buried face area against wind. Prints flat, no supports.",
   },
   holder_spool_cradle: {
     categoryId: "multiboard",

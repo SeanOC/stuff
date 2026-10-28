@@ -271,6 +271,7 @@ Presets:
 - **long**: 320 mm.
 - **cross-bar**: adds the cross-bar.
 - **pinned**: 8 mm blade with the pin cross-hole, for the 8 mm pinned sign.
+- **post**: a flat-ended stub for the hard-ground base below; no point or cross-bar.
 
 | Joint | Value |
 | --- | --- |
@@ -316,3 +317,95 @@ joint. That is about 58 MPa in the two 7.6 × 3.2 tenons at thickness 6,
 near PLA's strength, against about 22 MPa in 7.6 × 5.2 tenons at thickness
 8. Use the 8 mm pinned pair where the sign faces wind. PLA or PCTG; choose
 PCTG for a stake left outdoors.
+
+
+### Hard ground: screw-stake base and post
+
+Use `holder-tombstone-base` with the stake's **post** preset when the blade
+will not enter the soil. Both print flat, without supports, in PCTG for
+outdoor use. Keep the blade presets for soft ground. Match the sign, post
+and base `thickness`, the base/post `width`, and base `plate_t` to post
+`base_plate_t`. The default thickness is 8 mm. At 6 mm use the sign's
+friction/wedge-rib retention; the optional sign-side pin requires 7.8 mm.
+The **separate base retaining pin is always present**, including at 6 mm.
+
+The base is 240 × 120 × 6 mm, with R4 plan corners and 0.4 mm bed/rim
+chamfers. The mortise is a rectangular through hole, 40.4 × 8.4 mm at
+defaults (0.2 mm per side). Two 5 mm thick cheeks rise 24 mm above the
+plate. Their X-axis pin holes open on the outside, with no gusset blocking
+insertion. Buttresses on the wide faces run 25 mm along Y with a 24 mm
+rise (43.83°), span the cheeks for a continuous load path, overlap the
+plate by 2 mm and have 1 mm root fillets. The only audit exclusions are
+the two 1.33 mm pin-hole roofs; raw bridge span is checked before applying
+them. The post has its own unconditional stub-roof exclusion, plus the
+existing tenon-pin roofs only when `retention = pin`.
+
+Hardware defaults are **provisional [U]**, authorized in pst-iu0k1 rev 5:
+a 12.7 mm shaft, **round** 25 mm diameter × 4 mm thick head, and two stakes
+160 mm apart. These are editable Params, not measurements of Sean's stakes.
+Set them to the actual hardware before printing. The bore adds 0.8 mm to
+the shaft diameter and the counterbore adds 1 mm to the head diameter.
+The head seats on a floor at least 2 mm thick, flush with or below the
+plate top. Validation rejects insufficient bearing area, a thin floor,
+or holes closer than 8 mm to the cradle or plate edge. One-stake mode
+uses the right-hand hole and permits pivoting; use two to resist wind.
+
+1. Lay the plate on firm, level ground.
+2. Drive both screw stakes through the plate with a drill until their heads
+   clamp the plate; the printed part does not get hammered into the ground.
+3. Drop the post into the mortise with its bottom flush with the plate's
+   underside. Insert a retained round pin through cheek → stub → cheek.
+   The nominal bore is 3.2 mm; use a pin with installation clearance.
+4. Seat the sign on the unchanged head shoulders. Use friction/wedge ribs
+   or the optional sign-side pin with a matching sign.
+
+The post's 40 mm stub gives a **129.6 mm** printed length: 40 stub +
+25 shoulders + 30 head + 34.6 tenons. `length` remains a blade-only control;
+the post derives its actual length using the same head/shoulder helpers.
+The 320 mm bed bound applies to that derived length. The post-depth guard
+also reserves the shoulder fillet's 2.072 mm run above the cheeks, so its
+rounded shoulder cannot collide at the nominal 30 mm minimum. Cross-bar
+plus post is a named validation error. The sign's bed-flush tenon datum,
+1.4 mm assembly offset, pockets, and pin contract have not changed.
+
+The base's width limit is 325 mm for the H2S single-nozzle bed; widths above
+305 mm need the H2C left nozzle. The base and post fit either machine at
+defaults. Tests check every numeric endpoint, named invalid combinations,
+the 6/8 mm thickness matrix, round-pin access, movement toward every
+mortise/cheek wall, and the post's actual tenons in the sign's pockets.
+
+
+### Pending load-criterion clarification (pst-iu0k1)
+
+The specified **20 N at the sign top / 2° post rotation** cannot yet be
+claimed for the whole assembly. With a perfectly rigid socket ending at
+Z=30, the default post's shoulders start at Z=40 and its head spans
+Z=65…95. The 300 mm sign puts the load at Z=395. An Euler–Bernoulli
+estimate, ignoring socket play and all sign/tenon compliance, gives:
+
+`theta = integral[30..95] 20*(395-z)/(E*I(z)) dz`
+
+Use `I(z) = b(z)*8^3/12`, with `b = 40` over 30…40,
+`b = 40 + 2*(z-40)` over 40…65, and `b = 90` over 65…95.
+[Extrudr's PCTG data sheet](https://s3.extrudr.com/extrudr-media/datasheets/tds/tds-en/pctg-TDS-en.pdf)
+reports a flexural modulus of 1650 MPa (bulk material, not a guarantee for
+a particular print). At that modulus the three rotation contributions are
+1.465° + 2.271° + 1.709° = **5.446°**. The idealization omits small edge
+rounds/chamfers. Even at an assumed E=3000 MPa the estimate is 2.995°.
+The 2° whole-post target would need E≈4493 MPa with these sections, before
+any socket or joint compliance.
+
+There is also a sign-joint load question: treating the two 7.6 × 5.2 mm
+tenon roots as the bending section gives `M = 20*300 = 6000 N mm`,
+`Z = 2*7.6*5.2^2/6 = 68.50 mm^3`, and nominal bending stress **87.6 MPa**.
+That exceeds the same data sheet's 62 MPa flexural strength and 43 MPa
+yield strength. This simple beam calculation does not resolve load sharing
+through shoulder contact and the optional pins; it is not a certified
+assembly load rating. The existing sign documentation already identifies
+the tenons as the weak section.
+
+The mayor must clarify whether 2° means **rotation only within the
+mortise/cheek socket**, excluding post/head/sign bending, or the whole
+post/head assembly. In the latter case a revised load/angle target or
+permission to stiffen the post/joint is needed. The sign joint remains
+unchanged pending that decision. No 20 N whole-assembly rating is asserted.

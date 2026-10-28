@@ -2,6 +2,133 @@
   "schemaVersion": 1,
   "models": [
     {
+      "slug": "holder-tombstone-base",
+      "engine": "build123d",
+      "title": "Tombstone hard-ground base",
+      "blurb": "Base plate for two drill-in screw stakes and the flat-printed tombstone post. Set the round screw-stake head and shaft dimensions to your hardware.",
+      "categoryId": "household",
+      "params": [
+        {
+          "name": "plate_w",
+          "label": "Plate width",
+          "group": "Plate",
+          "unit": "mm",
+          "kind": "number",
+          "default": 240.0,
+          "min": 180.0,
+          "max": 325.0,
+          "step": 1.0
+        },
+        {
+          "name": "plate_d",
+          "label": "Plate depth",
+          "group": "Plate",
+          "unit": "mm",
+          "kind": "number",
+          "default": 120.0,
+          "min": 80.0,
+          "max": 200.0,
+          "step": 1.0
+        },
+        {
+          "name": "plate_t",
+          "label": "Plate thickness",
+          "group": "Plate",
+          "unit": "mm",
+          "kind": "number",
+          "default": 6.0,
+          "min": 6.0,
+          "max": 12.0,
+          "step": 1.0
+        },
+        {
+          "name": "stake_count",
+          "label": "Screw stakes",
+          "description": "Two stakes prevent pivoting. One uses the right-hand hole.",
+          "group": "Hardware",
+          "kind": "enum",
+          "default": "2",
+          "choices": [
+            "1",
+            "2"
+          ]
+        },
+        {
+          "name": "stake_spacing",
+          "label": "Stake spacing",
+          "group": "Hardware",
+          "unit": "mm",
+          "kind": "number",
+          "default": 160.0,
+          "min": 100.0,
+          "max": 240.0,
+          "step": 1.0
+        },
+        {
+          "name": "stake_d",
+          "label": "Shaft diameter",
+          "group": "Hardware",
+          "unit": "mm",
+          "kind": "number",
+          "default": 12.7,
+          "min": 6.0,
+          "max": 25.0,
+          "step": 0.1
+        },
+        {
+          "name": "stake_head_d",
+          "label": "Round head diameter",
+          "group": "Hardware",
+          "unit": "mm",
+          "kind": "number",
+          "default": 25.0,
+          "min": 16.0,
+          "max": 45.0,
+          "step": 0.1
+        },
+        {
+          "name": "stake_head_t",
+          "label": "Head thickness",
+          "group": "Hardware",
+          "unit": "mm",
+          "kind": "number",
+          "default": 4.0,
+          "min": 2.0,
+          "max": 10.0,
+          "step": 0.1
+        },
+        {
+          "name": "width",
+          "label": "Post width",
+          "group": "Post",
+          "unit": "mm",
+          "kind": "number",
+          "default": 40.0,
+          "min": 25.0,
+          "max": 60.0,
+          "step": 1.0
+        },
+        {
+          "name": "thickness",
+          "label": "Post thickness",
+          "group": "Post",
+          "unit": "mm",
+          "kind": "number",
+          "default": 8.0,
+          "min": 6.0,
+          "max": 10.0,
+          "step": 0.2
+        }
+      ],
+      "presets": [
+        {
+          "id": "default",
+          "label": "Two screw stakes (8 mm post)",
+          "values": {}
+        }
+      ]
+    },
+    {
       "slug": "holder-tombstone-sign",
       "engine": "build123d",
       "title": "Tombstone sign",
@@ -212,9 +339,43 @@
       "slug": "holder-tombstone-stake",
       "engine": "build123d",
       "title": "Tombstone stake",
-      "blurb": "Ground stake for the tombstone sign: a flat blade with a 45-degree point and a flared head whose two tenons fit the sign's pockets; optional cross-pin and half-lapped cross-bar.",
+      "blurb": "Ground stake for the tombstone sign: a flat blade with a 45-degree point and a flared head whose two tenons fit the sign's pockets; optional cross-pin and half-lapped cross-bar, or a post for the hard-ground base plate.",
       "categoryId": "household",
       "params": [
+        {
+          "name": "ground",
+          "label": "Ground attachment",
+          "group": "Stake",
+          "kind": "enum",
+          "default": "blade",
+          "choices": [
+            "blade",
+            "post"
+          ]
+        },
+        {
+          "name": "post_depth",
+          "label": "Post below shoulders",
+          "group": "Post",
+          "unit": "mm",
+          "kind": "number",
+          "default": 40.0,
+          "min": 30.0,
+          "max": 200.0,
+          "step": 1.0
+        },
+        {
+          "name": "base_plate_t",
+          "label": "Base plate thickness",
+          "description": "Match the base plate thickness to align the retaining pin.",
+          "group": "Post",
+          "unit": "mm",
+          "kind": "number",
+          "default": 6.0,
+          "min": 6.0,
+          "max": 12.0,
+          "step": 1.0
+        },
         {
           "name": "width",
           "label": "Shaft width",
@@ -229,7 +390,7 @@
         {
           "name": "length",
           "label": "Length",
-          "description": "Tip to tenon ends: the whole printed length.",
+          "description": "Blade only: tip to tenon ends. Post length is derived from post depth.",
           "group": "Stake",
           "unit": "mm",
           "kind": "number",
@@ -308,6 +469,13 @@
           "id": "default",
           "label": "Stake (8 mm)",
           "values": {}
+        },
+        {
+          "id": "post",
+          "label": "Post for base plate (8 mm)",
+          "values": {
+            "ground": "post"
+          }
         },
         {
           "id": "long",

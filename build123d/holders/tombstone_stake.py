@@ -1,5 +1,12 @@
 """Tombstone stake (epic pst-tl4ac, S2 pst-tl4ac.2): the ground stake for the sign.
 
+The post preset replaces the point with a straight post_depth stub, seated
+in holder-tombstone-base. Its derived length includes the shoulders, head
+and tenons; the blade-only length Param is ignored. A separate X-axis pin
+at base_plate_t + 12 above the stub bottom always retains it in the base.
+Wind is taken by the base's wide-face buttresses; the stub pin sees lift-out
+only (1.4 mm pin walls at thickness 6). Cross-bars are blade-only.
+
 One flat blade, printed flat (thickness along Z, Z = 0 the bed face). In
 plan (X across, Y up the stake): a SHAFT `width` wide ending in a 45-degree
 point at Y = 0 (45 degrees INCLUDED, 22.5 per flank), a HEAD `head_width` x
@@ -57,6 +64,7 @@ import math
 from build123d import (Axis, Box, Compound, Part, Polygon, Pos, Rectangle, Rot, chamfer,
                        extrude, fillet)
 from holders import signs
+from holders.tombstone_ground import CHEEK_H, DEFAULT_PLATE_T
 from holders.printer import BED_Y
 from holders.registry import ModelSpec, Param, Preset, register
 from scripts.thumbnail import PlaneSpec
@@ -80,9 +88,22 @@ def taper_run(width: float) -> float:
     return width / 2 / math.tan(math.radians(POINT_DEG / 2))
 
 
+def printed_length(values: dict) -> float:
+    """The post derives its length; the blade keeps its tip-to-tenon Param."""
+    if values['ground'] == 'post':
+        # Use the existing head/shoulder helpers for the shoulder stack.
+        blade_values = {**values, 'ground': 'blade'}
+        return values['post_depth'] + values['length'] - shoulder_bottom(blade_values)
+    return values['length']
+
+
+def stub_pin_y(values: dict) -> float:
+    return values['base_plate_t'] + CHEEK_H / 2
+
+
 def head_top(values: dict) -> float:
     """Y of the head's top edge, the bearing face under the sign."""
-    return values['length'] - signs.tenon_len()
+    return printed_length(values) - signs.tenon_len()
 
 
 def shoulder_bottom(values: dict) -> float:
@@ -121,6 +142,16 @@ def validate(values: dict) -> None:
             f'({signs.POCKET_OFFSET:g} + {signs.tenon_w() / 2:g})')
     if values['retention'] == 'pin':
         signs.check_pin_thickness(values['thickness'])
+    if values['ground'] == 'post':
+        if values['cross_bar']:
+            raise ValueError('cross_bar is only available with ground=blade')
+        if values['thickness'] < 6:
+            raise ValueError('post thickness must be >= 6 mm around the stub pin')
+        if values['post_depth'] < values['base_plate_t'] + CHEEK_H + SHOULDER_R * math.tan(math.pi / 8):
+            raise ValueError('post_depth must clear base_plate_t + cheek height (24 mm) + shoulder fillet run (2.072 mm)')
+        if printed_length(values) > MAX_LENGTH + 1e-9:
+            raise ValueError('post_depth + shoulders + head + tenons exceeds MAX_LENGTH (320 mm)')
+        return
     run, top = taper_run(values['width']), shoulder_bottom(values)
     if top - run < MIN_STRAIGHT - 1e-9:
         raise ValueError(
@@ -140,7 +171,12 @@ def outline(values: dict):
     run, ys, yh = taper_run(w), shoulder_bottom(values), head_top(values)
     yb = yh - hh  # head bottom = shoulders' top
     right = [(w / 2, run), (w / 2, ys), (hw / 2, yb), (hw / 2, yh)]
-    pts = [(0, 0)] + right + [(-x, y) for x, y in reversed(right)]
+    if values['ground'] == 'post':
+        run = 0.0
+        right[0] = (w / 2, 0)
+        pts = right + [(-x, y) for x, y in reversed(right)]
+    else:
+        pts = [(0, 0)] + right + [(-x, y) for x, y in reversed(right)]
     shape = Polygon(*pts, align=None)
     # Fillet one corner row at a time (Y picks the row; the tip is left sharp).
     for y, r in ((run, CORNER_R), (ys, SHOULDER_R), (yb, CORNER_R),
@@ -175,6 +211,11 @@ def stake(values: dict) -> Part:
         section = signs.pin_profile(head_top(values) + signs.PIN_FROM_BOTTOM,
                                     signs.tenon_t(t) / 2)
         out -= extrude(section, values['head_width'] / 2 + 1, both=True)
+    if values['ground'] == 'post':
+        # Independent of the optional sign-side pin. Its roof faces up when
+        # printed flat; assembled it still admits the same round 3.2 mm pin.
+        out -= extrude(signs.pin_profile(stub_pin_y(values), t / 2),
+                       values['width'] / 2 + 1, both=True)
     if values['cross_bar']:
         out -= _upper_half(values['width'] + 2, lap_span(values), t, lap_centre(values))
     return out
@@ -210,22 +251,37 @@ def build(values: dict) -> Part:
 def audit_exclusions(values: dict) -> list[tuple[float, ...]]:
     """Approved regions, as thin exact boxes: with a pin, each tenon's pin-hole
     roof (signs.pin_profile's 1.33 mm flat, the sign's own exclusion). No
-    other preset needs one. The tests measure the span before excluding it.
+    other blade preset needs one. The post always adds its independent stub
+    hole roof. The tests measure the span before excluding it.
     Approved by the mayor (pst-tl4ac.2, 2026-10-13): option A, mirror S1."""
-    if values['retention'] != 'pin':
-        return []
-    z = signs.tenon_t(values['thickness']) / 2 + signs.PIN_D / 2
-    y, half = head_top(values) + signs.PIN_FROM_BOTTOM, signs.PIN_D / 2
-    return [(x - signs.tenon_w() / 2 - 0.001, y - half, z - 0.001,
-             x + signs.tenon_w() / 2 + 0.001, y + half, z + 0.001) for x in signs.POCKET_XS]
+    regions = []
+    half = signs.PIN_D / 2
+    if values['ground'] == 'post':
+        y, z = stub_pin_y(values), values['thickness'] / 2 + half
+        regions.append((-values['width'] / 2 - 0.001, y - half, z - 0.001,
+                        values['width'] / 2 + 0.001, y + half, z + 0.001))
+    if values['retention'] == 'pin':
+        z = signs.tenon_t(values['thickness']) / 2 + half
+        y = head_top(values) + signs.PIN_FROM_BOTTOM
+        regions.extend((x - signs.tenon_w() / 2 - 0.001, y - half, z - 0.001,
+                        x + signs.tenon_w() / 2 + 0.001, y + half, z + 0.001)
+                       for x in signs.POCKET_XS)
+    return regions
 
 
 PARAMS = (
+    Param('ground', 'enum', 'blade', label='Ground attachment', group='Stake',
+          choices=('blade', 'post')),
+    Param('post_depth', 'number', 40.0, label='Post below shoulders', group='Post',
+          unit='mm', min=30.0, max=200.0, step=1.0),
+    Param('base_plate_t', 'number', DEFAULT_PLATE_T, label='Base plate thickness', group='Post',
+          unit='mm', min=6.0, max=12.0, step=1.0,
+          description='Match the base plate thickness to align the retaining pin.'),
     Param('width', 'number', 40.0, label='Shaft width', group='Stake', unit='mm',
           min=25.0, max=60.0, step=1.0),
     Param('length', 'number', 300.0, label='Length', group='Stake', unit='mm',
           min=150.0, max=MAX_LENGTH, step=1.0,
-          description='Tip to tenon ends: the whole printed length.'),
+          description='Blade only: tip to tenon ends. Post length is derived from post depth.'),
     Param('thickness', 'number', 8.0, label='Thickness', group='Stake', unit='mm',
           min=5.0, max=10.0, step=0.2,
           description="Match the sign's thickness: the tenons are sized from it."),
@@ -250,13 +306,14 @@ SPEC = register(ModelSpec(
     title='Tombstone stake',
     description=('Ground stake for the tombstone sign: a flat blade with a 45-degree '
                  'point and a flared head whose two tenons fit the sign\'s pockets; '
-                 'optional cross-pin and half-lapped cross-bar.'),
+                 'optional cross-pin and half-lapped cross-bar, or a post for the hard-ground base plate.'),
     category_id='household',
     tags=('sign',),
     print_orientation=(0, 0, 1),  # flat, the tenon face on the bed
     params=PARAMS,
     presets=(
         Preset('default', 'Stake (8 mm)', {}),
+        Preset('post', 'Post for base plate (8 mm)', {'ground': 'post'}),
         Preset('long', 'Long (320 mm)', {'length': 320.0}),
         Preset('cross-bar', 'With cross-bar', {'cross_bar': True}),
         Preset('pinned', 'Pinned (8 mm)', {'thickness': 8.0, 'retention': 'pin'}),
