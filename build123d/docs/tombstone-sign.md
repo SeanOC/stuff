@@ -294,7 +294,7 @@ face area against wind. Both blades print flat side by side, as one
 two-solid part, each with its lap notch facing up so neither notch is a
 ceiling. Turn the bar over to assemble.
 
-Printability: every preset audits with no exclusion (worst overhang 45°,
+Printability: every blade preset audits with no exclusion (worst overhang 45°,
 the rim chamfers; no bridge), except the pinned preset. There, each
 tenon's pin hole has the teardrop's 1.33 mm flat roof, listed in
 `audit_exclusions` as the sign lists its own. Both rims carry the 0.4 mm
@@ -375,13 +375,60 @@ the 6/8 mm thickness matrix, round-pin access, movement toward every
 mortise/cheek wall, and the post's actual tenons in the sign's pockets.
 
 
-### Pending load-criterion clarification (pst-iu0k1)
+### Socket load criterion (resolved in pst-iu0k1 rev 6)
 
-The specified **20 N at the sign top / 2° post rotation** cannot yet be
-claimed for the whole assembly. With a perfectly rigid socket ending at
-Z=30, the default post's shoulders start at Z=40 and its head spans
-Z=65…95. The 300 mm sign puts the load at Z=395. An Euler–Bernoulli
-estimate, ignoring socket play and all sign/tenon compliance, gives:
+The **2° under 20 N at the sign top** criterion applies only to socket
+rotation: clearance play plus local plate/buttress/cheek compliance, with
+the post, head and sign treated as rigid. It is not a whole-sign deflection
+or wind-load rating. The default socket estimate is **1.77°: PASS**, without
+changing the 24 mm cheeks, 25 mm gusset run or 5 mm cheek thickness.
+
+Assumptions: both metal screw heads are fully seated and clamp their
+footprints against firm, level ground; the plate bears on that ground;
+full structural perimeters/infill in the socket and its load path; small,
+short-duration elastic deflections. Use E=1650 MPa from
+[Extrudr's PCTG data sheet](https://s3.extrudr.com/extrudr-media/datasheets/tds/tds-en/pctg-TDS-en.pdf).
+The material modulus is an estimate for the print, not a measured printed
+coupon value. Loose heads, soft/uneven ground, creep and reduced effective
+section from sparse infill are outside this estimate. PLA can use the
+same conservative modulus for a short ambient load; PCTG is preferred
+outdoors. This calculation is for the default two-stake configuration.
+
+For the default 240 × 300 sign, the post head is at Z=95 and its top load
+at Z=395. About the plate top Z=6, `M = 20*(395-6) = 7780 N mm`.
+The socket spans `H = 6+24 = 30 mm`, giving a bearing couple
+`R = M/H = 259.33 N`. Clearance play is
+`atan(2*JOINT_CLEARANCE/H) = atan(0.4/30) = 0.764°`.
+The 0.4 mm lead-ins reduce the full-face contact span to 29.2 mm; using
+that span gives 0.785° play and raises the total below to about 1.81°.
+
+| Local elastic term | Hand model at defaults | Rotation |
+| --- | --- | ---: |
+| Wide-face buttress | Cantilever of height h=24, width b=40 (ignores the cheek extensions), thickness `t(z)=max(2.4,25*(1-z/24))`; 2.4 understates the 3.2 mm crest to allow for its chamfers. `delta = 12R/(Eb) * (h/25)^3 * [1/3 + ln(25/2.4)] = 0.1117 mm`; `delta/H` | 0.213° |
+| Plate | Fixed-ended beam between the seated head footprints: `L=160-25=135 mm`, conservative effective width `120-26-8.4=85.6 mm` subtracts both the counterbore and mortise, `I=85.6*6^3/12=1540.8 mm^4`. Ground reaction lever `a=60-0.4=59.6 mm`, uplift `P=M/a=130.54 N`. `delta=P*L^3/(192EI)=0.6580 mm`; `delta/a` | 0.633° |
+| Mortise bearing | An additional compression allowance over a 25 mm path and a 40×2 mm bearing patch: `delta=R*25/(E*80)=0.0491 mm`; `delta/H` | 0.094° |
+| Cheeks | Wind bending is carried by the wide-face buttresses. Conservatively assign R/2 to each cheek as axial pin lift: net area `5*(14.8-3.2)=58 mm^2`; `delta=(R/2)*24/(E*58)=0.0325 mm`; count `delta/H` even though it is along Z | 0.062° |
+| **Elastic sum** | Sum the allowances, including the deliberately conservative pin-lift term | **1.002°** |
+| **Play + elastic** | `0.764 + 1.002` | **1.766° ≤ 2°** |
+
+The plate term assumes rotational restraint at the seated head footprints;
+it does not describe a loose pin-ended plate floating above the ground.
+The 1 mm root fillets and continuous cheek-width buttresses distribute the
+load into the plate; the estimate ignores their added stiffness. Cheek
+net-section stress at the conservative R/2 lift is 2.24 MPa and projected
+pin bearing is `(R/2)/(5*3.2) = 8.10 MPa`. At 6 mm post thickness, the
+1.4 mm stub-hole walls see lift-out retention only, not the wind moment;
+8 mm remains the outdoor default. The raw audits check all unexcluded
+walls and bridges; only the named 1.33 mm pin roofs are excluded.
+
+### Informational whole-assembly deflection
+
+Post/head/sign bending is excluded from the socket criterion by rev 6;
+no new target is set on the unchanged sign joint. With a perfectly rigid
+socket ending at Z=30, the default post's shoulders start at Z=40 and its
+head spans Z=65…95. The 300 mm sign puts the load at Z=395. An
+Euler–Bernoulli estimate, ignoring socket play and sign/tenon compliance,
+gives:
 
 `theta = integral[30..95] 20*(395-z)/(E*I(z)) dz`
 
@@ -392,20 +439,16 @@ reports a flexural modulus of 1650 MPa (bulk material, not a guarantee for
 a particular print). At that modulus the three rotation contributions are
 1.465° + 2.271° + 1.709° = **5.446°**. The idealization omits small edge
 rounds/chamfers. Even at an assumed E=3000 MPa the estimate is 2.995°.
-The 2° whole-post target would need E≈4493 MPa with these sections, before
-any socket or joint compliance.
+These figures describe elastic bending outside the socket criterion; they
+are informational estimates, not an additional acceptance test.
 
-There is also a sign-joint load question: treating the two 7.6 × 5.2 mm
+For context on the unchanged sign joint, treating the two 7.6 × 5.2 mm
 tenon roots as the bending section gives `M = 20*300 = 6000 N mm`,
 `Z = 2*7.6*5.2^2/6 = 68.50 mm^3`, and nominal bending stress **87.6 MPa**.
-That exceeds the same data sheet's 62 MPa flexural strength and 43 MPa
-yield strength. This simple beam calculation does not resolve load sharing
-through shoulder contact and the optional pins; it is not a certified
-assembly load rating. The existing sign documentation already identifies
-the tenons as the weak section.
-
-The mayor must clarify whether 2° means **rotation only within the
-mortise/cheek socket**, excluding post/head/sign bending, or the whole
-post/head assembly. In the latter case a revised load/angle target or
-permission to stiffen the post/joint is needed. The sign joint remains
-unchanged pending that decision. No 20 N whole-assembly rating is asserted.
+The sign's bottom edge bears on the shoulders, so the tenons do not carry
+the moment alone: shoulder contact and the optional pins share the load.
+The 87.6 MPa number is the nominal tenon-only idealization, not a resolved
+assembly stress or a certified load rating. The sign/head joint, already
+identified above as the weak section, limits the assembly in wind. Rev 6
+leaves that joint unchanged; no steel insert, head stiffening or tenon/pin
+redesign is introduced here.

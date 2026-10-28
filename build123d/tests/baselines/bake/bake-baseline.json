@@ -76,6 +76,10 @@
       "oriented_triangles": "fcda794996a09727372bb4b73721f254d45086a86bcbd55a308e91c08bbf6464",
       "vertex_coordinates": "97790034a40ca81f8fb92d06af7a1a3373fdda0d1fbe1a8002ca4ec3db367b05"
     },
+    "holder-tombstone-base/default.stl": {
+      "oriented_triangles": "0dcf5509ba1a8d6e408ee266ef36261fcba97569a7eae4177ffd79f8794ed66a",
+      "vertex_coordinates": "dbe4478ae12b753e63ffbcb27577343431bffdd621f3713adac74d2d6c26a931"
+    },
     "holder-tombstone-sign/default-base.stl": {
       "oriented_triangles": "b92ff9e6017f74907f1ca2333aa9c4675a26b23c333336719e2c3e64e7cd50ac",
       "vertex_coordinates": "58d82ee548423e80029927296681eabbec03a621fd00a195be3e2eda76dc3b9c"
@@ -231,6 +235,10 @@
     "holder-tombstone-stake/pinned.stl": {
       "oriented_triangles": "8282a8485b25b701f0dd9e2f06950b1e977042bee6f6dc8ff6cd22aca845a406",
       "vertex_coordinates": "33a4e20df49fff1b0dc5fa00f22f27111a4d0de1e16bcc1e416950cfb233faf0"
+    },
+    "holder-tombstone-stake/post.stl": {
+      "oriented_triangles": "84e00540fa7289568865ef337d03b00a9d9e62802fd0e2ef206ab2e7e70f35f0",
+      "vertex_coordinates": "1cc905cb71aa8c24033214e0f34fcf592726993dadc923004769461368ed64e9"
     },
     "littletikes-dream-machine-cartridge-holder/blank_back.stl": {
       "oriented_triangles": "7a5ed5b74b8d41a13c362e13e2398bdea2fab9b66d9031faa32dc3ac5b83d911",
@@ -434,6 +442,7 @@
       "holder-spray-can/spray_can",
       "holder-spray-can/spray_can_light",
       "holder-spray-can/spray_can_robust",
+      "holder-tombstone-base/default",
       "holder-tombstone-sign/default",
       "holder-tombstone-sign/one-ams",
       "holder-tombstone-sign/pinned",
@@ -443,6 +452,7 @@
       "holder-tombstone-stake/default",
       "holder-tombstone-stake/long",
       "holder-tombstone-stake/pinned",
+      "holder-tombstone-stake/post",
       "littletikes-dream-machine-cartridge-holder/blank_back",
       "littletikes-dream-machine-cartridge-holder/default",
       "littletikes-dream-machine-cartridge-holder/full_holder",
@@ -487,7 +497,7 @@
     ],
     "schema_version": 1,
     "source_sha": "5dc9c28f3e45b8c3aacb50d139438feb23e95456",
-    "why": "pst-ml7f9: countersink cone clamped to 45\u00b0 half-angle (Sean 2026-10-20 option a)"
+    "why": "pst-ml7f9: countersink cone clamped to 45\u00b0 half-angle (Sean 2026-10-20 option a); pst-iu0k1 adds generated base/default and stake/post rows; existing rows unchanged"
   },
   "rows": {
     "gridfinity-capture-bin/deep.glb": {
@@ -13080,6 +13090,192 @@
       "triangles": 3282,
       "vertices": 1643,
       "volume_mm3": 55588.413261187,
+      "watertight": true,
+      "winding_consistent": true
+    },
+    "holder-tombstone-base/default.glb": {
+      "asset": {
+        "version": "2.0"
+      },
+      "meshes": [
+        {
+          "primitive_groups": [
+            {
+              "attributes": {
+                "NORMAL": {
+                  "count": 6954,
+                  "count_inventory": {
+                    "102": 2,
+                    "106": 2,
+                    "138": 2,
+                    "139": 2,
+                    "192": 2,
+                    "252": 2,
+                    "254": 10,
+                    "3": 4,
+                    "30": 2,
+                    "32": 2,
+                    "388": 1,
+                    "392": 1,
+                    "4": 44,
+                    "5": 4,
+                    "58": 2,
+                    "66": 4,
+                    "8": 1,
+                    "83": 8,
+                    "98": 4
+                  }
+                },
+                "POSITION": {
+                  "count": 6954,
+                  "count_inventory": {
+                    "102": 2,
+                    "106": 2,
+                    "138": 2,
+                    "139": 2,
+                    "192": 2,
+                    "252": 2,
+                    "254": 10,
+                    "3": 4,
+                    "30": 2,
+                    "32": 2,
+                    "388": 1,
+                    "392": 1,
+                    "4": 44,
+                    "5": 4,
+                    "58": 2,
+                    "66": 4,
+                    "8": 1,
+                    "83": 8,
+                    "98": 4
+                  },
+                  "max": [
+                    0.120000000,
+                    0.060000000,
+                    0.030000000
+                  ],
+                  "min": [
+                    -0.120000000,
+                    -0.060000000,
+                    0.000000000
+                  ]
+                },
+                "TEXCOORD_0": {
+                  "count": 6954,
+                  "count_inventory": {
+                    "102": 2,
+                    "106": 2,
+                    "138": 2,
+                    "139": 2,
+                    "192": 2,
+                    "252": 2,
+                    "254": 10,
+                    "3": 4,
+                    "30": 2,
+                    "32": 2,
+                    "388": 1,
+                    "392": 1,
+                    "4": 44,
+                    "5": 4,
+                    "58": 2,
+                    "66": 4,
+                    "8": 1,
+                    "83": 8,
+                    "98": 4
+                  }
+                },
+                "indices": {
+                  "count": 22884,
+                  "count_inventory": {
+                    "1176": 1,
+                    "1188": 1,
+                    "12": 4,
+                    "168": 2,
+                    "192": 4,
+                    "24": 1,
+                    "294": 8,
+                    "3": 4,
+                    "306": 2,
+                    "318": 2,
+                    "492": 4,
+                    "570": 2,
+                    "6": 44,
+                    "732": 2,
+                    "738": 2,
+                    "756": 12,
+                    "84": 2,
+                    "90": 2
+                  }
+                }
+              },
+              "primitives": 99,
+              "schema": {
+                "accessors": {
+                  "NORMAL": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "POSITION": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "TEXCOORD_0": {
+                    "componentType": 5126,
+                    "type": "VEC2"
+                  },
+                  "indices": {
+                    "componentType": 5123,
+                    "type": "SCALAR"
+                  }
+                },
+                "mode": 4
+              }
+            }
+          ]
+        }
+      ],
+      "nodes": [
+        {
+          "mesh": 0,
+          "rotation": [
+            -0.707106781,
+            0.000000000,
+            0.000000000,
+            0.707106781
+          ]
+        }
+      ],
+      "scene": 0,
+      "scenes": [
+        {
+          "nodes": [
+            0
+          ]
+        }
+      ]
+    },
+    "holder-tombstone-base/default.png": {
+      "dimensions": [
+        400,
+        400
+      ]
+    },
+    "holder-tombstone-base/default.stl": {
+      "bounds_mm": [
+        [
+          -120.000000000,
+          -60.000000000,
+          0.000000000
+        ],
+        [
+          120.000000000,
+          60.000000000,
+          30.000000000
+        ]
+      ],
+      "triangles": 7628,
+      "vertices": 3806,
+      "volume_mm3": 198388.412553398,
       "watertight": true,
       "winding_consistent": true
     },
@@ -51375,6 +51571,173 @@
       "triangles": 2760,
       "vertices": 1378,
       "volume_mm3": 96699.110180384,
+      "watertight": true,
+      "winding_consistent": true
+    },
+    "holder-tombstone-stake/post.glb": {
+      "asset": {
+        "version": "2.0"
+      },
+      "meshes": [
+        {
+          "primitive_groups": [
+            {
+              "attributes": {
+                "NORMAL": {
+                  "count": 2612,
+                  "count_inventory": {
+                    "100": 4,
+                    "102": 2,
+                    "114": 4,
+                    "192": 1,
+                    "200": 1,
+                    "208": 1,
+                    "3": 2,
+                    "34": 4,
+                    "4": 38,
+                    "44": 4,
+                    "52": 4,
+                    "66": 2,
+                    "67": 2,
+                    "8": 1
+                  }
+                },
+                "POSITION": {
+                  "count": 2612,
+                  "count_inventory": {
+                    "100": 4,
+                    "102": 2,
+                    "114": 4,
+                    "192": 1,
+                    "200": 1,
+                    "208": 1,
+                    "3": 2,
+                    "34": 4,
+                    "4": 38,
+                    "44": 4,
+                    "52": 4,
+                    "66": 2,
+                    "67": 2,
+                    "8": 1
+                  },
+                  "max": [
+                    0.045000000,
+                    0.129600000,
+                    0.008000000
+                  ],
+                  "min": [
+                    -0.045000000,
+                    0.000000000,
+                    0.000000000
+                  ]
+                },
+                "TEXCOORD_0": {
+                  "count": 2612,
+                  "count_inventory": {
+                    "100": 4,
+                    "102": 2,
+                    "114": 4,
+                    "192": 1,
+                    "200": 1,
+                    "208": 1,
+                    "3": 2,
+                    "34": 4,
+                    "4": 38,
+                    "44": 4,
+                    "52": 4,
+                    "66": 2,
+                    "67": 2,
+                    "8": 1
+                  }
+                },
+                "indices": {
+                  "count": 8748,
+                  "count_inventory": {
+                    "156": 4,
+                    "18": 1,
+                    "192": 2,
+                    "195": 2,
+                    "204": 4,
+                    "3": 2,
+                    "306": 2,
+                    "396": 4,
+                    "480": 4,
+                    "570": 1,
+                    "594": 1,
+                    "6": 38,
+                    "618": 1,
+                    "96": 4
+                  }
+                }
+              },
+              "primitives": 70,
+              "schema": {
+                "accessors": {
+                  "NORMAL": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "POSITION": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "TEXCOORD_0": {
+                    "componentType": 5126,
+                    "type": "VEC2"
+                  },
+                  "indices": {
+                    "componentType": 5123,
+                    "type": "SCALAR"
+                  }
+                },
+                "mode": 4
+              }
+            }
+          ]
+        }
+      ],
+      "nodes": [
+        {
+          "mesh": 0,
+          "rotation": [
+            -0.707106781,
+            0.000000000,
+            0.000000000,
+            0.707106781
+          ]
+        }
+      ],
+      "scene": 0,
+      "scenes": [
+        {
+          "nodes": [
+            0
+          ]
+        }
+      ]
+    },
+    "holder-tombstone-stake/post.png": {
+      "dimensions": [
+        400,
+        400
+      ]
+    },
+    "holder-tombstone-stake/post.stl": {
+      "bounds_mm": [
+        [
+          -45.000000000,
+          0.000000000,
+          0.000000000
+        ],
+        [
+          45.000000000,
+          129.600006104,
+          8.000000000
+        ]
+      ],
+      "triangles": 2916,
+      "vertices": 1458,
+      "volume_mm3": 49713.656892066,
       "watertight": true,
       "winding_consistent": true
     },
