@@ -176,6 +176,7 @@ def test_mount_selection_params_are_filename_flagged():
     """Mount selections and model dimensions/style distinguish downloads."""
     flagged = [(s.name, p.name) for s in all_models() for p in s.params if p.filename]
     assert set(flagged) == {
+        ("holder_bench_lip_clip", "height_clearance"),
         ("holder_spool_cradle", "mount_style"),
         ("openconnect_gridfinity_shelf", "baseplate_style"),
         ("openconnect_gridfinity_shelf", "gridfinity_width_grids"),

@@ -251,6 +251,10 @@ export const BUILD123D_CATALOG: Record<string, CatalogEntry> = {
     categoryId: "multiboard",
     blurb: "Single spool bookshelf cradle with arc saddles, closed truss webs and two full-height Multiconnect channels. Flange-rim support; standing PETG/PCTG print with support allowed only in the mount pockets.",
   },
+  holder_bench_lip_clip: {
+    categoryId: "household",
+    blurb: "Fit-test coupon for the bench-lip projector clamp: five clearances, print the kit and keep the one that seats without rocking.",
+  },
   holder_cup_lid: {
     categoryId: "multiboard",
     blurb: "Curved cup-lid cradle with shoulder-retaining end channels and two Multibuild locating pins.",

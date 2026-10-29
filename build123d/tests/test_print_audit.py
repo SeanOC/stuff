@@ -512,6 +512,7 @@ def test_empty_part_raises():
 _SPECS = all_models()
 
 
+from holders.bench_lip_clip import audit_exclusions as bench_lip_clip_exclusions
 from holders.cup_lid import audit_exclusions as cup_lid_exclusions
 from holders.openconnect_drawer import audit_exclusions as drawer_exclusions
 from holders.openconnect_plate import audit_exclusions as plate_exclusions
@@ -526,6 +527,7 @@ from holders.underware_text_label import audit_exclusions as text_label_families
 from holders.underware_path_channels import audit_exclusions as path_families
 
 _MODEL_EXCLUSIONS = {
+    'holder_bench_lip_clip': bench_lip_clip_exclusions,
     'holder_cup_lid': cup_lid_exclusions,
     'openconnect_plate': plate_exclusions,
     'openconnect_drawer': drawer_exclusions,
