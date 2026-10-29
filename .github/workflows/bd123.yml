@@ -10,6 +10,9 @@
 #               plus the spool cradle mount contracts (registry-sized builds)
 #   audit_full  the cradle corner sweep, 6 pytest-split shards; PRs that touch
 #               model/audit code, every push to main, and nightly
+# pst-3bga4: on pull_request, fast and audit run only what the change can
+# affect (`changes` emits mode=full|scoped|skip and k_expr); push to main and
+# schedule always run everything.
 # A command-line -m REPLACES pyproject's addopts "-m 'not upstream'", so every
 # expression below ends with "and not upstream" (PR CI stays offline —
 # build123d/reference/FETCH.md).
@@ -29,6 +32,10 @@ on:
 jobs:
   fast:
     name: build123d fast
+    needs: changes
+    # !cancelled() so a skipped `changes` (push/schedule) or a failed one runs
+    # everything: its outputs are then empty, so K_EXPR is empty too.
+    if: ${{ !cancelled() && needs.changes.outputs.mode != 'skip' }}
     runs-on: ubuntu-latest
     # pst-bnya8: run 38038626797 spent 24m57s before export; allow ~50%
     # headroom on a ~26m total (export took 39s in run 38016264899).
@@ -54,7 +61,11 @@ jobs:
         # serial suite 1.14 GB, cradle file <= 844 MB per xdist worker; 16 GB).
         # --dist load, not loadfile: test_spool_cradle.py must spread across
         # workers. -rf names every failure.
-        run: uv run pytest tests/ -q -n 4 --dist load -rf --tb=short -m "not audit and not budget and not upstream"
+        env:
+          K_EXPR: ${{ needs.changes.outputs.k_expr }}
+        run: |
+          scope=(); if [ -n "$K_EXPR" ]; then scope=(-k "$K_EXPR"); fi
+          uv run pytest tests/ -q -n 4 --dist load -rf --tb=short -m "not audit and not budget and not upstream" "${scope[@]}"
       - name: audit budgets (serial)
         # The per-model audit budget is a serial CPU-time measurement, so it
         # skips under xdist (test_print_audit.py); this step is where the
@@ -62,7 +73,10 @@ jobs:
         # audit, so the audit cache is off here (the helper also asserts it).
         env:
           BD_AUDIT_CACHE: off
-        run: uv run pytest tests/ -q -n 0 -rf --tb=short -m "budget and not upstream"
+          K_EXPR: ${{ needs.changes.outputs.k_expr }}
+        run: |
+          scope=(); if [ -n "$K_EXPR" ]; then scope=(-k "$K_EXPR"); fi
+          uv run pytest tests/ -q -n 0 -rf --tb=short -m "budget and not upstream" "${scope[@]}"
       - name: export all models (STL + GLB + PNG)
         run: uv run python scripts/export.py
       - name: upload artifacts (STL/GLB/PNG + viewer)
@@ -80,6 +94,8 @@ jobs:
 
   audit:
     name: build123d audit
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.mode != 'skip' }}
     runs-on: ubuntu-latest
     # pst-hruv1: the same 164-item selection swung 18.8-32.5 min across main runs
     # 38299848019 / 38334657942 / 38377646596 before #193 and ran 34m57s clean in
@@ -108,10 +124,14 @@ jobs:
           restore-keys: bd-audit-${{ hashFiles('build123d/tests/print_audit.py', 'build123d/tests/audit_cache.py', 'build123d/uv.lock') }}-${{ matrix.group || 'audit' }}-
       - name: print audits (presets, reproducers, other models)
         # pst-rir4i: one JSON row per audit item (+ measurement rows) for
-        # reviewers; reader recipe in build123d/ci/README.md.
+        # reviewers; reader recipe in build123d/ci/README.md. A scoped PR run
+        # writes rows for the selected models only.
         env:
           BD_AUDIT_OUT: out/audit/rows.jsonl
-        run: uv run pytest tests/ -q -n 4 --dist load -rf --tb=short -m "audit and not audit_full and not upstream"
+          K_EXPR: ${{ needs.changes.outputs.k_expr }}
+        run: |
+          scope=(); if [ -n "$K_EXPR" ]; then scope=(-k "$K_EXPR"); fi
+          uv run pytest tests/ -q -n 4 --dist load -rf --tb=short -m "audit and not audit_full and not upstream" "${scope[@]}"
       - name: upload audit rows
         if: always()
         uses: actions/upload-artifact@v4
@@ -121,13 +141,15 @@ jobs:
           retention-days: 14
 
   changes:
-    # Decides whether a PR runs the cradle corner sweep. pull_request only: on
-    # push to main and on schedule audit_full always runs. No checkout needed —
-    # on pull_request dorny/paths-filter lists the PR's files via the API.
+    # Decides whether a PR runs the cradle corner sweep, and the fast/audit
+    # scope (pst-3bga4). pull_request only: on push to main and on schedule
+    # every job runs in full. dorny/paths-filter lists the PR's files via the
+    # API; the checkout + sync are for the selector, which reads the registry.
     name: detect model/audit changes
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
+    defaults: { run: { working-directory: build123d } }
     permissions:
       contents: read
       # paths-filter calls listFiles on the PR; without pull-requests: read the
@@ -135,14 +157,35 @@ jobs:
       pull-requests: read
     outputs:
       cradle: ${{ steps.filter.outputs.cradle }}
+      mode: ${{ steps.select.outputs.mode }}
+      k_expr: ${{ steps.select.outputs.k_expr }}
     steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: sync env (pinned via uv.lock)
+        run: uv sync --frozen
       - name: Filter paths
         id: filter
         uses: dorny/paths-filter@v3
         with:
+          list-files: shell
           filters: |
+            any:
+              - '**'
             cradle:
-              - 'build123d/holders/**'
+              # the swept holder modules, the holders modules they import
+              # (tombstone_sign: label_card, sign_ghost, signs; spool_cradle:
+              # label_card) and the registry + bed constants they all use
+              - 'build123d/holders/cartridge_holder.py'
+              - 'build123d/holders/gridfinity_capture_bin.py'
+              - 'build123d/holders/label_card.py'
+              - 'build123d/holders/openconnect_drawer.py'
+              - 'build123d/holders/printer.py'
+              - 'build123d/holders/registry.py'
+              - 'build123d/holders/sign_ghost.py'
+              - 'build123d/holders/signs.py'
+              - 'build123d/holders/spool_cradle.py'
+              - 'build123d/holders/tombstone_sign.py'
               - 'build123d/labels/**'
               - 'build123d/multibuild/**'
               - 'build123d/openconnect/**'
@@ -151,24 +194,32 @@ jobs:
               - 'build123d/tests/audit_record.py'
               - 'build123d/tests/mount_contracts.py'
               - 'build123d/tests/test_spool_cradle.py'
-              # every audit_full carrier + its tests/ helpers
-              # (tests/test_ci_filters.py fails when one is missing)
-              - 'build123d/tests/test_audit_record.py'
-              - 'build123d/tests/test_cartridge_holder.py'
-              - 'build123d/tests/test_tombstone_sign.py'
               # capture-bin endpoint sweep lives in audit_full (pst-8vwop)
               - 'build123d/gridfinity/**'
               - 'build123d/tests/test_gridfinity_capture_bin.py'
               # drawer endpoint/corner sweep lives in audit_full (pst-t0ob3.2)
               - 'build123d/drawer/**'
               - 'build123d/tests/test_openconnect_drawer.py'
-              - 'build123d/tests/test_openconnect_drawer_container.py'
               - 'build123d/tests/openconnect_drawer_inventory.py'
               - 'build123d/tests/parity.py'
               - 'build123d/tests/test_honeycomb.py'
               - 'build123d/tests/conftest.py'
               - 'build123d/pyproject.toml'
               - 'build123d/uv.lock'
+              # the other files carrying audit_full cases (tests/test_ci_filters.py
+              # fails when one, or a tests/ helper it imports, is missing)
+              - 'build123d/tests/test_audit_record.py'
+              - 'build123d/tests/test_cartridge_holder.py'
+              - 'build123d/tests/test_openconnect_drawer_container.py'
+              - 'build123d/tests/test_tombstone_sign.py'
+      - name: Decide fast/audit scope
+        id: select
+        # Prints the mode and -k expression to the log and step summary. Every
+        # -k term is a registry name, slug or file stem matching TERM_RE, and
+        # K_EXPR reaches pytest through env, never the run: line.
+        env:
+          CHANGED_PATHS: ${{ steps.filter.outputs.any_files }}
+        run: uv run python scripts/select-bd-tests.py --changed-paths "$CHANGED_PATHS"
 
   audit_full:
     name: build123d audit (full sweep)
