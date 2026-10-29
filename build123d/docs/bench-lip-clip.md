@@ -9,7 +9,9 @@ as a five-coupon kit to dial in the grip before the full clamp is drawn.
 
 Sean's rough tape measurements (2026-10-28), which the coupon exists to refine:
 
-- Slab (bench top) thickness ≈ 2 in = **50.8 mm** → `slab_thickness` default.
+- Slab (bench top) thickness ≈ 2 in = **50.8 mm** (the original default).
+- Re-measured 2026-10-29 with a better method: slab thickness **38 mm** →
+  `slab_thickness` default.
 - Lip depth (overhang beyond the pumpkin end block) ≈ 1/2 in = **12.7 mm** →
   `hook_depth` default 11.5 = 12.7 − 1.2 mm margin, so the hook clears the end
   block even near the ends.
