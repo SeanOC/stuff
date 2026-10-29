@@ -1,12 +1,3 @@
-# PROPOSED bd123.yml — change-scoped fast/audit selection (bead pst-3bga4).
-#
-# Worker policy forbids editing .github/workflows/, so this is the full
-# proposed replacement for .github/workflows/bd123.yml; activation steps are
-# in build123d/ci/README.md. Changes vs main: the `changes` job checks out,
-# syncs and runs build123d/scripts/select-bd-tests.py; fast and audit need it
-# and skip or append -k when it scopes; the cradle filter's holders/** entry
-# becomes the holder modules the sweep imports. Job names are unchanged.
-#
 # build123d PoC toolchain (Sean 2026-08-30). ADVISORY jobs — deliberately NOT
 # required status checks while the PoC runs, and path-filtered at the workflow
 # level (safe because they are not required; the required checks in ci.yml must
