@@ -2,6 +2,184 @@
   "schemaVersion": 1,
   "models": [
     {
+      "slug": "holder-bench-lip-clip",
+      "engine": "build123d",
+      "title": "Bench lip clip (fit coupon)",
+      "blurb": "Fit-test coupon for a clip that hooks a bench top's lip: top jaw on the slab, spine down its edge, hook under the overhang. The five-coupon fit kit varies the vertical clearance and debosses it on the spine; print them, seat each on the lip and keep the snug one. Prints on its side, no supports.",
+      "categoryId": "household",
+      "params": [
+        {
+          "name": "slab_thickness",
+          "label": "Slab thickness",
+          "group": "Bench",
+          "unit": "mm",
+          "kind": "number",
+          "default": 50.8,
+          "min": 40,
+          "max": 70,
+          "step": 0.1
+        },
+        {
+          "name": "height_clearance",
+          "label": "Height clearance",
+          "group": "Fit",
+          "unit": "mm",
+          "kind": "number",
+          "default": 0.8,
+          "min": -0.5,
+          "max": 4.0,
+          "step": 0.1,
+          "filename": true
+        },
+        {
+          "name": "hook_depth",
+          "label": "Hook depth under the lip",
+          "group": "Bench",
+          "unit": "mm",
+          "kind": "number",
+          "default": 11.5,
+          "min": 6,
+          "max": 20,
+          "step": 0.5
+        },
+        {
+          "name": "top_reach",
+          "label": "Top jaw reach",
+          "group": "Shape",
+          "unit": "mm",
+          "kind": "number",
+          "default": 30,
+          "min": 15,
+          "max": 60,
+          "step": 1
+        },
+        {
+          "name": "wall",
+          "label": "Wall thickness",
+          "group": "Shape",
+          "unit": "mm",
+          "kind": "number",
+          "default": 5,
+          "min": 3,
+          "max": 8,
+          "step": 0.5
+        },
+        {
+          "name": "edge_gap",
+          "label": "Edge-face clearance",
+          "group": "Fit",
+          "unit": "mm",
+          "kind": "number",
+          "default": 0.5,
+          "min": 0,
+          "max": 2,
+          "step": 0.1
+        },
+        {
+          "name": "coupon_length",
+          "label": "Coupon length",
+          "group": "Shape",
+          "unit": "mm",
+          "kind": "number",
+          "default": 25,
+          "min": 15,
+          "max": 60,
+          "step": 1
+        },
+        {
+          "name": "lead_in",
+          "label": "Jaw-tip lead-in",
+          "group": "Fit",
+          "unit": "mm",
+          "kind": "number",
+          "default": 1.5,
+          "min": 0,
+          "max": 3,
+          "step": 0.5
+        },
+        {
+          "name": "jaw_root_radius",
+          "label": "Jaw root fillet",
+          "group": "Shape",
+          "unit": "mm",
+          "kind": "number",
+          "default": 1.0,
+          "min": 1.0,
+          "max": 2.0,
+          "step": 0.5
+        },
+        {
+          "name": "bed_chamfer",
+          "label": "Bed chamfer",
+          "group": "Shape",
+          "unit": "mm",
+          "kind": "number",
+          "default": 0.4,
+          "min": 0.3,
+          "max": 0.5,
+          "step": 0.1
+        },
+        {
+          "name": "label_text",
+          "label": "Label text",
+          "description": "Blank = the signed height clearance, e.g. +0.8",
+          "group": "Label",
+          "kind": "string",
+          "default": "",
+          "maxLength": 24,
+          "charset": "printable-ascii"
+        },
+        {
+          "name": "text_size",
+          "label": "Text size",
+          "group": "Label",
+          "unit": "mm",
+          "kind": "number",
+          "default": 9.0,
+          "min": 8.1,
+          "max": 12,
+          "step": 0.1
+        }
+      ],
+      "presets": [
+        {
+          "id": "fit-plus-0-3",
+          "label": "Fit kit +0.3 mm",
+          "values": {
+            "height_clearance": 0.3
+          }
+        },
+        {
+          "id": "fit-plus-0-8",
+          "label": "Fit kit +0.8 mm",
+          "values": {
+            "height_clearance": 0.8
+          }
+        },
+        {
+          "id": "fit-plus-1-3",
+          "label": "Fit kit +1.3 mm",
+          "values": {
+            "height_clearance": 1.3
+          }
+        },
+        {
+          "id": "fit-plus-1-8",
+          "label": "Fit kit +1.8 mm",
+          "values": {
+            "height_clearance": 1.8
+          }
+        },
+        {
+          "id": "fit-plus-2-3",
+          "label": "Fit kit +2.3 mm",
+          "values": {
+            "height_clearance": 2.3
+          }
+        }
+      ]
+    },
+    {
       "slug": "holder-tombstone-sign",
       "engine": "build123d",
       "title": "Tombstone sign",
