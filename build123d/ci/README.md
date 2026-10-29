@@ -194,8 +194,9 @@ independently. Against the live workflow it changes:
   `tombstone_sign` sizes against the `printer.py` bed. The other 15 entries are
   unchanged, `labels/**` and `test_honeycomb.py` included. Three entries are
   added: `test_cartridge_holder.py`, `test_openconnect_drawer_container.py` and
-  `test_tombstone_sign.py`. Together with the three already listed, they are
-  the six files that carry `audit_full` cases.
+  `test_tombstone_sign.py`. `tests/test_audit_record.py` also carries one
+  `audit_full` case and is in neither the live nor this filter (pre-existing,
+  filed separately); `test_honeycomb.py` is listed but carries none.
 
 Job names are unchanged. `audit_full` and its gate are unchanged.
 
@@ -206,11 +207,16 @@ Job names are unchanged. `audit_full` and its gate are unchanged.
 `scripts/manifest.py`, `tests/{print_audit,audit_cache,mount_contracts,conftest}.py`,
 `pyproject.toml`, `uv.lock`, the selector itself or the workflow. Any path it
 cannot attribute is also `full`: holders helpers that register no model,
-`drawer/`, `gridfinity/`, `underware/`, other `scripts/`, `README.md`.
-`scoped` when every change is a registered model module, a `tests/test_*.py`,
-`manifest.json` (→ `test_manifest`), `tests/baselines/**` (→ the two baseline
-tests), a section golden `docs/renders/sections/<slug>.svg` (→ that model), or
-a doc or test data file named only by tests or model modules. `skip` when only
+`drawer/`, `gridfinity/`, `underware/`, other `scripts/`, `README.md`. So is a
+change that affects no model module (`manifest.json`, `tests/baselines/**`
+or a non-model test file alone): there is nothing to scope to, and the
+`budget` tier, whose ids name only models, would collect nothing and exit 5.
+`scoped` when at least one model module is affected and every change is a
+registered model module, its `tests/test_<stem>.py` (counts as that module's
+change), another `tests/test_*.py`, `manifest.json` (→ `test_manifest`),
+`tests/baselines/**` (→ the two baseline tests), a section golden
+`docs/renders/sections/<slug>.svg` (→ that model), or a doc or test data file
+named only by tests or model modules. `skip` when only
 `ci/`, `tests/.test_durations`, render PNGs or docs nothing names changed.
 
 The scoped `-k` is `(<mine>) or not (<others>)`. `<mine>` lists every registry
@@ -231,14 +237,16 @@ audit tier collects 133 of 606 items. That includes all 34 of
 (~700 s on CI) bounds that job's wall time. The fast tier collects 948 of
 1939. Library tests that import no model are kept, because they cannot be
 told apart from registry-wide tests by name. The real #247 also touched
-`registry.py`, so it would still be `full`. Known gap: a loop over every model
-inside ANOTHER model's test file is dropped with that file (e.g.
-`test_cylindrical.py`, which calls `all_models()` five times). The full main
-and nightly runs still catch it.
+`registry.py`, so it would still be `full`. Known gap, in principle: a test in
+an UNCHANGED model's file that checks the changed model without naming it in
+its id is dropped with that file. The #249 review scanned all 20 model modules
+in both tiers and found no instance (cross-model loops parametrize by model
+name, so `<mine>` keeps them). The full main and nightly runs would catch one.
 
 `tests/test_select_bd_tests.py` runs in fast. It checks a path table → mode and
 `<mine>`, and runs `pytest --collect-only` in a subprocess (~2 s each, not a
-hang) to check the selected file set for #247's files.
+hang) to check the selected file set for #247's files, and that every tier
+(fast, budget, audit) collects at least one item for a scoped selection.
 
 ## Activate (mayor, on a PR branch)
 

@@ -24,6 +24,7 @@ _spec.loader.exec_module(sel)
 
 AUDIT = "audit and not audit_full and not upstream"
 FAST = "not audit and not budget and not upstream"
+BUDGET = "budget and not upstream"
 # PR #247's model-scoped files (the PR itself also touched registry.py, so
 # the real PR is full): one model module, its test, its docs and manifest.
 PR_247 = [
@@ -78,6 +79,14 @@ def collected(markexpr, k_expr, *paths):
     ["build123d/docs/design-guidelines.md"],  # named by tests/print_audit.py
     ["build123d/docs/renders/sections/not-a-model.svg"],
     ["build123d/tests/test_x;rm -rf.py"],
+    # No model module affected: nothing to scope to, and the budget tier
+    # would collect zero items (codex #249 round 1).
+    ["build123d/manifest.json"],
+    ["build123d/tests/test_honeycomb.py"],
+    ["build123d/docs/spool-cradle-validation.md"],
+    ["build123d/tests/baselines/geometry/geometry-baseline.json"],
+    ["build123d/tests/gridfinity_capture_bin_edges.json"],
+    ["build123d/tests/test_bd_render_service.py"],  # #181
 ])
 def test_full(paths, registry):
     assert sel.classify(paths, registry).mode == "full"
@@ -98,11 +107,11 @@ def test_skip(paths, registry):
 
 
 @pytest.mark.parametrize("paths, mine", [
-    (["build123d/manifest.json"], {"test_manifest"}),
-    (["build123d/tests/test_honeycomb.py"], {"test_honeycomb"}),
-    (["build123d/docs/spool-cradle-validation.md"], {"test_spool_cradle"}),
-    (["build123d/tests/baselines/geometry/geometry-baseline.json"], set(sel.BASELINE_READERS)),
-    (["build123d/tests/gridfinity_capture_bin_edges.json"], {"test_gridfinity_capture_bin"}),
+    # A model's own test file counts as a change to that model.
+    (["build123d/tests/test_cup_lid.py"], {"holder_cup_lid", "holder-cup-lid", "test_cup_lid"}),
+    (["build123d/holders/cup_lid.py", "build123d/manifest.json",
+      "build123d/tests/baselines/geometry/geometry-baseline.json"],
+     {"holder_cup_lid", "holder-cup-lid", "test_cup_lid", "test_manifest", *sel.BASELINE_READERS}),
     # 1:N modules select every model they register.
     (["build123d/holders/smoke.py"],
      {"smoke_opengrid_tile_1x1", "smoke-opengrid-tile-1x1", "smoke_multiconnect_roundhead",
@@ -133,9 +142,23 @@ def test_unchanged_models_are_the_dropped_terms(registry):
     assert {"holder_spool_cradle", "test_spool_cradle", "underware_l"} <= dropped
 
 
-def test_a_changed_test_file_alone_drops_only_other_models():
-    got = sel.classify(["build123d/tests/test_honeycomb.py"])
-    assert got.k_expr.startswith("(test_honeycomb) or not (")
+def test_a_non_model_test_file_rides_along_with_a_model_change():
+    got = sel.classify(["build123d/holders/cup_lid.py", "build123d/tests/test_honeycomb.py"])
+    assert got.mode == "scoped"
+    assert {"test_honeycomb", "holder_cup_lid"} <= mine_terms(got.k_expr)
+
+
+@pytest.mark.parametrize("paths", [
+    ["build123d/holders/cup_lid.py"],
+    ["build123d/tests/test_cup_lid.py"],
+    ["build123d/docs/renders/sections/holder-cup-lid.svg"],
+])
+@pytest.mark.parametrize("markexpr", [FAST, AUDIT, BUDGET])
+def test_every_tier_collects_something_when_scoped(paths, markexpr):
+    # pytest exits 5 on an empty selection, so an empty tier is a red job.
+    got = sel.classify(paths)
+    assert got.mode == "scoped"
+    assert sum(collected(markexpr, got.k_expr).values()) >= 1
 
 
 def test_github_output(tmp_path, monkeypatch):

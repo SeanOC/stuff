@@ -8,7 +8,10 @@ convention as the repo-root scripts/select-sweep-tests.py) and decides:
   full    — a shared input changed (SHARED_FILES / SHARED_PREFIXES, this
             script, the workflow), a path the registry cannot attribute to
             a model changed, or no change list is available (push to main,
-            schedule, filter failure): run every test.
+            schedule, filter failure), or no model module is affected
+            (manifest.json, baselines or a non-model test file alone):
+            run every test. There is nothing to scope to then, and the
+            budget tier, whose ids name only models, would collect nothing.
   scoped  — only registered model modules (holders/<stem>.py), test files
             (tests/test_*.py), manifest.json, baselines, docs, test data and
             NEUTRAL paths changed: run the K_EXPR selection below. A section
@@ -16,6 +19,8 @@ convention as the repo-root scripts/select-sweep-tests.py) and decides:
             change; any other docs/ file or non-.py file under tests/ counts
             as a change to the model modules and test files that name it,
             and is full when other code (or, under tests/, nothing) does.
+            tests/test_<stem>.py of a model module counts as that module's
+            change.
   skip    — only NEUTRAL paths changed (ci/, shard durations, render PNGs,
             docs no code names): run nothing.
 
@@ -211,6 +216,8 @@ def classify(paths: list[str], registry: Registry | None = None) -> Selection:
             changed.add(m.group(1))
         elif m := TEST_RE.match(rel):
             mine.add(m.group(1))
+            if (stem := m.group(1).removeprefix("test_")) in modules:
+                changed.add(stem)
         elif m := SECTION_RE.match(rel):
             if m.group(1) not in registry.slugs:
                 return Selection("full", reason=f"{path} names no registered slug")
@@ -232,6 +239,10 @@ def classify(paths: list[str], registry: Registry | None = None) -> Selection:
         return Selection("skip", reason="no build123d test input changed")
 
     affected = affected_modules(changed, modules)
+    if not affected:
+        # Nothing to scope to: `<mine>` would name no model, and the budget
+        # tier (keyed only by model name) would collect nothing and exit 5.
+        return Selection("full", reason="no model module changed")
     for stem in affected:
         mine.update(module_terms(stem, modules, require_tests=False))
     others: set[str] = set()
