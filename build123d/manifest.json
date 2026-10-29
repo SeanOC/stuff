@@ -180,6 +180,162 @@
       ]
     },
     {
+      "slug": "holder-bench-width-saddle",
+      "engine": "build123d",
+      "title": "Bench width saddle (fit coupon)",
+      "blurb": "Fit-test coupon for a saddle that spans a bench top across its width: a flat bar on the slab top with a short cheek down each long edge. The five-coupon fit kit varies the width clearance and debosses it on the bar; print them, drop each over the top and keep the snug one. Prints on its side, no supports.",
+      "categoryId": "household",
+      "params": [
+        {
+          "name": "bench_width",
+          "label": "Bench top width",
+          "group": "Bench",
+          "unit": "mm",
+          "kind": "number",
+          "default": 310,
+          "min": 250,
+          "max": 315,
+          "step": 0.5
+        },
+        {
+          "name": "width_clearance",
+          "label": "Width clearance",
+          "group": "Fit",
+          "unit": "mm",
+          "kind": "number",
+          "default": 1.0,
+          "min": -2.0,
+          "max": 4.0,
+          "step": 0.1,
+          "filename": true
+        },
+        {
+          "name": "cheek_depth",
+          "label": "Cheek depth down the edge",
+          "group": "Bench",
+          "unit": "mm",
+          "kind": "number",
+          "default": 11.5,
+          "min": 6,
+          "max": 20,
+          "step": 0.5
+        },
+        {
+          "name": "wall",
+          "label": "Wall thickness",
+          "group": "Shape",
+          "unit": "mm",
+          "kind": "number",
+          "default": 4,
+          "min": 3,
+          "max": 6,
+          "step": 0.5
+        },
+        {
+          "name": "coupon_length",
+          "label": "Coupon length",
+          "group": "Shape",
+          "unit": "mm",
+          "kind": "number",
+          "default": 15,
+          "min": 15,
+          "max": 60,
+          "step": 1
+        },
+        {
+          "name": "lead_in",
+          "label": "Cheek-tip lead-in",
+          "group": "Fit",
+          "unit": "mm",
+          "kind": "number",
+          "default": 1.5,
+          "min": 0,
+          "max": 3,
+          "step": 0.5
+        },
+        {
+          "name": "jaw_root_radius",
+          "label": "Cheek root fillet",
+          "group": "Shape",
+          "unit": "mm",
+          "kind": "number",
+          "default": 1.0,
+          "min": 1.0,
+          "max": 2.0,
+          "step": 0.5
+        },
+        {
+          "name": "bed_chamfer",
+          "label": "Bed chamfer",
+          "group": "Shape",
+          "unit": "mm",
+          "kind": "number",
+          "default": 0.4,
+          "min": 0.3,
+          "max": 0.5,
+          "step": 0.1
+        },
+        {
+          "name": "label_text",
+          "label": "Label text",
+          "description": "Blank = the signed width clearance, e.g. +1.0",
+          "group": "Label",
+          "kind": "string",
+          "default": "",
+          "maxLength": 24,
+          "charset": "printable-ascii"
+        },
+        {
+          "name": "text_size",
+          "label": "Text size",
+          "group": "Label",
+          "unit": "mm",
+          "kind": "number",
+          "default": 9.0,
+          "min": 8.1,
+          "max": 12,
+          "step": 0.1
+        }
+      ],
+      "presets": [
+        {
+          "id": "fit-minus-1-0",
+          "label": "Fit kit -1.0 mm",
+          "values": {
+            "width_clearance": -1.0
+          }
+        },
+        {
+          "id": "fit-plus-0-0",
+          "label": "Fit kit +0.0 mm",
+          "values": {
+            "width_clearance": 0.0
+          }
+        },
+        {
+          "id": "fit-plus-1-0",
+          "label": "Fit kit +1.0 mm",
+          "values": {
+            "width_clearance": 1.0
+          }
+        },
+        {
+          "id": "fit-plus-2-0",
+          "label": "Fit kit +2.0 mm",
+          "values": {
+            "width_clearance": 2.0
+          }
+        },
+        {
+          "id": "fit-plus-3-0",
+          "label": "Fit kit +3.0 mm",
+          "values": {
+            "width_clearance": 3.0
+          }
+        }
+      ]
+    },
+    {
       "slug": "holder-tombstone-sign",
       "engine": "build123d",
       "title": "Tombstone sign",
