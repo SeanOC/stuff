@@ -514,6 +514,7 @@ _SPECS = all_models()
 
 from holders.bench_lip_clip import audit_exclusions as bench_lip_clip_exclusions
 from holders.bench_width_saddle import audit_exclusions as bench_width_saddle_exclusions
+from holders.bench_projector_mount import audit_exclusions as bench_projector_mount_exclusions
 from holders.cup_lid import audit_exclusions as cup_lid_exclusions
 from holders.openconnect_drawer import audit_exclusions as drawer_exclusions
 from holders.openconnect_plate import audit_exclusions as plate_exclusions
@@ -530,6 +531,7 @@ from holders.underware_path_channels import audit_exclusions as path_families
 _MODEL_EXCLUSIONS = {
     'holder_bench_lip_clip': bench_lip_clip_exclusions,
     'holder_bench_width_saddle': bench_width_saddle_exclusions,
+    'holder_bench_projector_mount': bench_projector_mount_exclusions,
     'holder_cup_lid': cup_lid_exclusions,
     'openconnect_plate': plate_exclusions,
     'openconnect_drawer': drawer_exclusions,

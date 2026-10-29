@@ -224,7 +224,8 @@ name and slug of each affected model module, its `test_<stem>`, and every
 changed test file's stem. Module → models is 1:N: `smoke` and `cylindrical`
 register 2 each, `underware_path_channels` 2 and `underware_junctions` 3. A
 module is affected when it changed or when it, or its tests, import an
-affected model module (`bench_width_saddle` imports `bench_lip_clip`).
+affected model module (`bench_width_saddle` and `bench_projector_mount` import
+`bench_lip_clip`).
 `<others>` lists the same terms for every unaffected module. The selection
 drops only the tests of UNCHANGED models. Tests whose ids name no model always
 run: the geometry baseline, presets bake, audit-cache determinism,
