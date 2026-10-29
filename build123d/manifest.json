@@ -180,6 +180,285 @@
       ]
     },
     {
+      "slug": "holder-bench-projector-mount",
+      "engine": "build123d",
+      "title": "Bench projector mount",
+      "blurb": "Saddle mount that clamps over a bench top and carries a projector on a 1/4\"-20 heat-set insert. The front cheek is the lip clip's hook (the only locator), the rear cheek a loose stop; a 6 mm plate with two ribs carries the insert boss. Prints on its side, no supports.",
+      "categoryId": "household",
+      "params": [
+        {
+          "name": "slab_thickness",
+          "label": "Slab thickness",
+          "group": "Bench",
+          "unit": "mm",
+          "kind": "number",
+          "default": 38.0,
+          "min": 31,
+          "max": 70,
+          "step": 0.1
+        },
+        {
+          "name": "height_clearance",
+          "label": "Height clearance",
+          "group": "Fit",
+          "unit": "mm",
+          "kind": "number",
+          "default": 0.2,
+          "min": -0.5,
+          "max": 4.0,
+          "step": 0.1
+        },
+        {
+          "name": "hook_depth",
+          "label": "Hook depth under the lip",
+          "group": "Bench",
+          "unit": "mm",
+          "kind": "number",
+          "default": 11.5,
+          "min": 6,
+          "max": 20,
+          "step": 0.5
+        },
+        {
+          "name": "wall",
+          "label": "Wall thickness",
+          "group": "Shape",
+          "unit": "mm",
+          "kind": "number",
+          "default": 5,
+          "min": 3,
+          "max": 8,
+          "step": 0.5
+        },
+        {
+          "name": "edge_gap",
+          "label": "Edge-face clearance",
+          "group": "Fit",
+          "unit": "mm",
+          "kind": "number",
+          "default": 0.5,
+          "min": 0,
+          "max": 2,
+          "step": 0.1
+        },
+        {
+          "name": "lead_in",
+          "label": "Jaw-tip lead-in",
+          "group": "Fit",
+          "unit": "mm",
+          "kind": "number",
+          "default": 1.5,
+          "min": 0,
+          "max": 3,
+          "step": 0.5
+        },
+        {
+          "name": "jaw_root_radius",
+          "label": "Jaw root fillet",
+          "group": "Shape",
+          "unit": "mm",
+          "kind": "number",
+          "default": 1.0,
+          "min": 1.0,
+          "max": 2.0,
+          "step": 0.5
+        },
+        {
+          "name": "bench_width",
+          "label": "Bench top width",
+          "group": "Bench",
+          "unit": "mm",
+          "kind": "number",
+          "default": 310,
+          "min": 250,
+          "max": 315,
+          "step": 0.5
+        },
+        {
+          "name": "width_clearance",
+          "label": "Width clearance (rear play)",
+          "group": "Fit",
+          "unit": "mm",
+          "kind": "number",
+          "default": 4.0,
+          "min": 1.0,
+          "max": 6.0,
+          "step": 0.1
+        },
+        {
+          "name": "cheek_depth",
+          "label": "Rear cheek depth",
+          "group": "Bench",
+          "unit": "mm",
+          "kind": "number",
+          "default": 11.5,
+          "min": 6,
+          "max": 20,
+          "step": 0.5
+        },
+        {
+          "name": "cheek_wall",
+          "label": "Rear cheek wall",
+          "group": "Shape",
+          "unit": "mm",
+          "kind": "number",
+          "default": 4,
+          "min": 3,
+          "max": 6,
+          "step": 0.5
+        },
+        {
+          "name": "length",
+          "label": "Length along the bench",
+          "group": "Shape",
+          "unit": "mm",
+          "kind": "number",
+          "default": 120,
+          "min": 80,
+          "max": 200,
+          "step": 1
+        },
+        {
+          "name": "plate",
+          "label": "Top plate thickness",
+          "group": "Shape",
+          "unit": "mm",
+          "kind": "number",
+          "default": 6,
+          "min": 5,
+          "max": 10,
+          "step": 0.5
+        },
+        {
+          "name": "rib_height",
+          "label": "Rib and boss height",
+          "group": "Shape",
+          "unit": "mm",
+          "kind": "number",
+          "default": 15,
+          "min": 10,
+          "max": 25,
+          "step": 0.5
+        },
+        {
+          "name": "rib_wall",
+          "label": "Rib wall",
+          "group": "Shape",
+          "unit": "mm",
+          "kind": "number",
+          "default": 4,
+          "min": 3,
+          "max": 8,
+          "step": 0.5
+        },
+        {
+          "name": "rib_spacing",
+          "label": "Rib spacing (centres)",
+          "group": "Shape",
+          "unit": "mm",
+          "kind": "number",
+          "default": 60,
+          "min": 30,
+          "max": 150,
+          "step": 1
+        },
+        {
+          "name": "boss_x_offset",
+          "label": "Boss front-to-back offset",
+          "description": "From the slab centre line; + is toward the rear cheek",
+          "group": "Insert",
+          "unit": "mm",
+          "kind": "number",
+          "default": 0,
+          "min": -100,
+          "max": 100,
+          "step": 1
+        },
+        {
+          "name": "boss_z_offset",
+          "label": "Boss offset along the length",
+          "group": "Insert",
+          "unit": "mm",
+          "kind": "number",
+          "default": 0,
+          "min": -45,
+          "max": 45,
+          "step": 1
+        },
+        {
+          "name": "boss_od",
+          "label": "Boss outer diameter",
+          "group": "Insert",
+          "unit": "mm",
+          "kind": "number",
+          "default": 14,
+          "min": 13,
+          "max": 24,
+          "step": 0.5
+        },
+        {
+          "name": "insert_hole",
+          "label": "Insert hole (nominal)",
+          "group": "Insert",
+          "unit": "mm",
+          "kind": "number",
+          "default": 8.0,
+          "min": 6,
+          "max": 10,
+          "step": 0.1
+        },
+        {
+          "name": "hole_compensation",
+          "label": "Hole compensation (FDM shrink)",
+          "group": "Insert",
+          "unit": "mm",
+          "kind": "number",
+          "default": 0.2,
+          "min": 0,
+          "max": 0.5,
+          "step": 0.05
+        },
+        {
+          "name": "insert_length",
+          "label": "Insert length",
+          "group": "Insert",
+          "unit": "mm",
+          "kind": "number",
+          "default": 12.7,
+          "min": 6,
+          "max": 20,
+          "step": 0.1
+        },
+        {
+          "name": "bed_chamfer",
+          "label": "Bed chamfer",
+          "group": "Shape",
+          "unit": "mm",
+          "kind": "number",
+          "default": 0.4,
+          "min": 0.3,
+          "max": 0.5,
+          "step": 0.1
+        }
+      ],
+      "presets": [
+        {
+          "id": "short-80",
+          "label": "Short (80 mm)",
+          "values": {
+            "length": 80
+          }
+        },
+        {
+          "id": "long-200",
+          "label": "Long (200 mm)",
+          "values": {
+            "length": 200
+          }
+        }
+      ]
+    },
+    {
       "slug": "holder-bench-width-saddle",
       "engine": "build123d",
       "title": "Bench width saddle (fit coupon)",

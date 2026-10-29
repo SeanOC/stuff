@@ -119,10 +119,11 @@ def test_skip(paths, registry):
     (["build123d/holders/underware_junctions.py"],
      {"underware_l", "underware-l", "underware_t", "underware-t", "underware_x", "underware-x",
       "test_underware_junctions"}),
-    # bench_width_saddle imports bench_lip_clip.
+    # bench_width_saddle and bench_projector_mount import bench_lip_clip.
     (PR_247,
      {"holder_bench_lip_clip", "holder-bench-lip-clip", "test_bench_lip_clip",
       "holder_bench_width_saddle", "holder-bench-width-saddle", "test_bench_width_saddle",
+      "holder_bench_projector_mount", "holder-bench-projector-mount", "test_bench_projector_mount",
       "test_manifest"}),
 ])
 def test_scoped(paths, mine, registry):
@@ -194,6 +195,7 @@ def test_pr_247_fast_selection_keeps_its_section_golden_and_drops_others():
     assert goldens == {
         "tests/test_review_sheet.py::test_section_golden[holder-bench-lip-clip]",
         "tests/test_review_sheet.py::test_section_golden[holder-bench-width-saddle]",
+        "tests/test_review_sheet.py::test_section_golden[holder-bench-projector-mount]",
     }
 
 
