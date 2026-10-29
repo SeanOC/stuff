@@ -1,9 +1,10 @@
 """Bench lip clip, step 1: the fit-test coupon (pst-czxuk.1).
 
-A C-clip that hooks the lip of a cast faux-wood bench top (Sean's rough
-measurements: slab 2 in = 50.8 mm thick, lip 1/2 in = 12.7 mm beyond the
-end block; docs/bench-lip-clip.md). The coupon only dials in the grip; step 2
-extrudes the same lip_clip_profile() longer and adds the 1/4"-20 insert boss.
+A C-clip that hooks the lip of a cast faux-wood bench top (slab 38 mm thick,
+re-measured 2026-10-29 after the 2026-10-28 tape read 2 in = 50.8 mm; lip
+1/2 in = 12.7 mm beyond the end block; docs/bench-lip-clip.md). The coupon
+only dials in the grip; step 2 extrudes the same lip_clip_profile() longer
+and adds the 1/4"-20 insert boss.
 
 Model frame = print frame: the profile is the footprint in XY, extruded +Z
 by coupon_length, so the part is a prism and prints as modelled. X runs
@@ -38,7 +39,7 @@ TOP_RADIUS = 1.0      # top (upward) edges, §2 (R >= 1)
 LABEL_END_MARGIN = 2.0  # ink to each coupon end: width <= coupon_length - 4
 
 PARAMS = (
-    Param('slab_thickness', 'number', 50.8, min=40, max=70, step=0.1, unit='mm',
+    Param('slab_thickness', 'number', 38.0, min=31, max=70, step=0.1, unit='mm',
           group='Bench', label='Slab thickness'),
     Param('height_clearance', 'number', 0.8, min=-0.5, max=4.0, step=0.1, unit='mm',
           group='Fit', label='Height clearance', filename=True),

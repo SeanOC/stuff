@@ -32,7 +32,7 @@ CORNERS = [
     {'height_clearance': -0.5, 'edge_gap': 0, 'jaw_root_radius': 2, 'hook_depth': 6},  # tightest mouth
     {'slab_thickness': 70, 'height_clearance': 4, 'top_reach': 60, 'wall': 8,
      'edge_gap': 2, 'hook_depth': 20, 'coupon_length': 60},  # largest footprint
-    {'slab_thickness': 40, 'height_clearance': -0.5, 'top_reach': 20, 'hook_depth': 20},
+    {'slab_thickness': 31, 'height_clearance': -0.5, 'top_reach': 20, 'hook_depth': 20},
 ]
 ENDPOINTS = [{q.name: v} for q in NUMERIC for v in (q.min, q.max)
              if (q.name, v) not in EXPECTED_ERRORS]

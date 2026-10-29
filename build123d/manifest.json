@@ -14,8 +14,8 @@
           "group": "Bench",
           "unit": "mm",
           "kind": "number",
-          "default": 50.8,
-          "min": 40,
+          "default": 38.0,
+          "min": 31,
           "max": 70,
           "step": 0.1
         },
