@@ -255,6 +255,10 @@ export const BUILD123D_CATALOG: Record<string, CatalogEntry> = {
     categoryId: "household",
     blurb: "Fit-test coupon for the bench-lip projector clamp: five clearances, print the kit and keep the one that seats without rocking.",
   },
+  holder_bench_width_saddle: {
+    categoryId: "household",
+    blurb: "Fit-test saddle for the bench's width: a bar across the top with a cheek down each edge. Five clearances bracket the tape reading; print the kit and keep the snuggest one that drops on.",
+  },
   holder_cup_lid: {
     categoryId: "multiboard",
     blurb: "Curved cup-lid cradle with shoulder-retaining end channels and two Multibuild locating pins.",
