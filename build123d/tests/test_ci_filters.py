@@ -12,6 +12,7 @@ ci/bd123.yml.proposed is not (stale against live well beyond this filter, its
 own follow-up). Text parsing on purpose: pyyaml is only a
 transitive dependency, and the filter body is a YAML string inside YAML.
 """
+import ast
 import re
 from pathlib import Path
 
@@ -23,7 +24,6 @@ WORKFLOW = ROOT.parent/'.github'/'workflows'/'bd123.yml'
 WORKFLOWS = [w for w in (WORKFLOW, ROOT/'ci'/'bd123.scoped.yml.proposed') if w.exists()]
 
 _MARK = re.compile(r'\bmark\.audit_full\b')
-_IMPORT = re.compile(r'^\s*(?:from\s+(?:tests\.)?(\w+)\s+import\s+([\w\s,()]+)|import\s+(?:tests\.)?(\w+))')
 
 
 def cradle_filter(text):
@@ -52,17 +52,23 @@ def audit_full_carriers():
 
 def _local_imports(path):
     """tests/ modules `path` imports directly (`from tests import x`, `from tests.x
-    import y`, or a bare `import x` / `from x import y` resolved via sys.path)."""
+    import y`, or a bare `import x` / `from x import y` resolved via sys.path).
+    ast, as scripts/select-bd-tests.py does: multi-line and function-local
+    imports count, comments and strings do not."""
     names = set()
-    for line in _code(path):
-        m = _IMPORT.match(line)
-        if not m:
-            continue
-        module, imported, bare = m.groups()
-        if module == 'tests':
-            names.update(n for n in re.findall(r'\w+', imported) if n != 'as')
-        else:
-            names.add(module or bare)
+    for node in ast.walk(ast.parse(path.read_text())):
+        if isinstance(node, ast.ImportFrom) and node.module and not node.level:
+            head, _, rest = node.module.partition('.')
+            if head != 'tests':
+                names.add(head)
+            elif rest:
+                names.add(rest.split('.')[0])
+            else:
+                names.update(a.name for a in node.names)
+        elif isinstance(node, ast.Import):
+            for a in node.names:
+                head, _, rest = a.name.partition('.')
+                names.add(rest.split('.')[0] if head == 'tests' and rest else head)
     return {TESTS/f'{n}.py' for n in names if (TESTS/f'{n}.py').is_file()}
 
 
@@ -107,3 +113,11 @@ def test_cradle_filter_covers_every_audit_full_carrier(workflow):
     entries = cradle_filter(workflow.read_text())
     missing = [p.relative_to(ROOT.parent).as_posix() for p in required_paths() if not _covered(p, entries)]
     assert not missing, f'add to the cradle: filter in {workflow.name}: {missing}'
+
+
+def test_local_imports_reads_multiline_and_ignores_strings(tmp_path):
+    src = tmp_path/'test_x.py'
+    src.write_text('from tests import (\n    audit_record,\n    parity as p,\n)\n'
+                   'def f():\n    import print_audit\n'
+                   '# import mount_contracts\nCODE = "from tests import audit_cache"\n')
+    assert _local_imports(src) == {TESTS/'audit_record.py', TESTS/'parity.py', TESTS/'print_audit.py'}
