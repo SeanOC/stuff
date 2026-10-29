@@ -200,9 +200,14 @@ assertions run unchanged in both jobs.
 **audit_full** (`build123d audit (full sweep)`) runs the cradle, capture-bin and
 drawer endpoint/corner sweeps (`audit_full`) as six `pytest-split` shards,
 balanced by the committed
-`build123d/tests/.test_durations`. A PR runs it only when it touches
-`holders/`, `multibuild/`, `openconnect/`, the audit/contract helpers,
-`test_spool_cradle.py`, `tests/conftest.py`, `pyproject.toml` or `uv.lock`.
+`build123d/tests/.test_durations`. A PR runs it only when it touches a path
+in the `cradle:` filter of `.github/workflows/bd123.yml`: the model packages
+(`holders/`, `labels/`, `multibuild/`, `openconnect/`, `gridfinity/`,
+`drawer/`), every test file carrying an `audit_full` case plus the `tests/`
+helpers those files import, `tests/conftest.py`, `pyproject.toml` or
+`uv.lock`. The fast-tier `tests/test_ci_filters.py` fails when an
+`audit_full` carrier or one of its helpers is missing from that filter, or
+when a filter entry names a path that does not exist.
 Every push to `main` and the nightly schedule (`17 9 * * *` UTC) run all three
 jobs unconditionally. The contract: a test that builds a registry-sized model
 and calls `audit()` gets `@pytest.mark.audit`; a cradle corner case also gets
