@@ -200,6 +200,7 @@ jobs:
               - 'build123d/openconnect/**'
               - 'build123d/tests/print_audit.py'
               - 'build123d/tests/audit_cache.py'
+              - 'build123d/tests/audit_record.py'
               - 'build123d/tests/mount_contracts.py'
               - 'build123d/tests/test_spool_cradle.py'
               # capture-bin endpoint sweep lives in audit_full (pst-8vwop)
@@ -208,11 +209,15 @@ jobs:
               # drawer endpoint/corner sweep lives in audit_full (pst-t0ob3.2)
               - 'build123d/drawer/**'
               - 'build123d/tests/test_openconnect_drawer.py'
+              - 'build123d/tests/openconnect_drawer_inventory.py'
+              - 'build123d/tests/parity.py'
               - 'build123d/tests/test_honeycomb.py'
               - 'build123d/tests/conftest.py'
               - 'build123d/pyproject.toml'
               - 'build123d/uv.lock'
-              # the other three files carrying audit_full cases
+              # the other files carrying audit_full cases (tests/test_ci_filters.py
+              # fails when one, or a tests/ helper it imports, is missing)
+              - 'build123d/tests/test_audit_record.py'
               - 'build123d/tests/test_cartridge_holder.py'
               - 'build123d/tests/test_openconnect_drawer_container.py'
               - 'build123d/tests/test_tombstone_sign.py'

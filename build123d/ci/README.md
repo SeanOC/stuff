@@ -191,12 +191,12 @@ independently. Against the live workflow it changes:
   (spool_cradle, cartridge_holder, openconnect_drawer, gridfinity_capture_bin,
   tombstone_sign), the holders modules they import (label_card, sign_ghost,
   signs), and `registry.py` + `printer.py`. All five import the registry, and
-  `tombstone_sign` sizes against the `printer.py` bed. The other 15 entries are
-  unchanged, `labels/**` and `test_honeycomb.py` included. Three entries are
-  added: `test_cartridge_holder.py`, `test_openconnect_drawer_container.py` and
-  `test_tombstone_sign.py`. `tests/test_audit_record.py` also carries one
-  `audit_full` case and is in neither the live nor this filter (pre-existing,
-  filed separately); `test_honeycomb.py` is listed but carries none.
+  `tombstone_sign` sizes against the `printer.py` bed. Every other entry is
+  the live filter's, `labels/**` and `test_honeycomb.py` included (the latter
+  carries no `audit_full` case; it is a defensive sibling of the drawer
+  entries). `tests/test_ci_filters.py` holds both this file and the live
+  workflow to the rule that every `audit_full` carrier and its `tests/`
+  helpers are listed.
 
 Job names are unchanged. `audit_full` and its gate are unchanged.
 
@@ -302,9 +302,14 @@ assertions run unchanged in both jobs.
 **audit_full** (`build123d audit (full sweep)`) runs the cradle, capture-bin and
 drawer endpoint/corner sweeps (`audit_full`) as six `pytest-split` shards,
 balanced by the committed
-`build123d/tests/.test_durations`. A PR runs it only when it touches
-`holders/`, `multibuild/`, `openconnect/`, the audit/contract helpers,
-`test_spool_cradle.py`, `tests/conftest.py`, `pyproject.toml` or `uv.lock`.
+`build123d/tests/.test_durations`. A PR runs it only when it touches a path
+in the `cradle:` filter of `.github/workflows/bd123.yml`: the model packages
+(`holders/`, `labels/`, `multibuild/`, `openconnect/`, `gridfinity/`,
+`drawer/`), every test file carrying an `audit_full` case plus the `tests/`
+helpers those files import, `tests/conftest.py`, `pyproject.toml` or
+`uv.lock`. The fast-tier `tests/test_ci_filters.py` fails when an
+`audit_full` carrier or one of its helpers is missing from that filter, or
+when a filter entry names a path that does not exist.
 Every push to `main` and the nightly schedule (`17 9 * * *` UTC) run all three
 jobs unconditionally. The contract: a test that builds a registry-sized model
 and calls `audit()` gets `@pytest.mark.audit`; a cradle corner case also gets
