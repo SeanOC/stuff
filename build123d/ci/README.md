@@ -169,6 +169,100 @@ which should finish in ≤ 2 min (`gh workflow run deploy-bd-render-service.yml`
 gives you that second run). Then confirm the Cloud Run revision and a
 `POST /render` smoke (the pst-ubop recipe).
 
+# Staged CI change — change-scoped fast/audit selection (pst-3bga4)
+
+`bd123.scoped.yml.proposed` is a FULL replacement for
+`.github/workflows/bd123.yml`. It is not named `bd123.yml.proposed` because that
+file is still the unactivated pst-ae3v proposal above, and the two activate
+independently. Against the live workflow it changes:
+
+- **`changes`** (`detect model/audit changes`, still pull_request only) gains a
+  checkout, `uv sync --frozen` and `working-directory: build123d` (it had
+  none), lists the PR's files (`list-files: shell`, an `any` filter) and runs
+  `scripts/select-bd-tests.py`, which writes `mode` (`full|scoped|skip`) and
+  `k_expr` to `$GITHUB_OUTPUT`. Timeout 5 → 10 min for the sync.
+- **`fast`** and **`audit`** `needs: changes`. `mode=skip` skips them (a skipped
+  check does not block a merge). `mode=scoped` appends `-k "$K_EXPR"` to the
+  fast tests, the serial budget step and the audit step. `K_EXPR` comes in
+  through `env`. On push to `main`, on schedule, or when `changes` fails, the
+  outputs are empty and both jobs run in full (`!cancelled()`).
+- **cradle filter**: only the `build123d/holders/**` entry is replaced. It now
+  lists the five holder modules whose `audit_full` cases the sweep runs
+  (spool_cradle, cartridge_holder, openconnect_drawer, gridfinity_capture_bin,
+  tombstone_sign), the holders modules they import (label_card, sign_ghost,
+  signs), and `registry.py` + `printer.py`. All five import the registry, and
+  `tombstone_sign` sizes against the `printer.py` bed. The other 15 entries are
+  unchanged, `labels/**` and `test_honeycomb.py` included. Three entries are
+  added: `test_cartridge_holder.py`, `test_openconnect_drawer_container.py` and
+  `test_tombstone_sign.py`. Together with the three already listed, they are
+  the six files that carry `audit_full` cases.
+
+Job names are unchanged. `audit_full` and its gate are unchanged.
+
+## What the selector scopes
+
+`full` when a shared input changed: `holders/printer.py`,
+`holders/registry.py`, `labels/**`, `multibuild/**`, `openconnect/**`,
+`scripts/manifest.py`, `tests/{print_audit,audit_cache,mount_contracts,conftest}.py`,
+`pyproject.toml`, `uv.lock`, the selector itself or the workflow. Any path it
+cannot attribute is also `full`: holders helpers that register no model,
+`drawer/`, `gridfinity/`, `underware/`, other `scripts/`, `README.md`.
+`scoped` when every change is a registered model module, a `tests/test_*.py`,
+`manifest.json` (→ `test_manifest`), `tests/baselines/**` (→ the two baseline
+tests), a section golden `docs/renders/sections/<slug>.svg` (→ that model), or
+a doc or test data file named only by tests or model modules. `skip` when only
+`ci/`, `tests/.test_durations`, render PNGs or docs nothing names changed.
+
+The scoped `-k` is `(<mine>) or not (<others>)`. `<mine>` lists every registry
+name and slug of each affected model module, its `test_<stem>`, and every
+changed test file's stem. Module → models is 1:N: `smoke` and `cylindrical`
+register 2 each, `underware_path_channels` 2 and `underware_junctions` 3. A
+module is affected when it changed or when it, or its tests, import an
+affected model module (`bench_width_saddle` imports `bench_lip_clip`).
+`<others>` lists the same terms for every unaffected module. The selection
+drops only the tests of UNCHANGED models. Tests whose ids name no model always
+run: the geometry baseline, presets bake, audit-cache determinism,
+manifest/registry contracts and library tests. A plain `-k "(<mine>)"` would
+drop them, and every geometry PR must update the geometry baseline. On the
+model-scoped files of #247 (bench_lip_clip + its test, docs, manifest), the
+audit tier collects 133 of 606 items. That includes all 34 of
+`test_bench_lip_clip.py`, the dependent `test_bench_width_saddle.py`, and
+`test_print_audit`'s two rows. The single `test_geometry_baseline` item
+(~700 s on CI) bounds that job's wall time. The fast tier collects 948 of
+1939. Library tests that import no model are kept, because they cannot be
+told apart from registry-wide tests by name. The real #247 also touched
+`registry.py`, so it would still be `full`. Known gap: a loop over every model
+inside ANOTHER model's test file is dropped with that file (e.g.
+`test_cylindrical.py`, which calls `all_models()` five times). The full main
+and nightly runs still catch it.
+
+`tests/test_select_bd_tests.py` runs in fast. It checks a path table → mode and
+`<mine>`, and runs `pytest --collect-only` in a subprocess (~2 s each, not a
+hang) to check the selected file set for #247's files.
+
+## Activate (mayor, on a PR branch)
+
+```bash
+gh api repos/:owner/:repo/branches/main/protection/required_status_checks/contexts > /tmp/ctx-before.json
+uvx --from actionlint-py==1.7.12.25 actionlint build123d/ci/bd123.scoped.yml.proposed
+#   two findings, both pre-existing on main: matrix.group in the non-matrix audit job's cache key
+git mv build123d/ci/bd123.scoped.yml.proposed .github/workflows/bd123.yml   # git mv -f: the target exists
+# delete the PROPOSED header block (the first 9 lines) from the moved file
+git commit -m "ops(bd123): activate change-scoped fast/audit selection (pst-3bga4)"
+```
+
+That PR changes the workflow file, so its own run is `full`. Test `scoped` and
+`skip` on throwaway PRs (one model module edit; a `build123d/ci/` edit), then
+check the `Decide fast/audit scope` step summary. After merge:
+
+```bash
+gh api repos/:owner/:repo/branches/main/protection/required_status_checks/contexts > /tmp/ctx-after.json
+diff /tmp/ctx-before.json /tmp/ctx-after.json   # must be empty: job names are unchanged
+```
+
+If the pst-ae3v proposal is activated later, rebase its one ADDED step onto
+the then-live file. Do not copy it over this one.
+
 # bd123 jobs and the marker contract (pst-24tr6)
 
 `.github/workflows/bd123.yml` is split into three jobs, and pytest markers in
@@ -258,6 +352,12 @@ shard's is `bd123-audit-rows-<group>` (1–6):
 gh run download <run-id> -n bd123-audit-rows -D rows/audit
 gh run download <run-id> -p 'bd123-audit-rows-*' -D rows/full   # sweep shards, if they ran
 ```
+
+Once pst-3bga4's scoped selection is active, a PR run's `bd123-audit-rows`
+covers the selected models only (`Decide fast/audit scope` in the
+`detect model/audit changes` job prints the `-k`). A missing row there means the
+model was not selected, not that a measurement regressed. Main and nightly runs
+are always full.
 
 ## Upstream bump: numerical baselines (pst-6dhmb)
 
