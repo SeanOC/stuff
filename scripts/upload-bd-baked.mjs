@@ -145,7 +145,7 @@ export async function uploadBakedDownloads({ manifest, bakedRoot, env, commit, s
 
 /** The production store: Vercel Blob, public, never overwriting. */
 export function vercelBlobStore(token) {
-  return {
+  const store = {
     async head(pathname) {
       const { head, BlobNotFoundError } = await import("@vercel/blob");
       try {
@@ -155,6 +155,18 @@ export function vercelBlobStore(token) {
         if (e instanceof BlobNotFoundError) return null;
         throw e;
       }
+    },
+    /** The blob's bytes, or null when the key does not exist (bd-bake-cache). */
+    async get(pathname) {
+      const found = await store.head(pathname);
+      if (!found) return null;
+      const res = await fetch(found.url);
+      if (!res.ok) throw new Error(`GET ${pathname}: HTTP ${res.status}`);
+      const bytes = Buffer.from(await res.arrayBuffer());
+      if (bytes.byteLength !== found.size) {
+        throw new Error(`GET ${pathname}: ${bytes.byteLength} bytes, head said ${found.size}`);
+      }
+      return bytes;
     },
     async put(pathname, bytes, contentType) {
       const { put } = await import("@vercel/blob");
@@ -169,6 +181,7 @@ export function vercelBlobStore(token) {
       });
     },
   };
+  return store;
 }
 
 export async function main({ root, environ = process.env, store } = {}) {

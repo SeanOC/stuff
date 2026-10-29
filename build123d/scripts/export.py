@@ -44,6 +44,8 @@ geometry comparison contract; existing model-specific byte pins still apply.
 import argparse
 import copy
 import io
+import json
+import os
 import re
 import shutil
 import sys
@@ -55,6 +57,13 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from scripts import bake_cache  # noqa: E402  (stdlib only)
+
+# The read audit (pst-aqza2) must see import-time reads too, so it is armed
+# before any model code loads: always under --cache-dir, or BD_BAKE_AUDIT=1.
+AUDIT = (bake_cache.ReadAudit()
+         if "--cache-dir" in sys.argv or os.environ.get("BD_BAKE_AUDIT") == "1" else None)
 
 import trimesh
 
@@ -498,17 +507,128 @@ def export_all(*, commit_review: bool = False) -> int:
     return 0
 
 
-def export_presets_only(target: Path) -> int:
+def preset_files(spec, preset) -> list[str]:
+    """The files a preset's bake always writes; a multi-colour bake adds one
+    <preset-id>-<part>.stl per colour part (named by the build)."""
+    files = [f"{preset.id}.stl", f"{preset.id}.glb", f"{preset.id}.png"]
+    if spec.is_multi_colour:
+        files.append(f"{preset.id}.3mf")
+        files.extend(f"{preset.id}.{profile.id}.3mf" for profile in PROFILES.values())
+    return files
+
+
+def bake_preset(spec, preset, model_dir: Path, unfit: list[str]) -> list[Path] | None:
+    """Bake one preset into model_dir; returns the files written, None on zero volume.
+
+    An unfit printer profile is appended to ``unfit`` (the bake fails at the end)."""
+    values = spec.resolve_values(preset.values)
+    part = in_print_frame(spec, values, spec.build(values))
+    if part.volume <= 0:
+        print(f"SKIP {spec.name}/{preset.id}: zero volume", file=sys.stderr)
+        return None
+    model_dir.mkdir(parents=True, exist_ok=True)
+    stl = model_dir / f"{preset.id}.stl"
+    glb = model_dir / f"{preset.id}.glb"
+    png = model_dir / f"{preset.id}.png"
+    export_stl(part, str(stl))
+    export_glb(part, glb, resolve_preview_parts(spec, values))
+    # Thumbnail rendered from the SAME GLB the detail viewer loads,
+    # using its smooth vertex normals through a depth-buffered
+    # software rasteriser (pst-o0wy) — matches the live preview and
+    # keeps the pst-1vi5 single-source-of-truth property.
+    render_thumbnail(glb, png)
+    written = [stl, glb, png]
+    if spec.is_multi_colour:
+        # Gated: every other model's bake output stays exactly STL+GLB+PNG.
+        named = resolve_colour_parts(spec, preset.values)
+        generic = model_dir / f"{preset.id}.3mf"
+        export_3mf_one_object(named, generic, f"{spec.slug}-{preset.id}")
+        written.append(generic)
+        for profile in PROFILES.values():
+            profiled = model_dir / f"{preset.id}.{profile.id}.3mf"
+            try:
+                apply_printer_profile(generic, profiled, profile, named)
+                written.append(profiled)
+            except ValueError as error:
+                # Every profiled 3MF is expected downstream
+                # (upload-bd-baked.mjs), so an unfit preset fails the
+                # bake; collect them all so one run names every pair.
+                unfit.append(f"{spec.name}/{preset.id}: printer profile {profile.id}: {error}")
+        for name, shape, _ in named:
+            export_stl(shape, str(model_dir / f"{preset.id}-{name}.stl"))
+            written.append(model_dir / f"{preset.id}-{name}.stl")
+    print(f"{spec.name}/{preset.id}: vol={part.volume:.0f}mm3 -> {stl}, {glb}, {png}")
+    return written
+
+
+def _key_builder():
+    return bake_cache.KeyBuilder(
+        bake_cache.BD_ROOT, Path(__file__), Path(sys.modules["holders.registry"].__file__),
+        {Path(sys.modules[s.build.__module__].__file__) for s in all_models()})
+
+
+def _module_file(spec) -> Path:
+    return Path(sys.modules[spec.build.__module__].__file__)
+
+
+def _import_phase_gaps(keys) -> list[Path]:
+    """Reads made while the registry imported: any build123d .py the static
+    closures missed (a dynamic import) or data file outside the key."""
+    reads = AUDIT.take()
+    code = set(keys.export_closure)
+    for module in keys.model_modules:
+        code |= keys.closure(module)
+    return bake_cache.uncovered(reads, code | keys.data | keys.locks)
+
+
+def cache_plan(plan_path: Path) -> int:
+    """Write {slug, preset, key, files} per app-listed preset without baking."""
+    specs = [s for s in all_models() if not s.is_smoke]
+    keys = _key_builder()
+    entries = []
+    for spec in specs:
+        for preset in spec.presets:
+            key = keys.key(_module_file(spec), preset.id, spec.resolve_values(preset.values))
+            entries.append({"slug": spec.slug, "preset": preset.id, "key": key,
+                            "pathname": bake_cache.blob_pathname(key, spec.slug, preset.id),
+                            "files": preset_files(spec, preset),
+                            "multiColour": spec.is_multi_colour})
+    plan_path.parent.mkdir(parents=True, exist_ok=True)
+    plan_path.write_text(json.dumps({"schema": bake_cache.SCHEMA, "entries": entries}, indent=1) + "\n")
+    print(f"bake cache: planned {len(entries)} presets from {len(specs)} models -> {plan_path}")
+    return 0
+
+
+def export_presets_only(target: Path, cache_dir: Path | None = None) -> int:
     """Bake every preset of every app-listed model into target/<slug>/<preset-id>.{stl,glb,png}.
 
     Multi-colour models add <preset-id>.3mf (generic), <preset-id>.<profile-id>.3mf
     per printer profile and one STL per part.
+
+    cache_dir (pst-aqza2): restore each preset whose tarball the restore step
+    left at cache_dir/fetched/<key>.tar.gz, bake the rest, and stage the
+    baked ones under cache_dir/store/ for the store step. With the read
+    audit armed, a read outside a preset's key fails the bake (after every
+    preset, so one run names them all) and nothing is staged.
     """
+    started = time.perf_counter()
     target.mkdir(parents=True, exist_ok=True)
     specs = [s for s in all_models() if not s.is_smoke]
     if not specs:
         print("no app-listed models registered"); return 1
+    keys = _key_builder() if AUDIT or cache_dir else None
+    gaps: list[str] = []
+    if AUDIT:
+        gaps += [f"(import) {p.relative_to(keys.root)}" for p in _import_phase_gaps(keys)]
+    fetched = cache_dir / "fetched" if cache_dir else None
+    if cache_dir:
+        # A restored model dir must hold exactly this bake's files: no stale
+        # part STL from an older colour set may ride into the publish.
+        for spec in specs:
+            shutil.rmtree(target / spec.slug, ignore_errors=True)
     baked = 0
+    hits: list[str] = []
+    staged: list[tuple[str, str, str, list[Path]]] = []  # (key, slug, preset, files)
     unfit: list[str] = []
     for spec in specs:
         if not spec.presets:
@@ -516,49 +636,61 @@ def export_presets_only(target: Path) -> int:
             # but fail loudly here too: a silent skip would leak into CI.
             print(f"SKIP {spec.name}: no presets registered", file=sys.stderr)
             return 1
+        model_dir = target / spec.slug
         for preset in spec.presets:
-            values = spec.resolve_values(preset.values)
-            part = in_print_frame(spec, values, spec.build(values))
-            if part.volume <= 0:
-                print(f"SKIP {spec.name}/{preset.id}: zero volume", file=sys.stderr)
+            key = (keys.key(_module_file(spec), preset.id, spec.resolve_values(preset.values))
+                   if keys else None)
+            tarball = fetched / f"{key}.tar.gz" if fetched else None
+            if tarball is not None and tarball.is_file():
+                try:
+                    bake_cache.unpack(tarball.read_bytes(), model_dir, preset.id,
+                                      preset_files(spec, preset), spec.is_multi_colour)
+                    hits.append(f"{spec.slug}/{preset.id}")
+                    print(f"{spec.name}/{preset.id}: cached ({key[:12]})")
+                    continue
+                except ValueError as error:
+                    print(f"{spec.name}/{preset.id}: bad cache tarball ({error}) — baking",
+                          file=sys.stderr)
+            if AUDIT:
+                AUDIT.take()  # a preset's window starts here
+            written = bake_preset(spec, preset, model_dir, unfit)
+            if written is None:
                 return 1
-            model_dir = target / spec.slug
-            model_dir.mkdir(exist_ok=True)
-            stl = model_dir / f"{preset.id}.stl"
-            glb = model_dir / f"{preset.id}.glb"
-            png = model_dir / f"{preset.id}.png"
-            export_stl(part, str(stl))
-            export_glb(part, glb, resolve_preview_parts(spec, values))
-            # Thumbnail rendered from the SAME GLB the detail viewer loads,
-            # using its smooth vertex normals through a depth-buffered
-            # software rasteriser (pst-o0wy) — matches the live preview and
-            # keeps the pst-1vi5 single-source-of-truth property.
-            render_thumbnail(glb, png)
-            if spec.is_multi_colour:
-                # Gated: every other model's bake output stays exactly STL+GLB+PNG.
-                named = resolve_colour_parts(spec, preset.values)
-                generic = model_dir / f"{preset.id}.3mf"
-                export_3mf_one_object(named, generic, f"{spec.slug}-{preset.id}")
-                for profile in PROFILES.values():
-                    try:
-                        apply_printer_profile(generic, model_dir / f"{preset.id}.{profile.id}.3mf",
-                                              profile, named)
-                    except ValueError as error:
-                        # Every profiled 3MF is expected downstream
-                        # (upload-bd-baked.mjs), so an unfit preset fails the
-                        # bake; collect them all so one run names every pair.
-                        unfit.append(f"{spec.name}/{preset.id}: printer profile {profile.id}: {error}")
-                for name, shape, _ in named:
-                    export_stl(shape, str(model_dir / f"{preset.id}-{name}.stl"))
+            if AUDIT:
+                gaps += [f"{spec.slug}/{preset.id}: {p.relative_to(keys.root)}"
+                         for p in bake_cache.uncovered(AUDIT.take(), keys.inputs(_module_file(spec)))]
+            if cache_dir:
+                print(f"{spec.name}/{preset.id}: baked ({key[:12]})")
+                staged.append((key, spec.slug, preset.id, written))
             baked += 1
-            print(f"{spec.name}/{preset.id}: vol={part.volume:.0f}mm3 -> {stl}, {glb}, {png}")
     for line in unfit:
         print(f"FAIL {line}", file=sys.stderr)
     if unfit:
         print("a multi-colour preset must fit every printer profile's plate (pst-68fpi): "
               "shrink the preset or drop it", file=sys.stderr)
         return 1
-    print(f"baked {baked} presets from {len(specs)} models into {target}")
+    if gaps:
+        for line in gaps:
+            print(f"FAIL bake cache: read not covered by the preset key: {line}", file=sys.stderr)
+        print("bake cache: add the file's tree to DATA_GLOBS (or import it statically) in "
+              "scripts/bake_cache.py — an uncovered read would serve stale cached output",
+              file=sys.stderr)
+        return 1
+    bake_seconds = time.perf_counter() - started
+    if cache_dir:
+        store = cache_dir / "store"
+        store.mkdir(parents=True, exist_ok=True)
+        entries = []
+        for key, slug, preset_id, written in staged:
+            name = f"{key}.tar.gz"
+            (store / name).write_bytes(bake_cache.pack(written))
+            entries.append({"pathname": bake_cache.blob_pathname(key, slug, preset_id),
+                            "file": f"store/{name}"})
+        (cache_dir / "bake.json").write_text(json.dumps({
+            "hits": len(hits), "misses": len(staged), "bakeSeconds": round(bake_seconds, 1),
+            "store": entries}, indent=1) + "\n")
+    print(f"baked {baked} presets from {len(specs)} models into {target}"
+          + (f" ({len(hits)} restored from the bake cache)" if cache_dir else ""))
     return 0
 
 
@@ -571,11 +703,24 @@ def main() -> int:
     )
     parser.add_argument("--commit-review", action="store_true",
                         help="write non-smoke review PNGs and section SVGs to docs/renders")
+    parser.add_argument("--cache-plan", metavar="PLAN_JSON",
+                        help="with --presets-only: write each preset's bake-cache key "
+                             "and expected files, without baking (pst-aqza2)")
+    parser.add_argument("--cache-dir", metavar="DIR",
+                        help="with --presets-only: restore cached presets from DIR/fetched, "
+                             "bake the rest, stage them under DIR/store (pst-aqza2)")
     args = parser.parse_args()
     if args.presets_only and args.commit_review:
         parser.error("--commit-review cannot be combined with --presets-only")
+    if (args.cache_plan or args.cache_dir) and not args.presets_only:
+        parser.error("--cache-plan/--cache-dir need --presets-only")
+    if args.cache_plan and args.cache_dir:
+        parser.error("--cache-plan and --cache-dir are separate steps")
+    if args.cache_plan:
+        return cache_plan(Path(args.cache_plan))
     if args.presets_only:
-        return export_presets_only(Path(args.presets_only))
+        return export_presets_only(Path(args.presets_only),
+                                   Path(args.cache_dir) if args.cache_dir else None)
     return export_all(commit_review=args.commit_review)
 
 
