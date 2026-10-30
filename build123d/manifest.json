@@ -183,7 +183,7 @@
       "slug": "holder-bench-projector-mount",
       "engine": "build123d",
       "title": "Bench projector mount",
-      "blurb": "Saddle mount that clamps over a bench top and carries a projector on a 1/4\"-20 heat-set insert. The front cheek is the lip clip's hook (the only locator), the rear cheek a loose stop; a 6 mm plate with two ribs carries the insert boss, or (flat top) a box deck the projector stands on, the insert in a recess for the adapter. Prints on its side, no supports.",
+      "blurb": "Saddle mount that clamps over a bench top and carries a projector on a 1/4\"-20 heat-set insert. The front cheek is the lip clip's hook (the only locator), the rear cheek a loose stop; a 6 mm plate with two ribs carries the insert boss, or (flat top) one solid slab the projector stands on, the insert in a recess for the adapter. Prints on its side, no supports.",
       "categoryId": "household",
       "params": [
         {
@@ -332,7 +332,7 @@
         {
           "name": "top",
           "label": "Top",
-          "description": "ribbed: two ribs and the insert boss on the plate; flat: a box deck the projector feet rest on, the insert in a recess for the adapter",
+          "description": "ribbed: two ribs and the insert boss on the plate; flat: one solid slab the projector feet rest on, the insert in a recess for the adapter",
           "group": "Shape",
           "kind": "enum",
           "default": "ribbed",
@@ -376,42 +376,6 @@
           "min": 30,
           "max": 150,
           "step": 1
-        },
-        {
-          "name": "deck_width",
-          "label": "Deck width (across the bench)",
-          "description": "Flat top only; the projector is 78 mm deep, + 2 x 6 margin",
-          "group": "Deck",
-          "unit": "mm",
-          "kind": "number",
-          "default": 90,
-          "min": 40,
-          "max": 140,
-          "step": 1
-        },
-        {
-          "name": "deck_skin",
-          "label": "Deck top skin",
-          "description": "Flat top only",
-          "group": "Deck",
-          "unit": "mm",
-          "kind": "number",
-          "default": 4,
-          "min": 3,
-          "max": 6,
-          "step": 0.5
-        },
-        {
-          "name": "deck_wall",
-          "label": "Deck side wall",
-          "description": "Flat top only",
-          "group": "Deck",
-          "unit": "mm",
-          "kind": "number",
-          "default": 4,
-          "min": 3,
-          "max": 6,
-          "step": 0.5
         },
         {
           "name": "boss_x_offset",

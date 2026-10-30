@@ -7,8 +7,9 @@ bench top that carries the projector on a 1/4"-20 heat-set insert. Its front
 cheek is the [lip clip](bench-lip-clip.md)'s C, its rear cheek is the
 [width saddle](bench-width-saddle.md)'s plain cheek, and a ribbed plate between
 them carries the insert boss. A second top, `top` = `flat` (bead pst-czxuk.5,
-preset `flat-250`), replaces the ribs and boss with a deck the projector stands
-on; see [Flat top](#flat-top-pst-czxuk5).
+preset `flat-250`; solid since pst-czxuk.6), replaces the ribs and boss with
+one solid slab the projector stands on; see
+[Flat top](#flat-top-pst-czxuk5-solid-pst-czxuk6).
 
 ## Provenance
 
@@ -94,7 +95,7 @@ Volume: 286.7 cm³ at the defaults (about 364 g of PCTG), 191.6 cm³ for the
 `short-80` preset and 476.9 cm³ for `long-200`. The 323 × 120 × 6 mm plate
 alone is 233 cm³; the spec fixes it at 6 mm.
 
-## Flat top (pst-czxuk.5)
+## Flat top (pst-czxuk.5, solid pst-czxuk.6)
 
 Sean printed the ribbed first article and asked for a flat top instead
 (2026-10-29 23:35Z): make the mount thick enough that its top is flush with
@@ -106,39 +107,39 @@ volume and bounding box exactly (`test_ribbed_presets_unchanged`).
 The adapter, measured 00:30Z: a knurled disc Ø16 × 4 mm with an 8 mm thread
 each side. The projector's 245 mm side runs along the bench with its feet
 more or less at its ends, so the preset is **`flat-250`** (`top` flat,
-`length` 250; `length` now runs to 300, inside the 325 mm build height).
+`length` 250; `length` runs to 300, inside the 325 mm build height).
 
-**Shape.** The 6 mm plate stays as it is across the full width, and the plate
-outside the deck is bare. On it, centred on the insert (`boss_x_offset` and
-`boss_z_offset` still place it), a box deck runs the full length:
+**Shape: one solid slab.** The first flat top (pst-czxuk.5) was a box deck: a
+skin on two walls and a column, the hollow open at both ends. Sean sliced
+`flat-250` and replaced it (2026-10-30 03:28Z): "get rid of all of that crazy
+bridging and just make it solid at that height for the full width of the
+bench. Let the sparse infill on the slicer handle material saving for the
+interior space." So the plate is thickened into one solid slab over exactly
+its own footprint, cheek to cheek across the bench (x = 0 to the rear cheek's
+outer face) and the full length, from the slab top up to the deck top. There
+is no box, no column, no channel and no skin, and the `deck_width`,
+`deck_skin` and `deck_wall` parameters are gone. The slab's two long top edges
+are R 1 (the plate's `OUTER_RADIUS`), the bed edges keep the 45° bed chamfer,
+and the lip C and rear cheek are unchanged (`assert_lip_c_identical` holds
+for both tops).
 
-- `deck_width` 90 across the bench (the projector's 78 mm depth + 2 × 6;
-  40–140), a top skin `deck_skin` 4 and two side walls `deck_wall` 4 (3–6)
-  down to the plate. The deck must stay over the slab.
-- In the middle a column, Ø `recess_d` + 2 × 2.5 (23 mm at the defaults),
-  runs from the plate to the skin. It carries the recess and the insert hole.
-  Like the boss it is a teardrop with its 2 mm tip toward the bed.
-- **The channels between the column and the walls run through**, open at both
-  ends. With no end caps there is no bridge to print, and rain drains out. In
-  the print pose the hollow is a vertical shaft; the column crosses it as a
-  short horizontal bar whose teardrop underside needs no support.
-- Edges: the wall and column roots, the hollow's corners and the column's
-  junction with the skin are 45° chamfers (1 mm); the skin's top corners are
-  R 1; the recess and hole mouths are 0.8 mm 45° chamfers.
-
-**Recess and hole.** The recess is round, Ø `recess_d` 18 (the 16 mm disc +
-1 mm radial; 12–24, and ≥ hole + 7 = 15.2 so the disc has a floor ring round
-the insert) and `recess_depth` 6 deep, with a flat floor. The insert sits flush
-with that floor. The hole below it is the same 8.2 mm teardrop bore, `pocket`
-= max(`insert_length`, `adapter_thread`) + 1 deep (13.7 at the defaults). The
-adapter's lower thread runs on through the insert into the free bore. The
-hole floor stays `HOLE_FLOOR` (2 mm) above the slab, bored through the column
-into the plate. The recess floor is sharp by function, like the hole floor:
-the disc seats on it.
+**Recess and hole.** `boss_x_offset` and `boss_z_offset` place them in the
+slab. The recess is round, Ø `recess_d` 18 (the 16 mm disc + 1 mm radial;
+12–24, and ≥ hole + 7 = 15.2 so the disc has a floor ring round the insert)
+and `recess_depth` 6 deep, with a flat floor. The insert sits flush with that
+floor. The hole below it is the same 8.2 mm teardrop bore, `pocket` =
+max(`insert_length`, `adapter_thread`) + 1 deep (13.7 at the defaults). The
+adapter's lower thread runs on through the insert into the free bore. The hole
+floor stays `HOLE_FLOOR` (2 mm) above the slab. The recess floor is sharp by
+function, like the hole floor: the disc seats on it. Both mouths are 0.8 mm
+45° chamfers. Guards: the recess and its chamfer stay `END_MARGIN` (3 mm)
+inside either end, and ≥ 2.5 mm (`INSERT_WALL`) from either side of the slab
+(the second cannot bite inside the declared ranges: there is always ≥ 16 mm
+of slab beside the recess).
 
 **The deck top is derived, never set:** `deck_top` (above the slab) =
 `recess_depth` + `pocket` + `HOLE_FLOOR` = 6 + 13.7 + 2 = 21.7 mm at the
-defaults, so the box stands 15.7 mm above the plate (`deck_height`) and the
+defaults, 15.7 mm above the plate's old top (`deck_height`), and the
 footprint is 323 × 64.9 mm. Set `recess_depth` from the adapter:
 
 > `recess_depth` = body height + upper thread − what the projector's socket
@@ -146,38 +147,43 @@ footprint is 323 × 64.9 mm. Set `recess_depth` from the adapter:
 
 The defaults are 4 + 8 − ~6 − 0 = 6. If the socket takes the whole 8 mm
 thread, 4.5 works (the formula gives 4; the extra 0.5 is clearance). Set it on
-the model page. A deeper recess also raises the deck; `MIN_CHANNEL` (4 mm) is
-the shallowest channel the guards allow.
+the model page. At the shallowest settings (`recess_depth` 1, `insert_length`
+and `adapter_thread` 6) the deck top is 10 mm above the slab, never below the
+thickest plate.
 
 **Printing.** The pose is unchanged (the prism on its side). The recess and
 the hole are horizontal bores with flat roofs facing up, both cut at the
 circle's top. `recess_d` ≤ 24 keeps the recess roof ≤ 9.94 mm (2r(√2 − 1)),
-under the 10 mm bridge limit, and the column always covers that roof. The
-flat top has three flat ceilings: the column tip (2 mm), the recess roof
-(7.5 mm at the defaults) and the hole roof (3.4 mm). `bridges()` and
-`audit_exclusions` box exactly those.
+under the 10 mm bridge limit. Nothing else bridges: the flat top has exactly
+two flat ceilings, the recess roof (7.5 mm at the defaults) and the hole roof
+(3.4 mm), and `bridges()` and `audit_exclusions` box exactly those (the box
+deck's column tip went with the column).
 
-**Load.** Below the recess the insert sits in a Ø23 / Ø8.2 ring
-(section modulus ≈ 1170 mm³, about 0.9 MPa under the 1.1 N·m bump, against
-4.5 MPa in the ribbed boss), and the column is fused into the skin and the
-plate. The feet load the skin: about 3.8 N per foot on a 4 mm skin spanning
-82 mm between the walls, under 1 MPa if the feet sit 10 mm or more inboard of
-a wall. Neither figure is datasheet-checked; foot positions are Sean's "more
-or less at its ends".
+**Infill is the material saving.** The model is solid; the printed plastic is
+whatever the slicer's walls, top and bottom shells and sparse infill make of
+it. The slicer runs perimeters round each bore, so the insert and the disc sit
+in solid walls whatever the infill density.
 
-**Volume** (`part.volume`):
+**Load.** The insert now sits in the whole slab (≥ 16 mm of it beside the
+recess), not a Ø23 ring, and the feet bear straight down on a solid top
+instead of a 4 mm skin spanning 82 mm, so both of the box deck's stress
+figures are moot. The bump's 1.1 N·m still enters at the insert; the slab
+carries it into the bench as the ribbed plate does.
+
+**Volume** (`part.volume`, the solid envelope, not the printed plastic):
 
 | Case | Volume | vs ribbed@250 |
 |---|---|---|
 | `short-80` (ribbed) | 191.6 cm³ | unchanged from main |
 | `long-200` (ribbed) | 476.9 cm³ | unchanged from main |
 | ribbed, `length` 250 (not a preset) | 595.8 cm³ | — |
-| `flat-250` | 681.0 cm³ | +85.2 cm³ (+14.3 %) |
+| `flat-250`, box deck (pst-czxuk.5, main) | 681.0 cm³ | +85.2 cm³ (+14.3 %) |
+| `flat-250`, solid (pst-czxuk.6) | 1829.6 cm³ | +1233.8 cm³ (+207 %) |
 
-The increase is the skin (90 × 4 × 250 = 90 cm³), the walls (23 cm³) and the
-column, less the ribs and boss (≈ 32 cm³). It is the plastic the projector's
-feet stand on. The shell form keeps it well under a solid deck across the
-width (≈ 3.4 L).
+The solid figure is the ask: the slab is 323 × 21.7 × 250 mm above the bench
+top (1752 cm³, less the two bores) plus the cheeks below it. The design
+guidelines' §3 shell/volume rule is waived for this top by Sean's choice: the
+slicer's sparse infill does the saving.
 
 ## Load case
 
