@@ -1,4 +1,4 @@
-"""Bench projector mount, step 2 (pst-czxuk.4), flat top step 3 (pst-czxuk.5).
+"""Bench projector mount, step 2 (pst-czxuk.4), flat top pst-czxuk.5 / solid pst-czxuk.6.
 
 A saddle over the cast faux-wood bench top (310 mm across, slab 38 mm
 thick; docs/bench-projector-mount.md) that carries an XGIMI Elfin Flip 4K
@@ -32,28 +32,26 @@ in print) at its root, its top and the insert's mouth. Functional
 (sharp-by-spec) faces: the lip C's bearing faces, the plate underside, the
 rear cheek's inner face and the insert bore and floor.
 
-top=flat (pst-czxuk.5) replaces the ribs and boss with a box deck the
-projector's feet stand on: deck_width wide, centred on the insert, a
-deck_skin top and two deck_wall walls down to the plate, the hollow between
-them open at both ends (no end caps, so no bridge, and rain drains). A
-teardrop column of O recess_d + 2*INSERT_WALL runs from the plate to the
-skin and carries a round recess for the male-to-male adapter's body (flat
-floor, the insert flush with it) over the insert hole. The deck top is
-derived: recess_depth + pocket + HOLE_FLOOR above the slab, pocket =
-max(insert_length, adapter_thread) + 1 (the adapter's lower thread runs on
-through the insert). Set recess_depth = body height + upper thread - what
-the projector's socket swallows - foot height (4 + 8 - ~6 - 0 = 6). Both
-bores print with flat roofs facing +Z, cut at the circle's top (recess_d <=
-24 keeps that roof <= 9.94 mm). The column is fused to the plate and the
-skin with 45 degree chamfers; the recess floor is sharp by function (the
-adapter's body seats on it).
+top=flat (pst-czxuk.5, solid since pst-czxuk.6) replaces the ribs and boss
+with one solid slab the projector's feet stand on: the plate thickened over
+its whole footprint, cheek to cheek across the bench and the full length,
+up to the deck top. Sean 2026-10-30: no box deck and no bridging; the
+slicer's sparse infill is the material saving. A round recess for the
+male-to-male adapter's body (flat floor, the insert flush with it) sits over
+the insert hole. The deck top is derived: recess_depth + pocket + HOLE_FLOOR
+above the slab, pocket = max(insert_length, adapter_thread) + 1 (the
+adapter's lower thread runs on through the insert). Set recess_depth = body
+height + upper thread - what the projector's socket swallows - foot height
+(4 + 8 - ~6 - 0 = 6). Both bores print with flat roofs facing +Z, cut at the
+circle's top (recess_d <= 24 keeps that roof <= 9.94 mm); nothing else
+bridges. The slab's long top edges get the plate's R 1; the recess floor is
+sharp by function (the adapter's body seats on it).
 """
 from __future__ import annotations
 
 import math
 
-from build123d import (Axis, BuildSketch, Circle, Mode, Plane, Polygon, Pos, Rectangle, Sketch, chamfer, extrude,
-                       fillet)
+from build123d import Axis, BuildSketch, Circle, Plane, Polygon, Pos, Rectangle, Sketch, chamfer, extrude, fillet
 
 from holders import bench_lip_clip
 from holders.bench_lip_clip import OUTER_RADIUS, TOP_RADIUS, lip_clip_profile
@@ -71,7 +69,6 @@ TIP_FLAT = 2.0         # the boss teardrop's flat tip (a 2 mm bridge)
 BOSS_CHAMFER = 1.0     # boss root blend and top edge, 45 degrees
 MOUTH_CHAMFER = 0.8    # insert hole mouth lead-in
 END_MARGIN = 3.0       # boss (with its root chamfer) to either end of the prism
-MIN_CHANNEL = 2*BOSS_CHAMFER + 2  # flat top: a deck channel's height, its two chamfers + a 2 mm face
 
 _lip = {q.name: q for q in bench_lip_clip.PARAMS}
 
@@ -103,7 +100,7 @@ PARAMS = (
     Param('plate', 'number', 6, min=5, max=10, step=0.5, unit='mm',
           group='Shape', label='Top plate thickness'),
     Param('top', 'enum', 'ribbed', choices=('ribbed', 'flat'), group='Shape', label='Top',
-          description='ribbed: two ribs and the insert boss on the plate; flat: a box deck the '
+          description='ribbed: two ribs and the insert boss on the plate; flat: one solid slab the '
                       'projector feet rest on, the insert in a recess for the adapter'),
     Param('rib_height', 'number', 15, min=10, max=25, step=0.5, unit='mm',
           group='Shape', label='Rib and boss height', description='Ribbed top only'),
@@ -111,13 +108,6 @@ PARAMS = (
           group='Shape', label='Rib wall', description='Ribbed top only'),
     Param('rib_spacing', 'number', 60, min=30, max=150, step=1, unit='mm',
           group='Shape', label='Rib spacing (centres)', description='Ribbed top only'),
-    Param('deck_width', 'number', 90, min=40, max=140, step=1, unit='mm',
-          group='Deck', label='Deck width (across the bench)',
-          description='Flat top only; the projector is 78 mm deep, + 2 x 6 margin'),
-    Param('deck_skin', 'number', 4, min=3, max=6, step=0.5, unit='mm',
-          group='Deck', label='Deck top skin', description='Flat top only'),
-    Param('deck_wall', 'number', 4, min=3, max=6, step=0.5, unit='mm',
-          group='Deck', label='Deck side wall', description='Flat top only'),
     Param('boss_x_offset', 'number', 0, min=-100, max=100, step=1, unit='mm',
           group='Insert', label='Boss front-to-back offset',
           description='From the slab centre line; + is toward the rear cheek'),
@@ -152,7 +142,7 @@ def dimensions(values: dict) -> dict:
     top=flat skips rib_*, boss_od and their guards; the deck top is derived:
     deck_top (above the slab) = recess_depth + pocket + HOLE_FLOOR, pocket =
     max(insert_length, adapter_thread) + 1. boss_r/tip_depth are the boss's
-    (ribbed) or the column's (flat) teardrop.
+    teardrop (ribbed) or the recess circle (flat).
     """
     p = {q.name: q.default for q in PARAMS}
     unknown = values.keys() - p.keys()
@@ -239,26 +229,16 @@ def _end_guard(p, what):
 
 
 def _flat_dimensions(p, hole, bx, bz):
-    """The flat top's deck, column, recess and pocket (pst-czxuk.5)."""
+    """The flat top's recess and pocket in the solid slab (pst-czxuk.5/.6)."""
     if p['recess_d'] < hole + 2*INSERT_WALL + 2 - 1e-9:
         raise ValueError(f'recess_d must be >= insert_hole + hole_compensation + {2*INSERT_WALL + 2:g} '
                          f'({hole + 2*INSERT_WALL + 2:g}; the adapter body seats on the floor around the insert)')
-    col = p['recess_d'] + 2*INSERT_WALL
-    dw, wall = p['deck_width'], p['deck_wall']
-    if dw - 2*wall < col + 2*RIB_GAP - 1e-9:
-        raise ValueError(f'deck_width - 2 x deck_wall must be >= recess_d + {2*INSERT_WALL + 2*RIB_GAP:g} '
-                         '(clear floor between the column and the deck walls)')
-    if bx - dw/2 < p['edge_x'] - 1e-9 or bx + dw/2 > p['edge_x'] + p['bench_width'] + 1e-9:
-        raise ValueError('boss_x_offset or deck_width puts the deck off the slab')
-    if p['deck_height'] - p['deck_skin'] < MIN_CHANNEL - 1e-9:
-        raise ValueError(f'the deck is too shallow for its channels (deck_height - deck_skin < {MIN_CHANNEL:g}); '
-                         'increase recess_depth or reduce plate or deck_skin')
-    r = col/2
+    r = p['recess_d']/2
+    if bx - r < INSERT_WALL - 1e-9 or bx + r > p['width'] - INSERT_WALL + 1e-9:
+        raise ValueError(f'boss_x_offset puts the recess within {INSERT_WALL:g} mm of a side of the slab')
     p.update(hole_d=hole, hole_depth=p['pocket'], hole_top=p['height'] - p['recess_depth'],
-             recess_floor=p['height'] - p['recess_depth'], boss_x=bx, boss_z=bz, boss_r=r,
-             boss_top=p['height'] - p['deck_skin'], tip_depth=r*math.sqrt(2) - TIP_FLAT/2,
-             deck_x=(bx - dw/2, bx + dw/2))
-    _end_guard(p, 'column')
+             recess_floor=p['height'] - p['recess_depth'], boss_x=bx, boss_z=bz, boss_r=r, tip_depth=r)
+    _end_guard(p, 'recess')
     return p
 
 
@@ -267,40 +247,25 @@ def _at(s, *corners):
 
 
 def plate_profile(p: dict) -> Sketch:
-    """Plate + rear cheek + ribs or deck (XY), in-plane edge treatment included.
+    """Plate + rear cheek + ribs, or the flat top's solid slab (XY), in-plane edge treatment included.
 
     The plate starts at x=0 so it covers the lip C's top jaw and spine top.
-    The flat top's deck is a box shell: two walls up from the plate and the
-    skin, its hollow open at both ends (the through-channels).
+    The flat top is the plate grown to the deck top over its whole width.
     """
-    W, ys, yt, yr = p['width'], p['slab_top'], p['plate_top'], p['height']
-    xr, cd = p['rear_x'], p['cheek_depth']
+    W, ys, xr, cd = p['width'], p['slab_top'], p['rear_x'], p['cheek_depth']
+    flat = p['top'] == 'flat'
+    yt, yr = (p['height'] if flat else p['plate_top']), p['height']
     pts = [(0, ys), (xr, ys), (xr, ys - cd), (W, ys - cd), (W, yt)]
-    if p['top'] == 'flat':
-        x0, x1 = p['deck_x']
-        pts += [(x1, yt), (x1, yr), (x0, yr), (x0, yt), (0, yt)]
-        c0, c1, cy, c = x0 + p['deck_wall'], x1 - p['deck_wall'], p['boss_top'], BOSS_CHAMFER
-        with BuildSketch() as s:
-            Polygon(*pts, align=None)
-            fillet(_at(s, (xr, ys)), p['jaw_root_radius'])
-            chamfer(_at(s, (x0, yt), (x1, yt)), c)
-            if p['lead_in'] > 0:
-                chamfer(_at(s, (xr, ys - cd)), p['lead_in'])
-            fillet(_at(s, (W, ys - cd), (W, yt), (0, yt), (x0, yr), (x1, yr)), OUTER_RADIUS)
-            # The hollow goes in last, its corners chamfered up front: a
-            # sketch fillet or chamfer drops an inner wire.
-            Polygon((c0 + c, yt), (c1 - c, yt), (c1, yt + c), (c1, cy - c), (c1 - c, cy), (c0 + c, cy),
-                    (c0, cy - c), (c0, yt + c), align=None, mode=Mode.SUBTRACT)
-        return s.sketch
     t = p['rib_wall']/2
-    ribs = sorted(p['rib_x'], reverse=True)
+    ribs = [] if flat else sorted(p['rib_x'], reverse=True)
     for x in ribs:
         pts += [(x + t, yt), (x + t, yr), (x - t, yr), (x - t, yt)]
     pts.append((0, yt))
     with BuildSketch() as s:
         Polygon(*pts, align=None)
         fillet(_at(s, (xr, ys)), p['jaw_root_radius'])
-        fillet(_at(s, *[(x + d, yt) for x in ribs for d in (t, -t)]), RIB_ROOT_RADIUS)
+        if ribs:
+            fillet(_at(s, *[(x + d, yt) for x in ribs for d in (t, -t)]), RIB_ROOT_RADIUS)
         if p['lead_in'] > 0:
             chamfer(_at(s, (xr, ys - cd)), p['lead_in'])
         fillet(_at(s, (W, ys - cd), (W, yt), (0, yt), *[(x + d, yr) for x in ribs for d in (t, -t)]),
@@ -323,7 +288,7 @@ def _teardrop(r: float, flat: float) -> Sketch:
 
 
 def boss_section(p: dict) -> Sketch:
-    """The boss (or column) section on the plate top: local x = X, local y = Z, tip toward -Z."""
+    """The ribbed top's boss section on the plate top: local x = X, local y = Z, tip toward -Z."""
     plane = Plane(origin=(p['boss_x'], p['plate_top'], p['boss_z']), x_dir=(1, 0, 0), z_dir=(0, -1, 0))
     return plane * _teardrop(p['boss_r'], TIP_FLAT)
 
@@ -345,7 +310,7 @@ def hole_section(p: dict) -> Sketch:
 
 
 def recess_section(p: dict) -> Sketch:
-    """The flat top's adapter recess on the deck top."""
+    """The flat top's adapter recess on the slab top."""
     return _bore_section(p, p['recess_d']/2, p['height'])
 
 
@@ -358,10 +323,8 @@ def _edges_in(part, y, x0, x1, z0, z1):
 
 
 def boss(p: dict):
-    """The insert boss (top edge chamfered) or the flat top's column (fused under the skin)."""
+    """The ribbed top's insert boss, its top edge chamfered."""
     b = extrude(boss_section(p), p['boss_top'] - p['plate_top'], dir=(0, 1, 0))
-    if p['top'] == 'flat':
-        return b
     return b.chamfer(BOSS_CHAMFER, None, b.edges().filter_by(lambda d: abs(d.center().Y - p['height']) < 1e-6))
 
 
@@ -384,31 +347,30 @@ def holder(**values):
     part = part.fillet(TOP_RADIUS, top.edges())
     bed = part.faces().sort_by(Axis.Z)[0]
     part = part.chamfer(p['bed_chamfer'], None, bed.edges())
-    part = part + boss(p)
-    # Root blend (concave): a 45 degree chamfer, since a fillet would face down
-    # in print; the flat top's column also meets the skin's underside.
-    bx, bz, r = p['boss_x'], p['boss_z'], p['boss_r']
-    roots = [p['plate_top']] + ([p['boss_top']] if p['top'] == 'flat' else [])
-    root = [d for y in roots for d in _edges_in(part, y, bx - r, bx + r, bz - p['tip_depth'], bz + r)]
-    part = part.chamfer(BOSS_CHAMFER, None, root)
     if p['top'] == 'flat':
         part = _cut_bore(part, p, recess_section(p), p['recess_depth'], p['recess_d']/2)
+    else:
+        part = part + boss(p)
+        # Root blend (concave): a 45 degree chamfer, since a fillet would face down in print.
+        bx, bz, r = p['boss_x'], p['boss_z'], p['boss_r']
+        part = part.chamfer(BOSS_CHAMFER, None, _edges_in(part, p['plate_top'], bx - r, bx + r,
+                                                          bz - p['tip_depth'], bz + r))
     return _cut_bore(part, p, hole_section(p), p['hole_depth'], p['hole_d']/2).clean()
 
 
 def bridges(p: dict) -> list:
     """The flat ceilings in the print pose, as (name, z, x0, x1, y0, y1).
 
-    boss-tip / column-tip: the teardrop's TIP_FLAT (a 2 mm bridge between
-    its flanks); hole-roof and (flat) recess-roof: each bore's flat roof,
-    2r(sqrt 2 - 1) wide.
+    boss-tip (ribbed): the teardrop's TIP_FLAT (a 2 mm bridge between its
+    flanks); hole-roof and (flat) recess-roof: each bore's flat roof,
+    2r(sqrt 2 - 1) wide. The flat top's solid slab has no other ceiling.
     """
     bx, bz = p['boss_x'], p['boss_z']
-    name = 'column-tip' if p['top'] == 'flat' else 'boss-tip'
-    out = [(name, bz - p['tip_depth'], bx - TIP_FLAT/2, bx + TIP_FLAT/2, p['plate_top'], p['boss_top'])]
-    bores = [('hole-roof', p['hole_d']/2, p['hole_top'] - p['hole_depth'], p['hole_top'])]
+    out, bores = [], [('hole-roof', p['hole_d']/2, p['hole_top'] - p['hole_depth'], p['hole_top'])]
     if p['top'] == 'flat':
         bores.append(('recess-roof', p['recess_d']/2, p['recess_floor'], p['height']))
+    else:
+        out.append(('boss-tip', bz - p['tip_depth'], bx - TIP_FLAT/2, bx + TIP_FLAT/2, p['plate_top'], p['boss_top']))
     for n, r, y0, y1 in bores:
         roof = 2*r*(math.sqrt(2) - 1)
         out.append((n, bz + r, bx - roof/2, bx + roof/2, y0, y1))
@@ -430,7 +392,7 @@ SPEC = register(ModelSpec(
     description=('Saddle mount that clamps over a bench top and carries a projector on a 1/4"-20 '
                  'heat-set insert. The front cheek is the lip clip\'s hook (the only locator), the '
                  'rear cheek a loose stop; a 6 mm plate with two ribs carries the insert boss, or '
-                 '(flat top) a box deck the projector stands on, the insert in a recess for the '
+                 '(flat top) one solid slab the projector stands on, the insert in a recess for the '
                  'adapter. Prints on its side, no supports.'),
     tags=('holder',), params=PARAMS,
     presets=(Preset(id='short-80', label='Short (80 mm)', values={'length': 80}),

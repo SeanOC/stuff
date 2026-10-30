@@ -1,4 +1,4 @@
-"""holder_bench_projector_mount: the bench projector saddle mount (pst-czxuk.4, flat top pst-czxuk.5)."""
+"""holder_bench_projector_mount: the bench projector saddle mount (pst-czxuk.4, flat top pst-czxuk.5/.6)."""
 import math
 
 import pytest
@@ -7,14 +7,15 @@ from build123d import Axis, Rectangle, Pos, Vector
 from holders import bench_lip_clip
 from holders.bench_lip_clip import lip_clip_profile
 from holders.bench_projector_mount import (BOSS_CHAMFER, HOLE_FLOOR, INSERT_WALL, LIP_PARAMS, PARAMS, SPEC,
-                                           audit_exclusions, bridges, dimensions, holder, mount_profile)
+                                           _flat_dimensions, audit_exclusions, bridges, dimensions, holder,
+                                           mount_profile)
 from holders.printer import BED_X, BED_Y, BED_Z
 from tests.audit_record import record
 from tests.print_audit import MAX_BRIDGE_MM, audit
 
 NUMERIC = [q for q in PARAMS if q.kind == 'number']
 RIB_ONLY = {'rib_height', 'rib_wall', 'rib_spacing', 'boss_od'}
-FLAT_ONLY = {'adapter_thread', 'recess_d', 'recess_depth', 'deck_width', 'deck_skin', 'deck_wall'}
+FLAT_ONLY = {'adapter_thread', 'recess_d', 'recess_depth'}
 FLAT = {'top': 'flat'}
 
 # §6 item 3: every numeric endpoint plus the documented corners. An endpoint
@@ -37,8 +38,6 @@ FLAT_EXPECTED_ERRORS = {
     ('lead_in', 3): 'cheek_wall - lead_in',
     ('bench_width', 315): 'reduce bench_width',
     ('cheek_wall', 3): 'cheek_wall - lead_in',
-    ('boss_z_offset', -45): 'puts the column',    # column tip + chamfer 16.3 from its axis at length 120
-    ('boss_z_offset', 45): 'puts the column',
     ('recess_d', 12): 'recess_d must be',         # 8.2 + 5 + 2 = 15.2
 }
 CORNERS = [
@@ -67,16 +66,12 @@ FLAT_CORNERS = [{**FLAT, **c} for c in [
     {'recess_d': 15.2},                                            # thinnest floor ring round the insert
     {'recess_d': 13, 'insert_hole': 6, 'hole_compensation': 0},    # recess_d min, reachable
     {'recess_d': 24, 'insert_hole': 10, 'hole_compensation': 0.5},  # widest recess and hole
-    {'recess_d': 24, 'deck_width': 43},                            # widest column, clear floor exactly 3
-    {'deck_width': 40, 'deck_wall': 5.5},                          # narrowest deck, clear floor exactly 3
-    {'recess_depth': 4, 'insert_length': 6, 'adapter_thread': 6, 'deck_skin': 3},  # channel exactly 4
-    {'recess_depth': 30, 'adapter_thread': 25, 'deck_width': 140, 'deck_skin': 6, 'deck_wall': 6,
-     'recess_d': 24},                                              # tallest, widest deck
-    {'plate': 10, 'recess_depth': 1.5, 'deck_skin': 3},            # thickest plate, channel 4.2
-    {'boss_x_offset': -100, 'deck_width': 110},                    # deck flush with the front edge
-    {'boss_x_offset': 100, 'deck_width': 110},                     # deck flush with the rear edge
-    {'length': 80, 'boss_z_offset': -20},                          # column tip 3.7 mm from the bed end
-    {'length': 80, 'boss_z_offset': 24},                           # column 3.5 mm from the top end
+    {'plate': 10, 'recess_depth': 1, 'insert_length': 6, 'adapter_thread': 6},  # shallowest: deck top = plate top
+    {'recess_depth': 30, 'adapter_thread': 25, 'recess_d': 24},    # tallest slab, widest recess
+    {'boss_x_offset': -100, 'bench_width': 250, 'recess_d': 24},   # recess nearest the front
+    {'boss_x_offset': 100, 'bench_width': 250, 'recess_d': 24},    # recess nearest the rear
+    {'length': 80, 'boss_z_offset': -27},                          # recess + chamfer 3 mm from the bed end
+    {'length': 80, 'boss_z_offset': 27},                           # recess + chamfer 3 mm from the top end
     {'length': 300, 'boss_z_offset': 45},
     {'wall': 8, 'plate': 8, 'width_clearance': 2},                 # thickest C wall: 324
     {'lead_in': 0, 'wall': 3, 'cheek_wall': 3},                    # square tips, thinnest walls
@@ -117,21 +112,13 @@ def assert_profile(p):
     tip = xr + (p['cheek_wall'] + p['lead_in'])/2
     assert _inside(s, tip, ys - p['cheek_depth'] + e) and not _inside(s, tip, ys - p['cheek_depth'] - e)
     if p['top'] == 'flat':
-        # Deck: deck_width wide, centred on the insert, walls and skin as
-        # set, its hollow down to the plate top; the plate outside is bare.
-        x0, x1 = p['deck_x']
-        assert x1 - x0 == pytest.approx(p['deck_width']) and (x0 + x1)/2 == pytest.approx(p['boss_x'])
-        assert p['edge_x'] - 1e-9 <= x0 and x1 <= p['edge_x'] + p['bench_width'] + 1e-9
-        yy, dw, sk = (yt + p['boss_top'])/2, p['deck_wall'], p['deck_skin']
-        for xo, xi in ((x0, x0 + dw), (x1, x1 - dw)):
-            sgn = 1 if xi > xo else -1
-            assert _inside(s, xo + sgn*e, yy) and not _inside(s, xo - sgn*e, yy)
-            assert _inside(s, xi - sgn*e, yy) and not _inside(s, xi + sgn*e, yy)
-        bx = p['boss_x']
-        assert _inside(s, bx, p['height'] - e) and not _inside(s, bx, p['height'] + e)
-        assert _inside(s, bx, p['height'] - sk + e) and not _inside(s, bx, p['height'] - sk - e)
-        assert not _inside(s, bx, yt + e) and _inside(s, bx, yt - e)
-        assert not _inside(s, x0 - 2, yt + e) and not _inside(s, x1 + 2, yt + e)
+        # One solid slab from the slab top to the deck top, cheek to cheek
+        # (pst-czxuk.6): no hollow, no channel, nothing outside it.
+        W, yr = p['width'], p['height']
+        for x in (2, p['edge_x'] + 1, mid, xr - 1, W - 2):
+            assert _inside(s, x, yr - e) and not _inside(s, x, yr + e)
+            assert all(_inside(s, x, ys + e + k*(yr - ys - 2*e)/8) for k in range(9))
+        assert not _inside(s, -e, (ys + yr)/2) and not _inside(s, W + e, (ys + yr)/2)
         assert p['height'] - p['slab_top'] == pytest.approx(p['recess_depth'] + p['pocket'] + HOLE_FLOOR)
     else:
         # Ribs: rib_wall wide, rib_height tall, centred on rib_x.
@@ -160,8 +147,8 @@ def assert_insert(part, p):
     """The insert hole: hole_d across, hole_depth deep, a floor clear of the slab.
 
     Flat top: the hole opens on the recess floor (recess_d across,
-    recess_depth deep, a flat floor), the column wraps both, and the deck's
-    channels run through both ends.
+    recess_depth deep, a flat floor), and the slab is solid all round both
+    bores and through both ends.
     """
     bx, bz, e = p['boss_x'], p['boss_z'], 0.01
 
@@ -188,16 +175,15 @@ def assert_insert(part, p):
         ring = bx + (r + R)/2 + 0.4   # the floor between the hole's mouth chamfer and the recess wall
         assert not solid(ring, p['recess_floor'] + e, bz) and solid(ring, p['recess_floor'] - e, bz)
         assert p['height'] - p['recess_floor'] == pytest.approx(p['recess_depth'])
-        x0, x1 = p['deck_x']
-        mid = (p['plate_top'] + p['boss_top'])/2
-        for xc in ((x0 + p['deck_wall'] + bx - p['boss_r'])/2, (x1 - p['deck_wall'] + bx + p['boss_r'])/2):
-            assert not any(solid(xc, mid, z) for z in (e, bz, p['length'] - e))   # through-channel
+        mid = (p['slab_top'] + p['height'])/2
+        for xc in (bx - R - INSERT_WALL, bx + R + INSERT_WALL, p['edge_x'] + 10, p['rear_x'] - 10):
+            assert all(solid(xc, mid, z) for z in (1, bz, p['length'] - 1))   # no hollow, no channel
     else:
         assert p['hole_depth'] == pytest.approx(p['insert_length'] + 1)
         assert p['boss_od'] >= p['hole_d'] + 2*INSERT_WALL - 1e-9
-    # Boss or column outer wall along X, at mid-height.
-    R, y = p['boss_r'], (p['plate_top'] + p['boss_top'])/2
-    assert solid(bx + R - e, y, bz) and not solid(bx + R + e, y, bz)
+        # Boss outer wall along X, at mid-height.
+        R, y = p['boss_r'], (p['plate_top'] + p['boss_top'])/2
+        assert solid(bx + R - e, y, bz) and not solid(bx + R + e, y, bz)
 
 
 def assert_finished_edges(part, p):
@@ -301,15 +287,10 @@ def test_unreachable_endpoints_raise(top, key, message):
     ({'top': 'round'}, 'top must be one of'),
     ({'top': 'flat', 'recess_d': 15}, 'recess_d must be'),
     ({'top': 'flat', 'recess_d': 15.2}, None),
-    ({'top': 'flat', 'deck_width': 40, 'deck_wall': 6}, 'deck_width - 2 x deck_wall'),
-    ({'top': 'flat', 'recess_d': 24, 'deck_width': 42}, 'deck_width - 2 x deck_wall'),
-    ({'top': 'flat', 'boss_x_offset': -100, 'deck_width': 112}, 'off the slab'),
-    ({'top': 'flat', 'boss_x_offset': 100, 'deck_width': 112}, 'off the slab'),
-    ({'top': 'flat', 'recess_depth': 1, 'insert_length': 6, 'adapter_thread': 6}, 'too shallow'),
-    ({'top': 'flat', 'recess_depth': 3.5, 'insert_length': 6, 'adapter_thread': 6, 'deck_skin': 3},
-     'too shallow'),
-    ({'top': 'flat', 'length': 80, 'boss_z_offset': -21}, 'puts the column'),
-    ({'top': 'flat', 'length': 80, 'boss_z_offset': 25}, 'puts the column'),
+    ({'top': 'flat', 'length': 80, 'boss_z_offset': -28}, 'puts the recess'),
+    ({'top': 'flat', 'length': 80, 'boss_z_offset': 28}, 'puts the recess'),
+    ({'top': 'flat', 'length': 80, 'boss_z_offset': -24, 'recess_d': 24}, None),
+    ({'top': 'flat', 'length': 80, 'boss_z_offset': -25, 'recess_d': 24}, 'puts the recess'),
     # top=flat skips the rib and boss guards (invariant 3).
     ({'top': 'flat', 'rib_spacing': 30, 'boss_od': 20}, None),
     ({'top': 'flat', 'insert_length': 20, 'rib_height': 10}, None),
@@ -340,13 +321,25 @@ def test_defaults_are_the_spec():
 
 
 def test_flat_defaults_are_the_spec():
-    """pst-czxuk.5 rev 3: the measured adapter (body 16 x 4, 8 mm threads) and a 90 mm deck."""
+    """pst-czxuk.5 rev 3: the measured adapter (body 16 x 4, 8 mm threads); pst-czxuk.6: no deck params."""
     p = dimensions(FLAT)
     assert (p['recess_d'], p['recess_depth'], p['adapter_thread']) == (18, 6, 8)
-    assert (p['deck_width'], p['deck_skin'], p['deck_wall']) == (90, 4, 4)
+    assert not {'deck_width', 'deck_skin', 'deck_wall'} & {q.name for q in PARAMS}
     assert p['pocket'] == pytest.approx(13.7) and p['deck_top'] == pytest.approx(21.7)
     assert p['deck_height'] == pytest.approx(15.7) and p['footprint'] == pytest.approx((323, 64.9))
-    assert p['boss_r'] == pytest.approx(11.5)   # column O recess_d + 2 x INSERT_WALL
+    assert p['boss_r'] == pytest.approx(9)   # the recess circle
+
+
+def test_recess_side_guard():
+    """The recess stays INSERT_WALL from either side of the slab. Unreachable in the
+    declared ranges (>= 16 mm of slab beside it), so drive the guard directly."""
+    p = dimensions(FLAT)
+    r = p['recess_d']/2
+    for bx in (r + INSERT_WALL - 0.1, p['width'] - r - INSERT_WALL + 0.1):
+        with pytest.raises(ValueError, match='of a side of the slab'):
+            _flat_dimensions(dict(p), p['hole_d'], bx, p['boss_z'])
+    for bx in (r + INSERT_WALL, p['width'] - r - INSERT_WALL):
+        _flat_dimensions(dict(p), p['hole_d'], bx, p['boss_z'])
 
 
 # Main @5904e848 (pst-czxuk.4): the ribbed presets must not move (invariant 1).
