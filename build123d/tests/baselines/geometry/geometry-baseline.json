@@ -84,10 +84,9 @@
       "underware-x/X",
       "underware-x/X-tall"
     ],
-    "provisional": "geometry only; bake + audit-rows regenerated from the first successful CI capture",
     "schema_version": 1,
-    "source_sha": "56f828fde8e9760117e27b5436987e15e58259f7",
-    "why": "pst-czxuk.5: holder-bench-projector-mount flat-250 preset (top=flat)"
+    "source_sha": "0aefda9a3c8c33a74a461b442871b3f5fb091f52",
+    "why": "pst-1z5db: full rebaseline after #252/#254/#255 added holder-bench-projector-mount; first capture since pst-ml7f9"
   },
   "rows": {
     "gridfinity-capture-bin/deep": {
