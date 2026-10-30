@@ -50,8 +50,39 @@ cd "$BD_DIR"
 echo "bake-bd-presets: uv sync --frozen (cache: $UV_CACHE_DIR)…"
 uv sync --frozen
 
-echo "bake-bd-presets: baking presets into build123d/baked/…"
-uv run python scripts/export.py --presets-only baked
+# Content-addressed bake cache (pst-aqza2): only presets whose inputs
+# changed are baked; the rest are restored from Blob. On by default when the
+# Blob token is present; BD_BAKE_CACHE=0 is the pre-cache bake exactly. A
+# cache read never fails the build (any error → that preset bakes); a store
+# failure is a warning. The read audit inside --cache-dir DOES fail the bake:
+# an input the key misses would serve stale geometry.
+if [ "${BD_BAKE_CACHE:-}" = "0" ]; then
+  echo "bake cache: off (BD_BAKE_CACHE=0)"
+  BAKE_CACHE=off
+elif [ -z "${BLOB_READ_WRITE_TOKEN:-}" ]; then
+  echo "bake cache: off (no token)"
+  BAKE_CACHE=off
+else
+  BAKE_CACHE=on
+fi
+
+if [ "$BAKE_CACHE" = "on" ]; then
+  CACHE_DIR="$(mktemp -d)"
+  trap 'rm -rf "$CACHE_DIR"' EXIT
+  if uv run python scripts/export.py --presets-only baked --cache-plan "$CACHE_DIR/plan.json"; then
+    node "$ROOT/scripts/bd-bake-cache.mjs" restore "$CACHE_DIR" \
+      || echo "bake cache: restore failed — baking every preset"
+  else
+    echo "bake cache: plan failed — baking every preset"
+  fi
+  echo "bake-bd-presets: baking presets into build123d/baked/ (cache: $CACHE_DIR)…"
+  uv run python scripts/export.py --presets-only baked --cache-dir "$CACHE_DIR"
+  node "$ROOT/scripts/bd-bake-cache.mjs" store "$CACHE_DIR" \
+    || echo "bake cache: WARN store failed — the next build re-bakes these presets"
+else
+  echo "bake-bd-presets: baking presets into build123d/baked/…"
+  uv run python scripts/export.py --presets-only baked
+fi
 
 # The baked STL/3MF are not in the Vercel function (pst-acoed); on a Vercel
 # build, publish them to Blob and record their URLs for /api/bd-asset
