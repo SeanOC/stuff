@@ -321,6 +321,7 @@
         {
           "name": "plate",
           "label": "Top plate thickness",
+          "description": "ribbed top only; for the flat top the slab height is derived (deck_top)",
           "group": "Shape",
           "unit": "mm",
           "kind": "number",

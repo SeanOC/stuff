@@ -49,6 +49,7 @@ X runs front-to-back across the bench, and Z runs along it.
   difference is zero at every endpoint and corner. The C's top jaw sits under
   the plate, so `plate` must be ≥ `wall`.
 - **Plate:** `plate` 6 mm, resting on the slab top across the full width.
+  Ribbed top only; for the flat top the slab height is derived (`deck_top`).
 - **Rear cheek:** `cheek_wall` 4, `cheek_depth` 11.5, 1.5 mm lead-in. Its inner
   face is at `wall + bench_width + width_clearance`, leaving 3.5 mm of rear play
   at the defaults (4.0 less the 0.5 edge gap at the hook).

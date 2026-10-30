@@ -98,7 +98,8 @@ PARAMS = (
     Param('length', 'number', 120, min=80, max=300, step=1, unit='mm',
           group='Shape', label='Length along the bench'),
     Param('plate', 'number', 6, min=5, max=10, step=0.5, unit='mm',
-          group='Shape', label='Top plate thickness'),
+          group='Shape', label='Top plate thickness',
+          description='ribbed top only; for the flat top the slab height is derived (deck_top)'),
     Param('top', 'enum', 'ribbed', choices=('ribbed', 'flat'), group='Shape', label='Top',
           description='ribbed: two ribs and the insert boss on the plate; flat: one solid slab the '
                       'projector feet rest on, the insert in a recess for the adapter'),
