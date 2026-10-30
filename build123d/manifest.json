@@ -183,7 +183,7 @@
       "slug": "holder-bench-projector-mount",
       "engine": "build123d",
       "title": "Bench projector mount",
-      "blurb": "Saddle mount that clamps over a bench top and carries a projector on a 1/4\"-20 heat-set insert. The front cheek is the lip clip's hook (the only locator), the rear cheek a loose stop; a 6 mm plate with two ribs carries the insert boss. Prints on its side, no supports.",
+      "blurb": "Saddle mount that clamps over a bench top and carries a projector on a 1/4\"-20 heat-set insert. The front cheek is the lip clip's hook (the only locator), the rear cheek a loose stop; a 6 mm plate with two ribs carries the insert boss, or (flat top) a box deck the projector stands on, the insert in a recess for the adapter. Prints on its side, no supports.",
       "categoryId": "household",
       "params": [
         {
@@ -315,7 +315,7 @@
           "kind": "number",
           "default": 120,
           "min": 80,
-          "max": 200,
+          "max": 300,
           "step": 1
         },
         {
@@ -330,8 +330,21 @@
           "step": 0.5
         },
         {
+          "name": "top",
+          "label": "Top",
+          "description": "ribbed: two ribs and the insert boss on the plate; flat: a box deck the projector feet rest on, the insert in a recess for the adapter",
+          "group": "Shape",
+          "kind": "enum",
+          "default": "ribbed",
+          "choices": [
+            "ribbed",
+            "flat"
+          ]
+        },
+        {
           "name": "rib_height",
           "label": "Rib and boss height",
+          "description": "Ribbed top only",
           "group": "Shape",
           "unit": "mm",
           "kind": "number",
@@ -343,6 +356,7 @@
         {
           "name": "rib_wall",
           "label": "Rib wall",
+          "description": "Ribbed top only",
           "group": "Shape",
           "unit": "mm",
           "kind": "number",
@@ -354,6 +368,7 @@
         {
           "name": "rib_spacing",
           "label": "Rib spacing (centres)",
+          "description": "Ribbed top only",
           "group": "Shape",
           "unit": "mm",
           "kind": "number",
@@ -361,6 +376,42 @@
           "min": 30,
           "max": 150,
           "step": 1
+        },
+        {
+          "name": "deck_width",
+          "label": "Deck width (across the bench)",
+          "description": "Flat top only; the projector is 78 mm deep, + 2 x 6 margin",
+          "group": "Deck",
+          "unit": "mm",
+          "kind": "number",
+          "default": 90,
+          "min": 40,
+          "max": 140,
+          "step": 1
+        },
+        {
+          "name": "deck_skin",
+          "label": "Deck top skin",
+          "description": "Flat top only",
+          "group": "Deck",
+          "unit": "mm",
+          "kind": "number",
+          "default": 4,
+          "min": 3,
+          "max": 6,
+          "step": 0.5
+        },
+        {
+          "name": "deck_wall",
+          "label": "Deck side wall",
+          "description": "Flat top only",
+          "group": "Deck",
+          "unit": "mm",
+          "kind": "number",
+          "default": 4,
+          "min": 3,
+          "max": 6,
+          "step": 0.5
         },
         {
           "name": "boss_x_offset",
@@ -388,6 +439,7 @@
         {
           "name": "boss_od",
           "label": "Boss outer diameter",
+          "description": "Ribbed top only",
           "group": "Insert",
           "unit": "mm",
           "kind": "number",
@@ -430,6 +482,42 @@
           "step": 0.1
         },
         {
+          "name": "adapter_thread",
+          "label": "Adapter thread length",
+          "description": "Flat top only; the lower thread runs on through the insert into a free bore",
+          "group": "Insert",
+          "unit": "mm",
+          "kind": "number",
+          "default": 8,
+          "min": 6,
+          "max": 25,
+          "step": 0.5
+        },
+        {
+          "name": "recess_d",
+          "label": "Adapter recess diameter",
+          "description": "Flat top only; the adapter body (16) + 1 mm radial",
+          "group": "Insert",
+          "unit": "mm",
+          "kind": "number",
+          "default": 18,
+          "min": 12,
+          "max": 24,
+          "step": 0.5
+        },
+        {
+          "name": "recess_depth",
+          "label": "Adapter recess depth",
+          "description": "Flat top only; body height + upper thread - what the projector socket swallows - foot height (4 + 8 - 6 - 0)",
+          "group": "Insert",
+          "unit": "mm",
+          "kind": "number",
+          "default": 6,
+          "min": 1,
+          "max": 30,
+          "step": 0.5
+        },
+        {
           "name": "bed_chamfer",
           "label": "Bed chamfer",
           "group": "Shape",
@@ -454,6 +542,14 @@
           "label": "Long (200 mm)",
           "values": {
             "length": 200
+          }
+        },
+        {
+          "id": "flat-250",
+          "label": "Flat top (250 mm)",
+          "values": {
+            "top": "flat",
+            "length": 250
           }
         }
       ]

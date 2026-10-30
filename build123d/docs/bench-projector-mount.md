@@ -6,7 +6,9 @@ pst-czxuk, bead pst-czxuk.4). It is a saddle over the cast faux-wood Halloween
 bench top that carries the projector on a 1/4"-20 heat-set insert. Its front
 cheek is the [lip clip](bench-lip-clip.md)'s C, its rear cheek is the
 [width saddle](bench-width-saddle.md)'s plain cheek, and a ribbed plate between
-them carries the insert boss.
+them carries the insert boss. A second top, `top` = `flat` (bead pst-czxuk.5,
+preset `flat-250`), replaces the ribs and boss with a deck the projector stands
+on; see [Flat top](#flat-top-pst-czxuk5).
 
 ## Provenance
 
@@ -36,7 +38,7 @@ confirmed). The modelled hole is 8.0 + `hole_compensation` 0.2 = 8.2 mm across,
 ## Geometry
 
 The model frame is the print frame. The profile lies in XY (`mount_profile`)
-and is extruded +Z by `length` (120 mm, range 80–200). The part prints on its
+and is extruded +Z by `length` (120 mm, range 80–300). The part prints on its
 side as a prism, with the insert boss standing on the plate. In use +Y is up,
 X runs front-to-back across the bench, and Z runs along it.
 
@@ -91,6 +93,91 @@ flat-ish part on the bed, so expect to want a brim if the corners lift.
 Volume: 286.7 cm³ at the defaults (about 364 g of PCTG), 191.6 cm³ for the
 `short-80` preset and 476.9 cm³ for `long-200`. The 323 × 120 × 6 mm plate
 alone is 233 cm³; the spec fixes it at 6 mm.
+
+## Flat top (pst-czxuk.5)
+
+Sean printed the ribbed first article and asked for a flat top instead
+(2026-10-29 23:35Z): make the mount thick enough that its top is flush with
+the insert, with a recess round the hole for the male-to-male adapter, so the
+projector's feet rest on the mount. `top` = `flat` does that; `ribbed` (the
+default) is unchanged, and the `short-80` and `long-200` presets keep main's
+volume and bounding box exactly (`test_ribbed_presets_unchanged`).
+
+The adapter, measured 00:30Z: a knurled disc Ø16 × 4 mm with an 8 mm thread
+each side. The projector's 245 mm side runs along the bench with its feet
+more or less at its ends, so the preset is **`flat-250`** (`top` flat,
+`length` 250; `length` now runs to 300, inside the 325 mm build height).
+
+**Shape.** The 6 mm plate stays as it is across the full width, and the plate
+outside the deck is bare. On it, centred on the insert (`boss_x_offset` and
+`boss_z_offset` still place it), a box deck runs the full length:
+
+- `deck_width` 90 across the bench (the projector's 78 mm depth + 2 × 6;
+  40–140), a top skin `deck_skin` 4 and two side walls `deck_wall` 4 (3–6)
+  down to the plate. The deck must stay over the slab.
+- In the middle a column, Ø `recess_d` + 2 × 2.5 (23 mm at the defaults),
+  runs from the plate to the skin. It carries the recess and the insert hole.
+  Like the boss it is a teardrop with its 2 mm tip toward the bed.
+- **The channels between the column and the walls run through**, open at both
+  ends. With no end caps there is no bridge to print, and rain drains out. In
+  the print pose the hollow is a vertical shaft; the column crosses it as a
+  short horizontal bar whose teardrop underside needs no support.
+- Edges: the wall and column roots, the hollow's corners and the column's
+  junction with the skin are 45° chamfers (1 mm); the skin's top corners are
+  R 1; the recess and hole mouths are 0.8 mm 45° chamfers.
+
+**Recess and hole.** The recess is round, Ø `recess_d` 18 (the 16 mm disc +
+1 mm radial; 12–24, and ≥ hole + 7 = 15.2 so the disc has a floor ring round
+the insert) and `recess_depth` 6 deep, with a flat floor. The insert sits flush
+with that floor. The hole below it is the same 8.2 mm teardrop bore, `pocket`
+= max(`insert_length`, `adapter_thread`) + 1 deep (13.7 at the defaults). The
+adapter's lower thread runs on through the insert into the free bore. The
+hole floor stays `HOLE_FLOOR` (2 mm) above the slab, bored through the column
+into the plate. The recess floor is sharp by function, like the hole floor:
+the disc seats on it.
+
+**The deck top is derived, never set:** `deck_top` (above the slab) =
+`recess_depth` + `pocket` + `HOLE_FLOOR` = 6 + 13.7 + 2 = 21.7 mm at the
+defaults, so the box stands 15.7 mm above the plate (`deck_height`) and the
+footprint is 323 × 64.9 mm. Set `recess_depth` from the adapter:
+
+> `recess_depth` = body height + upper thread − what the projector's socket
+> swallows − foot height
+
+The defaults are 4 + 8 − ~6 − 0 = 6. If the socket takes the whole 8 mm
+thread, 4.5 works (the formula gives 4; the extra 0.5 is clearance). Set it on
+the model page. A deeper recess also raises the deck; `MIN_CHANNEL` (4 mm) is
+the shallowest channel the guards allow.
+
+**Printing.** The pose is unchanged (the prism on its side). The recess and
+the hole are horizontal bores with flat roofs facing up, both cut at the
+circle's top. `recess_d` ≤ 24 keeps the recess roof ≤ 9.94 mm (2r(√2 − 1)),
+under the 10 mm bridge limit, and the column always covers that roof. The
+flat top has three flat ceilings: the column tip (2 mm), the recess roof
+(7.5 mm at the defaults) and the hole roof (3.4 mm). `bridges()` and
+`audit_exclusions` box exactly those.
+
+**Load.** Below the recess the insert sits in a Ø23 / Ø8.2 ring
+(section modulus ≈ 1170 mm³, about 0.9 MPa under the 1.1 N·m bump, against
+4.5 MPa in the ribbed boss), and the column is fused into the skin and the
+plate. The feet load the skin: about 3.8 N per foot on a 4 mm skin spanning
+82 mm between the walls, under 1 MPa if the feet sit 10 mm or more inboard of
+a wall. Neither figure is datasheet-checked; foot positions are Sean's "more
+or less at its ends".
+
+**Volume** (`part.volume`):
+
+| Case | Volume | vs ribbed@250 |
+|---|---|---|
+| `short-80` (ribbed) | 191.6 cm³ | unchanged from main |
+| `long-200` (ribbed) | 476.9 cm³ | unchanged from main |
+| ribbed, `length` 250 (not a preset) | 595.8 cm³ | — |
+| `flat-250` | 681.0 cm³ | +85.2 cm³ (+14.3 %) |
+
+The increase is the skin (90 × 4 × 250 = 90 cm³), the walls (23 cm³) and the
+column, less the ribs and boss (≈ 32 cm³). It is the plastic the projector's
+feet stand on. The shell form keeps it well under a solid deck across the
+width (≈ 3.4 L).
 
 ## Load case
 

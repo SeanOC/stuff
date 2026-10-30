@@ -1,4 +1,4 @@
-"""holder_bench_projector_mount: the bench projector saddle mount (pst-czxuk.4)."""
+"""holder_bench_projector_mount: the bench projector saddle mount (pst-czxuk.4, flat top pst-czxuk.5)."""
 import math
 
 import pytest
@@ -13,6 +13,9 @@ from tests.audit_record import record
 from tests.print_audit import MAX_BRIDGE_MM, audit
 
 NUMERIC = [q for q in PARAMS if q.kind == 'number']
+RIB_ONLY = {'rib_height', 'rib_wall', 'rib_spacing', 'boss_od'}
+FLAT_ONLY = {'adapter_thread', 'recess_d', 'recess_depth', 'deck_width', 'deck_skin', 'deck_wall'}
+FLAT = {'top': 'flat'}
 
 # §6 item 3: every numeric endpoint plus the documented corners. An endpoint
 # another guard makes unreachable at the defaults is an expected-ValueError
@@ -26,6 +29,17 @@ EXPECTED_ERRORS = {
     ('boss_od', 13): 'boss_od',                    # 8.2 + 5 = 13.2
     ('insert_hole', 10): 'boss_od',                # 10.2 + 5 > 14
     ('insert_length', 20): 'plate \\+ rib_height',  # 6 + 15 - 21 < 2
+}
+# The same sweep at top=flat (rib_* and boss_od are skipped there).
+FLAT_EXPECTED_ERRORS = {
+    ('wall', 3): 'wall - lead_in',
+    ('wall', 8): 'plate must be >= wall',
+    ('lead_in', 3): 'cheek_wall - lead_in',
+    ('bench_width', 315): 'reduce bench_width',
+    ('cheek_wall', 3): 'cheek_wall - lead_in',
+    ('boss_z_offset', -45): 'puts the column',    # column tip + chamfer 16.3 from its axis at length 120
+    ('boss_z_offset', 45): 'puts the column',
+    ('recess_d', 12): 'recess_d must be',         # 8.2 + 5 + 2 = 15.2
 }
 CORNERS = [
     {'wall': 3, 'lead_in': 1.0},                                   # thinnest reachable C wall
@@ -49,10 +63,31 @@ CORNERS = [
     {'slab_thickness': 70, 'height_clearance': 4, 'hook_depth': 20, 'cheek_depth': 20,
      'jaw_root_radius': 2, 'edge_gap': 2},
 ]
+FLAT_CORNERS = [{**FLAT, **c} for c in [
+    {'recess_d': 15.2},                                            # thinnest floor ring round the insert
+    {'recess_d': 13, 'insert_hole': 6, 'hole_compensation': 0},    # recess_d min, reachable
+    {'recess_d': 24, 'insert_hole': 10, 'hole_compensation': 0.5},  # widest recess and hole
+    {'recess_d': 24, 'deck_width': 43},                            # widest column, clear floor exactly 3
+    {'deck_width': 40, 'deck_wall': 5.5},                          # narrowest deck, clear floor exactly 3
+    {'recess_depth': 4, 'insert_length': 6, 'adapter_thread': 6, 'deck_skin': 3},  # channel exactly 4
+    {'recess_depth': 30, 'adapter_thread': 25, 'deck_width': 140, 'deck_skin': 6, 'deck_wall': 6,
+     'recess_d': 24},                                              # tallest, widest deck
+    {'plate': 10, 'recess_depth': 1.5, 'deck_skin': 3},            # thickest plate, channel 4.2
+    {'boss_x_offset': -100, 'deck_width': 110},                    # deck flush with the front edge
+    {'boss_x_offset': 100, 'deck_width': 110},                     # deck flush with the rear edge
+    {'length': 80, 'boss_z_offset': -20},                          # column tip 3.7 mm from the bed end
+    {'length': 80, 'boss_z_offset': 24},                           # column 3.5 mm from the top end
+    {'length': 300, 'boss_z_offset': 45},
+    {'wall': 8, 'plate': 8, 'width_clearance': 2},                 # thickest C wall: 324
+    {'lead_in': 0, 'wall': 3, 'cheek_wall': 3},                    # square tips, thinnest walls
+]]
 REFUSED = [c for c in CORNERS if c == {'width_clearance': 6, 'cheek_wall': 6}]
-ENDPOINTS = [{q.name: v} for q in NUMERIC for v in (q.min, q.max)
+ENDPOINTS = [{q.name: v} for q in NUMERIC if q.name not in FLAT_ONLY for v in (q.min, q.max)
              if (q.name, v) not in EXPECTED_ERRORS]
-CASES = [{}] + ENDPOINTS + [c for c in CORNERS if c not in REFUSED] + [p.values for p in SPEC.presets]
+FLAT_ENDPOINTS = [{**FLAT, q.name: v} for q in NUMERIC if q.name not in RIB_ONLY for v in (q.min, q.max)
+                  if (q.name, v) not in FLAT_EXPECTED_ERRORS]
+CASES = [{}] + ENDPOINTS + [c for c in CORNERS if c not in REFUSED] + [FLAT] + FLAT_ENDPOINTS + FLAT_CORNERS \
+    + [p.values for p in SPEC.presets]
 
 
 def _id(values):
@@ -81,13 +116,31 @@ def assert_profile(p):
     assert xr - w == pytest.approx(p['bench_width'] + p['width_clearance'])
     tip = xr + (p['cheek_wall'] + p['lead_in'])/2
     assert _inside(s, tip, ys - p['cheek_depth'] + e) and not _inside(s, tip, ys - p['cheek_depth'] - e)
-    # Ribs: rib_wall wide, rib_height tall, centred on rib_x.
-    for x in p['rib_x']:
-        t = p['rib_wall']/2
-        assert _inside(s, x, p['height'] - e) and not _inside(s, x, p['height'] + e)
-        yy = yt + p['rib_height']/2
-        assert _inside(s, x - t + e, yy) and not _inside(s, x - t - e, yy)
-        assert _inside(s, x + t - e, yy) and not _inside(s, x + t + e, yy)
+    if p['top'] == 'flat':
+        # Deck: deck_width wide, centred on the insert, walls and skin as
+        # set, its hollow down to the plate top; the plate outside is bare.
+        x0, x1 = p['deck_x']
+        assert x1 - x0 == pytest.approx(p['deck_width']) and (x0 + x1)/2 == pytest.approx(p['boss_x'])
+        assert p['edge_x'] - 1e-9 <= x0 and x1 <= p['edge_x'] + p['bench_width'] + 1e-9
+        yy, dw, sk = (yt + p['boss_top'])/2, p['deck_wall'], p['deck_skin']
+        for xo, xi in ((x0, x0 + dw), (x1, x1 - dw)):
+            sgn = 1 if xi > xo else -1
+            assert _inside(s, xo + sgn*e, yy) and not _inside(s, xo - sgn*e, yy)
+            assert _inside(s, xi - sgn*e, yy) and not _inside(s, xi + sgn*e, yy)
+        bx = p['boss_x']
+        assert _inside(s, bx, p['height'] - e) and not _inside(s, bx, p['height'] + e)
+        assert _inside(s, bx, p['height'] - sk + e) and not _inside(s, bx, p['height'] - sk - e)
+        assert not _inside(s, bx, yt + e) and _inside(s, bx, yt - e)
+        assert not _inside(s, x0 - 2, yt + e) and not _inside(s, x1 + 2, yt + e)
+        assert p['height'] - p['slab_top'] == pytest.approx(p['recess_depth'] + p['pocket'] + HOLE_FLOOR)
+    else:
+        # Ribs: rib_wall wide, rib_height tall, centred on rib_x.
+        for x in p['rib_x']:
+            t = p['rib_wall']/2
+            assert _inside(s, x, p['height'] - e) and not _inside(s, x, p['height'] + e)
+            yy = yt + p['rib_height']/2
+            assert _inside(s, x - t + e, yy) and not _inside(s, x - t - e, yy)
+            assert _inside(s, x + t - e, yy) and not _inside(s, x + t + e, yy)
     bb = s.bounding_box()
     assert bb.size.X == pytest.approx(p['footprint'][0]) and bb.size.Y == pytest.approx(p['footprint'][1])
     assert p['footprint'][0] <= BED_X and p['footprint'][1] <= BED_Y and p['length'] <= BED_Z
@@ -104,37 +157,62 @@ def assert_lip_c_identical(p):
 
 
 def assert_insert(part, p):
-    """The insert hole: hole_d across, hole_depth deep, a floor clear of the slab."""
-    bx, bz, r, e = p['boss_x'], p['boss_z'], p['hole_d']/2, 0.01
-    y = p['height'] - p['hole_depth']/2
+    """The insert hole: hole_d across, hole_depth deep, a floor clear of the slab.
+
+    Flat top: the hole opens on the recess floor (recess_d across,
+    recess_depth deep, a flat floor), the column wraps both, and the deck's
+    channels run through both ends.
+    """
+    bx, bz, e = p['boss_x'], p['boss_z'], 0.01
 
     def solid(x, yy, z):
         return part.is_inside(Vector(x, yy, z))
-    assert not solid(bx - r + e, y, bz) and solid(bx - r - e, y, bz)
-    assert not solid(bx + r - e, y, bz) and solid(bx + r + e, y, bz)
-    assert not solid(bx, y, bz - r + e) and solid(bx, y, bz - r - e)
-    assert not solid(bx, y, bz + r - e) and solid(bx, y, bz + r + e)   # the flat roof: tall = hole_d
-    floor = p['height'] - p['hole_depth']
+
+    def bore(r, top, depth):
+        y = top - depth/2
+        assert not solid(bx - r + e, y, bz) and solid(bx - r - e, y, bz)
+        assert not solid(bx + r - e, y, bz) and solid(bx + r + e, y, bz)
+        assert not solid(bx, y, bz - r + e) and solid(bx, y, bz - r - e)
+        assert not solid(bx, y, bz + r - e) and solid(bx, y, bz + r + e)   # the flat roof: tall = 2r
+    r = p['hole_d']/2
+    bore(r, p['hole_top'], p['hole_depth'])
+    floor = p['hole_top'] - p['hole_depth']
     assert not solid(bx, floor + e, bz) and solid(bx, floor - e, bz)
     assert floor - p['slab_top'] >= HOLE_FLOOR - 1e-9
-    assert p['hole_depth'] == pytest.approx(p['insert_length'] + 1)
-    assert p['boss_od'] >= p['hole_d'] + 2*INSERT_WALL - 1e-9
-    # Boss outer wall along X, at mid-height.
-    R = p['boss_r']
+    if p['top'] == 'flat':
+        assert p['hole_depth'] == pytest.approx(max(p['insert_length'], p['adapter_thread']) + 1)
+        assert floor - p['slab_top'] == pytest.approx(HOLE_FLOOR)
+        R = p['recess_d']/2
+        assert p['recess_d'] >= p['hole_d'] + 2*INSERT_WALL + 2 - 1e-9
+        bore(R, p['height'], p['recess_depth'])
+        ring = bx + (r + R)/2 + 0.4   # the floor between the hole's mouth chamfer and the recess wall
+        assert not solid(ring, p['recess_floor'] + e, bz) and solid(ring, p['recess_floor'] - e, bz)
+        assert p['height'] - p['recess_floor'] == pytest.approx(p['recess_depth'])
+        x0, x1 = p['deck_x']
+        mid = (p['plate_top'] + p['boss_top'])/2
+        for xc in ((x0 + p['deck_wall'] + bx - p['boss_r'])/2, (x1 - p['deck_wall'] + bx + p['boss_r'])/2):
+            assert not any(solid(xc, mid, z) for z in (e, bz, p['length'] - e))   # through-channel
+    else:
+        assert p['hole_depth'] == pytest.approx(p['insert_length'] + 1)
+        assert p['boss_od'] >= p['hole_d'] + 2*INSERT_WALL - 1e-9
+    # Boss or column outer wall along X, at mid-height.
+    R, y = p['boss_r'], (p['plate_top'] + p['boss_top'])/2
     assert solid(bx + R - e, y, bz) and not solid(bx + R + e, y, bz)
 
 
 def assert_finished_edges(part, p):
     """Edge classifier (the bench_lip_clip / width-saddle pattern).
 
-    bore: the insert hole's floor, sharp by function (the insert seats on
-    it). tangent: fillet runs. eased: every other edge, dihedral < 90
+    bore: the insert hole's floor and (flat top) the recess floor, sharp by
+    function (the insert seats on one, the adapter's body on the other). tangent: fillet runs. eased: every other edge, dihedral < 90
     degrees (45 degree chamfers and lead-ins). tip: lead_in 0 only, the hook
     and rear cheek tips' square inner corners. No other class exists.
     """
     tips = [] if p['lead_in'] else [(p['lip']['hook_x'], p['wall']),
                                     (p['rear_x'], p['slab_top'] - p['cheek_depth'])]
-    floor, r = p['height'] - p['hole_depth'], p['hole_d']/2 + 1e-3
+    floors = [(p['hole_top'] - p['hole_depth'], p['hole_d']/2 + 1e-3)]
+    if p['top'] == 'flat':
+        floors.append((p['recess_floor'], p['recess_d']/2 + 1e-3))
     adjacency = {}
     for f in part.faces():
         for edge in f.edges():
@@ -143,7 +221,8 @@ def assert_finished_edges(part, p):
     for edge, faces in adjacency.items():
         assert len(faces) == 2
         c = edge.center()
-        if abs(c.Y - floor) < 1e-6 and abs(c.X - p['boss_x']) < r and -r < c.Z - p['boss_z'] < r*math.sqrt(2):
+        if any(abs(c.Y - floor) < 1e-6 and abs(c.X - p['boss_x']) < r and -r < c.Z - p['boss_z'] < r*math.sqrt(2)
+               for floor, r in floors):
             counts['bore'] += 1
             continue
         if any(abs(c.X - x) < 1e-6 and abs(c.Y - y) < 1e-6 for x, y in tips):
@@ -182,7 +261,7 @@ def assert_bridges(part, p, values):
         assert x1 - x0 <= MAX_BRIDGE_MM
 
 
-@pytest.mark.parametrize('values', [{}] + ENDPOINTS + CORNERS, ids=_id)
+@pytest.mark.parametrize('values', [{}] + ENDPOINTS + CORNERS + [FLAT] + FLAT_ENDPOINTS + FLAT_CORNERS, ids=_id)
 def test_profile_dimensions(values):
     if values in REFUSED:
         with pytest.raises(ValueError, match='reduce bench_width'):
@@ -194,10 +273,11 @@ def test_profile_dimensions(values):
     assert_lip_c_identical(p)
 
 
-@pytest.mark.parametrize('key,message', sorted(EXPECTED_ERRORS.items()), ids=lambda v: str(v))
-def test_unreachable_endpoints_raise(key, message):
+@pytest.mark.parametrize('top,key,message', [('ribbed', k, m) for k, m in sorted(EXPECTED_ERRORS.items())]
+                         + [('flat', k, m) for k, m in sorted(FLAT_EXPECTED_ERRORS.items())], ids=lambda v: str(v))
+def test_unreachable_endpoints_raise(top, key, message):
     with pytest.raises(ValueError, match=message):
-        dimensions({key[0]: key[1]})
+        dimensions({'top': top, key[0]: key[1]})
 
 
 @pytest.mark.parametrize('values,message', [
@@ -216,8 +296,24 @@ def test_unreachable_endpoints_raise(key, message):
     ({'rib_spacing': 30, 'boss_od': 20}, 'rib_spacing'),
     ({'boss_x_offset': -100, 'rib_spacing': 150}, 'off the plate'),
     ({'insert_length': 20, 'rib_height': 16.5}, 'plate \\+ rib_height'),
-    ({'length': 201}, 'length'),
+    ({'length': 301}, 'length'),
     ({'nope': 1}, 'unknown'),
+    ({'top': 'round'}, 'top must be one of'),
+    ({'top': 'flat', 'recess_d': 15}, 'recess_d must be'),
+    ({'top': 'flat', 'recess_d': 15.2}, None),
+    ({'top': 'flat', 'deck_width': 40, 'deck_wall': 6}, 'deck_width - 2 x deck_wall'),
+    ({'top': 'flat', 'recess_d': 24, 'deck_width': 42}, 'deck_width - 2 x deck_wall'),
+    ({'top': 'flat', 'boss_x_offset': -100, 'deck_width': 112}, 'off the slab'),
+    ({'top': 'flat', 'boss_x_offset': 100, 'deck_width': 112}, 'off the slab'),
+    ({'top': 'flat', 'recess_depth': 1, 'insert_length': 6, 'adapter_thread': 6}, 'too shallow'),
+    ({'top': 'flat', 'recess_depth': 3.5, 'insert_length': 6, 'adapter_thread': 6, 'deck_skin': 3},
+     'too shallow'),
+    ({'top': 'flat', 'length': 80, 'boss_z_offset': -21}, 'puts the column'),
+    ({'top': 'flat', 'length': 80, 'boss_z_offset': 25}, 'puts the column'),
+    # top=flat skips the rib and boss guards (invariant 3).
+    ({'top': 'flat', 'rib_spacing': 30, 'boss_od': 20}, None),
+    ({'top': 'flat', 'insert_length': 20, 'rib_height': 10}, None),
+    ({'top': 'flat', 'boss_x_offset': -100, 'rib_spacing': 150}, None),
 ])
 def test_guards_name_the_parameter(values, message):
     if values == {'bench_width': 314, 'width_clearance': 3}:
@@ -240,15 +336,42 @@ def test_defaults_are_the_spec():
     assert p['boss_x'] == pytest.approx(p['edge_x'] + 155) and p['boss_z'] == pytest.approx(60)
     # The default sits under its own range ceiling (plan review advisory 3).
     assert next(q for q in PARAMS if q.name == 'width_clearance').max > p['width_clearance']
+    assert p['top'] == 'ribbed'
+
+
+def test_flat_defaults_are_the_spec():
+    """pst-czxuk.5 rev 3: the measured adapter (body 16 x 4, 8 mm threads) and a 90 mm deck."""
+    p = dimensions(FLAT)
+    assert (p['recess_d'], p['recess_depth'], p['adapter_thread']) == (18, 6, 8)
+    assert (p['deck_width'], p['deck_skin'], p['deck_wall']) == (90, 4, 4)
+    assert p['pocket'] == pytest.approx(13.7) and p['deck_top'] == pytest.approx(21.7)
+    assert p['deck_height'] == pytest.approx(15.7) and p['footprint'] == pytest.approx((323, 64.9))
+    assert p['boss_r'] == pytest.approx(11.5)   # column O recess_d + 2 x INSERT_WALL
+
+
+# Main @5904e848 (pst-czxuk.4): the ribbed presets must not move (invariant 1).
+RIBBED_IDENTITY = {'short-80': (191649.37609476488, (323.0, 64.2, 80.0)),
+                   'long-200': (476927.87162933074, (323.0, 64.2, 200.0))}
+
+
+@pytest.mark.parametrize('preset', sorted(RIBBED_IDENTITY))
+def test_ribbed_presets_unchanged(preset):
+    values = next(p.values for p in SPEC.presets if p.id == preset)
+    part = holder(**values)
+    volume, size = RIBBED_IDENTITY[preset]
+    bb = part.bounding_box()
+    assert part.volume == pytest.approx(volume, rel=1e-9)
+    assert tuple(bb.size) == pytest.approx(size, abs=1e-6) and tuple(bb.min) == pytest.approx((0, 0, 0), abs=1e-6)
 
 
 def test_presets_and_slug():
     assert SPEC.slug == 'holder-bench-projector-mount'
-    assert [p.id for p in SPEC.presets] == ['short-80', 'long-200']
+    assert [p.id for p in SPEC.presets] == ['short-80', 'long-200', 'flat-250']
+    assert SPEC.presets[2].values == {'top': 'flat', 'length': 250}
 
 
-@pytest.mark.parametrize('values', [{}] + [p.values for p in SPEC.presets],
-                         ids=['defaults'] + [p.id for p in SPEC.presets])
+@pytest.mark.parametrize('values', [{}, FLAT] + [p.values for p in SPEC.presets],
+                         ids=['defaults', 'flat'] + [p.id for p in SPEC.presets])
 def test_insert_and_bridges(values):
     p = dimensions(values)
     part = holder(**values)
