@@ -1,0 +1,36 @@
+# Print bridge (pst-8amdt): turns "print model X on printer Y" into Bambuddy
+# pipeline runs. Standalone — no dependency on build123d/ or the web app;
+# it only talks to stuff's public HTTP routes and Bambuddy's REST API.
+[project]
+name = "stuff-bridge"
+version = "0.1.0"
+description = "stuff -> Bambuddy print bridge (HTTP service + CLI), tailnet-only"
+# Mirrors build123d/pyproject.toml so the repo needs one interpreter (3.14).
+requires-python = ">=3.13,<3.15"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn>=0.32",
+    "httpx>=0.28",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.8",
+]
+
+[tool.uv]
+# An app, not a library: `uv run` executes from bridge/, so the package
+# imports from the working directory without being installed.
+package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
