@@ -24,6 +24,7 @@ import { useShortcut } from "@/hooks/useShortcut";
 import { useUI } from "@/contexts/UIContext";
 import type { Param, ParamValue, Preset } from "@/lib/scad-params/parse";
 import type { RenderResult } from "@/hooks/useRenderer";
+import PrintButton from "./PrintButton";
 
 export interface DetailPageModel {
   title: string;
@@ -178,14 +179,22 @@ export default function DetailPage({ model, accessories = [] }: Props) {
   );
 
   const downloadButton = (
-    <DownloadButton
-      modelPath={model.modelPath}
-      values={detail.state.params}
-      canDownload={render.state.kind === "ready"}
-      registerHandler={(fn) => {
-        downloadRef.current = fn;
-      }}
-    />
+    <div className="flex items-center gap-8">
+      <DownloadButton
+        modelPath={model.modelPath}
+        values={detail.state.params}
+        canDownload={render.state.kind === "ready"}
+        registerHandler={(fn) => {
+          downloadRef.current = fn;
+        }}
+      />
+      {/* pst-62i6h: the same {model, params} the Download button POSTs. */}
+      <PrintButton
+        variant="strip"
+        target={{ source: "scad", model: model.modelPath, params: detail.state.params }}
+        disabled={render.state.kind !== "ready"}
+      />
+    </div>
   );
 
   // At ≥1200px, pin the layout to the viewport (minus the 38px sticky
