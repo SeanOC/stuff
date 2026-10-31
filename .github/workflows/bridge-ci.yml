@@ -1,0 +1,42 @@
+# Added by pst-0hykt (mayor WORKFLOW CARVE-OUT, 2026-10-31).
+#
+# Lint + test the print bridge (bridge/, FastAPI service, own pyproject + uv.lock,
+# Python 3.14 via bridge/.python-version). The pytest suite is hermetic (fake
+# Bambuddy + fake stuff behind httpx.MockTransport), so no services or secrets.
+#
+# INFORMATIONAL, NOT REQUIRED: the workflow-level paths: filter means it does not
+# report on every PR, and docs/ci.md forbids making such a check required (a
+# required context that sometimes doesn't run hangs the merge controller).
+# The filter names this file too, so a PR touching only the workflow still runs it.
+name: bridge-ci
+on:
+  pull_request:
+    paths: ["bridge/**", ".github/workflows/bridge-ci.yml"]
+  push:
+    branches: [main]
+    paths: ["bridge/**", ".github/workflows/bridge-ci.yml"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bridge-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: bridge tests + ruff
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults: { run: { working-directory: bridge } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: sync env (pinned via uv.lock)
+        run: uv sync --frozen
+      - name: pytest
+        run: uv run pytest -q
+      - name: ruff check
+        run: uv run ruff check .
+      - name: ruff format --check
+        run: uv run ruff format --check .

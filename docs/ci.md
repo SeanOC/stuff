@@ -89,6 +89,7 @@ protection API): `unit tests (vitest)`, `e2e tests (playwright)`,
 | `sweep` shards (wasm param sweep) | Selective — only the models the PR touched, sharded across parallel jobs (see below); skipped entirely on sweep-irrelevant PRs | Full sweep whenever sweep-relevant paths changed (the coverage guard) | `param-sweep.yml` |
 | `gate` (`wasm param sweep`, the required context) | Always reports — reduces shard results to one conclusion, passes immediately in skip mode | Same | `param-sweep.yml` |
 | `update` (update open PR branches) | — | Always (+ manual dispatch) | `pr-autoupdate.yml` |
+| `test` (`bridge tests + ruff`: pytest + `ruff check` + `ruff format --check` on `bridge/`) | Only when `bridge/**` or the workflow file changed — paths-filtered *because* it is informational, not required (see the rule above); don't promote it to required without removing the filter | Same paths filter | `bridge-ci.yml` |
 | `codex-review` (required context) | Set by the `stuff-codex-reviewer` agent via the statuses API — not a workflow job | — | city `codex-review-gate-stuff` order |
 
 The `unit` and `e2e` jobs run on every PR regardless; both are cheap
