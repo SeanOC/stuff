@@ -690,6 +690,7 @@ MITRE_CASES = {
                    'length_units': 2, 'mirror_channel': True},
     'min-corner': {'channel_total_height': 10, 'mirror_channel': True},
     'separators-w4': {'channel_width_units': 4, 'channel_separators': 'SSSSSSSS'},
+    'separators-w3-offcentre': {'channel_width_units': 3, 'channel_separators': 'NSNNNN'},
     'flare-9.9': {'grip_flare': 9.9}, 'flare-5-suppress': {'grip_flare': 5, 'suppress_connectors': 'S,L'},
     'suppress-all': {'suppress_connectors': 'B,B'},
     'cut-both': MCUT,
@@ -849,3 +850,42 @@ def test_arch_envelope_is_the_quadrant_only():
     assert not (frame*arch).is_inside(on)
     mirrored = m.arch_underside({'added_radius': 1, 'mirror_channel': True})
     assert (mirrored.x0, mirrored.x1) == pytest.approx((c.GRID - w/2, c.GRID + w/2))
+
+
+# Off-centre separator codes are continuous round the bend (pst-m1e5n): the
+# second arm's frame flips x (grip / 'Right' wall parity), so it is handed the
+# mirrored codes; each wall stays at the first arm's x through the bend and
+# the second arm, and its -x twin stays open. Short codes pad with 'N' first.
+SEPARATOR_CONTINUITY = {
+    'w3-NSNNNN': ({'channel_width_units': 3, 'channel_separators': 'NSNNNN', 'length_units': 2}, 14),
+    'w3-short-NS': ({'channel_width_units': 3, 'channel_separators': 'ns'}, 14),
+    'w4-NNNSNNNN': ({'channel_width_units': 4, 'channel_separators': 'NNNSNNNN', 'length_units': 2}, 42),
+    'w4-NNS-r1': ({'channel_width_units': 4, 'channel_separators': 'NNS', 'added_radius': 1}, 28),
+    'w3-NNNNSN-r2': ({'channel_width_units': 3, 'channel_separators': 'NNNNSN', 'added_radius': 2}, -14),
+}
+
+
+def separator_probes(part, first, second, bend, x, z):
+    """{piece: (solid at +x, solid at -x)} along the separator midline: the
+    first arm's centre, the bend at 45 degrees (bend maps the first arm's end
+    section, y = -w/2, onto it) and the second arm's centre, each read in its
+    own section frame at height z. The second arm's frame maps local x to
+    model -x, so it is probed at local -x: every piece is read at MODEL x."""
+    w = first.width
+    probe = lambda loc, q: part.is_inside(tuple(_to(loc, q)))
+    pieces = {'arm 1': (first.location, lambda s: (s*x, 0, z)),
+              'bend': (bend, lambda s: (first.x + s*x, -w/2, z)),
+              'arm 2': (second, lambda s: (-s*x, 0, z))}
+    return {name: (probe(loc, q(1)), probe(loc, q(-1))) for name, (loc, q) in pieces.items()}
+
+
+@pytest.mark.parametrize('case', SEPARATOR_CONTINUITY)
+def test_mitre_separator_is_continuous_round_the_bend(case):
+    values, x = SEPARATOR_CONTINUITY[case]
+    v, first = m._checked_mitre(values)
+    h, w = v['channel_total_height'], first.width
+    r = p.mitre_radius(h, v['added_radius'])
+    second = p.mitre_second_location(v['channel_width_units'], h, v['length_down_units'], v['added_radius'])
+    bend = Pos(0, -w/2, -r)*Rot(-45, 0, 0)*Pos(0, w/2, r)
+    got = separator_probes(m.build_mitre(values), first, second, bend, x, (h - c.BASE_HEIGHT)/2)
+    assert got == {piece: (True, False) for piece in got}
