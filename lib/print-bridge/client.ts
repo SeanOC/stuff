@@ -8,11 +8,14 @@
 //
 // Contract (bridge/README.md):
 //   GET  /health     → {ok, bambuddy_reachable}
-//   GET  /printers   → [{id, name, model, state, plate_detection_calibrated, pipeline}]
+//   GET  /printers   → [{id, name, model, state, plate_detection_calibrated, pipeline,
+//                        nozzle_mm}]
 //   POST /print      ← {source:"bd", slug, preset} | {source:"bd", slug, params}
 //                      | {source:"scad", model, params}  + {printer_id, copies}
 //                    → 202 {library_file_id, run_id, status_url}
-//                      409 {error, report?: {ok, issues[]}, run_id?}  403/5xx {error}
+//                      409 {error, report?: {ok, issues[]}, run_id?,
+//                           installed?: number[], pipeline?: number}  403/5xx {error}
+//                      (installed + pipeline: error "nozzle mismatch", diameters in mm)
 //   GET  /runs/{id}  → {status, copies, copies_completed, copies_failed, error_message, …}
 
 import type { ParamValue } from "@/lib/scad-params/parse";
@@ -73,6 +76,8 @@ export interface BridgePrinter {
   state: string | null;
   plate_detection_calibrated: boolean | null;
   pipeline: string | null;
+  /** Installed nozzle diameters in mm; [] when unknown. Absent from bridges before pst-0y0w4. */
+  nozzle_mm?: number[];
 }
 
 /** What to print — mirrors exactly what the page's Download button fetches. */

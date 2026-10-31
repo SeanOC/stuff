@@ -9,7 +9,7 @@ import pytest
 from bridge.__main__ import build_parser, main, run_print
 from bridge.app import create_app
 from bridge.config import ConfigError, load_config, parse_pipelines
-from bridge.core import params_sha12
+from bridge.core import name_nozzle, params_sha12
 
 from .conftest import API_KEY, BAMBUDDY, LOGIN, STUFF
 
@@ -35,6 +35,7 @@ def test_printers_never_forward_secrets(client):
             "state": "IDLE",
             "plate_detection_calibrated": False,
             "pipeline": "stuff-crushinator",
+            "nozzle_mm": [0.4],
         },
         {
             "id": 2,
@@ -43,6 +44,7 @@ def test_printers_never_forward_secrets(client):
             "state": "IDLE",
             "plate_detection_calibrated": True,
             "pipeline": "stuff-joey",
+            "nozzle_mm": [0.4, 0.4],
         },
     ]
     raw = json.dumps(body)
@@ -612,3 +614,140 @@ def test_printers_probe_non_json_is_none(client, fake):
     r = client.get("/printers")
     assert r.status_code == 200
     assert [p["state"] for p in r.json()] == [None, "IDLE"]
+
+
+# -- nozzle check (pst-0y0w4) ----------------------------------------------
+
+INCIDENT_PIPELINE = "Crushinator - PCTG - .4"
+
+
+def _name_pipeline(fake, config, printer_id, name):
+    """Point printer_id at a pipeline called name, as Bambuddy lists it."""
+    pid = {1: 11, 2: 12}[printer_id]
+    pipelines = [{**p, "name": name} if p["id"] == pid else p for p in fake.pipelines]
+    _bambuddy_override(
+        fake, "GET", "/api/v1/slicer-pipelines/", httpx.Response(200, json={"pipelines": pipelines})
+    )
+    config.pipelines[printer_id] = name
+
+
+def _no_upload(fake):
+    assert not fake.stuff_calls()
+    assert not fake.bambuddy_calls("POST", r"/api/v1/library/(files|folders)")
+    assert not fake.bambuddy_calls("POST", r"/api/v1/slicer-pipelines/\d+/.*")
+
+
+def test_nozzle_mismatch_is_409_before_any_fetch_or_upload(client, fake, config):
+    """The 2026-10-31 incident: a 0.6 nozzle on a pipeline slicing for .4."""
+    fake.nozzles[1] = ["0.6", ""]
+    _name_pipeline(fake, config, 1, INCIDENT_PIPELINE)
+    r = client.post("/print", json=BD_PRESET)
+    assert r.status_code == 409
+    assert r.json() == {"error": "nozzle mismatch", "installed": [0.6], "pipeline": 0.4}
+    _no_upload(fake)
+
+
+def test_cli_nozzle_mismatch_exits_1_with_both_values(monkeypatch, fake, capsys):
+    fake.nozzles[1] = ["0.6", ""]
+    fake.pipelines[0]["printer_preset"] = {"source": "standard", "id": "Bambu Lab H2S 0.4 nozzle"}
+    assert _cli(monkeypatch, fake, fake.handle) == 1
+    err = json.loads(capsys.readouterr().err)
+    assert err == {"status": 409, "error": "nozzle mismatch", "installed": [0.6], "pipeline": 0.4}
+    _no_upload(fake)
+
+
+def test_nozzle_match_prints(client, fake, config):
+    _name_pipeline(fake, config, 1, INCIDENT_PIPELINE)
+    assert client.post("/print", json=BD_PRESET).status_code == 202
+
+
+def test_nozzle_match_on_second_nozzle_with_first_empty(client, fake, config):
+    fake.nozzles[2] = ["", "0.4"]
+    _name_pipeline(fake, config, 2, "Joey - PCTG - 0.4mm")
+    r = client.post("/print", json={**BD_PRESET, "printer_id": 2})
+    assert r.status_code == 202, r.text
+
+
+def test_nozzle_dual_mismatch_lists_every_installed(client, fake, config):
+    fake.nozzles[2] = ["0.6", "0.2"]
+    _name_pipeline(fake, config, 2, "Joey - PCTG - .4")
+    r = client.post("/print", json={**BD_PRESET, "printer_id": 2})
+    assert r.status_code == 409
+    assert r.json()["installed"] == [0.6, 0.2]
+
+
+def test_nozzle_two_token_name_is_unknown_and_proceeds(client, fake, config):
+    fake.nozzles[1] = ["0.6"]
+    _name_pipeline(fake, config, 1, "PCTG-1.5x0.4")
+    assert client.post("/print", json=BD_PRESET).status_code == 202
+
+
+def test_nozzle_unknown_installed_proceeds(client, fake, config):
+    fake.nozzles[1] = ["", "n/a"]
+    _name_pipeline(fake, config, 1, INCIDENT_PIPELINE)
+    assert client.post("/print", json=BD_PRESET).status_code == 202
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        httpx.Response(404, json={"detail": "Not Found"}),
+        httpx.Response(502, text="bad gateway"),
+        httpx.Response(200, text="not json"),
+        httpx.Response(200, json={"resolved": False, "values": {}, "reason": "preset_unresolved"}),
+    ],
+)
+def test_nozzle_preset_values_failure_is_unknown_and_proceeds(client, fake, response):
+    """No name token and an unreadable preset: unknown, never a 502."""
+    fake.nozzles[1] = ["0.6"]
+    _bambuddy_override(fake, "GET", "/api/v1/slicer/preset-values", response)
+    assert client.post("/print", json=BD_PRESET).status_code == 202
+    (q,) = fake.bambuddy_calls("GET", "/api/v1/slicer/preset-values")
+    assert dict(q.url.params) == {"source": "cloud", "id": "GM037", "slot": "printer"}
+
+
+def test_nozzle_from_preset_values_beats_the_name(client, fake, config):
+    fake.nozzles[1] = ["0.6"]
+    fake.preset_values = {"nozzle_diameter": ["0.4"], "printer_variant": "0.4"}
+    _name_pipeline(fake, config, 1, "Crushinator - PCTG - .6")
+    r = client.post("/print", json=BD_PRESET)
+    assert r.status_code == 409
+    assert r.json() == {"error": "nozzle mismatch", "installed": [0.6], "pipeline": 0.4}
+    _no_upload(fake)
+
+
+def test_nozzle_preset_variant_when_diameters_disagree(client, fake):
+    fake.nozzles[1] = ["0.4"]
+    fake.preset_values = {"nozzle_diameter": ["0.4", "0.6"], "printer_variant": "0.6"}
+    r = client.post("/print", json=BD_PRESET)
+    assert r.json() == {"error": "nozzle mismatch", "installed": [0.4], "pipeline": 0.6}
+
+
+def test_nozzle_standard_preset_name_is_read(client, fake, config):
+    fake.nozzles[1] = ["0.6"]
+    fake.pipelines[0]["printer_preset"] = {"source": "standard", "id": "Bambu Lab H2S 0.4 nozzle"}
+    r = client.post("/print", json=BD_PRESET)
+    assert r.status_code == 409
+    assert r.json()["pipeline"] == 0.4
+
+
+def test_printers_nozzle_mm_unknown_is_empty(client, fake):
+    fake.nozzles[1] = ["", "x"]
+    assert [p["nozzle_mm"] for p in client.get("/printers").json()] == [[], [0.4, 0.4]]
+
+
+@pytest.mark.parametrize(
+    ("name", "mm"),
+    [
+        ("Crushinator - PCTG - .4", 0.4),
+        ("Crushinator - PCTG - 0.4mm", 0.4),
+        ("Crushinator PCTG 0.6", 0.6),
+        ("bambu-h2c-0.4", 0.4),
+        ("PCTG-1.5x0.6", None),
+        ("stuff-crushinator", None),
+        ("v1.2.3", None),
+        (None, None),
+    ],
+)
+def test_name_nozzle_token(name, mm):
+    assert name_nozzle(name) == mm

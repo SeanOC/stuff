@@ -22,8 +22,8 @@ vi.mock("./GlbViewer", () => ({
 const BRIDGE = "https://cubert.tail.ts.net:8443";
 
 const PRINTERS = [
-  { id: 1, name: "H2S", model: "H2S", state: "IDLE", plate_detection_calibrated: true, pipeline: "h2s" },
-  { id: 2, name: "Lefty", model: "H2C", state: "IDLE", plate_detection_calibrated: false, pipeline: "h2c" },
+  { id: 1, name: "H2S", model: "H2S", state: "IDLE", plate_detection_calibrated: true, pipeline: "h2s", nozzle_mm: [0.6] },
+  { id: 2, name: "Lefty", model: "H2C", state: "IDLE", plate_detection_calibrated: false, pipeline: "h2c", nozzle_mm: [] },
 ];
 
 type Handler = (url: string, init?: RequestInit) => Response | Promise<Response>;
@@ -153,7 +153,7 @@ describe("PrintButton popover + payload", () => {
     const options = Array.from(
       (screen.getByTestId("print-printer") as HTMLSelectElement).options,
     ).map((o) => o.textContent);
-    expect(options).toEqual(["H2S — H2S", "Lefty — H2C"]);
+    expect(options).toEqual(["H2S — H2S · 0.6 mm", "Lefty — H2C"]);
     expect(screen.queryByTestId("print-plate-hint")).toBeNull();
     fireEvent.change(screen.getByTestId("print-printer"), { target: { value: "2" } });
     expect(screen.getByTestId("print-plate-hint").textContent).toMatch(/not calibrated/i);
