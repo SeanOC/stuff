@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: CC-BY-NC-SA-4.0
-"""Monokini path channels: S, diagonal and mitre.
+"""Monokini path channels: S, diagonal, mitre and outside corner.
 
 [C] monokini_S_channel.scad:135-219 and :664-726, monokini_diagonal_channel.scad:
 135-221 and :666-726, monokini_mitre_channel.scad:127-220 and :479-540. Same
@@ -18,6 +18,13 @@ build_mitre is the author's solid and keeps the source's two arm lengths (the
 parity references include an unequal pair); the registered underware_mitre
 (holders/underware_path_channels.py) drives both from one length and cuts a
 bed flat across the arm tips in its 45 degree print frame.
+
+Outside corner (original design derived from the ported mitre, pst-38hu7;
+no author source): the mitre's first arm, then a 90 degree bend UP about the
+width axis with the floor OUTSIDE and the open (grip) faces inside, into a
+second channel along +Z with its grips toward -Y. It wraps the convex edge
+of two openGrid panels: the open faces meet at the edge line (outside_edge),
+on the bend axis at added_radius 0.
 """
 from __future__ import annotations
 
@@ -187,5 +194,67 @@ def build_mitre(units: int, height: float, length_y: int, length_z: int, *, mirr
         grip_flare=grip_flare)
     part = first.solid(height, grip_flare, cutters) + second
     part += mitre_bend(first.width, height, added_radius, first.separators)
+    part = part.clean()
+    return mirror(part, Plane.YZ) if mirrored else part
+
+
+# --- outside corner (convex twin of the mitre; original design, pst-38hu7) ------
+
+def outside_axis(units: int, height: float, added_radius: int) -> tuple[float, float]:
+    """(y, z) of the outside corner's bend axis (X-parallel): the mitre's
+    tangent plane y = -w/2, ABOVE the first arm by the open (wall-top) face
+    radius added_radius*GRID, so the floor (radius that + the wall top) lies
+    outside the bend and the open faces inside it."""
+    w = c.channel_width(units)
+    return -w/2, height - c.BASE_HEIGHT + added_radius*c.GRID
+
+
+def outside_edge(units: int, height: float, added_radius: int) -> tuple[float, float]:
+    """(y, z) of the corner edge line: where the two arms' open faces (wall
+    tops, the openGrid tile faces) meet; on the bend axis at added_radius 0."""
+    ya, za = outside_axis(units, height, added_radius)
+    return ya + added_radius*c.GRID, za - added_radius*c.GRID
+
+
+def outside_floor_radius(height: float, added_radius: int) -> float:
+    """Radius of the bend's closed (floor) face about the axis."""
+    return added_radius*c.GRID + height - c.BASE_HEIGHT
+
+
+def outside_second_location(units: int, height: float, length_z: int, added_radius: int) -> Location:
+    """The second arm rises +Z from the axis height, its open face (grips)
+    toward -Y on the plane y = edge: local (x, y, z) -> (-x, -z, -y), the
+    mitre's second-arm frame turned 180 degrees about X (index 0 at the free
+    tip, the +X wall still the author's 'Right')."""
+    ya, za = outside_axis(units, height, added_radius)
+    lz = length_z*c.GRID
+    origin = (-added_radius*c.GRID, ya + outside_floor_radius(height, added_radius), za + lz/2)
+    return Location(Plane(origin=origin, x_dir=(-1, 0, 0), z_dir=(0, -1, 0)))
+
+
+def outside_bend(width: float, height: float, added_radius: int = 0, separators: str = '') -> Part:
+    """mitre_bend turned the other way: the section revolved 90 degrees about
+    the axis ABOVE it (outside_axis), from the first channel's end up to the
+    second channel's start, with the mitre's lead-out STUB. At added_radius 0
+    the wall tops lie on the axis and the bend's walls are quarter discs."""
+    ya, za = -width/2, outside_floor_radius(height, added_radius)   # = outside_axis
+    section = Pos(-added_radius*c.GRID, -width/2, 0)*channel_section(width, height, separators)
+    arc = revolve(section, Axis((0, ya, za), (1, 0, 0)), 90)
+    lead_out = extrude(Pos(0, -STUB, 0)*section, STUB, dir=(0, 1, 0))
+    return arc + lead_out
+
+
+def build_outside_corner(units: int, height: float, length_y: int, length_z: int, *,
+                         mirrored: bool = False, added_radius: int = 0, suppress: str = '',
+                         separators: str = '', grip_flare: float = 0., cutters=()) -> Part:
+    """The mitre's first arm (mitre_first, cutters on it), outside_bend and a
+    second arm rising +Z (outside_second_location). Mirror xflips the whole."""
+    first = mitre_first(units, length_y, added_radius, suppress, separators)
+    f = split_fields('suppress_connectors', suppress, 2)
+    second = outside_second_location(units, height, length_z, added_radius)*straight_channel(
+        length_z*c.GRID, first.width, height, suppress=f[1], separators=first.separators,
+        grip_flare=grip_flare)
+    part = first.solid(height, grip_flare, cutters) + second
+    part += outside_bend(first.width, height, added_radius, first.separators)
     part = part.clean()
     return mirror(part, Plane.YZ) if mirrored else part
