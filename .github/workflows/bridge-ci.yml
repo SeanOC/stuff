@@ -1,6 +1,4 @@
-# STAGED by pst-0hykt — activate with:
-#   git mv bridge/ci/bridge-ci.yml.proposed .github/workflows/bridge-ci.yml
-# (worker policy forbids edits under .github/workflows/ without a mayor carve-out).
+# Added by pst-0hykt (mayor WORKFLOW CARVE-OUT, 2026-10-31).
 #
 # Lint + test the print bridge (bridge/, FastAPI service, own pyproject + uv.lock,
 # Python 3.14 via bridge/.python-version). The pytest suite is hermetic (fake
