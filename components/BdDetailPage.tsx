@@ -36,6 +36,8 @@ import { defaultsOf, type Param, type ParamValue } from "@/lib/scad-params/parse
 import type { BdPreset, BdPrinterProfile, BdView } from "@/lib/models/bd-manifest";
 import { downloadFilename } from "@/lib/models/download-name";
 import { paramErrorsFor } from "@/lib/models/bd-param-error";
+import { bdPrintTarget } from "@/lib/print-bridge/client";
+import PrintButton from "./PrintButton";
 
 export interface BdDetailPageModel {
   slug: string;
@@ -384,6 +386,12 @@ export default function BdDetailPage({ model }: { model: BdDetailPageModel }) {
             bakedPresetId={bakedPresetId}
             params={model.params}
             values={detail.state.params}
+          />
+          {/* One Print per page (pst-62i6h): same target as the STL download;
+              the bridge picks STL vs 3MF from the printer model. */}
+          <PrintButton
+            variant="rail"
+            target={bdPrintTarget(model.slug, bakedPresetId, detail.state.params)}
           />
           {model.multiColour && (
             <>
