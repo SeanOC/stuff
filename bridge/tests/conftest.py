@@ -216,6 +216,7 @@ def fake() -> Fake:
 
 @pytest.fixture
 def client(config: Config, fake: Fake):
-    app = create_app(config, transport=httpx.MockTransport(fake.handle))
+    # Late-bound so a test may swap fake.handle to override one route.
+    app = create_app(config, transport=httpx.MockTransport(lambda req: fake.handle(req)))
     with TestClient(app, headers={"Tailscale-User-Login": LOGIN}) as c:
         yield c

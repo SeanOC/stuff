@@ -394,3 +394,221 @@ def test_cli_param_parsing():
         ]
     )
     assert dict(args.param) == {"size": 12, "text": "Hi", "flag": True}
+
+
+# -- pst-617aw hardening ---------------------------------------------------
+
+CLI_PRINT = [
+    "print",
+    "--source",
+    "bd",
+    "--slug",
+    "holder-bench-width-saddle",
+    "--preset",
+    "width_clearance1",
+    "--printer-id",
+    "1",
+    "--poll-interval",
+    "0",
+]
+
+
+def _cli(monkeypatch, fake, handle, *extra: str) -> int:
+    for k, v in ENV.items():
+        monkeypatch.setenv(k, v)
+    args = build_parser().parse_args([*CLI_PRINT, *extra])
+    return asyncio.run(run_print(args, transport=httpx.MockTransport(handle)))
+
+
+def _poll_hook(fake, on_poll):
+    """Wrap fake.handle; on_poll(n) runs on the n-th GET of a pipeline run and
+    may return a Response (or raise) to replace the fake's answer."""
+    polls = {"n": 0}
+
+    def handle(req: httpx.Request) -> httpx.Response:
+        if req.method == "GET" and req.url.path.startswith("/api/v1/pipeline-runs/"):
+            polls["n"] += 1
+            if (resp := on_poll(polls["n"])) is not None:
+                fake.calls.append(req)
+                return resp
+        return fake.handle(req)
+
+    return handle
+
+
+@pytest.mark.parametrize(
+    "upstream",
+    [
+        lambda n: httpx.Response(500, json={"detail": "db locked"}) if n == 2 else None,
+        lambda n: httpx.Response(200, text="<html>proxy</html>") if n == 2 else None,
+    ],
+    ids=["bambuddy-500", "non-json-200"],
+)
+def test_cli_poll_bambuddy_error_exits_4_with_message(monkeypatch, fake, capsys, upstream):
+    def on_poll(n):
+        (run,) = fake.runs.values()
+        run["status"] = "in_progress"
+        return upstream(n)
+
+    assert _cli(monkeypatch, fake, _poll_hook(fake, on_poll)) == 4
+    out, err = capsys.readouterr()
+    assert "Traceback" not in err
+    report = json.loads(err)
+    assert report["error"].startswith("polling run 900 failed")
+    assert report["cause"]["error"].startswith("Bambuddy GET /api/v1/pipeline-runs/900")
+    assert report["last"]["status"] == "in_progress"
+
+
+def test_cli_poll_transport_error_exits_4(monkeypatch, fake, capsys):
+    def on_poll(n):
+        raise httpx.ConnectError("boom")
+
+    assert _cli(monkeypatch, fake, _poll_hook(fake, on_poll)) == 4
+    report = json.loads(capsys.readouterr().err)
+    assert report["cause"] == {"error": "Bambuddy unreachable: ConnectError"}
+    assert report["last"] is None
+
+
+def test_cli_poll_catches_raw_httpx_error(monkeypatch, fake, capsys):
+    """Belt and braces: an httpx error that escapes Bridge.run still exits 4."""
+
+    async def raising_run(self, run_id):
+        raise httpx.ReadTimeout("slow")
+
+    monkeypatch.setattr("bridge.__main__.Bridge.run", raising_run)
+    assert _cli(monkeypatch, fake, fake.handle) == 4
+    assert json.loads(capsys.readouterr().err)["cause"] == {"error": "ReadTimeout"}
+
+
+def test_cli_max_wait_prints_last_status_and_exits_3(monkeypatch, fake, capsys):
+    def on_poll(n):
+        (run,) = fake.runs.values()
+        run["status"] = "slicing" if n == 1 else "in_progress"
+
+    assert _cli(monkeypatch, fake, _poll_hook(fake, on_poll), "--max-wait", "0") == 3
+    out, err = capsys.readouterr()
+    report = json.loads(err)
+    assert report["error"] == "--max-wait 0s elapsed"
+    assert report["last"]["status"] == "slicing"
+    assert json.loads(out.strip().splitlines()[-1])["status"] == "slicing"
+
+
+def test_cli_max_wait_not_hit_when_run_finishes(monkeypatch, fake, capsys):
+    def on_poll(n):
+        (run,) = fake.runs.values()
+        run["status"] = "in_progress" if n < 3 else "failed"
+
+    assert _cli(monkeypatch, fake, _poll_hook(fake, on_poll), "--max-wait", "60") == 1
+    assert capsys.readouterr().err == ""
+
+
+def test_cli_max_wait_defaults_to_none():
+    assert build_parser().parse_args(CLI_PRINT).max_wait is None
+
+
+@pytest.mark.parametrize(
+    "model", ["opengrid_bin", "models/opengrid_bin", "models/opengrid_bin.scad"]
+)
+def test_scad_model_forms_normalise_to_one_path(client, fake, model):
+    r = client.post("/print", json={"source": "scad", "model": model, "printer_id": 1})
+    assert r.status_code == 202, r.text
+    assert json.loads(fake.stuff_calls()[0].content)["model"] == "models/opengrid_bin.scad"
+    assert [f["name"] for f in fake.folders] == ["stuff", "opengrid-bin"]
+
+
+def _bambuddy_override(fake, method, path, response):
+    real = fake.handle
+
+    def handle(req: httpx.Request) -> httpx.Response:
+        if req.method == method and req.url.path == path:
+            fake.calls.append(req)
+            return response
+        return real(req)
+
+    fake.handle = handle
+
+
+@pytest.mark.parametrize(
+    "method,path,response,why",
+    [
+        (
+            "GET",
+            "/api/v1/slicer-pipelines/",
+            httpx.Response(200, text="<html>" + "x" * 400),
+            "response is not JSON",
+        ),
+        (
+            "GET",
+            "/api/v1/library/folders",
+            httpx.Response(200, json={"id": 1, "name": "stuff"}),
+            "expected a list of folders",
+        ),
+        (
+            "GET",
+            "/api/v1/printers/",
+            httpx.Response(200, json=["not", "objects"]),
+            "expected a list of printers",
+        ),
+        (
+            "POST",
+            "/api/v1/library/files",
+            httpx.Response(200, json={"filename": "x"}),
+            "response has no id",
+        ),
+        (
+            "POST",
+            "/api/v1/slicer-pipelines/11/check-eligibility",
+            httpx.Response(200, json=[{"ok": True}]),
+            "expected a JSON object",
+        ),
+        (
+            "POST",
+            "/api/v1/slicer-pipelines/11/run",
+            httpx.Response(202, json={"status": "queued"}),
+            "response has no id",
+        ),
+    ],
+    ids=[
+        "non-json",
+        "folders-dict",
+        "printers-scalars",
+        "upload-no-id",
+        "report-list",
+        "run-no-id",
+    ],
+)
+def test_misshaped_bambuddy_body_is_502_not_traceback(client, fake, method, path, response, why):
+    _bambuddy_override(fake, method, path, response)
+    r = client.post("/print", json=BD_PRESET)
+    assert r.status_code == 502, r.text
+    body = r.json()
+    assert body["error"] == f"Bambuddy {method} {path} -> HTTP {response.status_code}: {why}"
+    assert body["upstream"] == response.text[:200]
+    assert len(body["upstream"]) <= 200
+
+
+def test_bambuddy_listings_accept_bare_list_or_wrapped(client, fake):
+    """List-or-dict: the fake wraps pipelines/runs and bares printers/folders;
+    the flipped shapes must work too."""
+    pipelines = httpx.Response(200, json=fake.pipelines)
+    printers = httpx.Response(200, json={"printers": fake.printers})
+    _bambuddy_override(fake, "GET", "/api/v1/slicer-pipelines/", pipelines)
+    _bambuddy_override(fake, "GET", "/api/v1/printers/", printers)
+    assert client.post("/print", json=BD_PRESET).status_code == 202
+
+
+def test_run_non_json_is_502(client, fake):
+    _bambuddy_override(fake, "GET", "/api/v1/pipeline-runs/7", httpx.Response(200, text="oops"))
+    r = client.get("/runs/7")
+    assert r.status_code == 502
+    assert r.json() == {
+        "error": "Bambuddy GET /api/v1/pipeline-runs/7 -> HTTP 200: response is not JSON",
+        "upstream": "oops",
+    }
+
+
+def test_printers_probe_non_json_is_none(client, fake):
+    _bambuddy_override(fake, "GET", "/api/v1/printers/1/status", httpx.Response(200, text="?"))
+    r = client.get("/printers")
+    assert r.status_code == 200
+    assert [p["state"] for p in r.json()] == [None, "IDLE"]

@@ -38,6 +38,10 @@ TERMINAL_RUN_STATES = frozenset({"completed", "failed", "partial_failure", "canc
 # bd-render and /api/export build geometry on demand; give them minutes.
 STUFF_TIMEOUT = httpx.Timeout(30.0, read=300.0)
 BAMBUDDY_TIMEOUT = httpx.Timeout(30.0)
+# How much of an unparseable/mis-shaped 2xx Bambuddy body a 502 quotes. Tighter
+# than _upstream_message's 500: a success-path surprise is usually a proxy's
+# HTML page, and its first line or two is all an operator needs.
+BODY_EXCERPT = 200
 
 
 class BridgeError(Exception):
@@ -65,8 +69,10 @@ def is_h2c(printer_model: str | None) -> bool:
 
 
 def scad_model_path(model: str) -> str:
-    """/api/export only accepts models/<stem>.scad (403 otherwise); accept a bare stem too."""
-    return model if model.endswith(".scad") else f"models/{model}.scad"
+    """/api/export only accepts models/<stem>.scad (403 otherwise). Accept x,
+    models/x and models/x.scad alike and always send models/x.scad."""
+    stem = model.removeprefix("models/").removesuffix(".scad")
+    return f"models/{stem}.scad"
 
 
 def scad_slug(model_path: str) -> str:
@@ -84,6 +90,27 @@ def _upstream_message(resp: httpx.Response) -> str:
         if msg is not None:
             return msg if isinstance(msg, str) else json.dumps(msg)
     return json.dumps(body)[:500]
+
+
+def _bad_body(method: str, path: str, resp: httpx.Response, why: str) -> BridgeError:
+    return BridgeError(
+        502,
+        {
+            "error": f"Bambuddy {method} {path} -> HTTP {resp.status_code}: {why}",
+            "upstream": resp.text[:BODY_EXCERPT],
+        },
+        upstream_status=resp.status_code,
+    )
+
+
+def _probe(resp: httpx.Response | BaseException, key: str) -> Any:
+    if not isinstance(resp, httpx.Response) or not resp.is_success:
+        return None
+    try:
+        body = resp.json()
+    except ValueError:
+        return None
+    return body.get(key) if isinstance(body, dict) else None
 
 
 class Bridge:
@@ -121,36 +148,66 @@ class Bridge:
             )
         return resp
 
+    async def _bb_json(
+        self,
+        method: str,
+        path: str,
+        *,
+        items: str | None = None,
+        need: tuple[str, ...] = (),
+        **kw: Any,
+    ) -> Any:
+        """The one way to read a 2xx Bambuddy body. With items=, a listing:
+        either a bare list or {items: [...]}, returned as a list of objects.
+        Otherwise an object holding every key in need. Non-JSON or any other
+        shape is a BridgeError -> 502 with the upstream status and body excerpt."""
+        resp = await self._bb(method, path, **kw)
+        try:
+            body = resp.json()
+        except ValueError:
+            raise _bad_body(method, path, resp, "response is not JSON") from None
+        if items is not None:
+            rows = body.get(items) if isinstance(body, dict) else body
+            if not isinstance(rows, list) or not all(isinstance(r, dict) for r in rows):
+                raise _bad_body(method, path, resp, f"expected a list of {items}")
+            return rows
+        if not isinstance(body, dict):
+            raise _bad_body(method, path, resp, "expected a JSON object")
+        if missing := [k for k in need if k not in body]:
+            raise _bad_body(method, path, resp, f"response has no {', '.join(missing)}")
+        return body
+
     async def _printers_raw(self) -> list[dict[str, Any]]:
-        body = (await self._bb("GET", "/api/v1/printers/")).json()
-        return body["printers"] if isinstance(body, dict) else body
+        return await self._bb_json("GET", "/api/v1/printers/", items="printers")
 
     async def _pipeline_id(self, name: str) -> int:
-        body = (await self._bb("GET", "/api/v1/slicer-pipelines/")).json()
-        for p in body.get("pipelines", []):
+        for p in await self._bb_json("GET", "/api/v1/slicer-pipelines/", items="pipelines"):
             if p.get("name") == name:
                 return p["id"]
         raise BridgeError(409, {"error": f"Bambuddy has no slicer pipeline named {name!r}"})
 
     async def _folder_id(self, slug: str) -> int:
         """Folder stuff/<slug>, created on first use."""
-        tree = (await self._bb("GET", "/api/v1/library/folders")).json()
+        tree = await self._bb_json("GET", "/api/v1/library/folders", items="folders")
         flat: list[dict[str, Any]] = []
         stack = list(tree)
         while stack:
             node = stack.pop()
             flat.append(node)
-            stack.extend(node.get("children") or [])
+            children = node.get("children")
+            if isinstance(children, list):
+                stack.extend(c for c in children if isinstance(c, dict))
 
         async def ensure(name: str, parent_id: int | None) -> int:
             for f in flat:
                 if f.get("name") == name and f.get("parent_id") == parent_id:
                     return f["id"]
-            created = (
-                await self._bb(
-                    "POST", "/api/v1/library/folders", json={"name": name, "parent_id": parent_id}
-                )
-            ).json()
+            created = await self._bb_json(
+                "POST",
+                "/api/v1/library/folders",
+                need=("id",),
+                json={"name": name, "parent_id": parent_id},
+            )
             log.info("created library folder %r (id %s)", name, created["id"])
             flat.append(created)
             return created["id"]
@@ -244,11 +301,9 @@ class Bridge:
                 self.bambuddy.get(f"/api/v1/printers/{pid}/status"),
                 return_exceptions=True,
             )
-            calibrated = state = None
-            if isinstance(plate, httpx.Response) and plate.is_success:
-                calibrated = plate.json().get("calibrated")
-            if isinstance(status, httpx.Response) and status.is_success:
-                state = status.json().get("state")
+            # Best effort: a failed or mis-shaped probe shows as None, not an error.
+            calibrated = _probe(plate, "calibrated")
+            state = _probe(status, "state")
             # Built field by field: access_code and serial_number never leave.
             return {
                 "id": pid,
@@ -311,14 +366,13 @@ class Bridge:
         folder_id = await self._folder_id(slug)
         filename = f"{slug}-{preset if preset is not None else params_sha12(params)}.{ext}"
         content_type = "model/3mf" if ext == "3mf" else "model/stl"
-        uploaded = (
-            await self._bb(
-                "POST",
-                "/api/v1/library/files",
-                params={"folder_id": folder_id},
-                files={"file": (filename, data, content_type)},
-            )
-        ).json()
+        uploaded = await self._bb_json(
+            "POST",
+            "/api/v1/library/files",
+            need=("id",),
+            params={"folder_id": folder_id},
+            files={"file": (filename, data, content_type)},
+        )
         file_id = uploaded.get("duplicate_of") or uploaded["id"]
         if uploaded.get("duplicate_of"):
             log.info("%s duplicates library file %s; reusing it", filename, file_id)
@@ -334,12 +388,13 @@ class Bridge:
 
         # duplicate_of dedupes the file, not the run: a double-clicked Print
         # would otherwise slice and print the same file twice.
-        runs = (
-            await self._bb(
-                "GET", "/api/v1/pipeline-runs", params={"pipeline_id": pipeline_id, "limit": 100}
-            )
-        ).json()
-        for run in runs.get("runs", []):
+        runs = await self._bb_json(
+            "GET",
+            "/api/v1/pipeline-runs",
+            items="runs",
+            params={"pipeline_id": pipeline_id, "limit": 100},
+        )
+        for run in runs:
             if (
                 run.get("source_library_file_id") == file_id
                 and run.get("status") in ACTIVE_RUN_STATES
@@ -353,23 +408,20 @@ class Bridge:
                     },
                 )
 
-        report = (
-            await self._bb(
-                "POST",
-                f"/api/v1/slicer-pipelines/{pipeline_id}/check-eligibility",
-                json={"source_library_file_id": file_id},
-            )
-        ).json()
+        report = await self._bb_json(
+            "POST",
+            f"/api/v1/slicer-pipelines/{pipeline_id}/check-eligibility",
+            json={"source_library_file_id": file_id},
+        )
         if not report.get("ok") or report.get("issues"):
             raise BridgeError(409, {"error": "pipeline eligibility check failed", "report": report})
 
-        run = (
-            await self._bb(
-                "POST",
-                f"/api/v1/slicer-pipelines/{pipeline_id}/run",
-                json={"source_library_file_id": file_id, "copies": copies},
-            )
-        ).json()
+        run = await self._bb_json(
+            "POST",
+            f"/api/v1/slicer-pipelines/{pipeline_id}/run",
+            need=("id",),
+            json={"source_library_file_id": file_id, "copies": copies},
+        )
         log.info("pipeline %r run %s: %s x%d", pipeline_name, run["id"], filename, copies)
         return {
             "library_file_id": file_id,
@@ -379,12 +431,11 @@ class Bridge:
 
     async def run(self, run_id: int) -> dict[str, Any]:
         try:
-            resp = await self._bb("GET", f"/api/v1/pipeline-runs/{run_id}")
+            r = await self._bb_json("GET", f"/api/v1/pipeline-runs/{run_id}")
         except BridgeError as e:
             if e.upstream_status == 404:
                 raise BridgeError(404, {"error": f"no pipeline run {run_id}"}) from e
             raise
-        r = resp.json()
         return {
             "status": r.get("status"),
             "copies": r.get("copies"),
@@ -398,6 +449,7 @@ class Bridge:
                     "status": j.get("status"),
                     "printer_id": j.get("assigned_printer_id"),
                 }
-                for j in r.get("jobs", [])
+                for j in r.get("jobs") or []
+                if isinstance(j, dict)
             ],
         }

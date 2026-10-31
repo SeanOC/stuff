@@ -64,8 +64,11 @@ The steps:
    first use. Its name is `<slug>-<preset | sha12 of canonical params>.<stl|3mf>`.
    If the upload response carries `duplicate_of`, the bridge reuses that file
    id. It then calls `PUT /api/v1/library/files/{id}` with:
-   - `external_url`: the stuff page URL, with the preset or params in the query
-   - `notes`: the canonical params JSON (sorted keys, no spaces)
+   - `external_url`: the stuff model page URL, with the preset or params in
+     the query. stuff's model pages do not read `?preset=` or params from the
+     query (they open on their defaults), so the link only finds the model.
+   - `notes`: the canonical params JSON (sorted keys, no spaces). This is the
+     record of what was printed.
 
    Bambuddy's `FileUpdate` names the link field `external_url`; it has no
    `source_url` field.
@@ -86,7 +89,10 @@ The bridge never calls `POST /api/v1/queue/`, `/library/files/{id}/print`,
 sends `force: true`. Prints are dispatched only through the pipeline run.
 
 Errors are `{"error": …}` plus context (`upstream`, `report`, `run_id`).
-Bambuddy or stuff unreachable or non-2xx → 502. Bad body → 400 or 422.
+Bambuddy or stuff unreachable or non-2xx → 502. A 2xx Bambuddy body that is
+not JSON or not the expected shape is also 502: `error` names the call and
+upstream status, `upstream` quotes the first 200 characters of the body.
+Bad request body → 400 or 422.
 
 ## CLI
 
@@ -100,8 +106,18 @@ uv run --env-file ~/.config/stuff-bridge/env python -m bridge serve   # 127.0.0.
 
 `print` calls the same `Bridge.start_print` as `POST /print`. It prints the
 202 body, then polls the run (`--poll-interval`, default 10 s) and prints
-each status change until the run is terminal. It exits 0 on `completed` and 1
-otherwise. `--no-wait` stops after the 202 body.
+each status change until the run is terminal. `--no-wait` stops after the 202
+body. `--max-wait SECONDS` stops polling after that long; by default it waits
+until the run is terminal. `--model` takes `x`, `models/x` or
+`models/x.scad` and always sends `models/x.scad`.
+
+| Exit | Meaning |
+|---|---|
+| 0 | run `completed`, or `--no-wait` and the start was accepted |
+| 1 | start rejected, or the run ended `failed`, `partial_failure` or `cancelled` |
+| 2 | bad config (missing environment) |
+| 3 | `--max-wait` elapsed first; the last status goes to stderr |
+| 4 | polling failed (Bambuddy errored or was unreachable); the run's outcome is unknown. The error and last status go to stderr |
 
 ## Environment
 

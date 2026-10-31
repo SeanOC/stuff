@@ -1,5 +1,10 @@
 """CLI: `python -m bridge print ...` runs the same Bridge.start_print as POST /print,
-then polls the run; `python -m bridge serve` starts the HTTP service."""
+then polls the run; `python -m bridge serve` starts the HTTP service.
+
+`print` exit codes: 0 run completed (or --no-wait accepted); 1 start rejected or
+run ended failed/partial_failure/cancelled; 2 bad config; 3 --max-wait elapsed
+before a terminal state; 4 polling failed (Bambuddy errored or unreachable) -
+the run's outcome is unknown, not failed."""
 
 from __future__ import annotations
 
@@ -14,6 +19,9 @@ import httpx
 
 from .config import ConfigError, load_config
 from .core import TERMINAL_RUN_STATES, Bridge, BridgeError
+
+EXIT_MAX_WAIT = 3
+EXIT_POLL_ERROR = 4
 
 HOST = "127.0.0.1"  # load-bearing: only tailscale serve may reach the service
 
@@ -43,6 +51,14 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--copies", type=int, default=1)
     p.add_argument("--poll-interval", type=float, default=10.0, help="seconds between run polls")
     p.add_argument("--no-wait", action="store_true", help="print the 202 body and exit")
+    p.add_argument(
+        "--max-wait",
+        type=float,
+        default=None,
+        metavar="SECONDS",
+        help="stop polling after this long, print the last status and exit 3 "
+        "(default: wait until the run is terminal)",
+    )
 
     s = sub.add_parser("serve", help="run the HTTP service on 127.0.0.1")
     s.add_argument("--port", type=int, default=8787)
@@ -70,17 +86,38 @@ async def run_print(
         print(json.dumps(accepted, indent=2), flush=True)
         if args.no_wait:
             return 0
-        last = None
-        while True:
-            state = await bridge.run(accepted["run_id"])
-            if state != last:
-                print(json.dumps(state), flush=True)
-                last = state
-            if state["status"] in TERMINAL_RUN_STATES:
-                return 0 if state["status"] == "completed" else 1
-            await asyncio.sleep(args.poll_interval)
+        return await poll(bridge, accepted["run_id"], args.poll_interval, args.max_wait)
     finally:
         await bridge.aclose()
+
+
+async def poll(bridge: Bridge, run_id: int, interval: float, max_wait: float | None) -> int:
+    loop = asyncio.get_running_loop()
+    deadline = None if max_wait is None else loop.time() + max_wait
+    last: dict[str, Any] | None = None
+    while True:
+        try:
+            state = await bridge.run(run_id)
+        except (BridgeError, httpx.HTTPError) as e:
+            cause = e.payload if isinstance(e, BridgeError) else {"error": type(e).__name__}
+            print(
+                json.dumps({"error": f"polling run {run_id} failed", "cause": cause, "last": last}),
+                file=sys.stderr,
+            )
+            return EXIT_POLL_ERROR
+        if state != last:
+            print(json.dumps(state), flush=True)
+            last = state
+        if state["status"] in TERMINAL_RUN_STATES:
+            return 0 if state["status"] == "completed" else 1
+        if deadline is not None and loop.time() >= deadline:
+            print(
+                json.dumps({"error": f"--max-wait {max_wait:g}s elapsed", "last": last}),
+                file=sys.stderr,
+            )
+            return EXIT_MAX_WAIT
+        pause = interval if deadline is None else min(interval, deadline - loop.time())
+        await asyncio.sleep(max(pause, 0))
 
 
 def main(argv: list[str] | None = None) -> int:

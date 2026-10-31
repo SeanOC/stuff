@@ -34,7 +34,9 @@ A minimal first prompt worth copy-pasting:
 
 See [AGENTS.md](AGENTS.md) for the agent-facing spec (param grammar,
 invariants, render pipeline) and [`app/README.md`](app/README.md) for
-web-app architecture.
+web-app architecture. [`bridge/`](bridge/README.md) is the print bridge: a
+small Python service + CLI that sends a stuff model to a Bambuddy slicer
+pipeline (the model page's Print button calls it).
 
 ## Models
 
