@@ -19,7 +19,7 @@ All bodies are JSON.
 | Method | Path | Auth | Returns |
 |---|---|---|---|
 | GET | `/health` | tailnet | `{ok, bambuddy_reachable}`. `bambuddy_reachable` is an authenticated `GET /api/v1/printers/`, so it also catches a bad key. |
-| GET | `/printers` | tailnet | `[{id, name, model, state, plate_detection_calibrated, pipeline}]`. `state` comes from `/printers/{id}/status`, calibration from `/printers/{id}/camera/plate-detection/status`. Either is `null` if Bambuddy can't answer. `access_code` and `serial_number` are never forwarded. |
+| GET | `/printers` | tailnet | `[{id, name, model, state, plate_detection_calibrated, pipeline, nozzle_mm}]`. `state` and `nozzle_mm` (installed nozzle diameters in mm, parsed from `nozzles[].nozzle_diameter`; `[]` when unknown) come from `/printers/{id}/status`, calibration from `/printers/{id}/camera/plate-detection/status`. Either is `null` if Bambuddy can't answer. `access_code` and `serial_number` are never forwarded. |
 | POST | `/print` | trusted login | `202 {library_file_id, run_id, status_url}` |
 | GET | `/runs/{id}` | tailnet | `{status, copies, copies_completed, copies_failed, error_message, sliced_library_file_id, jobs:[{queue_item_id, status, printer_id}]}` |
 
@@ -49,7 +49,33 @@ The steps:
    its id to a pipeline name through `PIPELINES` and resolve that name with
    `GET /api/v1/slicer-pipelines/`. A missing entry or name gives 409. All of
    this happens before any geometry is built.
-2. **Geometry from stuff.**
+2. **Nozzle check.** Still before any geometry or upload, the bridge compares
+   the printer's installed nozzle(s) (`GET /printers/{id}/status` →
+   `nozzles[].nozzle_diameter`, empty and non-numeric entries skipped) with the
+   nozzle the pipeline slices for, and refuses a mismatch with
+   `409 {"error": "nozzle mismatch", "installed": [0.6], "pipeline": 0.4}`.
+   Bambuddy's eligibility check does not compare nozzles: a 0.4 pipeline on a
+   0.6 printer was accepted, failed on the printer within a second with no HMS
+   code, and was re-dispatched every few minutes (2026-10-31). The pipeline's
+   nozzle comes from, in order:
+   - `GET /api/v1/slicer/preset-values?source=…&id=…&slot=printer` for the
+     pipeline's `printer_preset` (`nozzle_diameter`, else `printer_variant`).
+     Read best effort: any error, 404 or missing field is unknown, never a 502.
+     Bambuddy 1.2.5.7 serves only `slot=process` and answers 400, so today this
+     is always unknown.
+   - A nozzle token (`.4`, `0.4`, `0.4mm`) in the printer preset's name (a
+     `standard` preset's id is its name; `cloud`/`local` ids are opaque), else
+     in the pipeline name — used only when the name holds exactly one token
+     (`PCTG-1.5x0.6` is ambiguous). For the live pipelines
+     (`Crushinator - PCTG - .4`) the pipeline name is what carries the check,
+     so keep the nozzle in it. A single decimal that is not a nozzle
+     (`PETG - 0.2` meaning layer height) would be read as one and mis-refuse;
+     every refusal logs both values at WARNING.
+
+   Unknown on either side logs and proceeds. A match on any installed nozzle
+   passes (dual-nozzle H2C). The H2C 3MF profile (`bambu-h2c-0.4`) is only
+   cross-checked: a pipeline slicing for another size logs a warning.
+3. **Geometry from stuff.**
    - bd + preset: `GET /api/bd-asset/{slug}/{preset}?format=…`
    - bd + params: `POST /api/bd-render?format=…` with `{slug, params}`
    - scad: `POST /api/export` with `{model, params}`
@@ -60,7 +86,7 @@ The steps:
    with a 400 "… is not a multi-colour model" and the bridge falls back to
    STL. The bridge logs which branch it took. Any other non-2xx from stuff
    gives 502 with the upstream message.
-3. **Library upload.** The file goes into folder `stuff/<slug>`, created on
+4. **Library upload.** The file goes into folder `stuff/<slug>`, created on
    first use. Its name is `<slug>-<preset | sha12 of canonical params>.<stl|3mf>`.
    If the upload response carries `duplicate_of`, the bridge reuses that file
    id. It then calls `PUT /api/v1/library/files/{id}` with:
@@ -72,16 +98,16 @@ The steps:
 
    Bambuddy's `FileUpdate` names the link field `external_url`; it has no
    `source_url` field.
-4. **Double-print guard.** If this library file already has a queued,
+5. **Double-print guard.** If this library file already has a queued,
    slicing, dispatching or in-progress run on the same pipeline, the bridge
    returns 409 with that run's `run_id` and `status_url` and starts nothing.
    `duplicate_of` dedupes the file, not the run, so without this guard a
    double-clicked Print would print twice. Once the earlier run reaches a
    terminal state, the same file can print again.
-5. **Eligibility.** `POST /slicer-pipelines/{id}/check-eligibility`. If the
+6. **Eligibility.** `POST /slicer-pipelines/{id}/check-eligibility`. If the
    report is `ok: false` or lists any issue, the bridge returns 409 with the
    report verbatim. It never retries with `force`.
-6. **Run.** `POST /slicer-pipelines/{id}/run {source_library_file_id, copies}`,
+7. **Run.** `POST /slicer-pipelines/{id}/run {source_library_file_id, copies}`,
    then `202`.
 
 The bridge never calls `POST /api/v1/queue/`, `/library/files/{id}/print`,
