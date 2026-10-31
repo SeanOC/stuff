@@ -267,7 +267,7 @@ def test_bend_exception_is_narrow_and_exact(case):
     print(f'OUTSIDE BEND | {case} | floor r {rf:.1f} mm | chord {rf*sqrt(2):.1f} mm | floor width {width:.2f} mm | '
           f'faces {sum(f.area for f in inside):.1f} mm2 | raw ovh {raw.max_overhang_deg:.1f} bridge '
           f'{raw.longest_bridge_mm:.2f} | filtered ovh {clean.max_overhang_deg:.1f} wall {clean.min_wall_mm:.3f} '
-          f'| signed: pending mayor')
+          f'| signed: mayor, pst-38hu7 2026-10-31')
 
 
 def test_bend_envelope_is_the_quadrant_only():

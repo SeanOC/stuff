@@ -56,9 +56,10 @@ from the edge line along each panel that is
 | second | 14 + 28·(added_radius + k) mm |
 
 i.e. the 14 + 28 k hole lattice of a tile that ends at the edge line (first
-arm +0.8 mm). **Open for review:** where the two tiles overlap at a convex
-edge, the covered tile's holes sit one tile thickness (openGrid full 6.8 mm,
-lite 4 mm) further from the edge; no parameter was invented for it.
+arm +0.8 mm). Accepted for v1 (mayor, 2026-10-31): both tiles cut to meet at
+the edge. Where the two tiles overlap at a convex edge instead, the covered
+tile's holes sit one tile thickness (openGrid full 6.8 mm, lite 4 mm) further
+from the edge; a per-arm edge offset (default 0) is a follow-up, not v1.
 
 ## Print orientation
 
@@ -80,7 +81,7 @@ combination the bed check allows fits the H2S's 325 × 320 × 325 mm
 the bed even at width 1, height 10, so `length_units` ≤ 7
 (`MAX_ARM_OUTSIDE`), and longer/wider/taller combinations are named errors.
 
-### The one published exception: `BendUnderside` (awaiting the mayor's signature)
+### The one published exception: `BendUnderside` (signed by the mayor on pst-38hu7, 2026-10-31)
 
 The bend's floor underside — the cylinder of `outside_floor_radius` over the
 bend's quadrant and the channel width — prints unsupported by design. In the

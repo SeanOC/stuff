@@ -47,7 +47,7 @@ degrees with each arm in the mitre's attitude (grips up and inward). Worst
 load: cables pulling either arm off its panel, along its grips, carried along
 the layers. The bend's floor underside is a convex cylinder rising off the bed
 from 90 to 45 degrees of overhang, printed unsupported through one published
-exception (BendUnderside; awaiting the mayor's signature on pst-38hu7).
+exception (BendUnderside, signed by the mayor on pst-38hu7, 2026-10-31).
 added_radius > 0 needs an edge rounded (or clear) to that radius about the
 bend axis: a square edge would cut into the bend.
 
@@ -368,8 +368,8 @@ class BendUnderside(ArchUnderside):
     within the channel's width. The one published exception of
     underware_outside_corner: in the print frame it rises off the bed flat
     with overhang from ~90 down to 45 degrees (a convex downward curved face);
-    it exempts no chamfer, wall, grip or arm face. Frame placement as
-    ArchUnderside."""
+    it exempts no chamfer, wall, grip or arm face. Signed by the mayor on
+    pst-38hu7 (2026-10-31). Frame placement as ArchUnderside."""
     def __rmul__(self, loc):
         placed = ArchUnderside.__rmul__(self, loc)
         if placed is NotImplemented:

@@ -199,7 +199,8 @@ Path channel deviations (build123d/holders/underware_path_channels.py header):
   above the first arm's open face, so it wraps the convex edge of two
   openGrid panels. It prints rotated -45 degrees about X, standing on its
   bend on a bed flat cut 0.6 mm into the 2 mm floor. One published
-  exception (BendUnderside, approver: mayor): the bend's convex floor
+  exception (BendUnderside, signed by the mayor on pst-38hu7,
+  2026-10-31): the bend's convex floor
   underside, overhang ~90 degrees at the bed flat to 45, chord floor radius
   x sqrt(2) = (28 r + h - 3.4) sqrt(2) mm, 9.3 mm (h 10, r 0) to 176.2 mm
   (h 72, r 2), across the floor width 26.4 + 28 (units - 1) mm. Max 7
