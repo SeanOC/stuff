@@ -13,6 +13,7 @@ import asyncio
 import hashlib
 import json
 import logging
+import re
 from typing import Any
 from urllib.parse import quote, urlencode
 
@@ -42,6 +43,10 @@ BAMBUDDY_TIMEOUT = httpx.Timeout(30.0)
 # than _upstream_message's 500: a success-path surprise is usually a proxy's
 # HTML page, and its first line or two is all an operator needs.
 BODY_EXCERPT = 200
+# A nozzle size inside a preset or pipeline name: ".4", "0.4", "0.4mm", never
+# a piece of a longer number. A name holding two ("PCTG-1.5x0.6") is ambiguous.
+NOZZLE_TOKEN = re.compile(r"(?<![\d.])(\d?\.\d)(?![\d.])")
+NOZZLE_NUMBER = re.compile(r"\d+(?:\.\d+)?|\.\d+")
 
 
 class BridgeError(Exception):
@@ -78,6 +83,44 @@ def scad_model_path(model: str) -> str:
 def scad_slug(model_path: str) -> str:
     stem = model_path.rsplit("/", 1)[-1].removesuffix(".scad")
     return stem.replace("_", "-")
+
+
+def nozzle_mm(value: Any) -> float | None:
+    """A nozzle diameter in mm from "0.4", ".4" or 0.4; None for "", junk or <= 0."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, str) and NOZZLE_NUMBER.fullmatch(value.strip()):
+        value = float(value)
+    if not isinstance(value, (int, float)) or value <= 0:
+        return None
+    return round(float(value), 2)
+
+
+def installed_nozzles(nozzles: Any) -> list[float]:
+    """Bambuddy status nozzles[].nozzle_diameter (strings; an absent second
+    nozzle is "") -> the diameters that parse. [] means unknown."""
+    if not isinstance(nozzles, list):
+        return []
+    found = (nozzle_mm(n.get("nozzle_diameter")) for n in nozzles if isinstance(n, dict))
+    return [mm for mm in found if mm is not None]
+
+
+def name_nozzle(name: Any) -> float | None:
+    """The nozzle a name declares, only when it holds exactly one token."""
+    tokens = NOZZLE_TOKEN.findall(name) if isinstance(name, str) else []
+    return nozzle_mm(tokens[0]) if len(tokens) == 1 else None
+
+
+def preset_nozzle(values: Any) -> float | None:
+    """The nozzle a resolved printer preset slices for: nozzle_diameter (a
+    scalar or one entry per extruder, which must agree), else printer_variant."""
+    if not isinstance(values, dict):
+        return None
+    raw = values.get("nozzle_diameter")
+    sizes = {nozzle_mm(v) for v in (raw if isinstance(raw, list) else [raw])} - {None}
+    if len(sizes) == 1:
+        return sizes.pop()
+    return nozzle_mm(values.get("printer_variant"))
 
 
 def _upstream_message(resp: httpx.Response) -> str:
@@ -180,10 +223,10 @@ class Bridge:
     async def _printers_raw(self) -> list[dict[str, Any]]:
         return await self._bb_json("GET", "/api/v1/printers/", items="printers")
 
-    async def _pipeline_id(self, name: str) -> int:
+    async def _pipeline(self, name: str) -> dict[str, Any]:
         for p in await self._bb_json("GET", "/api/v1/slicer-pipelines/", items="pipelines"):
             if p.get("name") == name:
-                return p["id"]
+                return p
         raise BridgeError(409, {"error": f"Bambuddy has no slicer pipeline named {name!r}"})
 
     async def _folder_id(self, slug: str) -> int:
@@ -304,6 +347,7 @@ class Bridge:
             # Best effort: a failed or mis-shaped probe shows as None, not an error.
             calibrated = _probe(plate, "calibrated")
             state = _probe(status, "state")
+            nozzles = installed_nozzles(_probe(status, "nozzles"))
             # Built field by field: access_code and serial_number never leave.
             return {
                 "id": pid,
@@ -312,9 +356,69 @@ class Bridge:
                 "state": state,
                 "plate_detection_calibrated": calibrated,
                 "pipeline": self.config.pipelines.get(pid),
+                "nozzle_mm": nozzles,
             }
 
         return list(await asyncio.gather(*(one(p) for p in raw)))
+
+    async def _check_nozzle(self, printer: dict[str, Any], pipeline: dict[str, Any]) -> None:
+        """409 when no installed nozzle is the one the pipeline slices for.
+
+        Best effort on both sides: a failed, missing or mis-shaped read is
+        unknown, and unknown on either side logs and proceeds."""
+        pid = printer["id"]
+        ref = pipeline.get("printer_preset")
+        if not (isinstance(ref, dict) and ref.get("source") and ref.get("id")):
+            ref = None
+        probes = [self.bambuddy.get(f"/api/v1/printers/{pid}/status")]
+        if ref is not None:
+            # Bambuddy 1.2.5.7 answers 400 for slot=printer (process only);
+            # that, a 404 or {"resolved": false} all read as unknown.
+            query = {"source": ref["source"], "id": ref["id"], "slot": "printer"}
+            probes.append(self.bambuddy.get("/api/v1/slicer/preset-values", params=query))
+        status, *values = await asyncio.gather(*probes, return_exceptions=True)
+        installed = installed_nozzles(_probe(status, "nozzles"))
+
+        want = preset_nozzle(_probe(values[0], "values")) if values else None
+        source = "printer preset values"
+        # A standard preset's id is its name; cloud/local ids are opaque.
+        names = [ref["id"]] if ref is not None and ref["source"] == "standard" else []
+        for name in [*names, pipeline.get("name")]:
+            if want is None and (want := name_nozzle(name)) is not None:
+                source = f"name {name!r}"
+
+        if want is not None and is_h2c(printer.get("model")):
+            baked = name_nozzle(H2C_PROFILE)
+            if baked != want:
+                log.warning(
+                    "pipeline %r slices for a %s mm nozzle but H2C 3MFs bake %s",
+                    pipeline.get("name"),
+                    want,
+                    H2C_PROFILE,
+                )
+        if not installed or want is None:
+            log.info(
+                "nozzle check skipped for printer %s / pipeline %r: installed %s, pipeline %s",
+                pid,
+                pipeline.get("name"),
+                installed or "unknown",
+                want or "unknown",
+            )
+            return
+        if want not in installed:
+            # WARNING with both sides: a name token that is really a layer
+            # height ("PETG - 0.2") would mis-refuse, and this line shows it.
+            log.warning(
+                "nozzle mismatch on printer %s: installed %s, pipeline %r slices for %s (%s)",
+                pid,
+                installed,
+                pipeline.get("name"),
+                want,
+                source,
+            )
+            raise BridgeError(
+                409, {"error": "nozzle mismatch", "installed": installed, "pipeline": want}
+            )
 
     async def start_print(
         self,
@@ -352,7 +456,9 @@ class Bridge:
             raise BridgeError(
                 409, {"error": f"PIPELINES names no pipeline for printer {printer_id}"}
             )
-        pipeline_id = await self._pipeline_id(pipeline_name)
+        pipeline = await self._pipeline(pipeline_name)
+        pipeline_id = pipeline["id"]
+        await self._check_nozzle(printer, pipeline)
 
         if source == "bd":
             assert slug is not None

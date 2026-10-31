@@ -55,10 +55,26 @@ class Fake:
     )
     pipelines: list[dict[str, Any]] = field(
         default_factory=lambda: [
-            {"id": 11, "name": "stuff-crushinator"},
-            {"id": 12, "name": "stuff-joey"},
+            # Real Bambuddy pipelines carry a cloud printer preset id (opaque).
+            {
+                "id": 11,
+                "name": "stuff-crushinator",
+                "printer_preset": {"source": "cloud", "id": "GM037"},
+            },
+            {
+                "id": 12,
+                "name": "stuff-joey",
+                "printer_preset": {"source": "cloud", "id": "GM041"},
+            },
         ]
     )
+    # Printer id -> status nozzles[].nozzle_diameter ("" = no second nozzle).
+    nozzles: dict[int, list[str]] = field(
+        default_factory=lambda: {1: ["0.4", ""], 2: ["0.4", "0.4"]}
+    )
+    # Resolved printer-preset values; None = Bambuddy 1.2.5.7's answer for
+    # slot=printer (400, process only).
+    preset_values: dict[str, Any] | None = None
     folders: list[dict[str, Any]] = field(default_factory=list)
     files: dict[int, dict[str, Any]] = field(default_factory=dict)
     runs: dict[int, dict[str, Any]] = field(default_factory=dict)
@@ -126,7 +142,19 @@ class Fake:
         if mm := re.fullmatch(r"/api/v1/printers/(\d+)/camera/plate-detection/status", path):
             return httpx.Response(200, json={"available": True, "calibrated": mm.group(1) == "2"})
         if mm := re.fullmatch(r"/api/v1/printers/(\d+)/status", path):
-            return httpx.Response(200, json={"state": "IDLE", "connected": True})
+            nozzles = [
+                {"nozzle_type": "hardened_steel", "nozzle_diameter": d}
+                for d in self.nozzles.get(int(mm.group(1)), [])
+            ]
+            return httpx.Response(
+                200, json={"state": "IDLE", "connected": True, "nozzles": nozzles}
+            )
+        if (m, path) == ("GET", "/api/v1/slicer/preset-values"):
+            if self.preset_values is None:
+                return httpx.Response(400, json={"detail": "Only the 'process' slot is supported"})
+            return httpx.Response(
+                200, json={"resolved": True, "values": self.preset_values, "reason": "ok"}
+            )
         if (m, path) == ("GET", "/api/v1/slicer-pipelines/"):
             return httpx.Response(200, json={"pipelines": self.pipelines})
         if (m, path) == ("GET", "/api/v1/library/folders"):

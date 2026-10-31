@@ -205,6 +205,7 @@ export default function PrintButton({
                     <option key={p.id} value={p.id}>
                       {printerLabel(p)}
                       {p.model ? ` — ${p.model}` : ""}
+                      {p.nozzle_mm?.length ? ` · ${p.nozzle_mm.join(" / ")} mm` : ""}
                     </option>
                   ))}
                 </select>
