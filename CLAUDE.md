@@ -54,6 +54,9 @@ Adding a new model? Use the `new-model` skill
   in `libs/README.md`; cloned by `scripts/vendor-libs.sh`.
 - `scripts/` — Python tooling: render-all, export-all, invariants,
   artifact server.
+- `bridge/` — print bridge: Python HTTP service + CLI (`python -m bridge`)
+  sending stuff models to a Bambuddy slicer pipeline; own uv project and
+  hermetic tests (see `bridge/README.md`).
 - `.claude/skills/` — project-local Claude Code skills (`new-model`,
   `scad-new`, `scad-render`, `scad-export`, `scad-lib`, `scad-send`).
 
