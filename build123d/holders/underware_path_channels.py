@@ -1,16 +1,17 @@
 # SPDX-License-Identifier: CC-BY-NC-SA-4.0
-"""Underware for openGrid path channels — S, diagonal and mitre — adapted
-under CC BY-NC-SA 4.0.
+"""Underware for openGrid path channels — S, diagonal, mitre and outside
+corner — adapted under CC BY-NC-SA 4.0.
 
 [C] monokini_S_channel.scad:38-99, monokini_diagonal_channel.scad:38-99 and
 monokini_mitre_channel.scad:36-99 (parameters) — Pedro Leite; source and
 reference pins in assets/underware-opengrid/NOTICE. Geometry:
 build123d/underware/path.py.
 
-Two registered models: S and diagonal share the author's parameter shape
+Three registered models: S and diagonal share the author's parameter shape
 (width, height, two run lengths, units over / up), the mitre does not (one
 pair of arm lengths, Mirror_Channel, Added_Radius), and Param is global per
-ModelSpec.
+ModelSpec. The outside corner (underware_outside_corner, pst-38hu7) is an
+original design derived from the ported mitre, with the mitre's parameters.
 
 S / diagonal frame = print frame: Z up, the closed, chamfered face on the
 bed, the openGrid grips up (+Z); the bottom run runs along +Y to the
@@ -31,6 +32,24 @@ the bend radius) is printed unsupported by design, as the author models it,
 through one published exception (ArchUnderside, signed by the mayor on
 pst-1nv9a); supports stay optional under the bend. Test-print added_radius 2
 (chord 94.8 mm) first; added_radius 0 (chord 15.6 mm) is safe.
+
+Outside corner: the mitre's first arm, then the bend the other way (floor
+OUTSIDE, open grip faces inside) about the axis p.outside_axis above it, into
+a second arm rising +Z, grips toward -Y; it wraps the convex edge of two
+openGrid panels, the open faces (wall tops) meeting at p.outside_edge. Its
+grip cells sit at the mitre's distances from the bend (14.8 mm first arm, 14
+mm second, + 28 mm per cell) plus the open-face radius added_radius*GRID,
+so on a panel ending at the edge line they fall on the 14 + 28k lattice
+(first arm +0.8 mm, the mitre's lead-out). It prints in the mirror image of
+the mitre's frame (outside_print_frame, -45 degrees about X): the bend down,
+standing on a bed flat cut BEND_FLAT_MM into its floor, both arms rising 45
+degrees with each arm in the mitre's attitude (grips up and inward). Worst
+load: cables pulling either arm off its panel, along its grips, carried along
+the layers. The bend's floor underside is a convex cylinder rising off the bed
+from 90 to 45 degrees of overhang, printed unsupported through one published
+exception (BendUnderside; awaiting the mayor's signature on pst-38hu7).
+added_radius > 0 needs an edge rounded (or clear) to that radius about the
+bend axis: a square edge would cut into the bend.
 
 Not ported: the label (U4b, underware_text_label), Decorative /
 Support_Bridging_Separation (as underware_i_channel). Deviations are listed in
@@ -53,6 +72,7 @@ MAX_RUN = 9
 MAX_OVER = 10
 MAX_UP = 9      # (1 + 1 + 10) cells of the shortest part already pass the 325 mm bed
 MAX_ARM = 7     # mitre: 8 cells stand past the 325 mm bed at 45 degrees even at width 1, h 10 (spec rev 1 said 1..9; mayor confirmed 7, 2026-10-15)
+MAX_ARM_OUTSIDE = 7   # outside corner: 8 cells span (16*28 + 0.8 + 2*6.6)/sqrt 2 = 326.7 mm > 325 at width 1, h 10, r 0
 
 
 def _cut_args(v):
@@ -256,12 +276,138 @@ def arch_underside(values=None) -> ArchUnderside:
     return ArchUnderside(x0, x1, -w/2, -r, r)
 
 
+# --- outside corner (pst-38hu7) -----------------------------------------------------
+
+def outside_values(values=None):
+    """Registered values plus both arm lengths (length_y_units,
+    length_down_units, as mitre_values), from length_units."""
+    v = dict(SPEC_OUTSIDE.resolve_values(values))
+    v['length_y_units'] = v['length_down_units'] = v['length_units']
+    return v
+
+
+def outside_print_frame(values) -> Location:
+    """-45 degrees about X: the (0, 1, -1) diagonal (from the edge out
+    through the bend) points down, so the bend sits on the bed and both arms
+    rise 45 degrees (y' = (y + z)/sqrt 2, z' = (z - y)/sqrt 2)."""
+    return Location((0, 0, 0), (-45, 0, 0))
+
+
+# The floor is SNAP_WALL (2 mm) thick at the bend's bottom; the cut leaves
+# 1.4 mm there (MIN_WALL_MM 0.9) and a bed strip 2 sqrt(2 R 0.6) long:
+# 5.6 mm at the smallest floor radius (6.6 mm).
+BEND_FLAT_MM = 0.6
+
+
+def outside_bed_plane(v) -> float:
+    """Print-frame height of the bed flat: BEND_FLAT_MM above the floor
+    cylinder's lowest line (the bend's mid-angle, from the axis)."""
+    h, r = v['channel_total_height'], v['added_radius']
+    ya, za = p.outside_axis(v['channel_width_units'], h, r)
+    return (za - ya)/sqrt(2) - p.outside_floor_radius(h, r) + BEND_FLAT_MM
+
+
+def outside_extent(v) -> tuple[float, float, float]:
+    """(span, width, height) of the finished outside corner in its print
+    frame, from model-frame corners: the span from the first arm's closed
+    tip corner (y = -(l1 + cw/2), z = 0) to the second arm's floor at its tip
+    (y = -w/2 + R, z = axis + l2), the height from the bed flat to the
+    higher (first) arm tip's wall top (the lead-out STUB makes it longer)."""
+    h, cw, w = v['channel_total_height'], v['channel_width_units']*c.GRID, c.channel_width(v['channel_width_units'])
+    l1, l2 = v['length_y_units']*c.GRID, v['length_down_units']*c.GRID
+    rf = p.outside_floor_radius(h, v['added_radius'])
+    span = (l1 + l2 + cw/2 + 2*rf - w/2)/sqrt(2)
+    return span, w, (h - c.BASE_HEIGHT + l1 + cw/2)/sqrt(2) - outside_bed_plane(v)
+
+
+def _checked_outside(values):
+    v = outside_values(values)
+    span, w, height = outside_extent(v)
+    if max(span, w) > BED_X or min(span, w) > BED_Y or height > BED_Z:
+        raise ValueError(f'the outside corner stands {span:.1f} x {w:.1f} x {height:.1f} mm in its 45 '
+                         f'degree print frame, past the {BED_X:g} x {BED_Y:g} x {BED_Z:g} mm build volume; '
+                         f'shorten the arms, or lower the height or the added radius')
+    first = p.mitre_first(v['channel_width_units'], v['length_y_units'], v['added_radius'],
+                          v['suppress_connectors'], v['channel_separators'])
+    h = v['channel_total_height']
+    check_cutouts(first.width, h, cell_centres(first.length), first.suppress,
+                  grip_flare=v['grip_flare'], **_cut_args(v))
+    j.check_cutout_span(first, v['number_of_cord_cutouts'], v['distance_between_cutouts'],
+                        v['shift_cutouts'], v['cord_cutout_width'])
+    return v, first
+
+
+def unflattened_outside_corner(values=None):
+    """The outside corner before the bed flat."""
+    v, first = _checked_outside(values)
+    h = v['channel_total_height']
+    return p.build_outside_corner(v['channel_width_units'], h, v['length_y_units'], v['length_down_units'],
+                                  mirrored=v['mirror_channel'], added_radius=v['added_radius'],
+                                  suppress=v['suppress_connectors'], separators=v['channel_separators'],
+                                  grip_flare=v['grip_flare'],
+                                  cutters=j.first_arm_cutters(first.width, h, **_cut_args(v)))
+
+
+def bend_flat(part, v):
+    """Cut everything below outside_bed_plane (mirror-invariant: the frame
+    turns about X)."""
+    frame = outside_print_frame(v)
+    size = 2*part.bounding_box().diagonal
+    return part - frame.inverse()*Pos(0, 0, outside_bed_plane(v))*Box(
+        size, size, size, align=(Align.CENTER, Align.CENTER, Align.MAX))
+
+
+def build_outside_corner(values=None):
+    return bend_flat(unflattened_outside_corner(values), outside_values(values))
+
+
+class BendUnderside(ArchUnderside):
+    """Exact surface envelope of the outside corner bend's floor underside:
+    the cylinder of the floor radius about the X-parallel axis through
+    (axis_y, axis_z), the bend's quadrant only (y >= axis_y, z <= axis_z),
+    within the channel's width. The one published exception of
+    underware_outside_corner: in the print frame it rises off the bed flat
+    with overhang from ~90 down to 45 degrees (a convex downward curved face);
+    it exempts no chamfer, wall, grip or arm face. Frame placement as
+    ArchUnderside."""
+    def __rmul__(self, loc):
+        placed = ArchUnderside.__rmul__(self, loc)
+        if placed is NotImplemented:
+            return placed
+        return BendUnderside(self.x0, self.x1, self.axis_y, self.axis_z, self.radius, placed.inverse)
+
+    def is_inside(self, point, tolerance=1e-6):
+        x, y, z = (sum(r[k]*point[k] for k in range(3)) + r[3] for r in self.inverse)
+        return (self.x0 - tolerance <= x <= self.x1 + tolerance
+                and y >= self.axis_y - tolerance and z <= self.axis_z + tolerance
+                and abs(hypot(y - self.axis_y, z - self.axis_z) - self.radius) <= .001 + tolerance)
+
+
+def bend_underside(values=None) -> BendUnderside:
+    """The bend's floor underside for these values (model frame, mirrored
+    with the part)."""
+    v, first = _checked_outside(values)
+    h = v['channel_total_height']
+    ya, za = p.outside_axis(v['channel_width_units'], h, v['added_radius'])
+    x0, x1 = first.x - first.width/2, first.x + first.width/2
+    if v['mirror_channel']:
+        x0, x1 = -x1, -x0
+    return BendUnderside(x0, x1, ya, za, p.outside_floor_radius(h, v['added_radius']))
+
+
 def grips(name, values=None):
     """(location, y_cell, side, flared) for every grip, in the model frame."""
     if name == SPEC_PATH.name:
         v, first, second = _checked_path(values)
         return [(run.location, *g) for run in (first, second)
                 for g in present_grips(run.length, run.suppress, v['grip_flare'])]
+    if name == SPEC_OUTSIDE.name:
+        v, first = _checked_outside(values)
+        f = j.split_fields('suppress_connectors', v['suppress_connectors'], 2)
+        second = p.outside_second_location(v['channel_width_units'], v['channel_total_height'],
+                                           v['length_down_units'], v['added_radius'])
+        return ([(first.location, *g) for g in first.grips(v['grip_flare'])]
+                + [(second, *g) for g in present_grips(v['length_down_units']*c.GRID, f[1], v['grip_flare'])])
     v, first = _checked_mitre(values)
     f = j.split_fields('suppress_connectors', v['suppress_connectors'], 2)
     second = p.mitre_second_location(v['channel_width_units'], v['channel_total_height'],
@@ -276,9 +422,11 @@ def audit_exclusions(name, values=None) -> dict:
     The S / diagonal connectors add none: the section swept along a path in
     the bed plane keeps every face's angle. The mitre bend turns it about the
     width axis, so in the 45 degree frame its floor underside overhangs: the
-    mitre adds that one surface (arch-underside, ArchUnderside). Model frame
-    (the audit applies print_frame)."""
-    v = SPEC_PATH.resolve_values(values) if name == SPEC_PATH.name else mitre_values(values)
+    mitre adds that one surface (arch-underside, ArchUnderside); the outside
+    corner its convex twin, the floor underside below its bend (bend-underside,
+    BendUnderside). Model frame (the audit applies print_frame)."""
+    v = (SPEC_PATH.resolve_values(values) if name == SPEC_PATH.name else
+         outside_values(values) if name == SPEC_OUTSIDE.name else mitre_values(values))
     h, flare = v['channel_total_height'], v['grip_flare']
     w = c.channel_width(v['channel_width_units'])
     out = {'grip-end-wedge': [], 'flare-slit-fin': [], 'cutout-sill': []}
@@ -287,12 +435,17 @@ def audit_exclusions(name, values=None) -> dict:
         if flared:
             out['flare-slit-fin'] += [loc*r for r in slit_floor_regions(w, h, y, side)]
     first_loc = (path_runs(v)[0].location if name == SPEC_PATH.name else
+                 _checked_outside(values)[1].location if name == SPEC_OUTSIDE.name else
                  _checked_mitre(values)[1].location)
     out['cutout-sill'] = [first_loc*r for r in cutout_sill_regions(w, **_cut_args(v))]
     if name == SPEC_MITRE.name:
         if v['mirror_channel']:
             out = {k: [mirror(r, Plane.YZ) for r in regions] for k, regions in out.items()}
         out['arch-underside'] = [arch_underside(values)]
+    if name == SPEC_OUTSIDE.name:
+        if v['mirror_channel']:
+            out = {k: [mirror(r, Plane.YZ) for r in regions] for k, regions in out.items()}
+        out['bend-underside'] = [bend_underside(values)]
     return out
 
 
@@ -381,5 +534,34 @@ SPEC_MITRE = register(ModelSpec(
     presets=(
         Preset('mitre', '1 × 1 arms, 22 mm', {}),
         Preset('mitre-r1', '1 × 1 arms, 22 mm, added radius 1', {'added_radius': 1}),
+    ),
+))
+
+SPEC_OUTSIDE = register(ModelSpec(
+    name='underware_outside_corner',
+    title='Underware outside-corner cable channel (openGrid)',
+    description='Underware "monokini" channel that wraps 90° around the outside (convex) edge '
+                'where two openGrid boards meet, with an optional larger bend radius for a '
+                'rounded edge: the convex twin of the mitre, an original variant derived from '
+                'it. ' + BLURB + ' Prints standing on its bend at 45°; the curved floor under '
+                'the bend prints unsupported by design.',
+    category_id='multiboard',
+    build=build_outside_corner,
+    print_frame=outside_print_frame,
+    params=(
+        *_shared_params(CUTOUT_SIDES, 'first arm, second arm')[:2],
+        Param('length_units', 'integer', 1, min=1, max=MAX_ARM_OUTSIDE, step=1, filename=True,
+              group='Channel Size', label='Arm length, both arms (28 mm units)'),
+        Param('mirror_channel', 'boolean', False, group='Channel Size', filename=True,
+              label='Mirror'),
+        Param('added_radius', 'integer', 0, min=0, max=2, step=1, group='Channel Size', filename=True,
+              label='Added bend radius (28 mm units)'),
+        *_shared_params(CUTOUT_SIDES, 'first arm, second arm')[2:],
+    ),
+    presets=(
+        Preset('outside-corner', '1 × 1 arms, 22 mm', {}),
+        Preset('outside-corner-r1', '1 × 1 arms, 22 mm, added radius 1', {'added_radius': 1}),
+        Preset('outside-corner-w2-h28-y2', '2 wide, 28 mm, 2 × 2 arms',
+               {'channel_width_units': 2, 'channel_total_height': 28, 'length_units': 2}),
     ),
 ))

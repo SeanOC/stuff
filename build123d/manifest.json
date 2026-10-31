@@ -3366,6 +3366,178 @@
       ]
     },
     {
+      "slug": "underware-outside-corner",
+      "engine": "build123d",
+      "title": "Underware outside-corner cable channel (openGrid)",
+      "blurb": "Underware \"monokini\" channel that wraps 90\u00b0 around the outside (convex) edge where two openGrid boards meet, with an optional larger bend radius for a rounded edge: the convex twin of the mitre, an original variant derived from it. Snaps into openGrid; set sizes in 28 mm cells and the height, with optional cord exits on the first channel and per-cell grip suppression. By Pedro Leite (Underware 2.0), CC BY-NC-SA 4.0 (non-commercial, share-alike). Prints standing on its bend at 45\u00b0; the curved floor under the bend prints unsupported by design.",
+      "categoryId": "multiboard",
+      "params": [
+        {
+          "name": "channel_width_units",
+          "label": "Width (28 mm units)",
+          "group": "Channel Size",
+          "kind": "integer",
+          "default": 1,
+          "min": 1,
+          "max": 4,
+          "step": 1,
+          "filename": true
+        },
+        {
+          "name": "channel_total_height",
+          "label": "Height including grips",
+          "group": "Channel Size",
+          "unit": "mm",
+          "kind": "number",
+          "default": 22,
+          "min": 10,
+          "max": 72,
+          "step": 6,
+          "filename": true
+        },
+        {
+          "name": "length_units",
+          "label": "Arm length, both arms (28 mm units)",
+          "group": "Channel Size",
+          "kind": "integer",
+          "default": 1,
+          "min": 1,
+          "max": 7,
+          "step": 1,
+          "filename": true
+        },
+        {
+          "name": "mirror_channel",
+          "label": "Mirror",
+          "group": "Channel Size",
+          "kind": "boolean",
+          "default": false,
+          "filename": true
+        },
+        {
+          "name": "added_radius",
+          "label": "Added bend radius (28 mm units)",
+          "group": "Channel Size",
+          "kind": "integer",
+          "default": 0,
+          "min": 0,
+          "max": 2,
+          "step": 1,
+          "filename": true
+        },
+        {
+          "name": "number_of_cord_cutouts",
+          "label": "Number of cord cutouts (first channel)",
+          "group": "Cord Cutouts",
+          "kind": "integer",
+          "default": 0,
+          "min": 0,
+          "max": 12,
+          "step": 1
+        },
+        {
+          "name": "cord_side_cutouts",
+          "label": "Cutout side",
+          "group": "Cord Cutouts",
+          "kind": "enum",
+          "default": "Both Sides",
+          "choices": [
+            "Left Side",
+            "Right Side",
+            "Both Sides",
+            "None",
+            "Left Side Top",
+            "Right Side Top"
+          ]
+        },
+        {
+          "name": "cord_cutout_width",
+          "label": "Cutout width",
+          "group": "Cord Cutouts",
+          "unit": "mm",
+          "kind": "number",
+          "default": 12,
+          "min": 6,
+          "max": 20,
+          "step": 1
+        },
+        {
+          "name": "distance_between_cutouts",
+          "label": "Distance between cutouts",
+          "group": "Cord Cutouts",
+          "unit": "mm",
+          "kind": "number",
+          "default": 28,
+          "min": 14,
+          "max": 56,
+          "step": 1
+        },
+        {
+          "name": "shift_cutouts",
+          "label": "Shift cutouts along the channel",
+          "group": "Cord Cutouts",
+          "unit": "mm",
+          "kind": "number",
+          "default": 0,
+          "min": 0,
+          "max": 28,
+          "step": 1
+        },
+        {
+          "name": "grip_flare",
+          "label": "Grip flare",
+          "group": "Advanced",
+          "unit": "deg",
+          "kind": "number",
+          "default": 0,
+          "min": 0,
+          "max": 15,
+          "step": 0.1
+        },
+        {
+          "name": "suppress_connectors",
+          "label": "Suppress grips per cell (N/L/R/B/S; comma per channel: first arm, second arm)",
+          "group": "Advanced",
+          "kind": "string",
+          "default": "",
+          "maxLength": 48,
+          "charset": "printable-ascii"
+        },
+        {
+          "name": "channel_separators",
+          "label": "Separator walls (N/S per midline)",
+          "group": "Advanced",
+          "kind": "string",
+          "default": "",
+          "maxLength": 24,
+          "charset": "printable-ascii"
+        }
+      ],
+      "presets": [
+        {
+          "id": "outside-corner",
+          "label": "1 \u00d7 1 arms, 22 mm",
+          "values": {}
+        },
+        {
+          "id": "outside-corner-r1",
+          "label": "1 \u00d7 1 arms, 22 mm, added radius 1",
+          "values": {
+            "added_radius": 1
+          }
+        },
+        {
+          "id": "outside-corner-w2-h28-y2",
+          "label": "2 wide, 28 mm, 2 \u00d7 2 arms",
+          "values": {
+            "channel_width_units": 2,
+            "channel_total_height": 28,
+            "length_units": 2
+          }
+        }
+      ]
+    },
+    {
       "slug": "underware-path-channel",
       "engine": "build123d",
       "title": "Underware S / diagonal cable channel (openGrid)",

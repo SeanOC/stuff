@@ -549,6 +549,8 @@ _MODEL_EXCLUSIONS = {
         r for f in path_families('underware_path_channel', values).values() for r in f],
     'underware_mitre': lambda values: [
         r for f in path_families('underware_mitre', values).values() for r in f],
+    'underware_outside_corner': lambda values: [
+        r for f in path_families('underware_outside_corner', values).values() for r in f],
 }
 
 
