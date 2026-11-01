@@ -3426,6 +3426,30 @@
           "filename": true
         },
         {
+          "name": "edge_offset_mm",
+          "label": "Edge offset of one arm's grips (overlapping tile: 6.8 full, 4 lite)",
+          "group": "Channel Size",
+          "unit": "mm",
+          "kind": "number",
+          "default": 0,
+          "min": 0,
+          "max": 8,
+          "step": 0.1,
+          "filename": true
+        },
+        {
+          "name": "offset_arm",
+          "label": "Arm the edge offset moves",
+          "group": "Channel Size",
+          "kind": "enum",
+          "default": "second",
+          "choices": [
+            "first",
+            "second"
+          ],
+          "filename": true
+        },
+        {
           "name": "number_of_cord_cutouts",
           "label": "Number of cord cutouts (first channel)",
           "group": "Cord Cutouts",

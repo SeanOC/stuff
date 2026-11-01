@@ -67,7 +67,8 @@ from holders.registry import ModelSpec, Param, Preset, register
 from underware import constants as c
 from underware import junction as j
 from underware import path as p
-from underware.channel import CUTOUT_SIDES, cell_centres, check_cutouts, cutout_sill_regions, present_grips
+from underware.channel import (CUTOUT_SIDES, cell_centres, check_cutouts, cutout_sill_regions, present_grips,
+                               shifted_cells)
 from underware.grip import end_ramp_regions, slit_floor_regions
 
 MAX_RUN = 9
@@ -285,6 +286,8 @@ def outside_values(values=None):
     length_down_units, as mitre_values), from length_units."""
     v = dict(SPEC_OUTSIDE.resolve_values(values))
     v['length_y_units'] = v['length_down_units'] = v['length_units']
+    off = v['edge_offset_mm']
+    v['grip_shifts'] = (off, 0.) if v['offset_arm'] == 'first' else (0., off)
     return v
 
 
@@ -293,6 +296,14 @@ def outside_print_frame(values) -> Location:
     through the bend) points down, so the bend sits on the bed and both arms
     rise 45 degrees (y' = (y + z)/sqrt 2, z' = (z - y)/sqrt 2)."""
     return Location((0, 0, 0), (-45, 0, 0))
+
+
+OFFSET_ARMS = ('first', 'second')
+# A flared grip's FLARE_SLIT relief sits just past its end. Shifted toward the
+# free tip (edge_offset_mm) it leaves the wall between slit and tip face a fin
+# below MIN_WALL_MM for 5.2 < offset < 6.1 mm (probe: 5.5 -> 0.60 mm, 6.0 ->
+# 0.10 mm); past 6.1 the slit runs out through the tip face (6.2, 6.5 clean).
+OFFSET_FIN_WALL_MM = 0.9
 
 
 # The floor is SNAP_WALL (2 mm) thick at the bend's bottom; the cut leaves
@@ -329,10 +340,29 @@ def _checked_outside(values):
         raise ValueError(f'the outside corner stands {span:.1f} x {w:.1f} x {height:.1f} mm in its 45 '
                          f'degree print frame, past the {BED_X:g} x {BED_Y:g} x {BED_Z:g} mm build volume; '
                          f'shorten the arms, or lower the height or the added radius')
+    arm_mm, off = v['length_units']*c.GRID, v['edge_offset_mm']
+    if not shifted_cells(arm_mm, off):
+        slack = c.GRID/2 - c.GRIP_SIZE/2
+        raise ValueError(f'an edge_offset_mm of {off:g} mm leaves the {v["offset_arm"]} arm no grip: '
+                         f'its one cell\'s grip has only {slack:g} mm of slack to the free tip, so it '
+                         f'drops past {slack:g} mm; use 2 or more length units, or an offset of '
+                         f'{slack:g} mm or less')
+    tip_fin = c.FLARE_SLIT + OFFSET_FIN_WALL_MM
+    arm_codes = j.split_fields('suppress_connectors', v['suppress_connectors'], 2)[OFFSET_ARMS.index(v['offset_arm'])]
+    for y, _, flared in present_grips(arm_mm, arm_codes, v['grip_flare'], off):
+        fin = y - c.GRIP_SIZE/2 + arm_mm/2 - c.FLARE_SLIT
+        if flared and 1e-6 < fin < OFFSET_FIN_WALL_MM:
+            lo, hi = c.GRID/2 - c.GRIP_SIZE/2 - tip_fin, c.GRID/2 - c.GRIP_SIZE/2 - c.FLARE_SLIT
+            raise ValueError(f'an edge_offset_mm of {off:g} mm leaves a {fin:.2f} mm wall fin between the '
+                             f'{v["offset_arm"]} arm\'s tip-side flare slit and its free tip (under '
+                             f'{OFFSET_FIN_WALL_MM:g} mm); with grip_flare use an offset of {lo:g} mm or less '
+                             f'or {hi:g} mm or more, or suppress that grip\'s flare (S)')
     first = p.mitre_first(v['channel_width_units'], v['length_y_units'], v['added_radius'],
-                          v['suppress_connectors'], v['channel_separators'])
+                          v['suppress_connectors'], v['channel_separators'], v['grip_shifts'][0])
     h = v['channel_total_height']
-    check_cutouts(first.width, h, cell_centres(first.length), first.suppress,
+    cells = shifted_cells(first.length, first.grip_shift)
+    codes = first.suppress.upper().ljust(len(cell_centres(first.length)), 'N')
+    check_cutouts(first.width, h, [y for _, y in cells], ''.join(codes[k] for k, _ in cells),
                   grip_flare=v['grip_flare'], **_cut_args(v))
     j.check_cutout_span(first, v['number_of_cord_cutouts'], v['distance_between_cutouts'],
                         v['shift_cutouts'], v['cord_cutout_width'])
@@ -346,7 +376,7 @@ def unflattened_outside_corner(values=None):
     return p.build_outside_corner(v['channel_width_units'], h, v['length_y_units'], v['length_down_units'],
                                   mirrored=v['mirror_channel'], added_radius=v['added_radius'],
                                   suppress=v['suppress_connectors'], separators=v['channel_separators'],
-                                  grip_flare=v['grip_flare'],
+                                  grip_flare=v['grip_flare'], grip_shifts=v['grip_shifts'],
                                   cutters=j.first_arm_cutters(first.width, h, **_cut_args(v)))
 
 
@@ -409,7 +439,8 @@ def grips(name, values=None):
         second = p.outside_second_location(v['channel_width_units'], v['channel_total_height'],
                                            v['length_down_units'], v['added_radius'])
         return ([(first.location, *g) for g in first.grips(v['grip_flare'])]
-                + [(second, *g) for g in present_grips(v['length_down_units']*c.GRID, f[1], v['grip_flare'])])
+                + [(second, *g) for g in present_grips(v['length_down_units']*c.GRID, f[1], v['grip_flare'],
+                                                       v['grip_shifts'][1])])
     v, first = _checked_mitre(values)
     f = j.split_fields('suppress_connectors', v['suppress_connectors'], 2)
     second = p.mitre_second_location(v['channel_width_units'], v['channel_total_height'],
@@ -558,6 +589,10 @@ SPEC_OUTSIDE = register(ModelSpec(
               label='Mirror'),
         Param('added_radius', 'integer', 0, min=0, max=2, step=1, group='Channel Size', filename=True,
               label='Added bend radius (28 mm units)'),
+        Param('edge_offset_mm', 'number', 0, min=0, max=8, step=0.1, group='Channel Size', filename=True,
+              unit='mm', label='Edge offset of one arm\'s grips (overlapping tile: 6.8 full, 4 lite)'),
+        Param('offset_arm', 'enum', 'second', choices=OFFSET_ARMS, group='Channel Size',
+              filename=True, label='Arm the edge offset moves'),
         *_shared_params(CUTOUT_SIDES, 'first arm, second arm')[2:],
     ),
     presets=(

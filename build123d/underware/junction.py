@@ -51,6 +51,7 @@ class Arm:
     suppress: str = ''
     separators: str = ''
     keep: tuple[tuple[float, float, float, float], ...] | None = None
+    grip_shift: float = 0.   # lattice moved toward -Y (channel.shifted_cells)
 
     @property
     def location(self) -> Location:
@@ -61,12 +62,13 @@ class Arm:
 
     def grips(self, grip_flare: float = 0.) -> list[tuple[float, int, bool]]:
         """(y_cell, side, flared) in the arm frame, minus grips the clip drops."""
-        return [g for g in present_grips(self.length, self.suppress, grip_flare)
+        return [g for g in present_grips(self.length, self.suppress, grip_flare, self.grip_shift)
                 if self.kept(g[1]*(self.width/2 - c.SNAP_WALL/2), g[0])]
 
     def solid(self, height: float, grip_flare: float, cutters=()) -> Part:
         body = straight_channel(self.length, self.width, height, suppress=self.suppress,
-                                separators=self.separators, grip_flare=grip_flare)
+                                separators=self.separators, grip_flare=grip_flare,
+                                grip_shift=self.grip_shift)
         for cutter in cutters:
             body -= cutter
         if self.keep is not None:

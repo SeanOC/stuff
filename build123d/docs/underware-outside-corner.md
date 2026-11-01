@@ -57,9 +57,21 @@ from the edge line along each panel that is
 
 i.e. the 14 + 28 k hole lattice of a tile that ends at the edge line (first
 arm +0.8 mm). Accepted for v1 (mayor, 2026-10-31): both tiles cut to meet at
-the edge. Where the two tiles overlap at a convex edge instead, the covered
-tile's holes sit one tile thickness (openGrid full 6.8 mm, lite 4 mm) further
-from the edge; a per-arm edge offset (default 0) is a follow-up, not v1.
+the edge.
+
+**Edge offset (pst-ufdvc).** Where the two tiles overlap at a convex edge
+instead (the usual box or cabinet corner), the covered tile's holes sit one
+tile thickness further from the edge: 6.8 mm for openGrid full, 4 mm for
+openGrid lite. `edge_offset_mm` (0–8 mm, default 0) adds that distance to the
+formula above on the arm `offset_arm` names (`first` | `second`, default
+`second`): its cells move toward its free tip by exactly the offset, while
+the other arm, the bend, both arm lengths and the extents stay as they are.
+The arm is still length_units × 28 mm long and its outermost (tip-side) grip
+has only 28/2 − 15/2 = 6.5 mm of slack to the tip, so a cell whose 15 mm grip
+would cross the tip face is dropped: past 6.5 mm the shifted arm loses its
+tip-side cell (a 2-unit arm at 6.8 mm keeps its inner grip), and a 1-unit arm
+would lose its only cell, which is a named error. Per-cell suppress codes
+keep their lattice index, so a dropped cell's code is ignored.
 
 ## Print orientation
 

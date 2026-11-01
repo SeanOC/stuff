@@ -43,14 +43,23 @@ def _fits(span, width, height):
 
 # --- registration, bed fit, arm cap ---------------------------------------------------
 
+OFFSET_PARAMS = ('edge_offset_mm', 'offset_arm')   # outside corner only (pst-ufdvc)
+
+
 def test_registration_mirrors_the_mitre_params():
     """Same parameter names, kinds, ranges, labels and filename flags as the
-    mitre (incl. its Advanced group); three presets, two mirroring the
-    mitre's."""
+    mitre (incl. its Advanced group) plus the two edge-offset params; three
+    presets, two mirroring the mitre's."""
     def shape(spec):
         return [(q.name, q.kind, q.default, q.min, q.max, q.step, q.label, q.group, q.filename)
-                for q in spec.params]
+                for q in spec.params if q.name not in OFFSET_PARAMS]
     assert shape(SPEC) == shape(MSPEC)
+    off, arm = (next(q for q in SPEC.params if q.name == n) for n in OFFSET_PARAMS)
+    assert (off.kind, off.default, off.min, off.max, off.step, off.unit, off.group, off.filename) == (
+        'number', 0, 0, 8, 0.1, 'mm', 'Channel Size', True)
+    assert (arm.kind, arm.default, arm.choices, arm.group, arm.filename) == (
+        'enum', 'second', ('first', 'second'), 'Channel Size', True)
+    assert all(m.outside_values(pr.values)['edge_offset_mm'] == 0 for pr in SPEC.presets)
     assert list(PRESETS) == ['outside-corner', 'outside-corner-r1', 'outside-corner-w2-h28-y2']
     assert [pr.values for pr in MSPEC.presets] == list(PRESETS.values())[:2]
     assert SPEC.category_id == 'multiboard' and SPEC.print_frame is m.outside_print_frame
@@ -90,6 +99,14 @@ def test_arm_cap_is_the_bed():
     ({'length_units': 7, 'channel_total_height': 40}, 'past the 325 x 320 x 325 mm build volume'),
     ({'number_of_cord_cutouts': 1}, 'crosses the grip at y=0 mm'),
     ({'suppress_connectors': 'N,N,N'}, 'has 3 comma fields'),
+    ({'edge_offset_mm': 6.6}, 'an edge_offset_mm of 6.6 mm leaves the second arm no grip: its one cell\'s '
+                              'grip has only 6.5 mm of slack'),
+    ({'edge_offset_mm': 8, 'offset_arm': 'first'}, 'leaves the first arm no grip'),
+    ({'edge_offset_mm': 5.5, 'grip_flare': 9.9}, 'leaves a 0.60 mm wall fin between the second arm'),
+    ({'edge_offset_mm': 6, 'grip_flare': 9.9, 'offset_arm': 'first', 'length_units': 2},
+     'leaves a 0.10 mm wall fin between the first arm'),
+    ({'length_units': 3, 'number_of_cord_cutouts': 2, 'edge_offset_mm': 7, 'offset_arm': 'first'},
+     'crosses the grip at y=-7 mm'),            # cutouts are checked against the shifted cells
 ])
 def test_named_errors(values, message):
     with pytest.raises(ValueError) as exc:
@@ -143,6 +160,55 @@ def test_grip_cells_mirror_the_mitre(case):
         assert q.Z == pytest.approx(ez, abs=1e-9)
         k = (ey - q.Y - 14 - p.STUB - r*c.GRID)/c.GRID
         assert k == pytest.approx(round(k), abs=1e-9) and round(k) >= 0
+
+
+def _from_edge(values):
+    """[(arm, distance of the grip's cell from the edge line along its
+    panel, side)] for every grip, first arm then second."""
+    v = m.outside_values(values)
+    w, h, r = c.channel_width(v['channel_width_units']), v['channel_total_height'], v['added_radius']
+    ey, ez = p.outside_edge(v['channel_width_units'], h, r)
+    n1 = len(m._checked_outside(values)[1].grips(v['grip_flare']))
+    out = []
+    for i, (lo, y, side, _) in enumerate(m.grips(SPEC.name, values)):
+        q = _grip_point(lo, y, side, w, h)
+        out.append(('first', ey - q.Y, side) if i < n1 else ('second', q.Z - ez, side))
+    return out
+
+
+@pytest.mark.parametrize('arm', ['first', 'second'])
+@pytest.mark.parametrize('offset', [4, 6.5, 7])
+@pytest.mark.parametrize('base', [{'length_units': 2}, {'length_units': 3, 'added_radius': 1,
+                                                        'channel_width_units': 2, 'suppress_connectors': 'LNR,RBN'}])
+def test_edge_offset_moves_one_arms_cells(base, offset, arm):
+    """edge_offset_mm moves the named arm's cells exactly offset further from
+    the edge line; a cell whose 15 mm grip would cross the arm's free-tip
+    face (offset > 6.5 mm) drops with its suppress code; the other arm is
+    untouched."""
+    values = {**base, 'edge_offset_mm': offset, 'offset_arm': arm}
+    ref, ours = _from_edge(base), _from_edge(values)
+    n = base['length_units']
+    keep = [d for d in ref if d[0] != arm]
+    assert [d for d in ours if d[0] != arm] == keep
+    tip = max(d[1] for d in ref if d[0] == arm)     # the free-tip cell (k = n - 1)
+    want = [(a, dist + offset, side) for a, dist, side in ref
+            if a == arm and not (offset > 6.5 and dist == pytest.approx(tip))]
+    got = [d for d in ours if d[0] == arm]
+    assert [(a, s) for a, _, s in got] == [(a, s) for a, _, s in want]
+    assert [d for _, d, _ in got] == pytest.approx([d for _, d, _ in want], abs=1e-9)
+    if offset > 6.5 and n == 2:
+        assert len({d for _, d, _ in got}) == 1 < len({d for a, d, _ in ref if a == arm})
+
+
+@pytest.mark.parametrize('arm', ['first', 'second'])
+def test_edge_offset_keeps_the_extents(arm):
+    """The bend and both arm lengths are fixed: extents (and the built part's
+    bounding box) are equal at 0 and 8 mm."""
+    base = {'length_units': 2}
+    values = {**base, 'edge_offset_mm': 8, 'offset_arm': arm}
+    assert m.outside_extent(m.outside_values(values)) == m.outside_extent(m.outside_values(base))
+    a, b = SPEC.build(base).bounding_box(), SPEC.build(values).bounding_box()
+    assert (a.min - b.min).length < 1e-6 and (a.max - b.max).length < 1e-6
 
 
 MIRROR_CASES = {'default': {}, 'r1-w2-cut-left': {'added_radius': 1, 'channel_width_units': 2, 'length_units': 3,
@@ -407,6 +473,23 @@ ENDPOINT_CASES = {
     'cut-shift-14': {**MCUT, 'number_of_cord_cutouts': 1, 'shift_cutouts': 14, 'suppress_connectors': 'NBN'},
     'cut-left-mirror': {**MCUT, 'cord_side_cutouts': 'Left Side', 'mirror_channel': True},
     'cut-right-top-h10': {**MCUT, 'cord_side_cutouts': 'Right Side Top', 'channel_total_height': 10},
+    # edge_offset_mm (pst-ufdvc): both endpoints on each arm, the 1-cell
+    # maximum, both tile thicknesses, the flare-fin band's edges, cutouts on
+    # a shifted first arm and the max corner.
+    'offset-8-y2': {'length_units': 2, 'edge_offset_mm': 8},
+    'offset-8-y2-first': {'length_units': 2, 'edge_offset_mm': 8, 'offset_arm': 'first'},
+    'offset-6.5': {'edge_offset_mm': 6.5},
+    'offset-6.5-first-mirror': {'edge_offset_mm': 6.5, 'offset_arm': 'first', 'mirror_channel': True},
+    'offset-6.8-y2-flare-9.9': {'length_units': 2, 'edge_offset_mm': 6.8, 'grip_flare': 9.9},
+    'offset-4-flare-9.9-first': {'edge_offset_mm': 4, 'grip_flare': 9.9, 'offset_arm': 'first'},
+    'offset-5.2-flare-9.9': {'edge_offset_mm': 5.2, 'grip_flare': 9.9},
+    'offset-6.1-flare-9.9-first': {'edge_offset_mm': 6.1, 'grip_flare': 9.9, 'offset_arm': 'first'},
+    'offset-6.5-flare-9.9-h72-r2': {'edge_offset_mm': 6.5, 'grip_flare': 9.9, 'channel_total_height': 72,
+                                    'added_radius': 2},
+    'offset-7-first-cut': {**MCUT, 'edge_offset_mm': 7, 'offset_arm': 'first', 'shift_cutouts': 7},
+    'offset-8-max-corner': {'channel_width_units': 4, 'channel_total_height': 72, 'added_radius': 2,
+                            'length_units': 3, 'mirror_channel': True, 'edge_offset_mm': 8},
+    'offset-8-length-7-first': {'length_units': 7, 'edge_offset_mm': 8, 'offset_arm': 'first'},
 }
 
 

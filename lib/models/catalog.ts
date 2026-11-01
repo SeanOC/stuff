@@ -240,7 +240,7 @@ export const BUILD123D_CATALOG: Record<string, CatalogEntry> = {
   underware_outside_corner: {
     categoryId: "multiboard",
     blurb:
-      'Underware "monokini" channel that wraps 90° around the outside (convex) edge where two openGrid boards meet, with an optional larger bend radius for a rounded edge: the convex twin of the mitre, an original variant derived from it. Snaps into openGrid; set sizes in 28 mm cells and the height, with optional cord exits on the first channel and per-cell grip suppression. By Pedro Leite (Underware 2.0), CC BY-NC-SA 4.0 (non-commercial, share-alike). Prints standing on its bend at 45°; the curved floor under the bend prints unsupported by design.',
+      'Underware "monokini" channel that wraps 90° around the outside (convex) edge where two openGrid boards meet, with an optional larger bend radius for a rounded edge: the convex twin of the mitre, an original variant derived from it. Snaps into openGrid; set sizes in 28 mm cells and the height, with optional cord exits on the first channel, per-cell grip suppression and an edge offset that moves one arm’s grips onto an overlapping tile (6.8 mm full, 4 mm lite). By Pedro Leite (Underware 2.0), CC BY-NC-SA 4.0 (non-commercial, share-alike). Prints standing on its bend at 45°; the curved floor under the bend prints unsupported by design.',
   },
   holder_tombstone_sign: {
     categoryId: "household",

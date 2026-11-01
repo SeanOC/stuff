@@ -151,12 +151,15 @@ def mitre_radius(height: float, added_radius: int) -> float:
     return added_radius*c.GRID + height/2
 
 
-def mitre_first(units: int, length_y: int, added_radius: int, suppress: str, separators: str) -> Arm:
-    """[C] mitre:139-144 left(aR*G) fwd(lengthMM/2+curveWidth/2), spin 0."""
+def mitre_first(units: int, length_y: int, added_radius: int, suppress: str, separators: str,
+                grip_shift: float = 0.) -> Arm:
+    """[C] mitre:139-144 left(aR*G) fwd(lengthMM/2+curveWidth/2), spin 0.
+    grip_shift moves its grips toward the free tip (-Y; the outside corner's
+    edge offset, pst-ufdvc)."""
     w, cw = c.channel_width(units), units*c.GRID
     f = split_fields('suppress_connectors', suppress, 2)
     return Arm(length_y*c.GRID, w, -added_radius*c.GRID, -(length_y*c.GRID/2 + cw/2), 0,
-               f[0], separators.split(',')[0])
+               f[0], separators.split(',')[0], grip_shift=grip_shift)
 
 
 def mitre_second_location(units: int, height: float, length_z: int, added_radius: int) -> Location:
@@ -256,15 +259,18 @@ def outside_bend(width: float, height: float, added_radius: int = 0, separators:
 
 def build_outside_corner(units: int, height: float, length_y: int, length_z: int, *,
                          mirrored: bool = False, added_radius: int = 0, suppress: str = '',
-                         separators: str = '', grip_flare: float = 0., cutters=()) -> Part:
+                         separators: str = '', grip_flare: float = 0., cutters=(),
+                         grip_shifts: tuple[float, float] = (0., 0.)) -> Part:
     """The mitre's first arm (mitre_first, cutters on it), outside_bend and a
-    second arm rising +Z (outside_second_location). Mirror xflips the whole."""
-    first = mitre_first(units, length_y, added_radius, suppress, separators)
+    second arm rising +Z (outside_second_location). Mirror xflips the whole.
+    grip_shifts (first, second): each arm's grips moved away from the edge
+    line toward its free tip (local -Y on both arms), the arm unchanged."""
+    first = mitre_first(units, length_y, added_radius, suppress, separators, grip_shifts[0])
     f = split_fields('suppress_connectors', suppress, 2)
     second = outside_second_location(units, height, length_z, added_radius)*straight_channel(
         length_z*c.GRID, first.width, height, suppress=f[1],
         separators=mirrored_separators(first.width, first.separators),
-        grip_flare=grip_flare)
+        grip_flare=grip_flare, grip_shift=grip_shifts[1])
     part = first.solid(height, grip_flare, cutters) + second
     part += outside_bend(first.width, height, added_radius, first.separators)
     part = part.clean()

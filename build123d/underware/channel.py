@@ -37,6 +37,17 @@ def cell_centres(length_mm: float) -> list[float]:
     return [(k - (n-1)/2)*c.GRID for k in range(n)]
 
 
+def shifted_cells(length_mm: float, shift: float = 0.) -> list[tuple[int, float]]:
+    """(index, y) of the cell lattice moved shift mm toward -Y (index 0's
+    end), minus every cell whose GRIP_SIZE grip would cross the -Y end face.
+    The arm length does not change, so the outermost grip's slack to that
+    face, GRID/2 - GRIP_SIZE/2 = 6.5 mm, is all a shift may use before the
+    cell drops (pst-ufdvc). Indices stay the lattice's, so the suppress code
+    of a dropped cell is ignored, not handed to its neighbour."""
+    cells = [(k, y - shift) for k, y in enumerate(cell_centres(length_mm))]
+    return [(k, y) for k, y in cells if y - c.GRIP_SIZE/2 >= -length_mm/2 - 1e-9]
+
+
 def parse_codes(name: str, value: str, codes: str, count: int) -> str:
     """First comma field, upper-cased ([C] :119-120 str_split(upcase(...))[0]).
 
@@ -62,14 +73,16 @@ def mirrored_separators(width_mm: float, separators: str) -> str:
     return field.ljust(len(xs), 'N')[::-1]
 
 
-def present_grips(length_mm: float, suppress: str, grip_flare: float = 0.):
-    """(y_cell, side, flared) for every grip the suppress codes keep (:303-321)."""
-    cells = cell_centres(length_mm)
+def present_grips(length_mm: float, suppress: str, grip_flare: float = 0., shift: float = 0.):
+    """(y_cell, side, flared) for every grip the suppress codes keep (:303-321);
+    shift moves the lattice toward -Y (shifted_cells)."""
+    n = len(cell_centres(length_mm))
     if length_mm <= c.GRIP_SIZE:
         return []
-    codes = parse_codes('suppress_connectors', suppress, SUPPRESS_CODES, len(cells))
+    codes = parse_codes('suppress_connectors', suppress, SUPPRESS_CODES, n).ljust(n, 'N')
     out = []
-    for y, code in zip(cells, codes.ljust(len(cells), 'N')):
+    for k, y in shifted_cells(length_mm, shift):
+        code = codes[k]
         for side, gone in ((1, 'BL'), (-1, 'BR')):
             if code not in gone:
                 out.append((y, side, grip_flare > 0 and code != 'S'))
@@ -90,7 +103,7 @@ def channel_section(width_mm: float, height_mm: float, separators: str = '',
 
 def straight_channel(length_mm: float, width_mm: float, height_mm: float, *,
                      suppress: str = '', separators: str = '', grip_flare: float = 0.,
-                     top_chamfer: float = c.TOP_CHAMFER) -> Part:
+                     top_chamfer: float = c.TOP_CHAMFER, grip_shift: float = 0.) -> Part:
     """monokiniChannel (:257-371): profile along Y, one grip per wall per cell.
 
     top_chamfer=0 with height_mm = SNAP_WALL + BASE_HEIGHT is the text label
@@ -99,7 +112,7 @@ def straight_channel(length_mm: float, width_mm: float, height_mm: float, *,
     """
     section = channel_section(width_mm, height_mm, separators, top_chamfer)
     body = Pos(0, -length_mm/2, 0)*extrude(section, length_mm, dir=(0, 1, 0))
-    grips, slits = grip_parts(length_mm, width_mm, height_mm, suppress, grip_flare)
+    grips, slits = grip_parts(length_mm, width_mm, height_mm, suppress, grip_flare, grip_shift)
     for g in grips:
         body += g
     for slit in slits:
@@ -108,7 +121,7 @@ def straight_channel(length_mm: float, width_mm: float, height_mm: float, *,
 
 
 def grip_parts(length_mm: float, width_mm: float, height_mm: float, suppress: str = '',
-               grip_flare: float = 0.) -> tuple[list[Part], list[Part]]:
+               grip_flare: float = 0., shift: float = 0.) -> tuple[list[Part], list[Part]]:
     """(grips, flare slits) of one straight run in its own frame: what
     monokiniChannel adds with suppressWalls=true ([C] monokini_S_channel.scad:
     361 skips only the walls) and its flare-slit difference set."""
@@ -117,7 +130,7 @@ def grip_parts(length_mm: float, width_mm: float, height_mm: float, suppress: st
             f'grip_flare above {MAX_FLARE_DEG:g} degrees leaves the flared grip base '
             f'overhanging the wall chamfer (a flat, unsupported ledge)')
     grips, slits = [], []
-    for y, side, flared in present_grips(length_mm, suppress, grip_flare):
+    for y, side, flared in present_grips(length_mm, suppress, grip_flare, shift):
         if flared:
             grips.append(grip_flared(width_mm, height_mm, y, side, grip_flare))
             slits.append(grip_flared_cut(width_mm, height_mm, y, side))
