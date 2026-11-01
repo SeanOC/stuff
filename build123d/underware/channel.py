@@ -52,6 +52,16 @@ def parse_codes(name: str, value: str, codes: str, count: int) -> str:
     return field
 
 
+def mirrored_separators(width_mm: float, separators: str) -> str:
+    """The separator codes that put each wall at -x: the full-length field
+    reversed (midline_positions is half + its negated reverse, so reversing the
+    index order negates x). Padded with 'N' first, or a short code would move
+    its walls: width 3 'NS' (x=14) reversed raw is 'SN' (x=0)."""
+    xs = midline_positions(width_mm)
+    field = parse_codes('channel_separators', separators, SEPARATOR_CODES, len(xs))
+    return field.ljust(len(xs), 'N')[::-1]
+
+
 def present_grips(length_mm: float, suppress: str, grip_flare: float = 0.):
     """(y_cell, side, flared) for every grip the suppress codes keep (:303-321)."""
     cells = cell_centres(length_mm)

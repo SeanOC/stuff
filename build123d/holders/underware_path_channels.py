@@ -55,7 +55,9 @@ Not ported: the label (U4b, underware_text_label), Decorative /
 Support_Bridging_Separation (as underware_i_channel). Deviations are listed in
 the NOTICE: S/diagonal cord cutouts cut the bottom run's walls (the source
 cuts only its grips), named errors bound the S bend radius and the diagonal
-mitre, the mitre has one arm length and a bed flat across its arm tips.
+mitre, the mitre has one arm length and a bed flat across its arm tips, and
+an off-centre separator keeps its x round the mitre's and the outside
+corner's bend (the source flips it to -x in the curve and second channel).
 """
 from math import hypot, radians, sin, sqrt
 

@@ -24,7 +24,8 @@ from holders.printer import BED_X, BED_Y, BED_Z
 from scripts.export import export_stl
 from tests import print_audit as pa
 from tests.audit_record import record
-from tests.test_underware_path_channels import _bed_faces, _inside_u_at, _print_frame_cut, _to, flat
+from tests.test_underware_path_channels import (SEPARATOR_CONTINUITY, _bed_faces, _inside_u_at,
+                                                 _print_frame_cut, _to, flat, separator_probes)
 from underware import constants as c
 from underware import path as p
 from underware.channel import cord_cutouts
@@ -393,6 +394,7 @@ ENDPOINT_CASES = {
     'length-7-w4-h10': {'channel_width_units': 4, 'channel_total_height': 10, 'length_units': 7},
     'separators-w4': {'channel_width_units': 4, 'channel_separators': 'SSSSSSSS'},
     'separators-w3-r1': {'channel_width_units': 3, 'channel_separators': 'SNNNNN', 'added_radius': 1},
+    'separators-w4-offcentre-r1': {'channel_width_units': 4, 'channel_separators': 'NNS', 'added_radius': 1},
     'flare-9.9': {'grip_flare': 9.9},
     'flare-9.9-h72-r2': {'grip_flare': 9.9, 'channel_total_height': 72, 'added_radius': 2},
     'flare-5-suppress': {'grip_flare': 5, 'suppress_connectors': 'S,L'},
@@ -434,3 +436,17 @@ def test_endpoint_audit_and_edges(case):
            filtered_ovh=report.max_overhang_deg, edges_worst_exposed=worst,
            edges=dict(sorted(families.items())), exceptions=[k for k, r in regions.items() if r],
            result='PASS')
+
+
+@pytest.mark.parametrize('case', SEPARATOR_CONTINUITY)
+def test_separator_is_continuous_round_the_bend(case):
+    """The mitre's continuity probe (pst-m1e5n) on the convex twin: the second
+    arm shares the mitre's x flip and gets the same mirrored codes."""
+    values, x = SEPARATOR_CONTINUITY[case]
+    v, first = m._checked_outside(values)
+    h = v['channel_total_height']
+    ya, za = p.outside_axis(v['channel_width_units'], h, v['added_radius'])
+    second = p.outside_second_location(v['channel_width_units'], h, v['length_down_units'], v['added_radius'])
+    bend = Pos(0, ya, za)*Rot(45, 0, 0)*Pos(0, -ya, -za)
+    got = separator_probes(m.build_outside_corner(values), first, second, bend, x, (h - c.BASE_HEIGHT)/2)
+    assert got == {piece: (True, False) for piece in got}

@@ -183,6 +183,14 @@ Path channel deviations (build123d/holders/underware_path_channels.py header):
   removes ~33 mm3 (0.34 % at the defaults) from the arm-end faces, which only
   butt against the next channel. 8 cells stand past the 325 mm bed even at
   width 1, height 10; wider or taller corners are a named error.
+- Mitre separators (pst-m1e5n): the source places its second channel and
+  curve in frames that flip x, so an off-centre Channel_Separators wall
+  (Manifold render of the staged source, width 3, "NSNNNN": x=+14 in the
+  first channel, -14 in the curve and the second channel) does not
+  continue round the bend. The port keeps every wall at the first
+  channel's x (the I channel's index order) through the bend and the second
+  arm, for the mitre and the outside corner; centre and symmetric codes,
+  and the reference meshes, are unchanged.
 - Mitre arch underside: a 90 degree bend has no support-free orientation, so
   the bend's floor underside (the cylinder of the bend radius, 90 degrees at
   its crown in the print frame) is printed unsupported by design, as the

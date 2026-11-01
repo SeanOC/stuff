@@ -35,7 +35,8 @@ from build123d import (Axis, Bezier, Line, Location, Part, Plane, Pos, Wire, ext
                        revolve)
 
 from . import constants as c
-from .channel import channel_section, grip_parts, path_channel, straight_channel
+from .channel import (channel_section, grip_parts, mirrored_separators, path_channel,
+                      straight_channel)
 from .junction import Arm, split_fields
 
 PARTS = ('S', 'diagonal')
@@ -161,7 +162,14 @@ def mitre_first(units: int, length_y: int, added_radius: int, suppress: str, sep
 def mitre_second_location(units: int, height: float, length_z: int, added_radius: int) -> Location:
     """[C] mitre:212-217: left(aR*G) down(aR*G) down(lengthMM2/2+h/2)
     fwd(cw/2-h/2-sep-aR*G) zrot(-90) yrot(-90) of a spin-270 channel, i.e.
-    local (x, y, z) -> (-x, z, y): along -Z, closed face at y = r - w/2."""
+    local (x, y, z) -> (-x, z, y): along -Z, closed face at y = r - w/2.
+    The x flip keeps the grips and the author's 'Right' wall, but it would put
+    an off-centre separator on the other side, so build_mitre hands this arm
+    mirrored_separators (pst-m1e5n). The author's mesh is not continuous
+    either: a Manifold render of the staged source at width 3, 'NSNNNN' has
+    the wall at x=+14 in the first channel and at -14 in the curve and the
+    second channel. The port keeps the first channel's index -> x (the I
+    channel's) through the bend and the second arm."""
     w, r = c.channel_width(units), mitre_radius(height, added_radius)
     lz = length_z*c.GRID
     origin = (-added_radius*c.GRID, r - w/2, -(r + lz/2))
@@ -190,7 +198,8 @@ def build_mitre(units: int, height: float, length_y: int, length_z: int, *, mirr
     first = mitre_first(units, length_y, added_radius, suppress, separators)
     f = split_fields('suppress_connectors', suppress, 2)
     second = mitre_second_location(units, height, length_z, added_radius)*straight_channel(
-        length_z*c.GRID, first.width, height, suppress=f[1], separators=first.separators,
+        length_z*c.GRID, first.width, height, suppress=f[1],
+        separators=mirrored_separators(first.width, first.separators),
         grip_flare=grip_flare)
     part = first.solid(height, grip_flare, cutters) + second
     part += mitre_bend(first.width, height, added_radius, first.separators)
@@ -225,7 +234,8 @@ def outside_second_location(units: int, height: float, length_z: int, added_radi
     """The second arm rises +Z from the axis height, its open face (grips)
     toward -Y on the plane y = edge: local (x, y, z) -> (-x, -z, -y), the
     mitre's second-arm frame turned 180 degrees about X (index 0 at the free
-    tip, the +X wall still the author's 'Right')."""
+    tip, the +X wall still the author's 'Right'). It has the mitre's x flip, so
+    build_outside_corner also hands this arm mirrored_separators."""
     ya, za = outside_axis(units, height, added_radius)
     lz = length_z*c.GRID
     origin = (-added_radius*c.GRID, ya + outside_floor_radius(height, added_radius), za + lz/2)
@@ -252,7 +262,8 @@ def build_outside_corner(units: int, height: float, length_y: int, length_z: int
     first = mitre_first(units, length_y, added_radius, suppress, separators)
     f = split_fields('suppress_connectors', suppress, 2)
     second = outside_second_location(units, height, length_z, added_radius)*straight_channel(
-        length_z*c.GRID, first.width, height, suppress=f[1], separators=first.separators,
+        length_z*c.GRID, first.width, height, suppress=f[1],
+        separators=mirrored_separators(first.width, first.separators),
         grip_flare=grip_flare)
     part = first.solid(height, grip_flare, cutters) + second
     part += outside_bend(first.width, height, added_radius, first.separators)
