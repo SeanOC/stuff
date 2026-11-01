@@ -76,9 +76,9 @@ def mirrored_separators(width_mm: float, separators: str) -> str:
 def present_grips(length_mm: float, suppress: str, grip_flare: float = 0., shift: float = 0.):
     """(y_cell, side, flared) for every grip the suppress codes keep (:303-321);
     shift moves the lattice toward -Y (shifted_cells)."""
-    n = len(cell_centres(length_mm))
     if length_mm <= c.GRIP_SIZE:
         return []
+    n = len(cell_centres(length_mm))
     codes = parse_codes('suppress_connectors', suppress, SUPPRESS_CODES, n).ljust(n, 'N')
     out = []
     for k, y in shifted_cells(length_mm, shift):

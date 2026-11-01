@@ -351,7 +351,7 @@ def _checked_outside(values):
     arm_codes = j.split_fields('suppress_connectors', v['suppress_connectors'], 2)[OFFSET_ARMS.index(v['offset_arm'])]
     for y, _, flared in present_grips(arm_mm, arm_codes, v['grip_flare'], off):
         fin = y - c.GRIP_SIZE/2 + arm_mm/2 - c.FLARE_SLIT
-        if flared and 1e-6 < fin < OFFSET_FIN_WALL_MM:
+        if flared and 1e-6 < fin < OFFSET_FIN_WALL_MM - 1e-6:   # the audit's MIN_WALL_MM - 1e-6
             lo, hi = c.GRID/2 - c.GRIP_SIZE/2 - tip_fin, c.GRID/2 - c.GRIP_SIZE/2 - c.FLARE_SLIT
             raise ValueError(f'an edge_offset_mm of {off:g} mm leaves a {fin:.2f} mm wall fin between the '
                              f'{v["offset_arm"]} arm\'s tip-side flare slit and its free tip (under '

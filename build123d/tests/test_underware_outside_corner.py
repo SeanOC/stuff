@@ -201,6 +201,20 @@ def test_edge_offset_moves_one_arms_cells(base, offset, arm):
 
 
 @pytest.mark.parametrize('arm', ['first', 'second'])
+@pytest.mark.parametrize('units', range(1, m.MAX_ARM_OUTSIDE + 1))
+def test_flare_fin_band_edges_build_at_every_length(units, arm):
+    """The fin is 6.5 - offset - FLARE_SLIT at every arm length (the tip
+    cell's slack does not depend on n), so the band edges the error names,
+    5.2 (fin exactly 0.9 mm, the audit accepts it) and 6.1 (slit flush with
+    the tip), are accepted at every length and 5.5 raises at every length."""
+    base = {'length_units': units, 'grip_flare': 9.9, 'offset_arm': arm}
+    for off in (5.2, 6.1):
+        m._checked_outside({**base, 'edge_offset_mm': off})
+    with pytest.raises(ValueError, match='wall fin'):
+        m._checked_outside({**base, 'edge_offset_mm': 5.5})
+
+
+@pytest.mark.parametrize('arm', ['first', 'second'])
 def test_edge_offset_keeps_the_extents(arm):
     """The bend and both arm lengths are fixed: extents (and the built part's
     bounding box) are equal at 0 and 8 mm."""
@@ -484,6 +498,9 @@ ENDPOINT_CASES = {
     'offset-4-flare-9.9-first': {'edge_offset_mm': 4, 'grip_flare': 9.9, 'offset_arm': 'first'},
     'offset-5.2-flare-9.9': {'edge_offset_mm': 5.2, 'grip_flare': 9.9},
     'offset-6.1-flare-9.9-first': {'edge_offset_mm': 6.1, 'grip_flare': 9.9, 'offset_arm': 'first'},
+    'offset-5.2-flare-9.9-y3-first': {'length_units': 3, 'edge_offset_mm': 5.2, 'grip_flare': 9.9,
+                                      'offset_arm': 'first'},
+    'offset-6.1-flare-9.9-y3': {'length_units': 3, 'edge_offset_mm': 6.1, 'grip_flare': 9.9},
     'offset-6.5-flare-9.9-h72-r2': {'edge_offset_mm': 6.5, 'grip_flare': 9.9, 'channel_total_height': 72,
                                     'added_radius': 2},
     'offset-7-first-cut': {**MCUT, 'edge_offset_mm': 7, 'offset_arm': 'first', 'shift_cutouts': 7},
