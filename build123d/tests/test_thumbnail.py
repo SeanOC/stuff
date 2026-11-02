@@ -255,7 +255,6 @@ def full_holder_glb(tmp_path):
 
 
 @pytest.mark.audit
-@pytest.mark.audit_full
 def test_cartridge_holder_full_holder_repeated_load(full_holder_glb, tmp_path):
     """Real OCCT export: no lost primitives, stable face order and PNG bytes."""
     data = full_holder_glb.read_bytes()
@@ -268,7 +267,10 @@ def test_cartridge_holder_full_holder_repeated_load(full_holder_glb, tmp_path):
     first = None
     for i in range(3):
         scene = _load_render_scene(full_holder_glb)
-        assert len(scene.graph.nodes_geometry) == len(primitives)
+        # Pin trimesh's child traversal order, including the loader's reversal.
+        assert list(scene.graph.nodes_geometry) == [
+            f"primitive_{j + 1}" for j in range(len(primitives))
+        ]
         mesh, colors = _scene_mesh_and_colors(scene)
         assert len(mesh.faces) == len(colors) == expected_faces
         current = (list(scene.graph.nodes_geometry), mesh.vertices, mesh.faces,

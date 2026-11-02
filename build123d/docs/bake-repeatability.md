@@ -93,7 +93,7 @@ still have the upstream naming exposure.
 `tests/test_thumbnail.py::test_cartridge_holder_full_holder_repeated_load`
 builds and exports the real preset, derives the expected triangle count
 from its GLB accessors, and checks three loads and byte-identical thumbnail
-PNGs. It runs in the `audit_full` partition. A fast synthetic regression
+PNGs. It runs in the regular `audit` partition. A fast synthetic regression
 forces UUID collisions and checks material/triangle preservation, repeated
 instances, parent transforms, existing children and genuinely orphaned
 geometry. This fixes load-time loss, independently of the fresh-export
