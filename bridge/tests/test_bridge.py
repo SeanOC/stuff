@@ -751,3 +751,469 @@ def test_printers_nozzle_mm_unknown_is_empty(client, fake):
 )
 def test_name_nozzle_token(name, mm):
     assert name_nozzle(name) == mm
+
+
+# Optional spool path: all calls still go through the method/path-gated Fake.
+SPOOL = {"ams_id": 0, "tray_id": 0}
+
+
+def test_spools_resolve_every_fixture_tray(client):
+    expected = {
+        1: [
+            (0, 0, "standard", "Bambu PLA Glow @BBL H2S"),
+            (0, 1, "cloud", "PFUS4ab9490cde01cf"),
+            (0, 3, "standard", "Bambu PETG Basic @BBL H2S"),
+        ],
+        2: [
+            (0, 0, "standard", "Bambu PLA Basic @BBL H2C"),
+            (0, 1, "standard", "Bambu PLA Matte @BBL H2C"),
+            (0, 3, "standard", "Bambu PLA Matte @BBL H2C"),
+            (128, 0, "standard", "Bambu PLA Matte @BBL H2C"),
+        ],
+    }
+    for pid, wanted in expected.items():
+        response = client.get(f"/printers/{pid}/spools")
+        assert response.status_code == 200
+        rows = response.json()
+        assert [
+            (r["ams_id"], r["tray_id"], r["preset"]["source"], r["preset"]["id"]) for r in rows
+        ] == wanted
+        assert all(r["resolved"] and not r["generic"] for r in rows)
+
+
+@pytest.mark.parametrize(
+    "pid,ams,tray,slot,copies", [(2, 128, 0, 128, 2), (1, 0, 3, 3, 1), (1, 0, 0, 0, 1)]
+)
+def test_spool_print_recipe_and_queue(client, fake, pid, ams, tray, slot, copies):
+    unit = next(a for a in fake.spool_data["statuses"][str(pid)]["ams"] if a["id"] == ams)
+    next(t for t in unit["tray"] if t["id"] == tray)["tray_color"] = "DCF478FF"
+    selected = next(
+        s
+        for s in client.get(f"/printers/{pid}/spools").json()
+        if s["ams_id"] == ams and s["tray_id"] == tray
+    )
+    r = client.post(
+        "/print",
+        json={
+            **BD_PRESET,
+            "printer_id": pid,
+            "copies": copies,
+            "spool": {"ams_id": ams, "tray_id": tray},
+        },
+    )
+    assert r.status_code == 202, r.text
+    assert r.json() == {
+        "library_file_id": 500,
+        "sliced_library_file_id": 800,
+        "queue_item_id": 1000,
+        "batch_id": 2000 if copies > 1 else None,
+        "status_url": "/queue/batches/2000" if copies > 1 else "/queue/1000",
+    }
+    (request,) = fake.bambuddy_calls("POST", r"/api/v1/library/files/500/slice")
+    recipe = fake.pipelines[pid - 1]
+    assert json.loads(request.content) == {
+        "printer_preset": recipe["printer_preset"],
+        "process_preset": recipe["process_preset"],
+        "bed_type": recipe["bed_type"],
+        "filament_presets": [selected["preset"]],
+        "filament_colours": ["#DCF478"],
+    }
+    (queue,) = fake.bambuddy_calls("POST", "/api/v1/queue/")
+    assert json.loads(queue.content) == {
+        "printer_id": pid,
+        "library_file_id": 800,
+        "ams_mapping": [slot],
+        "quantity": copies,
+        "use_ams": True,
+    }
+    assert not fake.bambuddy_calls("POST", r"/api/v1/slicer-pipelines/\d+/run")
+    assert client.get(r.json()["status_url"]).json()["status"] == "pending"
+
+
+@pytest.mark.parametrize(
+    "raw,want",
+    [
+        ("DCF478", "#DCF478"),
+        ("abcdef12", "#abcdef"),
+        (None, None),
+        ("", None),
+        ("NOTHEX", None),
+        ("1234567", None),
+    ],
+)
+def test_spool_colour_validation(client, fake, raw, want):
+    fake.spool_data["statuses"]["1"]["ams"][0]["tray"][0]["tray_color"] = raw
+    assert client.post("/print", json={**BD_PRESET, "spool": SPOOL}).status_code == 202
+    body = json.loads(fake.bambuddy_calls("POST", r"/api/v1/library/files/500/slice")[0].content)
+    assert body.get("filament_colours") == ([want] if want else None)
+
+
+def test_spool_resolution_precedence_and_fallback(client, fake, config):
+    tray = fake.spool_data["statuses"]["1"]["ams"][0]["tray"][0]
+    defaults = fake.spool_data["defaults"]["1/0/0"]
+    defaults["slicer_filament_name"] = "Bambu PLA Basic"
+    row = client.get("/printers/1/spools").json()[0]
+    assert row["preset"]["id"] == "Bambu PLA Basic @BBL H2S"  # defaults beats builtin Glow
+    config.filament_presets["GFA12"] = {"source": "local", "id": "operator-choice"}
+    assert client.get("/printers/1/spools").json()[0]["preset"] == config.filament_presets["GFA12"]
+    config.filament_presets.clear()
+    defaults["slicer_filament_name"] = None
+    tray["tray_info_idx"] = "unknown"
+    row = client.get("/printers/1/spools").json()[0]
+    assert row["preset"] == {"source": "standard", "id": "Generic PLA @BBL H2S"}
+    assert row["generic"] and row["resolved"]
+    tray["tray_type"] = ""
+    row = client.get("/printers/1/spools").json()[0]
+    assert row["preset"] is None and not row["resolved"] and not row["generic"]
+    r = client.post("/print", json={**BD_PRESET, "spool": SPOOL})
+    assert r.status_code == 409 and "no slicer filament preset for spool" in r.json()["error"]
+    assert not fake.bambuddy_calls("POST", r"/api/v1/library/files/\d+/slice")
+
+
+def test_spools_allowlist_and_no_external(client, fake):
+    status = fake.spool_data["statuses"]["1"]
+    tray = status["ams"][0]["tray"][0]
+    tray.update(
+        serial_number="secret-serial",
+        tag_uid="secret-tag",
+        tray_uuid="secret-uuid",
+        access_code="secret-code",
+        remain=-1,
+    )
+    status["vt_tray"] = {**tray, "id": 254}
+    status["ams"].append({"id": 254, "tray": [{**tray, "id": 0}]})
+    rows = client.get("/printers/1/spools").json()
+    assert len(rows) == 3
+    assert rows[0]["remain_pct"] is None
+    assert set(rows[0]) == {
+        "ams_id",
+        "tray_id",
+        "slot",
+        "material",
+        "name",
+        "colour",
+        "remain_pct",
+        "preset",
+        "generic",
+        "resolved",
+    }
+    assert "secret" not in json.dumps(rows)
+
+
+@pytest.mark.parametrize(
+    "spool",
+    [
+        {"ams_id": 254, "tray_id": 0},
+        {"ams_id": 128, "tray_id": 1},
+        {"ams_id": -1, "tray_id": 0},
+        {"ams_id": 0, "tray_id": 4},
+    ],
+)
+def test_invalid_spool_cannot_queue(client, fake, spool):
+    assert client.post("/print", json={**BD_PRESET, "spool": spool}).status_code == 400
+    assert not fake.calls
+
+
+def test_empty_spool_rejected(client, fake):
+    r = client.post("/print", json={**BD_PRESET, "spool": {"ams_id": 0, "tray_id": 2}})
+    assert r.status_code == 409 and r.json()["error"] == "spool is not loaded"
+    assert not fake.bambuddy_calls("POST", "/api/v1/queue/")
+
+
+@pytest.mark.parametrize("status", ["failed", "cancelled", "error"])
+def test_slice_failure_never_queues(client, fake, status):
+    fake.slice_jobs = [{"status": status, "result": {"error": "slicer exploded"}}]
+    r = client.post("/print", json={**BD_PRESET, "spool": SPOOL})
+    assert r.status_code == 502 and r.json()["error"] == "slicer exploded"
+    assert not fake.bambuddy_calls("POST", "/api/v1/queue/")
+
+
+def test_slice_deadline_fake_clock(client, fake, monkeypatch):
+    from types import SimpleNamespace
+
+    from bridge import core
+
+    clock = [0.0]
+
+    async def sleep(seconds):
+        clock[0] += seconds
+
+    monkeypatch.setattr(core, "time", SimpleNamespace(monotonic=lambda: clock[0]))
+    monkeypatch.setattr(core.asyncio, "sleep", sleep)
+    fake.slice_jobs = [{"status": "running", "message": "still slicing"}]
+    r = client.post("/print", json={**BD_PRESET, "spool": SPOOL})
+    assert r.status_code == 502
+    assert "timed out" in r.json()["error"] and "still slicing" in r.json()["error"]
+    assert clock[0] == 240
+    assert len(fake.bambuddy_calls("GET", "/api/v1/slice-jobs/6")) == 120
+    assert not fake.bambuddy_calls("POST", "/api/v1/queue/")
+
+
+@pytest.mark.parametrize(
+    "status", ["pending", "printing", "completed", "failed", "skipped", "cancelled"]
+)
+def test_queue_item_status(client, fake, status):
+    fake.queue[42] = {
+        "id": 42,
+        "printer_id": 2,
+        "library_file_id": 800,
+        "status": status,
+        "error_message": "example",
+    }
+    assert client.get("/queue/42").json() == {
+        "status": status,
+        "copies": 1,
+        "copies_completed": int(status == "completed"),
+        "copies_failed": int(status == "failed"),
+        "error_message": "example",
+        "sliced_library_file_id": 800,
+        "jobs": [{"queue_item_id": 42, "status": status, "printer_id": 2}],
+    }
+
+
+@pytest.mark.parametrize(
+    "counts,status",
+    [
+        ((1, 1, 0, 0, 0, 0), "printing"),
+        ((2, 0, 0, 0, 0, 0), "pending"),
+        ((0, 0, 2, 0, 0, 0), "completed"),
+        ((0, 0, 1, 1, 0, 0), "partial_failure"),
+        ((0, 0, 0, 0, 1, 1), "cancelled"),
+        ((0, 0, 0, 1, 1, 0), "failed"),
+        ((0, 0, 1, 0, 0, 1), "partial_failure"),
+    ],
+)
+def test_batch_counts_define_status(client, fake, counts, status):
+    fake.batches[42] = {
+        "id": 42,
+        "quantity": 2,
+        "status": "not-a-contract",
+        "library_file_id": 800,
+        **dict(
+            zip(
+                [
+                    "pending_count",
+                    "printing_count",
+                    "completed_count",
+                    "failed_count",
+                    "cancelled_count",
+                    "skipped_count",
+                ],
+                counts,
+                strict=True,
+            )
+        ),
+    }
+    assert client.get("/queue/batches/42").json() == {
+        "status": status,
+        "copies": 2,
+        "copies_completed": counts[2],
+        "copies_failed": counts[3],
+        "error_message": None,
+        "sliced_library_file_id": 800,
+        "jobs": [],
+        "batch_status": "not-a-contract",
+    }
+
+
+@pytest.mark.parametrize("copies", [1, 2])
+def test_queue_404_after_accepted_is_unknown(client, fake, copies):
+    accepted = client.post("/print", json={**BD_PRESET, "spool": SPOOL, "copies": copies}).json()
+    fake.queue.clear()
+    fake.batches.clear()
+    r = client.get(accepted["status_url"])
+    assert r.status_code == 200 and r.json()["status"] == "unknown"
+    assert r.json()["error_message"] == "queue item not found"
+    assert r.json()["copies"] == copies
+    assert client.get("/queue/9999").status_code == 404
+    assert client.get("/queue/batches/9999").status_code == 404
+
+
+@pytest.mark.parametrize("status", ["pending", "printing"])
+def test_spool_dedupe_by_sliced_filename(client, fake, status):
+    fake.queue[42] = {
+        "id": 42,
+        "printer_id": 1,
+        "status": status,
+        "library_file_name": "holder-bench-width-saddle-width_clearance1.gcode.3mf",
+    }
+    r = client.post("/print", json={**BD_PRESET, "spool": SPOOL})
+    assert r.status_code == 409 and r.json()["queue_item_id"] == 42
+    assert r.json()["status_url"] == "/queue/42"
+    assert not fake.bambuddy_calls("POST", r"/api/v1/library/files/\d+/slice")
+
+
+def test_concurrent_spool_requests_queue_once(fake, config):
+    from bridge.core import Bridge, BridgeError
+
+    fake.duplicate_of = 500
+
+    async def scenario():
+        bridge = Bridge(config, transport=httpx.MockTransport(fake.handle))
+        # Force a context switch while the first request owns the slice+queue lock.
+        original = bridge._slice
+
+        async def slice_yield(*args):
+            await asyncio.sleep(0)
+            return await original(*args)
+
+        bridge._slice = slice_yield
+        try:
+            return await asyncio.gather(
+                bridge.start_print(**BD_PRESET, spool=SPOOL),
+                bridge.start_print(**BD_PRESET, spool=SPOOL),
+                return_exceptions=True,
+            )
+        finally:
+            await bridge.aclose()
+
+    results = asyncio.run(scenario())
+    assert sum(isinstance(r, dict) for r in results) == 1
+    assert sum(isinstance(r, BridgeError) and r.status == 409 for r in results) == 1
+    assert len(fake.bambuddy_calls("POST", "/api/v1/queue/")) == 1
+
+
+def test_spool_path_keeps_nozzle_and_eligibility_checks(client, fake, config):
+    _name_pipeline(fake, config, 1, "Crushinator - .4")
+    fake.nozzles[1] = ["0.6"]
+    assert client.post("/print", json={**BD_PRESET, "spool": SPOOL}).status_code == 409
+    _no_upload(fake)
+    fake.nozzles[1] = ["0.4"]
+    fake.eligibility = {"ok": False, "issues": ["plate occupied"]}
+    assert client.post("/print", json={**BD_PRESET, "spool": SPOOL}).status_code == 409
+    assert not fake.bambuddy_calls("POST", "/api/v1/queue/")
+
+
+@pytest.mark.parametrize(
+    "method,path",
+    [
+        ("PATCH", "/queue/1"),
+        ("DELETE", "/queue/1"),
+        ("POST", "/queue/1/start"),
+        ("POST", "/queue/1/stop"),
+        ("POST", "/queue/1/cancel"),
+        ("POST", "/queue/reorder"),
+        ("POST", "/queue/bulk"),
+        ("POST", "/queue/batches/1/dispatch"),
+        ("POST", "/library/files/1/print"),
+        ("POST", "/library/files/add-to-queue"),
+        ("POST", "/webhook/start"),
+        ("POST", "/printers/1/pause"),
+        ("POST", "/printers/1/status"),
+        ("POST", "/printers/1/slots/0/0/spool-defaults"),
+    ],
+)
+def test_transport_gate_forbidden_mutations(fake, method, path):
+    with pytest.raises(AssertionError, match="forbidden Bambuddy call"):
+        fake.handle(
+            httpx.Request(method, BAMBUDDY + "/api/v1" + path, headers={"X-API-Key": API_KEY})
+        )
+
+
+def test_transport_gate_allows_queue_list(fake):
+    r = fake.handle(
+        httpx.Request(
+            "GET", BAMBUDDY + "/api/v1/queue/?printer_id=1", headers={"X-API-Key": API_KEY}
+        )
+    )
+    assert r.status_code == 200
+
+
+def test_filament_override_config():
+    from bridge.config import parse_filament_presets
+
+    assert parse_filament_presets("") == {}
+    assert parse_filament_presets(" GFA12=standard:Bambu PLA Glow @BBL H2S, P9=cloud:opaque ") == {
+        "GFA12": {"source": "standard", "id": "Bambu PLA Glow @BBL H2S"},
+        "P9": {"source": "cloud", "id": "opaque"},
+    }
+    for bad in ["GFA12", "GFA12=cloud:", "=cloud:id", "GFA12=other:id"]:
+        with pytest.raises(ConfigError):
+            parse_filament_presets(bad)
+
+
+def test_cli_spool_follows_queue_status_url(monkeypatch, fake, capsys):
+    monkeypatch.setattr("bridge.__main__.load_config", lambda: load_config(ENV))
+    original = fake.handle
+
+    def handle(req):
+        if req.method == "GET" and req.url.path == "/api/v1/queue/1000":
+            fake.queue[1000]["status"] = "completed"
+        return original(req)
+
+    args = build_parser().parse_args(
+        [
+            "print",
+            "--source",
+            "bd",
+            "--slug",
+            BD_PRESET["slug"],
+            "--preset",
+            BD_PRESET["preset"],
+            "--printer-id",
+            "1",
+            "--spool",
+            "0/0",
+        ]
+    )
+    assert asyncio.run(run_print(args, transport=httpx.MockTransport(handle))) == 0
+    assert '"status_url": "/queue/1000"' in capsys.readouterr().out
+    assert build_parser().parse_args(["spools", "--printer-id", "1"]).command == "spools"
+
+
+def test_no_spool_keeps_original_upstream_sequence(client, fake):
+    assert client.post("/print", json=BD_PRESET).status_code == 202
+    assert [(r.method, r.url.path) for r in fake.calls if r.url.host == "bambuddy.invalid"] == [
+        ("GET", "/api/v1/printers/"),
+        ("GET", "/api/v1/slicer-pipelines/"),
+        ("GET", "/api/v1/printers/1/status"),
+        ("GET", "/api/v1/slicer/preset-values"),
+        ("GET", "/api/v1/library/folders"),
+        ("POST", "/api/v1/library/folders"),
+        ("POST", "/api/v1/library/folders"),
+        ("POST", "/api/v1/library/files"),
+        ("PUT", "/api/v1/library/files/500"),
+        ("GET", "/api/v1/pipeline-runs"),
+        ("POST", "/api/v1/slicer-pipelines/11/check-eligibility"),
+        ("POST", "/api/v1/slicer-pipelines/11/run"),
+    ]
+    assert fake.calls[-2].content == b'{"source_library_file_id":500}'
+    assert fake.calls[-1].content == b'{"source_library_file_id":500,"copies":1}'
+
+
+def test_slice_polls_until_completed(client, fake, monkeypatch):
+    pauses = []
+
+    async def sleep(seconds):
+        pauses.append(seconds)
+
+    monkeypatch.setattr("bridge.core.asyncio.sleep", sleep)
+    fake.slice_jobs.insert(0, {"job_id": 6, "status": "running"})
+    assert client.post("/print", json={**BD_PRESET, "spool": SPOOL}).status_code == 202
+    assert pauses == [2]
+    assert len(fake.bambuddy_calls("GET", "/api/v1/slice-jobs/6")) == 2
+
+
+def test_cli_spools_command_uses_mock_transport(monkeypatch, fake, capsys, config):
+    from bridge.core import Bridge
+
+    monkeypatch.setattr("bridge.__main__.load_config", lambda: config)
+    monkeypatch.setattr(
+        "bridge.__main__.Bridge", lambda cfg: Bridge(cfg, httpx.MockTransport(fake.handle))
+    )
+    assert main(["spools", "--printer-id", "2"]) == 0
+    rows = json.loads(capsys.readouterr().out)
+    assert rows[-1]["slot"] == 128 and len(rows) == 4
+
+
+@pytest.mark.parametrize("copies,status,exit_code", [(2, "completed", 0), (1, "skipped", 1)])
+def test_cli_queue_terminal_status(monkeypatch, fake, capsys, copies, status, exit_code):
+    def handle(req):
+        if req.url.path == "/api/v1/queue/batches/2000":
+            fake.batches[2000].update(pending_count=0, completed_count=2)
+        if req.url.path == "/api/v1/queue/1000":
+            fake.queue[1000]["status"] = status
+        return fake.handle(req)
+
+    assert _cli(monkeypatch, fake, handle, "--spool", "0/0", "--copies", str(copies)) == exit_code
+    assert f'"status": "{status}"' in capsys.readouterr().out
