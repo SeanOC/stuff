@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -23,11 +24,24 @@ BAMBUDDY = "http://bambuddy.invalid:8000"
 API_KEY = "test-key-not-a-secret"
 LOGIN = "sean@example.com"
 
-# Endpoints the bridge must never call (dispatch only through pipeline runs).
-FORBIDDEN = re.compile(
-    r"^/api/v1/(queue|library/files/\d+/print|library/files/add-to-queue|webhook|printers/\d+/"
-    r"(?!status$|camera/plate-detection/status$))"
-)
+# Method + full path allowlist: an added read must never enable queue controls.
+ALLOWED = {
+    "GET": re.compile(
+        r"/api/v1/(printers/|printers/\d+/(status|camera/plate-detection/status|"
+        r"slots/\d+/\d+/spool-defaults)|slicer/preset-values|slicer/presets|"
+        r"cloud/(builtin-filaments|filament-id-map)|slicer-pipelines/|library/folders|"
+        r"pipeline-runs(/\d+)?|slice-jobs/\d+|queue/|queue/\d+|queue/batches/\d+)"
+    ),
+    "POST": re.compile(
+        r"/api/v1/(library/folders|library/files|library/files/\d+/slice|"
+        r"slicer-pipelines/\d+/(check-eligibility|run)|queue/)"
+    ),
+    "PUT": re.compile(r"/api/v1/library/files/\d+"),
+}
+
+
+def spool_fixtures():
+    return json.loads((Path(__file__).parent / "fixtures/spools.json").read_text())
 
 
 @dataclass
@@ -60,11 +74,15 @@ class Fake:
                 "id": 11,
                 "name": "stuff-crushinator",
                 "printer_preset": {"source": "cloud", "id": "GM037"},
+                "process_preset": {"source": "cloud", "id": "GP158"},
+                "bed_type": "High Temp Plate",
             },
             {
                 "id": 12,
                 "name": "stuff-joey",
                 "printer_preset": {"source": "cloud", "id": "GM041"},
+                "process_preset": {"source": "cloud", "id": "GP252"},
+                "bed_type": "Engineering Plate",
             },
         ]
     )
@@ -82,6 +100,14 @@ class Fake:
     duplicate_of: int | None = None
     eligibility: dict[str, Any] = field(default_factory=lambda: {"ok": True, "issues": []})
     stuff_status: int = 200
+    spool_data: dict[str, Any] = field(default_factory=spool_fixtures)
+    queue: dict[int, dict[str, Any]] = field(default_factory=dict)
+    batches: dict[int, dict[str, Any]] = field(default_factory=dict)
+    slice_jobs: list[dict[str, Any]] = field(
+        default_factory=lambda: [
+            {"job_id": 6, "status": "completed", "result": {"library_file_id": 800}}
+        ]
+    )
 
     # -- helpers for assertions -------------------------------------------
     def bambuddy_calls(self, method: str, path_re: str) -> list[httpx.Request]:
@@ -103,8 +129,13 @@ class Fake:
             return self._stuff(req)
         assert req.url.host == "bambuddy.invalid", f"unexpected host {req.url}"
         assert req.headers.get("x-api-key") == API_KEY
-        assert not FORBIDDEN.match(req.url.path), f"forbidden Bambuddy call {req.url.path}"
-        if req.method == "POST" and req.url.path.endswith(("/check-eligibility", "/run")):
+        allowed = ALLOWED.get(req.method)
+        assert allowed and allowed.fullmatch(req.url.path), (
+            f"forbidden Bambuddy call {req.method} {req.url.path}"
+        )
+        if req.method == "POST" and req.url.path.endswith(
+            ("/check-eligibility", "/run", "/queue/")
+        ):
             assert json.loads(req.content).get("force") in (None, False), "never force"
         return self._bambuddy(req)
 
@@ -147,7 +178,73 @@ class Fake:
                 for d in self.nozzles.get(int(mm.group(1)), [])
             ]
             return httpx.Response(
-                200, json={"state": "IDLE", "connected": True, "nozzles": nozzles}
+                200,
+                json={
+                    "state": "IDLE",
+                    "connected": True,
+                    "nozzles": nozzles,
+                    **self.spool_data["statuses"][mm.group(1)],
+                },
+            )
+        if (m, path) == ("GET", "/api/v1/slicer/presets"):
+            return httpx.Response(200, json=self.spool_data["presets"])
+        if (m, path) == ("GET", "/api/v1/cloud/builtin-filaments"):
+            return httpx.Response(200, json=self.spool_data["builtin"])
+        if (m, path) == ("GET", "/api/v1/cloud/filament-id-map"):
+            return httpx.Response(200, json=self.spool_data["custom"])
+        if mm := re.fullmatch(r"/api/v1/printers/(\d+)/slots/(\d+)/(\d+)/spool-defaults", path):
+            return httpx.Response(
+                200, json=self.spool_data["defaults"].get("/".join(mm.groups()), {})
+            )
+        if m == "POST" and re.fullmatch(r"/api/v1/library/files/\d+/slice", path):
+            return httpx.Response(
+                202, json={"job_id": 6, "status": "pending", "status_url": "/api/v1/slice-jobs/6"}
+            )
+        if (m, path) == ("GET", "/api/v1/slice-jobs/6"):
+            job = self.slice_jobs[0]
+            if len(self.slice_jobs) > 1:
+                self.slice_jobs.pop(0)
+            return httpx.Response(200, json=job)
+        if (m, path) == ("GET", "/api/v1/queue/"):
+            pid = int(req.url.params["printer_id"])
+            return httpx.Response(
+                200, json=[r for r in self.queue.values() if r["printer_id"] == pid]
+            )
+        if (m, path) == ("POST", "/api/v1/queue/"):
+            body = json.loads(req.content)
+            qid = 1000 + len(self.queue)
+            row = {
+                "id": qid,
+                "status": "pending",
+                "error_message": None,
+                "printer_id": body["printer_id"],
+                "library_file_id": body["library_file_id"],
+                "library_file_name": "holder-bench-width-saddle-width_clearance1.gcode.3mf",
+                "ams_mapping": body["ams_mapping"],
+                "batch_id": 2000 if body["quantity"] > 1 else None,
+            }
+            for i in range(body["quantity"]):
+                self.queue[qid + i] = {**row, "id": qid + i}
+            if row["batch_id"]:
+                self.batches[2000] = {
+                    "id": 2000,
+                    "quantity": body["quantity"],
+                    "status": "opaque",
+                    "pending_count": body["quantity"],
+                    "printing_count": 0,
+                    "completed_count": 0,
+                    "failed_count": 0,
+                    "cancelled_count": 0,
+                    "skipped_count": 0,
+                    "library_file_id": 800,
+                }
+            return httpx.Response(200, json=row)
+        if mm := re.fullmatch(r"/api/v1/queue/(batches/)?(\d+)", path):
+            row = (self.batches if mm[1] else self.queue).get(int(mm[2]))
+            return (
+                httpx.Response(200, json=row)
+                if row
+                else httpx.Response(404, json={"detail": "not found"})
             )
         if (m, path) == ("GET", "/api/v1/slicer/preset-values"):
             if self.preset_values is None:
