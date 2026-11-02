@@ -9,6 +9,8 @@ old matplotlib plot_trisurf path lacked:
   * smooth/uniform shading across a flat face (no triangle-fan striping),
   * a rendered part with a transparent background.
 """
+import json
+import struct
 import sys
 from pathlib import Path
 
@@ -27,6 +29,7 @@ from scripts.thumbnail import (  # noqa: E402
     _VIEW_DIR,
     _WORLD_UP,
     _camera_basis,
+    _load_render_scene,
     _render_view,
     _scene_mesh_and_colors,
     PlaneSpec,
@@ -182,6 +185,105 @@ def test_uncoloured_glb_preserves_thumbnail_bytes(tmp_path):
     assert actual.read_bytes() == expected.read_bytes()
 
 
+def test_multi_primitive_load_preserves_instances_materials_and_children(tmp_path, monkeypatch):
+    """Force UUID collisions; every primitive instance must still render."""
+    dark = trimesh.creation.box(extents=(2, 2, 2))
+    bright = trimesh.creation.box(extents=(1, 1, 1))
+    bright.apply_translation((0, 0, 3))
+    for mesh, color in [(dark, [3, 3, 3, 255]), (bright, [232, 232, 232, 255])]:
+        mesh.visual = trimesh.visual.texture.TextureVisuals(
+            material=trimesh.visual.material.PBRMaterial(baseColorFactor=color),
+        )
+    source = trimesh.Scene()
+    for name, mesh in [("dark", dark), ("bright", bright),
+                       ("orphan", trimesh.creation.box(extents=(1000, 1000, 1000)))]:
+        source.add_geometry(mesh, geom_name=name)
+    data = source.export(file_type="glb")
+    (length,) = struct.unpack_from("<I", data, 12)
+    doc = json.loads(data[20:20 + length])
+    doc["meshes"][0]["primitives"] += doc["meshes"][1]["primitives"]
+    doc["nodes"] = [
+        {"name": "world", "translation": [10, 0, 0], "children": [1, 2]},
+        {"name": "duplicate", "mesh": 0, "translation": [-4, 0, 0], "children": [3]},
+        {"name": "duplicate", "mesh": 0, "translation": [4, 0, 0]},
+        {"name": "primitive_4", "mesh": 1, "translation": [0, 5, 0]},
+    ]
+    doc["scenes"] = [{"nodes": [0]}]
+    doc["scene"] = 0
+    chunk = json.dumps(doc).encode()
+    chunk += b" " * (-len(chunk) % 4)
+    rest = data[20 + length:]
+    glb = tmp_path / "instances.glb"
+    glb.write_bytes(struct.pack("<4sII", b"glTF", 2, 20 + len(chunk) + len(rest))
+                    + struct.pack("<I4s", len(chunk), b"JSON") + chunk + rest)
+    original = glb.read_bytes()
+
+    expected = trimesh.Scene()
+    for offset in [(6, 0, 0), (14, 0, 0)]:
+        for mesh in [dark, bright]:
+            expected.add_geometry(mesh, transform=trimesh.transformations.translation_matrix(offset))
+    expected.add_geometry(bright, transform=trimesh.transformations.translation_matrix((6, 5, 0)))
+
+    def triangles_and_colors(scene):
+        mesh, colors = _scene_mesh_and_colors(scene)
+        rows = np.column_stack((mesh.triangles.reshape(-1, 9), colors))
+        return rows[np.lexsort(rows.T[::-1])]
+
+    monkeypatch.setattr(trimesh.util, "unique_id", lambda *args, **kwargs: "aaaaaa")
+    names = None
+    for _ in range(3):
+        scene = _load_render_scene(glb)
+        assert len(scene.graph.nodes_geometry) == 5
+        assert len(scene.geometry) == 4  # includes the genuinely unreferenced mesh
+        np.testing.assert_allclose(triangles_and_colors(scene), triangles_and_colors(expected))
+        current = list(scene.graph.nodes_geometry)
+        if names is not None:
+            assert current == names
+        names = current
+    assert glb.read_bytes() == original
+
+
+@pytest.fixture
+def full_holder_glb(tmp_path):
+    from holders.cartridge_holder import SPEC
+    from scripts.export import export_glb
+
+    preset = next(p for p in SPEC.presets if p.id == "full_holder")
+    glb = tmp_path / "full_holder.glb"
+    export_glb(SPEC.build(preset.values), glb)
+    return glb
+
+
+@pytest.mark.audit
+@pytest.mark.audit_full
+def test_cartridge_holder_full_holder_repeated_load(full_holder_glb, tmp_path):
+    """Real OCCT export: no lost primitives, stable face order and PNG bytes."""
+    data = full_holder_glb.read_bytes()
+    (length,) = struct.unpack_from("<I", data, 12)
+    doc = json.loads(data[20:20 + length])
+    primitives = doc["meshes"][0]["primitives"]
+    assert len(doc["meshes"]) == len(doc["nodes"]) == 1
+    assert len(primitives) > 10000  # exercise the birthday-collision regime
+    expected_faces = sum(doc["accessors"][p["indices"]]["count"] // 3 for p in primitives)
+    first = None
+    for i in range(3):
+        scene = _load_render_scene(full_holder_glb)
+        assert len(scene.graph.nodes_geometry) == len(primitives)
+        mesh, colors = _scene_mesh_and_colors(scene)
+        assert len(mesh.faces) == len(colors) == expected_faces
+        current = (list(scene.graph.nodes_geometry), mesh.vertices, mesh.faces,
+                   mesh.vertex_normals, colors)
+        if first is None:
+            first = current
+        else:
+            for actual, expected in zip(current, first):
+                np.testing.assert_array_equal(actual, expected)
+        png = tmp_path / f"repeat-{i}.png"
+        render_thumbnail(full_holder_glb, png)
+        assert png.read_bytes() == (tmp_path / "repeat-0.png").read_bytes()
+    assert full_holder_glb.read_bytes() == data
+
+
 @pytest.mark.parametrize("renderer", [render_thumbnail, render_review])
 def test_unreferenced_scene_geometry_does_not_affect_render(
     two_colour_glb, tmp_path, monkeypatch, renderer,
@@ -189,8 +291,8 @@ def test_unreferenced_scene_geometry_does_not_affect_render(
     scene = trimesh.load(two_colour_glb, force="scene")
     expected, actual = tmp_path / "expected.png", tmp_path / "actual.png"
     renderer(two_colour_glb, expected)
-    # Legal GLBs can retain meshes without a node referencing them, as in
-    # the cartridge holder's full_holder preset. They must not affect either
+    # Legal GLBs can retain meshes without a node referencing them.
+    # They must not affect either
     # the colour alignment or the rendered bounds/pixels.
     scene.geometry["orphan"] = trimesh.creation.box(extents=(1000, 1000, 1000))
     assert "orphan" not in scene.graph.geometry_nodes

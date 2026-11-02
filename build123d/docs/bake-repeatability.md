@@ -62,6 +62,43 @@ difference**, including harmless triangle reordering, and **0 only for byte
 identity**. It is not the geometry-acceptance gate, and does not check that
 two nonempty input directories contain the complete registry.
 
+## Repeated loads of the same GLB
+
+The cartridge holder's `full_holder` export contains one mesh with 10,015
+primitives. In the pinned trimesh 5.0.0 loader, `_read_buffers` expands a
+multi-primitive mesh into child nodes named with six random hexadecimal
+digits, without checking for collisions. A duplicate name overwrites a
+graph node. The resulting unreferenced geometry was **not** orphaned in the
+source GLB: valid faces were lost during loading.
+
+On the same cached GLB (SHA256
+`8e8a1f1de6c4f9247fe0b4e843274196f86160ce4e29b827dfab81491c5788a0`),
+three consecutive loads produced:
+
+| Loader | Geometry-bearing nodes | Rendered triangles |
+| --- | ---: | ---: |
+| Raw trimesh, run 1 | 10,014 | 215,520 |
+| Raw trimesh, run 2 | 10,010 | 215,590 |
+| Raw trimesh, run 3 | 10,012 | 215,642 |
+| `_load_render_scene`, all three runs | 10,015 | 215,648 |
+
+`scripts/thumbnail.py::_load_render_scene` now splits multi-primitive meshes
+into explicit, deterministically named child nodes in memory before calling
+trimesh. Both thumbnail and review rendering use it. Geometry buffers,
+materials and normals are retained, and instances inherit their original
+parent transforms. Genuine unreferenced meshes remain unreferenced. The
+exporter and stored GLB bytes are unchanged; raw `trimesh.load` callers
+still have the upstream naming exposure.
+
+`tests/test_thumbnail.py::test_cartridge_holder_full_holder_repeated_load`
+builds and exports the real preset, derives the expected triangle count
+from its GLB accessors, and checks three loads and byte-identical thumbnail
+PNGs. It runs in the `audit_full` partition. A fast synthetic regression
+forces UUID collisions and checks material/triangle preservation, repeated
+instances, parent transforms, existing children and genuinely orphaned
+geometry. This fixes load-time loss, independently of the fresh-export
+tessellation variation discussed below.
+
 ## Reproduce with fresh processes
 
 From `build123d/`, use the production exporter, as the existing subprocess
