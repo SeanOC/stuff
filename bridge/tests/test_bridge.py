@@ -848,6 +848,25 @@ def test_spool_colour_validation(client, fake, raw, want):
     assert body.get("filament_colours") == ([want] if want else None)
 
 
+def test_spool_rejects_multi_colour_geometry_before_upload(client, fake):
+    r = client.post(
+        "/print",
+        json={
+            "source": "bd",
+            "slug": "label-card",
+            "params": {"text": "Hi"},
+            "printer_id": 2,
+            "spool": {"ams_id": 128, "tray_id": 0},
+        },
+    )
+    assert r.status_code == 409
+    assert r.json() == {"error": "spool selection supports single-filament models only"}
+    assert not fake.bambuddy_calls("POST", "/api/v1/library/files")
+    assert not fake.bambuddy_calls("POST", r"/api/v1/library/files/\d+/slice")
+    assert not fake.bambuddy_calls("POST", "/api/v1/queue/")
+    assert not fake.bambuddy_calls("POST", r"/api/v1/slicer-pipelines/\d+/run")
+
+
 def test_spool_resolution_precedence_and_fallback(client, fake, config):
     tray = fake.spool_data["statuses"]["1"]["ams"][0]["tray"][0]
     defaults = fake.spool_data["defaults"]["1/0/0"]
@@ -1013,6 +1032,29 @@ def test_batch_counts_define_status(client, fake, counts, status):
         "sliced_library_file_id": 800,
         "jobs": [],
         "batch_status": "not-a-contract",
+    }
+
+
+@pytest.mark.parametrize(
+    "missing",
+    ["quantity", "printing_count", "pending_count", "completed_count", "failed_count"],
+)
+def test_batch_missing_count_is_502_with_upstream_context(client, fake, missing):
+    row = {
+        "quantity": 2,
+        "printing_count": 0,
+        "pending_count": 2,
+        "completed_count": 0,
+        "failed_count": 0,
+    }
+    del row[missing]
+    response = httpx.Response(200, json=row)
+    _bambuddy_override(fake, "GET", "/api/v1/queue/batches/42", response)
+    r = client.get("/queue/batches/42")
+    assert r.status_code == 502
+    assert r.json() == {
+        "error": f"Bambuddy GET /api/v1/queue/batches/42 -> HTTP 200: response has no {missing}",
+        "upstream": response.text[:200],
     }
 
 

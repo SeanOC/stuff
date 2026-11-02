@@ -478,6 +478,11 @@ class Bridge:
             slug = scad_slug(model_path)
             data, ext = await self._fetch_scad(model_path, params), "stl"
 
+        if spool is not None and ext == "3mf":
+            raise BridgeError(
+                409, {"error": "spool selection supports single-filament models only"}
+            )
+
         folder_id = await self._folder_id(slug)
         filename = f"{slug}-{preset if preset is not None else params_sha12(params)}.{ext}"
         content_type = "model/3mf" if ext == "3mf" else "model/stl"
@@ -783,8 +788,13 @@ class Bridge:
 
     async def queue_status(self, item_id: int, *, batch: bool = False) -> dict[str, Any]:
         path = f"/queue/batches/{item_id}" if batch else f"/queue/{item_id}"
+        need = (
+            ("quantity", "printing_count", "pending_count", "completed_count", "failed_count")
+            if batch
+            else ()
+        )
         try:
-            row = await self._bb_json("GET", "/api/v1" + path)
+            row = await self._bb_json("GET", "/api/v1" + path, need=need)
         except BridgeError as e:
             if e.upstream_status != 404:
                 raise

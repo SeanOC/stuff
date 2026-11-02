@@ -118,8 +118,10 @@ The steps:
 7. **Run.** `POST /slicer-pipelines/{id}/run {source_library_file_id, copies}`,
    then `202`.
 
-With a spool pick, steps 1–6 still run, then the bridge follows the spool
-path below. The bridge never calls `/library/files/{id}/print`, `add-to-queue`,
+With a spool pick, multi-colour 3MF geometry returns 409 before upload:
+spool selection supports single-filament models only. Otherwise steps 1–6
+still run, then the bridge follows the spool path below.
+The bridge never calls `/library/files/{id}/print`, `add-to-queue`,
 webhooks or printer-control endpoints, and never sends `force: true`.
 Queue access is limited to GET list/item/batch and POST creation. It never
 PATCHes/DELETEs rows or calls start/stop/cancel/reorder/bulk/batch dispatch.
@@ -165,13 +167,17 @@ queue creation. Before slicing, `GET /queue/?printer_id=N` detects a pending
 or printing row with `library_file_name == <source stem>.gcode.3mf`; a duplicate
 returns 409 with `queue_item_id` and `/queue/{id}` as `status_url`. The existing
 active pipeline-run guard and nozzle check also apply.
+Bambuddy 1.2.5.7's queue-list OpenAPI defines `printer_id`, `status` and
+`target_model` filters, with no pagination or `limit` parameter; the bridge
+checks every returned row.
 
 `POST /library/files/{id}/slice` uses the configured pipeline's `printer_preset`,
 `process_preset` and `bed_type`, plus the resolved single `filament_presets`
 entry and `filament_colours:["#RRGGBB"]` (first six digits of a six/eight-digit
 hex tray colour, otherwise omitted). It polls `/slice-jobs/{job_id}` every
-2 seconds for at most **4 minutes**, including HTTP waits, inside the UI's
-5-minute POST deadline. Completed jobs supply `result.library_file_id`.
+2 seconds for at most **4 minutes**, including HTTP waits. This is a
+slice-only budget, not an end-to-end guarantee against the UI's 5-minute
+POST deadline. Completed jobs supply `result.library_file_id`.
 Failures, cancellations and timeouts return 502 with the job's error text;
 no queue POST occurs. Upload/geometry time is separate from this slice budget.
 
@@ -237,7 +243,8 @@ uv run --env-file ~/.config/stuff-bridge/env python -m bridge serve   # 127.0.0.
 202 body, then follows `status_url` (`--poll-interval`, default 10 s) and prints
 each status change until the run is terminal. `--no-wait` stops after the 202
 body. `--max-wait SECONDS` stops polling after that long; by default it waits
-until the run is terminal. `--model` takes `x`, `models/x` or
+until the run is terminal. A vanished queue item's `unknown` status is
+non-terminal, so use `--max-wait` to bound that wait. `--model` takes `x`, `models/x` or
 `models/x.scad` and always sends `models/x.scad`.
 
 | Exit | Meaning |
