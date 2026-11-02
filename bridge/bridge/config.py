@@ -23,6 +23,7 @@ class Config:
     pipelines: dict[int, str]  # printer_id -> Bambuddy slicer-pipeline name
     trusted_login: str
     allowed_origin: str = DEFAULT_ALLOWED_ORIGIN
+    filament_presets: dict[str, dict[str, str]] = field(default_factory=dict)
 
 
 def parse_pipelines(raw: str) -> dict[int, str]:
@@ -41,6 +42,25 @@ def parse_pipelines(raw: str) -> dict[int, str]:
     return out
 
 
+def parse_filament_presets(raw: str) -> dict[str, dict[str, str]]:
+    out = {}
+    for item in raw.split(","):
+        if not item.strip():
+            continue
+        filament, sep, ref = item.partition("=")
+        source, colon, preset = ref.partition(":")
+        if (
+            not sep
+            or not colon
+            or not filament.strip()
+            or not preset.strip()
+            or source.strip() not in {"standard", "cloud", "local", "orca_cloud"}
+        ):
+            raise ConfigError("FILAMENT_PRESETS entry must be <filament_id>=<source>:<id>")
+        out[filament.strip()] = {"source": source.strip(), "id": preset.strip()}
+    return out
+
+
 def load_config(env: Mapping[str, str] | None = None) -> Config:
     env = os.environ if env is None else env
     missing = [k for k in REQUIRED if not env.get(k, "").strip()]
@@ -53,4 +73,5 @@ def load_config(env: Mapping[str, str] | None = None) -> Config:
         pipelines=parse_pipelines(env["PIPELINES"]),
         trusted_login=env["TRUSTED_LOGIN"].strip(),
         allowed_origin=(env.get("ALLOWED_ORIGIN") or DEFAULT_ALLOWED_ORIGIN).strip(),
+        filament_presets=parse_filament_presets(env.get("FILAMENT_PRESETS", "")),
     )
