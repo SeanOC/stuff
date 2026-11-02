@@ -36,7 +36,8 @@ def test_media_types():
     assert ms.media_type_of("a.STEP") == ms.media_type_of("b.stp") == ms.media_type_of("c.brep") == "brep"
     assert ms.media_type_of("a.3mf") == ms.media_type_of("a.stl") == "mesh"
     assert ms.media_type_of("drawing.pdf") == "citation"
-    assert ms.media_type_of("bundle.zip") == "archive"
+    for filename in ("bundle.zip", "source.tar", "source.tar.gz", "repo.bundle"):
+        assert ms.media_type_of(filename) == "archive"
     with pytest.raises(ValueError):
         ms.media_type_of("notes.txt")
     # Every mirrored source resolves to a known media type.
@@ -135,7 +136,7 @@ def test_section_offset_is_world_coordinate(tmp_path):
 
 def test_citation_records_never_loaded(tmp_path, monkeypatch):
     """Walk every real source record without opening the mirrored files:
-    only brep/mesh records may reach load_shape; PDFs and zips never do."""
+    only brep/mesh records may reach load_shape; PDFs and archives never do."""
     records = load_sources()
     real_load_shape = ms.load_shape
     loaded = []
@@ -145,18 +146,18 @@ def test_citation_records_never_loaded(tmp_path, monkeypatch):
         ms.load_shape(local_path(record, record["current"], tmp_path))
     assert len(loaded) == len(selected)
     suffixes = {p.suffix.lower() for p in loaded}
-    assert suffixes and not suffixes & {".pdf", ".zip"}
+    assert suffixes and not suffixes & {".pdf", ".zip", ".tar", ".gz", ".bundle"}
     inert = [r for r in records if ms.media_type_of(r["filename"]) not in ms.MEASURABLE]
     assert {ms.media_type_of(r["filename"]) for r in inert} == {"citation", "archive"}
     # The CLI refuses them before loading anything.
     loaded.clear()
-    for suffix in (".pdf", ".zip"):
+    for suffix in (".pdf", ".zip", ".tar", ".tar.gz", ".bundle"):
         f = tmp_path / f"x{suffix}"
         f.write_bytes(b"%PDF")
         assert ms.main([str(f)]) == 2
+        with pytest.raises(ValueError, match="not measurable"):
+            real_load_shape(f)
     assert loaded == []
-    with pytest.raises(ValueError, match="not measurable"):
-        real_load_shape(tmp_path / "x.pdf")
 
 
 def test_cli_main_exit_codes(tmp_path, capsys):

@@ -16,7 +16,7 @@ that prohibits redistribution.
 | MultiBuild / Multiboard remixing files (tiles, threads, snaps, Fix-Points) | Multiboard Licence, 2025-12-19. Revocable and non-commercial; remixes carry the same terms; attribution; **no redistribution of originals** | Sean 2026-09-29: may be used directly for non-commercial purposes. We commit measurements and a regenerated tile, never the files | [Multiboard-Licence-2025-12-19.txt](../reference/LICENSES/Multiboard-Licence-2025-12-19.txt) (retrieved 2026-09-29 from the [full licence](https://docs.google.com/document/d/1C0-Iyxydqk_d2I3o_5ualJ9Ywt9gwVdl9eukvC8JeKA/export?format=txt); [licence page](https://multibuild.io/license)) |
 | Multiconnect v2 modelling files ([Printables 1008622](https://www.printables.com/model/1008622)) | CC BY 4.0 | measured; attribution: David D | [CC-BY-4.0.txt](../reference/LICENSES/CC-BY-4.0.txt) |
 | Multiconnect connector STEPs ([716558](https://www.printables.com/model/716558), [1160115](https://www.printables.com/model/1160115), [1024741](https://www.printables.com/model/1024741)) | CC BY-NC-SA 4.0 | mirrored, not measured yet | [CC-BY-NC-SA-4.0.txt](../reference/LICENSES/CC-BY-NC-SA-4.0.txt) |
-| openGrid | CC BY 4.0 | via the MIT `opengrid` Python library; David D's Multiconnect snap files are vendored verbatim in `assets/openGrid-multiconnect/` | [CC-BY-4.0.txt](../reference/LICENSES/CC-BY-4.0.txt) |
+| openGrid | CC BY 4.0 | via the MIT `opengrid` Python library ([MIT licence text](../reference/LICENSES/MIT-Launch-Platform-2026.txt)); David D's Multiconnect snap files are vendored verbatim in `assets/openGrid-multiconnect/` | [CC-BY-4.0.txt](../reference/LICENSES/CC-BY-4.0.txt) |
 | openConnect ([mitufy/opengrid-projects](https://github.com/mitufy/opengrid-projects) @ `04e2277a71c5`) | CC BY 4.0 | four author `.scad` files vendored verbatim plus two renders in `assets/openConnect/` (attribution: mitufy). **HARD-RULE exception (Sean 2026-10-01):** `openconnect/` is ported from the author's own OpenSCAD because no build123d library ships it; the port is pinned by commit and mesh-verified against the author's rendered plate (`tests/test_openconnect.py`). Constants are [C] with line locators; see [openconnect-library.md](openconnect-library.md) | [CC-BY-4.0.txt](../reference/LICENSES/CC-BY-4.0.txt) |
 | openGrid positive snap / `opengrid_snap/` ([QuackWorks](https://github.com/AndyLevesque/QuackWorks/blob/6123129/openGrid/opengrid-snap.scad) `6123129`, `openGrid/opengrid-snap.scad` + local patch `0001-opengrid-snap-linear-extrude-click-holes.patch`) | CC BY-NC-SA 4.0; design David D, OpenSCAD metasyntactic | **HARD-RULE exception (Sean 2026-10-05):** ported because no build123d library ships the positive snap; pinned by commit; verified against committed reference meshes (`assets/opengrid-snap/`, no QuackWorks source committed) | [CC-BY-NC-SA-4.0.txt](../reference/LICENSES/CC-BY-NC-SA-4.0.txt) |
 | Gridfinity profile | MIT-derived constants | `gridfinity/baseplate.py`, cited from the shelf source :291–311, :1263–1340 | see shelf NOTICE |
@@ -217,7 +217,7 @@ The media type follows the suffix:
   analytic fields are `null` with `"analytic": "unsupported for mesh
   input"`, and multi-object files become one Compound.
 - `.pdf` files are citation-only ([C] drawings) and are never loaded.
-- `.zip` archives are never loaded.
+- `.zip`, `.tar`, `.gz` (including `.tar.gz`) and `.bundle` archives are never loaded.
 
 `--record` finds the source by its sha256 and upserts one entry per output.
 Commit the outputs and the manifest in the same PR.
