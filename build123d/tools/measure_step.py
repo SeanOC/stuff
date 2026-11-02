@@ -42,12 +42,15 @@ MIN_PLANE_AREA = 1.0  # mm^2; smaller planar faces are thread/facet noise
 MESH_UNSUPPORTED = "unsupported for mesh input"
 
 # Filename suffix -> media type. Only brep/mesh are ever loaded; citation (PDF
-# drawings) and archive (original zips) records are measurement-inert.
+# drawings) and archive (zips, tarballs and git bundles) records are measurement-inert.
 MEDIA_TYPES = {
     ".step": "brep", ".stp": "brep", ".brep": "brep",
     ".3mf": "mesh", ".stl": "mesh",
     ".pdf": "citation",
     ".zip": "archive",
+    ".tar": "archive",
+    ".gz": "archive",  # Path.suffix of a .tar.gz filename is .gz.
+    ".bundle": "archive",
 }
 MEASURABLE = frozenset({"brep", "mesh"})
 PLANES = ("XY", "XZ", "YZ")
