@@ -161,7 +161,9 @@ def test_glb_part_colours_match_authored_srgb(two_colour_glb, tmp_path):
         row, col = _screen_pixel(mesh, (x, 0, 10))
         pixel = pixels[row, col]
         assert pixel[3] == 255
-        # Raw linear factors (~3 and 232) cannot satisfy these bands.
+        # Raw linear factors (~3 and 232) cannot satisfy these bands. The
+        # tolerance allows for uint8 linear-factor quantisation, especially
+        # near black, as well as the existing shading.
         assert np.all(np.abs(pixel[:3].astype(int) - expected) <= 8), pixel
 
 
@@ -177,6 +179,23 @@ def test_uncoloured_glb_preserves_thumbnail_bytes(tmp_path):
     render_thumbnail_from_mesh(
         mesh.vertices, mesh.faces, mesh.vertex_normals, expected, color=None,
     )
+    assert actual.read_bytes() == expected.read_bytes()
+
+
+@pytest.mark.parametrize("renderer", [render_thumbnail, render_review])
+def test_unreferenced_scene_geometry_does_not_affect_render(
+    two_colour_glb, tmp_path, monkeypatch, renderer,
+):
+    scene = trimesh.load(two_colour_glb, force="scene")
+    expected, actual = tmp_path / "expected.png", tmp_path / "actual.png"
+    renderer(two_colour_glb, expected)
+    # Legal GLBs can retain meshes without a node referencing them, as in
+    # the cartridge holder's full_holder preset. They must not affect either
+    # the colour alignment or the rendered bounds/pixels.
+    scene.geometry["orphan"] = trimesh.creation.box(extents=(1000, 1000, 1000))
+    assert "orphan" not in scene.graph.geometry_nodes
+    monkeypatch.setattr(trimesh, "load", lambda *args, **kwargs: scene)
+    renderer(two_colour_glb, actual)
     assert actual.read_bytes() == expected.read_bytes()
 
 

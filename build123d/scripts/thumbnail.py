@@ -261,12 +261,14 @@ def _mesh_color(mesh: trimesh.Trimesh) -> np.ndarray | None:
 
 
 def _scene_mesh_and_colors(scene: trimesh.Scene) -> tuple[trimesh.Trimesh, np.ndarray]:
-    """Flatten transformed geometry and its sRGB face colours in the same order."""
+    """Flatten transformed geometry with sRGB PBR colours (otherwise neutral)."""
     # Scene.to_geometry() concatenates dump() in graph-node order, which need
     # not match scene.geometry insertion order. Use that same list for both.
     geometries = scene.dump()
     mesh = trimesh.util.concatenate(geometries)
-    assert sum(len(g.faces) for g in scene.geometry.values()) == len(mesh.faces)
+    # Only graph-referenced instances render; the mesh table can also contain
+    # orphan geometry (OCCT exports do), or one mesh used by multiple nodes.
+    assert sum(len(g.faces) for g in geometries) == len(mesh.faces)
     colors = []
     for geometry in geometries:
         material = getattr(geometry.visual, "material", None)
