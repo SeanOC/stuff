@@ -3782,6 +3782,42 @@
       ]
     },
     {
+      "source_file_id": "opengrid-lib/opengrid-eea2b4154a10d2909e5edece567cbe0563aaf955.bundle",
+      "source_group_id": "opengrid-lib",
+      "filename": "opengrid-eea2b4154a10d2909e5edece567cbe0563aaf955.bundle",
+      "upstream_file_id": "eea2b4154a10d2909e5edece567cbe0563aaf955",
+      "url": "https://makerrepo.com/r/fangpenlin/opengrid",
+      "licence": "MIT (Launch Platform 2026)",
+      "access": "bucket",
+      "current": "a9430f7dd78000264ce6162b873a85657bd32293ed8be89bb468f6f35aa508a6",
+      "versions": [
+        {
+          "sha256": "a9430f7dd78000264ce6162b873a85657bd32293ed8be89bb468f6f35aa508a6",
+          "size": 114176,
+          "gcs": "gs://stuff-reference-upstream/opengrid-lib/a9430f7dd78000264ce6162b873a85657bd32293ed8be89bb468f6f35aa508a6/opengrid-eea2b4154a10d2909e5edece567cbe0563aaf955.bundle",
+          "published_on": "2026-11-02"
+        }
+      ]
+    },
+    {
+      "source_file_id": "opengrid-lib/opengrid-eea2b4154a10d2909e5edece567cbe0563aaf955.tar.gz",
+      "source_group_id": "opengrid-lib",
+      "filename": "opengrid-eea2b4154a10d2909e5edece567cbe0563aaf955.tar.gz",
+      "upstream_file_id": "eea2b4154a10d2909e5edece567cbe0563aaf955",
+      "url": "https://makerrepo.com/r/fangpenlin/opengrid",
+      "licence": "MIT (Launch Platform 2026)",
+      "access": "bucket",
+      "current": "336247b93ca79ff68c4969e628dacf8fbc321b4c29e70bb0162a350183affaad",
+      "versions": [
+        {
+          "sha256": "336247b93ca79ff68c4969e628dacf8fbc321b4c29e70bb0162a350183affaad",
+          "size": 86839,
+          "gcs": "gs://stuff-reference-upstream/opengrid-lib/336247b93ca79ff68c4969e628dacf8fbc321b4c29e70bb0162a350183affaad/opengrid-eea2b4154a10d2909e5edece567cbe0563aaf955.tar.gz",
+          "published_on": "2026-11-02"
+        }
+      ]
+    },
+    {
       "source_file_id": "opengrid-snap/directional.stl",
       "source_group_id": "opengrid-snap",
       "filename": "directional.stl",
