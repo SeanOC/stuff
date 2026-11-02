@@ -10,14 +10,16 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
+import SpoolPicker from "./SpoolPicker";
 import {
   fetchPrinters,
-  fetchRun,
+  fetchPrintStatus,
   getPrintBridgeUrl,
   probePrintBridge,
   startPrint,
   TERMINAL_RUN_STATES,
   type BridgePrinter,
+  type BridgeSpool,
   type PrintTarget,
   type RunStatus,
 } from "@/lib/print-bridge/client";
@@ -40,8 +42,9 @@ type JobState =
   | { kind: "submitting" }
   | {
       kind: "queued";
-      runId: number;
+      statusUrl: string;
       printer: string;
+      spool: string | null;
       run: RunStatus | null;
       /** Polling ended at the cap without a known terminal status. */
       gaveUp: boolean;
@@ -58,12 +61,14 @@ export default function PrintButton({
   target,
   variant,
   disabled = false,
+  multiColour = false,
 }: {
   target: PrintTarget;
   /** "rail": full-width under the build123d Download; "strip": compact, in the
    *  SCAD viewer's bottom stat strip (popover opens upward). */
   variant: "rail" | "strip";
   disabled?: boolean;
+  multiColour?: boolean;
 }) {
   const bridgeUrl = getPrintBridgeUrl();
   const [available, setAvailable] = useState(false);
@@ -71,6 +76,8 @@ export default function PrintButton({
   const [printers, setPrinters] = useState<PrintersState>({ kind: "idle" });
   const [printerId, setPrinterId] = useState<number | null>(null);
   const [copies, setCopies] = useState(1);
+  const [spool, setSpool] = useState<BridgeSpool | null>(null);
+  const spoolCache = useRef(new Map<number, Promise<BridgeSpool[]>>());
   const [job, setJob] = useState<JobState>({ kind: "idle" });
 
   useEffect(() => {
@@ -110,23 +117,23 @@ export default function PrintButton({
   }, [open, bridgeUrl, printers.kind]);
 
   // Poll the queued run every 10 s until terminal (or the cap).
-  const queuedRunId = job.kind === "queued" && !job.gaveUp ? job.runId : null;
+  const queuedStatusUrl = job.kind === "queued" && !job.gaveUp ? job.statusUrl : null;
   const terminal =
     job.kind === "queued" && job.run?.status != null && TERMINAL_RUN_STATES.has(job.run.status);
   const pollStart = useRef(0);
   useEffect(() => {
-    if (queuedRunId === null || terminal || !bridgeUrl) return;
+    if (queuedStatusUrl === null || terminal || !bridgeUrl) return;
     if (pollStart.current === 0) pollStart.current = Date.now();
     const timer = setTimeout(async () => {
       let run: RunStatus | null = null;
       try {
-        run = await fetchRun(bridgeUrl, queuedRunId);
+        run = await fetchPrintStatus(bridgeUrl, queuedStatusUrl);
       } catch {
         /* transient: keep the last-seen status and poll again */
       }
       const gaveUp = Date.now() - pollStart.current >= POLL_CAP_MS;
       setJob((cur) =>
-        cur.kind === "queued" && cur.runId === queuedRunId
+        cur.kind === "queued" && cur.statusUrl === queuedStatusUrl
           ? {
               ...cur,
               run: run ?? cur.run,
@@ -137,7 +144,7 @@ export default function PrintButton({
       );
     }, POLL_INTERVAL_MS);
     return () => clearTimeout(timer);
-  }, [queuedRunId, terminal, bridgeUrl, job]);
+  }, [queuedStatusUrl, terminal, bridgeUrl, job]);
 
   const busy =
     job.kind === "submitting" || (job.kind === "queued" && !terminal && !job.gaveUp);
@@ -147,13 +154,16 @@ export default function PrintButton({
     const printer =
       printers.kind === "ready" ? printers.printers.find((p) => p.id === printerId) : undefined;
     setJob({ kind: "submitting" });
-    const result = await startPrint(bridgeUrl, target, printerId, copies);
+    const chosenSpool = multiColour ? null : spool;
+    const result = await startPrint(bridgeUrl, target, printerId, copies,
+      chosenSpool ? { ams_id: chosenSpool.ams_id, tray_id: chosenSpool.tray_id } : undefined);
     if (result.kind === "queued") {
       pollStart.current = 0;
       setJob({
         kind: "queued",
-        runId: result.runId,
+        statusUrl: result.statusUrl,
         printer: printer ? printerLabel(printer) : `printer ${printerId}`,
+        spool: chosenSpool ? [chosenSpool.material, chosenSpool.name].filter(Boolean).join(" ") : null,
         run: null,
         gaveUp: false,
         consecutiveFailures: 0,
@@ -161,7 +171,7 @@ export default function PrintButton({
     } else {
       setJob(result);
     }
-  }, [bridgeUrl, printerId, busy, printers, target, copies]);
+  }, [bridgeUrl, printerId, busy, printers, target, copies, spool, multiColour]);
 
   if (!bridgeUrl || !available) return null;
 
@@ -177,7 +187,11 @@ export default function PrintButton({
         aria-expanded={open}
         onClick={() => {
           // Successful probes stay cached; opening never adds a health request.
-          if (!open) void probePrintBridge(bridgeUrl);
+          if (!open) {
+            void probePrintBridge(bridgeUrl);
+            spoolCache.current = new Map();
+            setSpool(null);
+          }
           setOpen((o) => !o);
         }}
         disabled={disabled}
@@ -226,7 +240,10 @@ export default function PrintButton({
                 <select
                   data-testid="print-printer"
                   value={printerId ?? ""}
-                  onChange={(e) => setPrinterId(Number(e.target.value))}
+                  onChange={(e) => {
+                    setPrinterId(Number(e.target.value));
+                    setSpool(null);
+                  }}
                   className="mt-2 block w-full rounded-3 border border-line bg-panel2 px-6 py-4"
                 >
                   {printers.printers.map((p) => (
@@ -242,6 +259,20 @@ export default function PrintButton({
                 <p data-testid="print-plate-hint" className="mt-4 text-10 text-text-mute">
                   Plate check not calibrated.
                 </p>
+              )}
+              {multiColour ? (
+                <p className="mt-8 text-10 text-text-mute">
+                  Multi-colour prints use the recipe filaments.
+                </p>
+              ) : printerId !== null && (
+                <SpoolPicker
+                  key={printerId}
+                  bridgeUrl={bridgeUrl}
+                  printerId={printerId}
+                  cache={spoolCache.current}
+                  value={spool}
+                  onChange={setSpool}
+                />
               )}
               <div className="mt-8 flex items-end gap-8">
                 <label className="block">
@@ -287,7 +318,7 @@ function JobStatus({ job, terminal }: { job: JobState; terminal: boolean }) {
     const run = job.run;
     return (
       <div data-testid="print-status" className="mt-8">
-        <p>Queued on {job.printer}</p>
+        <p>Queued on {job.printer}{job.spool ? ` · ${job.spool}` : ""}</p>
         {run && (
           <p data-testid="print-run" className="mt-2 font-mono text-10 text-text-dim">
             {run.status ?? "unknown"}

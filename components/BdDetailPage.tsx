@@ -391,6 +391,7 @@ export default function BdDetailPage({ model }: { model: BdDetailPageModel }) {
               the bridge picks STL vs 3MF from the printer model. */}
           <PrintButton
             variant="rail"
+            multiColour={model.multiColour}
             target={bdPrintTarget(model.slug, bakedPresetId, detail.state.params)}
           />
           {model.multiColour && (

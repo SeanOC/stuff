@@ -10,13 +10,15 @@
 //   GET  /health     → {ok, bambuddy_reachable}
 //   GET  /printers   → [{id, name, model, state, plate_detection_calibrated, pipeline,
 //                        nozzle_mm}]
+//   GET  /printers/{id}/spools → loaded spools with colour and preset resolution
 //   POST /print      ← {source:"bd", slug, preset} | {source:"bd", slug, params}
-//                      | {source:"scad", model, params}  + {printer_id, copies}
-//                    → 202 {library_file_id, run_id, status_url}
+//                      | {source:"scad", model, params}  + {printer_id, copies, spool?}
+//                    → 202 {status_url, …} (spool prints have no run_id)
 //                      409 {error, report?: {ok, issues[]}, run_id?,
 //                           installed?: number[], pipeline?: number}  403/5xx {error}
 //                      (installed + pipeline: error "nozzle mismatch", diameters in mm)
-//   GET  /runs/{id}  → {status, copies, copies_completed, copies_failed, error_message, …}
+//   GET  status_url  → {status, copies, copies_completed, copies_failed, error_message, …}
+//                      /runs/{id}, /queue/{id}, or /queue/batches/{id}
 
 import type { ParamValue } from "@/lib/scad-params/parse";
 
@@ -84,6 +86,19 @@ export interface BridgePrinter {
   nozzle_mm?: number[];
 }
 
+export interface BridgeSpool {
+  ams_id: number;
+  tray_id: number;
+  slot: number;
+  material: string | null;
+  name: string | null;
+  colour: string | null;
+  remain_pct: number | null;
+  preset: string | null;
+  generic: boolean;
+  resolved: boolean;
+}
+
 /** What to print — mirrors exactly what the page's Download button fetches. */
 export type PrintTarget =
   | { source: "bd"; slug: string; preset: string }
@@ -111,6 +126,8 @@ export interface RunStatus {
   copies_completed: number | null;
   copies_failed: number | null;
   error_message: string | null;
+  sliced_library_file_id?: number | null;
+  jobs?: unknown[];
 }
 
 export const TERMINAL_RUN_STATES: ReadonlySet<string> = new Set([
@@ -118,10 +135,11 @@ export const TERMINAL_RUN_STATES: ReadonlySet<string> = new Set([
   "failed",
   "partial_failure",
   "cancelled",
+  "skipped",
 ]);
 
 export type PrintResult =
-  | { kind: "queued"; runId: number }
+  | { kind: "queued"; statusUrl: string }
   /** 409: the bridge's message plus each eligibility issue, verbatim. */
   | { kind: "conflict"; message: string; issues: string[] }
   | { kind: "error"; message: string };
@@ -170,22 +188,33 @@ export async function fetchPrinters(bridgeUrl: string): Promise<BridgePrinter[]>
   return body as BridgePrinter[];
 }
 
+export async function fetchSpools(bridgeUrl: string, printerId: number): Promise<BridgeSpool[]> {
+  const { res, body } = await requestBridge(`${bridgeUrl}/printers/${printerId}/spools`, READ_TIMEOUT_MS);
+  if (!res.ok) throw new Error(errorMessage(body, res.status));
+  if (!Array.isArray(body)) throw new Error("Print bridge returned no spool list");
+  return body as BridgeSpool[];
+}
+
 /** One POST, never retried — a re-POST could start a second print. */
 export async function startPrint(
   bridgeUrl: string,
   target: PrintTarget,
   printerId: number,
   copies: number,
+  spool?: Pick<BridgeSpool, "ams_id" | "tray_id">,
 ): Promise<PrintResult> {
   try {
     const { res, body } = await requestBridge(`${bridgeUrl}/print`, PRINT_TIMEOUT_MS, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ ...target, printer_id: printerId, copies }),
+      body: JSON.stringify({ ...target, printer_id: printerId, copies, ...(spool ? { spool } : {}) }),
     });
     if (res.status === 202) {
-      if (typeof body?.run_id === "number") return { kind: "queued", runId: body.run_id };
-      return { kind: "error", message: "Print bridge accepted the job but returned no run id" };
+      if (typeof body?.status_url === "string" && body.status_url.startsWith("/")) {
+        return { kind: "queued", statusUrl: body.status_url };
+      }
+      if (typeof body?.run_id === "number") return { kind: "queued", statusUrl: `/runs/${body.run_id}` };
+      return { kind: "error", message: "Print bridge accepted the job but returned no status URL" };
     }
     if (res.status === 409) {
       const issues: unknown[] = Array.isArray(body?.report?.issues) ? body.report.issues : [];
@@ -202,7 +231,11 @@ export async function startPrint(
 }
 
 export async function fetchRun(bridgeUrl: string, runId: number): Promise<RunStatus> {
-  const { res, body } = await requestBridge(`${bridgeUrl}/runs/${runId}`, READ_TIMEOUT_MS);
+  return fetchPrintStatus(bridgeUrl, `/runs/${runId}`);
+}
+
+export async function fetchPrintStatus(bridgeUrl: string, statusUrl: string): Promise<RunStatus> {
+  const { res, body } = await requestBridge(`${bridgeUrl}${statusUrl}`, READ_TIMEOUT_MS);
   if (!res.ok) throw new Error(errorMessage(body, res.status));
   if (!body) throw new Error("Print bridge returned no run status");
   return body as RunStatus;
