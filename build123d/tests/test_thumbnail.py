@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import pytest
 import trimesh
 from PIL import Image
 
@@ -21,7 +22,18 @@ sys.path.insert(0, str(ROOT))
 
 from scripts.thumbnail import (  # noqa: E402
     _BASE_COLOR,
+    _PAD,
+    _RES,
+    _VIEW_DIR,
+    _WORLD_UP,
+    _camera_basis,
     _render_view,
+    _scene_mesh_and_colors,
+    PlaneSpec,
+    ReviewContext,
+    model_to_glb_point,
+    render_review,
+    render_thumbnail,
     render_thumbnail_from_mesh,
 )
 
@@ -112,3 +124,98 @@ def test_render_thumbnail_from_mesh_writes_transparent_png(tmp_path):
     assert (alpha == 0).any(), "the background must stay transparent"
     # Corners are background → transparent.
     assert alpha[0, 0] == 0 and alpha[-1, -1] == 0
+
+
+@pytest.fixture
+def two_colour_glb(tmp_path):
+    from build123d import Box, Compound, Pos
+    from scripts.export import export_glb
+
+    # Independent solids: transforming a shared OCC shape can share its colour.
+    dark = Pos(-20, 0, 0) * Box(20, 20, 20)
+    bright = Pos(20, 0, 0) * Box(20, 20, 20)
+    glb = tmp_path / "two-colour.glb"
+    export_glb(Compound(children=[dark, bright]), glb, colour_parts=[
+        ("dark", dark, (0.10, 0.10, 0.10, 1.0)),
+        ("bright", bright, (0.96, 0.96, 0.96, 1.0)),
+    ])
+    return glb
+
+
+def _screen_pixel(mesh, model_point, view_dir=_VIEW_DIR, world_up=_WORLD_UP, res=_RES):
+    """Project a known top-face centre into the renderer's orthographic frame."""
+    right, up, _ = _camera_basis(view_dir, world_up)
+    projected = mesh.vertices @ np.array([right, up]).T
+    lo, hi = projected.min(axis=0), projected.max(axis=0)
+    scale = res * (1 - 2 * _PAD) / max(hi - lo)
+    xy = (model_to_glb_point(model_point) @ np.array([right, up]).T - (hi + lo) / 2) * scale
+    return int(res / 2 - xy[1]), int(res / 2 + xy[0])
+
+
+def test_glb_part_colours_match_authored_srgb(two_colour_glb, tmp_path):
+    out = tmp_path / "thumb.png"
+    render_thumbnail(two_colour_glb, out)
+    mesh = trimesh.load(two_colour_glb, force="scene").to_geometry()
+    pixels = np.asarray(Image.open(out))
+    for x, expected in [(-20, 26), (20, 245)]:
+        row, col = _screen_pixel(mesh, (x, 0, 10))
+        pixel = pixels[row, col]
+        assert pixel[3] == 255
+        # Raw linear factors (~3 and 232) cannot satisfy these bands.
+        assert np.all(np.abs(pixel[:3].astype(int) - expected) <= 8), pixel
+
+
+def test_uncoloured_glb_preserves_thumbnail_bytes(tmp_path):
+    from build123d import Box
+    from scripts.export import export_glb
+
+    glb = tmp_path / "plain.glb"
+    export_glb(Box(20, 20, 20), glb, None)
+    actual, expected = tmp_path / "actual.png", tmp_path / "expected.png"
+    render_thumbnail(glb, actual)
+    mesh = trimesh.load(glb, force="scene").to_geometry()
+    render_thumbnail_from_mesh(
+        mesh.vertices, mesh.faces, mesh.vertex_normals, expected, color=None,
+    )
+    assert actual.read_bytes() == expected.read_bytes()
+
+
+def test_multicolour_review_keeps_all_five_tiles(two_colour_glb, tmp_path):
+    out = tmp_path / "review.png"
+    ctx = ReviewContext("two-colour", (0, 0, 1),
+                        (PlaneSpec((0, 0, 0), (0, 1, 0), "midplane"),), ())
+    render_review(two_colour_glb, out, ctx=ctx, res=128)
+    with Image.open(out) as image:
+        assert image.size == (640, 176)
+        pixels = np.asarray(image)
+    for i in range(5):
+        assert np.any(pixels[28:156, i * 128:(i + 1) * 128] < 200)
+    mesh = trimesh.load(two_colour_glb, force="scene").to_geometry()
+    # Check the ISO tile's actual part colours, not just the sheet dimensions.
+    for x, expected in [(-20, 26), (20, 245)]:
+        row, col = _screen_pixel(mesh, (x, 0, 10), res=128)
+        assert np.all(np.abs(pixels[row + 28, col].astype(int) - expected) <= 8)
+
+
+def test_scene_colours_follow_graph_order_and_default_uncoloured_faces():
+    plain = trimesh.creation.box()
+    coloured = trimesh.creation.box()
+    coloured.visual = trimesh.visual.TextureVisuals(
+        material=trimesh.visual.material.PBRMaterial(baseColorFactor=[255, 0, 0, 255]),
+    )
+    scene = trimesh.Scene()
+    scene.add_geometry(plain, geom_name="plain")
+    scene.add_geometry(coloured, geom_name="coloured")
+    # Deliberately reverse geometry insertion order without changing the graph.
+    scene.geometry = dict(reversed(list(scene.geometry.items())))
+    mesh, colors = _scene_mesh_and_colors(scene)
+    assert np.array_equal(mesh.vertices, scene.to_geometry().vertices)
+    assert np.allclose(colors[:len(plain.faces)], _BASE_COLOR)
+    assert np.allclose(colors[len(plain.faces):], [1, 0, 0])
+
+
+def test_thumbnail_is_in_production_bake_cache_key():
+    from scripts.export import _key_builder
+
+    keys = _key_builder()
+    assert ROOT / "scripts" / "thumbnail.py" in keys.export_closure

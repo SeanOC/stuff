@@ -223,6 +223,7 @@ def render_thumbnail_from_mesh(
     out_path: Path,
     *,
     color: np.ndarray | None = None,
+    face_colors: np.ndarray | None = None,
     res: int = _RES,
 ) -> None:
     """Rasterise (vertices, faces, smooth normals) to a square iso-view PNG."""
@@ -232,6 +233,7 @@ def render_thumbnail_from_mesh(
     rgba = _render_view(
         vertices, faces, normals,
         color=col, view_dir=_VIEW_DIR, world_up=_WORLD_UP, res=res,
+        face_colors=face_colors,
     )
     out = (rgba * 255.0 + 0.5).astype(np.uint8)
     Image.fromarray(out, mode="RGBA").save(out_path)
@@ -258,6 +260,29 @@ def _mesh_color(mesh: trimesh.Trimesh) -> np.ndarray | None:
     return None
 
 
+def _scene_mesh_and_colors(scene: trimesh.Scene) -> tuple[trimesh.Trimesh, np.ndarray]:
+    """Flatten transformed geometry and its sRGB face colours in the same order."""
+    # Scene.to_geometry() concatenates dump() in graph-node order, which need
+    # not match scene.geometry insertion order. Use that same list for both.
+    geometries = scene.dump()
+    mesh = trimesh.util.concatenate(geometries)
+    assert sum(len(g.faces) for g in scene.geometry.values()) == len(mesh.faces)
+    colors = []
+    for geometry in geometries:
+        material = getattr(geometry.visual, "material", None)
+        color = _BASE_COLOR
+        if isinstance(material, trimesh.visual.material.PBRMaterial):
+            factor = material.baseColorFactor
+            if factor is not None:
+                # glTF factors are linear; PNG bytes (like the viewer's output)
+                # are sRGB. OCCT has already linearised the authored colour.
+                color = trimesh.visual.color.linear_to_srgb(
+                    np.asarray(factor, float)[:3] / 255.0
+                )
+        colors.append(np.tile(color, (len(geometry.faces), 1)))
+    return mesh, np.concatenate(colors)
+
+
 def render_thumbnail(glb_path: Path, png_path: Path) -> None:
     """Render the gallery thumbnail from a baked GLB.
 
@@ -266,10 +291,10 @@ def render_thumbnail(glb_path: Path, png_path: Path) -> None:
     so the card matches the live preview (single source of truth).
     """
     scene = trimesh.load(str(glb_path), force="scene")
-    mesh = scene.to_geometry()  # concatenate scene geometries into one Trimesh
+    mesh, face_colors = _scene_mesh_and_colors(scene)
     render_thumbnail_from_mesh(
         mesh.vertices, mesh.faces, mesh.vertex_normals, png_path,
-        color=_mesh_color(mesh),
+        face_colors=face_colors,
     )
 
 
@@ -311,7 +336,7 @@ def render_review(glb_path: Path, png_path: Path, *,
     from PIL import Image
 
     scene = trimesh.load(str(glb_path), force="scene")
-    mesh = scene.to_geometry()
+    mesh, face_colors = _scene_mesh_and_colors(scene)
     col = _mesh_color(mesh)
     col = _BASE_COLOR if col is None else np.asarray(col, float)[:3]
     tiles = []
@@ -319,9 +344,12 @@ def render_review(glb_path: Path, png_path: Path, *,
         rgba = _render_view(
             mesh.vertices, mesh.faces, mesh.vertex_normals,
             color=col, view_dir=view_dir, world_up=world_up, res=res,
+            face_colors=face_colors,
         )
         tiles.append((rgba * 255.0 + 0.5).astype(np.uint8))
     if ctx is not None:
+        # The section owns cap colours on a different mesh; keep the section
+        # and underside diagnostic tiles' existing colouring.
         for rgba in (
             _section_tile(mesh, ctx.sections[0], col, res),
             _underside_tile(mesh, ctx.print_orientation, col, res),
