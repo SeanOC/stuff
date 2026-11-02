@@ -33,8 +33,8 @@ export function getPrintBridgeUrl(): string | null {
 
 export const HEALTH_TIMEOUT_MS = 2_000;
 
-// One probe per bridge URL per page session; the negative result is cached
-// the same way as the positive one (an off-tailnet visitor probes once).
+// Share in-flight probes and cache success for the page session. Failures are
+// evicted so a later mount or visibility change can discover restored access.
 const healthCache = new Map<string, Promise<boolean>>();
 
 /** Test hook: forget cached health probes. */
@@ -65,6 +65,10 @@ export function probePrintBridge(bridgeUrl: string): Promise<boolean> {
       }
     })();
     healthCache.set(bridgeUrl, probe);
+    const pending = probe;
+    void probe.then((ok) => {
+      if (!ok && healthCache.get(bridgeUrl) === pending) healthCache.delete(bridgeUrl);
+    });
   }
   return probe;
 }
@@ -122,14 +126,37 @@ export type PrintResult =
   | { kind: "conflict"; message: string; issues: string[] }
   | { kind: "error"; message: string };
 
-async function errorMessage(res: Response): Promise<string> {
-  try {
-    const body = await res.json();
-    if (typeof body?.error === "string") return `${body.error} (HTTP ${res.status})`;
-  } catch {
-    /* fall through */
+export const READ_TIMEOUT_MS = 10_000;
+export const PRINT_TIMEOUT_MS = 5 * 60_000;
+
+/** One translation for transport failures and bridge HTTP errors. */
+function errorMessage(body?: { error?: unknown } | null, status?: number): string {
+  if (status === undefined) return "Print bridge unreachable. Are you on the tailnet?";
+  if (typeof body?.error === "string") {
+    if (status === 502 && body.error.startsWith("Bambuddy unreachable")) {
+      return "Bambuddy is unreachable from the print bridge.";
+    }
+    return `${body.error} (HTTP ${status})`;
   }
-  return `Print bridge error (HTTP ${res.status})`;
+  return `Print bridge error (HTTP ${status})`;
+}
+
+/** Keep the deadline active through body consumption, including error bodies. */
+async function requestBridge(url: string, timeout: number, init?: RequestInit) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeout);
+  try {
+    const res = await fetch(url, { ...init, signal: ctrl.signal });
+    const body = await res.json().catch((error: unknown) => {
+      if (error instanceof SyntaxError) return null;
+      throw error;
+    });
+    return { res, body };
+  } catch {
+    throw new Error(errorMessage());
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function issueText(issue: unknown): string {
@@ -137,9 +164,8 @@ function issueText(issue: unknown): string {
 }
 
 export async function fetchPrinters(bridgeUrl: string): Promise<BridgePrinter[]> {
-  const res = await fetch(`${bridgeUrl}/printers`);
-  if (!res.ok) throw new Error(await errorMessage(res));
-  const body = await res.json();
+  const { res, body } = await requestBridge(`${bridgeUrl}/printers`, READ_TIMEOUT_MS);
+  if (!res.ok) throw new Error(errorMessage(body, res.status));
   if (!Array.isArray(body)) throw new Error("Print bridge returned no printer list");
   return body as BridgePrinter[];
 }
@@ -151,35 +177,33 @@ export async function startPrint(
   printerId: number,
   copies: number,
 ): Promise<PrintResult> {
-  let res: Response;
   try {
-    res = await fetch(`${bridgeUrl}/print`, {
+    const { res, body } = await requestBridge(`${bridgeUrl}/print`, PRINT_TIMEOUT_MS, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ ...target, printer_id: printerId, copies }),
     });
-  } catch (e) {
-    return { kind: "error", message: e instanceof Error ? e.message : "network error" };
+    if (res.status === 202) {
+      if (typeof body?.run_id === "number") return { kind: "queued", runId: body.run_id };
+      return { kind: "error", message: "Print bridge accepted the job but returned no run id" };
+    }
+    if (res.status === 409) {
+      const issues: unknown[] = Array.isArray(body?.report?.issues) ? body.report.issues : [];
+      return {
+        kind: "conflict",
+        message: typeof body?.error === "string" ? body.error : "Printer is not eligible",
+        issues: issues.map(issueText),
+      };
+    }
+    return { kind: "error", message: errorMessage(body, res.status) };
+  } catch {
+    return { kind: "error", message: errorMessage() };
   }
-  if (res.status === 202) {
-    const body = await res.json().catch(() => null);
-    if (typeof body?.run_id === "number") return { kind: "queued", runId: body.run_id };
-    return { kind: "error", message: "Print bridge accepted the job but returned no run id" };
-  }
-  if (res.status === 409) {
-    const body = await res.json().catch(() => null);
-    const issues: unknown[] = Array.isArray(body?.report?.issues) ? body.report.issues : [];
-    return {
-      kind: "conflict",
-      message: typeof body?.error === "string" ? body.error : "Printer is not eligible",
-      issues: issues.map(issueText),
-    };
-  }
-  return { kind: "error", message: await errorMessage(res) };
 }
 
 export async function fetchRun(bridgeUrl: string, runId: number): Promise<RunStatus> {
-  const res = await fetch(`${bridgeUrl}/runs/${runId}`);
-  if (!res.ok) throw new Error(await errorMessage(res));
-  return (await res.json()) as RunStatus;
+  const { res, body } = await requestBridge(`${bridgeUrl}/runs/${runId}`, READ_TIMEOUT_MS);
+  if (!res.ok) throw new Error(errorMessage(body, res.status));
+  if (!body) throw new Error("Print bridge returned no run status");
+  return body as RunStatus;
 }

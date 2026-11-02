@@ -45,6 +45,7 @@ type JobState =
       run: RunStatus | null;
       /** Polling ended at the cap without a known terminal status. */
       gaveUp: boolean;
+      consecutiveFailures: number;
     }
   | { kind: "conflict"; message: string; issues: string[] }
   | { kind: "error"; message: string };
@@ -75,15 +76,23 @@ export default function PrintButton({
   useEffect(() => {
     if (!bridgeUrl) return;
     let live = true;
-    probePrintBridge(bridgeUrl).then((ok) => {
-      if (live) setAvailable(ok);
-    });
+    const probe = () => {
+      void probePrintBridge(bridgeUrl).then((ok) => {
+        if (live) setAvailable(ok);
+      });
+    };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") probe();
+    };
+    probe();
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       live = false;
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [bridgeUrl]);
 
-  // Load printers the first time the popover opens.
+  // Load printers on opening or an explicit Retry; never retry automatically.
   useEffect(() => {
     if (!open || !bridgeUrl || printers.kind !== "idle") return;
     setPrinters({ kind: "loading" });
@@ -118,7 +127,12 @@ export default function PrintButton({
       const gaveUp = Date.now() - pollStart.current >= POLL_CAP_MS;
       setJob((cur) =>
         cur.kind === "queued" && cur.runId === queuedRunId
-          ? { ...cur, run: run ?? cur.run, gaveUp }
+          ? {
+              ...cur,
+              run: run ?? cur.run,
+              gaveUp,
+              consecutiveFailures: run ? 0 : cur.consecutiveFailures + 1,
+            }
           : cur,
       );
     }, POLL_INTERVAL_MS);
@@ -142,6 +156,7 @@ export default function PrintButton({
         printer: printer ? printerLabel(printer) : `printer ${printerId}`,
         run: null,
         gaveUp: false,
+        consecutiveFailures: 0,
       });
     } else {
       setJob(result);
@@ -160,7 +175,11 @@ export default function PrintButton({
         type="button"
         data-testid="print-button"
         aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          // Successful probes stay cached; opening never adds a health request.
+          if (!open) void probePrintBridge(bridgeUrl);
+          setOpen((o) => !o);
+        }}
         disabled={disabled}
         className={clsx(
           "rounded-3 border border-line bg-panel2 font-semibold text-text",
@@ -184,9 +203,18 @@ export default function PrintButton({
         >
           {printers.kind === "loading" && <p className="text-text-dim">Loading printers…</p>}
           {printers.kind === "error" && (
-            <p data-testid="print-printers-error" className="text-red">
-              {printers.message}
-            </p>
+            <div>
+              <p data-testid="print-printers-error" className="text-red">
+                {printers.message}
+              </p>
+              <button
+                type="button"
+                onClick={() => setPrinters({ kind: "idle" })}
+                className="mt-4 rounded-3 border border-line bg-panel2 px-8 py-4 hover:bg-panel-hi"
+              >
+                Retry
+              </button>
+            </div>
           )}
           {printers.kind === "ready" && printers.printers.length === 0 && (
             <p className="text-text-dim">The bridge lists no printers.</p>
@@ -267,6 +295,11 @@ function JobStatus({ job, terminal }: { job: JobState; terminal: boolean }) {
               ` · ${run.copies_completed ?? 0}/${run.copies} done` +
                 (run.copies_failed ? `, ${run.copies_failed} failed` : "")}
             {terminal && run.error_message ? ` · ${run.error_message}` : ""}
+          </p>
+        )}
+        {job.consecutiveFailures >= 3 && (
+          <p role="status" data-testid="print-lost-contact" className="mt-2 text-10 text-text-mute">
+            Lost contact with the print bridge; last status: {run?.status ?? "queued"}
           </p>
         )}
         {job.gaveUp && !terminal && (
