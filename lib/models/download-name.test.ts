@@ -12,6 +12,23 @@ const scad = (stem: string) =>
   ).params;
 
 describe("downloadFilename", () => {
+  it("preserves outside-corner names when support controls are added", async () => {
+    const model = (await loadBdModel("underware-outside-corner"))!;
+    const originalParams = model.params.filter(
+      (p) => !["supports", "support_gap_mm"].includes(p.name),
+    );
+    for (const preset of model.presets) {
+      const before = downloadFilename(model.slug, originalParams, preset.values);
+      for (const gap of [0.1, 0.2, 0.3]) {
+        expect(downloadFilename(model.slug, model.params, {
+          ...preset.values, supports: "none", support_gap_mm: gap,
+        })).toBe(before);
+      }
+    }
+    expect(model.params.filter((p) => ["supports", "support_gap_mm"].includes(p.name))
+      .every((p) => !p.filename)).toBe(true);
+  });
+
   it("includes capture-bin width and depth flags from the real manifest", async () => {
     const model = await loadBdModel("gridfinity-capture-bin");
     expect(model).not.toBeNull();

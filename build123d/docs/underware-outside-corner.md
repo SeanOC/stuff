@@ -93,6 +93,75 @@ combination the bed check allows fits the H2S's 325 × 320 × 325 mm
 the bed even at width 1, height 10, so `length_units` ≤ 7
 (`MAX_ARM_OUTSIDE`), and longer/wider/taller combinations are named errors.
 
+### Built-in supports
+
+Choose **outside-corner-r1-supported** for the 1 × 1, 22 mm, radius-1
+variant with a removable cradle, or set `supports=built_in`. The default
+`supports=none` retains the original geometry and download names. Neither
+`supports` nor `support_gap_mm` is a filename token; the supported preset ID
+distinguishes its baked artifacts.
+
+The cradle uses 0.95 mm fins, spaced at most 8 mm centre-to-centre across
+the floor. Each curved top is concentric with the bend, offset outward by
+`support_gap_mm` (default 0.2 mm, adjustable 0.1–0.3 mm). The fins continue
+3 mm horizontally (4.24 mm along each 45° arm), with a matching normal gap. This extension avoids a
+short thin wedge at the minimum-height bend. The fins have no downward
+overhangs of their own. Between contacts the audited unsupported span stays
+under 10 mm.
+
+The 0.6 mm pad has R4 corners, a 0.3 mm bottom chamfer and exactly 5 mm
+of bounding margin around the bed strip and support footprints. Grooves
+at least 0.4 mm wide follow the bed-strip and fin outlines, leaving a
+connected 0.2 mm skin. The old bed strip bonds only to that skin; elsewhere
+the pad and fins clear the retained channel. Peel the pad and connected
+fins away together after cooling. The intended witness is at most the
+0.2 mm skin on the old strip, plus support contact marks on the floor
+underside. Hand removal and surface finish still need Sean's test print.
+
+Material comparison (mm³, 1 × 1 arms, 0.2 mm gap):
+
+| width / height / radius | retained part | pad + fins | total | added material |
+| --- | ---: | ---: | ---: | ---: |
+| w1 / h22 / r0 | 8624.181 | 795.166 | 9419.347 | 9.22% |
+| w1 / h22 / r1 | 13473.293 | 2298.169 | 15771.461 | 17.06% |
+| w2 / h28 / r1 | 24588.250 | 5043.792 | 29632.042 | 20.51% |
+
+The extra volume buys a wider bed contact and a supported bend. It is a
+thin pad and spaced fins, with no filled block under the channel. The three
+original presets keep their prior volumes; the new supported preset adds
+2298.169 mm³ to the r1 part.
+
+These pad dimensions are three layers and one layer at the default 0.2 mm
+layer height. The curved contact tops cannot lie on a discrete layer grid;
+they preserve the exact normal gap instead (plan-review advisory N1).
+At an inclined surface the vertical clearance is at least the normal gap.
+Use the gap control to match the intended layer height/material, and inspect
+the sliced contact layers. The pad and tear-off skin remain 0.6 and 0.2 mm.
+
+The production audit takes an **opt-in exact material declaration**: the
+pad/groove region alone may be below the usual 0.9 mm wall floor. It checks
+pad thickness 0.4–0.6 mm and vertical groove remnants ≥0.2 mm, verifies that
+declared support material exists in the actual solid, checks the fins at
+0.9–1.0 mm, and checks retained walls again after subtracting the disposable
+material. Its contact probes require support at the normal gap and bracket
+the intervening spans. Fin/pad surfaces cannot exempt their own overhangs.
+The family's grip-end-wedge, flare-slit-fin and cutout-sill exceptions remain;
+**BendUnderside is not used** for this variant. The bed check includes the
+pad. Unsupported variants retain their existing audit and cache behavior.
+
+Research behind the design: [Polymaker's support overview](https://wiki.polymaker.com/the-basics/3d-slicers/support-structures),
+the [Prusa discussion of gap/layer rounding](https://forum.prusa3d.com/forum/prusaslicer/prusaslicer-not-leaving-horizontal-gaps),
+[sacrificial bridge geometry](https://hackaday.com/2017/10/17/sacrificial-bridge-avoids-3d-printed-supports/),
+and [custom breakaway supports](https://forum.openhardware.science/t/advice-for-custom-3d-printing-supports/7233).
+These informed the gap, thin fins and peel-off base; they do not substitute
+for a print of this geometry in PLA/PCTG.
+
+The supported [review sheet](renders/review/underware-outside-corner-outside-corner-r1-supported.png)
+shows the fins in ISO/FRONT and the connected pad in UNDERSIDE. Regenerate
+it with `uv run python scripts/export.py --commit-review --model underware-outside-corner`.
+`tests/test_underware_outside_support.py` covers the contacts, groove dimensions,
+fin thickness, unsupported compatibility and supported endpoint audit.
+
 ### The one published exception: `BendUnderside` (signed by the mayor on pst-38hu7, 2026-10-31)
 
 The bend's floor underside — the cylinder of `outside_floor_radius` over the

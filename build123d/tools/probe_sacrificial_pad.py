@@ -13,11 +13,10 @@ They deliberately omit the groove, which would make the wall still thinner.
 The only blocking audit failure is the wall thickness. Bed chamfer absence
 is a warning; adding a chamfer cannot thicken the horizontal sheet.
 
-Resolution needed before modelling: may the new opt-in audit contract apply
-a separate thickness rule to explicitly declared sacrificial pad/groove
-regions? Keep the 0.9 mm rule for fins and the retained part, and keep all
-overhang/bridge/bed checks. Do not exempt every declared support body from
-wall checks. This probe does not implement or authorize that exception.
+Resolved by CANONICAL rev 2: the opt-in audit contract applies a separate
+thickness rule to explicitly declared sacrificial pad/groove regions. Fins
+and retained geometry keep the 0.9 mm floor and all other checks. This
+probe intentionally omits that declaration to preserve the original evidence.
 """
 
 import sys

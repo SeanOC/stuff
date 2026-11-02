@@ -44,6 +44,7 @@ def _fits(span, width, height):
 # --- registration, bed fit, arm cap ---------------------------------------------------
 
 OFFSET_PARAMS = ('edge_offset_mm', 'offset_arm')   # outside corner only (pst-ufdvc)
+SUPPORT_PARAMS = ('supports', 'support_gap_mm')
 
 
 def test_registration_mirrors_the_mitre_params():
@@ -52,7 +53,7 @@ def test_registration_mirrors_the_mitre_params():
     presets, two mirroring the mitre's."""
     def shape(spec):
         return [(q.name, q.kind, q.default, q.min, q.max, q.step, q.label, q.group, q.filename)
-                for q in spec.params if q.name not in OFFSET_PARAMS]
+                for q in spec.params if q.name not in OFFSET_PARAMS + SUPPORT_PARAMS]
     assert shape(SPEC) == shape(MSPEC)
     off, arm = (next(q for q in SPEC.params if q.name == n) for n in OFFSET_PARAMS)
     assert (off.kind, off.default, off.min, off.max, off.step, off.unit, off.group, off.filename) == (
@@ -60,7 +61,9 @@ def test_registration_mirrors_the_mitre_params():
     assert (arm.kind, arm.default, arm.choices, arm.group, arm.filename) == (
         'enum', 'second', ('first', 'second'), 'Channel Size', True)
     assert all(m.outside_values(pr.values)['edge_offset_mm'] == 0 for pr in SPEC.presets)
-    assert list(PRESETS) == ['outside-corner', 'outside-corner-r1', 'outside-corner-w2-h28-y2']
+    assert list(PRESETS) == ['outside-corner', 'outside-corner-r1', 'outside-corner-w2-h28-y2',
+                             'outside-corner-r1-supported']
+    assert not any(q.filename for q in SPEC.params if q.name in SUPPORT_PARAMS)
     assert [pr.values for pr in MSPEC.presets] == list(PRESETS.values())[:2]
     assert SPEC.category_id == 'multiboard' and SPEC.print_frame is m.outside_print_frame
 
@@ -108,9 +111,10 @@ def test_arm_cap_is_the_bed():
     ({'length_units': 3, 'number_of_cord_cutouts': 2, 'edge_offset_mm': 7, 'offset_arm': 'first'},
      'crosses the grip at y=-7 mm'),            # cutouts are checked against the shifted cells
 ])
-def test_named_errors(values, message):
+@pytest.mark.parametrize('supports', ['none', 'built_in'])
+def test_named_errors(values, message, supports):
     with pytest.raises(ValueError) as exc:
-        SPEC.build(values)
+        SPEC.build({**values, 'supports': supports})
     assert message in str(exc.value)
 
 
@@ -257,7 +261,8 @@ def test_cord_cutouts_cut_the_first_arm_only(side):
 
 # --- bed flat and the one exception ---------------------------------------------------
 
-BED_CASES = {**PRESETS, **{f'w{w}-h{h}-r{r}': {'channel_width_units': w, 'channel_total_height': h,
+BED_CASES = {**{k: v for k, v in PRESETS.items() if v.get('supports') != 'built_in'},
+             **{f'w{w}-h{h}-r{r}': {'channel_width_units': w, 'channel_total_height': h,
                                                 'added_radius': r}
                            for w in (1, 4) for h in (10, 72) for r in (0, 2)},
              'mirror-r1': {'mirror_channel': True, 'added_radius': 1}}
@@ -398,6 +403,18 @@ def edge_inventory(part, values):
     on the print bed, the only exposed edge it adds). A mirrored part is read
     unmirrored (the cut is mirror-invariant)."""
     v = m.outside_values(values)
+    if v['supports'] == 'built_in':
+        support = m.outside_designed_support(values)
+        retained = part - support.pad
+        for fin in support.fins:
+            retained = retained - fin
+        families, worst = edge_inventory(retained, {**values, 'supports': 'none'})
+        # These are disposable interfaces, not exposed finished-part edges.
+        # Fin profiles, thickness and the pad's 45-degree bed chamfer have
+        # independent geometry and production-audit tests.
+        families['sacrificial pad/groove'] = len(support.pad.edges())
+        families['sacrificial fin'] = sum(len(f.edges()) for f in support.fins)
+        return families, worst
     if v['mirror_channel']:
         part, values = mirror(part, Plane.YZ), {**values, 'mirror_channel': False}
         v = m.outside_values(values)
@@ -523,7 +540,8 @@ def test_endpoint_audit_and_edges(case):
     raw = pa.audit(part, SPEC.print_orientation, print_frame=frame, model=case)
     assert raw.longest_bridge_mm <= pa.MAX_BRIDGE_MM
     regions = m.audit_exclusions(SPEC.name, values)
-    report = pa.audit(part, SPEC.print_orientation, print_frame=frame, model=case, exclusions=flat(regions))
+    report = pa.audit(part, SPEC.print_orientation, print_frame=frame, model=case, exclusions=flat(regions),
+                      designed_support=m.outside_designed_support(values))
     assert report.ok, report.format()
     families, worst = edge_inventory(part, values)
     assert not [f for f in families if f.startswith('UNCLASSIFIED')], families
