@@ -18,6 +18,11 @@ from .core import Bridge, BridgeError
 LOGIN_HEADER = "Tailscale-User-Login"
 
 
+class SpoolRequest(BaseModel):
+    ams_id: int = Field(strict=True)
+    tray_id: int = Field(strict=True)
+
+
 class PrintRequest(BaseModel):
     source: Literal["bd", "scad"]
     slug: str | None = None
@@ -26,6 +31,7 @@ class PrintRequest(BaseModel):
     params: dict[str, Any] | None = None
     printer_id: int
     copies: int = Field(default=1, ge=1)
+    spool: SpoolRequest | None = None
 
 
 def trusted(request: Request, config: Config) -> bool:
@@ -78,5 +84,17 @@ def create_app(
     @app.get("/runs/{run_id}")
     async def run(run_id: int) -> dict[str, Any]:
         return await bridge.run(run_id)
+
+    @app.get("/printers/{printer_id}/spools")
+    async def spools(printer_id: int) -> list[dict[str, Any]]:
+        return await bridge.spools(printer_id)
+
+    @app.get("/queue/batches/{batch_id}")
+    async def batch(batch_id: int) -> dict[str, Any]:
+        return await bridge.queue_status(batch_id, batch=True)
+
+    @app.get("/queue/{item_id}")
+    async def item(item_id: int) -> dict[str, Any]:
+        return await bridge.queue_status(item_id)
 
     return app

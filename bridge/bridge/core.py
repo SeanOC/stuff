@@ -1,10 +1,10 @@
 """The one code path behind both the HTTP routes and the CLI.
 
-Bambuddy (1.2.5.7) is only ever asked to store a file and to run a slicer
-pipeline. Never call POST /api/v1/queue/, /library/files/{id}/print, webhook
-start/stop or any printer-control endpoint, and never send force=true:
-dispatch happens only through the pipeline run, gated by Bambuddy's own
-eligibility check and plate-empty camera check.
+Bambuddy (1.2.5.7) stores geometry and runs the configured slicer pipeline.
+An explicit spool uses the same recipe with a replacement filament, then
+creates a queue item with an explicit AMS mapping. Bambuddy's scheduler owns
+dispatch and plate-clear checks. Never force, control a printer, mutate/start
+an existing queue item, call library print/add-to-queue, or use webhooks.
 """
 
 from __future__ import annotations
@@ -14,12 +14,14 @@ import hashlib
 import json
 import logging
 import re
+import time
 from typing import Any
 from urllib.parse import quote, urlencode
 
 import httpx
 
 from .config import Config
+from .spools import colour, global_slot, resolve
 
 log = logging.getLogger("bridge")
 
@@ -34,7 +36,7 @@ NOT_MULTI_COLOUR = "is not a multi-colour model"
 
 LIBRARY_ROOT = "stuff"
 ACTIVE_RUN_STATES = frozenset({"queued", "slicing", "dispatching", "in_progress"})
-TERMINAL_RUN_STATES = frozenset({"completed", "failed", "partial_failure", "cancelled"})
+TERMINAL_RUN_STATES = frozenset({"completed", "failed", "partial_failure", "cancelled", "skipped"})
 
 # bd-render and /api/export build geometry on demand; give them minutes.
 STUFF_TIMEOUT = httpx.Timeout(30.0, read=300.0)
@@ -43,6 +45,8 @@ BAMBUDDY_TIMEOUT = httpx.Timeout(30.0)
 # than _upstream_message's 500: a success-path surprise is usually a proxy's
 # HTML page, and its first line or two is all an operator needs.
 BODY_EXCERPT = 200
+SLICE_TIMEOUT = 4 * 60
+SLICE_POLL_INTERVAL = 2
 # A nozzle size inside a preset or pipeline name: ".4", "0.4", "0.4mm", never
 # a piece of a longer number. A name holding two ("PCTG-1.5x0.6") is ambiguous.
 NOZZLE_TOKEN = re.compile(r"(?<![\d.])(\d?\.\d)(?![\d.])")
@@ -159,6 +163,8 @@ def _probe(resp: httpx.Response | BaseException, key: str) -> Any:
 class Bridge:
     def __init__(self, config: Config, transport: httpx.AsyncBaseTransport | None = None):
         self.config = config
+        self._spool_locks: dict[tuple[int, int], asyncio.Lock] = {}
+        self._queue_receipts: dict[tuple[bool, int], dict[str, Any]] = {}
         self.stuff = httpx.AsyncClient(
             base_url=config.stuff_url, timeout=STUFF_TIMEOUT, transport=transport
         )
@@ -430,7 +436,10 @@ class Bridge:
         preset: str | None = None,
         params: dict[str, Any] | None = None,
         copies: int = 1,
+        spool: dict[str, int] | None = None,
     ) -> dict[str, Any]:
+        if spool is not None and global_slot(spool.get("ams_id"), spool.get("tray_id")) is None:
+            raise BridgeError(400, {"error": "spool must identify an AMS tray (external excluded)"})
         params = params or {}
         if copies < 1:
             raise BridgeError(400, {"error": "copies must be >= 1"})
@@ -468,6 +477,11 @@ class Bridge:
             model_path = scad_model_path(model)
             slug = scad_slug(model_path)
             data, ext = await self._fetch_scad(model_path, params), "stl"
+
+        if spool is not None and ext == "3mf":
+            raise BridgeError(
+                409, {"error": "spool selection supports single-filament models only"}
+            )
 
         folder_id = await self._folder_id(slug)
         filename = f"{slug}-{preset if preset is not None else params_sha12(params)}.{ext}"
@@ -522,6 +536,9 @@ class Bridge:
         if not report.get("ok") or report.get("issues"):
             raise BridgeError(409, {"error": "pipeline eligibility check failed", "report": report})
 
+        if spool is not None:
+            return await self._print_spool(printer_id, file_id, filename, pipeline, spool, copies)
+
         run = await self._bb_json(
             "POST",
             f"/api/v1/slicer-pipelines/{pipeline_id}/run",
@@ -559,3 +576,270 @@ class Bridge:
                 if isinstance(j, dict)
             ],
         }
+
+    async def spools(
+        self, printer_id: int, pipeline: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
+        if pipeline is None:
+            if not any(p.get("id") == printer_id for p in await self._printers_raw()):
+                raise BridgeError(404, {"error": f"Bambuddy has no printer {printer_id}"})
+            name = self.config.pipelines.get(printer_id)
+            if name is None:
+                raise BridgeError(
+                    409, {"error": f"PIPELINES names no pipeline for printer {printer_id}"}
+                )
+            pipeline = await self._pipeline(name)
+        status = await self._bb_json("GET", f"/api/v1/printers/{printer_id}/status")
+        presets = await self._bb_json("GET", "/api/v1/slicer/presets")
+        builtin = await self._bb_json("GET", "/api/v1/cloud/builtin-filaments", items="filaments")
+        names = {f["filament_id"]: f["name"] for f in builtin}
+        custom = await self._bb_json("GET", "/api/v1/cloud/filament-id-map")
+        result = []
+        for ams in status.get("ams") or []:
+            for tray in ams.get("tray") or []:
+                aid, tid = ams.get("id"), tray.get("id")
+                slot = global_slot(aid, tid)
+                if not tray.get("exists") or slot is None:
+                    continue
+                defaults = await self._bb_json(
+                    "GET", f"/api/v1/printers/{printer_id}/slots/{aid}/{tid}/spool-defaults"
+                )
+                fid = tray.get("tray_info_idx")
+                name = defaults.get("slicer_filament_name") or names.get(fid) or custom.get(fid)
+                preset, generic = resolve(
+                    tray, name, pipeline["printer_preset"], presets, self.config.filament_presets
+                )
+                remain = tray.get("remain")
+                # An explicit allowlist: never copy status/spool-defaults wholesale.
+                result.append(
+                    {
+                        "ams_id": aid,
+                        "tray_id": tid,
+                        "slot": slot,
+                        "material": tray.get("tray_type"),
+                        "name": name or tray.get("tray_sub_brands"),
+                        "colour": colour(tray.get("tray_color")),
+                        "remain_pct": remain
+                        if isinstance(remain, (int, float)) and remain >= 0
+                        else None,
+                        "preset": preset,
+                        "generic": generic,
+                        "resolved": preset is not None,
+                    }
+                )
+        return result
+
+    async def _print_spool(
+        self,
+        printer_id: int,
+        file_id: int,
+        filename: str,
+        pipeline: dict[str, Any],
+        spool: dict[str, int],
+        copies: int,
+    ) -> dict[str, Any]:
+        lock = self._spool_locks.setdefault((printer_id, file_id), asyncio.Lock())
+        async with lock:
+            rows = await self._bb_json(
+                "GET", "/api/v1/queue/", items="items", params={"printer_id": printer_id}
+            )
+            sliced_name = filename.rsplit(".", 1)[0] + ".gcode.3mf"
+            for row in rows:
+                if (
+                    row.get("status") in {"pending", "printing"}
+                    and row.get("library_file_name") == sliced_name
+                ):
+                    self._queue_receipts[(False, row["id"])] = self._item_status(row)
+                    raise BridgeError(
+                        409,
+                        {
+                            "error": f"{filename} already queued on printer {printer_id}",
+                            "queue_item_id": row["id"],
+                            "status_url": f"/queue/{row['id']}",
+                        },
+                    )
+            selected = next(
+                (
+                    s
+                    for s in await self.spools(printer_id, pipeline)
+                    if s["ams_id"] == spool["ams_id"] and s["tray_id"] == spool["tray_id"]
+                ),
+                None,
+            )
+            if selected is None:
+                raise BridgeError(409, {"error": "spool is not loaded", "spool": spool})
+            if not selected["resolved"]:
+                raise BridgeError(
+                    409,
+                    {
+                        "error": (
+                            "no slicer filament preset for spool "
+                            f"{spool['ams_id']}/{spool['tray_id']}"
+                        ),
+                        "spool": selected,
+                    },
+                )
+            body = {k: pipeline[k] for k in ("printer_preset", "process_preset", "bed_type")}
+            body["filament_presets"] = [selected["preset"]]
+            if selected["colour"] is not None:
+                body["filament_colours"] = [selected["colour"]]
+            sliced_id = await self._slice(file_id, body)
+            row = await self._bb_json(
+                "POST",
+                "/api/v1/queue/",
+                need=("id",),
+                json={
+                    "printer_id": printer_id,
+                    "library_file_id": sliced_id,
+                    "ams_mapping": [selected["slot"]],
+                    "quantity": copies,
+                    "use_ams": True,
+                },
+            )
+            batch_id = row.get("batch_id")
+            self._queue_receipts[(False, row["id"])] = self._item_status(row)
+            if copies > 1 and batch_id is None:
+                raise BridgeError(
+                    502,
+                    {
+                        "error": "Bambuddy queue response has no batch_id",
+                        "queue_item_id": row["id"],
+                        "status_url": f"/queue/{row['id']}",
+                    },
+                )
+            if batch_id is not None:
+                self._queue_receipts[(True, batch_id)] = {
+                    "copies": copies,
+                    "sliced_library_file_id": sliced_id,
+                }
+            return {
+                "library_file_id": file_id,
+                "sliced_library_file_id": sliced_id,
+                "queue_item_id": row["id"],
+                "batch_id": batch_id,
+                "status_url": f"/queue/batches/{batch_id}" if copies > 1 else f"/queue/{row['id']}",
+            }
+
+    async def _slice(self, file_id: int, body: dict[str, Any]) -> int:
+        last = {}
+        deadline = time.monotonic() + SLICE_TIMEOUT
+        try:
+            # Also bound HTTP requests, not just the sleeps between polls.
+            async with asyncio.timeout(SLICE_TIMEOUT):
+                accepted = await self._bb_json(
+                    "POST", f"/api/v1/library/files/{file_id}/slice", need=("job_id",), json=body
+                )
+                while time.monotonic() < deadline:
+                    last = await self._bb_json(
+                        "GET", f"/api/v1/slice-jobs/{accepted['job_id']}", need=("status",)
+                    )
+                    if last["status"] == "completed":
+                        result = last.get("result")
+                        if not isinstance(result, dict) or not isinstance(
+                            result.get("library_file_id"), int
+                        ):
+                            raise BridgeError(502, {"error": "slice result has no library_file_id"})
+                        return result["library_file_id"]
+                    if last["status"] not in {"pending", "running"}:
+                        raise BridgeError(
+                            502, {"error": self._slice_error(last) or f"slice job {last['status']}"}
+                        )
+                    await asyncio.sleep(
+                        min(SLICE_POLL_INTERVAL, max(0, deadline - time.monotonic()))
+                    )
+        except TimeoutError:
+            pass
+        message = self._slice_error(last)
+        raise BridgeError(
+            502, {"error": "slice timed out after 4 minutes" + (f": {message}" if message else "")}
+        )
+
+    @staticmethod
+    def _slice_error(job: dict[str, Any]) -> Any:
+        result = job.get("result")
+        return (
+            job.get("error")
+            or job.get("error_message")
+            or job.get("message")
+            or (
+                isinstance(result, dict)
+                and (result.get("error") or result.get("error_message") or result.get("message"))
+            )
+        )
+
+    @staticmethod
+    def _item_status(row: dict[str, Any]) -> dict[str, Any]:
+        status = row.get("status")
+        return {
+            "status": status,
+            "copies": 1,
+            "copies_completed": int(status == "completed"),
+            "copies_failed": int(status == "failed"),
+            "error_message": row.get("error_message"),
+            "sliced_library_file_id": row.get("library_file_id"),
+            "jobs": [
+                {
+                    "queue_item_id": row.get("id"),
+                    "status": status,
+                    "printer_id": row.get("printer_id"),
+                }
+            ],
+        }
+
+    async def queue_status(self, item_id: int, *, batch: bool = False) -> dict[str, Any]:
+        path = f"/queue/batches/{item_id}" if batch else f"/queue/{item_id}"
+        need = (
+            ("quantity", "printing_count", "pending_count", "completed_count", "failed_count")
+            if batch
+            else ()
+        )
+        try:
+            row = await self._bb_json("GET", "/api/v1" + path, need=need)
+        except BridgeError as e:
+            if e.upstream_status != 404:
+                raise
+            receipt = self._queue_receipts.get((batch, item_id))
+            if receipt is None:
+                raise BridgeError(404, {"error": "queue item not found"}) from e
+            return {
+                "status": "unknown",
+                "copies": receipt.get("copies"),
+                "copies_completed": None,
+                "copies_failed": None,
+                "error_message": "queue item not found",
+                "sliced_library_file_id": receipt.get("sliced_library_file_id"),
+                "jobs": [],
+            }
+        if not batch:
+            return self._item_status(row)
+        # The upstream batch status is an undocumented string; counts are the contract.
+        quantity, completed, failed = row["quantity"], row["completed_count"], row["failed_count"]
+        if row["printing_count"] > 0:
+            status = "printing"
+        elif row["pending_count"] > 0:
+            status = "pending"
+        elif completed == quantity:
+            status = "completed"
+        elif completed == 0 and failed == 0:
+            status = "cancelled"
+        elif completed == 0:
+            status = "failed"
+        else:
+            status = "partial_failure"
+        return {
+            "status": status,
+            "copies": quantity,
+            "copies_completed": completed,
+            "copies_failed": failed,
+            "error_message": None,
+            "sliced_library_file_id": row.get("library_file_id"),
+            "jobs": [],
+            "batch_status": row.get("status"),
+        }
+
+    async def status(self, status_url: str) -> dict[str, Any]:
+        if m := re.fullmatch(r"/runs/(\d+)", status_url):
+            return await self.run(int(m[1]))
+        if m := re.fullmatch(r"/queue/(batches/)?(\d+)", status_url):
+            return await self.queue_status(int(m[2]), batch=bool(m[1]))
+        raise BridgeError(502, {"error": "unrecognised status_url"})
