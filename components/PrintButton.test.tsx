@@ -11,6 +11,7 @@ import BdDetailPage, { type BdDetailPageModel } from "./BdDetailPage";
 import {
   bdPrintTarget,
   fetchPrinters,
+  fetchSpools,
   fetchRun,
   startPrint,
   probePrintBridge,
@@ -32,6 +33,12 @@ const PRINTERS = [
   { id: 2, name: "Lefty", model: "H2C", state: "IDLE", plate_detection_calibrated: false, pipeline: "h2c", nozzle_mm: [] },
 ];
 
+const SPOOLS = [
+  { ams_id: 0, tray_id: 1, slot: 1, material: "PLA", name: "Matte black", colour: "#000000", remain_pct: 75, preset: "PLA", generic: false, resolved: true },
+  { ams_id: 1, tray_id: 0, slot: 4, material: "PETG", name: "Clear", colour: null, remain_pct: null, preset: "Generic PETG", generic: true, resolved: true },
+  { ams_id: 1, tray_id: 2, slot: 6, material: "ABS", name: "Red", colour: "#FF0000", remain_pct: 0, preset: null, generic: false, resolved: false },
+];
+
 type Handler = (url: string, init?: RequestInit) => Response | Promise<Response>;
 
 function json(body: unknown, status = 200): Response {
@@ -46,6 +53,7 @@ let printHandler: Handler;
 let runHandler: Handler;
 let healthHandler: Handler;
 let printersHandler: Handler;
+let spoolsHandler: Handler;
 
 function calls(path: string, method = "GET"): [string, RequestInit | undefined][] {
   return (fetchMock.mock.calls as [string, RequestInit | undefined][]).filter(
@@ -64,13 +72,15 @@ beforeEach(() => {
   vi.stubEnv("NEXT_PUBLIC_PRINT_BRIDGE_URL", BRIDGE);
   healthHandler = () => json({ ok: true, bambuddy_reachable: true });
   printersHandler = () => json(PRINTERS);
+  spoolsHandler = () => json(SPOOLS);
   printHandler = () => json({ library_file_id: 9, run_id: 42, status_url: "/runs/42" }, 202);
   runHandler = () => json({ status: "slicing", copies: 2, copies_completed: 0, copies_failed: 0 });
   fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     if (url === `${BRIDGE}/health`) return healthHandler(url, init);
     if (url === `${BRIDGE}/printers`) return printersHandler(url, init);
+    if (/\/printers\/\d+\/spools$/.test(url)) return spoolsHandler(url, init);
     if (url === `${BRIDGE}/print`) return printHandler(url, init);
-    if (url.startsWith(`${BRIDGE}/runs/`)) return runHandler(url, init);
+    if (url.startsWith(`${BRIDGE}/runs/`) || url.startsWith(`${BRIDGE}/queue/`)) return runHandler(url, init);
     return new Response("not found", { status: 404 });
   });
   vi.stubGlobal("fetch", fetchMock);
@@ -259,6 +269,140 @@ describe("PrintButton popover + payload", () => {
   it("bdPrintTarget picks preset over params exactly when bakedPresetId is set", () => {
     expect(bdPrintTarget("s", "p1", { a: 1 })).toEqual({ source: "bd", slug: "s", preset: "p1" });
     expect(bdPrintTarget("s", null, { a: 1 })).toEqual({ source: "bd", slug: "s", params: { a: 1 } });
+  });
+});
+
+async function openSpoolDialog() {
+  await mount();
+  await act(async () => { fireEvent.click(screen.getByTestId("print-button")); });
+}
+
+function expandSpools() {
+  fireEvent.click(screen.getByRole("button", { name: /^Spool / }));
+}
+
+describe("PrintButton spool selection", () => {
+  it("lists Recipe default first, colour swatches, remaining amounts and preset hints", async () => {
+    await openSpoolDialog();
+    expandSpools();
+    const options = screen.getAllByRole("option").filter((option) => option.closest('[role="listbox"]'));
+    expect(options.map((option) => option.textContent)).toEqual([
+      "Recipe default", "PLA Matte black · 75%", "PETG Clear (generic PETG profile)", "ABS Red · 0% (no slicer preset)",
+    ]);
+    expect(options[0].getAttribute("aria-selected")).toBe("true");
+    expect((options[3] as HTMLButtonElement).disabled).toBe(true);
+    const swatch = screen.getByRole("img", { name: "#000000" });
+    expect(swatch.style.backgroundColor).toBe("rgb(0, 0, 0)");
+    expect(options[2].querySelector('[role="img"]')).toBeNull();
+  });
+
+  it("sends only the chosen AMS and tray and names the spool in the queued line", async () => {
+    await openSpoolDialog();
+    expandSpools();
+    fireEvent.click(screen.getByRole("option", { name: /PLA Matte black/ }));
+    await act(async () => { fireEvent.click(screen.getByTestId("print-submit")); });
+    expect(postedBody().spool).toEqual({ ams_id: 0, tray_id: 1 });
+    expect(screen.getByTestId("print-status").textContent).toBe("Queued on H2S · PLA Matte black");
+  });
+
+  it("supports keyboard selection and skips unresolved spools", async () => {
+    await openSpoolDialog();
+    const trigger = screen.getByRole("button", { name: /^Spool / });
+    fireEvent.keyDown(trigger, { key: "ArrowDown" });
+    expect(document.activeElement?.textContent).toBe("Recipe default");
+    fireEvent.keyDown(document.activeElement!, { key: "End" });
+    expect(document.activeElement?.textContent).toBe("PETG Clear (generic PETG profile)");
+    fireEvent.click(document.activeElement!);
+    expect(document.activeElement).toBe(trigger);
+    expect(trigger.textContent).toContain("PETG Clear");
+    expandSpools();
+    fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+    expect(screen.queryByRole("listbox")).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it("resets the choice on printer change, caches each printer per open, and refreshes on reopening", async () => {
+    await openSpoolDialog();
+    expandSpools();
+    fireEvent.click(screen.getByRole("option", { name: /PLA Matte black/ }));
+    await act(async () => { fireEvent.change(screen.getByTestId("print-printer"), { target: { value: "2" } }); });
+    expect(screen.getByRole("button", { name: "Spool Recipe default" })).toBeTruthy();
+    expect(calls("/printers/2/spools")).toHaveLength(1);
+    await act(async () => { fireEvent.change(screen.getByTestId("print-printer"), { target: { value: "1" } }); });
+    expect(calls("/printers/1/spools")).toHaveLength(1);
+    fireEvent.click(screen.getByTestId("print-button"));
+    await act(async () => { fireEvent.click(screen.getByTestId("print-button")); });
+    expect(calls("/printers/1/spools")).toHaveLength(2);
+    await act(async () => { fireEvent.click(screen.getByTestId("print-submit")); });
+    expect(postedBody()).not.toHaveProperty("spool");
+  });
+
+  it("ignores an old printer's late spool response", async () => {
+    let resolve!: (response: Response) => void;
+    spoolsHandler = (url) => url.endsWith("/1/spools")
+      ? new Promise((done) => { resolve = done; }) : json([]);
+    await openSpoolDialog();
+    await act(async () => { fireEvent.change(screen.getByTestId("print-printer"), { target: { value: "2" } }); });
+    await act(async () => { resolve(json(SPOOLS)); });
+    expandSpools();
+    expect(screen.queryByRole("option", { name: /PLA Matte black/ })).toBeNull();
+  });
+
+  it.each([
+    ["network", () => Promise.reject(new TypeError("Failed to fetch")), "Print bridge unreachable. Are you on the tailnet?"],
+    ["Bambuddy", () => json({ error: "Bambuddy unreachable: ConnectError" }, 502), "Bambuddy is unreachable from the print bridge."],
+  ])("keeps recipe printing usable after a %s failure and reloads on Retry", async (_name, handler, message) => {
+    spoolsHandler = handler as Handler;
+    printHandler = () => json({ error: "fixture" }, 409);
+    await openSpoolDialog();
+    expect(screen.getByText(message)).toBeTruthy();
+    expect((screen.getByTestId("print-submit") as HTMLButtonElement).disabled).toBe(false);
+    await act(async () => { fireEvent.click(screen.getByTestId("print-submit")); });
+    expect(postedBody()).not.toHaveProperty("spool");
+    spoolsHandler = () => json(SPOOLS);
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Retry" })); });
+    expect(calls("/printers/1/spools")).toHaveLength(2);
+    expect(screen.queryByText(message)).toBeNull();
+    expandSpools();
+    expect(screen.getByRole("option", { name: /PLA Matte black/ })).toBeTruthy();
+  });
+
+  it.each(["/queue/7", "/queue/batches/8"])("polls %s without a run_id, stays active for pending/printing and stops on skipped", async (statusUrl) => {
+    vi.useFakeTimers();
+    printHandler = () => json({ status_url: statusUrl }, 202);
+    const statuses = ["pending", "printing", "skipped"];
+    runHandler = () => json({ status: statuses.shift(), copies: 1, copies_completed: 0, copies_failed: 0, error_message: null, sliced_library_file_id: 9, jobs: [] });
+    await mount();
+    await openAndPrint();
+    for (const status of ["pending", "printing", "skipped"]) {
+      await act(async () => { await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS); });
+      expect(screen.getByTestId("print-run").textContent).toContain(status);
+      expect((screen.getByTestId("print-submit") as HTMLButtonElement).disabled).toBe(status !== "skipped");
+    }
+    await act(async () => { await vi.advanceTimersByTimeAsync(3 * POLL_INTERVAL_MS); });
+    expect(calls(statusUrl)).toHaveLength(3);
+    expect(calls("/runs/42")).toHaveLength(0);
+  });
+
+  it("uses status_url ahead of run_id and retains partial_failure as terminal", async () => {
+    vi.useFakeTimers();
+    printHandler = () => json({ run_id: 42, status_url: "/queue/batches/8" }, 202);
+    runHandler = () => json({ status: "partial_failure" });
+    await mount();
+    await openAndPrint();
+    await act(async () => { await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(2 * POLL_INTERVAL_MS); });
+    expect(calls("/queue/batches/8")).toHaveLength(1);
+    expect(calls("/runs/42")).toHaveLength(0);
+  });
+
+  it("falls back to /runs/{run_id} when an older bridge omits status_url", async () => {
+    vi.useFakeTimers();
+    printHandler = () => json({ run_id: 42 }, 202);
+    await mount();
+    await openAndPrint();
+    await act(async () => { await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS); });
+    expect(calls("/runs/42")).toHaveLength(1);
   });
 });
 
@@ -462,6 +606,7 @@ describe("PrintButton connection recovery", () => {
 describe("print bridge response deadlines", () => {
   it.each([
     ["printers", () => fetchPrinters(BRIDGE), READ_TIMEOUT_MS, 200],
+    ["spools", () => fetchSpools(BRIDGE, 1), READ_TIMEOUT_MS, 200],
     ["run", () => fetchRun(BRIDGE, 42), READ_TIMEOUT_MS, 200],
     ["print accepted", () => startPrint(BRIDGE, BD_PRESET, 1, 1), PRINT_TIMEOUT_MS, 202],
     ["print conflict", () => startPrint(BRIDGE, BD_PRESET, 1, 1), PRINT_TIMEOUT_MS, 409],
@@ -507,5 +652,15 @@ describe("BdDetailPage wiring", () => {
     expect(screen.getAllByTestId("print-button")).toHaveLength(1);
     await openAndPrint();
     expect(postedBody()).toMatchObject({ source: "bd", slug: "holder-spray-can", preset: "spray_can" });
+  });
+
+  it("passes multiColour to hide the picker and uses recipe filaments", async () => {
+    render(<BdDetailPage model={{ ...MODEL, multiColour: true }} />);
+    await act(async () => {});
+    await openAndPrint();
+    expect(screen.queryByRole("button", { name: /^Spool / })).toBeNull();
+    expect(screen.getByText("Multi-colour prints use the recipe filaments.")).toBeTruthy();
+    expect(calls("/printers/1/spools")).toHaveLength(0);
+    expect(postedBody()).not.toHaveProperty("spool");
   });
 });
