@@ -31,7 +31,10 @@ bakes headless on Vercel".
 from __future__ import annotations
 
 from dataclasses import dataclass
+import io
+import json
 from pathlib import Path
+import struct
 
 import numpy as np
 import trimesh
@@ -261,6 +264,56 @@ def _mesh_color(mesh: trimesh.Trimesh) -> np.ndarray | None:
     return None
 
 
+def _load_render_scene(glb_path: Path) -> trimesh.Scene:
+    """Load OCCT GLBs without trimesh's random multi-primitive node names.
+
+    trimesh 5.0 expands a mesh's primitives with unchecked six-hex-digit
+    UUIDs. At 10,015 primitives (cartridge full_holder), collisions overwrite
+    graph nodes and randomly lose faces. Give each primitive an explicit
+    child node before loading. Only the in-memory JSON changes: buffers,
+    materials, normals, instances and parent transforms remain intact.
+    """
+    data = glb_path.read_bytes()
+    (json_len,) = struct.unpack_from("<I", data, 12)
+    doc = json.loads(data[20:20 + json_len])
+    meshes = doc.get("meshes", [])
+    split = {}
+    for index, mesh in enumerate(list(meshes)):
+        primitives = mesh["primitives"]
+        if len(primitives) <= 1:
+            continue
+        split[index] = [index]
+        meshes[index] = dict(mesh, primitives=primitives[:1])
+        for primitive in primitives[1:]:
+            split[index].append(len(meshes))
+            meshes.append(dict(mesh, primitives=[primitive]))
+
+    if not split:
+        return trimesh.load(str(glb_path), force="scene")
+
+    nodes = doc.get("nodes", [])
+    names = {node.get("name", str(i)) for i, node in enumerate(nodes)} | {"world"}
+    for node in list(nodes):
+        if node.get("mesh") not in split:
+            continue
+        children = []
+        for mesh_index in split[node.pop("mesh")]:
+            name = trimesh.util.unique_name(f"primitive_{len(nodes)}", names)
+            names.add(name)
+            children.append(len(nodes))
+            nodes.append({"name": name, "mesh": mesh_index})
+        # trimesh traverses child lists as a stack. Preserve the old primitive
+        # order (including coplanar z-buffer ties), then the original children.
+        node["children"] = node.get("children", []) + children[::-1]
+
+    chunk = json.dumps(doc, separators=(",", ":")).encode()
+    chunk += b" " * (-len(chunk) % 4)
+    rest = data[20 + json_len:]
+    normalized = (struct.pack("<4sII", b"glTF", 2, 20 + len(chunk) + len(rest))
+                  + struct.pack("<I4s", len(chunk), b"JSON") + chunk + rest)
+    return trimesh.load(io.BytesIO(normalized), file_type="glb", force="scene")
+
+
 def _scene_mesh_and_colors(scene: trimesh.Scene) -> tuple[trimesh.Trimesh, np.ndarray]:
     """Flatten transformed geometry with sRGB PBR colours (otherwise neutral)."""
     # Scene.to_geometry() concatenates dump() in graph-node order, which need
@@ -268,7 +321,7 @@ def _scene_mesh_and_colors(scene: trimesh.Scene) -> tuple[trimesh.Trimesh, np.nd
     geometries = scene.dump()
     mesh = trimesh.util.concatenate(geometries)
     # Only graph-referenced instances render; the mesh table can also contain
-    # orphan geometry (OCCT exports do), or one mesh used by multiple nodes.
+    # orphan geometry, or one mesh used by multiple nodes.
     assert sum(len(g.faces) for g in geometries) == len(mesh.faces)
     colors = []
     for geometry in geometries:
@@ -293,7 +346,7 @@ def render_thumbnail(glb_path: Path, png_path: Path) -> None:
     module's software renderer, using the mesh's own smooth vertex normals
     so the card matches the live preview (single source of truth).
     """
-    scene = trimesh.load(str(glb_path), force="scene")
+    scene = _load_render_scene(glb_path)
     mesh, face_colors = _scene_mesh_and_colors(scene)
     render_thumbnail_from_mesh(
         mesh.vertices, mesh.faces, mesh.vertex_normals, png_path,
@@ -338,7 +391,7 @@ def render_review(glb_path: Path, png_path: Path, *,
     """Five labelled review views; legacy callers retain their three-view sheet."""
     from PIL import Image
 
-    scene = trimesh.load(str(glb_path), force="scene")
+    scene = _load_render_scene(glb_path)
     mesh, face_colors = _scene_mesh_and_colors(scene)
     col = _mesh_color(mesh)
     col = _BASE_COLOR if col is None else np.asarray(col, float)[:3]
