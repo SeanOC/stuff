@@ -244,11 +244,12 @@ def render_thumbnail_from_mesh(
 
 # iso / front / top review views (replaces render_png's mplot3d 3-view). In
 # the GLB's Y-up frame: iso down the diagonal, front along -Z, top looking
-# straight down -Y (world-up falls back to +Z for that degenerate case).
+# straight down -Y. TOP keeps model +X right and +Y up: model +Y maps to
+# GLB -Z, so flat artwork reads upright in the model's XY plane.
 _REVIEW_VIEWS = (
     ("iso", np.array([1.0, 1.0, 1.0]), _WORLD_UP),
     ("front", np.array([0.0, 0.0, 1.0]), _WORLD_UP),
-    ("top", np.array([0.0, 1.0, 0.0]), np.array([0.0, 0.0, 1.0])),
+    ("top", np.array([0.0, 1.0, 0.0]), np.array([0.0, 0.0, -1.0])),
 )
 
 

@@ -142,6 +142,52 @@ def test_legacy_two_arg_call_still_three_tiles(asymmetric_glb, tmp_path):
         assert img.mode == "RGBA"
 
 
+@pytest.mark.parametrize("labelled", [False, True], ids=["legacy", "five-tile"])
+def test_top_artwork_reads_upright(tmp_path, monkeypatch, labelled):
+    # An F in model XY: its long arm points +X, its top is +Y. Export through
+    # OCCT so the regression covers the real Z-up -> GLB Y-up conversion.
+    stem = Pos(-3, -5, 0) * Box(2, 10, 1, align=(Align.MIN,) * 3)
+    top_arm = Pos(-1, 3, 0) * Box(4, 2, 1, align=(Align.MIN,) * 3)
+    mid_arm = Pos(-1, -1, 0) * Box(2, 2, 1, align=(Align.MIN,) * 3)
+    glb = tmp_path / "letter-f.glb"
+    export_gltf(stem.fuse(top_arm, mid_arm), str(glb), binary=True)
+    scene = trimesh.load(glb, force="scene")
+    mesh, colors = th._scene_mesh_and_colors(scene)
+    vertices, faces = mesh.vertices.copy(), mesh.faces.copy()
+    monkeypatch.setattr(th, "_scene_mesh_and_colors", lambda scene: (mesh, colors))
+    ctx = (th.ReviewContext("letter-f", (0, 0, 1),
+                           (th.PlaneSpec((0, 0, 0), (1, 0, 0), "F section"),), ())
+           if labelled else None)
+    png = tmp_path / "upright.png"
+    th.render_review(glb, png, ctx=ctx, res=100)
+    with Image.open(png) as image:
+        upright = np.asarray(image).copy()
+    row = 28 if labelled else 0
+    top = upright[row:row + 100, 200:300]
+    ink = np.any(top[:, :, :3] < 240, axis=2) if labelled else top[:, :, 3] > 128
+    # Interior patches of the F's top arm, empty lower-right, and lower stem.
+    assert ink[10:20, 60:70].all()
+    assert not ink[75:85, 60:70].any()
+    assert ink[75:85, 30:35].all()
+
+    # Render the previous cameras on the identical mesh: only TOP may differ.
+    monkeypatch.setattr(th, "_REVIEW_VIEWS", (
+        ("iso", np.array([1., 1., 1.]), np.array([0., 1., 0.])),
+        ("front", np.array([0., 0., 1.]), np.array([0., 1., 0.])),
+        ("top", np.array([0., 1., 0.]), np.array([0., 0., 1.])),
+    ))
+    previous_png = tmp_path / "previous.png"
+    th.render_review(glb, previous_png, ctx=ctx, res=100)
+    with Image.open(previous_png) as image:
+        previous = np.asarray(image)
+    np.testing.assert_array_equal(upright[:, :200], previous[:, :200])
+    if labelled:
+        np.testing.assert_array_equal(upright[:, 300:], previous[:, 300:])
+    assert not np.array_equal(top, previous[row:row + 100, 200:300])
+    np.testing.assert_array_equal(mesh.vertices, vertices)
+    np.testing.assert_array_equal(mesh.faces, faces)
+
+
 @pytest.mark.parametrize("plane, error", [
     (th.PlaneSpec((0, 0, 0), (0, 0, 0), "zero"), "non-zero"),
     (th.PlaneSpec((0, 0, 0), (1, 0, 0), ""), "non-empty"),
