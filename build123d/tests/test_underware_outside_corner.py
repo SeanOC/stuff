@@ -95,6 +95,23 @@ def test_arm_cap_is_the_bed():
     assert m.MAX_ARM_OUTSIDE == max(q.max for q in SPEC.params if q.name == 'length_units')
 
 
+@pytest.mark.parametrize('values,axis,limit', [
+    ({'grip_flare': 9.9}, 'BED_Y', 30.),
+    ({'edge_offset_mm': 6.5}, 'BED_Z', 38.6),
+])
+@pytest.mark.parametrize('mirrored', [False, True])
+def test_bed_gate_includes_grip_envelope(values, axis, limit, mirrored, monkeypatch):
+    """Synthetic beds bracket the reproduced undercounts: 26.4 < 30 <
+    33.94 mm across, and 38.365 < 38.6 < 38.789 mm high. The H2S fits both,
+    but the same validation must reject them when that axis is the limit."""
+    values = {**values, 'mirror_channel': mirrored}
+    m._checked_outside(values)  # both fit the real production bed
+    monkeypatch.setattr(m, axis, limit)
+    m._checked_outside({'mirror_channel': mirrored})  # unflared, unshifted fits
+    with pytest.raises(ValueError, match='past the .*build volume.*grip_flare.*edge_offset_mm'):
+        m._checked_outside(values)
+
+
 @pytest.mark.parametrize('values,message', [
     ({'length_units': 8}, 'length_units=8 > max 7'),
     ({'channel_width_units': 4, 'channel_total_height': 72, 'added_radius': 2, 'length_units': 4},
@@ -537,6 +554,9 @@ def test_endpoint_audit_and_edges(case):
     v = m.outside_values(values)
     frame, part = SPEC.print_frame(v), SPEC.build(values)
     assert part.is_valid and len(part.solids()) == 1
+    box = (frame*part).bounding_box()
+    assert m.outside_extent(v) == pytest.approx((box.size.Y, box.size.X, box.size.Z), abs=1e-4)
+    assert _fits(*m.outside_extent(v))
     raw = pa.audit(part, SPEC.print_orientation, print_frame=frame, model=case)
     assert raw.longest_bridge_mm <= pa.MAX_BRIDGE_MM
     regions = m.audit_exclusions(SPEC.name, values)
