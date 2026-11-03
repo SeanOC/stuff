@@ -609,10 +609,14 @@ def _audit_kwargs(spec, values):
         if fx is not None:  # None: this mount is absent under these values
             cutters.extend(fx.cutters)
     exclusion = _MODEL_EXCLUSIONS.get(spec.name)
-    return dict(
+    kwargs = dict(
         orientation=spec.print_orientation, cutters=cutters,
         exclusions=exclusion(values) if exclusion else (), model=spec.name,
         print_frame=spec.print_frame(values) if spec.print_frame else None)
+    if spec.name == 'underware_outside_corner' and values.get('supports') == 'built_in':
+        from holders.underware_path_channels import outside_designed_support
+        kwargs['designed_support'] = outside_designed_support(values)
+    return kwargs
 
 
 def _build_and_audit(spec) -> PrintAuditReport:
