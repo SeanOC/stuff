@@ -29,7 +29,14 @@ socket walls below the 0.9 mm guideline (the author's geometry). The eight
 conical transition faces in the default 2×2 shelf are thinner still: the
 normal-direction wall audit measures approximately 0.698, 0.619 and 0.540 mm
 at socket clearances 0, 0.1 and 0.2 mm respectively. These transitions belong
-to published socket-wall exception #2, including at the default clearance.
+to published socket-wall exception #2, enlarged by mayor approval on
+2026-11-03 (PR #281) to include the default clearance. They are the socket
+profile’s top ridges: the standard leaves approximately 0.5 mm between
+adjacent socket chamfers at the rim, printed as a single perimeter on stock
+baseplates. Geometry is unchanged since rev14; endpoint sampling now reaches
+these rims.
+The same transition-wall minimum applies to the magnets, wide and sturdy-back
+presets; the number of inventoried faces varies with grid width and depth.
 Keeping clearance at 0 maximizes these ligaments but does not bring them up
 to 0.9 mm; adding perimeters cannot restore thickness absent from the model.
 

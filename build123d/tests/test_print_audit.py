@@ -612,6 +612,14 @@ from holders.underware_transition import audit_exclusions as transition_families
 from holders.underware_junctions import audit_exclusions as junction_families
 from holders.underware_text_label import audit_exclusions as text_label_families
 from holders.underware_path_channels import audit_exclusions as path_families
+from tests.test_gridfinity_shelf import (assert_published_socket_audit,
+                                        published_socket_wall_faces)
+
+# Approved face selectors, not whole-model wall exemptions. The shelf is
+# the first published wall family requiring remainder-based acceptance.
+_PUBLISHED_WALL_FACE_SELECTORS = {
+    'openconnect_gridfinity_shelf': published_socket_wall_faces,
+}
 
 _MODEL_EXCLUSIONS = {
     'holder_bench_lip_clip': bench_lip_clip_exclusions,
@@ -790,6 +798,14 @@ def test_model_print_audit(spec, capsys):
     # report.ok carries the same check (pst-hruv1).
     bed = bed_failure(report.extent_mm)
     assert bed is None, f"{spec.name}: {bed}"
+    selector = _PUBLISHED_WALL_FACE_SELECTORS.get(spec.name)
+    if selector is not None:
+        # The registry default has the same published socket walls as the
+        # shelf endpoint cases. Keep its raw report visible above, and apply
+        # the same exact-face inventory and non-wall gates.
+        values = spec.resolve_values()
+        assert_published_socket_audit(spec.build(values), values, report, selector)
+        return
     if report.ok:
         return
     gating = PRINT_AUDIT_REQUIRED and _is_production(spec)
