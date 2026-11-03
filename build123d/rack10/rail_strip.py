@@ -4,7 +4,7 @@ Front face on Z=0 is the print bed. Equipment weight acts along Y (layers);
 cantilever pull-off loads the peg roots across layers. No load rating is claimed.
 The two grids are independent: every interior post station has a mount.
 """
-from math import isfinite
+from math import isfinite, sqrt
 
 from build123d import Align, Box, Cone, Cylinder, GeomType, Pos, Rot
 
@@ -50,6 +50,15 @@ def rail_strip(pin_units=18, thickness=c.RAIL_THICKNESS, *, mount='pegs', hole='
     if mount not in ('pegs', 'pin_holes') or hole not in ('insert', 'cage_nut'):
         raise ValueError('unknown rail mount or hole mode')
 
+    cone_height = (c.INSERT_M6_HOLE_D-c.SCREW_CLEAR)/2
+    # The cone's exit junction is the thinnest load-bearing seat section.
+    # The general print audit only enforces 0.9 mm, so guard the hardware's
+    # 2 mm floor analytically, including the unsampled end of the cone.
+    seat_wall = (thickness-c.INSERT_POCKET_DEPTH-cone_height)*sqrt(2)
+    if hole == 'insert' and seat_wall < c.INSERT_WALL_MIN:
+        raise RailFitError(
+            'insert seat wall below 2 mm: use thickness >= 12 mm or cage_nut')
+
     part = Box(c.RAIL_WIDTH, length, thickness, align=(Align.MIN,)*3)
     # Includes the sleeve's 2.1 mm overlap into the flange, not just the post.
     # Concave edge finishing adds material. Extend the cutter by that amount
@@ -65,7 +74,6 @@ def rail_strip(pin_units=18, thickness=c.RAIL_THICKNESS, *, mount='pegs', hole='
         # cage. It avoids thin partitions between consecutive EIA holes.
         part -= Pos(c.SLEEVE_RELIEF_W, -1, c.CAGE_WEB)*Box(
             c.RAIL_WIDTH-c.SLEEVE_RELIEF_W+1, length+2, thickness, align=(Align.MIN,)*3)
-    cone_height = (c.INSERT_M6_HOLE_D-c.SCREW_CLEAR)/2
     for x, y in rail_hole_centres(pin_units):
         if hole == 'insert':
             part -= Pos(x, y, -1)*Cylinder(c.INSERT_M6_HOLE_D/2, c.INSERT_POCKET_DEPTH+1,

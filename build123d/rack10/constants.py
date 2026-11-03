@@ -48,11 +48,11 @@ INSERT_M6_LEN = 9.0  # [C] TH060H090 length H
 INSERT_WALL_MIN = 2.0  # [C] TH060H090 minimum wall E
 INSERT_POCKET_DEPTH = INSERT_M6_LEN + 0.5  # [C] E2b
 RAIL_WIDTH = 31.0  # [C] E2b
-RAIL_FLANGE = 16.0  # [C] E2b
 RAIL_THICKNESS = 12.0  # [C] E2b
 RAIL_MAX_UNITS = 27  # [C] E2b: (15*27+31)/sqrt(2)=308.3 on 325x320 bed; 28 leaves only 1 mm
 PEG_SQUARE = 4.0  # [C] HR LOCKPIN_HOLE_SIDE_LENGTH (nominal throat)
 PEG_PITCH = 15.0  # [C] HR BASE_UNIT
+RAIL_FLANGE = RAIL_WIDTH - PEG_PITCH  # [C] E2b: 16 mm past the post face
 PEG_TOL = 0.2  # [C] HR TOLERANCE; E2b round-3 A4 applies to peg width
 POST_INNER_SPAN = 255.0  # [C] E2b, 17 HomeRacker units
 RAIL_HOLE_X = PEG_PITCH + (POST_INNER_SPAN-HOLE_SPAN)/2  # [C] E2b

@@ -4954,7 +4954,7 @@
         {
           "name": "thickness",
           "label": "Bar thickness",
-          "description": "11\u201314 mm; insert bore exits through the rear flange.",
+          "description": "Insert mode needs 12\u201314 mm for its load-bearing seat; 11\u201311.5 mm is cage-nut-only.",
           "unit": "mm",
           "kind": "number",
           "default": 12,

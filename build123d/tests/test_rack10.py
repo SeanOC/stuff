@@ -12,7 +12,7 @@ from holders.registry import in_print_frame
 from rack10 import constants as c
 from rack10.keystone import keystone_row, mating_edge
 from rack10.panel import ear_profile, hole_centres, panel, panel_height
-from rack10.rail_strip import peg_stations, rail_hole_centres
+from rack10.rail_strip import RailFitError, peg_stations, rail_hole_centres
 from rack10.tray import TrayFitError, tie_mating_edge, tray, tray_dimensions
 from rack10.vent import vent_pattern
 from scripts.export import export_stl
@@ -35,8 +35,8 @@ CASES += [(blank.SPEC, {'units':2,'vented':True,'slot_mm':8}, 'vented-max-slot')
 # Hardware modes exercise both thickness limits and the longest diagonal rail.
 CASES += [(rail.SPEC, {'pin_units':n, 'thickness':t, 'mount':m, 'hole':h},
            f'{h}-{m}-{n}-{t}')
-          for h,m in [('cage_nut','pegs'),('cage_nut','pin_holes'),('insert','pin_holes')]
-          for n,t in [(5,11),(27,14)]]
+          for h,m in [('cage_nut','pegs'),('cage_nut','pin_holes'),('insert','pin_holes'),('insert','pegs')]
+          for n,t in [(5,12 if h == 'insert' else 11),(27,14)]]
 
 
 def test_panel_datum_and_round_apertures():
@@ -166,6 +166,11 @@ def test_preset_is_one_watertight_solid_inside_both_beds(spec,preset,tmp_path):
 @pytest.mark.audit
 @pytest.mark.parametrize('spec,values,case',CASES,ids=[f'{s.name}-{n}' for s,v,n in CASES])
 def test_endpoint_audit_and_edges(spec,values,case):
+    if spec is rail.SPEC and values.get('hole', 'insert') == 'insert' and values.get('thickness',12) < 12:
+        with pytest.raises(RailFitError, match='insert seat wall'):
+            spec.build(values)
+        record(f'{spec.name}-{case}', result='REJECTED', reason='insert seat wall below 2 mm')
+        return
     part=spec.build(values)
     if spec is shelf.SPEC:
         v=spec.resolve_values(values)
@@ -198,8 +203,10 @@ def test_rack10_rail_strip_hole_and_peg_layout(pin_units, units):
     assert centres[0][0]-4-(7.5+1.9) >= 2
 
 
-@pytest.mark.parametrize('pin_units,thickness', [(5,11),(15,12),(18,14)])
+@pytest.mark.parametrize('pin_units,thickness', [(5,12),(15,12),(18,14)])
 def test_rack10_rail_strip_sleeves_and_through_insert(pin_units, thickness):
+    cone_height = (c.INSERT_M6_HOLE_D-c.SCREW_CLEAR)/2
+    assert (thickness-c.INSERT_POCKET_DEPTH-cone_height)*2**.5 >= c.INSERT_WALL_MIN
     length = 15*pin_units
     part = rail.build({'pin_units':pin_units, 'thickness':thickness})
     for y in (0,length-15):
@@ -249,3 +256,12 @@ def test_rack10_rail_strip_rejects_bed_overflow():
             rail_strip(units)
         with pytest.raises(ValueError, match='bed limit.*segment at a connector sleeve'):
             rail.build({'pin_units':units})
+
+
+@pytest.mark.parametrize('thickness', [11,11.5])
+@pytest.mark.parametrize('mount', ['pegs','pin_holes'])
+def test_rack10_rail_strip_thin_insert_seat_is_rejected(thickness, mount):
+    with pytest.raises(RailFitError, match='insert seat wall.*12 mm or cage_nut'):
+        rail.build({'pin_units':5, 'thickness':thickness, 'mount':mount})
+    cage = rail.build({'pin_units':5, 'thickness':thickness, 'mount':mount, 'hole':'cage_nut'})
+    assert cage.is_valid and len(cage.solids()) == 1

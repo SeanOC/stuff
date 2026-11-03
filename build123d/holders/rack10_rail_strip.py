@@ -25,7 +25,7 @@ SPEC = register(ModelSpec(
         Param('pin_units', 'integer', 18, min=5, max=27, step=1, label='Post length (15 mm pin units)',
               description='18 pin units hold 6 rack U; 15 hold 5 U. Maximum 27 units; segment longer posts at a connector sleeve.'),
         Param('thickness', 'number', 12, min=11, max=14, step=.5, unit='mm', label='Bar thickness',
-              description='11–14 mm; insert bore exits through the rear flange.'),
+              description='Insert mode needs 12–14 mm for its load-bearing seat; 11–11.5 mm is cage-nut-only.'),
         Param('mount', 'enum', 'pegs', choices=('pegs', 'pin_holes'), label='Post attachment'),
         Param('hole', 'enum', 'insert', choices=('insert', 'cage_nut'), label='Equipment fastener'),
     ),

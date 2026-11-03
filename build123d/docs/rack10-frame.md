@@ -164,7 +164,13 @@ bounding square is `(405 + 31) / sqrt(2) = 308.3 mm`, leaving at least
 H2C left nozzle (the right nozzle's 305 mm X reach is too short).
 28 units leaves only about 1 mm; 29–30 do not fit. Requests above 27 raise
 a named bed-limit error instructing the caller to **segment at a connector
-sleeve**. Length is never silently clamped. Thickness is 11–14 mm.
+sleeve**. Length is never silently clamped. Thickness is 11–14 mm; **11–11.5 mm is cage-nut-only**. Insert mode needs
+12–14 mm on the 0.5 mm control steps. The seat's thinnest wall, normal to
+the cone at its Ø6.4 exit, is `(thickness − 10.3) × sqrt(2)`:
+2.404 mm at thickness 12, clearing the 2 mm hardware wall floor. At
+thickness 11 it would be only 0.99 mm; the library rejects that combination
+with an `insert seat wall` error and the 12 mm / cage-nut remedy. This
+analytical check supplements the print audit's general 0.9 mm wall floor.
 The production audit checks all presets, numeric endpoints and hardware
 mode corners with no new exceptions; the insert cone needs no bridge.
 
