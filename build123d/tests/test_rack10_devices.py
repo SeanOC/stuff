@@ -55,6 +55,8 @@ def test_sonos_fit_and_cradle_clearance():
         tray_dimensions(217,217,64,2,1)
     assert shelf_dimensions(217,217,64)['width'] >= 217
     assert tray_dimensions(156,162.4,152,4,2)['inner_width']==160
+    with pytest.raises(TrayFitError,match='clamp clearance'):
+        rack10_ears.ears(clearance=.5)
 
 
 def test_shelf_both_load_cases():

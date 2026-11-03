@@ -193,7 +193,8 @@ four peaked floor slots and around the device, clear of connectors and
 cooling openings. This does not assume screw holes in the switch housing.
 The generic 210 mm body has positive clearance under the actual 222.25 mm
 rail opening; 210 mm is the device width, not the mounting flange. The
-front flange remains 254 mm. All mounts have a 10 mm rear cable notch.
+front flange remains 254 mm. Clamp clearance is 1–2 mm, including for direct
+library callers: the 1 mm root blends must stay outside the device envelope. All mounts have a 10 mm rear cable notch.
 
 ### Sonos shelf and rib calculation
 
@@ -211,7 +212,8 @@ Amp's front, back and top remain unobstructed.
 The shelf uses a 3 mm perforated deck over a **14 mm deep rib grid**. The openings continue through the ribs, leaving continuous webs in
 both bending directions. This avoids suspended underside ribs and keeps
 printing support-free. A full solid slab of this height is unnecessary:
-vent cells remove 35% of the inset device-zone area before edge relief.
+the inset device-zone grid targets 35% open area before reserving the cable-notch
+border and applying edge relief.
 
 The rule-of-thumb calculation is deliberately FEA-free. Use a 3 kg point
 load (29.43 N), PETG elastic modulus **E = 2000 N/mm²**, and ignore the front
