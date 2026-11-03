@@ -478,7 +478,7 @@ def section_svg(part, plane: PlaneSpec) -> str:
 
 def export_supported_review(spec, renders):
     """The outside-corner support variant needs its own underside review."""
-    preset = next(pr for pr in spec.presets if pr.id == 'outside-corner-r1-supported')
+    preset = next(pr for pr in spec.presets if pr.id == 'outside-corner-r1')
     values = spec.resolve_values(preset.values)
     raw = spec.build(values)
     ctx = review_context(spec, values, raw)

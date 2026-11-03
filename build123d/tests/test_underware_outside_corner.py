@@ -61,19 +61,18 @@ def test_registration_mirrors_the_mitre_params():
     assert (arm.kind, arm.default, arm.choices, arm.group, arm.filename) == (
         'enum', 'second', ('first', 'second'), 'Channel Size', True)
     assert all(m.outside_values(pr.values)['edge_offset_mm'] == 0 for pr in SPEC.presets)
-    assert list(PRESETS) == ['outside-corner', 'outside-corner-r1', 'outside-corner-w2-h28-y2',
-                             'outside-corner-r1-supported']
+    assert list(PRESETS) == ['outside-corner', 'outside-corner-r1', 'outside-corner-w2-h28-y2']
     assert not any(q.filename for q in SPEC.params if q.name in SUPPORT_PARAMS)
     assert [pr.values for pr in MSPEC.presets] == list(PRESETS.values())[:2]
     assert SPEC.category_id == 'multiboard' and SPEC.print_frame is m.outside_print_frame
 
 
 @pytest.mark.parametrize('preset', PRESETS)
-def test_presets_fit_the_bed_and_are_single_watertight_solids(preset, tmp_path):
+def test_presets_fit_the_bed_and_are_two_watertight_solids(preset, tmp_path):
     values = PRESETS[preset]
     v = m.outside_values(values)
     part = SPEC.build(values)
-    assert part.is_valid and len(part.solids()) == 1
+    assert part.is_valid and len(part.solids()) == 2
     box = (SPEC.print_frame(v)*part).bounding_box()
     assert m.outside_extent(v) == pytest.approx((box.size.Y, box.size.X, box.size.Z), abs=1e-3)
     assert _fits(box.size.Y, box.size.X, box.size.Z)
@@ -104,10 +103,10 @@ def test_bed_gate_includes_grip_envelope(values, axis, limit, mirrored, monkeypa
     """Synthetic beds bracket the reproduced undercounts: 26.4 < 30 <
     33.94 mm across, and 38.365 < 38.6 < 38.789 mm high. The H2S fits both,
     but the same validation must reject them when that axis is the limit."""
-    values = {**values, 'mirror_channel': mirrored}
+    values = {**values, 'mirror_channel': mirrored, 'supports': 'none'}
     m._checked_outside(values)  # both fit the real production bed
     monkeypatch.setattr(m, axis, limit)
-    m._checked_outside({'mirror_channel': mirrored})  # unflared, unshifted fits
+    m._checked_outside({'mirror_channel': mirrored, 'supports': 'none'})  # unflared, unshifted fits
     with pytest.raises(ValueError, match='past the .*build volume.*grip_flare.*edge_offset_mm'):
         m._checked_outside(values)
 
@@ -255,7 +254,7 @@ def test_mirror_channel_is_an_x_flip(case):
     values = MIRROR_CASES[case]
     flipped = SPEC.build({**values, 'mirror_channel': True})
     expect = mirror(SPEC.build(values), Plane.YZ)
-    assert flipped.is_valid and len(flipped.solids()) == 1
+    assert flipped.is_valid and len(flipped.solids()) == 2
     assert (flipped - expect).volume < 1e-3 and (expect - flipped).volume < 1e-3
     a, b = flipped.bounding_box(), expect.bounding_box()
     assert np.allclose([*a.min, *a.max], [*b.min, *b.max], atol=1e-6)
@@ -293,7 +292,7 @@ def test_bed_flat_under_the_bend(case):
     unflattened one minus exactly that half-space (print-frame bbox: only
     min Z moves); one bed strip under the bend of >= 60 mm2; the floor keeps
     SNAP_WALL - BEND_FLAT_MM there."""
-    values = BED_CASES[case]
+    values = {**BED_CASES[case], 'supports': 'none'}
     v = m.outside_values(values)
     frame = SPEC.print_frame(v)
     raw, part = m.unflattened_outside_corner(values), SPEC.build(values)
@@ -334,7 +333,7 @@ def test_bend_exception_is_narrow_and_exact(case):
     because the flat removed the crown), with it the audit passes; the
     print-frame placement keeps the same faces; a new curved overhang under
     the first arm, off the bend, is not waived."""
-    values = BEND_CASES[case]
+    values = {**BEND_CASES[case], 'supports': 'none'}
     v = m.outside_values(values)
     frame, part = SPEC.print_frame(v), SPEC.build(values)
     regions = m.audit_exclusions(SPEC.name, values)
@@ -429,7 +428,7 @@ def edge_inventory(part, values):
         # These are disposable interfaces, not exposed finished-part edges.
         # Fin profiles, thickness and the pad's 45-degree bed chamfer have
         # independent geometry and production-audit tests.
-        families['sacrificial pad/groove'] = len(support.pad.edges())
+        families['sacrificial pad/ear'] = len(support.pad.edges())
         families['sacrificial fin'] = sum(len(f.edges()) for f in support.fins)
         return families, worst
     if v['mirror_channel']:
@@ -550,7 +549,7 @@ def test_endpoint_audit_and_edges(case):
     """P4 table for underware_outside_corner in its -45 degree print frame:
     raw (only the bend underside fails), filtered (every exception family)
     and the exposed-edge inventory."""
-    values = ENDPOINT_CASES[case]
+    values = {**ENDPOINT_CASES[case], 'supports': 'none'}
     v = m.outside_values(values)
     frame, part = SPEC.print_frame(v), SPEC.build(values)
     assert part.is_valid and len(part.solids()) == 1

@@ -42,19 +42,20 @@ mm second, + 28 mm per cell) plus the open-face radius added_radius*GRID,
 so on a panel ending at the edge line they fall on the 14 + 28k lattice
 (first arm +0.8 mm, the mitre's lead-out). It prints in the mirror image of
 the mitre's frame (outside_print_frame, -45 degrees about X): the bend down,
-standing on a bed flat cut BEND_FLAT_MM into its floor, both arms rising 45
+on a detached toothed cradle by default, both arms rising 45
 degrees with each arm in the mitre's attitude (grips up and inward). Worst
 load: cables pulling either arm off its panel, along its grips, carried along
-the layers. The bend's floor underside is a convex cylinder rising off the bed
-from 90 to 45 degrees of overhang, printed unsupported through one published
-exception (BendUnderside, signed by the mayor on pst-38hu7, 2026-10-31).
+the layers. The full bend floor is a convex cylinder with 90 to 45 degrees
+of downward overhang, backed by normal-gap teeth. supports=none preserves
+the original BEND_FLAT_MM cut and scoped BendUnderside exception.
 added_radius > 0 needs an edge rounded (or clear) to that radius about the
 bend axis: a square edge would cut into the bend.
 
-The opt-in built_in variant adds a disposable 0.6 mm pad with 0.2 mm
-tear-off remnants and 0.95 mm cradle fins. The normal gap is adjustable;
-the fins follow the bend and the first 4.24 mm of each arm. The retained part,
-mounts and cable load path are unchanged. See docs/underware-outside-corner.md.
+The built_in default adds a disposable 0.6 mm pad and 0.95 mm toothed fins,
+including a crown rail 1 mm above the pad. The normal gap is adjustable;
+no support touches the channel. Recessed fin continuations extend 4.24 mm
+along each arm. Mounts and cable load path are unchanged (PLA or PCTG).
+See docs/underware-outside-corner.md.
 
 Not ported: the label (U4b, underware_text_label), Decorative /
 Support_Bridging_Separation (as underware_i_channel). Deviations are listed in
@@ -66,7 +67,7 @@ corner's bend (the source flips it to -x in the curve and second channel).
 """
 from math import hypot, radians, sin, sqrt, tan
 
-from build123d import Align, Box, Location, Plane, Pos, mirror
+from build123d import Align, Box, Compound, Location, Plane, Pos, mirror
 from holders.printer import BED_X, BED_Y, BED_Z
 from holders.registry import ModelSpec, Param, Preset, register
 from underware import constants as c
@@ -318,11 +319,12 @@ BEND_FLAT_MM = 0.6
 
 
 def outside_bed_plane(v) -> float:
-    """Print-frame height of the bed flat: BEND_FLAT_MM above the floor
-    cylinder's lowest line (the bend's mid-angle, from the axis)."""
+    """Lowest retained Z in the print frame: full arc for the cradle, or
+    BEND_FLAT_MM above the cylinder's tangent line in legacy none mode."""
     h, r = v['channel_total_height'], v['added_radius']
     ya, za = p.outside_axis(v['channel_width_units'], h, r)
-    return (za - ya)/sqrt(2) - p.outside_floor_radius(h, r) + BEND_FLAT_MM
+    return (za - ya)/sqrt(2) - p.outside_floor_radius(h, r) + (
+        BEND_FLAT_MM if v['supports'] == 'none' else 0.)
 
 
 def outside_extent(v) -> tuple[float, float, float]:
@@ -362,15 +364,15 @@ def outside_extent(v) -> tuple[float, float, float]:
                     zmax = max(zmax, q.Z)
     height = zmax - outside_bed_plane(v)
     if v.get('supports', 'none') == 'built_in':
-        from underware.outside_support import REMNANT, dimensions
+        from underware.outside_support import CROWN_RISE, PAD_THICKNESS, EAR_LENGTH, dimensions
         pw, pl = dimensions(w, rf, v['support_gap_mm'])
         ya, za = p.outside_axis(v['channel_width_units'], h, v['added_radius'])
         yc = (ya + za)/sqrt(2)
         xc = -v['added_radius']*c.GRID
         # Extend the complete retained-part envelope with the sacrificial pad.
-        xmin, xmax = min(xmin, xc-pw/2), max(xmax, xc+pw/2)
+        xmin, xmax = min(xmin, xc-pw/2), max(xmax, xc+pw/2+EAR_LENGTH)
         ymin, ymax = min(ymin, yc-pl/2), max(ymax, yc+pl/2)
-        height += REMNANT
+        height += CROWN_RISE + v['support_gap_mm'] + PAD_THICKNESS
     return ymax-ymin, xmax-xmin, height
 
 
@@ -434,11 +436,14 @@ def bend_flat(part, v):
 
 def build_outside_corner(values=None):
     v = outside_values(values)
-    part = bend_flat(unflattened_outside_corner(values), v)
-    if v['supports'] == 'built_in':
-        support = outside_designed_support(values)
-        part = part.fuse(support.pad, *support.fins)
-    return part
+    part = unflattened_outside_corner(values)
+    if v['supports'] == 'none':
+        return bend_flat(part, v)
+    support = outside_designed_support(values)
+    # Flatten the mirrored channel's nested compound: Compound.volume only
+    # sums immediate solids, while tessellation/solids() also recurse.
+    cradle = support.pad.fuse(*support.fins)
+    return Compound(children=[*part.solids(), *cradle.solids()])
 
 
 def outside_designed_support(values=None):
@@ -450,7 +455,7 @@ def outside_designed_support(values=None):
     h, r = v['channel_total_height'], v['added_radius']
     ya, za = p.outside_axis(v['channel_width_units'], h, r)
     support = cradle(c.channel_width(v['channel_width_units']),
-                     p.outside_floor_radius(h, r), v['support_gap_mm'])
+                     p.outside_floor_radius(h, r), v['support_gap_mm'], mirrored=v['mirror_channel'])
     x = r * c.GRID * (1 if v['mirror_channel'] else -1)
     placement = outside_print_frame(v).inverse() * Pos(x, (ya + za)/sqrt(2), outside_bed_plane(v))
     return support.moved(placement)
@@ -641,7 +646,7 @@ SPEC_OUTSIDE = register(ModelSpec(
                 'where two openGrid boards meet, with an optional larger bend radius for a '
                 'rounded edge: the convex twin of the mitre, an original variant derived from '
                 'it. ' + BLURB + ' Prints standing on its bend at 45°; the curved floor under '
-                'the bend prints unsupported by default, with an optional removable cradle.',
+                'the bend uses a detached toothed cradle by default; supports=none preserves the bed flat.',
     category_id='multiboard',
     build=build_outside_corner,
     print_frame=outside_print_frame,
@@ -657,7 +662,7 @@ SPEC_OUTSIDE = register(ModelSpec(
               unit='mm', label='Edge offset of one arm\'s grips (overlapping tile: 6.8 full, 4 lite)'),
         Param('offset_arm', 'enum', 'second', choices=OFFSET_ARMS, group='Channel Size',
               filename=True, label='Arm the edge offset moves'),
-        Param('supports', 'enum', 'none', choices=('none', 'built_in'), group='Print',
+        Param('supports', 'enum', 'built_in', choices=('none', 'built_in'), group='Print',
               label='Built-in removable supports'),
         Param('support_gap_mm', 'number', 0.2, min=0.1, max=0.3, step=0.05, unit='mm',
               group='Print', label='Support gap'),
@@ -668,7 +673,5 @@ SPEC_OUTSIDE = register(ModelSpec(
         Preset('outside-corner-r1', '1 × 1 arms, 22 mm, added radius 1', {'added_radius': 1}),
         Preset('outside-corner-w2-h28-y2', '2 wide, 28 mm, 2 × 2 arms',
                {'channel_width_units': 2, 'channel_total_height': 28, 'length_units': 2}),
-        Preset('outside-corner-r1-supported', '1 × 1 arms, 22 mm, radius 1, removable supports',
-               {'added_radius': 1, 'supports': 'built_in'}),
     ),
 ))
