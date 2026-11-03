@@ -100,7 +100,10 @@ describe("build123d discovery (pst-dsiq)", () => {
     const expected = [
       "homeracker-connector", "homeracker-foot", "homeracker-lockpin",
       "homeracker-rackpanel", "homeracker-support",
-      ...(enabled ? ["rack10-blank-panel", "rack10-keystone-panel", "rack10-tray"] : []),
+      ...(enabled ? [
+        "rack10-blank-panel", "rack10-cradle", "rack10-ears", "rack10-hub-tray",
+        "rack10-keystone-panel", "rack10-shelf", "rack10-tray",
+      ] : []),
     ];
     expect(models.filter((m) => m.categoryId === "rack10").map((m) => m.slug)).toEqual(expected);
     expect(models.filter((m) => m.categoryId === "storage")

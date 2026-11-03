@@ -200,9 +200,25 @@ export const BUILD123D_CATALOG: Record<string, CatalogEntry> = {
     categoryId: "rack10",
     blurb: "Solid or vented 10-inch rack panels with reinforced ears. Print front face down without supports.",
   },
+  rack10_cradle: {
+    categoryId: "rack10",
+    blurb: "Vented cradle with an open bezel, low rails, four pads and rear cable access.",
+  },
+  rack10_ears: {
+    categoryId: "rack10",
+    blurb: "Clamp ears for devices without mounting screw holes. Secure with zip ties up to 3 mm wide.",
+  },
+  rack10_hub_tray: {
+    categoryId: "rack10",
+    blurb: "1U open-front pockets with rear cable slots and a cable comb.",
+  },
   rack10_keystone_panel: {
     categoryId: "rack10",
     blurb: "A 1U keystone panel with up to eleven nominal ports and recessed latch seats. Print face down and verify the chosen jack with a fit print.",
+  },
+  rack10_shelf: {
+    categoryId: "rack10",
+    blurb: "2U open shelf with a vented deck, ribs and four pads. The Sonos preset with stops is 222.2 mm wide: check your rails or disable stops.",
   },
   rack10_tray: {
     categoryId: "rack10",

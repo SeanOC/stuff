@@ -32,7 +32,10 @@ test.describe("gallery", () => {
     test.skip(process.env.BD_MODELS_ENABLED !== "1", "build123d gallery cards are opt-in");
     await page.goto("/");
     const rackShelf = page.locator("#shelf-rack10");
-    for (const slug of ["rack10-blank-panel", "rack10-keystone-panel", "rack10-tray"]) {
+    for (const slug of [
+      "rack10-blank-panel", "rack10-cradle", "rack10-ears", "rack10-hub-tray",
+      "rack10-keystone-panel", "rack10-shelf", "rack10-tray",
+    ]) {
       await expect(rackShelf.locator(`a[href="/models/${slug}"]`)).toBeVisible();
     }
     await expect(page.locator('#shelf-storage a[href^="/models/rack10-"]')).toHaveCount(0);
