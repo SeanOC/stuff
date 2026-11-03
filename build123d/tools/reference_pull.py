@@ -47,6 +47,8 @@ LICENCE_TEXTS = {
     "CC BY-NC-SA 4.0": "reference/LICENSES/CC-BY-NC-SA-4.0.txt",
     "Creative Commons — Attribution  — Noncommercial  —  Share Alike":
         "reference/LICENSES/CC-BY-NC-SA-4.0.txt",
+    # opengrid library (fangpenlin, MakerRepo) — MIT, copyright Launch Platform (mirrored 2026-11-02).
+    "MIT (Launch Platform 2026)": "reference/LICENSES/MIT-Launch-Platform-2026.txt",
 }
 
 GROUP_RE = re.compile(r"^[a-z0-9-]+$")
