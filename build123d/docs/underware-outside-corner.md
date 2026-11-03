@@ -64,16 +64,20 @@ instead (the usual box or cabinet corner), the covered tile's holes sit one
 tile thickness further from the edge: 6.8 mm for openGrid full, 4 mm for
 openGrid lite. `edge_offset_mm` (0–8 mm, default 0) adds that distance to the
 formula above on the arm `offset_arm` names (`first` | `second`, default
-`second`): its cells move toward its free tip by exactly the offset, while
-the other arm, the bend and both arm lengths stay as they are. A shifted
-grip can extend beyond the wall envelope in the print frame: the extents
-include the surviving grip profiles and their end ramps.
-The arm is still length_units × 28 mm long and its outermost (tip-side) grip
-has only 28/2 − 15/2 = 6.5 mm of slack to the tip, so a cell whose 15 mm grip
-would cross the tip face is dropped: past 6.5 mm the shifted arm loses its
-tip-side cell (a 2-unit arm at 6.8 mm keeps its inner grip), and a 1-unit arm
-would lose its only cell, which is a named error. Per-cell suppress codes
-keep their lattice index, so a dropped cell's code is ignored.
+`second`): its cells move toward its free tip by exactly the offset, and
+that arm grows from `length_units × 28` to `length_units × 28 + edge_offset_mm`
+mm. The other arm and the bend stay in place. An overlapping tile must not
+cost a tab set: a 2-unit arm at 6.8 mm is 62.8 mm long and keeps both cells;
+a 1-unit arm is 34.8 mm long and keeps its one cell. Per-cell suppress codes
+retain their original lattice index. Cord cutouts remain anchored relative
+to the bend, with their requested shift unchanged in model coordinates.
+
+The arm centre moves by half the extension, and the local grip lattice moves
+by the other half: each grip moves exactly the full offset from the edge.
+The tip-side flare slit therefore keeps 6.1 mm of wall to the new tip face
+throughout the offset domain. The fin-wall guard still checks that geometry.
+The print-frame extents include the extended walls, all grip profiles and
+their end ramps.
 
 ## Print orientation
 
@@ -97,14 +101,15 @@ the bed even at width 1, height 10, so `length_units` ≤ 7
 (`MAX_ARM_OUTSIDE`), and longer/wider/taller combinations are named errors.
 
 The analytic bed check includes `grip_flare` and `edge_offset_mm`, including
-one-sided/suppressed grips and dropped cells. Previously it used only the
-unflared wall envelope. For example, at otherwise default values, flare
+one-sided/suppressed grips and the longer offset arm. For example, at
+otherwise default values, flare
 9.9° increases the width from 26.400 to 33.940 mm, and offset 6.5 mm increases
-the height from 38.365 to 38.789 mm. Mirroring preserves these sizes. These
+the height from 38.365 to 42.395 mm (`supports=none`). Mirroring preserves these sizes. These
 examples fit the H2S; the corrected check rejects any combination whose
 full grip envelope exceeds the bed limits, and its error names flare and
-offset among the settings to reduce. This correction changes size validation,
-with no change to the built geometry, parameters or presets.
+offset among the settings to reduce. All shipped presets use zero offset
+and retain their geometry. The cradle is fixed to the unchanged bend: its
+pad margin, fins, crown rail and pull ear are unchanged by extending an arm.
 
 ### Built-in supports
 
@@ -158,6 +163,12 @@ Fin and pad surfaces cannot waive their own overhangs. The bend has no
 `BendUnderside` exception in this mode. Bed validation includes the pad,
 pull ear and the 1 mm crown rail.
 
+The offset review sheets show the retained tab sets at 6.8 mm:
+[one-cell second arm](renders/review/underware-outside-corner-offset-6.8-y1-second.png),
+[two-cell second arm](renders/review/underware-outside-corner-offset-6.8-y2-second.png),
+and [two-cell first arm](renders/review/underware-outside-corner-offset-6.8-y2-first.png).
+Their section SVGs are alongside the existing sections.
+
 The [default review sheet](renders/review/underware-outside-corner.png) and
 [radius-1 sheet](renders/review/underware-outside-corner-outside-corner-r1.png)
 show the fins in ISO/FRONT and the pad in UNDERSIDE. Regenerate them with
@@ -210,6 +221,7 @@ exceptions; filtered = the family exceptions + BendUnderside):
 | length-7-w4-h10 | 94545 | 63.3 | 1.300 | 45.0 | 45.0 | grip-end-wedge, bend-underside | PASS |
 | separators-w4 | 38725 | 72.4 | 1.300 | 45.0 | 45.0 | grip-end-wedge, bend-underside | PASS |
 | separators-w3-r1 | 31302 | 77.2 | 1.300 | 45.0 | 45.0 | grip-end-wedge, bend-underside | PASS |
+| separators-w4-offcentre-r1 | 38327 | 77.2 | 1.300 | 45.0 | 45.0 | grip-end-wedge, bend-underside | PASS |
 | flare-9.9 | 9378 | 72.4 | 1.281 | 45.0 | 45.0 | grip-end-wedge, flare-slit-fin, bend-underside | PASS |
 | flare-9.9-h72-r2 | 68167 | 80.4 | 1.281 | 45.0 | 45.0 | grip-end-wedge, flare-slit-fin, bend-underside | PASS |
 | flare-5-suppress | 8602 | 72.4 | 1.295 | 45.0 | 45.0 | grip-end-wedge, flare-slit-fin, bend-underside | PASS |
@@ -222,6 +234,20 @@ exceptions; filtered = the family exceptions + BendUnderside):
 | cut-shift-14 | 20874 | 72.4 | 1.300 | 45.0 | 45.0 | grip-end-wedge, cutout-sill, bend-underside | PASS |
 | cut-left-mirror | 21019 | 72.4 | 1.300 | 45.0 | 45.0 | grip-end-wedge, cutout-sill, bend-underside | PASS |
 | cut-right-top-h10 | 11862 | 63.3 | 1.300 | 45.0 | 45.0 | grip-end-wedge, bend-underside | PASS |
+| offset-8-y2 | 16032 | 72.4 | 1.300 | 45.0 | 45.0 | grip-end-wedge, bend-underside | PASS |
+| offset-8-y2-first | 16032 | 72.4 | 1.300 | 45.0 | 45.0 | grip-end-wedge, bend-underside | PASS |
+| offset-6.5 | 9347 | 72.4 | 1.300 | 45.0 | 45.0 | grip-end-wedge, bend-underside | PASS |
+| offset-6.5-first-mirror | 9347 | 72.4 | 1.300 | 45.0 | 45.0 | grip-end-wedge, bend-underside | PASS |
+| offset-6.8-y2-flare-9.9 | 17406 | 72.4 | 1.281 | 45.0 | 45.0 | grip-end-wedge, flare-slit-fin, bend-underside | PASS |
+| offset-4-flare-9.9-first | 9823 | 72.4 | 1.281 | 45.0 | 45.0 | grip-end-wedge, flare-slit-fin, bend-underside | PASS |
+| offset-5.2-flare-9.9 | 9956 | 72.4 | 1.281 | 45.0 | 45.0 | grip-end-wedge, flare-slit-fin, bend-underside | PASS |
+| offset-6.1-flare-9.9-first | 10056 | 72.4 | 1.281 | 45.0 | 45.0 | grip-end-wedge, flare-slit-fin, bend-underside | PASS |
+| offset-5.2-flare-9.9-y3-first | 24500 | 72.4 | 1.281 | 45.0 | 45.0 | grip-end-wedge, flare-slit-fin, bend-underside | PASS |
+| offset-6.1-flare-9.9-y3 | 24600 | 72.4 | 1.281 | 45.0 | 45.0 | grip-end-wedge, flare-slit-fin, bend-underside | PASS |
+| offset-6.5-flare-9.9-h72-r2 | 70190 | 80.4 | 1.281 | 45.0 | 45.0 | grip-end-wedge, flare-slit-fin, bend-underside | PASS |
+| offset-7-first-cut | 21156 | 72.4 | 1.300 | 45.0 | 45.0 | grip-end-wedge, cutout-sill, bend-underside | PASS |
+| offset-8-max-corner | 163257 | 80.4 | 1.300 | 45.0 | 45.0 | grip-end-wedge, bend-underside | PASS |
+| offset-8-length-7-first | 48622 | 72.4 | 1.300 | 45.0 | 45.0 | grip-end-wedge, bend-underside | PASS |
 
 Min wall 1.300 mm is the grip nubs (1.400 with every grip suppressed; the
 bed-flat floor keeps 1.4 mm), 1.281 with a 9.9° flare. Raw (no exceptions)

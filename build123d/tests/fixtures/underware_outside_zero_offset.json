@@ -1,0 +1,30 @@
+{
+  "source_sha": "ccb5f2aa10cc89fc6a426878ff25ae7007f7a52f",
+  "description": "Pre-extension zero-offset STL digests and volumes; scripts.export.export_stl, both support modes.",
+  "presets": {
+    "outside-corner-none": {
+      "sha256": "f853e44cd4010f8f5cb2d976a5aefb4c6336f3af0a69aeb4200429b9b3c34240",
+      "volume": 8624.18104280388
+    },
+    "outside-corner-built_in": {
+      "sha256": "fc82e4bbc0355667368367b54ad49ac3246a801f3bb5bc83531b596ef4fcd97b",
+      "volume": 9852.347181422316
+    },
+    "outside-corner-r1-none": {
+      "sha256": "04e4c39164c511696b6ae63c283865e6c3c04aadef4d879f71920c98c2eb190b",
+      "volume": 13473.292598513312
+    },
+    "outside-corner-r1-built_in": {
+      "sha256": "59419bece31ca5c38fd55fc13f143f1b5b560fcbb66c0d1936d94a2bcec3e283",
+      "volume": 16567.965973674007
+    },
+    "outside-corner-w2-h28-y2-none": {
+      "sha256": "b22150eb307fcf6e4b6fec683686f8b4675b7e3a1352be0962923966e3679a6b",
+      "volume": 27271.29169077515
+    },
+    "outside-corner-w2-h28-y2-built_in": {
+      "sha256": "1924cc666b8fa992130527b78762fd6953538df9c350e9f08f8f92bb195a5c59",
+      "volume": 30533.8144117346
+    }
+  }
+}
