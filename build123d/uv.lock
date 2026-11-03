@@ -584,11 +584,20 @@ wheels = [
 [[package]]
 name = "opengrid"
 version = "0.1.0"
-source = { git = "https://makerrepo.com/r/fangpenlin/opengrid.git?rev=eea2b4154a10d2909e5edece567cbe0563aaf955#eea2b4154a10d2909e5edece567cbe0563aaf955" }
+source = { directory = "vendor/opengrid" }
 dependencies = [
     { name = "build123d" },
     { name = "makerrepo" },
 ]
+
+[package.metadata]
+requires-dist = [
+    { name = "build123d", specifier = ">=0.10.0" },
+    { name = "makerrepo", specifier = ">=0.5.6" },
+]
+
+[package.metadata.requires-dev]
+dev = [{ name = "makerrepo-cli", specifier = ">=0.3.4" }]
 
 [[package]]
 name = "packaging"
@@ -1156,7 +1165,7 @@ requires-dist = [
     { name = "mapbox-earcut" },
     { name = "networkx", specifier = ">=3.7" },
     { name = "numpy", specifier = ">=1.26" },
-    { name = "opengrid", git = "https://makerrepo.com/r/fangpenlin/opengrid.git?rev=eea2b4154a10d2909e5edece567cbe0563aaf955" },
+    { name = "opengrid", directory = "vendor/opengrid" },
     { name = "pillow", specifier = ">=10.0" },
     { name = "pytest", specifier = ">=8.0" },
     { name = "rtree", specifier = ">=1.4.1" },

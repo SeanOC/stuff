@@ -1,3 +1,7 @@
 out/
 baked/
 .cache/
+
+# Local setuptools products from the vendored path dependency.
+vendor/opengrid/build/
+vendor/opengrid/*.egg-info/

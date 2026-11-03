@@ -13,6 +13,19 @@ provenance redundancy. For openGrid snaps, NOTICE lists the destinations to be
 published by the operator after merge. The no-upstream-originals test scans
 only `build123d/reference/`, not these `assets/` directories.
 
+## Vendored openGrid Python library
+
+The MIT `opengrid` library is vendored from the mirror into
+[`../vendor/opengrid/`](../vendor/opengrid/) at the commit recorded in
+`SOURCE.json`. Builds use that committed source as a plain uv path dependency;
+`uv sync --frozen` builds it with setuptools from PyPI and needs neither
+MakerRepo access nor bucket credentials. To update it, the operator first
+re-publishes the upstream archive to the mirror, then a bead re-vendors it.
+Keep the package, `pyproject.toml`, `LICENSE` and `README.md` byte-identical;
+drop `.gitignore`, `.pre-commit-config.yaml`, `.makerrepo/` and `uv.lock`,
+then update `SOURCE.json`, the pruned-tree test hash and the root lockfile.
+The archive hash and pruned-tree hash are separate integrity checks.
+
 ## Pull (one line)
 
 From `build123d/`, with bucket access (below):
