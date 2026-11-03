@@ -376,19 +376,25 @@ their longitudinal stiffness from the three narrow rails. The increases
 replace the earlier fit-only sections with sections meeting the stated
 elastic criterion; they are not claims of an optimised structural design.
 
-**Physical validation remains pending.** These are instantaneous elastic
-predictions for solid counted sections, using nominal material properties;
-the front-down layer stack has not been mechanically characterised. Neither
-a datasheet HDT nor these moduli establish a permissible rack temperature,
-creep duration, or sustained load rating. Print the counted sections solid.
-Before installing equipment, record filament/lot, slicer settings, actual
-contact positions and rack temperature, then measure rear-contact and tip
-sag under dummy loads initially, after sustained loading, and after unloading.
-Use the <=1 mm criterion and inspect for residual deformation. Test duration
-and maximum service temperature need to be set and recorded for the actual
-rack. Alternatively, the task permits explicit acceptance of these predicted
-values and their limitations; no such acceptance or prototype result is
-recorded yet.
+### Stiffness evidence and limits
+
+The mayor recorded acceptance in stiffness task rev 3 (2026-11-03):
+
+> the documented elastic predictions (worst case ≤ 0.93 mm tip/transverse at the fixed loads, PCTG, under the shelf's ≤ 1 mm criterion) together with the stated exclusions (mount self-weight, cable forces, fastener compliance, print anisotropy, creep, warm-rack/sustained rating) ARE this bead's accepted evidence — no prototype is required from the worker (workers never print)
+
+Sean's physical print is the separate sustained-load check, tracked on the
+rack10 epic. No physical result is claimed here.
+
+These are instantaneous elastic predictions for solid counted sections,
+using nominal material properties; the front-down layer stack has not been
+mechanically characterised. Neither a datasheet HDT nor these moduli
+establish a permissible rack temperature, creep duration, or sustained load
+rating. Print the counted sections solid. For Sean's physical check, record
+filament/lot, slicer settings, actual contact positions and rack temperature,
+then measure rear-contact and tip sag under dummy loads initially, after
+sustained loading, and after unloading. Use the <=1 mm criterion and inspect
+for residual deformation. Test duration and maximum service temperature
+need to be set and recorded for the actual rack.
 
 ### Proposed corrected 12U elevation and cables
 
