@@ -57,4 +57,4 @@ SLEEVE_PROUD = 2.1  # [C] HR: (19.2 mm sleeve - 15 mm post)/2
 SLEEVE_X = PEG_PITCH + SLEEVE_PROUD  # [C] E2b round-3 A1
 CAGE_WEB = 2.0  # [C] E2b
 PEG_LENGTH = PEG_PITCH - PEG_TOL  # Original straight peg, stays inside post
-PEG_ROOT = 0.8  # Functional blend within HR's 5.6 mm flared hole mouth
+PEG_ROOT = 0.8  # Original overlap into the bar; 0.3 mm finish fits the flared mouth

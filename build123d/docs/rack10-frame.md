@@ -108,8 +108,9 @@ the post, Z from the rail's front face toward the post. The post front
 face is Z = thickness. Peg centers are X = 7.5, Y = 7.5 + 15k mm for
 k = 1 through n−2; the end stations are reserved for connector lock pins.
 Peg width is **3.8 mm** (4.0 minus the cited 0.2 mm tolerance), length
-14.8 mm. The back relief at each end is 2.1 mm deep, 15 mm long and
-**17.1 mm wide**, including the sleeve overlap into the flange. The
+14.8 mm. The back relief clears a 2.1 mm deep, 15 mm long and
+**17.1 mm wide** sleeve footprint, including its overlap into the flange.
+The cutter adds 0.3 mm around that footprint to allow for concave chamfers. The
 whole-body sleeve intersection test checks both ends.
 
 The hole column is X = 24.2375 mm, 5.7625 mm from the flange's free edge.

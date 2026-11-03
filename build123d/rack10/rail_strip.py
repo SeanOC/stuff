@@ -6,7 +6,7 @@ The two grids are independent: every interior post station has a mount.
 """
 from math import isfinite
 
-from build123d import Align, Box, Cylinder, Pos, Rot, chamfer
+from build123d import Align, Box, Cylinder, Pos, Rot
 
 from . import constants as c
 from .panel import finish
@@ -52,9 +52,13 @@ def rail_strip(pin_units=18, thickness=c.RAIL_THICKNESS, *, mount='pegs', hole='
 
     part = Box(c.RAIL_WIDTH, length, thickness, align=(Align.MIN,)*3)
     # Includes the sleeve's 2.1 mm overlap into the flange, not just the post.
-    for y in (0, length-c.PEG_PITCH):
-        part -= Pos(-1, y, thickness-c.SLEEVE_PROUD)*Box(
-            c.SLEEVE_X+1, c.PEG_PITCH, c.SLEEVE_PROUD+1, align=(Align.MIN,)*3)
+    # Concave edge finishing adds material. Extend the cutter by that amount
+    # so the finished edge cannot intrude into the sleeve keep-out volume.
+    relief = c.EDGE_CHAMFER
+    for y in (-relief, length-c.PEG_PITCH-relief):
+        part -= Pos(-1, y, thickness-c.SLEEVE_PROUD-relief)*Box(
+            c.SLEEVE_X+1+relief, c.PEG_PITCH+2*relief, c.SLEEVE_PROUD+1+relief,
+            align=(Align.MIN,)*3)
 
     if hole == 'cage_nut':
         # A continuous open rear channel permits insertion and release of the
@@ -77,10 +81,4 @@ def rail_strip(pin_units=18, thickness=c.RAIL_THICKNESS, *, mount='pegs', hole='
         else:
             part -= Pos(c.PEG_PITCH/2, y, -1)*Box(c.PEG_SQUARE, c.PEG_SQUARE, thickness+2,
                                                 align=(Align.CENTER, Align.CENTER, Align.MIN))
-    if mount == 'pegs':
-        roots = [e for e in part.edges()
-                 if abs(e.bounding_box().min.Z-thickness) < 1e-7
-                 and abs(e.bounding_box().max.Z-thickness) < 1e-7
-                 and 5 < e.center().X < 10 and e.length < 4]
-        part = chamfer(roots, c.PEG_ROOT)
     return finish(part)

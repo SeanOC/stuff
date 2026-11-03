@@ -171,9 +171,9 @@ def test_endpoint_audit_and_edges(spec,values,case):
         device=Pos(0,c.FLOOR+v['clearance'],c.PANEL_THICKNESS+v['clearance'])*Box(
             v['device_w'],v['device_h'],v['device_d'],align=(Align.CENTER,Align.MIN,Align.MIN))
         assert (part & device).volume < 1e-6, 'floor, rails or root blend intrudes into the device envelope'
+    worst=assert_finished_edges(part,spec,values)
     report=audit(in_print_frame(spec, values, part),model=spec.name)
     assert report.ok,report.format()
-    worst=assert_finished_edges(part,spec,values)
     print(f'RACK10 | {spec.name}/{case} | wall {report.min_wall_mm:.3f} | overhang {report.max_overhang_deg:.1f} | edges {worst:.1f} | volume {part.volume:.3f} | PASS')
     record(f'{spec.name}-{case}',min_wall=report.min_wall_mm,worst_overhang=report.max_overhang_deg,
            exposed_edge_angle=worst,volume=part.volume,result='PASS')
@@ -230,5 +230,5 @@ def test_rack10_rail_strip_coupon_modes(hole, mount):
         x,y = rail_hole_centres(5)[1]
         assert not part.is_inside((x+4.75,y,1))
         assert part.is_inside((x+4.78,y,1))
-        assert part.is_inside((x,y+5,1.99))
-        assert not part.is_inside((x,y+5,2.01))
+        assert part.is_inside((x,y+5.2,1.99))
+        assert not part.is_inside((x,y+5.2,2.01))
