@@ -20,7 +20,7 @@ def build(values=None):
 
 
 SPEC = register(ModelSpec(
-    name='rack10_keystone_panel', title='10-inch rack keystone panel', category_id='storage', build=build,
+    name='rack10_keystone_panel', title='10-inch rack keystone panel', category_id='rack10', build=build,
     description='A 1U panel with nominal keystone windows and recessed rear latch seats. Print face down; verify jack fit with a test print.',
     params=(Param('count','integer',6,min=1,max=c.MAX_KEYSTONES,step=1,label='Keystone ports'),
             Param('slot_mm','number',0,min=0,max=8,step=1,unit='mm',label='Slot length (0 round; 7–8 slot)')),

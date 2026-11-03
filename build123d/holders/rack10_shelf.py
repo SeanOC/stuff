@@ -9,7 +9,7 @@ def build(values=None):
 
 # [C] Sonos Amp 217 x 217 x 64 mm: task equipment list; docs/rack10.md, Device mounts.
 SPEC = register(ModelSpec(
-    name='rack10_shelf', title='10-inch rack open shelf', category_id='storage', build=build,
+    name='rack10_shelf', title='10-inch rack open shelf', category_id='rack10', build=build,
     description='2U open shelf with a vented deck, ribs and four pads. The Sonos preset with stops is 222.2 mm wide: check your rails or disable stops.', print_orientation=(0,0,1),
     params=(
         Param('device_w','number',217,min=100,max=217,step=1,unit='mm',label='Device W'),
