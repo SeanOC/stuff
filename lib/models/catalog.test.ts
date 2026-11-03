@@ -12,9 +12,26 @@ import fs from "node:fs";
 import path from "node:path";
 import { readFileSync } from "node:fs";
 import { describe, expect, it, beforeAll } from "vitest";
-import { CATALOG, BUILD123D_CATALOG } from "./catalog";
+import { CATALOG, BUILD123D_CATALOG, MODEL_CATEGORIES } from "./catalog";
 
 const MODELS_DIR = path.resolve(process.cwd(), "models");
+
+describe("10-inch rack category", () => {
+  it("has a dedicated gallery category", () => {
+    expect(MODEL_CATEGORIES).toContainEqual({ id: "rack10", label: "10-inch rack" });
+  });
+
+  it.each([
+    ["SCAD", CATALOG],
+    ["build123d", BUILD123D_CATALOG],
+  ] as const)("keeps all and only rack family models in rack10 (%s)", (_, catalog) => {
+    const entries = Object.entries(catalog);
+    expect(entries.some(([stem]) => /^(homeracker|rack10)_/.test(stem))).toBe(true);
+    for (const [stem, entry] of entries) {
+      expect(entry.categoryId === "rack10", stem).toBe(/^(homeracker|rack10)_/.test(stem));
+    }
+  });
+});
 
 const stems = fs
   .readdirSync(MODELS_DIR)

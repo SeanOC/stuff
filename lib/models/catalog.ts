@@ -6,6 +6,7 @@
 
 export const MODEL_CATEGORIES = [
   { id: "storage", label: "Storage" },
+  { id: "rack10", label: "10-inch rack" },
   { id: "multiboard", label: "Multiboard" },
   { id: "toys", label: "Toys" },
   { id: "household", label: "Household" },
@@ -162,27 +163,27 @@ export const CATALOG: Record<string, CatalogEntry> = {
       "Cross-ecosystem wall adapter: clicks into an openGrid tile on the back (one directional snap per 28mm tile) and presents a Multiconnect receiver slot on the front (25mm pitch), so a Multiconnect-tabbed accessory hangs on an openGrid wall. Slot dome points down so weight seats the tab. Prints snaps-down, support-free; exports a single-slot (28mm) and a two-slot (56mm) STL.",
   },
   homeracker_support: {
-    categoryId: "storage",
+    categoryId: "rack10",
     blurb:
       "HomeRacker 15 mm beams, including the 225–270 mm frame members. Print flat along the bed.",
   },
   homeracker_connector: {
-    categoryId: "storage",
+    categoryId: "rack10",
     blurb:
       "HomeRacker corner and through connectors with upstream print orientations.",
   },
   homeracker_lockpin: {
-    categoryId: "storage",
+    categoryId: "rack10",
     blurb:
       "HomeRacker locking pins, individually or in a twenty-pin plate.",
   },
   homeracker_foot: {
-    categoryId: "storage",
+    categoryId: "rack10",
     blurb:
       "HomeRacker foot insert with a 19.2 mm contact plate.",
   },
   homeracker_rackpanel: {
-    categoryId: "storage",
+    categoryId: "rack10",
     blurb:
       "HomeRacker blank 10-inch or 19-inch rack panels; print face-down.",
   },
@@ -196,31 +197,31 @@ export const CATALOG: Record<string, CatalogEntry> = {
  */
 export const BUILD123D_CATALOG: Record<string, CatalogEntry> = {
   rack10_blank_panel: {
-    categoryId: "storage",
+    categoryId: "rack10",
     blurb: "Solid or vented 10-inch rack panels with reinforced ears. Print front face down without supports.",
   },
   rack10_cradle: {
-    categoryId: "storage",
+    categoryId: "rack10",
     blurb: "Vented cradle with an open bezel, low rails, four pads and rear cable access.",
   },
   rack10_ears: {
-    categoryId: "storage",
+    categoryId: "rack10",
     blurb: "Clamp ears for devices without mounting screw holes. Secure with zip ties up to 3 mm wide.",
   },
   rack10_hub_tray: {
-    categoryId: "storage",
+    categoryId: "rack10",
     blurb: "1U open-front pockets with rear cable slots and a cable comb.",
   },
   rack10_keystone_panel: {
-    categoryId: "storage",
+    categoryId: "rack10",
     blurb: "A 1U keystone panel with up to eleven nominal ports and recessed latch seats. Print face down and verify the chosen jack with a fit print.",
   },
   rack10_shelf: {
-    categoryId: "storage",
+    categoryId: "rack10",
     blurb: "2U open shelf with a vented deck, ribs and four pads. The Sonos preset with stops is 222.2 mm wide: check your rails or disable stops.",
   },
   rack10_tray: {
-    categoryId: "storage",
+    categoryId: "rack10",
     blurb: "An open-rear device tray with tapered side webs and zip-tie slots. Includes Apple TV, generic switch and mini-PC fit examples; print front face down.",
   },
   openconnect_drawer: {

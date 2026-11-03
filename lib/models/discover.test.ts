@@ -93,6 +93,23 @@ describe("build123d discovery (pst-dsiq)", () => {
     delete process.env.BD_MODELS_ENABLED;
   });
 
+  it.each([false, true])("lists rack models in rack10 with build123d enabled=%s", async (enabled) => {
+    if (enabled) process.env.BD_MODELS_ENABLED = "1";
+    else delete process.env.BD_MODELS_ENABLED;
+    const models = await listModels();
+    const expected = [
+      "homeracker-connector", "homeracker-foot", "homeracker-lockpin",
+      "homeracker-rackpanel", "homeracker-support",
+      ...(enabled ? [
+        "rack10-blank-panel", "rack10-cradle", "rack10-ears", "rack10-hub-tray",
+        "rack10-keystone-panel", "rack10-shelf", "rack10-tray",
+      ] : []),
+    ];
+    expect(models.filter((m) => m.categoryId === "rack10").map((m) => m.slug)).toEqual(expected);
+    expect(models.filter((m) => m.categoryId === "storage")
+      .some((m) => /^(homeracker|rack10)-/.test(m.slug))).toBe(false);
+  });
+
   it("listBdModels() merges manifest models into ModelEntry shape", async () => {
     const models = await listBdModels();
     expect(models.length).toBeGreaterThanOrEqual(2);
