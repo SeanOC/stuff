@@ -66,6 +66,44 @@ def test_dockerfile_copies_registered_model_packages(monkeypatch):
     assert not missing, f"bd-render image is missing local packages: {sorted(missing)}"
 
 
+def test_dockerfile_copies_uv_path_sources_before_sync():
+    """Every [tool.uv.sources] path dependency must be in the image before uv sync.
+
+    The dependency layer copies pyproject.toml + uv.lock and runs
+    `uv sync --frozen --no-install-project` before the model tree is baked, so
+    a path source that is not copied first fails the whole image build
+    ("Distribution not found at: file:///build123d/vendor/opengrid",
+    deploy-bd-render-service run 41561012445 after #275 vendored opengrid).
+    """
+    import tomllib
+
+    pyproject = tomllib.loads((REPO_ROOT / "build123d" / "pyproject.toml").read_text())
+    sources = pyproject.get("tool", {}).get("uv", {}).get("sources", {})
+    path_sources = {
+        name: spec["path"]
+        for name, spec in sources.items()
+        if isinstance(spec, dict) and "path" in spec
+    }
+    assert path_sources, "expected a uv path source (vendored opengrid); drop this guard if vendoring ends"
+
+    lines = (SERVER_PATH.parent / "Dockerfile").read_text().splitlines()
+    sync_index = next(i for i, line in enumerate(lines) if re.match(r"^RUN\s+uv\s+sync\b", line))
+    copied_before_sync = []
+    for line in lines[:sync_index]:
+        match = re.match(r"^COPY\s+(.+?)\s+\S+\s*$", line)
+        if match:
+            copied_before_sync.extend(Path(src) for src in match.group(1).split())
+
+    def copied(dep_path):
+        dep = Path("build123d") / dep_path
+        return any(src == dep or src in dep.parents for src in copied_before_sync)
+
+    missing = {name: dep for name, dep in path_sources.items() if not copied(dep)}
+    assert not missing, (
+        f"bd-render Dockerfile must COPY uv path sources before `uv sync`: {missing}"
+    )
+
+
 def test_capture_encoding_imports_without_opencv():
     """The render image can load capture's wire contract without OpenCV."""
     subprocess.run(
