@@ -10,7 +10,7 @@ const EXPECTED_SLUGS = [
 ];
 
 test.describe("gallery", () => {
-  test("groups HomeRacker and rack10 models on the 10-inch rack shelf", async ({ page }) => {
+  test("groups HomeRacker models on the 10-inch rack shelf", async ({ page }) => {
     await page.goto("/");
     const rackShelf = page.locator("#shelf-rack10");
     await expect(rackShelf.getByRole("heading", { name: "10-inch rack", exact: true })).toBeVisible();
@@ -20,15 +20,22 @@ test.describe("gallery", () => {
       "homeracker-lockpin",
       "homeracker-foot",
       "homeracker-rackpanel",
-      "rack10-blank-panel",
-      "rack10-keystone-panel",
-      "rack10-tray",
     ]) {
       await expect(rackShelf.locator(`a[href="/models/${slug}"]`)).toBeVisible();
     }
     await expect(page.locator(
       '#shelf-storage a[href^="/models/homeracker-"], #shelf-storage a[href^="/models/rack10-"]',
     )).toHaveCount(0);
+  });
+
+  test("groups enabled build123d rack10 models on the same shelf", async ({ page }) => {
+    test.skip(process.env.BD_MODELS_ENABLED !== "1", "build123d gallery cards are opt-in");
+    await page.goto("/");
+    const rackShelf = page.locator("#shelf-rack10");
+    for (const slug of ["rack10-blank-panel", "rack10-keystone-panel", "rack10-tray"]) {
+      await expect(rackShelf.locator(`a[href="/models/${slug}"]`)).toBeVisible();
+    }
+    await expect(page.locator('#shelf-storage a[href^="/models/rack10-"]')).toHaveCount(0);
   });
 
   test("renders one card per model with title + link", async ({ page }) => {
