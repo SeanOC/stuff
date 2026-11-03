@@ -4496,6 +4496,188 @@
       ]
     },
     {
+      "slug": "rack10-blank-panel",
+      "engine": "build123d",
+      "title": "10-inch rack blank panel",
+      "blurb": "A solid or vented rack panel with reinforced ears. Print front face down, without supports.",
+      "categoryId": "rack10",
+      "params": [
+        {
+          "name": "units",
+          "label": "Rack units",
+          "kind": "integer",
+          "default": 1,
+          "min": 1,
+          "max": 2,
+          "step": 1
+        },
+        {
+          "name": "vented",
+          "label": "Ventilation slots",
+          "kind": "boolean",
+          "default": false
+        },
+        {
+          "name": "slot_mm",
+          "label": "Slot length (0 round; 7\u20138 slot)",
+          "unit": "mm",
+          "kind": "number",
+          "default": 0,
+          "min": 0,
+          "max": 8,
+          "step": 1
+        }
+      ],
+      "presets": [
+        {
+          "id": "1u-solid",
+          "label": "1U solid",
+          "values": {}
+        },
+        {
+          "id": "1u-vented",
+          "label": "1U vented",
+          "values": {
+            "vented": true
+          }
+        },
+        {
+          "id": "2u-vented",
+          "label": "2U vented",
+          "values": {
+            "units": 2,
+            "vented": true
+          }
+        }
+      ]
+    },
+    {
+      "slug": "rack10-keystone-panel",
+      "engine": "build123d",
+      "title": "10-inch rack keystone panel",
+      "blurb": "A 1U panel with nominal keystone windows and recessed rear latch seats. Print face down; verify jack fit with a test print.",
+      "categoryId": "rack10",
+      "params": [
+        {
+          "name": "count",
+          "label": "Keystone ports",
+          "kind": "integer",
+          "default": 6,
+          "min": 1,
+          "max": 11,
+          "step": 1
+        },
+        {
+          "name": "slot_mm",
+          "label": "Slot length (0 round; 7\u20138 slot)",
+          "unit": "mm",
+          "kind": "number",
+          "default": 0,
+          "min": 0,
+          "max": 8,
+          "step": 1
+        }
+      ],
+      "presets": [
+        {
+          "id": "1u-6-keystones",
+          "label": "1U six keystones",
+          "values": {}
+        },
+        {
+          "id": "1u-max",
+          "label": "1U maximum ports",
+          "values": {
+            "count": 11
+          }
+        }
+      ]
+    },
+    {
+      "slug": "rack10-tray",
+      "engine": "build123d",
+      "title": "10-inch rack device tray",
+      "blurb": "A fitted open-rear shelf with tapered side webs and zip-tie slots. Rack height follows device height. Print front face down, without supports.",
+      "categoryId": "rack10",
+      "params": [
+        {
+          "name": "device_w",
+          "label": "Device width",
+          "unit": "mm",
+          "kind": "number",
+          "default": 98,
+          "min": 40,
+          "max": 213.45,
+          "step": 0.1
+        },
+        {
+          "name": "device_d",
+          "label": "Device depth",
+          "unit": "mm",
+          "kind": "number",
+          "default": 98,
+          "min": 40,
+          "max": 200,
+          "step": 1
+        },
+        {
+          "name": "device_h",
+          "label": "Device height",
+          "unit": "mm",
+          "kind": "number",
+          "default": 31,
+          "min": 10,
+          "max": 72,
+          "step": 1
+        },
+        {
+          "name": "clearance",
+          "label": "Clearance per side",
+          "unit": "mm",
+          "kind": "number",
+          "default": 1,
+          "min": 0.5,
+          "max": 2,
+          "step": 0.1
+        },
+        {
+          "name": "slot_mm",
+          "label": "Slot length (0 round; 7\u20138 slot)",
+          "unit": "mm",
+          "kind": "number",
+          "default": 0,
+          "min": 0,
+          "max": 8,
+          "step": 1
+        }
+      ],
+      "presets": [
+        {
+          "id": "apple-tv-4k",
+          "label": "Apple TV 4K fit",
+          "values": {}
+        },
+        {
+          "id": "switch-8-port",
+          "label": "Generic eight-port switch fit",
+          "values": {
+            "device_w": 160,
+            "device_d": 100,
+            "device_h": 28
+          }
+        },
+        {
+          "id": "mini-pc-nuc",
+          "label": "Mini PC / NUC fit",
+          "values": {
+            "device_w": 117,
+            "device_d": 112,
+            "device_h": 51
+          }
+        }
+      ]
+    },
+    {
       "slug": "gridfinity-capture-bin",
       "engine": "build123d",
       "title": "Gridfinity capture bin",
@@ -4599,188 +4781,6 @@
         }
       ],
       "capture": true
-    },
-    {
-      "slug": "rack10-blank-panel",
-      "engine": "build123d",
-      "title": "10-inch rack blank panel",
-      "blurb": "A solid or vented rack panel with reinforced ears. Print front face down, without supports.",
-      "categoryId": "storage",
-      "params": [
-        {
-          "name": "units",
-          "label": "Rack units",
-          "kind": "integer",
-          "default": 1,
-          "min": 1,
-          "max": 2,
-          "step": 1
-        },
-        {
-          "name": "vented",
-          "label": "Ventilation slots",
-          "kind": "boolean",
-          "default": false
-        },
-        {
-          "name": "slot_mm",
-          "label": "Slot length (0 round; 7\u20138 slot)",
-          "unit": "mm",
-          "kind": "number",
-          "default": 0,
-          "min": 0,
-          "max": 8,
-          "step": 1
-        }
-      ],
-      "presets": [
-        {
-          "id": "1u-solid",
-          "label": "1U solid",
-          "values": {}
-        },
-        {
-          "id": "1u-vented",
-          "label": "1U vented",
-          "values": {
-            "vented": true
-          }
-        },
-        {
-          "id": "2u-vented",
-          "label": "2U vented",
-          "values": {
-            "units": 2,
-            "vented": true
-          }
-        }
-      ]
-    },
-    {
-      "slug": "rack10-keystone-panel",
-      "engine": "build123d",
-      "title": "10-inch rack keystone panel",
-      "blurb": "A 1U panel with nominal keystone windows and recessed rear latch seats. Print face down; verify jack fit with a test print.",
-      "categoryId": "storage",
-      "params": [
-        {
-          "name": "count",
-          "label": "Keystone ports",
-          "kind": "integer",
-          "default": 6,
-          "min": 1,
-          "max": 11,
-          "step": 1
-        },
-        {
-          "name": "slot_mm",
-          "label": "Slot length (0 round; 7\u20138 slot)",
-          "unit": "mm",
-          "kind": "number",
-          "default": 0,
-          "min": 0,
-          "max": 8,
-          "step": 1
-        }
-      ],
-      "presets": [
-        {
-          "id": "1u-6-keystones",
-          "label": "1U six keystones",
-          "values": {}
-        },
-        {
-          "id": "1u-max",
-          "label": "1U maximum ports",
-          "values": {
-            "count": 11
-          }
-        }
-      ]
-    },
-    {
-      "slug": "rack10-tray",
-      "engine": "build123d",
-      "title": "10-inch rack device tray",
-      "blurb": "A fitted open-rear shelf with tapered side webs and zip-tie slots. Rack height follows device height. Print front face down, without supports.",
-      "categoryId": "storage",
-      "params": [
-        {
-          "name": "device_w",
-          "label": "Device width",
-          "unit": "mm",
-          "kind": "number",
-          "default": 98,
-          "min": 40,
-          "max": 213.45,
-          "step": 0.1
-        },
-        {
-          "name": "device_d",
-          "label": "Device depth",
-          "unit": "mm",
-          "kind": "number",
-          "default": 98,
-          "min": 40,
-          "max": 200,
-          "step": 1
-        },
-        {
-          "name": "device_h",
-          "label": "Device height",
-          "unit": "mm",
-          "kind": "number",
-          "default": 31,
-          "min": 10,
-          "max": 72,
-          "step": 1
-        },
-        {
-          "name": "clearance",
-          "label": "Clearance per side",
-          "unit": "mm",
-          "kind": "number",
-          "default": 1,
-          "min": 0.5,
-          "max": 2,
-          "step": 0.1
-        },
-        {
-          "name": "slot_mm",
-          "label": "Slot length (0 round; 7\u20138 slot)",
-          "unit": "mm",
-          "kind": "number",
-          "default": 0,
-          "min": 0,
-          "max": 8,
-          "step": 1
-        }
-      ],
-      "presets": [
-        {
-          "id": "apple-tv-4k",
-          "label": "Apple TV 4K fit",
-          "values": {}
-        },
-        {
-          "id": "switch-8-port",
-          "label": "Generic eight-port switch fit",
-          "values": {
-            "device_w": 160,
-            "device_d": 100,
-            "device_h": 28
-          }
-        },
-        {
-          "id": "mini-pc-nuc",
-          "label": "Mini PC / NUC fit",
-          "values": {
-            "device_w": 117,
-            "device_d": 112,
-            "device_h": 51
-          }
-        }
-      ]
     },
     {
       "slug": "littletikes-dream-machine-cartridge-holder",

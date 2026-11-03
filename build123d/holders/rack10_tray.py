@@ -14,7 +14,7 @@ def build(values=None):
 
 
 SPEC = register(ModelSpec(
-    name='rack10_tray', title='10-inch rack device tray', category_id='storage', build=build,
+    name='rack10_tray', title='10-inch rack device tray', category_id='rack10', build=build,
     description='A fitted open-rear shelf with tapered side webs and zip-tie slots. Rack height follows device height. Print front face down, without supports.',
     params=(Param('device_w','number',98,min=40,max=213.45,step=.1,unit='mm',label='Device width'),
             Param('device_d','number',98,min=40,max=200,step=1,unit='mm',label='Device depth'),

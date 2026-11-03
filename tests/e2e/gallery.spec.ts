@@ -10,6 +10,27 @@ const EXPECTED_SLUGS = [
 ];
 
 test.describe("gallery", () => {
+  test("groups HomeRacker and rack10 models on the 10-inch rack shelf", async ({ page }) => {
+    await page.goto("/");
+    const rackShelf = page.locator("#shelf-rack10");
+    await expect(rackShelf.getByRole("heading", { name: "10-inch rack", exact: true })).toBeVisible();
+    for (const slug of [
+      "homeracker-support",
+      "homeracker-connector",
+      "homeracker-lockpin",
+      "homeracker-foot",
+      "homeracker-rackpanel",
+      "rack10-blank-panel",
+      "rack10-keystone-panel",
+      "rack10-tray",
+    ]) {
+      await expect(rackShelf.locator(`a[href="/models/${slug}"]`)).toBeVisible();
+    }
+    await expect(page.locator(
+      '#shelf-storage a[href^="/models/homeracker-"], #shelf-storage a[href^="/models/rack10-"]',
+    )).toHaveCount(0);
+  });
+
   test("renders one card per model with title + link", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("heading", { name: /Parametric things/i })).toBeVisible();

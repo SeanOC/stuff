@@ -44,7 +44,7 @@ KNOWN_MOUNTS: frozenset[str] = frozenset({"multiconnect-slot", "multibuild-multi
 # Mirrors MODEL_CATEGORIES ids in lib/models/catalog.ts (app catalog
 # contract). Keep in sync when a category is added there.
 CATEGORY_IDS: frozenset[str] = frozenset(
-    {"storage", "multiboard", "toys", "household", "label"}
+    {"storage", "rack10", "multiboard", "toys", "household", "label"}
 )
 
 # Character sets a string Param may declare (Param.charset). The id is what

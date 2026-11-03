@@ -21,7 +21,7 @@ def build(values=None):
 
 
 SPEC = register(ModelSpec(
-    name='rack10_blank_panel', title='10-inch rack blank panel', category_id='storage', build=build,
+    name='rack10_blank_panel', title='10-inch rack blank panel', category_id='rack10', build=build,
     description='A solid or vented rack panel with reinforced ears. Print front face down, without supports.',
     params=(Param('units','integer',1,min=1,max=2,step=1,label='Rack units'),
             Param('vented','boolean',False,label='Ventilation slots'),
