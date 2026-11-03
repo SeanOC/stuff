@@ -1,0 +1,24 @@
+{
+  "repository": "https://github.com/kellervater/homeracker",
+  "commit": "90556d1b901234aa02d382f61755641bd3442818",
+  "subset": [
+    "models/core",
+    "models/foot",
+    "models/panel",
+    "models/bracket",
+    "models/sleeve",
+    "models/rackmount_ears",
+    "models/keystone"
+  ],
+  "excluded": [
+    "test",
+    "demo",
+    "flattened",
+    "makerworld",
+    "renders"
+  ],
+  "modifications": [
+    "scripts/patches/homeracker/0001-isolate-bosl2.patch (already applied)",
+    "scripts/patches/homeracker/0002-browser-compatible-primitives.patch (already applied): explicit equivalent support-hole/foot/full-panel placement and 2D rounded extrusions; 0.001 mm foot spacer overlap; missing panel split include; 0.001 mm neck / 0.002 mm grip-base overlaps retain envelopes and prevent disconnected pins / CGAL scraps"
+  ]
+}

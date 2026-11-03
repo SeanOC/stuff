@@ -161,6 +161,31 @@ export const CATALOG: Record<string, CatalogEntry> = {
     blurb:
       "Cross-ecosystem wall adapter: clicks into an openGrid tile on the back (one directional snap per 28mm tile) and presents a Multiconnect receiver slot on the front (25mm pitch), so a Multiconnect-tabbed accessory hangs on an openGrid wall. Slot dome points down so weight seats the tab. Prints snaps-down, support-free; exports a single-slot (28mm) and a two-slot (56mm) STL.",
   },
+  homeracker_support: {
+    categoryId: "storage",
+    blurb:
+      "HomeRacker 15 mm beams, including the 225–270 mm frame members. Print flat along the bed.",
+  },
+  homeracker_connector: {
+    categoryId: "storage",
+    blurb:
+      "HomeRacker corner and through connectors with upstream print orientations.",
+  },
+  homeracker_lockpin: {
+    categoryId: "storage",
+    blurb:
+      "HomeRacker locking pins, individually or in a twenty-pin plate.",
+  },
+  homeracker_foot: {
+    categoryId: "storage",
+    blurb:
+      "HomeRacker foot insert with a 19.2 mm contact plate.",
+  },
+  homeracker_rackpanel: {
+    categoryId: "storage",
+    blurb:
+      "HomeRacker blank 10-inch or 19-inch rack panels; print face-down.",
+  },
 };
 
 /**

@@ -1,0 +1,149 @@
+--- a/models/bracket/lib/bracket.scad
++++ b/models/bracket/lib/bracket.scad
+@@ -34,7 +34,7 @@
+ // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ // SOFTWARE.
+ 
+-include <BOSL2/std.scad>
++include <homeracker/BOSL2/std.scad>
+ include <../../core/lib/constants.scad>
+ include <../../core/lib/lockpin.scad>
+ 
+--- a/models/core/lib/connector.scad
++++ b/models/core/lib/connector.scad
+@@ -26,7 +26,7 @@
+ 
+ // TODO: 1D1W is completely useless if not a pull-through connector. we should account for that.
+ 
+-include <BOSL2/std.scad>
++include <homeracker/BOSL2/std.scad>
+ include <constants.scad>
+ include <lockpin.scad>
+ 
+--- a/models/core/lib/lockpin.scad
++++ b/models/core/lib/lockpin.scad
+@@ -23,7 +23,7 @@
+ // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ // SOFTWARE.
+ 
+-include <BOSL2/std.scad>
++include <homeracker/BOSL2/std.scad>
+ include <constants.scad>
+ 
+ // Lock Pin Dimensions
+--- a/models/core/lib/support.scad
++++ b/models/core/lib/support.scad
+@@ -23,7 +23,7 @@
+ // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ // SOFTWARE.
+ 
+-include <BOSL2/std.scad>
++include <homeracker/BOSL2/std.scad>
+ include <constants.scad>
+ 
+ HR_CORE_SUPPORT_PRIMARY_COLOR = HR_CHARCOAL;
+--- a/models/foot/lib/foot.scad
++++ b/models/foot/lib/foot.scad
+@@ -27,7 +27,7 @@
+ // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ // SOFTWARE.
+ 
+-include <BOSL2/std.scad>
++include <homeracker/BOSL2/std.scad>
+ include <../../core/lib/constants.scad>
+ include <../../core/lib/support.scad>
+ 
+--- a/models/keystone/lib/keystone.scad
++++ b/models/keystone/lib/keystone.scad
+@@ -17,7 +17,7 @@
+ // Dimensions based on the Parametric Keystone Connector by Paul Hatcher (CC0):
+ // https://www.printables.com/model/537480-parametric-keystone-connector
+ 
+-include <BOSL2/std.scad>
++include <homeracker/BOSL2/std.scad>
+ include <../../core/lib/constants.scad>
+ // Native (BOSL2-free) socket geometry, pulled in via `use` so identical jacks share
+ // one cached mesh. See keystone_native.scad for the caching rationale.
+--- a/models/keystone/lib/keystone_native.scad
++++ b/models/keystone/lib/keystone_native.scad
+@@ -4,14 +4,14 @@
+ // Licensed under MIT (code) / CC BY-SA 4.0 (models).
+ //
+ // BOSL2-FREE native geometry for the keystone cutter. Kept in a separate file with
+-// NO `include <BOSL2/std.scad>` so its primitives (polygon, linear_extrude, cube)
++// NO `include <homeracker/BOSL2/std.scad>` so its primitives (polygon, linear_extrude, cube)
+ // resolve to the OpenSCAD built-ins. Pulled into keystone.scad via `use <>`.
+ //
+ // DISCLAIMER: this native geometry was fully AI-transpiled from the original BOSL2 code in
+ // keystone.scad. It was print-tested with no noticeable difference from the BOSL2 version,
+ // but the BOSL2 path remains the authored source of truth — prefer it if in doubt.
+ //
+-// Why: `include <BOSL2/std.scad>` overrides the built-in primitives with attachable
++// Why: `include <homeracker/BOSL2/std.scad>` overrides the built-in primitives with attachable
+ // wrappers, which gives every instance a unique node signature and defeats OpenSCAD's
+ // automatic identical-subtree geometry caching. A dense panel re-evaluates each jack's
+ // chamfer geometry from scratch. Building the cutter from genuine native primitives here
+--- a/models/panel/lib/panel.scad
++++ b/models/panel/lib/panel.scad
+@@ -32,7 +32,7 @@
+ // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ // SOFTWARE.
+ 
+-include <BOSL2/std.scad>
++include <homeracker/BOSL2/std.scad>
+ include <../../core/lib/constants.scad>
+ 
+ HR_PANEL_TYPE_INTERFIT = 1;
+--- a/models/panel/lib/rackpanel.scad
++++ b/models/panel/lib/rackpanel.scad
+@@ -32,7 +32,7 @@
+ // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ // SOFTWARE.
+ 
+-include <BOSL2/std.scad>
++include <homeracker/BOSL2/std.scad>
+ include <../../core/lib/constants.scad>
+ include <truss.scad>
+ 
+--- a/models/panel/lib/split.scad
++++ b/models/panel/lib/split.scad
+@@ -45,7 +45,7 @@
+ // this thing is currently only designed for standard rack panels height-wise. if we want to split arbitrary panels in the future,
+ // we would need to make the knuckle heights more flexible and not based on the standard unit height.
+ 
+-include <BOSL2/std.scad>
++include <homeracker/BOSL2/std.scad>
+ include <../../core/lib/support.scad>
+ include <../../core/lib/lockpin.scad>
+ 
+--- a/models/panel/lib/truss.scad
++++ b/models/panel/lib/truss.scad
+@@ -40,7 +40,7 @@
+ // only from the outside. Validate changes by rendering the test file (`models/panel/test/truss.scad`)
+ // and the braced panel catalog renders, and confirm a manifold result before relying on it.
+ 
+-include <BOSL2/std.scad>
++include <homeracker/BOSL2/std.scad>
+ include <../../core/lib/constants.scad>
+ 
+ /** Triangulated truss grid
+--- a/models/rackmount_ears/parts/rackmount_ears.scad
++++ b/models/rackmount_ears/parts/rackmount_ears.scad
+@@ -1,5 +1,5 @@
+ // import BOSL2
+-include <BOSL2/std.scad>
++include <homeracker/BOSL2/std.scad>
+ 
+ /* [Base] */
+ // automatically chooses the tightest fit for the rackmount ears based on the device width. If true, rack_size will be ignored.
+--- a/models/sleeve/lib/sleeve.scad
++++ b/models/sleeve/lib/sleeve.scad
+@@ -29,7 +29,7 @@
+ // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ // SOFTWARE.
+ 
+-include <BOSL2/std.scad>
++include <homeracker/BOSL2/std.scad>
+ include <../../core/lib/constants.scad>
+ include <../../core/lib/lockpin.scad>
+ 

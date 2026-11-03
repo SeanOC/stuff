@@ -1,0 +1,126 @@
+{
+  "upstream_commit": "90556d1b901234aa02d382f61755641bd3442818",
+  "bosl2_commit": "a4669f97d5ff6f650ef4a3e38eed66eb2fa3d119",
+  "engine": "OpenSCAD 2025.06.12.ai25773",
+  "method": "Unmodified upstream parts, $fn=100; lockpin CGAL (Manifold emits degenerate facets); other parts Manifold/CGAL. Rack-panel axes rotated to print placement; plate bbox derives from 5 columns x 4 rows at 16 x 36 mm spacing. Volumes are solids, before infill.",
+  "models": {
+    "homeracker_support": {
+      "15u": {
+        "bbox_mm": [
+          15.0,
+          225.0,
+          15.0
+        ],
+        "volume_mm3": 45660.173343,
+        "solids": 1
+      },
+      "16u": {
+        "bbox_mm": [
+          15.0,
+          240.0,
+          15.0
+        ],
+        "volume_mm3": 48707.829263,
+        "solids": 1
+      },
+      "17u": {
+        "bbox_mm": [
+          15.0,
+          255.0,
+          15.0
+        ],
+        "volume_mm3": 51755.485245,
+        "solids": 1
+      },
+      "18u": {
+        "bbox_mm": [
+          15.0,
+          270.0,
+          15.0
+        ],
+        "volume_mm3": 54803.141333,
+        "solids": 1
+      }
+    },
+    "homeracker_connector": {
+      "3d3w": {
+        "bbox_mm": [
+          43.982042,
+          32.1,
+          33.446151
+        ],
+        "volume_mm3": 10241.667867,
+        "solids": 1
+      },
+      "3d4w": {
+        "bbox_mm": [
+          43.982042,
+          45.0,
+          33.446151
+        ],
+        "volume_mm3": 11313.872267,
+        "solids": 1
+      },
+      "3d4w-pull-through-z": {
+        "bbox_mm": [
+          43.982042,
+          45.0,
+          33.446151
+        ],
+        "volume_mm3": 7825.5176,
+        "solids": 1
+      }
+    },
+    "homeracker_lockpin": {
+      "standard": {
+        "bbox_mm": [
+          8.0,
+          22.099998,
+          3.799999
+        ],
+        "volume_mm3": 305.407108,
+        "solids": 1
+      },
+      "plate-20": {
+        "bbox_mm": [
+          72,
+          130.1,
+          3.8
+        ],
+        "volume_mm3": 6108.14216,
+        "solids": 20
+      }
+    },
+    "homeracker_foot": {
+      "standard": {
+        "bbox_mm": [
+          19.2,
+          19.2,
+          17.1
+        ],
+        "volume_mm3": 3543.150113,
+        "solids": 1
+      }
+    },
+    "homeracker_rackpanel": {
+      "10in-1u": {
+        "bbox_mm": [
+          254.0,
+          44.45,
+          2.0
+        ],
+        "volume_mm3": 21836.193388,
+        "solids": 1
+      },
+      "10in-2u": {
+        "bbox_mm": [
+          254.0,
+          88.900002,
+          2.0
+        ],
+        "volume_mm3": 44372.343805,
+        "solids": 1
+      }
+    }
+  }
+}
