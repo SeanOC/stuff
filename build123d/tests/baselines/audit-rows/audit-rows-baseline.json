@@ -165,6 +165,28 @@
         "job_scope": [
           "[\"not upstream\",null]"
         ]
+      },
+      {
+        "test_file": "tests/test_underware_outside_corner.py",
+        "why": "pst-sbx19: extend the offset arm while preserving all shifted grip cells",
+        "source_sha": "ccb5f2aa10cc89fc6a426878ff25ae7007f7a52f",
+        "build123d": "0.13.0",
+        "cadquery-ocp-novtk": "8.0.1.1.0",
+        "audit_source": "local ccb5f2aa + pst-sbx19 working diff: uv run pytest tests/ -q -n 4 -k underware_outside",
+        "job_scope": [
+          "[\"not upstream\",null]"
+        ]
+      },
+      {
+        "test_file": "tests/test_underware_outside_support.py",
+        "why": "pst-sbx19: extend the offset arm while preserving all shifted grip cells",
+        "source_sha": "ccb5f2aa10cc89fc6a426878ff25ae7007f7a52f",
+        "build123d": "0.13.0",
+        "cadquery-ocp-novtk": "8.0.1.1.0",
+        "audit_source": "local ccb5f2aa + pst-sbx19 working diff: uv run pytest tests/ -q -n 4 -k underware_outside",
+        "job_scope": [
+          "[\"not upstream\",null]"
+        ]
       }
     ]
   },
@@ -11634,18 +11656,18 @@
       "filtered_ovh": 45.000000000,
       "edges_worst_exposed": 45.000000000,
       "bridge": 7.590000000,
-      "vol": 16224.959181422,
+      "vol": 17259.971181422,
       "support_volume": 1157.160900088,
       "contact_dots": 28,
       "extent": [
         38.400000000,
-        106.066000000,
-        60.564000000
+        111.723000000,
+        65.655000000
       ],
       "edges": {
         "bed chamfer": 12,
         "end face": 20,
-        "grip": 164,
+        "grip": 214,
         "interior": 12,
         "sacrificial fin": 456,
         "sacrificial pad/ear": 80
@@ -11657,13 +11679,13 @@
       "filtered_ovh": 45.000000000,
       "edges_worst_exposed": 45.000000000,
       "bridge": 7.590000000,
-      "vol": 10606.325981520,
+      "vol": 11051.125981520,
       "support_volume": 1157.160900088,
       "contact_dots": 28,
       "extent": [
         41.170000000,
-        66.468000000,
-        40.765000000
+        69.296000000,
+        43.593000000
       ],
       "edges": {
         "bed chamfer": 16,
@@ -11677,17 +11699,17 @@
       "result": "PASS"
     },
     "[\"tests/test_underware_outside_support.py::test_underware_outside_supported_endpoint_audit[offset-5.2-flare-9.9]\",\"outside-corner-supported-offset-5.2-flare-9.9\"]": {
-      "filtered_wall": 0.900000000,
+      "filtered_wall": 0.950000000,
       "filtered_ovh": 45.000000000,
       "edges_worst_exposed": 45.000000000,
       "bridge": 7.590000000,
-      "vol": 10606.325981520,
+      "vol": 11184.565981520,
       "support_volume": 1157.160900088,
       "contact_dots": 28,
       "extent": [
         41.170000000,
-        66.468000000,
-        40.765000000
+        70.145000000,
+        43.876000000
       ],
       "edges": {
         "bed chamfer": 16,
@@ -11701,17 +11723,17 @@
       "result": "PASS"
     },
     "[\"tests/test_underware_outside_support.py::test_underware_outside_supported_endpoint_audit[offset-5.2-flare-9.9-y3-first]\",\"outside-corner-supported-offset-5.2-flare-9.9-y3-first\"]": {
-      "filtered_wall": 0.900000000,
+      "filtered_wall": 0.950000000,
       "filtered_ovh": 45.000000000,
       "edges_worst_exposed": 45.000000000,
       "bridge": 7.590000000,
-      "vol": 25150.331581716,
+      "vol": 25728.571581716,
       "support_volume": 1157.160900088,
       "contact_dots": 28,
       "extent": [
         41.170000000,
-        145.664000000,
-        80.433000000
+        149.341000000,
+        84.040000000
       ],
       "edges": {
         "bed chamfer": 24,
@@ -11729,20 +11751,20 @@
       "filtered_ovh": 45.000000000,
       "edges_worst_exposed": 45.000000000,
       "bridge": 8.180000000,
-      "vol": 80562.252053828,
+      "vol": 82481.682202702,
       "support_volume": 12107.526163996,
       "contact_dots": 140,
       "extent": [
         51.392000000,
-        216.375000000,
-        107.591000000
+        220.971000000,
+        111.197000000
       ],
       "edges": {
-        "bed chamfer": 14,
-        "cutout/flare": 128,
+        "bed chamfer": 16,
+        "cutout/flare": 152,
         "end face": 20,
-        "grip": 98,
-        "interior": 14,
+        "grip": 108,
+        "interior": 16,
         "sacrificial fin": 1800,
         "sacrificial pad/ear": 80
       },
@@ -11753,18 +11775,18 @@
       "filtered_ovh": 45.000000000,
       "edges_worst_exposed": 45.000000000,
       "bridge": 7.590000000,
-      "vol": 48815.079181422,
+      "vol": 49850.091181422,
       "support_volume": 1157.160900088,
       "contact_dots": 28,
       "extent": [
         38.400000000,
-        304.056000000,
-        159.559000000
+        309.713000000,
+        165.215000000
       ],
       "edges": {
         "bed chamfer": 12,
         "end face": 20,
-        "grip": 664,
+        "grip": 714,
         "interior": 12,
         "sacrificial fin": 456,
         "sacrificial pad/ear": 80
@@ -11886,7 +11908,7 @@
       "result": "PASS"
     },
     "[\"tests/test_underware_outside_corner.py::test_endpoint_audit_and_edges[offset-8-y2]\",\"outside-corner-offset-8-y2\"]": {
-      "vol": 14996.793042258,
+      "vol": 16031.805042038,
       "raw_wall": 0.646000000,
       "raw_ovh": 72.400000000,
       "raw_bridge": 0.000000000,
@@ -11897,7 +11919,7 @@
         "bed chamfer": 14,
         "bed flat": 4,
         "end face": 20,
-        "grip": 164,
+        "grip": 214,
         "interior": 12
       },
       "exceptions": [
@@ -11907,7 +11929,7 @@
       "result": "PASS"
     },
     "[\"tests/test_underware_outside_corner.py::test_endpoint_audit_and_edges[offset-8-y2-first]\",\"outside-corner-offset-8-y2-first\"]": {
-      "vol": 14996.793042265,
+      "vol": 16031.805042038,
       "raw_wall": 0.646000000,
       "raw_ovh": 72.400000000,
       "raw_bridge": 0.000000000,
@@ -11918,7 +11940,7 @@
         "bed chamfer": 14,
         "bed flat": 4,
         "end face": 20,
-        "grip": 164,
+        "grip": 214,
         "interior": 12
       },
       "exceptions": [
@@ -11928,7 +11950,7 @@
       "result": "PASS"
     },
     "[\"tests/test_underware_outside_corner.py::test_endpoint_audit_and_edges[offset-6.5]\",\"outside-corner-offset-6.5\"]": {
-      "vol": 8624.181042755,
+      "vol": 9346.981042706,
       "raw_wall": 0.646000000,
       "raw_ovh": 72.400000000,
       "raw_bridge": 0.000000000,
@@ -11939,7 +11961,7 @@
         "bed chamfer": 14,
         "bed flat": 4,
         "end face": 20,
-        "grip": 108,
+        "grip": 114,
         "interior": 12
       },
       "exceptions": [
@@ -11949,7 +11971,7 @@
       "result": "PASS"
     },
     "[\"tests/test_underware_outside_corner.py::test_endpoint_audit_and_edges[offset-6.5-first-mirror]\",\"outside-corner-offset-6.5-first-mirror\"]": {
-      "vol": 8624.181042756,
+      "vol": 9346.981042706,
       "raw_wall": 0.646000000,
       "raw_ovh": 72.400000000,
       "raw_bridge": 0.000000000,
@@ -11960,7 +11982,7 @@
         "bed chamfer": 14,
         "bed flat": 4,
         "end face": 20,
-        "grip": 108,
+        "grip": 114,
         "interior": 12
       },
       "exceptions": [
@@ -11970,7 +11992,7 @@
       "result": "PASS"
     },
     "[\"tests/test_underware_outside_corner.py::test_endpoint_audit_and_edges[offset-6.8-y2-flare-9.9]\",\"outside-corner-offset-6.8-y2-flare-9.9\"]": {
-      "vol": 16127.761293763,
+      "vol": 17406.322710134,
       "raw_wall": 0.244000000,
       "raw_ovh": 72.400000000,
       "raw_bridge": 0.000000000,
@@ -11978,12 +12000,12 @@
       "filtered_ovh": 45.000000000,
       "edges_worst_exposed": 45.000000000,
       "edges": {
-        "bed chamfer": 20,
+        "bed chamfer": 22,
         "bed flat": 4,
-        "cutout/flare": 270,
+        "cutout/flare": 360,
         "end face": 20,
-        "grip": 110,
-        "interior": 18
+        "grip": 142,
+        "interior": 20
       },
       "exceptions": [
         "grip-end-wedge",
@@ -11993,7 +12015,7 @@
       "result": "PASS"
     },
     "[\"tests/test_underware_outside_corner.py::test_endpoint_audit_and_edges[offset-4-flare-9.9-first]\",\"outside-corner-offset-4-flare-9.9-first\"]": {
-      "vol": 9378.159887931,
+      "vol": 9822.959888035,
       "raw_wall": 0.244000000,
       "raw_ovh": 72.400000000,
       "raw_bridge": 0.000000000,
@@ -12016,11 +12038,11 @@
       "result": "PASS"
     },
     "[\"tests/test_underware_outside_corner.py::test_endpoint_audit_and_edges[offset-5.2-flare-9.9]\",\"outside-corner-offset-5.2-flare-9.9\"]": {
-      "vol": 9378.159890888,
+      "vol": 9956.399891414,
       "raw_wall": 0.244000000,
       "raw_ovh": 72.400000000,
       "raw_bridge": 0.000000000,
-      "filtered_wall": 0.900000000,
+      "filtered_wall": 1.281000000,
       "filtered_ovh": 45.000000000,
       "edges_worst_exposed": 45.000000000,
       "edges": {
@@ -12039,7 +12061,7 @@
       "result": "PASS"
     },
     "[\"tests/test_underware_outside_corner.py::test_endpoint_audit_and_edges[offset-6.1-flare-9.9-first]\",\"outside-corner-offset-6.1-flare-9.9-first\"]": {
-      "vol": 9378.159842966,
+      "vol": 10056.479888471,
       "raw_wall": 0.244000000,
       "raw_ovh": 72.400000000,
       "raw_bridge": 0.000000000,
@@ -12047,12 +12069,12 @@
       "filtered_ovh": 45.000000000,
       "edges_worst_exposed": 45.000000000,
       "edges": {
-        "bed chamfer": 16,
+        "bed chamfer": 18,
         "bed flat": 4,
-        "cutout/flare": 172,
-        "end face": 16,
-        "grip": 72,
-        "interior": 14
+        "cutout/flare": 180,
+        "end face": 20,
+        "grip": 78,
+        "interior": 16
       },
       "exceptions": [
         "grip-end-wedge",
@@ -12062,11 +12084,11 @@
       "result": "PASS"
     },
     "[\"tests/test_underware_outside_corner.py::test_endpoint_audit_and_edges[offset-5.2-flare-9.9-y3-first]\",\"outside-corner-offset-5.2-flare-9.9-y3-first\"]": {
-      "vol": 23922.165522036,
+      "vol": 24500.405522089,
       "raw_wall": 0.244000000,
       "raw_ovh": 72.400000000,
       "raw_bridge": 0.000000000,
-      "filtered_wall": 0.900000000,
+      "filtered_wall": 1.281000000,
       "filtered_ovh": 45.000000000,
       "edges_worst_exposed": 45.000000000,
       "edges": {
@@ -12085,7 +12107,7 @@
       "result": "PASS"
     },
     "[\"tests/test_underware_outside_corner.py::test_endpoint_audit_and_edges[offset-6.1-flare-9.9-y3]\",\"outside-corner-offset-6.1-flare-9.9-y3\"]": {
-      "vol": 23922.165523150,
+      "vol": 24600.485526273,
       "raw_wall": 0.244000000,
       "raw_ovh": 72.400000000,
       "raw_bridge": 0.000000000,
@@ -12093,12 +12115,12 @@
       "filtered_ovh": 45.000000000,
       "edges_worst_exposed": 45.000000000,
       "edges": {
-        "bed chamfer": 24,
+        "bed chamfer": 26,
         "bed flat": 4,
-        "cutout/flare": 532,
-        "end face": 16,
-        "grip": 200,
-        "interior": 22
+        "cutout/flare": 540,
+        "end face": 20,
+        "grip": 206,
+        "interior": 24
       },
       "exceptions": [
         "grip-end-wedge",
@@ -12204,19 +12226,19 @@
       "filtered_ovh": 45.000000000,
       "edges_worst_exposed": 45.000000000,
       "bridge": 7.590000000,
-      "vol": 21460.446581273,
+      "vol": 22384.258581918,
       "support_volume": 1157.160900088,
       "contact_dots": 28,
       "extent": [
         38.400000000,
-        145.664000000,
-        80.363000000
+        150.614000000,
+        85.312000000
       ],
       "edges": {
         "bed chamfer": 16,
         "cutout/flare": 44,
         "end face": 20,
-        "grip": 272,
+        "grip": 322,
         "interior": 16,
         "sacrificial fin": 456,
         "sacrificial pad/ear": 80
@@ -12313,7 +12335,7 @@
       "result": "PASS"
     },
     "[\"tests/test_underware_outside_corner.py::test_endpoint_audit_and_edges[offset-6.5-flare-9.9-h72-r2]\",\"outside-corner-offset-6.5-flare-9.9-h72-r2\"]": {
-      "vol": 68270.172360341,
+      "vol": 70189.602509201,
       "raw_wall": 0.244000000,
       "raw_ovh": 80.400000000,
       "raw_bridge": 0.000000000,
@@ -12321,12 +12343,12 @@
       "filtered_ovh": 45.000000000,
       "edges_worst_exposed": 45.000000000,
       "edges": {
-        "bed chamfer": 16,
+        "bed chamfer": 18,
         "bed flat": 4,
-        "cutout/flare": 128,
+        "cutout/flare": 152,
         "end face": 20,
-        "grip": 98,
-        "interior": 14
+        "grip": 108,
+        "interior": 16
       },
       "exceptions": [
         "grip-end-wedge",
@@ -12336,7 +12358,7 @@
       "result": "PASS"
     },
     "[\"tests/test_underware_outside_corner.py::test_endpoint_audit_and_edges[offset-7-first-cut]\",\"outside-corner-offset-7-first-cut\"]": {
-      "vol": 20232.280522674,
+      "vol": 21156.092523137,
       "raw_wall": 0.646000000,
       "raw_ovh": 72.400000000,
       "raw_bridge": 0.000000000,
@@ -12348,7 +12370,7 @@
         "bed flat": 4,
         "cutout/flare": 44,
         "end face": 20,
-        "grip": 272,
+        "grip": 322,
         "interior": 16
       },
       "exceptions": [
@@ -12359,7 +12381,7 @@
       "result": "PASS"
     },
     "[\"tests/test_underware_outside_corner.py::test_endpoint_audit_and_edges[offset-8-max-corner]\",\"outside-corner-offset-8-max-corner\"]": {
-      "vol": 159278.014407491,
+      "vol": 163257.026407363,
       "raw_wall": 0.646000000,
       "raw_ovh": 80.400000000,
       "raw_bridge": 0.000000000,
@@ -12370,7 +12392,7 @@
         "bed chamfer": 14,
         "bed flat": 4,
         "end face": 20,
-        "grip": 266,
+        "grip": 316,
         "interior": 12
       },
       "exceptions": [
@@ -12380,7 +12402,7 @@
       "result": "PASS"
     },
     "[\"tests/test_underware_outside_corner.py::test_endpoint_audit_and_edges[offset-8-length-7-first]\",\"outside-corner-offset-8-length-7-first\"]": {
-      "vol": 47586.913039448,
+      "vol": 48621.925039198,
       "raw_wall": 0.646000000,
       "raw_ovh": 72.400000000,
       "raw_bridge": 0.000000000,
@@ -12391,7 +12413,7 @@
         "bed chamfer": 14,
         "bed flat": 4,
         "end face": 20,
-        "grip": 664,
+        "grip": 714,
         "interior": 12
       },
       "exceptions": [
@@ -13030,18 +13052,18 @@
       "filtered_ovh": 45.000000000,
       "edges_worst_exposed": 45.000000000,
       "bridge": 7.590000000,
-      "vol": 16224.959181422,
+      "vol": 17259.971181422,
       "support_volume": 1157.160900088,
       "contact_dots": 28,
       "extent": [
         38.400000000,
-        106.066000000,
-        60.564000000
+        111.723000000,
+        66.221000000
       ],
       "edges": {
         "bed chamfer": 12,
         "end face": 20,
-        "grip": 164,
+        "grip": 214,
         "interior": 12,
         "sacrificial fin": 456,
         "sacrificial pad/ear": 80
@@ -13053,18 +13075,18 @@
       "filtered_ovh": 45.000000000,
       "edges_worst_exposed": 45.000000000,
       "bridge": 7.590000000,
-      "vol": 9852.347181422,
+      "vol": 10575.147181422,
       "support_volume": 1157.160900088,
       "contact_dots": 28,
       "extent": [
         38.400000000,
-        66.468000000,
-        41.189000000
+        71.064000000,
+        44.795000000
       ],
       "edges": {
         "bed chamfer": 12,
         "end face": 20,
-        "grip": 108,
+        "grip": 114,
         "interior": 12,
         "sacrificial fin": 456,
         "sacrificial pad/ear": 80
@@ -13076,18 +13098,18 @@
       "filtered_ovh": 45.000000000,
       "edges_worst_exposed": 45.000000000,
       "bridge": 7.590000000,
-      "vol": 9852.347181422,
+      "vol": 10575.147181422,
       "support_volume": 1157.160900088,
       "contact_dots": 28,
       "extent": [
         38.400000000,
-        66.468000000,
-        41.755000000
+        71.064000000,
+        45.361000000
       ],
       "edges": {
         "bed chamfer": 12,
         "end face": 20,
-        "grip": 108,
+        "grip": 114,
         "interior": 12,
         "sacrificial fin": 456,
         "sacrificial pad/ear": 80
@@ -13099,20 +13121,20 @@
       "filtered_ovh": 45.000000000,
       "edges_worst_exposed": 45.000000000,
       "bridge": 7.590000000,
-      "vol": 17355.927381569,
+      "vol": 18634.488781618,
       "support_volume": 1157.160900088,
       "contact_dots": 28,
       "extent": [
         41.170000000,
-        106.066000000,
-        60.564000000
+        110.874000000,
+        64.806000000
       ],
       "edges": {
-        "bed chamfer": 18,
-        "cutout/flare": 270,
+        "bed chamfer": 20,
+        "cutout/flare": 360,
         "end face": 20,
-        "grip": 110,
-        "interior": 18,
+        "grip": 142,
+        "interior": 20,
         "sacrificial fin": 456,
         "sacrificial pad/ear": 80
       },
@@ -13123,20 +13145,20 @@
       "filtered_ovh": 45.000000000,
       "edges_worst_exposed": 45.000000000,
       "bridge": 7.590000000,
-      "vol": 10606.325981520,
+      "vol": 11284.645981520,
       "support_volume": 1157.160900088,
       "contact_dots": 28,
       "extent": [
         41.170000000,
-        66.468000000,
-        41.472000000
+        70.781000000,
+        45.078000000
       ],
       "edges": {
-        "bed chamfer": 14,
-        "cutout/flare": 172,
-        "end face": 16,
-        "grip": 72,
-        "interior": 14,
+        "bed chamfer": 16,
+        "cutout/flare": 180,
+        "end face": 20,
+        "grip": 78,
+        "interior": 16,
         "sacrificial fin": 456,
         "sacrificial pad/ear": 80
       },
@@ -13147,20 +13169,20 @@
       "filtered_ovh": 45.000000000,
       "edges_worst_exposed": 45.000000000,
       "bridge": 7.590000000,
-      "vol": 25150.331581716,
+      "vol": 25828.651581716,
       "support_volume": 1157.160900088,
       "contact_dots": 28,
       "extent": [
         41.170000000,
-        145.664000000,
-        80.504000000
+        149.977000000,
+        84.110000000
       ],
       "edges": {
-        "bed chamfer": 22,
-        "cutout/flare": 532,
-        "end face": 16,
-        "grip": 200,
-        "interior": 22,
+        "bed chamfer": 24,
+        "cutout/flare": 540,
+        "end face": 20,
+        "grip": 206,
+        "interior": 24,
         "sacrificial fin": 456,
         "sacrificial pad/ear": 80
       },
@@ -13171,18 +13193,18 @@
       "filtered_ovh": 45.000000000,
       "edges_worst_exposed": 45.000000000,
       "bridge": 8.290000000,
-      "vol": 212894.774273338,
+      "vol": 216873.786273338,
       "support_volume": 52611.089468099,
       "contact_dots": 630,
       "extent": [
         122.400000000,
-        295.571000000,
-        146.765000000
+        301.227000000,
+        151.856000000
       ],
       "edges": {
         "bed chamfer": 12,
         "end face": 20,
-        "grip": 266,
+        "grip": 316,
         "interior": 12,
         "sacrificial fin": 8100,
         "sacrificial pad/ear": 80

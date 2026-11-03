@@ -288,12 +288,22 @@ def arch_underside(values=None) -> ArchUnderside:
 # --- outside corner (pst-38hu7) -----------------------------------------------------
 
 def outside_values(values=None):
-    """Registered values plus both arm lengths (length_y_units,
-    length_down_units, as mitre_values), from length_units."""
+    """Resolved outside-corner geometry, with only the offset arm extended.
+
+    Extending at the free tip moves the arm centre by off/2. Move its local
+    lattice by the other off/2 so each cell moves exactly off from the bend.
+    The 0..8 mm extension is less than half GRID, preserving the cell count.
+    Cutouts keep their original bend-relative positions on the first arm.
+    """
     v = dict(SPEC_OUTSIDE.resolve_values(values))
     v['length_y_units'] = v['length_down_units'] = v['length_units']
     off = v['edge_offset_mm']
-    v['grip_shifts'] = (off, 0.) if v['offset_arm'] == 'first' else (0., off)
+    v['grip_shifts'] = (off/2, 0.) if v['offset_arm'] == 'first' else (0., off/2)
+    if off:
+        key = 'length_y_units' if v['offset_arm'] == 'first' else 'length_down_units'
+        v[key] += off/c.GRID
+        if v['offset_arm'] == 'first':
+            v['shift_cutouts'] -= off/2   # local +Y compensates the centre's -Y move
     return v
 
 
@@ -305,10 +315,10 @@ def outside_print_frame(values) -> Location:
 
 
 OFFSET_ARMS = ('first', 'second')
-# A flared grip's FLARE_SLIT relief sits just past its end. Shifted toward the
-# free tip (edge_offset_mm) it leaves the wall between slit and tip face a fin
-# below MIN_WALL_MM for 5.2 < offset < 6.1 mm (probe: 5.5 -> 0.60 mm, 6.0 ->
-# 0.10 mm); past 6.1 the slit runs out through the tip face (6.2, 6.5 clean).
+# Retain the tip-fin safety check against the actual extended end face.
+# With the compensated lattice its clearance is GRID/2 - GRIP_SIZE/2 -
+# FLARE_SLIT = 6.1 mm throughout the current domain; future changes to the
+# extension or slit profile must still respect the production wall floor.
 OFFSET_FIN_WALL_MM = 0.9
 
 
@@ -329,7 +339,7 @@ def outside_bed_plane(v) -> float:
 
 def outside_extent(v) -> tuple[float, float, float]:
     """(span, width, height) of the finished outside corner in its print
-    frame, from the wall envelope and each surviving grip's profile/ramp
+    frame, from the extended wall envelope and each grip's profile/ramp
     vertices. Flares extend across X; shifted grips can rise past the tip
     wall in print Z. Mirroring about X changes bounds but not their size.
     This is analytic: bed validation must not build the part it validates.
@@ -341,7 +351,7 @@ def outside_extent(v) -> tuple[float, float, float]:
     xmin, xmax = -v['added_radius']*c.GRID - w/2, -v['added_radius']*c.GRID + w/2
     ymin = -(l1 + cw/2)/sqrt(2)
     ymax = ymin + span
-    zmax = (h - c.BASE_HEIGHT + l1 + cw/2)/sqrt(2)
+    zmax = (h - c.BASE_HEIGHT + max(l1 + cw/2, l2 + w/2))/sqrt(2)
     first = p.mitre_first(v['channel_width_units'], v['length_y_units'], v['added_radius'],
                           v['suppress_connectors'], v['channel_separators'], v['grip_shifts'][0])
     second = p.outside_second_location(v['channel_width_units'], h, v['length_down_units'], v['added_radius'])
@@ -349,7 +359,7 @@ def outside_extent(v) -> tuple[float, float, float]:
     runs = [(first.location, first.grips(v['grip_flare'])),
             (second, present_grips(l2, codes[1], v['grip_flare'], v['grip_shifts'][1]))]
     # Same profile and end-ramp equations as underware.grip. Use the placed
-    # arm cells so suppression, one-sided flares and dropped cells agree
+    # arm cells so suppression, one-sided flares and shifted cells agree
     # with the builder. A whole-part X reflection preserves all three sizes.
     for location, cells in runs:
         transform = outside_print_frame(v) * location
@@ -385,23 +395,16 @@ def _checked_outside(values):
                          f'degree print frame, past the {BED_X:g} x {BED_Y:g} x {BED_Z:g} mm build volume; '
                          f'shorten the arms, lower the height or the added radius, or reduce grip_flare '
                          f'or edge_offset_mm')
-    arm_mm, off = v['length_units']*c.GRID, v['edge_offset_mm']
-    if not shifted_cells(arm_mm, off):
-        slack = c.GRID/2 - c.GRIP_SIZE/2
-        raise ValueError(f'an edge_offset_mm of {off:g} mm leaves the {v["offset_arm"]} arm no grip: '
-                         f'its one cell\'s grip has only {slack:g} mm of slack to the free tip, so it '
-                         f'drops past {slack:g} mm; use 2 or more length units, or an offset of '
-                         f'{slack:g} mm or less')
-    tip_fin = c.FLARE_SLIT + OFFSET_FIN_WALL_MM
-    arm_codes = j.split_fields('suppress_connectors', v['suppress_connectors'], 2)[OFFSET_ARMS.index(v['offset_arm'])]
-    for y, _, flared in present_grips(arm_mm, arm_codes, v['grip_flare'], off):
+    off = v['edge_offset_mm']
+    arm_index = OFFSET_ARMS.index(v['offset_arm'])
+    arm_mm = v['length_y_units' if arm_index == 0 else 'length_down_units']*c.GRID
+    arm_codes = j.split_fields('suppress_connectors', v['suppress_connectors'], 2)[arm_index]
+    for y, _, flared in present_grips(arm_mm, arm_codes, v['grip_flare'], v['grip_shifts'][arm_index]):
         fin = y - c.GRIP_SIZE/2 + arm_mm/2 - c.FLARE_SLIT
-        if flared and 1e-6 < fin < OFFSET_FIN_WALL_MM - 1e-6:   # the audit's MIN_WALL_MM - 1e-6
-            lo, hi = c.GRID/2 - c.GRIP_SIZE/2 - tip_fin, c.GRID/2 - c.GRIP_SIZE/2 - c.FLARE_SLIT
+        if flared and 1e-6 < fin < OFFSET_FIN_WALL_MM - 1e-6:
             raise ValueError(f'an edge_offset_mm of {off:g} mm leaves a {fin:.2f} mm wall fin between the '
                              f'{v["offset_arm"]} arm\'s tip-side flare slit and its free tip (under '
-                             f'{OFFSET_FIN_WALL_MM:g} mm); with grip_flare use an offset of {lo:g} mm or less '
-                             f'or {hi:g} mm or more, or suppress that grip\'s flare (S)')
+                             f'{OFFSET_FIN_WALL_MM:g} mm); reduce the offset or suppress that grip\'s flare (S)')
     first = p.mitre_first(v['channel_width_units'], v['length_y_units'], v['added_radius'],
                           v['suppress_connectors'], v['channel_separators'], v['grip_shifts'][0])
     h = v['channel_total_height']
@@ -659,7 +662,7 @@ SPEC_OUTSIDE = register(ModelSpec(
         Param('added_radius', 'integer', 0, min=0, max=2, step=1, group='Channel Size', filename=True,
               label='Added bend radius (28 mm units)'),
         Param('edge_offset_mm', 'number', 0, min=0, max=8, step=0.1, group='Channel Size', filename=True,
-              unit='mm', label='Edge offset of one arm\'s grips (overlapping tile: 6.8 full, 4 lite)'),
+              unit='mm', label='Arm extension and grip offset (overlapping tile: 6.8 full, 4 lite)'),
         Param('offset_arm', 'enum', 'second', choices=OFFSET_ARMS, group='Channel Size',
               filename=True, label='Arm the edge offset moves'),
         Param('supports', 'enum', 'built_in', choices=('none', 'built_in'), group='Print',

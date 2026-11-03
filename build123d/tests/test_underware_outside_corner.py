@@ -82,6 +82,22 @@ def test_presets_fit_the_bed_and_are_two_watertight_solids(preset, tmp_path):
           f'{part.volume:.1f} mm3 | {box.size.Y:.1f} x {box.size.X:.1f} x {box.size.Z:.1f} mm')
 
 
+@pytest.mark.parametrize('preset', PRESETS)
+@pytest.mark.parametrize('supports', ['none', 'built_in'])
+def test_zero_offset_preserves_pre_extension_stl(preset, supports, tmp_path):
+    import hashlib
+    import json
+    from pathlib import Path
+    baseline = json.loads((Path(__file__).parent/'fixtures'/'underware_outside_zero_offset.json').read_text())
+    expected = baseline['presets'][f'{preset}-{supports}']
+    for arm in m.OFFSET_ARMS:
+        part = SPEC.build({**PRESETS[preset], 'supports': supports, 'edge_offset_mm': 0, 'offset_arm': arm})
+        path = tmp_path/'zero.stl'
+        export_stl(part, path)
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == expected['sha256']
+        assert part.volume == pytest.approx(expected['volume'], abs=1e-7)
+
+
 def test_arm_cap_is_the_bed():
     """MAX_ARM_OUTSIDE: 7 cells fit at the smallest corner, 8 do not (the
     span is set by both arms at 45 degrees, at any width)."""
@@ -101,7 +117,7 @@ def test_arm_cap_is_the_bed():
 @pytest.mark.parametrize('mirrored', [False, True])
 def test_bed_gate_includes_grip_envelope(values, axis, limit, mirrored, monkeypatch):
     """Synthetic beds bracket the reproduced undercounts: 26.4 < 30 <
-    33.94 mm across, and 38.365 < 38.6 < 38.789 mm high. The H2S fits both,
+    33.94 mm across, and 38.365 < 38.6 < 42.395 mm high. The H2S fits both,
     but the same validation must reject them when that axis is the limit."""
     values = {**values, 'mirror_channel': mirrored, 'supports': 'none'}
     m._checked_outside(values)  # both fit the real production bed
@@ -118,14 +134,8 @@ def test_bed_gate_includes_grip_envelope(values, axis, limit, mirrored, monkeypa
     ({'length_units': 7, 'channel_total_height': 40}, 'past the 325 x 320 x 325 mm build volume'),
     ({'number_of_cord_cutouts': 1}, 'crosses the grip at y=0 mm'),
     ({'suppress_connectors': 'N,N,N'}, 'has 3 comma fields'),
-    ({'edge_offset_mm': 6.6}, 'an edge_offset_mm of 6.6 mm leaves the second arm no grip: its one cell\'s '
-                              'grip has only 6.5 mm of slack'),
-    ({'edge_offset_mm': 8, 'offset_arm': 'first'}, 'leaves the first arm no grip'),
-    ({'edge_offset_mm': 5.5, 'grip_flare': 9.9}, 'leaves a 0.60 mm wall fin between the second arm'),
-    ({'edge_offset_mm': 6, 'grip_flare': 9.9, 'offset_arm': 'first', 'length_units': 2},
-     'leaves a 0.10 mm wall fin between the first arm'),
     ({'length_units': 3, 'number_of_cord_cutouts': 2, 'edge_offset_mm': 7, 'offset_arm': 'first'},
-     'crosses the grip at y=-7 mm'),            # cutouts are checked against the shifted cells
+     'crosses the grip at y=-3.5 mm'),            # cutouts are checked against the shifted cells
 ])
 @pytest.mark.parametrize('supports', ['none', 'built_in'])
 def test_named_errors(values, message, supports):
@@ -197,52 +207,88 @@ def _from_edge(values):
 
 
 @pytest.mark.parametrize('arm', ['first', 'second'])
-@pytest.mark.parametrize('offset', [4, 6.5, 7])
-@pytest.mark.parametrize('base', [{'length_units': 2}, {'length_units': 3, 'added_radius': 1,
+@pytest.mark.parametrize('offset', [0, 4, 5.5, 6.5, 6.8, 8])
+@pytest.mark.parametrize('base', [{'length_units': 1}, {'length_units': 2}, {'length_units': 3, 'added_radius': 1,
                                                         'channel_width_units': 2, 'suppress_connectors': 'LNR,RBN'}])
 def test_edge_offset_moves_one_arms_cells(base, offset, arm):
     """edge_offset_mm moves the named arm's cells exactly offset further from
-    the edge line; a cell whose 15 mm grip would cross the arm's free-tip
-    face (offset > 6.5 mm) drops with its suppress code; the other arm is
-    untouched."""
+    the edge line, retaining every cell and its suppress code. The other
+    arm is untouched."""
     values = {**base, 'edge_offset_mm': offset, 'offset_arm': arm}
     ref, ours = _from_edge(base), _from_edge(values)
-    n = base['length_units']
     keep = [d for d in ref if d[0] != arm]
     assert [d for d in ours if d[0] != arm] == keep
-    tip = max(d[1] for d in ref if d[0] == arm)     # the free-tip cell (k = n - 1)
     want = [(a, dist + offset, side) for a, dist, side in ref
-            if a == arm and not (offset > 6.5 and dist == pytest.approx(tip))]
+            if a == arm]
     got = [d for d in ours if d[0] == arm]
     assert [(a, s) for a, _, s in got] == [(a, s) for a, _, s in want]
     assert [d for _, d, _ in got] == pytest.approx([d for _, d, _ in want], abs=1e-9)
-    if offset > 6.5 and n == 2:
-        assert len({d for _, d, _ in got}) == 1 < len({d for a, d, _ in ref if a == arm})
+    assert len({d for _, d, _ in got}) == len({d for a, d, _ in ref if a == arm})
 
 
 @pytest.mark.parametrize('arm', ['first', 'second'])
 @pytest.mark.parametrize('units', range(1, m.MAX_ARM_OUTSIDE + 1))
-def test_flare_fin_band_edges_build_at_every_length(units, arm):
-    """The fin is 6.5 - offset - FLARE_SLIT at every arm length (the tip
-    cell's slack does not depend on n), so the band edges the error names,
-    5.2 (fin exactly 0.9 mm, the audit accepts it) and 6.1 (slit flush with
-    the tip), are accepted at every length and 5.5 raises at every length."""
+def test_flare_fin_clearance_is_preserved_at_every_length(units, arm):
+    """Growing the tip with the lattice keeps the end-slit fin at 6.1 mm,
+    including the former forbidden band and a full tile's 6.8 mm offset."""
+    from underware.channel import present_grips
     base = {'length_units': units, 'grip_flare': 9.9, 'offset_arm': arm}
-    for off in (5.2, 6.1):
-        m._checked_outside({**base, 'edge_offset_mm': off})
-    with pytest.raises(ValueError, match='wall fin'):
-        m._checked_outside({**base, 'edge_offset_mm': 5.5})
+    for off in (0, 5.2, 5.5, 6, 6.1, 6.8, 8):
+        v, _ = m._checked_outside({**base, 'edge_offset_mm': off})
+        length = v['length_y_units' if arm == 'first' else 'length_down_units']*c.GRID
+        shift = v['grip_shifts'][m.OFFSET_ARMS.index(arm)]
+        cells = present_grips(length, '', v['grip_flare'], shift)
+        fin = min(y for y, _, _ in cells) - c.GRIP_SIZE/2 + length/2 - c.FLARE_SLIT
+        assert fin == pytest.approx(6.1)
 
 
 @pytest.mark.parametrize('arm', ['first', 'second'])
-def test_edge_offset_keeps_the_extents(arm):
-    """The bend and both arm lengths are fixed: extents (and the built part's
-    bounding box) are equal at 0 and 8 mm."""
-    base = {'length_units': 2}
-    values = {**base, 'edge_offset_mm': 8, 'offset_arm': arm}
-    assert m.outside_extent(m.outside_values(values)) == m.outside_extent(m.outside_values(base))
-    a, b = SPEC.build(base).bounding_box(), SPEC.build(values).bounding_box()
-    assert (a.min - b.min).length < 1e-6 and (a.max - b.max).length < 1e-6
+@pytest.mark.parametrize('supports', ['none', 'built_in'])
+@pytest.mark.audit
+@pytest.mark.parametrize('units,offset', [(1, 6.8), (2, 6.8), (2, 8)])
+def test_edge_offset_extends_only_the_named_arm(arm, supports, units, offset):
+    base = {'length_units': units, 'supports': supports}
+    values = {**base, 'edge_offset_mm': offset, 'offset_arm': arm}
+    v = m.outside_values(values)
+    a, part = SPEC.build(base).bounding_box(), SPEC.build(values)
+    b = part.bounding_box()
+    assert b.min.X == pytest.approx(a.min.X)
+    assert b.max.X == pytest.approx(a.max.X)
+    assert b.min.Y == pytest.approx(a.min.Y - (offset if arm == 'first' else 0))
+    assert b.max.Y == pytest.approx(a.max.Y)
+    assert b.min.Z == pytest.approx(a.min.Z)
+    assert b.max.Z == pytest.approx(a.max.Z + (offset if arm == 'second' else 0))
+    box = (SPEC.print_frame(v)*part).bounding_box()
+    assert m.outside_extent(v) == pytest.approx((box.size.Y, box.size.X, box.size.Z), abs=1e-4)
+    # Probe real solid material, not just the declared grip inventory.
+    cells = m.grips(SPEC.name, values)
+    assert len(cells) == 4*units   # two grips per cell on each arm
+    for loc, y, side, _ in cells:
+        x = side*(c.channel_width(v['channel_width_units'])/2 - c.SNAP_WALL/2)
+        z = v['channel_total_height'] - .5   # above the ordinary wall, inside the tab
+        assert part.is_inside((loc*Pos(x, y, z)).position)
+        assert not part.is_inside((loc*Pos(x, y + c.GRIP_SIZE/2 + 1, z)).position)
+
+    report = pa.audit(part, SPEC.print_orientation, print_frame=SPEC.print_frame(v),
+                      exclusions=flat(m.audit_exclusions(SPEC.name, values)),
+                      designed_support=m.outside_designed_support(values))
+    assert report.ok, report.format()
+    families, worst = edge_inventory(part, values)
+    assert not [f for f in families if f.startswith('UNCLASSIFIED')], families
+    print(f'OFFSET | y{units}-{offset}-{arm}-{supports} | {report.min_wall_mm:.3f} | '
+          f'{report.max_overhang_deg:.1f} | {worst:.1f} | PASS')
+
+
+@pytest.mark.parametrize('arm', ['first', 'second'])
+def test_edge_offset_keeps_cutouts_anchored_to_the_bend(arm):
+    from underware.channel import cutout_centres
+    base = {'length_units': 3, 'number_of_cord_cutouts': 2,
+            'suppress_connectors': 'BBB', 'shift_cutouts': 7}
+    def centres(values):
+        v, first = m._checked_outside(values)
+        return [(first.location*Pos(0, y, 0)).position.Y for y in
+                cutout_centres(v['number_of_cord_cutouts'], v['distance_between_cutouts'], v['shift_cutouts'])]
+    assert centres({**base, 'edge_offset_mm': 6.8, 'offset_arm': arm}) == pytest.approx(centres(base))
 
 
 MIRROR_CASES = {'default': {}, 'r1-w2-cut-left': {'added_radius': 1, 'channel_width_units': 2, 'length_units': 3,
@@ -520,8 +566,8 @@ ENDPOINT_CASES = {
     'cut-shift-14': {**MCUT, 'number_of_cord_cutouts': 1, 'shift_cutouts': 14, 'suppress_connectors': 'NBN'},
     'cut-left-mirror': {**MCUT, 'cord_side_cutouts': 'Left Side', 'mirror_channel': True},
     'cut-right-top-h10': {**MCUT, 'cord_side_cutouts': 'Right Side Top', 'channel_total_height': 10},
-    # edge_offset_mm (pst-ufdvc): both endpoints on each arm, the 1-cell
-    # maximum, both tile thicknesses, the flare-fin band's edges, cutouts on
+    # edge_offset_mm: both endpoints on each arm, both tile thicknesses,
+    # the former flare-fin band edges, cutouts on
     # a shifted first arm and the max corner.
     'offset-8-y2': {'length_units': 2, 'edge_offset_mm': 8},
     'offset-8-y2-first': {'length_units': 2, 'edge_offset_mm': 8, 'offset_arm': 'first'},

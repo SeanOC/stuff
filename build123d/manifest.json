@@ -3427,7 +3427,7 @@
         },
         {
           "name": "edge_offset_mm",
-          "label": "Edge offset of one arm's grips (overlapping tile: 6.8 full, 4 lite)",
+          "label": "Arm extension and grip offset (overlapping tile: 6.8 full, 4 lite)",
           "group": "Channel Size",
           "unit": "mm",
           "kind": "number",
