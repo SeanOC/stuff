@@ -59,7 +59,7 @@ mitre, the mitre has one arm length and a bed flat across its arm tips, and
 an off-centre separator keeps its x round the mitre's and the outside
 corner's bend (the source flips it to -x in the curve and second channel).
 """
-from math import hypot, radians, sin, sqrt
+from math import hypot, radians, sin, sqrt, tan
 
 from build123d import Align, Box, Location, Plane, Pos, mirror
 from holders.printer import BED_X, BED_Y, BED_Z
@@ -69,7 +69,7 @@ from underware import junction as j
 from underware import path as p
 from underware.channel import (CUTOUT_SIDES, cell_centres, check_cutouts, cutout_sill_regions, present_grips,
                                shifted_cells)
-from underware.grip import end_ramp_regions, slit_floor_regions
+from underware.grip import _profile, end_ramp_regions, slit_floor_regions
 
 MAX_RUN = 9
 MAX_OVER = 10
@@ -322,15 +322,40 @@ def outside_bed_plane(v) -> float:
 
 def outside_extent(v) -> tuple[float, float, float]:
     """(span, width, height) of the finished outside corner in its print
-    frame, from model-frame corners: the span from the first arm's closed
-    tip corner (y = -(l1 + cw/2), z = 0) to the second arm's floor at its tip
-    (y = -w/2 + R, z = axis + l2), the height from the bed flat to the
-    higher (first) arm tip's wall top (the lead-out STUB makes it longer)."""
+    frame, from the wall envelope and each surviving grip's profile/ramp
+    vertices. Flares extend across X; shifted grips can rise past the tip
+    wall in print Z. Mirroring about X changes bounds but not their size.
+    This is analytic: bed validation must not build the part it validates.
+    """
     h, cw, w = v['channel_total_height'], v['channel_width_units']*c.GRID, c.channel_width(v['channel_width_units'])
     l1, l2 = v['length_y_units']*c.GRID, v['length_down_units']*c.GRID
     rf = p.outside_floor_radius(h, v['added_radius'])
     span = (l1 + l2 + cw/2 + 2*rf - w/2)/sqrt(2)
-    return span, w, (h - c.BASE_HEIGHT + l1 + cw/2)/sqrt(2) - outside_bed_plane(v)
+    xmin, xmax = -v['added_radius']*c.GRID - w/2, -v['added_radius']*c.GRID + w/2
+    ymin = -(l1 + cw/2)/sqrt(2)
+    ymax = ymin + span
+    zmax = (h - c.BASE_HEIGHT + l1 + cw/2)/sqrt(2)
+    first = p.mitre_first(v['channel_width_units'], v['length_y_units'], v['added_radius'],
+                          v['suppress_connectors'], v['channel_separators'], v['grip_shifts'][0])
+    second = p.outside_second_location(v['channel_width_units'], h, v['length_down_units'], v['added_radius'])
+    codes = j.split_fields('suppress_connectors', v['suppress_connectors'], 2)
+    runs = [(first.location, first.grips(v['grip_flare'])),
+            (second, present_grips(l2, codes[1], v['grip_flare'], v['grip_shifts'][1]))]
+    # Same profile and end-ramp equations as underware.grip. Use the placed
+    # arm cells so suppression, one-sided flares and dropped cells agree
+    # with the builder. A whole-part X reflection preserves all three sizes.
+    for location, cells in runs:
+        transform = outside_print_frame(v) * location
+        for y, side, flared in cells:
+            slope = tan(radians(v['grip_flare'])) if flared else 0.
+            for u, z in _profile(h, c.TOP_CHAMFER if flared else h-c.BASE_HEIGHT):
+                end_inset = max(0., z - (h-c.GRIP_RAMP))
+                for gy in (y-c.GRIP_SIZE/2+end_inset, y+c.GRIP_SIZE/2-end_inset):
+                    q = (transform * Pos(side*(w/2-u+z*slope), gy, z)).position
+                    xmin, xmax = min(xmin, q.X), max(xmax, q.X)
+                    ymin, ymax = min(ymin, q.Y), max(ymax, q.Y)
+                    zmax = max(zmax, q.Z)
+    return ymax-ymin, xmax-xmin, zmax-outside_bed_plane(v)
 
 
 def _checked_outside(values):
@@ -339,7 +364,8 @@ def _checked_outside(values):
     if max(span, w) > BED_X or min(span, w) > BED_Y or height > BED_Z:
         raise ValueError(f'the outside corner stands {span:.1f} x {w:.1f} x {height:.1f} mm in its 45 '
                          f'degree print frame, past the {BED_X:g} x {BED_Y:g} x {BED_Z:g} mm build volume; '
-                         f'shorten the arms, or lower the height or the added radius')
+                         f'shorten the arms, lower the height or the added radius, or reduce grip_flare '
+                         f'or edge_offset_mm')
     arm_mm, off = v['length_units']*c.GRID, v['edge_offset_mm']
     if not shifted_cells(arm_mm, off):
         slack = c.GRID/2 - c.GRIP_SIZE/2
