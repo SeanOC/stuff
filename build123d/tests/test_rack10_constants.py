@@ -8,7 +8,7 @@ from rack10 import constants as c
     ('RACK_UNIT', 44.45), ('HOLE_PITCH', 15.875), ('HOLE_EDGE', 6.35),
     ('EAR_WIDTH', 254), ('HOLE_SPAN', 236.525), ('CLEAR_OPENING', 222.25),
     ('USABLE_WIDTH', 210), ('CAGE_SQUARE', 9.525), ('PANEL_SHORT', 0.8),
-    ('SCREW_CLEAR', 6.4), ('EAR_SLOT_WIDTH', 7), ('EAR_SLOT_HEIGHT', 10),
+    ('SCREW_CLEAR', 6.4), ('EAR_HOLE_D', 7), ('MAX_SLOT_MM', 8),
     ('PANEL_THICKNESS', 3), ('EAR_THICKNESS', 4),
     ('KEYSTONE_WIDTH', 14.5), ('KEYSTONE_HEIGHT', 16), ('KEYSTONE_PITCH', 19),
 ])
