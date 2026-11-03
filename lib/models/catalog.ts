@@ -170,6 +170,10 @@ export const CATALOG: Record<string, CatalogEntry> = {
  * enforcement and cross-checks the manifest's categoryId against it.
  */
 export const BUILD123D_CATALOG: Record<string, CatalogEntry> = {
+  rack10_cradle: { categoryId: "storage", blurb: "A vented low-rail cradle with open front and rear device access." },
+  rack10_shelf: { categoryId: "storage", blurb: "An open 2U shelf with a vented deck, two-way ribs and device pads." },
+  rack10_hub_tray: { categoryId: "storage", blurb: "Two open-front hub pockets with cable slots and a rear cable comb." },
+  rack10_ears: { categoryId: "storage", blurb: "Clamp ears for boxed devices, joined by a floor strap. Add retaining straps." },
   rack10_blank_panel: {
     categoryId: "storage",
     blurb: "Solid or vented 10-inch rack panels with reinforced ears. Print front face down without supports.",

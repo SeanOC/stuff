@@ -130,3 +130,138 @@ endpoint plus each preset and the documented reachable corners. Its
 periodic surface seams and functional apertures. Production audit rows and
 per-preset volumes are reported in the PR; geometry baselines record the new
 presets with this task's plan-review provenance.
+
+## Device mounts
+
+The four device families are original geometry for `pst-go6df.2` (plan
+review PASS). Dimensions marked **[C]** are cited, not physical fit tests.
+
+| Model / preset | Device W × D × H mm | Allocation | Source |
+| --- | --- | --- | --- |
+| rack10-cradle / steam-machine | 156 × 162.4 × 152 with feet (148 without) | 4U | [C] task equipment list; [Valve hardware](https://store.steampowered.com/hardware/steammachine) |
+| rack10-cradle / generic-3u | 160 × 160 × 100 | 3U | Original parametric example |
+| rack10-shelf / sonos-amp | 217 × 217 × 64 | 2U | [C] task equipment list; [Sonos Amp guide](https://www.sonos.com/en-us/guides/amp) |
+| rack10-shelf / 2u-plain | 180 × 180 × 50 | 2U | Original parametric example |
+| rack10-hub-tray / caseta-aqara-m3 | 70 × 70 × 30.23; 105 × 105 × 36.5 | 1U | [C] [Lutron specifications, dimensions](https://www.lutron.com/TechnicalDocumentLibrary/369816_Smart_Bridge_Pro_Spec.pdf); [Aqara M3 specifications](https://www.aqara.com/us/product/hub-m3-specs/) |
+| rack10-ears / usw-lite-16 | 192 × 185 × 44 | **2U** | [C] [Ubiquiti specifications, dimensions](https://techspecs.ui.com/unifi/switching/usw-lite-16-poe) |
+| rack10-ears / wide-box-210 | 210 × 170 × 31 | 1U | Original wide-box example; not a USW-Lite-16-PoE |
+
+The two initially approximate equipment sizes were checked against vendor
+specifications on 2026-11-03. The M3 is wider and shorter than the initial
+estimate; its corrected envelope fits 1U. The switch is narrower and taller:
+Ubiquiti's older datasheet gives 191.7 × 185 × 43.7, rounded to 192 × 185 ×
+44 on the current specification page. Both heights require **2U** once the
+3 mm support floor and clearance are included. The 210 mm generic preset
+remains available separately. Lutron's 69.9 mm width/depth are rounded up to
+70 mm for the pocket; its 30.23 mm height fits the same 1U envelope.
+
+All four generators use the shared EIA panel/ear datums and slot option.
+They print **front face down**, with +Z pointing to the rear of the rack.
+Their floors, pocket rails and ribs grow from the face already on the bed.
+Vents and enclosed cable slots have 45-degree peaked ceilings. The vent
+areas derive from `vent_pattern`; stretching the grid to roughly 40 mm row spacing in the depth direction produces fewer, longer
+slots; a peaked ceiling preserves the requested area fraction. The roof ridges are functional and remain sharp because
+chamfering them would introduce horizontal ceilings. Other exposed right
+angles receive 0.3 mm chamfers; device pads have sloping sides, and continuous
+floor/rail joints receive 1 mm root blends (fillets on the cradle/clamp,
+45-degree chamfers on the hub dividers). No print-audit exceptions are
+added. Use PETG/PCTG for loaded equipment in a warm rack; PLA fit prototypes
+are useful, but the load calculation below uses PETG stiffness and does not
+establish a PLA service rating.
+
+### Cradle, pockets and clamp
+
+`cradle(W,D,H,units,clearance)` checks `tray_dimensions` before construction.
+The Steam Machine has 2 mm clearance on each side, a 160 mm inner width,
+8 mm low rails above its 3 mm floor, and a bezel that leaves the complete
+front face exposed. The rear remains open. Four 1 mm pads support the device
+with or without its own feet; the fit envelope includes its feet. Pad seats
+and the rear cable notch are reserved from the vents. The test measures the
+actual through-area under the device, requiring at least 40% after pad seats
+and finishing. The same geometry supports the smaller 3U preset.
+
+`hub_tray(left_w,left_d,right_w,right_d)` provides 1 mm clearance on each
+pocket side, an independent rear stop and peaked cable opening behind each
+hub, and a rear comb with 7 mm slots. The pockets open at the front; put the
+M3 there with its IR/status face pointing out. Keep RF devices outside metal
+enclosures and route their cables behind the pockets. Heights are the fixed
+30.23 mm Lutron and 36.5 mm Aqara envelopes; width/depth are adjustable.
+
+`ears(W,D,H,units,clearance)` implements the **clamp-style** option: two low
+L-shaped ears connected by a floor strap. Thread retaining ties through the
+four peaked floor slots and around the device, clear of connectors and
+cooling openings. This does not assume screw holes in the switch housing.
+The generic 210 mm body has positive clearance under the actual 222.25 mm
+rail opening; 210 mm is the device width, not the mounting flange. The
+front flange remains 254 mm. All mounts have a 10 mm rear cable notch.
+
+### Sonos shelf and rib calculation
+
+A Sonos Amp cannot use the cradle: `217 + 2×1 + 2×2.4 = 223.8 mm`, above the
+220.25 mm tray limit. The shelf has no continuous tall side rails. Its front
+flange spans the 254 mm ear width; behind the flange the deck fits the rail
+opening. Optional **5 mm side stops** have 1.6 mm walls and 219 mm between
+them for the Amp. Their outside width is 222.2 mm, just inside the 222.25 mm
+opening. This is deliberately a tighter fit than the tray margin: measure
+or print a short fit section for the chosen rails, or disable `side_stops`.
+With stops disabled the deck is 220.25 mm wide. Four 1 mm pads raise the Amp
+above the deck, and a split rear lip leaves the cable notch open. The 2.1 kg
+Amp's front, back and top remain unobstructed.
+
+The shelf uses a 3 mm perforated deck over a **14 mm deep rib grid**. The openings continue through the ribs, leaving continuous webs in
+both bending directions. This avoids suspended underside ribs and keeps
+printing support-free. A full solid slab of this height is unnecessary:
+vent cells remove 35% of the inset device-zone area before edge relief.
+
+The rule-of-thumb calculation is deliberately FEA-free. Use a 3 kg point
+load (29.43 N), PETG elastic modulus **E = 2000 N/mm²**, and ignore the front
+flange, pad seats, rear lip and surplus ribs. At every exposed width/depth,
+there are at least eight longitudinal webs, each conservatively 3.0 mm wide
+after finishing, and two unperforated 20 mm cross ribs at the front and rear
+(the rear rib ends before the notch). Subtract 0.6 mm from the 17 mm depth
+for edge relief. Thus:
+
+- Fore-aft section: `I = 8 × 3.0 × 16.4³ / 12` mm⁴. The front rails support
+  a cantilever; for a device-centre arm `a = D/2 + 5`, use
+  `δ = F a³ / (3 E I)`.
+- Transverse section: `I = 2 × 20 × 16.4³ / 12` mm⁴. Conservatively use the
+  complete **254 mm** ear span and `δ = F L³ / (48 E I)`.
+
+`beam_deflections` evaluates both and the tests require ≤1 mm, including
+D=220 mm. The cantilever case governs this conservative calculation. These
+are elastic section estimates, not a tested load rating: layer adhesion,
+creep, actual infill/perimeters, ear fasteners and equipment temperature
+remain part of the physical validation. Print load-bearing ribs solid and
+check sustained deflection with a dummy load before installing equipment.
+
+### Proposed corrected 12U elevation and cables
+
+The corrected switch height uses the former U9 vent allocation. This keeps
+the same 12U overall height and the hubs/keystone at their planned positions.
+
+| Bottom → top | Part |
+| --- | --- |
+| U1 | Selected 10-inch PDU; bracket deferred until the PDU is chosen |
+| U2–U5 | rack10-cradle / steam-machine |
+| U6 | rack10-blank-panel / 1u-vented |
+| U7–U8 | rack10-shelf / sonos-amp |
+| U9–U10 | rack10-ears / usw-lite-16 (corrected 2U envelope) |
+| U11 | rack10-hub-tray / caseta-aqara-m3 |
+| U12 | rack10-keystone-panel / 1u-6-keystones |
+
+Power and incoming network enter from the **back** through the mounts'
+notches. HDMI and the TV network cable leave along the **right inside wall**:
+use the Underware I-channel in the approximately 30 mm side gap. Keep
+connector bend radii clear behind the devices. The shelf reaches 236 mm
+behind its front face, so the chosen 240 mm frame leaves very little rear
+cable room for the Amp; connectors must exit into the rear/side channel,
+not against a closed back panel. Frame, rail strips, PDU bracket and planner
+remain outside these models.
+
+Device validation lives in `tests/test_rack10_devices.py`: preset topology
+and STL watertightness, device-envelope intersections, cradle open fraction,
+fit rejection, the two load cases, and production audits plus an exposed-edge
+classifier at every numeric endpoint and documented corner. Unbuildable
+1U switch/3U full-height Steam Machine combinations and over-wide hub pockets
+raise named fit errors. No geometry baseline is reused from a different
+model; new preset rows carry this task's plan-review provenance.

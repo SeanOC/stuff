@@ -4657,6 +4657,227 @@
       ]
     },
     {
+      "slug": "rack10-cradle",
+      "engine": "build123d",
+      "title": "10-inch rack low-rail cradle",
+      "blurb": "Vented cradle with an open bezel, low rails, four pads and rear cable access.",
+      "categoryId": "storage",
+      "params": [
+        {
+          "name": "device_w",
+          "label": "Device W",
+          "kind": "number",
+          "default": 156,
+          "min": 140,
+          "max": 200,
+          "step": 1
+        },
+        {
+          "name": "device_d",
+          "label": "Device D",
+          "kind": "number",
+          "default": 162.4,
+          "min": 140,
+          "max": 200,
+          "step": 1
+        },
+        {
+          "name": "device_h",
+          "label": "Device H",
+          "kind": "number",
+          "default": 152,
+          "min": 80,
+          "max": 152,
+          "step": 1
+        },
+        {
+          "name": "units",
+          "label": "Units",
+          "kind": "integer",
+          "default": 4,
+          "min": 3,
+          "max": 4,
+          "step": 1
+        },
+        {
+          "name": "clearance",
+          "label": "Clearance",
+          "kind": "number",
+          "default": 2,
+          "min": 1,
+          "max": 2,
+          "step": 1
+        },
+        {
+          "name": "slot_mm",
+          "label": "Slot length (0 round; 7\u20138 slot)",
+          "kind": "number",
+          "default": 0,
+          "min": 0,
+          "max": 8,
+          "step": 1
+        }
+      ],
+      "presets": [
+        {
+          "id": "steam-machine",
+          "label": "Steam Machine",
+          "values": {}
+        },
+        {
+          "id": "generic-3u",
+          "label": "Generic 3U",
+          "values": {
+            "device_w": 160,
+            "device_d": 160,
+            "device_h": 100,
+            "units": 3
+          }
+        }
+      ]
+    },
+    {
+      "slug": "rack10-ears",
+      "engine": "build123d",
+      "title": "10-inch rack clamp ears",
+      "blurb": "A strapped clamp mount for devices without mounting screw holes. Add two retaining straps.",
+      "categoryId": "storage",
+      "params": [
+        {
+          "name": "device_w",
+          "label": "Device W",
+          "kind": "number",
+          "default": 192,
+          "min": 140,
+          "max": 210,
+          "step": 1
+        },
+        {
+          "name": "device_d",
+          "label": "Device D",
+          "kind": "number",
+          "default": 185,
+          "min": 100,
+          "max": 200,
+          "step": 1
+        },
+        {
+          "name": "device_h",
+          "label": "Device H",
+          "kind": "number",
+          "default": 44,
+          "min": 20,
+          "max": 60,
+          "step": 1
+        },
+        {
+          "name": "units",
+          "label": "Units",
+          "kind": "integer",
+          "default": 2,
+          "min": 1,
+          "max": 2,
+          "step": 1
+        },
+        {
+          "name": "clearance",
+          "label": "Clearance",
+          "kind": "number",
+          "default": 1,
+          "min": 1,
+          "max": 2,
+          "step": 1
+        },
+        {
+          "name": "slot_mm",
+          "label": "Slot length (0 round; 7\u20138 slot)",
+          "kind": "number",
+          "default": 0,
+          "min": 0,
+          "max": 8,
+          "step": 1
+        }
+      ],
+      "presets": [
+        {
+          "id": "usw-lite-16",
+          "label": "Usw Lite 16",
+          "values": {}
+        },
+        {
+          "id": "wide-box-210",
+          "label": "Wide Box 210",
+          "values": {
+            "device_w": 210,
+            "device_d": 170,
+            "device_h": 31,
+            "units": 1
+          }
+        }
+      ]
+    },
+    {
+      "slug": "rack10-hub-tray",
+      "engine": "build123d",
+      "title": "10-inch rack two-hub tray",
+      "blurb": "1U open-front pockets with rear cable slots and a cable comb.",
+      "categoryId": "storage",
+      "params": [
+        {
+          "name": "left_w",
+          "label": "Left W",
+          "kind": "number",
+          "default": 70,
+          "min": 40,
+          "max": 105,
+          "step": 1
+        },
+        {
+          "name": "left_d",
+          "label": "Left D",
+          "kind": "number",
+          "default": 70,
+          "min": 40,
+          "max": 110,
+          "step": 1
+        },
+        {
+          "name": "right_w",
+          "label": "Right W",
+          "kind": "number",
+          "default": 105,
+          "min": 40,
+          "max": 110,
+          "step": 1
+        },
+        {
+          "name": "right_d",
+          "label": "Right D",
+          "kind": "number",
+          "default": 105,
+          "min": 40,
+          "max": 110,
+          "step": 1
+        },
+        {
+          "name": "slot_mm",
+          "label": "Slot length (0 round; 7\u20138 slot)",
+          "kind": "number",
+          "default": 0,
+          "min": 0,
+          "max": 8,
+          "step": 1
+        }
+      ],
+      "presets": [
+        {
+          "id": "caseta-aqara-m3",
+          "label": "Caseta Aqara M3",
+          "values": {}
+        }
+      ]
+    },
+    {
       "slug": "rack10-keystone-panel",
       "engine": "build123d",
       "title": "10-inch rack keystone panel",
@@ -4694,6 +4915,74 @@
           "label": "1U maximum ports",
           "values": {
             "count": 11
+          }
+        }
+      ]
+    },
+    {
+      "slug": "rack10-shelf",
+      "engine": "build123d",
+      "title": "10-inch rack open shelf",
+      "blurb": "2U open shelf with a vented 3 mm deck, two-way ribs and four pads.",
+      "categoryId": "storage",
+      "params": [
+        {
+          "name": "device_w",
+          "label": "Device W",
+          "kind": "number",
+          "default": 217,
+          "min": 100,
+          "max": 217,
+          "step": 1
+        },
+        {
+          "name": "device_d",
+          "label": "Device D",
+          "kind": "number",
+          "default": 217,
+          "min": 100,
+          "max": 220,
+          "step": 1
+        },
+        {
+          "name": "device_h",
+          "label": "Device H",
+          "kind": "number",
+          "default": 64,
+          "min": 20,
+          "max": 64,
+          "step": 1
+        },
+        {
+          "name": "side_stops",
+          "label": "5 mm side stops",
+          "kind": "boolean",
+          "default": true
+        },
+        {
+          "name": "slot_mm",
+          "label": "Slot length (0 round; 7\u20138 slot)",
+          "kind": "number",
+          "default": 0,
+          "min": 0,
+          "max": 8,
+          "step": 1
+        }
+      ],
+      "presets": [
+        {
+          "id": "sonos-amp",
+          "label": "Sonos Amp",
+          "values": {}
+        },
+        {
+          "id": "2u-plain",
+          "label": "2U Plain",
+          "values": {
+            "device_w": 180,
+            "device_d": 180,
+            "device_h": 50,
+            "side_stops": false
           }
         }
       ]
