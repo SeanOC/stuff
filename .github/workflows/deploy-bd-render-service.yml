@@ -24,8 +24,9 @@
 #
 # The image bakes the build123d env, occt.py, holders, capture, drawer,
 # labels, assets/{fonts,art}, multibuild, openconnect, gridfinity,
-# opengrid_snap, underware, profiles and scripts. Keep this paths filter
-# in sync with the COPY sources in services/bd-render/Dockerfile.
+# opengrid_snap, underware, profiles, scripts and vendor (uv path
+# dependencies). Keep this paths filter in sync with the COPY sources in
+# services/bd-render/Dockerfile.
 
 name: deploy-bd-render-service
 
@@ -47,6 +48,7 @@ on:
       - "build123d/underware/**"
       - "build123d/profiles/**"
       - "build123d/scripts/**"
+      - "build123d/vendor/**"
       - "build123d/occt.py"
       - "build123d/pyproject.toml"
       - "build123d/uv.lock"
