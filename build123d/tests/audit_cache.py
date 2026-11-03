@@ -264,7 +264,7 @@ def _args(orientation, cutters, exclusions, model, print_frame) -> dict:
 
 
 def key(part, orientation=(0.0, 0.0, 1.0), *, cutters=(), exclusions=(), model="part",
-        print_frame=None) -> str:
+        print_frame=None, designed_support=None) -> str:
     """The cache key for one audit() call; raises Uncacheable."""
     if getattr(part, "wrapped", None) is None:
         raise Uncacheable(f"part of type {type(part).__qualname__}")
@@ -276,6 +276,15 @@ def key(part, orientation=(0.0, 0.0, 1.0), *, cutters=(), exclusions=(), model="
         _args(orientation, list(cutters), list(exclusions), model, print_frame),
     ):
         h.update(json.dumps(component, sort_keys=True).encode())
+        h.update(b"\0")
+    if designed_support is not None:
+        # The registry's cross-process determinism gate keys every preset,
+        # including support-aware calls (which audit() still runs uncached).
+        # Include the exact material and declaration behavior, never just its
+        # bbox or the retained part's geometry.
+        declaration = {"source": inspect.getsource(type(designed_support)),
+                       "state": _canon(vars(designed_support))}
+        h.update(json.dumps(declaration, sort_keys=True).encode())
         h.update(b"\0")
     return h.hexdigest()
 
