@@ -266,6 +266,36 @@ evidence. That work is tracked separately as **Validate stiffness and size
 ribs for rack10 cradle, clamp and hub tray**; their fit/printability checks
 must not be interpreted as device-load ratings.
 
+#### Stiffness input provenance (validation incomplete)
+
+Source check for the cradle/clamp/hub stiffness follow-up, 2026-11-03:
+
+| Device | Mass input | Evidence / remaining input |
+| --- | --- | --- |
+| Steam Machine | [C] 2.6 kg | Original device-mount task equipment list, Sean 2026-11-02 23:25Z; also specified by the stiffness task. |
+| USW-Lite-16-PoE | [C] 1.2 kg | [Ubiquiti technical specifications](https://techspecs.ui.com/unifi/switching/usw-lite-16-poe), Mechanical → Weight. |
+| Lutron L-BDG2 | [U] unresolved | [Lutron specification 369816g](https://www.lutron.com/TechnicalDocumentLibrary/369816_Smart_Bridge_Pro_Spec.pdf) supplies dimensions, but no mass. Need the supported device's measured mass or a manufacturer net-mass citation. |
+| Aqara Hub M3 | [U] unresolved | [Aqara M3 specifications](https://www.aqara.com/us/product/hub-m3-specs/) supplies dimensions, but no mass. An indexed Aqara store result says 200 g, but its [linked page](https://us.aqara.com/en-ca/pages/product-specs/hub-m-3) returned 404 during verification. Need a measurement or retrievable manufacturer net-mass citation. |
+
+The original equipment list supplies neither hub mass. Packaging/shipping
+weights are not substitutes for the actual loads required by this task.
+The generic cradle and wide-box presets remain fit examples, not separately
+weighed equipment. Cable forces and equipment centre-of-gravity/contact
+locations also need explicit assumptions in the eventual load calculation.
+
+For material sensitivity, [Extrudr's PCTG technical data sheet](https://s3.extrudr.com/extrudr-media/datasheets/tds/tds-en/pctg-TDS-en.pdf)
+(2025-06-26, section 3) lists a flexural modulus of 1650 MPa. This is a
+candidate short-term material input, not a measured modulus for these
+front-down prints or a sustained-load rating. The shelf's 2000 MPa PETG
+assumption remains unchanged. Neither that assumption nor a datasheet HDT
+establishes a permissible rack temperature or creep duration.
+
+No sustained-load prototype result or explicit acceptance of predicted sag
+has been recorded for these three mounts. The follow-up still needs the
+load calculations, BREP section proofs, any required stiffening, endpoint
+print audits, and the task's physical-validation/acceptance step. This input
+inventory does not complete that validation or authorize a service load.
+
 ### Proposed corrected 12U elevation and cables
 
 The corrected switch height uses the former U9 vent allocation. This keeps
