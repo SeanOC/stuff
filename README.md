@@ -95,7 +95,8 @@ matrix.
 
 - **Code** — [MIT](LICENSE).
 - **Models** (`models/*.scad`) — [![CC BY-NC-SA 4.0](https://licensebuttons.net/l/by-nc-sa/4.0/88x31.png)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
-  (see also [`models/LICENSE`](models/LICENSE))
+  (see also [`models/LICENSE`](models/LICENSE)); the five HomeRacker wrappers
+  and presets are [CC BY-SA 4.0](models/homeracker-LICENSE.md).
 - The build123d cartridge-holder port
   (`build123d/holders/cartridge_holder.py`) retains CC BY-NC-SA 4.0; it is
   excluded from the MIT grant (personal/non-commercial use).

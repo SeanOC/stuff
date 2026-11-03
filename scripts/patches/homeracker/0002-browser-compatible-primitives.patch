@@ -1,0 +1,211 @@
+--- a/models/core/lib/support.scad
++++ b/models/core/lib/support.scad
+@@ -113,25 +113,17 @@
+   attachable_side_length = disable_chamfer ? lock_pin_center_side : lock_pin_outer_side;
+   attachable_height_half = lock_pin_prismoid_inner_length + lock_pin_prismoid_outer_length;
+ 
+-  // Define one half of the hole shape in a module
+-  module hole_half(anchor = CENTER, spin = 0, orient = UP) {
+-    attachable(anchor = anchor, spin = spin, orient = orient, size = [attachable_side_length, attachable_side_length, attachable_height_half]) {
+-      down(attachable_height_half / 2)
+-        color_this(debug_colors ? HR_GREEN : HR_CORE_SUPPORT_SECONDARY_COLOR)
+-          prismoid(size1 = lock_pin_center_dimension, size2 = LOCKPIN_HOLE_SIDE_LENGTH_DIMENSION, h = lock_pin_prismoid_inner_length) {
+-            attach(TOP, BOTTOM) color_this(debug_colors ? HR_RED : HR_CORE_SUPPORT_SECONDARY_COLOR)
+-              prismoid(size1 = LOCKPIN_HOLE_SIDE_LENGTH_DIMENSION, size2 = lock_pin_outer_dimension, h = lock_pin_prismoid_outer_length);
+-          }
+-      children();
++  // Equivalent explicit placement avoids recursively attached hole_half children
++  // in the browser's OpenSCAD 2025.01 wasm engine. Each half runs from
++  // the central 4.8 mm square to a 4 mm throat and 5.6 mm flared mouth.
++  for (side = [-1, 1])
++    scale([1, 1, side]) {
++      prismoid(size1 = lock_pin_center_dimension,
++               size2 = LOCKPIN_HOLE_SIDE_LENGTH_DIMENSION,
++               h = lock_pin_prismoid_inner_length);
++      up(lock_pin_prismoid_inner_length)
++        prismoid(size1 = LOCKPIN_HOLE_SIDE_LENGTH_DIMENSION,
++                 size2 = lock_pin_outer_dimension,
++                 h = lock_pin_prismoid_outer_length);
+     }
+-  }
+-
+-  // Render the original half
+-  attachable(anchor = CENTER, spin = 0, orient = UP, size = [attachable_side_length, attachable_side_length, attachable_height_half * 2]) {
+-    up(attachable_height_half / 2)
+-      hole_half() {
+-        attach(BOTTOM, BOTTOM) hole_half();
+-      }
+-    children();
+-  }
+ }
+--- a/models/core/lib/lockpin.scad
++++ b/models/core/lib/lockpin.scad
+@@ -102,7 +102,9 @@
+   if (grip_type != LP_GRIP_NO_GRIP) {
+     has_neck_ext = neck_extension == LP_NECK_EXT_NECK || neck_extension == LP_NECK_EXT_BOTH;
+     grip_side_extension = has_neck_ext ? LP_NECK_EXTENSION_UNIT : 0;
+-    grip_base_dimensions = [lockpin_width_outer, lockpin_height, grip_base_length];
++    // Extend only the inner end into the body; retain the outer grip envelope.
++    // This avoids coincident chamfer seams creating zero-volume CGAL scraps.
++    grip_base_dimensions = [lockpin_width_outer, lockpin_height, grip_base_length + 0.002];
+     grip_outer_dimensions = [grip_type == LP_GRIP_EXTENDED ? grip_width * 1.5 : grip_width, lockpin_height, grip_thickness_outer];
+     grip_inner_dimensions = [grip_width, lockpin_height, grip_thickness_inner];
+ 
+@@ -110,7 +112,7 @@
+ 
+     union() {
+       // Base part of the grip
+-      translate([0, 0, -base_translation - grip_base_length / 2])
++      translate([0, 0, -base_translation - grip_base_length / 2 + 0.001])
+         cuboid(grip_base_dimensions, chamfer = chamfer_enabled ? lockpin_chamfer : 0, except = TOP);
+ 
+       if (grip_type == LP_GRIP_STANDARD || grip_type == LP_GRIP_EXTENDED) {
+@@ -136,8 +138,10 @@
+  */
+ module neck(neck_extension = LP_NECK_EXT_NONE, grip_type = LP_GRIP_STANDARD, chamfer_enabled = true) {
+   lockpin_fillet = lockpin_width_outer / 3;
+-  neck_dimensions = [lockpin_width_outer, lockpin_height, LP_NECK_EXTENSION_UNIT];
+-  neck_z = lockpin_prismoid_length + lockpin_endpart_length - TOLERANCE / 2 + LP_NECK_EXTENSION_UNIT / 2;
++  // Preserve the outer end, but overlap 0.001 mm into the pin body.
++  // The upstream face-only joint becomes disconnected in wasm/Manifold.
++  neck_dimensions = [lockpin_width_outer, lockpin_height, LP_NECK_EXTENSION_UNIT + 0.001];
++  neck_z = lockpin_prismoid_length + lockpin_endpart_length - TOLERANCE / 2 + LP_NECK_EXTENSION_UNIT / 2 - 0.0005;
+   has_neck_ext = neck_extension == LP_NECK_EXT_NECK || neck_extension == LP_NECK_EXT_BOTH;
+   has_tail_neck = neck_extension == LP_NECK_EXT_TAIL || neck_extension == LP_NECK_EXT_BOTH;
+ 
+@@ -150,7 +154,7 @@
+       } else {
+         // No grip — fillet and chamfer the outer (BOTTOM) end
+         intersection() {
+-          cuboid(neck_dimensions, rounding = lockpin_fillet, edges = [BOTTOM + LEFT, BOTTOM + RIGHT]);
++          hr_rounded_xz_prism(neck_dimensions, lockpin_fillet, top = false);
+           cuboid(neck_dimensions, chamfer = chamfer_enabled ? lockpin_chamfer : 0, edges = [FRONT, BACK], except = TOP);
+         }
+       }
+@@ -160,7 +164,7 @@
+     translate([0, 0, neck_z])
+       // Always fillet and chamfer the outer (TOP) end
+       intersection() {
+-        cuboid(neck_dimensions, rounding = lockpin_fillet, edges = [TOP + LEFT, TOP + RIGHT]);
++        hr_rounded_xz_prism(neck_dimensions, lockpin_fillet);
+         cuboid(neck_dimensions, chamfer = chamfer_enabled ? lockpin_chamfer : 0, edges = [FRONT, BACK], except = BOTTOM);
+       }
+   }
+@@ -196,7 +200,7 @@
+     // Since it's not possible to have both chamfer and fillet on the same edges,
+     // we use an intersection of two shapes to achieve the desired effect.
+     intersection() {
+-      cuboid(lockpin_endpart_dimension, rounding = front && !has_neck ? lockpin_fillet_front : 0, edges = [TOP + LEFT, TOP + RIGHT]);
++      hr_rounded_xz_prism(lockpin_endpart_dimension, front && !has_neck ? lockpin_fillet_front : 0);
+       cuboid(lockpin_endpart_dimension, chamfer = chamfer_enabled ? lockpin_chamfer : 0, edges = [FRONT, BACK], except = has_neck ? [BOTTOM, TOP] : BOTTOM);
+     }
+ }
+@@ -283,3 +287,13 @@
+     children();
+   }
+ }
++
++// Same XZ rounded profile extruded along Y; avoids BOSL2's 3D hull path
++// (degenerate Manifold facets / stalled CGAL hull in OpenSCAD wasm).
++module hr_rounded_xz_prism(size, radius, top = true) {
++  rotate([90, 0, 0])
++    // This prism is always clipped by the chamfered cuboid. Overshoot Y
++    // to avoid coincident faces creating zero-volume scraps in CGAL plates.
++    linear_extrude(height = size.y + 0.002, center = true)
++      rect([size.x, size.z], rounding = top ? [radius, radius, 0, 0] : [0, 0, radius, radius]);
++}
+--- a/models/foot/lib/foot.scad
++++ b/models/foot/lib/foot.scad
+@@ -63,13 +63,20 @@
+   attachable_height = BASE_UNIT + spacer_height + BASE_STRENGTH;
+ 
+   attachable(anchor = anchor, spin = spin, orient = orient, size = [attachable_side_length, attachable_side_length, attachable_height]) {
+-    up(BASE_STRENGTH / 2 + spacer_height / 2)
+-      color_this(debug_colors ? HR_YELLOW : HR_FOOT_PRIMARY_COLOR)
+-        support(units = 1, x_holes = true, debug_colors = debug_colors, disable_chamfer = disable_chamfer, orient = FRONT) {
+-          attach(FRONT, TOP, shiftout = spacer_height, inside = true) color_this(debug_colors ? HR_BLUE : HR_FOOT_PRIMARY_COLOR) cuboid([BASE_UNIT, BASE_UNIT, spacer_height + spacer_inset_addition], chamfer = disable_chamfer ? 0 : BASE_CHAMFER, except = [TOP, BOTTOM]) {
+-            attach(TOP, TOP) color_this(debug_colors ? HR_GREEN : HR_FOOT_PRIMARY_COLOR) cuboid([attachable_side_length, attachable_side_length, BASE_STRENGTH], chamfer = disable_chamfer ? 0 : BASE_CHAMFER, except = TOP);
+-          }
+-        }
++    union() {
++      // Equivalent explicit placement avoids deeply nested attach() evaluation
++      // in OpenSCAD wasm. Sink the spacer 0.001 mm into the plate so CGAL's
++      // float rounding cannot split the face-touching original into two solids.
++      up(BASE_STRENGTH / 2 + spacer_height / 2)
++        support(units = 1, x_holes = true, debug_colors = debug_colors,
++                disable_chamfer = disable_chamfer, orient = FRONT);
++      down(attachable_height / 2 - BASE_STRENGTH / 2)
++        cuboid([attachable_side_length, attachable_side_length, BASE_STRENGTH],
++               chamfer = disable_chamfer ? 0 : BASE_CHAMFER, except = TOP);
++      down(attachable_height / 2 - BASE_STRENGTH - (spacer_height + spacer_inset_addition) / 2 + 0.0005)
++        cuboid([BASE_UNIT, BASE_UNIT, spacer_height + spacer_inset_addition + 0.001],
++               chamfer = disable_chamfer ? 0 : BASE_CHAMFER, except = [TOP, BOTTOM]);
++    }
+     children();
+   }
+ 
+--- a/models/panel/lib/rackpanel.scad
++++ b/models/panel/lib/rackpanel.scad
+@@ -35,6 +35,7 @@
+ include <homeracker/BOSL2/std.scad>
+ include <../../core/lib/constants.scad>
+ include <truss.scad>
++include <split.scad>
+ 
+ RP_PRIMARY_COLOR = HR_YELLOW;
+ RP_SECONDARY_COLOR = HR_CHARCOAL;
+@@ -59,7 +60,10 @@
+   bore_dimensions = [RP_RACKMOUNT_BORE_WIDTH, panel_depth + HR_EPSILON, RP_RACKMOUNT_BORE_HEIGHT];
+   attachable(anchor, spin, orient, size = bore_dimensions) {
+     color(debug_colors ? HR_RED : RP_PRIMARY_COLOR)
+-      cuboid(bore_dimensions, rounding = RP_RACKMOUNT_BORE_HEIGHT / 2, except = [FRONT, BACK]);
++      // Same capsule cut, with a 2D profile instead of a 3D hull.
++      rotate([90, 0, 0])
++        linear_extrude(height = bore_dimensions.y, center = true)
++          rect([bore_dimensions.x, bore_dimensions.z], rounding = RP_RACKMOUNT_BORE_HEIGHT / 2);
+     children();
+   }
+ }
+@@ -366,7 +370,15 @@
+     (split_mode == HR_RP_SPLIT_HALF && (view_mode == HR_RP_VIEW_HALF_LEFT || view_mode == HR_RP_VIEW_HALF_RIGHT));
+   view_width = split_mode == HR_RP_SPLIT_HALF ? attachable_width_half : panel_width;
+ 
+-  if (accepts_children)
++  // The unbraced full panel has no split attachments. Use equivalent
++  // explicit bore placement to avoid nested attachable/tag scopes that
++  // crash OpenSCAD wasm 2025.01 (rackpanel_1u alone renders successfully).
++  if (split_mode == HR_RP_SPLIT_FULL && !brace_active)
++    attachable(anchor, spin, orient, size = panel_dimensions) {
++      hr_flat_rackpanel(panel_width, panel_height_units, bore_mode, panel_depth, chamfer_enabled);
++      children();
++    }
++  else if (accepts_children)
+     attachable(anchor, spin, orient, size = [view_width, panel_depth, attachable_height]) {
+       union() {
+         if (split_mode == HR_RP_SPLIT_FULL)
+@@ -392,3 +404,25 @@
+       attach(TOP, TOP, overlap = -BASE_STRENGTH) split_lockpin(units = panel_height_units, debug_colors = debug_colors, chamfer_enabled = chamfer_enabled);
+ 
+ }
++
++// Equivalent full-panel solid for the browser path. All measurements are
++// upstream constants; split/brace modes retain the original implementation.
++module hr_flat_rackpanel(panel_width, units, bore_mode, panel_depth, chamfer_enabled) {
++  panel_height = units * STD_UNIT_HEIGHT;
++  bore_count = get_bore_count_per_unit(bore_mode, units);
++  z_positions = bore_mode == RP_BORE_MODE_MINIMAL
++    ? (units == 1 ? [0] : [-(panel_height - STD_UNIT_HEIGHT) / 2, (panel_height - STD_UNIT_HEIGHT) / 2])
++    : [for (u = [0:units-1], b = [0:bore_count-1])
++        (u - (units-1)/2) * STD_UNIT_HEIGHT
++          + (b - (bore_count-1)/2) * STD_RACK_BORE_DISTANCE_Z * (4-bore_count)];
++  difference() {
++    cuboid([panel_width, panel_depth, panel_height],
++           chamfer = chamfer_enabled ? BASE_CHAMFER : 0, edges = FRONT);
++    for (side = [-1, 1], z = z_positions)
++      translate([side * (panel_width - STD_MOUNT_SURFACE_WIDTH) / 2, 0, z])
++        rotate([90, 0, 0])
++          linear_extrude(height = panel_depth + HR_EPSILON, center = true)
++            rect([RP_RACKMOUNT_BORE_WIDTH, RP_RACKMOUNT_BORE_HEIGHT],
++                 rounding = RP_RACKMOUNT_BORE_HEIGHT / 2);
++  }
++}

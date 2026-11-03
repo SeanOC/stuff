@@ -1,0 +1,7 @@
+{
+  "repository": "https://github.com/BelfrySCAD/BOSL2",
+  "tag": "v2.0.779",
+  "commit": "a4669f97d5ff6f650ef4a3e38eed66eb2fa3d119",
+  "subset": "root *.scad, LICENSE, README.md",
+  "modifications": []
+}

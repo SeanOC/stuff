@@ -1,0 +1,428 @@
+// HomeRacker - Rack panel library
+//
+// This file is part of the HomeRacker implementation by KellerLab.
+// It provides a standard 10"/19" rack-compatible panel with configurable bore patterns.
+//
+// Module hierarchy:
+//   rackpanel        — top-level: orchestrates bore mode, chamfering, and stacking
+//   rackpanel_stack  — attachable unit stacker via zcopies (no logic)
+//   rackpanel_1u     — single 1U panel body with bore subtraction (no chamfer)
+//   bores_1u         — 1–3 bores for a single rack unit
+//   bores_minimal    — 1–2 bores (top + bottom unit centers) for minimal mode
+//   rack_bore        — single M6 bore shape
+//
+// MIT License
+// Copyright (c) 2026 Patrick Pötz
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+include <homeracker/BOSL2/std.scad>
+include <../../core/lib/constants.scad>
+include <truss.scad>
+include <split.scad>
+
+RP_PRIMARY_COLOR = HR_YELLOW;
+RP_SECONDARY_COLOR = HR_CHARCOAL;
+RP_RACKMOUNT_BORE_WIDTH = 10;
+RP_RACKMOUNT_BORE_HEIGHT = 6.5;
+// narrow non-standard width purely for demoing the split feature with minimal material
+RP_DEMO_WIDTH = 60;
+
+// Back-brace stiffener (truss_grid) — see truss.scad
+// Unusable strip on each side (clears the mount surfaces + bore columns). Rounded up from
+// STD_MOUNT_SURFACE_WIDTH + TOLERANCE/2 (= 15.975) for a clean number.
+RP_BRACE_SIDE_MARGIN = 16;
+// Total knuckle depth measured from the panel front face. The brace's BACK face lands on this
+// plane so it sits flush with split connectors. Mirrors split.scad's HR_SPLIT_KNUCKLE_STRENGTH_SLIM
+// derivation, kept local to avoid a circular include between rackpanel.scad and split.scad.
+RP_BRACE_DEPTH = (LOCKPIN_HOLE_SIDE_LENGTH + PRINTING_LAYER_WIDTH * 2) + BASE_STRENGTH * 2;  // = 8.8mm
+
+/** Single rackmount bore
+ * Rounded rectangular slot sized for M6 screws (10mm × 6.5mm).
+ */
+module rack_bore(panel_depth = BASE_STRENGTH, debug_colors = false, anchor = CENTER, spin = 0, orient = UP) {
+  bore_dimensions = [RP_RACKMOUNT_BORE_WIDTH, panel_depth + HR_EPSILON, RP_RACKMOUNT_BORE_HEIGHT];
+  attachable(anchor, spin, orient, size = bore_dimensions) {
+    color(debug_colors ? HR_RED : RP_PRIMARY_COLOR)
+      // Same capsule cut, with a 2D profile instead of a 3D hull.
+      rotate([90, 0, 0])
+        linear_extrude(height = bore_dimensions.y, center = true)
+          rect([bore_dimensions.x, bore_dimensions.z], rounding = RP_RACKMOUNT_BORE_HEIGHT / 2);
+    children();
+  }
+}
+
+/** Bores for 1U rackmount
+ * Evenly spaced rack bores for a single unit, per standard measurements.
+ *   bore_count=3: standard pattern (top, middle, bottom)
+ *   bore_count=2: outer bores only (top, bottom)
+ *   bore_count=1: middle bore only
+ */
+module bores_1u(bore_count = 3, panel_depth = BASE_STRENGTH,
+  debug_colors = false, anchor = CENTER, spin = 0, orient = UP) {
+
+  assert(is_int(bore_count) && bore_count >= 1 && bore_count <= 3, "Bore count must be an integer between 1 and 3");
+
+  width = RP_RACKMOUNT_BORE_WIDTH;
+  depth = panel_depth;
+  height = RP_RACKMOUNT_BORE_HEIGHT + (bore_count - 1) * STD_RACK_BORE_DISTANCE_Z;
+  attachable_dimensions = [width, depth, height];
+  attachable(anchor, spin, orient, size = attachable_dimensions) {
+    zcopies(spacing = STD_RACK_BORE_DISTANCE_Z * (4 - bore_count), n = bore_count)
+      rack_bore(panel_depth = panel_depth, debug_colors = debug_colors);
+    children();
+  }
+}
+
+/** Single 1U rack panel body
+ * Flat panel (1U height × panel_width) with bore holes subtracted.
+ * Does NOT apply chamfers — chamfering is handled at the rackpanel level.
+ * Used as the building block for rackpanel_stack.
+ */
+module rackpanel_1u(panel_width = STD_WIDTH_10INCH, bore_count = 3, panel_depth = BASE_STRENGTH,
+  debug_colors = false,
+  anchor = CENTER, spin = 0, orient = UP) {
+
+  panel_height = STD_UNIT_HEIGHT;
+  panel_dimensions = [panel_width, panel_depth, panel_height];
+
+  tag_scope("rackpanel_1u")
+    attachable(anchor, spin, orient, size = panel_dimensions) {
+      color_this(debug_colors ? HR_BLUE : RP_PRIMARY_COLOR)
+        diff()
+          cuboid(panel_dimensions) {
+            if (bore_count > 0)
+              tag("remove") align(CENTER, [LEFT, RIGHT], inside = true, inset = (STD_MOUNT_SURFACE_WIDTH - RP_RACKMOUNT_BORE_WIDTH) / 2)
+                bores_1u(bore_count = bore_count, panel_depth = panel_depth, debug_colors = debug_colors);
+          }
+      children();
+    }
+}
+
+// Bore modes — control how many bores per unit
+RP_BORE_MODE_DEFAULT = 0;  // 1U = 2 bores/unit, 2U+ = 1 bore/unit
+RP_BORE_MODE_FULL = 1;     // 3 bores/unit (standard rackmount)
+RP_BORE_MODE_MINIMAL = 2;  // 1 bore (1U) or 2 bores top + bottom (2U+)
+
+/** Returns uniform bore count for a given mode and panel height.
+ * For MINIMAL, rackpanel handles bores separately via bores_minimal (returns 0 here).
+ */
+function get_bore_count_per_unit(bore_mode, panel_height_units) =
+  bore_mode == RP_BORE_MODE_MINIMAL ? 0 :
+  bore_mode == RP_BORE_MODE_DEFAULT ? (panel_height_units == 1 ? 2 : 1) : 3;
+
+/** Rack panel unit stack
+ * Stacks rackpanel_1u units via a single zcopies call.
+ * Pure stacker — no bore mode logic, no chamfering.
+ * Attachable — exposes $parent_size so children (e.g. edge_mask) work as expected.
+ */
+module rackpanel_stack(panel_width = STD_WIDTH_10INCH, panel_height_units = 1, bore_count = 3, panel_depth = BASE_STRENGTH,
+  debug_colors = false, anchor = CENTER, spin = 0, orient = UP) {
+
+  panel_dimensions = [panel_width, panel_depth, panel_height_units * STD_UNIT_HEIGHT];
+
+  attachable(anchor, spin, orient, size = panel_dimensions) {
+    zcopies(spacing = STD_UNIT_HEIGHT, n = panel_height_units)
+      rackpanel_1u(panel_width = panel_width, bore_count = bore_count, panel_depth = panel_depth, debug_colors = debug_colors);
+    children();
+  }
+}
+
+/** Bores for minimal rackmount pattern
+ * Places bores at top + bottom unit centers only.
+ *   1U: 1 bore at center
+ *   2U+: 2 bores (top + bottom unit centers)
+ * Sibling module to bores_1u — same interface, different spacing strategy.
+ */
+module bores_minimal(panel_height_units, panel_depth = BASE_STRENGTH,
+  debug_colors = false, anchor = CENTER, spin = 0, orient = UP) {
+
+  assert(is_int(panel_height_units) && panel_height_units >= 1, "panel_height_units must be a positive integer");
+  bore_spacing = (panel_height_units - 1) * STD_UNIT_HEIGHT;
+  n = panel_height_units == 1 ? 1 : 2;
+  width = RP_RACKMOUNT_BORE_WIDTH;
+  height = RP_RACKMOUNT_BORE_HEIGHT + bore_spacing;
+  attachable_dimensions = [width, panel_depth, height];
+
+  attachable(anchor, spin, orient, size = attachable_dimensions) {
+    zcopies(spacing = bore_spacing, n = n)
+      rack_bore(panel_depth = panel_depth, debug_colors = debug_colors);
+    children();
+  }
+}
+
+HR_RP_SPLIT_FULL = 0;
+HR_RP_SPLIT_HALF = 1;
+
+HR_RP_VIEW_ASSEMBLY = 0;
+HR_RP_VIEW_HALF_LEFT = 1;
+HR_RP_VIEW_HALF_RIGHT = 2;
+HR_RP_VIEW_EXPLOSION = 3;
+
+/** Usable keystone-band width for a rack panel face (mm).
+ * Excludes the rackmount mount-surface column on each outer edge plus a half-tolerance
+ * slide-in clearance per outer edge. On a split half the seam (inner) edge has no mount
+ * column, but the split-connector knuckle occupies the centre, so the band stops at the
+ * naked-panel edge (its half of the knuckle, HR_SPLIT_KNUCKLE_STRENGTH_SLIM/2). The two
+ * halves' bands therefore leave the knuckle uncovered in the middle; a cutout pass should
+ * overlap that edge by HR_EPSILON to stay manifold. Pair with get_rackpanel_usable_x() to
+ * centre cutouts (e.g. keystone pockets) in the band.
+ *   full:  panel_width - 2*STD_MOUNT_SURFACE_WIDTH - TOLERANCE                              (centred)
+ *   half:  panel_width/2 - HR_SPLIT_KNUCKLE_STRENGTH_SLIM/2 - STD_MOUNT_SURFACE_WIDTH - TOLERANCE/2
+ * split_mode=Half is only meaningful per half (view_mode Half-Left/Half-Right). The
+ * assembled/exploded views have no single usable band, so they warn and fall back to the
+ * full-panel band (which will NOT fit a half) — distribute content per half instead.
+ */
+function get_rackpanel_usable_width(panel_width, split_mode = HR_RP_SPLIT_FULL, view_mode = HR_RP_VIEW_ASSEMBLY) =
+  let(_full_band = panel_width - 2 * STD_MOUNT_SURFACE_WIDTH - TOLERANCE)
+  (split_mode == HR_RP_SPLIT_HALF && (view_mode == HR_RP_VIEW_HALF_LEFT || view_mode == HR_RP_VIEW_HALF_RIGHT))
+  ? panel_width / 2 - HR_SPLIT_KNUCKLE_STRENGTH_SLIM / 2 - STD_MOUNT_SURFACE_WIDTH - TOLERANCE / 2
+  : split_mode == HR_RP_SPLIT_HALF
+  ? echo("⚠️ get_rackpanel_usable_width: split_mode=Half needs view_mode=Half-Left/Half-Right; the assembled/exploded views have no single usable band. Falling back to the full-panel band, which will NOT fit a half.") _full_band
+  : _full_band;
+
+/** X offset of the usable band centre from the (half-)panel attachable centre (mm).
+ * Full panels are symmetric (0). A split half pins the band's seam edge on its naked-panel
+ * edge (the split-connector knuckle boundary), so the band centre shifts toward the seam by
+ * half the deducted outer column + clearance, less half the knuckle cutout. Left half shifts
+ * +X (seam on its right); right half shifts -X. panel_width is accepted for API symmetry with
+ * get_rackpanel_usable_width() (the offset is width-independent). As with usable_width,
+ * split_mode=Half with a non-half view is undefined: it warns and returns 0 (panel centre).
+ */
+function get_rackpanel_usable_x(panel_width, split_mode = HR_RP_SPLIT_FULL, view_mode = HR_RP_VIEW_ASSEMBLY) =
+  (split_mode == HR_RP_SPLIT_HALF && view_mode == HR_RP_VIEW_HALF_LEFT)
+  ? STD_MOUNT_SURFACE_WIDTH / 2 + TOLERANCE / 4 - HR_SPLIT_KNUCKLE_STRENGTH_SLIM / 4
+  : (split_mode == HR_RP_SPLIT_HALF && view_mode == HR_RP_VIEW_HALF_RIGHT)
+  ? -(STD_MOUNT_SURFACE_WIDTH / 2 + TOLERANCE / 4 - HR_SPLIT_KNUCKLE_STRENGTH_SLIM / 4)
+  : split_mode == HR_RP_SPLIT_HALF
+  ? echo("⚠️ get_rackpanel_usable_x: split_mode=Half needs view_mode=Half-Left/Half-Right; returning 0 (panel centre).") 0
+  : 0;
+
+/** Rack panel (top-level module)
+ * Assembles a complete rack panel with configurable height, bore mode, and chamfering.
+ * Orchestrates:
+ *   - rackpanel_stack for unit stacking
+ *   - bores_minimal subtracted as children (MINIMAL mode)
+ *   - edge_mask + chamfer_edge_mask for outer chamfers
+ *   - optional back-side truss stiffener (brace_enabled), flush with the split-knuckle plane
+ */
+module rackpanel(panel_width = STD_WIDTH_10INCH, panel_height_units = 1, bore_mode = RP_BORE_MODE_DEFAULT,
+  split_mode = HR_RP_SPLIT_FULL, view_mode = HR_RP_VIEW_ASSEMBLY,
+  panel_depth = BASE_STRENGTH,
+  brace_enabled = false, brace_rows = 2,
+  debug_colors = false, chamfer_enabled = true,
+  anchor = CENTER, spin = 0, orient = UP) {
+
+  assert(is_int(panel_height_units) && panel_height_units >= 1, "panel_height_units must be a positive integer");
+  assert(bore_mode >= RP_BORE_MODE_DEFAULT && bore_mode <= RP_BORE_MODE_MINIMAL, "bore_mode must be RP_BORE_MODE_DEFAULT (0), RP_BORE_MODE_FULL (1), or RP_BORE_MODE_MINIMAL (2)");
+  assert(is_num(panel_depth) && panel_depth >= BASE_STRENGTH, str("panel_depth must be a number >= ", BASE_STRENGTH, "mm"));
+  attachable_height = panel_height_units * STD_UNIT_HEIGHT;
+  panel_dimensions = [panel_width, panel_depth, attachable_height];
+  // sink depth that seats the lock pin flush with the panel top (matches split_lockpin total height)
+  lockpin_seat = attachable_height - TOLERANCE / 2;
+  bore_count = get_bore_count_per_unit(bore_mode, panel_height_units);
+  // The brace sits behind the panel back face and protrudes to the knuckle plane; it only
+  // earns its place when at least a rib's worth of depth is available there.
+  brace_active = brace_enabled && (RP_BRACE_DEPTH - panel_depth) >= BASE_STRENGTH;
+  brace_depth = RP_BRACE_DEPTH - panel_depth;  // protrusion from the panel back to the knuckle plane
+
+  module _naked_panel() {
+    tag_scope("rackpanel")
+      attachable(CENTER, 0, UP, size = panel_dimensions) {
+        diff()
+          rackpanel_stack(panel_width = panel_width, panel_height_units = panel_height_units,
+            bore_count = bore_count, panel_depth = panel_depth, debug_colors = debug_colors) {
+            if (bore_mode == RP_BORE_MODE_MINIMAL)
+              tag("remove") align(CENTER, [LEFT, RIGHT], inside = true, inset = (STD_MOUNT_SURFACE_WIDTH - RP_RACKMOUNT_BORE_WIDTH) / 2)
+                bores_minimal(panel_height_units = panel_height_units, panel_depth = panel_depth, debug_colors = debug_colors);
+            if (chamfer_enabled)
+              color_this(debug_colors ? HR_GREEN : RP_PRIMARY_COLOR)
+                edge_mask(FRONT)
+                  chamfer_edge_mask(chamfer = BASE_CHAMFER);
+          }
+        children();
+      }
+  }
+
+  split_connector_width = HR_SPLIT_KNUCKLE_STRENGTH_SLIM;
+  split_connector_cutout = split_connector_width / 2;
+  attachable_width_half_naked = panel_width / 2 - split_connector_cutout;
+  attachable_width_half = attachable_width_half_naked + split_connector_width / 2;
+  // left_half/right_half size their masking cube on ALL axes, so it must clear the panel's
+  // full bounding box (otherwise a tall, narrow panel like the demo width clips to the width).
+  split_clip_size = 2 * max(panel_width, attachable_height);
+
+  // Back-side truss stiffener. Emits one framed truss field, offset by `x_offset` and with the
+  // diagonals flipped by `mirror_lattice` (so split halves read as a mirrored pair). The caller
+  // attaches it to the panel back, so it also works standalone. tag_scope("brace") keeps the
+  // truss's own chamfer tags from leaking into an enclosing panel diff().
+  module _back_brace(field_width, x_offset = 0, mirror_lattice = false) {
+    if (field_width > 2 * BASE_STRENGTH)
+      tag_scope("brace")
+        right(x_offset)
+          scale([mirror_lattice ? -1 : 1, 1, 1])
+            color_this(debug_colors ? HR_GREEN : RP_PRIMARY_COLOR)
+              truss_grid(size = [field_width, brace_depth, attachable_height], rows = brace_rows,
+                chamfer_enabled = chamfer_enabled, anchor = FRONT);
+  }
+
+  module _naked_panel_left() {
+    attachable(size = [attachable_width_half_naked, panel_depth, attachable_height]) {
+      right(attachable_width_half_naked / 2 + split_connector_cutout)
+        color(debug_colors ? HR_GREEN : RP_PRIMARY_COLOR)
+          left_half(s = split_clip_size, x = -split_connector_cutout) _naked_panel();
+      children();
+    }
+  }
+
+  module _naked_panel_right() {
+    attachable(size = [attachable_width_half_naked, panel_depth, attachable_height]) {
+      left(attachable_width_half_naked / 2 + split_connector_cutout)
+        color(debug_colors ? HR_RED : RP_PRIMARY_COLOR)
+          right_half(s = split_clip_size, x = split_connector_cutout) _naked_panel();
+      children();
+    }
+  }
+
+  module _panel_left() {
+    attachable(size = [attachable_width_half, panel_depth, attachable_height]) {
+      left(split_connector_width / 4)
+        _naked_panel_left() {
+          align(RIGHT, FRONT)
+            diff()
+              split_connector(units = panel_height_units, panel_depth = panel_depth,
+                knuckle_side = HR_SPLIT_KNUCKLE_SIDE_LEFT,
+                debug_colors = debug_colors, chamfer_enabled = chamfer_enabled) {
+                color_this(debug_colors ? HR_BLUE : RP_PRIMARY_COLOR)
+                  edge_mask([TOP + FRONT, BOTTOM + FRONT])
+                    chamfer_edge_mask(chamfer = BASE_CHAMFER);
+              }
+          // own half-brace: outer (mount) margin on the bore side; the inner edge overlaps the
+          // knuckle by HR_EPSILON (field widened + shifted toward the seam) so the join is manifold
+          if (brace_active)
+            attach(BACK, FRONT)
+              _back_brace(attachable_width_half_naked - RP_BRACE_SIDE_MARGIN + HR_EPSILON, x_offset = -RP_BRACE_SIDE_MARGIN / 2 + HR_EPSILON / 2);
+        }
+      children();
+    }
+  }
+
+  module _panel_right() {
+    attachable(size = [attachable_width_half, panel_depth, attachable_height]) {
+      right(split_connector_width / 4)
+        _naked_panel_right() {
+          align(LEFT, FRONT)
+            diff()
+              split_connector(units = panel_height_units, panel_depth = panel_depth,
+                knuckle_side = HR_SPLIT_KNUCKLE_SIDE_RIGHT,
+                debug_colors = debug_colors, chamfer_enabled = chamfer_enabled) {
+                color_this(debug_colors ? HR_BLUE : RP_PRIMARY_COLOR)
+                  edge_mask([TOP + FRONT, BOTTOM + FRONT])
+                    chamfer_edge_mask(chamfer = BASE_CHAMFER);
+              }
+          // mirror of the left half: outer margin on the right, inner edge overlaps the knuckle by
+          // HR_EPSILON toward the seam, lattice mirrored
+          if (brace_active)
+            attach(BACK, FRONT)
+              _back_brace(attachable_width_half_naked - RP_BRACE_SIDE_MARGIN + HR_EPSILON, x_offset = RP_BRACE_SIDE_MARGIN / 2 - HR_EPSILON / 2, mirror_lattice = true);
+        }
+      children();
+    }
+  }
+
+  // Both halves joined. explode=false butts them flush (the real assembled panel); explode=true
+  // pushes them apart so the interleaving knuckles read as a clear exploded diagram.
+  module _panel_assembly(explode = false) {
+    // shift left so the seam stays centred under the lock pin; in explode mode the extra gap pushes
+    // the halves apart and the seam moves by half that gap, so shift an extra knuckle-depth to match
+    half_shift = attachable_width_half / 2 + (explode ? HR_SPLIT_KNUCKLE_STRENGTH_SLIM : 0);
+    seam_gap = explode ? -2 * HR_SPLIT_KNUCKLE_STRENGTH_SLIM : 0;
+    attachable(size = [panel_width, HR_SPLIT_KNUCKLE_STRENGTH_SLIM, attachable_height]) {
+      fwd(HR_SPLIT_KNUCKLE_STRENGTH_SLIM / 2 - panel_depth / 2)
+        left(half_shift)
+          _panel_left()
+            attach(RIGHT, LEFT, overlap = seam_gap) _panel_right();
+      children();
+    }
+  }
+
+  // Views that accept external children (e.g. a diff("keystone") cutout pass) share one outer
+  // attachable so children attach OUTSIDE _naked_panel's tag_scope (otherwise their remove tags
+  // get scoped away and never cut) and so anchor/spin/orient apply uniformly. Width is the only
+  // view-dependent dimension; the union() merges the single active branch into one shape node.
+  accepts_children = split_mode == HR_RP_SPLIT_FULL ||
+    (split_mode == HR_RP_SPLIT_HALF && (view_mode == HR_RP_VIEW_HALF_LEFT || view_mode == HR_RP_VIEW_HALF_RIGHT));
+  view_width = split_mode == HR_RP_SPLIT_HALF ? attachable_width_half : panel_width;
+
+  // The unbraced full panel has no split attachments. Use equivalent
+  // explicit bore placement to avoid nested attachable/tag scopes that
+  // crash OpenSCAD wasm 2025.01 (rackpanel_1u alone renders successfully).
+  if (split_mode == HR_RP_SPLIT_FULL && !brace_active)
+    attachable(anchor, spin, orient, size = panel_dimensions) {
+      hr_flat_rackpanel(panel_width, panel_height_units, bore_mode, panel_depth, chamfer_enabled);
+      children();
+    }
+  else if (accepts_children)
+    attachable(anchor, spin, orient, size = [view_width, panel_depth, attachable_height]) {
+      union() {
+        if (split_mode == HR_RP_SPLIT_FULL)
+          _naked_panel()
+            if (brace_active)
+              attach(BACK, FRONT)
+                _back_brace(panel_width - 2 * RP_BRACE_SIDE_MARGIN);
+        if (split_mode == HR_RP_SPLIT_HALF && view_mode == HR_RP_VIEW_HALF_LEFT)
+          _panel_left();
+        if (split_mode == HR_RP_SPLIT_HALF && view_mode == HR_RP_VIEW_HALF_RIGHT)
+          _panel_right();
+      }
+      children();
+    }
+  if (split_mode == HR_RP_SPLIT_HALF && view_mode == HR_RP_VIEW_ASSEMBLY)
+    // the real assembled panel: halves butted flush with the lock pin seated in the knuckle bores
+    _panel_assembly()
+      attach(TOP, TOP, overlap = lockpin_seat)
+        split_lockpin(units = panel_height_units, debug_colors = debug_colors, chamfer_enabled = chamfer_enabled);
+  if (split_mode == HR_RP_SPLIT_HALF && view_mode == HR_RP_VIEW_EXPLOSION)
+    // exploded diagram: halves pushed apart with the lock pin floating above its bores
+    _panel_assembly(explode = true)
+      attach(TOP, TOP, overlap = -BASE_STRENGTH) split_lockpin(units = panel_height_units, debug_colors = debug_colors, chamfer_enabled = chamfer_enabled);
+
+}
+
+// Equivalent full-panel solid for the browser path. All measurements are
+// upstream constants; split/brace modes retain the original implementation.
+module hr_flat_rackpanel(panel_width, units, bore_mode, panel_depth, chamfer_enabled) {
+  panel_height = units * STD_UNIT_HEIGHT;
+  bore_count = get_bore_count_per_unit(bore_mode, units);
+  z_positions = bore_mode == RP_BORE_MODE_MINIMAL
+    ? (units == 1 ? [0] : [-(panel_height - STD_UNIT_HEIGHT) / 2, (panel_height - STD_UNIT_HEIGHT) / 2])
+    : [for (u = [0:units-1], b = [0:bore_count-1])
+        (u - (units-1)/2) * STD_UNIT_HEIGHT
+          + (b - (bore_count-1)/2) * STD_RACK_BORE_DISTANCE_Z * (4-bore_count)];
+  difference() {
+    cuboid([panel_width, panel_depth, panel_height],
+           chamfer = chamfer_enabled ? BASE_CHAMFER : 0, edges = FRONT);
+    for (side = [-1, 1], z = z_positions)
+      translate([side * (panel_width - STD_MOUNT_SURFACE_WIDTH) / 2, 0, z])
+        rotate([90, 0, 0])
+          linear_extrude(height = panel_depth + HR_EPSILON, center = true)
+            rect([RP_RACKMOUNT_BORE_WIDTH, RP_RACKMOUNT_BORE_HEIGHT],
+                 rounding = RP_RACKMOUNT_BORE_HEIGHT / 2);
+  }
+}
