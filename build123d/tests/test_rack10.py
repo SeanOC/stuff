@@ -4,7 +4,7 @@ from math import acos, degrees
 import pytest
 import trimesh
 from OCP.BRep import BRep_Tool
-from build123d import Align, Box, Pos
+from build123d import Align, Box, Cylinder, Pos
 
 from holders import rack10_blank_panel as blank, rack10_keystone_panel as keystone, rack10_tray as shelf
 from holders import rack10_rail_strip as rail
@@ -12,7 +12,7 @@ from holders.registry import in_print_frame
 from rack10 import constants as c
 from rack10.keystone import keystone_row, mating_edge
 from rack10.panel import ear_profile, hole_centres, panel, panel_height
-from rack10.rail_strip import RailFitError, peg_stations, rail_hole_centres
+from rack10.rail_strip import peg_stations, rail_hole_centres
 from rack10.tray import TrayFitError, tie_mating_edge, tray, tray_dimensions
 from rack10.vent import vent_pattern
 from scripts.export import export_stl
@@ -31,6 +31,12 @@ CASES += [(blank.SPEC, {'units':2,'vented':True,'slot_mm':8}, 'vented-max-slot')
           (keystone.SPEC, {'count':c.MAX_KEYSTONES,'slot_mm':8}, 'max-ports-slot'),
           (shelf.SPEC, {'device_w':211.45,'device_d':200,'device_h':72,'clearance':2,'slot_mm':8}, 'max-corner'),
           (shelf.SPEC, {'device_w':40,'device_d':40,'device_h':10,'clearance':.5,'slot_mm':8}, 'min-corner')]
+
+# Hardware modes exercise both thickness limits and the longest diagonal rail.
+CASES += [(rail.SPEC, {'pin_units':n, 'thickness':t, 'mount':m, 'hole':h},
+           f'{h}-{m}-{n}-{t}')
+          for h,m in [('cage_nut','pegs'),('cage_nut','pin_holes'),('insert','pin_holes')]
+          for n,t in [(5,11),(27,14)]]
 
 
 def test_panel_datum_and_round_apertures():
@@ -160,11 +166,6 @@ def test_preset_is_one_watertight_solid_inside_both_beds(spec,preset,tmp_path):
 @pytest.mark.audit
 @pytest.mark.parametrize('spec,values,case',CASES,ids=[f'{s.name}-{n}' for s,v,n in CASES])
 def test_endpoint_audit_and_edges(spec,values,case):
-    if spec is rail.SPEC and values.get('thickness', 12) < 11.5 and values.get('hole', 'insert') == 'insert':
-        with pytest.raises(RailFitError, match='insert web'):
-            spec.build(values)
-        record(f'{spec.name}-{case}', result='REJECTED', reason='insert web below 3 mm')
-        return
     part=spec.build(values)
     if spec is shelf.SPEC:
         v=spec.resolve_values(values)
@@ -179,7 +180,7 @@ def test_endpoint_audit_and_edges(spec,values,case):
            exposed_edge_angle=worst,volume=part.volume,result='PASS')
 
 
-@pytest.mark.parametrize('pin_units,units', [(5,1),(15,5),(18,6),(30,10)])
+@pytest.mark.parametrize('pin_units,units', [(5,1),(15,5),(18,6),(27,9)])
 def test_rack10_rail_strip_hole_and_peg_layout(pin_units, units):
     centres = rail_hole_centres(pin_units)
     length = pin_units * 15
@@ -193,24 +194,31 @@ def test_rack10_rail_strip_hole_and_peg_layout(pin_units, units):
     assert right-left == pytest.approx(236.525)
     assert 255-2*c.RAIL_FLANGE >= c.CLEAR_OPENING
     assert peg_stations(pin_units) == [7.5+15*k for k in range(1,pin_units-1)]
-    assert centres[0][0]-4-c.SLEEVE_X >= 3
+    assert centres[0][0]-4-c.SLEEVE_RELIEF_W >= 3
     assert centres[0][0]-4-(7.5+1.9) >= 2
 
 
-@pytest.mark.parametrize('pin_units', [5,15,18])
-def test_rack10_rail_strip_sleeves_and_insert_web(pin_units):
-    thickness = 12
+@pytest.mark.parametrize('pin_units,thickness', [(5,11),(15,12),(18,14)])
+def test_rack10_rail_strip_sleeves_and_through_insert(pin_units, thickness):
     length = 15*pin_units
-    part = rail.build({'pin_units':pin_units})
+    part = rail.build({'pin_units':pin_units, 'thickness':thickness})
     for y in (0,length-15):
         sleeve = Pos(-2.1,y,thickness-2.1)*Box(19.2,15,2.1,align=(Align.MIN,)*3)
         assert (part & sleeve).volume < 1e-6
     for x,y in rail_hole_centres(pin_units):
         assert not part.is_inside((x+3.99,y,4))
         assert part.is_inside((x+4.01,y,4))
-        assert not part.is_inside((x,y,8.49))
-        assert part.is_inside((x,y,8.51))
-        assert part.is_inside((x,y,11.99))
+        assert not part.is_inside((x+3.99,y,9.49))
+        # 45° seat: radius 3.6 at z=9.9, followed by the Ø6.4 exit.
+        assert not part.is_inside((x+3.59,y,9.9))
+        assert part.is_inside((x+3.61,y,9.9))
+        assert not part.is_inside((x+3.19,y,10.5))
+        assert part.is_inside((x+3.21,y,10.5))
+        assert not part.is_inside((x,y,thickness-.01))
+        screw = Pos(x,y,-1)*Cylinder(3.2,thickness+2,
+                                    align=(Align.CENTER,Align.CENTER,Align.MIN))
+        assert (part & screw).volume < 1e-6
+        assert c.RAIL_WIDTH-x-4 >= c.INSERT_WALL_MIN
     for y in peg_stations(pin_units):
         assert part.is_inside((7.5,y,thickness+10))
         assert part.is_inside((7.5+1.89,y,thickness+10))
@@ -232,3 +240,12 @@ def test_rack10_rail_strip_coupon_modes(hole, mount):
         assert part.is_inside((x+4.78,y,1))
         assert part.is_inside((x,y+5.2,1.99))
         assert not part.is_inside((x,y+5.2,2.01))
+
+
+def test_rack10_rail_strip_rejects_bed_overflow():
+    from rack10.rail_strip import rail_strip
+    for units in (28, 29, 30):
+        with pytest.raises(ValueError, match='bed limit.*segment at a connector sleeve'):
+            rail_strip(units)
+        with pytest.raises(ValueError, match='bed limit.*segment at a connector sleeve'):
+            rail.build({'pin_units':units})

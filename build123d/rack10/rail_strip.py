@@ -6,7 +6,7 @@ The two grids are independent: every interior post station has a mount.
 """
 from math import isfinite
 
-from build123d import Align, Box, Cylinder, Pos, Rot
+from build123d import Align, Box, Cone, Cylinder, GeomType, Pos, Rot
 
 from . import constants as c
 from .panel import finish
@@ -17,8 +17,10 @@ class RailFitError(ValueError):
 
 
 def rail_length(pin_units):
-    if isinstance(pin_units, bool) or not isinstance(pin_units, int) or not 5 <= pin_units <= 30:
-        raise ValueError('pin_units must be an integer from 5 to 30')
+    if isinstance(pin_units, bool) or not isinstance(pin_units, int) or pin_units < 5:
+        raise ValueError('pin_units must be an integer from 5 to 27')
+    if pin_units > c.RAIL_MAX_UNITS:
+        raise RailFitError("27-unit bed limit (325 × 320 mm): segment at a connector sleeve")
     return pin_units * c.PEG_PITCH
 
 
@@ -43,12 +45,10 @@ def rail_print_frame(values):
 
 def rail_strip(pin_units=18, thickness=c.RAIL_THICKNESS, *, mount='pegs', hole='insert'):
     length = rail_length(pin_units)
-    if not isfinite(thickness) or not 10 <= thickness <= 14:
-        raise ValueError('thickness must be 10..14 mm')
+    if not isfinite(thickness) or not 11 <= thickness <= 14:
+        raise ValueError('thickness must be 11..14 mm')
     if mount not in ('pegs', 'pin_holes') or hole not in ('insert', 'cage_nut'):
         raise ValueError('unknown rail mount or hole mode')
-    if hole == 'insert' and thickness < c.INSERT_POCKET_DEPTH + c.INSERT_WEB_MIN:
-        raise RailFitError('insert web: thickness must be >= 11.5 mm for an 8.5 mm pocket and 3 mm web')
 
     part = Box(c.RAIL_WIDTH, length, thickness, align=(Align.MIN,)*3)
     # Includes the sleeve's 2.1 mm overlap into the flange, not just the post.
@@ -56,19 +56,25 @@ def rail_strip(pin_units=18, thickness=c.RAIL_THICKNESS, *, mount='pegs', hole='
     # so the finished edge cannot intrude into the sleeve keep-out volume.
     relief = c.EDGE_CHAMFER
     for y in (-relief, length-c.PEG_PITCH-relief):
-        part -= Pos(-1, y, thickness-c.SLEEVE_PROUD-relief)*Box(
-            c.SLEEVE_X+1+relief, c.PEG_PITCH+2*relief, c.SLEEVE_PROUD+1+relief,
+        part -= Pos(-1, y, thickness-c.SLEEVE_RELIEF_D-relief)*Box(
+            c.SLEEVE_RELIEF_W+1+relief, c.PEG_PITCH+2*relief, c.SLEEVE_RELIEF_D+1+relief,
             align=(Align.MIN,)*3)
 
     if hole == 'cage_nut':
         # A continuous open rear channel permits insertion and release of the
         # cage. It avoids thin partitions between consecutive EIA holes.
-        part -= Pos(c.SLEEVE_X, -1, c.CAGE_WEB)*Box(
-            c.RAIL_WIDTH-c.SLEEVE_X+1, length+2, thickness, align=(Align.MIN,)*3)
+        part -= Pos(c.SLEEVE_RELIEF_W, -1, c.CAGE_WEB)*Box(
+            c.RAIL_WIDTH-c.SLEEVE_RELIEF_W+1, length+2, thickness, align=(Align.MIN,)*3)
+    cone_height = (c.INSERT_M6_HOLE_D-c.SCREW_CLEAR)/2
     for x, y in rail_hole_centres(pin_units):
         if hole == 'insert':
             part -= Pos(x, y, -1)*Cylinder(c.INSERT_M6_HOLE_D/2, c.INSERT_POCKET_DEPTH+1,
                                          align=(Align.CENTER, Align.CENTER, Align.MIN))
+            part -= Pos(x, y, c.INSERT_POCKET_DEPTH)*Cone(
+                c.INSERT_M6_HOLE_D/2, c.SCREW_CLEAR/2, cone_height,
+                align=(Align.CENTER, Align.CENTER, Align.MIN))
+            part -= Pos(x, y, c.INSERT_POCKET_DEPTH+cone_height)*Cylinder(
+                c.SCREW_CLEAR/2, thickness, align=(Align.CENTER, Align.CENTER, Align.MIN))
         else:
             part -= Pos(x, y, -1)*Box(c.CAGE_SQUARE, c.CAGE_SQUARE, c.CAGE_WEB+2,
                                      align=(Align.CENTER, Align.CENTER, Align.MIN))
@@ -81,4 +87,10 @@ def rail_strip(pin_units=18, thickness=c.RAIL_THICKNESS, *, mount='pegs', hole='
         else:
             part -= Pos(c.PEG_PITCH/2, y, -1)*Box(c.PEG_SQUARE, c.PEG_SQUARE, thickness+2,
                                                 align=(Align.CENTER, Align.CENTER, Align.MIN))
-    return finish(part)
+    # These 45° circular seams define the insert seat. Chamfering them would
+    # shorten the specified cylindrical pocket and steepen the conical ceiling.
+    def insert_seat(edge):
+        return hole == 'insert' and edge.geom_type == GeomType.CIRCLE and any(
+            abs(edge.center().Z-z) < 1e-6
+            for z in (c.INSERT_POCKET_DEPTH, c.INSERT_POCKET_DEPTH+cone_height))
+    return finish(part, functional=insert_seat)

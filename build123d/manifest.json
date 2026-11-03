@@ -4944,21 +4944,21 @@
         {
           "name": "pin_units",
           "label": "Post length (15 mm pin units)",
-          "description": "18 pin units hold 6 rack U; 15 hold 5 U. The longest strips exceed the supported beds.",
+          "description": "18 pin units hold 6 rack U; 15 hold 5 U. Maximum 27 units; segment longer posts at a connector sleeve.",
           "kind": "integer",
           "default": 18,
           "min": 5,
-          "max": 30,
+          "max": 27,
           "step": 1
         },
         {
           "name": "thickness",
           "label": "Bar thickness",
-          "description": "Insert mode requires at least 11.5 mm; 10\u201311 mm is cage-nut-only.",
+          "description": "11\u201314 mm; insert bore exits through the rear flange.",
           "unit": "mm",
           "kind": "number",
           "default": 12,
-          "min": 10,
+          "min": 11,
           "max": 14,
           "step": 0.5
         },
