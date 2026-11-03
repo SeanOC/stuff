@@ -12,12 +12,12 @@ SPEC = register(ModelSpec(
     name='rack10_cradle', title='10-inch rack low-rail cradle', category_id='storage', build=build,
     description='Vented cradle with an open bezel, low rails, four pads and rear cable access.', print_orientation=(0,0,1),
     params=(
-        Param('device_w','number',156,min=140,max=200,step=1,label='Device W'),
-        Param('device_d','number',162.4,min=140,max=200,step=1,label='Device D'),
-        Param('device_h','number',152,min=80,max=152,step=1,label='Device H'),
+        Param('device_w','number',156,min=140,max=200,step=1,unit='mm',label='Device W'),
+        Param('device_d','number',162.4,min=140,max=200,step=1,unit='mm',label='Device D'),
+        Param('device_h','number',152,min=80,max=152,step=1,unit='mm',label='Device H'),
         Param('units','integer',4,min=3,max=4,step=1,label='Units'),
-        Param('clearance','number',2,min=1,max=2,step=1,label='Clearance'),
-        Param('slot_mm','number',0,min=0,max=8,step=1,label='Slot length (0 round; 7–8 slot)'),
+        Param('clearance','number',2,min=1,max=2,step=1,unit='mm',label='Clearance'),
+        Param('slot_mm','number',0,min=0,max=8,step=1,unit='mm',label='Slot length (0 round; 7–8 slot)'),
     ),
     presets=(
         Preset('steam-machine','Steam Machine',{}),

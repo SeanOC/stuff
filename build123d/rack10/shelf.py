@@ -4,9 +4,9 @@ Gravity is -Y. Continuous orthogonal ribs carry the front-rail cantilever
 and transverse bending; the upper 3 mm forms the perforated deck. No top
 bezel bridges across the open device face in this print orientation.
 """
-from math import isfinite
+from math import isfinite, sqrt
 from . import constants as c
-from .device import box, pads, ramp, rear_notch, finish_device, vent_floor
+from .device import box, pad_positions, pads, ramp, rear_notch, finish_device, vent_floor
 from .panel import panel, panel_height
 from .tray import TrayFitError
 
@@ -28,19 +28,53 @@ def shelf_dimensions(device_w,device_d,device_h,side_stops=True):
     return dict(width=width,depth=c.PANEL_THICKNESS+device_d+16)
 
 
-def beam_deflections(depth):
-    """Conservative finished sections across the exposed parameter domain.
+def longitudinal_sections(device_w, deck_width):
+    """Disjoint (X centre, width) rectangles guaranteed solid along the deck.
 
-    At least eight longitudinal paths, each >=3 mm wide after relief. The
-    long vent cells leave >=20 mm solid cross ribs at front and rear (the
-    rear strip ends before the cable notch). Ignore all other material.
-    Subtract 0.6 mm from depth for relief. PETG E=2000 N/mm².
+    Count EVERY internal 3 mm web, plus the two solid bands outside the vent
+    field. Deduct edge relief at both boundaries of the outside bands. The
+    production endpoint tests intersect each rectangle with the actual BREP.
     """
-    transverse_i=2*20*(DECK_TOP-.6)**3/12
-    longitudinal_i=8*3.0*(DECK_TOP-.6)**3/12
+    vent_width=device_w-24
+    columns=int(vent_width//10)
+    pitch=vent_width/columns
+    aperture=pitch*sqrt(.35)
+    sections=[((i-columns/2)*pitch,3.0) for i in range(1,columns)]
+    inner=(columns-1)*pitch/2+aperture/2+c.EDGE_CHAMFER
+    outer=deck_width/2-c.EDGE_CHAMFER
+    band=outer-inner
+    sections.extend((side*(outer+inner)/2,band) for side in (-1,1))
+    return sections
+
+
+def beam_deflections(*, device_w, device_d, deck_width, deck_depth):
+    """3 kg at the device centre, transferred through the two pad rows.
+
+    Conservatively place reactions at the OUTER edges of the 8 mm pad tops:
+    pad_positions returns each pad's start Z, not its centre. Evaluate the
+    sum of BOTH point-load deflections at the rear row and at the actual
+    free deck tip. Cross ribs are excluded from the longitudinal section.
+    PETG E=2000 N/mm². All dimensions are explicit keyword-only arguments.
+    """
+    height=DECK_TOP-2*c.EDGE_CHAMFER
+    transverse_i=2*20*height**3/12
+    longitudinal_i=sum(w for x,w in longitudinal_sections(device_w,deck_width))*height**3/12
+    positions=pad_positions(device_w,device_d,5)
+    front=min(z for x,z in positions)
+    rear=max(z+8 for x,z in positions)
+    if not isfinite(deck_depth) or deck_depth<rear:
+        raise ValueError('deck_depth must include the rear pad contact edge')
     force=3*9.81
+    centre=5+device_d/2
+    rear_force=force*(centre-front)/(rear-front)
+    front_force=force-rear_force
+
+    def deflection_at(x):
+        return sum(p*a*a*(3*x-a)/(6*2000*longitudinal_i)
+                   for p,a in ((front_force,front),(rear_force,rear)))
+
     return dict(transverse=force*c.EAR_WIDTH**3/(48*2000*transverse_i),
-                cantilever=force*(depth/2+5)**3/(3*2000*longitudinal_i))
+                rear_pad=deflection_at(rear),cantilever=deflection_at(deck_depth))
 
 
 def shelf(device_w=217,device_d=217,device_h=64,side_stops=True,*,slot_mm=0):

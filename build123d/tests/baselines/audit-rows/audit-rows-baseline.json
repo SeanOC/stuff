@@ -13,8 +13,8 @@
         "capture_scope": [
           "[\"not upstream\",null]"
         ],
-        "new_measurement_rows": 53,
-        "source": "Local successful model gate, gc-pilot/pst-go6df.2 based on 33417101; compare_audit_rows.collect validated capture",
+        "new_measurement_rows": 54,
+        "source": "out/rack10-review-fix/rows*.jsonl",
         "why": "Original device mounts; provenance pst-go6df.2; mayor sign-off = plan review PASS; no new exceptions"
       }
     },
@@ -6351,6 +6351,13 @@
       "min_wall": 1.600000000,
       "result": "PASS",
       "volume": 691581.552986156,
+      "worst_overhang": 45.000000000
+    },
+    "[\"tests/test_rack10_devices.py::test_endpoint_audit_and_edges[rack10_shelf-max-no-stops]\",\"rack10_shelf-max-no-stops\"]": {
+      "exposed_edge_angle": 60.000000000,
+      "min_wall": 1.950000000,
+      "result": "PASS",
+      "volume": 687667.002560636,
       "worst_overhang": 45.000000000
     },
     "[\"tests/test_rack10_devices.py::test_endpoint_audit_and_edges[rack10_shelf-min-stops]\",\"rack10_shelf-min-stops\"]": {

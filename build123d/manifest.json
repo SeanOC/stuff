@@ -4666,6 +4666,7 @@
         {
           "name": "device_w",
           "label": "Device W",
+          "unit": "mm",
           "kind": "number",
           "default": 156,
           "min": 140,
@@ -4675,6 +4676,7 @@
         {
           "name": "device_d",
           "label": "Device D",
+          "unit": "mm",
           "kind": "number",
           "default": 162.4,
           "min": 140,
@@ -4684,6 +4686,7 @@
         {
           "name": "device_h",
           "label": "Device H",
+          "unit": "mm",
           "kind": "number",
           "default": 152,
           "min": 80,
@@ -4702,6 +4705,7 @@
         {
           "name": "clearance",
           "label": "Clearance",
+          "unit": "mm",
           "kind": "number",
           "default": 2,
           "min": 1,
@@ -4711,6 +4715,7 @@
         {
           "name": "slot_mm",
           "label": "Slot length (0 round; 7\u20138 slot)",
+          "unit": "mm",
           "kind": "number",
           "default": 0,
           "min": 0,
@@ -4740,12 +4745,13 @@
       "slug": "rack10-ears",
       "engine": "build123d",
       "title": "10-inch rack clamp ears",
-      "blurb": "A strapped clamp mount for devices without mounting screw holes. Add two retaining straps.",
+      "blurb": "Clamp ears for devices without mounting screw holes. Secure with zip ties up to 3 mm wide.",
       "categoryId": "storage",
       "params": [
         {
           "name": "device_w",
           "label": "Device W",
+          "unit": "mm",
           "kind": "number",
           "default": 192,
           "min": 140,
@@ -4755,6 +4761,7 @@
         {
           "name": "device_d",
           "label": "Device D",
+          "unit": "mm",
           "kind": "number",
           "default": 185,
           "min": 100,
@@ -4764,6 +4771,7 @@
         {
           "name": "device_h",
           "label": "Device H",
+          "unit": "mm",
           "kind": "number",
           "default": 44,
           "min": 20,
@@ -4782,6 +4790,7 @@
         {
           "name": "clearance",
           "label": "Clearance",
+          "unit": "mm",
           "kind": "number",
           "default": 1,
           "min": 1,
@@ -4791,6 +4800,7 @@
         {
           "name": "slot_mm",
           "label": "Slot length (0 round; 7\u20138 slot)",
+          "unit": "mm",
           "kind": "number",
           "default": 0,
           "min": 0,
@@ -4826,6 +4836,7 @@
         {
           "name": "left_w",
           "label": "Left W",
+          "unit": "mm",
           "kind": "number",
           "default": 70,
           "min": 40,
@@ -4835,6 +4846,7 @@
         {
           "name": "left_d",
           "label": "Left D",
+          "unit": "mm",
           "kind": "number",
           "default": 70,
           "min": 40,
@@ -4844,6 +4856,7 @@
         {
           "name": "right_w",
           "label": "Right W",
+          "unit": "mm",
           "kind": "number",
           "default": 105,
           "min": 40,
@@ -4853,6 +4866,7 @@
         {
           "name": "right_d",
           "label": "Right D",
+          "unit": "mm",
           "kind": "number",
           "default": 105,
           "min": 40,
@@ -4862,6 +4876,7 @@
         {
           "name": "slot_mm",
           "label": "Slot length (0 round; 7\u20138 slot)",
+          "unit": "mm",
           "kind": "number",
           "default": 0,
           "min": 0,
@@ -4923,12 +4938,13 @@
       "slug": "rack10-shelf",
       "engine": "build123d",
       "title": "10-inch rack open shelf",
-      "blurb": "2U open shelf with a vented 3 mm deck, two-way ribs and four pads.",
+      "blurb": "2U open shelf with a vented deck, ribs and four pads. The Sonos preset with stops is 222.2 mm wide: check your rails or disable stops.",
       "categoryId": "storage",
       "params": [
         {
           "name": "device_w",
           "label": "Device W",
+          "unit": "mm",
           "kind": "number",
           "default": 217,
           "min": 100,
@@ -4938,6 +4954,7 @@
         {
           "name": "device_d",
           "label": "Device D",
+          "unit": "mm",
           "kind": "number",
           "default": 217,
           "min": 100,
@@ -4947,6 +4964,7 @@
         {
           "name": "device_h",
           "label": "Device H",
+          "unit": "mm",
           "kind": "number",
           "default": 64,
           "min": 20,
@@ -4962,6 +4980,7 @@
         {
           "name": "slot_mm",
           "label": "Slot length (0 round; 7\u20138 slot)",
+          "unit": "mm",
           "kind": "number",
           "default": 0,
           "min": 0,

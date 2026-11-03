@@ -1,6 +1,6 @@
 """Clamp ears joined by a floor strap, front down, PETG/PCTG.
 
-Gravity (-Y) runs through the floor into the front ears; reusable straps
+Gravity (-Y) runs through the floor into the front ears; zip ties
 close the clamp and retain devices that lack threaded mounting holes.
 """
 from . import constants as c

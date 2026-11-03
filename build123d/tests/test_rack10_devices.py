@@ -5,7 +5,7 @@ from build123d import Align, Box, Pos
 from holders import rack10_cradle, rack10_shelf, rack10_hub_tray, rack10_ears
 from rack10 import constants as c
 from rack10.tray import TrayFitError, tray_dimensions
-from rack10.shelf import shelf_dimensions, beam_deflections, DECK_TOP
+from rack10.shelf import shelf_dimensions, beam_deflections, longitudinal_sections, DECK_TOP
 from scripts.export import export_stl
 from tests.audit_record import record
 from tests.print_audit import audit
@@ -45,6 +45,7 @@ for s in SPECS:
         if p.kind in ('number','integer'):
             for v in (p.min,p.max): CASES.append((s,{p.name:v},f'{p.name}-{v}'))
 CASES += [(rack10_cradle.SPEC,dict(device_w=200,device_d=200,device_h=152,clearance=2,slot_mm=8),'max-corner'),
+          (rack10_shelf.SPEC,dict(device_w=217,device_d=220,side_stops=False,slot_mm=8),'max-no-stops'),
           (rack10_shelf.SPEC,dict(device_w=100,device_d=100,device_h=20,side_stops=True,slot_mm=8),'min-stops'),
           (rack10_ears.SPEC,dict(device_w=210,device_d=200,device_h=60,clearance=2,slot_mm=8),'wide-clamp'),
           (rack10_hub_tray.SPEC,dict(left_w=40,left_d=40,right_w=40,right_d=40,slot_mm=8),'min-pockets')]
@@ -60,27 +61,34 @@ def test_sonos_fit_and_cradle_clearance():
 
 
 def test_shelf_both_load_cases():
-    for depth in (100,217,220):
-        assert max(beam_deflections(depth).values())<=1
-
+    for width in (100,180,217):
+        for depth in (100,217,220):
+            for stops in (False,True):
+                d=shelf_dimensions(width,depth,64,stops)
+                result=beam_deflections(device_w=width,device_d=depth,
+                                        deck_width=d['width'],deck_depth=d['depth'])
+                assert max(result.values())<=1
+                assert result['cantilever']>result['rear_pad']
+    sonos=beam_deflections(device_w=217,device_d=217,deck_width=222.2,deck_depth=236)
+    assert sonos['rear_pad']==pytest.approx(.835042021376)
+    assert sonos['cantilever']==pytest.approx(.921034539132)
+    with pytest.raises(ValueError,match='deck_depth'):
+        beam_deflections(device_w=217,device_d=217,deck_width=222.2,deck_depth=217)
 
 
 def assert_shelf_load_paths(part,v):
-    """Pin the material counted by the beam estimate, not just its formula."""
+    """Pin every actual solid rectangle counted by the beam calculation."""
     d=shelf_dimensions(v['device_w'],v['device_d'],v['device_h'],v['side_stops'])
     height=DECK_TOP-.6
-    # Two uninterrupted 20 mm cross ribs, before the rear cable notch.
     for z in (3,d['depth']-30):
         beam=Pos(0,.3,z)*Box(d['width']-.6,height,20,align=(Align.CENTER,Align.MIN,Align.MIN))
         assert (part & beam).volume==pytest.approx(beam.volume,abs=1e-5)
-    # Eight continuous 3 mm longitudinal webs, chosen from grid boundaries.
-    width=v['device_w']-24
-    nx=int(width//10)
-    indices={round(i*nx/7) for i in range(8)}
-    assert len(indices)==8
-    for i in indices:
-        x=(i-nx/2)*width/nx
-        beam=Pos(x,.3,3)*Box(3,height,d['depth']-13,align=(Align.CENTER,Align.MIN,Align.MIN))
+    sections=longitudinal_sections(v['device_w'],d['width'])
+    assert len(sections)==int((v['device_w']-24)//10)+1
+    intervals=sorted((x-w/2,x+w/2) for x,w in sections)
+    assert all(a[1]<b[0] for a,b in zip(intervals,intervals[1:])), 'do not count material twice'
+    for x,width in sections:
+        beam=Pos(x,.3,3)*Box(width,height,d['depth']-13,align=(Align.CENTER,Align.MIN,Align.MIN))
         assert (part & beam).volume==pytest.approx(beam.volume,abs=1e-5)
 
 

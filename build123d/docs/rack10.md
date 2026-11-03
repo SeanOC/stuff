@@ -165,7 +165,11 @@ chamfering them would introduce horizontal ceilings. Other exposed right
 angles receive 0.3 mm chamfers; device pads have sloping sides, and continuous
 floor/rail joints receive 1 mm root blends (fillets on the cradle/clamp,
 45-degree chamfers on the hub dividers). No print-audit exceptions are
-added. Use PETG/PCTG for loaded equipment in a warm rack; PLA fit prototypes
+added. For future general-purpose rack panels, use `panel.finish`. The device
+helper preserves existing sloping pad/ramp facets (including 60° facet turns)
+and functional roof ridges, then chamfers the remaining right angles; it is
+not a drop-in replacement for the general panel finish. Use PETG/PCTG for
+loaded equipment in a warm rack; PLA fit prototypes
 are useful, but the load calculation below uses PETG stiffness and does not
 establish a PLA service rating.
 
@@ -188,7 +192,7 @@ enclosures and route their cables behind the pockets. Heights are the fixed
 30.23 mm Lutron and 36.5 mm Aqara envelopes; width/depth are adjustable.
 
 `ears(W,D,H,units,clearance)` implements the **clamp-style** option: two low
-L-shaped ears connected by a floor strap. Thread retaining ties through the
+L-shaped ears connected by a floor strap. Thread zip ties through the
 four peaked floor slots and around the device, clear of connectors and
 cooling openings. This does not assume screw holes in the switch housing.
 The generic 210 mm body has positive clearance under the actual 222.25 mm
@@ -215,26 +219,52 @@ printing support-free. A full solid slab of this height is unnecessary:
 the inset device-zone grid targets 35% open area before reserving the cable-notch
 border and applying edge relief.
 
-The rule-of-thumb calculation is deliberately FEA-free. Use a 3 kg point
-load (29.43 N), PETG elastic modulus **E = 2000 N/mm²**, and ignore the front
-flange, pad seats, rear lip and surplus ribs. At every exposed width/depth,
-there are at least eight longitudinal webs, each conservatively 3.0 mm wide
-after finishing, and two unperforated 20 mm cross ribs at the front and rear
-(the rear rib ends before the notch). Subtract 0.6 mm from the 17 mm depth
-for edge relief. Thus:
+The rule-of-thumb calculation is deliberately FEA-free. Use a 3 kg load
+(29.43 N) at the device centre and PETG **E = 2000 N/mm²**, but transfer the
+load through the **two pad rows**, not directly into the beam at the device
+centroid. `pad_positions` returns the start of an 8 mm pad top; its centre is
+4 mm farther back. For a conservative contact placement, use the front edge
+of the front pads and the back edge of the rear pads. The statics are
+`R_rear = F × (z_cg − a_front)/(a_rear − a_front)` and
+`R_front = F − R_rear`. The symmetric contacts give 14.715 N per row.
 
-- Fore-aft section: `I = 8 × 3.0 × 16.4³ / 12` mm⁴. The front rails support
-  a cantilever; for a device-centre arm `a = D/2 + 5`, use
-  `δ = F a³ / (3 E I)`.
-- Transverse section: `I = 2 × 20 × 16.4³ / 12` mm⁴. Conservatively use the
-  complete **254 mm** ear span and `δ = F L³ / (48 E I)`.
+The fore-aft section counts **every** internal 3 mm longitudinal web, plus
+the two continuous solid side bands outside the vents. For the Amp this is
+18 internal webs and two 16.0742 mm bands, after deducting 0.3 mm edge relief
+at each side-band boundary. Subtract 0.6 mm from the 17 mm section depth:
+`I = (18×3 + 2×16.0742) × 16.4³/12 = 31666.32 mm⁴` (rounded).
+Cross ribs, flange, lip, pads and surplus internal-web width are excluded
+from this fore-aft calculation. `longitudinal_sections` supplies the disjoint
+rectangles, and endpoint tests intersect **all** of them with the actual
+BREP to prove that the counted material exists and is not counted twice.
 
-`beam_deflections` evaluates both and the tests require ≤1 mm, including
-D=220 mm. The cantilever case governs this conservative calculation. These
-are elastic section estimates, not a tested load rating: layer adhesion,
-creep, actual infill/perimeters, ear fasteners and equipment temperature
-remain part of the physical validation. Print load-bearing ribs solid and
-check sustained deflection with a dummy load before installing equipment.
+For a point reaction P at a, the cantilever deflection farther back at x is
+`δ(x) = P a² (3x − a)/(6 E I)`. **Sum the front and rear reactions** and
+report both the rear contact and the actual free deck tip. The separate
+transverse case still uses only the two 20 mm cross ribs and the conservative
+254 mm span: `δ = F L³/(48 E I_transverse)` with
+`I_transverse = 2×20×16.4³/12`.
+
+| Case | Front/rear contact Z | Deck tip Z | Rear-contact deflection | Tip deflection | Transverse |
+| --- | --- | --- | --- | --- | --- |
+| Sonos, stops on, D=217 | 6.167 / 220.833 | 236 | 0.835 mm | 0.921 mm | 0.342 mm |
+| Longest/widest, stops off, W=217 D=220 | 6 / 224 | 239 | 0.892 mm | **0.981 mm** | 0.342 mm |
+
+`beam_deflections` takes explicit keyword arguments for **device width and
+depth, deck width and deck depth**; it rejects a deck depth that ends before
+the rear contact. The tests cover the width/depth endpoints, middle examples
+and both stop settings. The additional longest, widest, no-stops corner also
+runs the production audit and the physical section probes. Both load cases
+stay ≤1 mm in this model; the free-tip cantilever case governs. These are
+elastic section estimates, not a tested load rating: layer adhesion, creep,
+actual infill/perimeters, ear fasteners and equipment temperature remain part
+of physical validation. Print load-bearing ribs solid and check sustained
+deflection with a dummy load before installing equipment.
+
+The lighter cradle, clamp and hub tray do not yet have equivalent stiffness
+evidence. That work is tracked separately as **Validate stiffness and size
+ribs for rack10 cradle, clamp and hub tray**; their fit/printability checks
+must not be interpreted as device-load ratings.
 
 ### Proposed corrected 12U elevation and cables
 
