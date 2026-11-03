@@ -1,5 +1,15 @@
 {
   "header": {
+    "additions": {
+      "pst-go6df.1": {
+        "capture_scope": [
+          "[\"not upstream\",null]"
+        ],
+        "new_measurement_rows": 30,
+        "source": "Local successful model gate, BD_AUDIT_OUT capture validated by compare_audit_rows.collect; gc-pilot/pst-go6df.1 working tree based on da151c36",
+        "why": "Original rack10 geometry; canonical rev 1; plan review PASS authorizes new model audit rows"
+      }
+    },
     "audit_source": "41003105314 @ e320aa22911a70c31a8bfe5b098020a25e8e2ff4",
     "build123d": "0.13.0",
     "cadquery-ocp-novtk": "8.0.1.1.0",
@@ -71,6 +81,14 @@
       "openconnect-plate/default",
       "openconnect-plate/negslot",
       "openconnect-plate/one-tile",
+      "rack10-blank-panel/1u-solid",
+      "rack10-blank-panel/1u-vented",
+      "rack10-blank-panel/2u-vented",
+      "rack10-keystone-panel/1u-6-keystones",
+      "rack10-keystone-panel/1u-max",
+      "rack10-tray/apple-tv-4k",
+      "rack10-tray/mini-pc-nuc",
+      "rack10-tray/switch-8-port",
       "underware-i-channel/cutouts",
       "underware-i-channel/default",
       "underware-i-channel/label",
@@ -80,6 +98,9 @@
       "underware-l/L-tall",
       "underware-mitre/mitre",
       "underware-mitre/mitre-r1",
+      "underware-outside-corner/outside-corner",
+      "underware-outside-corner/outside-corner-r1",
+      "underware-outside-corner/outside-corner-w2-h28-y2",
       "underware-path-channel/S",
       "underware-path-channel/S-wide",
       "underware-path-channel/diagonal",
@@ -5771,6 +5792,216 @@
         44.380000000
       ],
       "preset": "full_holder"
+    },
+    "[\"tests/test_rack10.py::test_endpoint_audit_and_edges[rack10_blank_panel-1u-solid]\",\"rack10_blank_panel-1u-solid\"]": {
+      "exposed_edge_angle": 54.735610317,
+      "min_wall": 2.756000000,
+      "result": "PASS",
+      "volume": 33603.432279394,
+      "worst_overhang": 45.000000000
+    },
+    "[\"tests/test_rack10.py::test_endpoint_audit_and_edges[rack10_blank_panel-1u-vented]\",\"rack10_blank_panel-1u-vented\"]": {
+      "exposed_edge_angle": 54.735610317,
+      "min_wall": 2.756000000,
+      "result": "PASS",
+      "volume": 28568.447001683,
+      "worst_overhang": 45.000000000
+    },
+    "[\"tests/test_rack10.py::test_endpoint_audit_and_edges[rack10_blank_panel-2u-vented]\",\"rack10_blank_panel-2u-vented\"]": {
+      "exposed_edge_angle": 54.735610317,
+      "min_wall": 2.756000000,
+      "result": "PASS",
+      "volume": 53441.390091724,
+      "worst_overhang": 45.000000000
+    },
+    "[\"tests/test_rack10.py::test_endpoint_audit_and_edges[rack10_blank_panel-slot_mm-0]\",\"rack10_blank_panel-slot_mm-0\"]": {
+      "exposed_edge_angle": 54.735610317,
+      "min_wall": 2.756000000,
+      "result": "PASS",
+      "volume": 33603.432279394,
+      "worst_overhang": 45.000000000
+    },
+    "[\"tests/test_rack10.py::test_endpoint_audit_and_edges[rack10_blank_panel-slot_mm-8]\",\"rack10_blank_panel-slot_mm-8\"]": {
+      "exposed_edge_angle": 54.735610317,
+      "min_wall": 1.950000000,
+      "result": "PASS",
+      "volume": 33434.352279394,
+      "worst_overhang": 45.000000000
+    },
+    "[\"tests/test_rack10.py::test_endpoint_audit_and_edges[rack10_blank_panel-units-1]\",\"rack10_blank_panel-units-1\"]": {
+      "exposed_edge_angle": 54.735610317,
+      "min_wall": 2.756000000,
+      "result": "PASS",
+      "volume": 33603.432279394,
+      "worst_overhang": 45.000000000
+    },
+    "[\"tests/test_rack10.py::test_endpoint_audit_and_edges[rack10_blank_panel-units-2]\",\"rack10_blank_panel-units-2\"]": {
+      "exposed_edge_angle": 54.735610317,
+      "min_wall": 2.756000000,
+      "result": "PASS",
+      "volume": 67941.776027002,
+      "worst_overhang": 45.000000000
+    },
+    "[\"tests/test_rack10.py::test_endpoint_audit_and_edges[rack10_blank_panel-vented-max-slot]\",\"rack10_blank_panel-vented-max-slot\"]": {
+      "exposed_edge_angle": 54.735610317,
+      "min_wall": 1.950000000,
+      "result": "PASS",
+      "volume": 53103.230091724,
+      "worst_overhang": 45.000000000
+    },
+    "[\"tests/test_rack10.py::test_endpoint_audit_and_edges[rack10_keystone_panel-1u-6-keystones]\",\"rack10_keystone_panel-1u-6-keystones\"]": {
+      "exposed_edge_angle": 60.000000000,
+      "min_wall": 2.500000000,
+      "result": "PASS",
+      "volume": 29271.546279394,
+      "worst_overhang": 45.000000000
+    },
+    "[\"tests/test_rack10.py::test_endpoint_audit_and_edges[rack10_keystone_panel-1u-max]\",\"rack10_keystone_panel-1u-max\"]": {
+      "exposed_edge_angle": 60.000000000,
+      "min_wall": 2.500000000,
+      "result": "PASS",
+      "volume": 25661.641279394,
+      "worst_overhang": 45.000000000
+    },
+    "[\"tests/test_rack10.py::test_endpoint_audit_and_edges[rack10_keystone_panel-count-11]\",\"rack10_keystone_panel-count-11\"]": {
+      "exposed_edge_angle": 60.000000000,
+      "min_wall": 2.500000000,
+      "result": "PASS",
+      "volume": 25661.641279394,
+      "worst_overhang": 45.000000000
+    },
+    "[\"tests/test_rack10.py::test_endpoint_audit_and_edges[rack10_keystone_panel-count-1]\",\"rack10_keystone_panel-count-1\"]": {
+      "exposed_edge_angle": 60.000000000,
+      "min_wall": 2.500000000,
+      "result": "PASS",
+      "volume": 32881.451279394,
+      "worst_overhang": 45.000000000
+    },
+    "[\"tests/test_rack10.py::test_endpoint_audit_and_edges[rack10_keystone_panel-max-ports-slot]\",\"rack10_keystone_panel-max-ports-slot\"]": {
+      "exposed_edge_angle": 60.000000000,
+      "min_wall": 1.950000000,
+      "result": "PASS",
+      "volume": 25492.561279394,
+      "worst_overhang": 45.000000000
+    },
+    "[\"tests/test_rack10.py::test_endpoint_audit_and_edges[rack10_keystone_panel-slot_mm-0]\",\"rack10_keystone_panel-slot_mm-0\"]": {
+      "exposed_edge_angle": 60.000000000,
+      "min_wall": 2.500000000,
+      "result": "PASS",
+      "volume": 29271.546279394,
+      "worst_overhang": 45.000000000
+    },
+    "[\"tests/test_rack10.py::test_endpoint_audit_and_edges[rack10_keystone_panel-slot_mm-8]\",\"rack10_keystone_panel-slot_mm-8\"]": {
+      "exposed_edge_angle": 60.000000000,
+      "min_wall": 1.950000000,
+      "result": "PASS",
+      "volume": 29102.466279394,
+      "worst_overhang": 45.000000000
+    },
+    "[\"tests/test_rack10.py::test_endpoint_audit_and_edges[rack10_tray-apple-tv-4k]\",\"rack10_tray-apple-tv-4k\"]": {
+      "exposed_edge_angle": 54.735610317,
+      "min_wall": 2.400000000,
+      "result": "PASS",
+      "volume": 76028.930090528,
+      "worst_overhang": 45.000000000
+    },
+    "[\"tests/test_rack10.py::test_endpoint_audit_and_edges[rack10_tray-clearance-0.5]\",\"rack10_tray-clearance-0.5\"]": {
+      "exposed_edge_angle": 54.735610317,
+      "min_wall": 2.400000000,
+      "result": "PASS",
+      "volume": 75305.232283461,
+      "worst_overhang": 45.000000000
+    },
+    "[\"tests/test_rack10.py::test_endpoint_audit_and_edges[rack10_tray-clearance-2]\",\"rack10_tray-clearance-2\"]": {
+      "exposed_edge_angle": 54.735610317,
+      "min_wall": 2.400000000,
+      "result": "PASS",
+      "volume": 77494.325232651,
+      "worst_overhang": 45.000000000
+    },
+    "[\"tests/test_rack10.py::test_endpoint_audit_and_edges[rack10_tray-device_d-200]\",\"rack10_tray-device_d-200\"]": {
+      "exposed_edge_angle": 54.735610317,
+      "min_wall": 2.400000000,
+      "result": "PASS",
+      "volume": 119534.325258520,
+      "worst_overhang": 45.000000000
+    },
+    "[\"tests/test_rack10.py::test_endpoint_audit_and_edges[rack10_tray-device_d-40]\",\"rack10_tray-device_d-40\"]": {
+      "exposed_edge_angle": 54.735610317,
+      "min_wall": 2.400000000,
+      "result": "PASS",
+      "volume": 51289.734642911,
+      "worst_overhang": 45.000000000
+    },
+    "[\"tests/test_rack10.py::test_endpoint_audit_and_edges[rack10_tray-device_h-10]\",\"rack10_tray-device_h-10\"]": {
+      "exposed_edge_angle": 54.735610317,
+      "min_wall": 2.400000000,
+      "result": "PASS",
+      "volume": 76028.930090528,
+      "worst_overhang": 45.000000000
+    },
+    "[\"tests/test_rack10.py::test_endpoint_audit_and_edges[rack10_tray-device_h-72]\",\"rack10_tray-device_h-72\"]": {
+      "exposed_edge_angle": 54.735610317,
+      "min_wall": 2.400000000,
+      "result": "PASS",
+      "volume": 121054.556287465,
+      "worst_overhang": 45.000000000
+    },
+    "[\"tests/test_rack10.py::test_endpoint_audit_and_edges[rack10_tray-device_w-213.45]\",\"rack10_tray-device_w-213.45\"]": {
+      "exposed_edge_angle": 54.735610317,
+      "min_wall": 2.400000000,
+      "result": "PASS",
+      "volume": 110683.519081133,
+      "worst_overhang": 45.000000000
+    },
+    "[\"tests/test_rack10.py::test_endpoint_audit_and_edges[rack10_tray-device_w-40]\",\"rack10_tray-device_w-40\"]": {
+      "exposed_edge_angle": 54.735610317,
+      "min_wall": 2.400000000,
+      "result": "PASS",
+      "volume": 58619.088934573,
+      "worst_overhang": 45.000000000
+    },
+    "[\"tests/test_rack10.py::test_endpoint_audit_and_edges[rack10_tray-max-corner]\",\"rack10_tray-max-corner\"]": {
+      "exposed_edge_angle": 54.735610317,
+      "min_wall": 1.950000000,
+      "result": "PASS",
+      "volume": 246846.312587843,
+      "worst_overhang": 45.000000000
+    },
+    "[\"tests/test_rack10.py::test_endpoint_audit_and_edges[rack10_tray-min-corner]\",\"rack10_tray-min-corner\"]": {
+      "exposed_edge_angle": 54.735610317,
+      "min_wall": 1.950000000,
+      "result": "PASS",
+      "volume": 43427.091587341,
+      "worst_overhang": 45.000000000
+    },
+    "[\"tests/test_rack10.py::test_endpoint_audit_and_edges[rack10_tray-mini-pc-nuc]\",\"rack10_tray-mini-pc-nuc\"]": {
+      "exposed_edge_angle": 54.735610317,
+      "min_wall": 2.400000000,
+      "result": "PASS",
+      "volume": 135021.070330287,
+      "worst_overhang": 45.000000000
+    },
+    "[\"tests/test_rack10.py::test_endpoint_audit_and_edges[rack10_tray-slot_mm-0]\",\"rack10_tray-slot_mm-0\"]": {
+      "exposed_edge_angle": 54.735610317,
+      "min_wall": 2.400000000,
+      "result": "PASS",
+      "volume": 76028.930090528,
+      "worst_overhang": 45.000000000
+    },
+    "[\"tests/test_rack10.py::test_endpoint_audit_and_edges[rack10_tray-slot_mm-8]\",\"rack10_tray-slot_mm-8\"]": {
+      "exposed_edge_angle": 54.735610317,
+      "min_wall": 1.950000000,
+      "result": "PASS",
+      "volume": 75859.849892978,
+      "worst_overhang": 45.000000000
+    },
+    "[\"tests/test_rack10.py::test_endpoint_audit_and_edges[rack10_tray-switch-8-port]\",\"rack10_tray-switch-8-port\"]": {
+      "exposed_edge_angle": 54.735610317,
+      "min_wall": 2.400000000,
+      "result": "PASS",
+      "volume": 95864.506483082,
+      "worst_overhang": 45.000000000
     },
     "[\"tests/test_tombstone_sign.py::test_print_audit_per_preset[default]\",\"default\"]": {
       "bridge": 0.000000000,
