@@ -16,7 +16,7 @@ def build(values=None):
 
 
 SPEC = register(ModelSpec(
-    name='rack10_rail_strip', title='10-inch rack rail strip', category_id='storage', build=build,
+    name='rack10_rail_strip', title='10-inch rack rail strip', category_id='rack10', build=build,
     description='EIA rail for HomeRacker posts. Print front face down; roll posts so pin holes run front-to-back. Test the coupon before loading equipment.',
     print_frame=rail_print_frame,
     review_sections=(PlaneSpec((c.RAIL_HOLE_X,0,0),(1,0,0),

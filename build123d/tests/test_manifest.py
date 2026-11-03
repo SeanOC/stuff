@@ -13,6 +13,7 @@ EnumParam.choices, Preset {id, label, values}) — the app ingests the
 manifest verbatim.
 """
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -42,6 +43,12 @@ from scripts.manifest import (  # noqa: E402
 # --------------------------------------------------------------------------
 # Registry-driven schema validation
 # --------------------------------------------------------------------------
+
+def test_category_ids_match_web_catalog():
+    catalog = (Path(__file__).resolve().parents[2] / "lib/models/catalog.ts").read_text()
+    categories = catalog.split("export const MODEL_CATEGORIES = [", 1)[1].split("] as const", 1)[0]
+    assert CATEGORY_IDS == set(re.findall(r'id: "([^"]+)"', categories))
+
 
 def test_manifest_is_schema_valid():
     doc = build_manifest()

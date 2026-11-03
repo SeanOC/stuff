@@ -9,7 +9,7 @@ def build(values=None):
 
 # [C] Steam Machine W/D/H and feet: task equipment list; docs/rack10.md, Device mounts.
 SPEC = register(ModelSpec(
-    name='rack10_cradle', title='10-inch rack low-rail cradle', category_id='storage', build=build,
+    name='rack10_cradle', title='10-inch rack low-rail cradle', category_id='rack10', build=build,
     description='Vented cradle with an open bezel, low rails, four pads and rear cable access.', print_orientation=(0,0,1),
     params=(
         Param('device_w','number',156,min=140,max=200,step=1,unit='mm',label='Device W'),
