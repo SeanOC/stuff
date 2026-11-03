@@ -24,7 +24,21 @@ counts and the baseplate style appear in download filenames.
 | Slot locks | All, Staggered, Corners, Top Corners, None |
 | Slot placement | Center/Left/Right alignment, entry-ramp flip, horizontal ±14 mm and vertical ±10 mm offsets; impossible offsets raise a named validation error |
 
-Clearance above approximately 0.05 mm thins the socket perimeter walls below the 0.9 mm guideline (the author's geometry); print with at least 3 perimeters or keep the default 0.
+Clearance above approximately 0.05 mm thins the straight and corner upper-taper
+socket walls below the 0.9 mm guideline (the author's geometry). The eight
+conical transition faces in the default 2×2 shelf are thinner still: the
+normal-direction wall audit measures approximately 0.698, 0.619 and 0.540 mm
+at socket clearances 0, 0.1 and 0.2 mm respectively. These transitions belong
+to published socket-wall exception #2, enlarged by mayor approval on
+2026-11-03 (PR #281) to include the default clearance. They are the socket
+profile’s top ridges: the standard leaves approximately 0.5 mm between
+adjacent socket chamfers at the rim, printed as a single perimeter on stock
+baseplates. Geometry is unchanged since rev14; endpoint sampling now reaches
+these rims.
+The same transition-wall minimum applies to the magnets, wide and sturdy-back
+presets; the number of inventoried faces varies with grid width and depth.
+Keeping clearance at 0 maximizes these ligaments but does not bring them up
+to 0.9 mm; adding perimeters cannot restore thickness absent from the model.
 
 The model is built with the back in the XZ plane and the deck horizontal.
 The parameter-dependent `print_frame` rotates the wedge underside onto the

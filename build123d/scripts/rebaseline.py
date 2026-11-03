@@ -4,6 +4,8 @@ For intended geometry changes, first use --geometry-only to write a provisional
 geometry baseline before CI. Then regenerate all three baselines using
 --audit-rows and --audit-source from the first successful CI capture. This avoids
 the stale geometry assertion failing the capture needed for a full rebaseline.
+Use --audit-test-file to refresh only one test file's existing audit rows from
+a complete successful capture, preserving all unrelated baseline measurements.
 """
 import argparse
 import importlib.metadata
@@ -16,7 +18,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from scripts import compare_audit_rows, compare_bake, geometry_baseline
-from scripts.baseline_common import BASELINES, ROOT, load_waivers, write_json
+from scripts.baseline_common import BASELINES, ROOT, load_waivers, read_baseline, write_json
 
 
 def nonempty(value):
@@ -42,6 +44,30 @@ def validate_inventory(rows):
                          f"extra={sorted(rows.keys() - expected)}")
 
 
+def refresh_audit_file(args, rows, scope):
+    path = BASELINES / "audit-rows" / "audit-rows-baseline.json"
+    document = read_baseline("audit-rows", path)
+    prefix = args.audit_test_file + "::"
+    expected = {key for key in document["rows"] if json.loads(key)[0].startswith(prefix)}
+    if not expected or set(rows) != expected:
+        raise ValueError(f"audit test-file inventory mismatch: missing={sorted(expected - rows.keys())}, "
+                         f"extra={sorted(rows.keys() - expected)}")
+    for key, row in rows.items():
+        old = document["rows"][key]
+        document["rows"][key] = {field: row[field] for field in old if field in row} | row
+    document["header"].setdefault("scoped_updates", []).append({
+        "test_file": args.audit_test_file, "why": args.why,
+        "source_sha": subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
+        "build123d": importlib.metadata.version("build123d"),
+        "cadquery-ocp-novtk": importlib.metadata.version("cadquery-ocp-novtk"),
+        "audit_source": args.audit_source, "job_scope": scope,
+    })
+    write_json(path, document, sort_keys=False)
+    print(f"wrote audit-rows: {len(rows)} rows for {args.audit_test_file}")
+    return 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--why", required=True, type=nonempty)
@@ -49,16 +75,20 @@ def main(argv=None):
                         help="write only a provisional geometry baseline before CI")
     parser.add_argument("--audit-rows", type=Path)
     parser.add_argument("--audit-source", type=nonempty,
-                        help="CI run id and source SHA for the downloaded jobs")
+                        help="capture provenance (CI run or local command, with source SHA)")
+    parser.add_argument("--audit-test-file", type=nonempty,
+                        help="refresh only this test file's existing audit rows from a complete capture")
     args = parser.parse_args(argv)
     if args.geometry_only:
-        if args.audit_rows is not None or args.audit_source is not None:
-            parser.error("--geometry-only cannot be combined with --audit-rows or --audit-source")
+        if args.audit_rows is not None or args.audit_source is not None or args.audit_test_file:
+            parser.error("--geometry-only cannot be combined with audit options")
     elif args.audit_rows is None or args.audit_source is None:
         parser.error("--audit-rows and --audit-source are required unless --geometry-only is used")
     load_waivers()  # Fail on malformed waiver policy before expensive work.
     if not args.geometry_only:
         audit, scope = compare_audit_rows.collect(args.audit_rows)
+        if args.audit_test_file:
+            return refresh_audit_file(args, audit, scope)
     keys = geometry_baseline.preset_keys()
     manifest = json.loads((ROOT / "manifest.json").read_text())
     manifest_keys = sorted(f"{model['slug']}/{preset['id']}"

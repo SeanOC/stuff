@@ -250,6 +250,7 @@ def test_rebaseline_requires_reason_and_provenance():
     ["--why", "fixture", "--audit-source", "run fixture"],
     ["--why", "fixture", "--geometry-only", "--audit-rows", "absent"],
     ["--why", "fixture", "--geometry-only", "--audit-source", "run fixture"],
+    ["--why", "fixture", "--geometry-only", "--audit-test-file", "tests/test_box.py"],
 ])
 def test_rebaseline_rejects_invalid_modes(arguments):
     with pytest.raises(SystemExit) as error:
@@ -308,3 +309,62 @@ def test_rebaseline_rejects_incomplete_preset_bake(monkeypatch):
     del rows["box/default.glb"]
     with pytest.raises(ValueError, match="box/default.glb"):
         rebaseline.validate_inventory(rows)
+
+
+def test_rebaseline_audit_file_preserves_unrelated_rows_and_rejects_bad_capture(tmp_path, monkeypatch):
+    directory = tmp_path / "capture"
+    records = audit_fixture(directory, wall=.698)
+    rows, scope = audit.collect(directory)
+    [key] = rows
+    other = json.dumps(["tests/test_other.py::test_other", "other"], separators=(",", ":"))
+    baselines = tmp_path / "baselines"
+    path = baselines / "audit-rows/audit-rows-baseline.json"
+    header = {"schema_version": 1, "kind": "audit-rows", "source_sha": "original",
+              "job_scope": ["original full scope"]}
+    # Existing baselines can have deliberately appended rows; a scoped update
+    # preserves their order as well as their measurements.
+    write_json(path, {"header": header, "rows": {other: {"wall": 2.0}, key: {"wall": .905}}},
+               sort_keys=False)
+    preserved = {}
+    for kind in ("geometry", "bake"):
+        p = baselines / kind / f"{kind}-baseline.json"
+        write_json(p, {"rows": {"untouched": kind}})
+        preserved[p] = p.read_bytes()
+    monkeypatch.setattr(rebaseline, "BASELINES", baselines)
+    monkeypatch.setattr(rebaseline, "load_waivers", lambda: [])
+    monkeypatch.setattr(rebaseline.subprocess, "check_output", lambda *a, **kw: "fixture-sha\n")
+
+    def unexpected(*args, **kwargs):
+        pytest.fail("audit-file refresh must not rebuild geometry or bake")
+
+    monkeypatch.setattr(geometry, "collect", unexpected)
+    monkeypatch.setattr(rebaseline.subprocess, "run", unexpected)
+    args = ["--why", "approved socket walls", "--audit-test-file", "tests/test_box.py",
+            "--audit-rows", str(directory), "--audit-source", "local completed fixture"]
+    assert rebaseline.main(args) == 0
+    result = json.loads(path.read_text())
+    assert result["rows"] == {**rows, other: {"wall": 2.0}}
+    assert list(result["rows"]) == [other, key]
+    assert {k: result["header"][k] for k in header} == header
+    [update] = result["header"]["scoped_updates"]
+    assert update["test_file"] == "tests/test_box.py"
+    assert update["source_sha"] == "fixture-sha"
+    assert update["why"] == "approved socket walls"
+    assert update["job_scope"] == scope
+    assert update["audit_source"] == "local completed fixture"
+    for p, before in preserved.items():
+        assert p.read_bytes() == before
+
+    before = path.read_bytes()
+    bad_captures = [records[:-1], records[:2] + records[3:]]
+    failed = copy.deepcopy(records)
+    failed[2]["outcome"] = "failed"
+    bad_captures.append(failed)
+    extra = copy.deepcopy(records)
+    extra[-1]["nodeid"] = "tests/test_other.py::test_other"
+    bad_captures.append(extra)
+    for bad in bad_captures:
+        (directory / "rows.gw0.jsonl").write_text("".join(json.dumps(r) + "\n" for r in bad))
+        with pytest.raises(ValueError):
+            rebaseline.main(args)
+        assert path.read_bytes() == before

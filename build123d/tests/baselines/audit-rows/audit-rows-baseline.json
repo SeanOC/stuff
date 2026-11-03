@@ -144,7 +144,20 @@
         "why": "Rev 2 design loads; stiffness section proofs and endpoint/corner audit; shelf rows preserved"
       }
     },
-    "why": "pst-1z5db: full rebaseline after #252/#254/#255 added holder-bench-projector-mount; first capture since pst-ml7f9"
+    "why": "pst-1z5db: full rebaseline after #252/#254/#255 added holder-bench-projector-mount; first capture since pst-ml7f9",
+    "scoped_updates": [
+      {
+        "test_file": "tests/test_gridfinity_shelf.py",
+        "why": "pst-0q595: mayor-approved exception #2 enlargement on 2026-11-03, PR #281; preserve raw wall measurements",
+        "source_sha": "e6acd6f206b763496fda1b02a4f860dbffc72bf9",
+        "build123d": "0.13.0",
+        "cadquery-ocp-novtk": "8.0.1.1.0",
+        "audit_source": "local completed 28-case shelf audit capture at e6acd6f2; pytest tests/test_gridfinity_shelf.py -q -n 2; marker expression: audit and not upstream",
+        "job_scope": [
+          "[\"audit and not upstream\",null]"
+        ]
+      }
+    ]
   },
   "rows": {
     "[\"tests/test_bench_lip_clip.py::test_endpoint_audit[bed_chamfer=0.3]\",\"bench-lip-clip-endpoint\"]": {
@@ -2861,156 +2874,156 @@
     },
     "[\"tests/test_gridfinity_shelf.py::test_endpoint_audit_mount_and_edges[connection_screw_diameter=2]\",\"connection_screw_diameter=2\"]": {
       "overhang": 45.000000000,
-      "result": "PASS",
+      "result": "PASS (published exception #2 \u2014 socket-wall family (18 faces); raw min 0.698000 mm)",
       "volume": 26504.383113779,
-      "wall": 0.905000000,
+      "wall": 0.698000000,
       "worst_edge": 90.000000000
     },
     "[\"tests/test_gridfinity_shelf.py::test_endpoint_audit_mount_and_edges[connection_screw_diameter=5]\",\"connection_screw_diameter=5\"]": {
       "overhang": 45.000000000,
-      "result": "PASS",
+      "result": "PASS (published exception #2 \u2014 socket-wall family (18 faces); raw min 0.698000 mm)",
       "volume": 26504.383113779,
-      "wall": 0.905000000,
+      "wall": 0.698000000,
       "worst_edge": 90.000000000
     },
     "[\"tests/test_gridfinity_shelf.py::test_endpoint_audit_mount_and_edges[default]\",\"default\"]": {
       "overhang": 45.000000000,
-      "result": "PASS",
+      "result": "PASS (published exception #2 \u2014 socket-wall family (18 faces); raw min 0.698000 mm)",
       "volume": 26504.383113779,
-      "wall": 0.905000000,
+      "wall": 0.698000000,
       "worst_edge": 90.000000000
     },
     "[\"tests/test_gridfinity_shelf.py::test_endpoint_audit_mount_and_edges[gridfinity_depth_grids=1]\",\"gridfinity_depth_grids=1\"]": {
       "overhang": 45.000000000,
-      "result": "PASS",
+      "result": "PASS (published exception #2 \u2014 socket-wall family (12 faces); raw min 0.698000 mm)",
       "volume": 12459.632508319,
-      "wall": 0.905000000,
+      "wall": 0.698000000,
       "worst_edge": 90.000000000
     },
     "[\"tests/test_gridfinity_shelf.py::test_endpoint_audit_mount_and_edges[gridfinity_depth_grids=4]\",\"gridfinity_depth_grids=4\"]": {
       "overhang": 45.000000000,
-      "result": "PASS",
+      "result": "PASS (published exception #2 \u2014 socket-wall family (30 faces); raw min 0.698000 mm)",
       "volume": 54660.068135995,
-      "wall": 0.905000000,
+      "wall": 0.698000000,
       "worst_edge": 90.000000000
     },
     "[\"tests/test_gridfinity_shelf.py::test_endpoint_audit_mount_and_edges[gridfinity_socket_clearance=0.2]\",\"gridfinity_socket_clearance=0.2\"]": {
       "overhang": 45.000000000,
-      "result": "PASS (published exception #2 \u2014 socket upper-taper family (10 faces); reference back/straight/corner 0.791961/0.868733/0.811455 mm)",
+      "result": "PASS (published exception #2 \u2014 socket-wall family (18 faces); raw min 0.540000 mm)",
       "volume": 26218.866009090,
-      "wall": 0.792000000,
+      "wall": 0.540000000,
       "worst_edge": 135.067000000
     },
     "[\"tests/test_gridfinity_shelf.py::test_endpoint_audit_mount_and_edges[gridfinity_socket_clearance=0]\",\"gridfinity_socket_clearance=0\"]": {
       "overhang": 45.000000000,
-      "result": "PASS",
+      "result": "PASS (published exception #2 \u2014 socket-wall family (18 faces); raw min 0.698000 mm)",
       "volume": 26504.383113779,
-      "wall": 0.905000000,
+      "wall": 0.698000000,
       "worst_edge": 90.000000000
     },
     "[\"tests/test_gridfinity_shelf.py::test_endpoint_audit_mount_and_edges[gridfinity_width_grids=1]\",\"gridfinity_width_grids=1\"]": {
       "overhang": 45.000000000,
-      "result": "PASS",
+      "result": "PASS (published exception #2 \u2014 socket-wall family (14 faces); raw min 0.698000 mm)",
       "volume": 13740.862096254,
-      "wall": 0.905000000,
+      "wall": 0.698000000,
       "worst_edge": 90.000000000
     },
     "[\"tests/test_gridfinity_shelf.py::test_endpoint_audit_mount_and_edges[gridfinity_width_grids=6]\",\"gridfinity_width_grids=6\"]": {
       "overhang": 45.000000000,
-      "result": "PASS",
+      "result": "PASS (published exception #2 \u2014 socket-wall family (34 faces); raw min 0.698000 mm)",
       "volume": 79622.602176157,
-      "wall": 0.905000000,
+      "wall": 0.698000000,
       "worst_edge": 90.000000000
     },
     "[\"tests/test_gridfinity_shelf.py::test_endpoint_audit_mount_and_edges[magnet_diameter=0]\",\"magnet_diameter=0\"]": {
       "overhang": 45.000000000,
-      "result": "PASS",
+      "result": "PASS (published exception #2 \u2014 socket-wall family (18 faces); raw min 0.698000 mm)",
       "volume": 26504.383113779,
-      "wall": 0.905000000,
+      "wall": 0.698000000,
       "worst_edge": 90.000000000
     },
     "[\"tests/test_gridfinity_shelf.py::test_endpoint_audit_mount_and_edges[magnet_diameter=8]\",\"magnet_diameter=8\"]": {
       "overhang": 45.000000000,
-      "result": "PASS",
+      "result": "PASS (published exception #2 \u2014 socket-wall family (18 faces); raw min 0.698000 mm)",
       "volume": 26504.383113779,
-      "wall": 0.905000000,
+      "wall": 0.698000000,
       "worst_edge": 90.000000000
     },
     "[\"tests/test_gridfinity_shelf.py::test_endpoint_audit_mount_and_edges[magnet_thickness=0]\",\"magnet_thickness=0\"]": {
       "overhang": 45.000000000,
-      "result": "PASS",
+      "result": "PASS (published exception #2 \u2014 socket-wall family (18 faces); raw min 0.698000 mm)",
       "volume": 26504.383113779,
-      "wall": 0.905000000,
+      "wall": 0.698000000,
       "worst_edge": 90.000000000
     },
     "[\"tests/test_gridfinity_shelf.py::test_endpoint_audit_mount_and_edges[magnet_thickness=3]\",\"magnet_thickness=3\"]": {
       "overhang": 45.000000000,
-      "result": "PASS",
+      "result": "PASS (published exception #2 \u2014 socket-wall family (18 faces); raw min 0.698000 mm)",
       "volume": 26504.383113779,
-      "wall": 0.905000000,
+      "wall": 0.698000000,
       "worst_edge": 90.000000000
     },
     "[\"tests/test_gridfinity_shelf.py::test_endpoint_audit_mount_and_edges[magnets]\",\"magnets\"]": {
       "overhang": 45.000000000,
-      "result": "PASS",
+      "result": "PASS (published exception #2 \u2014 socket-wall family (18 faces); raw min 0.698000 mm)",
       "volume": 53079.292790971,
-      "wall": 0.905000000,
+      "wall": 0.698000000,
       "worst_edge": 122.579000000
     },
     "[\"tests/test_gridfinity_shelf.py::test_endpoint_audit_mount_and_edges[shelf_back_offset=0]\",\"shelf_back_offset=0\"]": {
       "overhang": 45.000000000,
-      "result": "PASS",
+      "result": "PASS (published exception #2 \u2014 socket-wall family (18 faces); raw min 0.698000 mm)",
       "volume": 26504.383113779,
-      "wall": 0.905000000,
+      "wall": 0.698000000,
       "worst_edge": 90.000000000
     },
     "[\"tests/test_gridfinity_shelf.py::test_endpoint_audit_mount_and_edges[shelf_back_offset=20]\",\"shelf_back_offset=20\"]": {
       "overhang": 45.000000000,
-      "result": "PASS",
+      "result": "PASS (published exception #2 \u2014 socket-wall family (18 faces); raw min 0.698000 mm)",
       "volume": 66385.456673108,
-      "wall": 0.916000000,
+      "wall": 0.698000000,
       "worst_edge": 90.000000000
     },
     "[\"tests/test_gridfinity_shelf.py::test_endpoint_audit_mount_and_edges[shelf_front_rim=0]\",\"shelf_front_rim=0\"]": {
       "overhang": 45.000000000,
-      "result": "PASS",
+      "result": "PASS (published exception #2 \u2014 socket-wall family (18 faces); raw min 0.698000 mm)",
       "volume": 26504.383113779,
-      "wall": 0.905000000,
+      "wall": 0.698000000,
       "worst_edge": 90.000000000
     },
     "[\"tests/test_gridfinity_shelf.py::test_endpoint_audit_mount_and_edges[shelf_front_rim=10]\",\"shelf_front_rim=10\"]": {
       "overhang": 45.000000000,
-      "result": "PASS",
+      "result": "PASS (published exception #2 \u2014 socket-wall family (18 faces); raw min 0.698000 mm)",
       "volume": 35345.989670833,
-      "wall": 0.905000000,
+      "wall": 0.698000000,
       "worst_edge": 90.000000000
     },
     "[\"tests/test_gridfinity_shelf.py::test_endpoint_audit_mount_and_edges[shelf_rim_lip_height=0]\",\"shelf_rim_lip_height=0\"]": {
       "overhang": 45.000000000,
-      "result": "PASS",
+      "result": "PASS (published exception #2 \u2014 socket-wall family (18 faces); raw min 0.698000 mm)",
       "volume": 26504.383113779,
-      "wall": 0.905000000,
+      "wall": 0.698000000,
       "worst_edge": 90.000000000
     },
     "[\"tests/test_gridfinity_shelf.py::test_endpoint_audit_mount_and_edges[shelf_rim_lip_height=5]\",\"shelf_rim_lip_height=5\"]": {
       "overhang": 45.000000000,
-      "result": "PASS",
+      "result": "PASS (published exception #2 \u2014 socket-wall family (18 faces); raw min 0.698000 mm)",
       "volume": 26504.383113779,
-      "wall": 0.905000000,
+      "wall": 0.698000000,
       "worst_edge": 90.000000000
     },
     "[\"tests/test_gridfinity_shelf.py::test_endpoint_audit_mount_and_edges[shelf_side_rim=0]\",\"shelf_side_rim=0\"]": {
       "overhang": 45.000000000,
-      "result": "PASS",
+      "result": "PASS (published exception #2 \u2014 socket-wall family (18 faces); raw min 0.698000 mm)",
       "volume": 26504.383113779,
-      "wall": 0.905000000,
+      "wall": 0.698000000,
       "worst_edge": 90.000000000
     },
     "[\"tests/test_gridfinity_shelf.py::test_endpoint_audit_mount_and_edges[shelf_side_rim=10]\",\"shelf_side_rim=10\"]": {
       "overhang": 45.000000000,
-      "result": "PASS",
+      "result": "PASS (published exception #2 \u2014 socket-wall family (18 faces); raw min 0.698000 mm)",
       "volume": 56189.815147191,
-      "wall": 0.905000000,
+      "wall": 0.698000000,
       "worst_edge": 90.000000000
     },
     "[\"tests/test_gridfinity_shelf.py::test_endpoint_audit_mount_and_edges[slot_horizontal_offset=-14]\",\"slot_horizontal_offset=-14\"]": {
@@ -3027,16 +3040,16 @@
     },
     "[\"tests/test_gridfinity_shelf.py::test_endpoint_audit_mount_and_edges[sturdy-back]\",\"sturdy-back\"]": {
       "overhang": 45.000000000,
-      "result": "PASS",
+      "result": "PASS (published exception #2 \u2014 socket-wall family (18 faces); raw min 0.698000 mm)",
       "volume": 29768.259970327,
-      "wall": 0.916000000,
+      "wall": 0.698000000,
       "worst_edge": 90.000000000
     },
     "[\"tests/test_gridfinity_shelf.py::test_endpoint_audit_mount_and_edges[wide]\",\"wide\"]": {
       "overhang": 45.000000000,
-      "result": "PASS",
+      "result": "PASS (published exception #2 \u2014 socket-wall family (26 faces); raw min 0.698000 mm)",
       "volume": 53063.492632731,
-      "wall": 0.905000000,
+      "wall": 0.698000000,
       "worst_edge": 90.000000000
     },
     "[\"tests/test_openconnect_drawer.py::test_endpoint_audit_and_edges[1x1x1]\",\"1x1x1\"]": {

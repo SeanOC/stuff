@@ -465,6 +465,26 @@ header. All three measurements complete before any baseline is replaced.
 Commit the generated JSON, inspect the numerical/structural changes and explain
 them in the PR. A re-baseline is deliberate acceptance, never a silent fallback.
 
+For an approved audit-only change confined to one test file, capture that
+file's complete audit selection in a fresh directory, then refresh its existing
+measurement rows without rebuilding geometry or bake artifacts:
+
+```bash
+BD_AUDIT_OUT=../.tmp-shelf-rows/rows.jsonl uv run pytest \
+  tests/test_gridfinity_shelf.py -q -m 'audit and not upstream'
+uv run python scripts/rebaseline.py \
+  --audit-test-file tests/test_gridfinity_shelf.py \
+  --audit-rows ../.tmp-shelf-rows \
+  --audit-source 'local completed shelf audit capture at <source-sha>' \
+  --why 'pst-0q595: mayor-approved exception #2 enlargement, PR #281'
+```
+
+This mode requires successful, complete outcomes and exactly the baseline's
+existing measurement keys for that test file. Missing or extra rows fail before
+writing. Other rows and the original full-job provenance remain intact; a
+`scoped_updates` header records the new reason, source SHA, engine versions,
+capture provenance and selection. It cannot be combined with `--geometry-only`.
+
 Fields or entire rows may be waived **only** in the committed
 `tests/baselines/waivers.json`. Each entry requires `kind` (`geometry`, `bake`,
 `audit-rows`), an exact JSON-pointer `path` copied from the diff, a `reason`

@@ -248,7 +248,23 @@ The precedents below were checked against main `a5bdcb1`.
 | Wall floor | An inventoried mating face family may retain the author's thinner wall. | Exact face membership and reference wall measurements; e.g. the directional snap's **23 lite / 26 full faces** in [DIRECTIONAL_FACES](../tests/opengrid_snap_inventory.py), checked by `test_published_print_inventory` and `test_directional_reference_features` in [test_opengrid_snap.py](../tests/test_opengrid_snap.py). |
 | Mount backing depth | A named shallow contract may retain published backing. | `openconnect-slot-shallow` in [mount_contracts.py](../tests/mount_contracts.py) pins **0.8 mm**; the shelf's published **0.85 mm** and sturdy-back **2.4 mm** are checked by `test_published_backing_is_point_85_and_sturdy_is_2_point_4` and `test_endpoint_audit_mount_and_edges` in [test_gridfinity_shelf.py](../tests/test_gridfinity_shelf.py). Keep the full-depth proof on that preset. |
 | Edge treatment | Functional/mating edges (Gridfinity profile boundaries, mount faces) and explicitly inventoried author exterior edges may stay sharp. | A geometric edge inventory such as [gridfinity_shelf_edges.json](../tests/gridfinity_shelf_edges.json), checked by `edge_inventory` and `test_endpoint_audit_mount_and_edges`; no blanket waiver of all edges on a port. |
-| Parameter-driven thin walls | A published family may thin across its declared domain. | Pins at **both endpoints and the midpoint**, plus rejection of misses outside the inventory. The shelf's ten-face socket-wall family (two back lower tapers, six straight and two corner upper tapers) is selected by socket/exterior adjacency; `test_rev14_published_socket_wall_thickness` pins clearance **0 / 0.1 / 0.2 mm**, and `test_rev14_no_other_thin_faces_at_max_clearance` checks the remainder. Counts describe the tested default grid, not every grid size. |
+| Parameter-driven thin walls | A published family may thin across its declared domain. | Approved by **Sean, 2026-11-03 (PR #281)**, the shelf's **18-face socket-wall family** comprises two back lower tapers, six straight and two corner upper tapers, and eight conical transition rims on the default grid. Socket/exterior adjacency selects membership; `test_rev14_published_socket_wall_thickness` pins the per-group floors below. `test_rev14_no_other_thin_faces_across_clearances` checks all other faces at **0 / 0.1 / 0.2 mm** clearance. `test_endpoint_audit_mount_and_edges` applies the same classification across presets and parameter endpoints (with grid-dependent face counts); `test_model_print_audit` uses the same approved-face selector for the registry default. Both recompute acceptance over the remainder and retain the raw wall measurement. |
+
+Shelf exception #2 was **enlarged by approval of Sean, 2026-11-03 (PR #281)** from the
+rev14 ten-face / 0.792 mm inventory because endpoint sampling now reaches
+the conical rims. These are the Gridfinity socket profile's own top ridges:
+the standard leaves approximately 0.5 mm between adjacent socket chamfers
+at the rim, printed as a single perimeter on stock baseplates. The geometry
+has not changed since rev14. This approval includes the shipped default;
+it does not change the general 0.9 mm wall floor or the sampler.
+
+| Approved face group | Clearance 0 mm (default) | Clearance 0.1 mm | Clearance 0.2 mm |
+| --- | --- | --- | --- |
+| Back lower tapers | 0.905097 mm | 0.834378 mm | 0.791961 mm |
+| Straight upper tapers | 0.916043 mm | 0.889918 mm | 0.868733 mm |
+| Corner upper tapers | 0.916043 mm | 0.860975 mm | 0.811455 mm |
+| Conical transition rims | 0.698225 mm | 0.618956 mm | 0.539690 mm |
+
 
 Published mating overhangs retain their measured angle and local bridge
 span, as in the snap's [directional inventory](opengrid-snap-library.md#directional-mating-exceptions)

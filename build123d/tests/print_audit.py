@@ -27,7 +27,8 @@ reports and flags:
   diameter but whose material is a narrow sliver — as a wide bridge.
   Threshold **10 mm**.
 * **min wall** — the thinnest wall, sampled by marching inward along the
-  surface normal from a grid of points on every face (a normal-direction
+  surface normal from a grid on every face and conical generator endpoints
+  (a normal-direction
   ray-cast proxy: no ray engine is available, but point-membership is).
   Capped at ``WALL_CAP`` mm — only thin walls matter. Threshold **0.9 mm**
   whole-part (load-bearing 1.6 mm is deferred until faces can be tagged;
@@ -666,16 +667,41 @@ def _longest_bridge(part, up, boxes, hmin, support=None):
     return worst
 
 
+def _wall_samples(face):
+    """Interior samples plus the ends of a cone's straight generators.
+
+    On a conical seat the minimum ligament can occur at either V limit,
+    where the seat meets its cylindrical bore. Keep U in the interior to
+    avoid the seam/corners, and retain the trimmed-face membership check.
+    This is deliberately local to normal-direction wall measurement:
+    overhangs and vertical sacrificial-pad remnants use their original grids.
+    """
+    yield from _face_samples(face, _WALL_UV)
+    if str(face.geom_type) != "GeomType.CONE":
+        return
+    for u in _WALL_UV:
+        for v in (0.0, 1.0):
+            try:
+                point = face.position_at(u, v)
+                if not face.is_inside(point):
+                    continue
+                normal = face.normal_at(point)
+            except Exception:
+                continue
+            yield point, normal
+
+
 def _min_wall(part, up, boxes):
     """Thinnest wall, sampled by marching inward along the outward normal from
     a UV grid on every face until the ray exits the solid (a normal-direction
-    ray-cast proxy). Capped at ``WALL_CAP`` — only thin walls matter."""
+    ray-cast proxy), including conical generator endpoints. Capped at
+    ``WALL_CAP`` — only thin walls matter."""
     best = WALL_CAP
     for face in part.faces():
         if _face_in_box(face, boxes):
             continue
         c, n = _outward_normal(part, face)
-        for p, sn in _face_samples(face, _WALL_UV):
+        for p, sn in _wall_samples(face):
             if _in_any_box(p.X, p.Y, p.Z, boxes):
                 continue
             s = _signed(sn, n, face.normal_at(c))
