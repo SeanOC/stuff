@@ -1,0 +1,8 @@
+{
+  "upstream_url": "https://makerrepo.com/r/fangpenlin/opengrid",
+  "commit": "eea2b4154a10d2909e5edece567cbe0563aaf955",
+  "licence": "MIT (Launch Platform 2026)",
+  "gcs": "gs://stuff-reference-upstream/opengrid-lib/336247b93ca79ff68c4969e628dacf8fbc321b4c29e70bb0162a350183affaad/opengrid-eea2b4154a10d2909e5edece567cbe0563aaf955.tar.gz",
+  "published_on": "2026-11-02",
+  "archive_sha256": "336247b93ca79ff68c4969e628dacf8fbc321b4c29e70bb0162a350183affaad"
+}
