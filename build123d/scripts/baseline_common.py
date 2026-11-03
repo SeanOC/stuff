@@ -29,20 +29,21 @@ def tolerance(kind, field, before, after):
     return TOLERANCES.get(f"{kind}.{field}", TOLERANCES[f"{kind}.*"])
 
 
-def normalized(value):
+def normalized(value, *, sort_keys=True):
     """Stable nine-decimal JSON floats; reject non-finite measurements."""
     if isinstance(value, float):
         if not math.isfinite(value):
             raise ValueError(f"non-finite measurement: {value}")
         return round(value, 9) or 0.0
     if isinstance(value, dict):
-        return {k: normalized(v) for k, v in sorted(value.items())}
+        items = sorted(value.items()) if sort_keys else value.items()
+        return {k: normalized(v, sort_keys=sort_keys) for k, v in items}
     if isinstance(value, (list, tuple)):
-        return [normalized(v) for v in value]
+        return [normalized(v, sort_keys=sort_keys) for v in value]
     return value
 
 
-def write_json(path, value):
+def write_json(path, value, *, sort_keys=True):
     def render(item, level=0):
         indent = "  " * (level + 1)
         if isinstance(item, dict):
@@ -60,7 +61,7 @@ def write_json(path, value):
             return opening + closing
         return opening + "\n" + indent + (",\n" + indent).join(children) + "\n" + "  " * level + closing
 
-    content = render(normalized(value)) + "\n"
+    content = render(normalized(value, sort_keys=sort_keys)) + "\n"
     path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent,
                                      delete=False) as temporary:

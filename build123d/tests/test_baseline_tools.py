@@ -321,7 +321,10 @@ def test_rebaseline_audit_file_preserves_unrelated_rows_and_rejects_bad_capture(
     path = baselines / "audit-rows/audit-rows-baseline.json"
     header = {"schema_version": 1, "kind": "audit-rows", "source_sha": "original",
               "job_scope": ["original full scope"]}
-    write_json(path, {"header": header, "rows": {key: {"wall": .905}, other: {"wall": 2.0}}})
+    # Existing baselines can have deliberately appended rows; a scoped update
+    # preserves their order as well as their measurements.
+    write_json(path, {"header": header, "rows": {other: {"wall": 2.0}, key: {"wall": .905}}},
+               sort_keys=False)
     preserved = {}
     for kind in ("geometry", "bake"):
         p = baselines / kind / f"{kind}-baseline.json"
@@ -341,6 +344,7 @@ def test_rebaseline_audit_file_preserves_unrelated_rows_and_rejects_bad_capture(
     assert rebaseline.main(args) == 0
     result = json.loads(path.read_text())
     assert result["rows"] == {**rows, other: {"wall": 2.0}}
+    assert list(result["rows"]) == [other, key]
     assert {k: result["header"][k] for k in header} == header
     [update] = result["header"]["scoped_updates"]
     assert update["test_file"] == "tests/test_box.py"

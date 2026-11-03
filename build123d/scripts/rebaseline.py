@@ -52,7 +52,9 @@ def refresh_audit_file(args, rows, scope):
     if not expected or set(rows) != expected:
         raise ValueError(f"audit test-file inventory mismatch: missing={sorted(expected - rows.keys())}, "
                          f"extra={sorted(rows.keys() - expected)}")
-    document["rows"].update(rows)
+    for key, row in rows.items():
+        old = document["rows"][key]
+        document["rows"][key] = {field: row[field] for field in old if field in row} | row
     document["header"].setdefault("scoped_updates", []).append({
         "test_file": args.audit_test_file, "why": args.why,
         "source_sha": subprocess.check_output(
@@ -61,7 +63,7 @@ def refresh_audit_file(args, rows, scope):
         "cadquery-ocp-novtk": importlib.metadata.version("cadquery-ocp-novtk"),
         "audit_source": args.audit_source, "job_scope": scope,
     })
-    write_json(path, document)
+    write_json(path, document, sort_keys=False)
     print(f"wrote audit-rows: {len(rows)} rows for {args.audit_test_file}")
     return 0
 
