@@ -578,6 +578,7 @@ def register(spec: ModelSpec) -> ModelSpec:
 def all_models() -> list[ModelSpec]:
     # Import modules that register models (side-effect imports live here so
     # the harness has ONE place that defines "everything buildable").
+    from holders import rack10_blank_panel, rack10_keystone_panel, rack10_tray  # noqa: F401
     from holders import cup_lid  # noqa: F401
     from holders import smoke  # noqa: F401  (toolchain smoke artifacts)
     from holders import label_demo  # noqa: F401  (labels spike demo, smoke-tagged)
