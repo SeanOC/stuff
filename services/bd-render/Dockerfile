@@ -15,8 +15,9 @@
 FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim
 
 # OCP (cadquery-ocp) pulls in Open CASCADE, which links a handful of X/GL
-# shared libs even for headless meshing; git + CA certs let uv fetch the
-# opengrid git source pinned in pyproject.toml.
+# shared libs even for headless meshing; git + CA certs stay for any
+# git-sourced dependency (opengrid itself is vendored under
+# build123d/vendor since #275, so uv no longer clones it).
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         git ca-certificates \
@@ -26,12 +27,17 @@ RUN apt-get update \
 
 WORKDIR /build123d
 
-# Dependency layer first (cached until the lockfile changes). --frozen
-# forbids any lock mutation; --no-install-project because there is no
-# importable project package — holders/ is imported via BD_BUILD123D_ROOT
-# on sys.path, exactly as the worker does.
+# Dependency layer first (cached until the lockfile or a vendored path
+# dependency changes). --frozen forbids any lock mutation;
+# --no-install-project because there is no importable project package —
+# holders/ is imported via BD_BUILD123D_ROOT on sys.path, exactly as the
+# worker does. Every [tool.uv.sources] path dependency (vendor/opengrid)
+# must be in the layer BEFORE uv sync, or the install plan fails with
+# "Distribution not found at: file:///build123d/vendor/opengrid"
+# (deploy run 41561012445 after #275); test_bd_render_service.py guards it.
 ENV UV_LINK_MODE=copy
 COPY build123d/pyproject.toml build123d/uv.lock ./
+COPY build123d/vendor ./vendor
 RUN uv sync --frozen --no-install-project
 
 # Bake the model tree: registry + holders (models) + shared geometry + export helpers.
