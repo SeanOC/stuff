@@ -250,6 +250,9 @@ def published_socket_wall_faces(part, values):
     vertical socket riser and that edge's position on the outer socket row.
     OCCT represents some straight loft faces as BSplines, so surface type
     alone cannot identify the straight versus corner groups.
+    Transition cones span the upper taper and share a Bezier seam with an
+    outer straight taper. Endpoint sampling exposes their thinner rim;
+    select them by adjacency, never by the measured thickness.
     """
     from gridfinity import baseplate as gf
 
@@ -281,6 +284,20 @@ def published_socket_wall_faces(part, values):
                 groups['corner'].append(face)
     assert len(groups['straight']) == 2*v['gridfinity_depth_grids'] + v['gridfinity_width_grids']
     assert len(groups['corner']) == 2
+    groups['transition'] = []
+    straight = set(groups['straight'])
+    corners = set(groups['corner'])
+    for face in part.faces():
+        bb = face.bounding_box()
+        if (face in corners or face.geom_type.name != 'CONE'
+                or abs(bb.min.Z-upper_z) > 1e-5
+                or abs(bb.max.Z-upper_z-gf.UPPER_TAPER) > 1e-5):
+            continue
+        if any(edge.geom_type.name == 'BEZIER'
+               and any(f in straight for f in adjacency[edge])
+               for edge in face.edges()):
+            groups['transition'].append(face)
+    assert len(groups['transition']) == 2*len(straight)-4
     return groups
 
 
@@ -307,30 +324,34 @@ def face_wall_measurements(part, values, faces):
 
 
 @pytest.mark.parametrize('clearance,expected', [
-    (0, {'back': .905097, 'straight': .916043, 'corner': .916043}),
-    (.1, {'back': .834378, 'straight': .889918, 'corner': .860975}),
-    (.2, {'back': .791961, 'straight': .868733, 'corner': .811455}),
+    (0, {'back': .905097, 'straight': .916043, 'corner': .916043, 'transition': .698225}),
+    (.1, {'back': .834378, 'straight': .889918, 'corner': .860975, 'transition': .618956}),
+    (.2, {'back': .791961, 'straight': .868733, 'corner': .811455, 'transition': .539690}),
 ])
 def test_rev14_published_socket_wall_thickness(clearance, expected):
     values = {'gridfinity_socket_clearance': clearance}
     part = m.build(values)
     groups = published_socket_wall_faces(part, values)
     assert {name: len(faces) for name, faces in groups.items()} == {
-        'back': 2, 'straight': 6, 'corner': 2}
+        'back': 2, 'straight': 6, 'corner': 2, 'transition': 8}
+    assert len({face for faces in groups.values() for face in faces}) == 18
     for name, faces in groups.items():
         measurements = face_wall_measurements(part, values, faces)
         for _, thickness in measurements:
             assert thickness == pytest.approx(expected[name], abs=.01)
-            if clearance == 0:
+            # Published exception #2 includes the transition rim even at
+            # zero clearance; only the original three groups meet the floor.
+            if clearance == 0 and name != 'transition':
                 assert thickness >= .9
-        # Max-clearance pins match rays on the unmodified author SCAD.
+        # Back/straight/corner max-clearance pins match author-SCAD rays;
+        # transition pins measure the port's newly sampled conical endpoints.
         print(f'PUBLISHED_WALL_2 | clearance {clearance} | {name} | {measurements}')
 
 
 def assert_no_other_thin_faces(part, values):
     groups = published_socket_wall_faces(part, values)
     approved = {face for faces in groups.values() for face in faces}
-    assert len(approved) == 10
+    assert len(approved) == 18
     other = [f for f in part.faces() if f not in approved]
     measurements = face_wall_measurements(part, values, other)
     thin = [(p, thickness) for p, thickness in measurements if thickness < .9-1e-6]
@@ -338,8 +359,9 @@ def assert_no_other_thin_faces(part, values):
     return min(thickness for _, thickness in measurements)
 
 
-def test_rev14_no_other_thin_faces_at_max_clearance():
-    values = {'gridfinity_socket_clearance': .2}
+@pytest.mark.parametrize('clearance', [0, .1, .2])
+def test_rev14_no_other_thin_faces_across_clearances(clearance):
+    values = {'gridfinity_socket_clearance': clearance}
     assert_no_other_thin_faces(m.build(values), values)
 
 
@@ -430,8 +452,9 @@ def test_endpoint_audit_mount_and_edges(name, values):
         assert report.min_wall_mm == pytest.approx(.792, abs=.01)
         other_min = assert_no_other_thin_faces(part, values)
         assert replace(report, min_wall_mm=other_min).ok, report.format()
-        result = ('PASS (published exception #2 — socket upper-taper family (10 faces); '
-                  'reference back/straight/corner 0.791961/0.868733/0.811455 mm)')
+        result = ('PASS (published exception #2 — socket-wall family (18 faces); '
+                  'reference back/straight/corner 0.791961/0.868733/0.811455 mm; '
+                  'conical transition endpoints 0.539690 mm)')
     else:
         assert report.ok, report.format()
     assert report.bed_chamfer == 'present'
