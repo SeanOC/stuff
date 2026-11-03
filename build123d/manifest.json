@@ -3369,7 +3369,7 @@
       "slug": "underware-outside-corner",
       "engine": "build123d",
       "title": "Underware outside-corner cable channel (openGrid)",
-      "blurb": "Underware \"monokini\" channel that wraps 90\u00b0 around the outside (convex) edge where two openGrid boards meet, with an optional larger bend radius for a rounded edge: the convex twin of the mitre, an original variant derived from it. Snaps into openGrid; set sizes in 28 mm cells and the height, with optional cord exits on the first channel and per-cell grip suppression. By Pedro Leite (Underware 2.0), CC BY-NC-SA 4.0 (non-commercial, share-alike). Prints standing on its bend at 45\u00b0; the curved floor under the bend prints unsupported by default, with an optional removable cradle.",
+      "blurb": "Underware \"monokini\" channel that wraps 90\u00b0 around the outside (convex) edge where two openGrid boards meet, with an optional larger bend radius for a rounded edge: the convex twin of the mitre, an original variant derived from it. Snaps into openGrid; set sizes in 28 mm cells and the height, with optional cord exits on the first channel and per-cell grip suppression. By Pedro Leite (Underware 2.0), CC BY-NC-SA 4.0 (non-commercial, share-alike). Prints standing on its bend at 45\u00b0; the curved floor under the bend uses a detached toothed cradle by default; supports=none preserves the bed flat.",
       "categoryId": "multiboard",
       "params": [
         {
@@ -3454,7 +3454,7 @@
           "label": "Built-in removable supports",
           "group": "Print",
           "kind": "enum",
-          "default": "none",
+          "default": "built_in",
           "choices": [
             "none",
             "built_in"
@@ -3579,14 +3579,6 @@
             "channel_width_units": 2,
             "channel_total_height": 28,
             "length_units": 2
-          }
-        },
-        {
-          "id": "outside-corner-r1-supported",
-          "label": "1 \u00d7 1 arms, 22 mm, radius 1, removable supports",
-          "values": {
-            "added_radius": 1,
-            "supports": "built_in"
           }
         }
       ]

@@ -86,7 +86,8 @@ A 90° bend has no support-free orientation. The candidates:
 | upright (first arm flat) | half the bend's floor underside, plus 90° ledges at every second-arm grip end |
 
 `outside_print_frame` is −45° about X (y' = (y + z)/√2, z' = (z − y)/√2): the
-bend sits on the bed and both arms rise at 45°. `bend_flat` cuts
+bend points down and both arms rise at 45°. The default cradle holds the
+complete arc above the bed. With `supports=none`, `bend_flat` cuts
 `BEND_FLAT_MM` = 0.6 mm into the 2 mm floor at the floor cylinder's lowest
 line (`outside_bed_plane`), leaving 1.4 mm of floor and one bed strip
 (≥ 100 mm² at width 1; 0.4–1.5 % of the volume). Every preset and every
@@ -107,77 +108,66 @@ with no change to the built geometry, parameters or presets.
 
 ### Built-in supports
 
-Choose **outside-corner-r1-supported** for the 1 × 1, 22 mm, radius-1
-variant with a removable cradle, or set `supports=built_in`. The default
-`supports=none` retains the original geometry and download names. Neither
-`supports` nor `support_gap_mm` is a filename token; the supported preset ID
-distinguishes its baked artifacts.
+**Release change (r2):** `supports=built_in` is now the default for all three
+base presets. The former `outside-corner-r1-supported` preset is folded into
+`outside-corner-r1`. Download names and preset order otherwise stay the same;
+`supports` is still not a filename token. A returning downloader now gets a
+full smooth arc with a detached cradle. Set `supports=none` for the previous
+byte-identical bed-flat channel and its scoped `BendUnderside` exception.
 
-The cradle uses 0.95 mm fins, spaced at most 8 mm centre-to-centre across
-the floor. Each curved top is concentric with the bend, offset outward by
-`support_gap_mm` (default 0.2 mm, adjustable 0.1–0.3 mm). The fins continue
-3 mm horizontally (4.24 mm along each 45° arm), with a matching normal gap. This extension avoids a
-short thin wedge at the minimum-height bend. The fins have no downward
-overhangs of their own. Between contacts the audited unsupported span stays
-under 10 mm.
+The retained channel is one solid and the complete pad/cradle is a second
+solid. There is no bonded bed strip, tear-off skin or groove outline. A
+0.95 mm crown rail runs across the lowest tangent line; its tooth tops stand
+1 mm above the pad and one `support_gap_mm` below the arc (mayor rev 2).
+Curved flank fins use the same gap, measured along the cylinder normal.
+The part's floor remains a continuous cylinder tangent to both arms.
 
-The 0.6 mm pad has R4 corners, a 0.3 mm bottom chamfer and exactly 5 mm
-of bounding margin around the bed strip and support footprints. Grooves
-at least 0.4 mm wide follow the bed-strip and fin outlines, leaving a
-connected 0.2 mm skin. The old bed strip bonds only to that skin; elsewhere
-the pad and fins clear the retained channel. Peel the pad and connected
-fins away together after cooling. The intended witness is at most the
-0.2 mm skin on the old strip, plus support contact marks on the floor
-underside. Hand removal and surface finish still need Sean's test print.
+Tooth lands are 0.95 mm long on 0.95 mm fins. Their pitch is at most 6 mm
+in either direction, so even a contact-cell diagonal stays below the
+10 mm bridge limit. Recessed webs connect the teeth to the pad. The short
+fin continuations under the 45° arms remain for sound roots; their tops
+are recessed from the contact gap. The intended witness is a grid of dots.
 
-Material comparison (mm³, 1 × 1 arms, 0.2 mm gap):
+The pad is 0.6 mm thick, with R4 corners, a 0.3 mm bed chamfer and a 5 mm
+margin around the fin footprint. One rounded, chamfered 10 × 10 mm pull
+ear extends beyond that margin to start peeling. Remove the pad and all
+fins together after cooling. Default gap is 0.2 mm (range 0.1–0.3 mm);
+use 0.25–0.3 mm for PCTG and inspect the sliced contact layers. The curved
+lands preserve the exact normal gap, rather than snapping to layer heights.
+Sean's second print remains the acceptance for hand removal and finish.
 
-| width / height / radius | retained part | pad + fins | total | added material |
+Material and contact counts at the default 0.2 mm gap (mm³):
+
+| Case | Retained full-arc channel | Pad + fins | Total | Tooth lands |
 | --- | ---: | ---: | ---: | ---: |
-| w1 / h22 / r0 | 8624.181 | 795.166 | 9419.347 | 9.22% |
-| w1 / h22 / r1 | 13473.293 | 2298.169 | 15771.461 | 17.06% |
-| w2 / h28 / r1 | 24588.250 | 5043.792 | 29632.042 | 20.51% |
+| w1 / h22 / r0 | 8695.186 | 1157.161 | 9852.347 | 28 |
+| w1 / h22 / r1 | 13586.018 | 2981.948 | 16567.966 | 60 |
+| w2 / h28 / r1 | 24885.699 | 7351.802 | 32237.500 | 135 |
 
-The extra volume buys a wider bed contact and a supported bend. It is a
-thin pad and spaced fins, with no filled block under the channel. The three
-original presets keep their prior volumes; the new supported preset adds
-2298.169 mm³ to the r1 part.
+The added material is 13.3%, 21.9% and 29.5% of the retained part,
+respectively. The crown rail, greater clearance below the full arc and
+closer fin spacing buy isolated tooth contacts with bounded spans. These
+remain thin fins on a three-layer pad, without a solid supporting block.
 
-These pad dimensions are three layers and one layer at the default 0.2 mm
-layer height. The curved contact tops cannot lie on a discrete layer grid;
-they preserve the exact normal gap instead (plan-review advisory N1).
-At an inclined surface the vertical clearance is at least the normal gap.
-Use the gap control to match the intended layer height/material, and inspect
-the sliced contact layers. The pad and tear-off skin remain 0.6 and 0.2 mm.
+The production audit verifies a connected disposable cradle, no contact
+with the retained channel, actual tooth probes at the normal gap, and
+bracketed contact cells on the same retained surface with spans ≤10 mm.
+Only the declared pad material can be below the normal 0.9 mm wall floor;
+fins and the retained channel are checked separately from that exception.
+Fin and pad surfaces cannot waive their own overhangs. The bend has no
+`BendUnderside` exception in this mode. Bed validation includes the pad,
+pull ear and the 1 mm crown rail.
 
-The production audit takes an **opt-in exact material declaration**: the
-pad/groove region alone may be below the usual 0.9 mm wall floor. It checks
-pad thickness 0.4–0.6 mm and vertical groove remnants ≥0.2 mm, verifies that
-declared support material exists in the actual solid, checks the fins at
-0.9–1.0 mm, and checks retained walls again after subtracting the disposable
-material. Its contact probes require support at the normal gap and bracket
-the intervening spans. Fin/pad surfaces cannot exempt their own overhangs.
-The family's grip-end-wedge, flare-slit-fin and cutout-sill exceptions remain;
-**BendUnderside is not used** for this variant. The bed check includes the
-pad. Unsupported variants retain their existing audit and cache behavior.
-
-Research behind the design: [Polymaker's support overview](https://wiki.polymaker.com/the-basics/3d-slicers/support-structures),
-the [Prusa discussion of gap/layer rounding](https://forum.prusa3d.com/forum/prusaslicer/prusaslicer-not-leaving-horizontal-gaps),
-[sacrificial bridge geometry](https://hackaday.com/2017/10/17/sacrificial-bridge-avoids-3d-printed-supports/),
-and [custom breakaway supports](https://forum.openhardware.science/t/advice-for-custom-3d-printing-supports/7233).
-These informed the gap, thin fins and peel-off base; they do not substitute
-for a print of this geometry in PLA/PCTG.
-
-The supported [review sheet](renders/review/underware-outside-corner-outside-corner-r1-supported.png)
-shows the fins in ISO/FRONT and the connected pad in UNDERSIDE. Regenerate
-it with `uv run python scripts/export.py --commit-review --model underware-outside-corner`.
-`tests/test_underware_outside_support.py` covers the contacts, groove dimensions,
-fin thickness, unsupported compatibility and supported endpoint audit.
-
+The [default review sheet](renders/review/underware-outside-corner.png) and
+[radius-1 sheet](renders/review/underware-outside-corner-outside-corner-r1.png)
+show the fins in ISO/FRONT and the pad in UNDERSIDE. Regenerate them with
+`uv run python scripts/export.py --commit-review --model underware-outside-corner`.
+`tests/test_underware_outside_support.py` checks the contacts, tooth relief,
+pad/ear, unsupported compatibility and supported endpoint audit.
 
 ### The one published exception: `BendUnderside` (signed by the mayor on pst-38hu7, 2026-10-31)
 
-The bend's floor underside — the cylinder of `outside_floor_radius` over the
+In `supports=none` only, the bend's floor underside — the cylinder of `outside_floor_radius` over the
 bend's quadrant and the channel width — prints unsupported by design. In the
 print frame it is a convex downward face rising off the bed flat with
 overhang from 63–80° (at the flat) down to 45°. It exempts no chamfer, wall,

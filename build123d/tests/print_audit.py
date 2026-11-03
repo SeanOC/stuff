@@ -778,9 +778,10 @@ def _bed_chamfer(part, up, hmin) -> str:
 class _DesignedSupport:
     """Opt-in exact material checks; never an overhang or wall bbox waiver.
 
-    Between fins, two contacts must bracket a sample within MAX_BRIDGE_MM.
-    A narrow edge cantilever (<= one fin thickness) is allowed. Samples are
-    offset along the downward normal, so curved tops use a normal gap.
+    Toothed supports bracket samples with verified contact cells on the same
+    retained face. Continuous-fin callers use two normal-gap contacts and
+    at most a half-millimetre edge cantilever. Neither path can waive a
+    support surface or contact with the retained part.
     """
     def __init__(self, declaration, part, up):
         self.gap = declaration.gap_mm
@@ -801,36 +802,99 @@ class _DesignedSupport:
             self.failures.append('sacrificial pad must start on the bed')
         if not 0.4 - 1e-6 <= thickness <= 0.6 + 1e-6:
             self.failures.append(f'sacrificial pad thickness {thickness:.3f} outside 0.4–0.6 mm')
-        # A groove remnant is a vertical layer thickness, not the lateral
-        # width of the little strips between its outline and a curved top.
-        # Probe every upward face, including trimmed curved transition faces.
+        # A uniform pad is the only thin-material declaration. Recessed
+        # skins/grooves cannot hide inside its outer thickness envelope.
         classified_pad = _ClassifiedPart(pad)
-        remnant_ok = True
         for face in pad.faces():
-            center, outward = _outward_normal(classified_pad, face)
-            for point, normal in _face_samples(face, _WALL_UV):
-                normal = _signed(normal, outward, face.normal_at(center))
-                if _dot(tuple(normal), up) <= _DOWN_EPS:
-                    continue
-                if not classified_pad.is_inside(point - Vector(up) * (0.2 - 1e-5)):
-                    remnant_ok = False
-        if not remnant_ok:
-            self.failures.append('sacrificial groove remnant below 0.2 mm')
+            center, normal = _outward_normal(classified_pad, face)
+            if normal.dot(Vector(up)) > _DOWN_EPS:
+                if abs(_height(center, up)-max(heights)) > 1e-5:
+                    self.failures.append('sacrificial pad must have a uniform top without groove remnants')
+                    break
         # A declaration must name actual material, not an imagined envelope
         # suspended below a face. This also detects removal of a pad remnant.
         for label, body in [('pad', pad)] + [('fin', f) for f in declaration.fins]:
             if label == 'fin':
-                coordinates = [_dot(p, tuple(self.axis)) for p in _bbox_corners(body.bounding_box())]
-                fin_width = max(coordinates) - min(coordinates)
+                horizontal = (self.axis, Vector(up).cross(self.axis))
+                widths = []
+                for direction in horizontal:
+                    coordinates = [Vector(v).dot(direction) for v in body.vertices()]
+                    widths.append(max(coordinates)-min(coordinates))
+                fin_width = min(widths)
                 if not MIN_WALL_MM - 1e-6 <= fin_width <= 1.0 + 1e-6:
                     self.failures.append(f'designed support fin wall {fin_width:.3f} outside 0.9–1.0 mm')
             missing = body - part
             if missing.volume > max(1e-5, body.volume * 1e-7):
                 self.failures.append(f'declared support {label} is absent from part')
                 break
-        self.retained = part - pad
-        for fin in declaration.fins:
-            self.retained = self.retained - fin
+        cradle = pad.fuse(*declaration.fins)
+        self.retained = part - cradle
+        if len(cradle.solids()) != 1:
+            self.failures.append('designed support pad and fins must form one removable solid')
+        if not self.retained.solids():
+            self.failures.append('designed support has no retained part')
+        elif cradle.distance_to(self.retained) < self.gap - 1e-5:
+            self.failures.append('designed support touches retained part or violates normal gap')
+        self.contact_cells = []
+        self.contact_faces = list(self.retained.faces())
+        contact_bounds = [face.bounding_box() for face in self.contact_faces]
+        self.cross_axis = Vector(up).cross(self.axis)
+        retained_classifier = _ClassifiedPart(self.retained)
+        targets, membership = [], []
+        if declaration.contacts and not declaration.cells:
+            self.failures.append('designed support tooth contacts must be bracketed by cells')
+        for q, normal in declaration.contacts:
+            q, normal = Vector(q), Vector(normal)
+            target = q-normal*self.gap
+            targets.append(target)
+            if (abs(normal.length-1) > 1e-6 or normal.dot(Vector(up)) >= 0
+                    or not any(body.is_inside(q) for body in self.bodies[1:])
+                    or not retained_classifier.is_inside(target-normal*1e-4)
+                    or retained_classifier.is_inside(target+normal*1e-4)):
+                self.failures.append('designed support tooth probe is not at the normal gap')
+            faces = set()
+            for i, (face, bb) in enumerate(zip(self.contact_faces, contact_bounds)):
+                if all(lo-1e-5 <= t <= hi+1e-5 for lo,t,hi in zip(bb.min,target,bb.max)):
+                    if face.distance_to(target) < 1e-5 and abs(face.normal_at(target).dot(normal)) > .999:
+                        faces.add(i)
+            membership.append(faces)
+        for cell in declaration.cells:
+            if len(cell) != 4 or any(i < 0 or i >= len(targets) for i in cell):
+                self.failures.append('designed support has invalid contact cell')
+                continue
+            points = [targets[i] for i in cell]
+            shared = set.intersection(*(membership[i] for i in cell))
+            span = max((a-b).length for a in points for b in points)
+            # Use distance along the retained surface, not the shorter chord
+            # through a curved floor. Only planar/cylindrical contact patches
+            # are supported by this protocol.
+            from OCP.BRepAdaptor import BRepAdaptor_Surface
+            for face_id in shared:
+                face = self.contact_faces[face_id]
+                if str(face.geom_type) == 'GeomType.CYLINDER':
+                    cylinder = BRepAdaptor_Surface(face.wrapped).Cylinder()
+                    radius = cylinder.Radius()
+                    axis = Vector(cylinder.Axis().Direction())
+                    for a in points:
+                        for b in points:
+                            delta = a-b
+                            axial = delta.dot(axis)
+                            chord = (delta-axis*axial).length
+                            arc = 2*radius*math.asin(min(1.,chord/(2*radius)))
+                            span = max(span,math.hypot(axial,arc))
+                elif str(face.geom_type) != 'GeomType.PLANE':
+                    self.failures.append('designed support contact surface must be planar or cylindrical')
+            if not shared or span > MAX_BRIDGE_MM:
+                self.failures.append('designed support contact cell is unbracketed or exceeds bridge limit')
+            self.max_span = max(self.max_span, span)
+            xy = [(p.dot(self.axis),p.dot(self.cross_axis)) for p in points]
+            # Require a convex, counter-clockwise cell; a malformed polygon
+            # cannot turn a footprint check into a blanket surface waiver.
+            if any((xy[(i+1)%4][0]-xy[i][0])*(xy[(i+2)%4][1]-xy[(i+1)%4][1]) -
+                   (xy[(i+1)%4][1]-xy[i][1])*(xy[(i+2)%4][0]-xy[(i+1)%4][0]) <= 0
+                   for i in range(4)):
+                self.failures.append('designed support contact cell is not convex')
+            self.contact_cells.append((xy,shared))
 
     def backs(self, p, normal):
         if self.failures:
@@ -838,6 +902,14 @@ class _DesignedSupport:
         # Never let the support waive its own overhangs. Fin and pad surfaces
         # still undergo the ordinary overhang/fillet/bridge checks.
         if any(b.is_inside(p) for b in self.bodies):
+            return False
+        if self.contact_cells:
+            x,y = p.dot(self.axis),p.dot(self.cross_axis)
+            for corners, faces in self.contact_cells:
+                if all((b[0]-a[0])*(y-a[1])-(b[1]-a[1])*(x-a[0]) >= -1e-4
+                       for a,b in zip(corners,corners[1:]+corners[:1])):
+                    if any(self.contact_faces[i].distance_to(p) < 1e-5 for i in faces):
+                        return True
             return False
         q = p + normal * (self.gap + 1e-5)
         def contact(point):
@@ -861,6 +933,37 @@ class _DesignedSupport:
             return span <= MAX_BRIDGE_MM
         # The outermost fin ends less than a perimeter from the floor edge.
         return any(d is not None and d <= 0.5 for d in distances)
+
+
+class _SupportedPart(_ClassifiedPart):
+    """Classify a verified union by its exact material pieces.
+
+    The detached cradle can have thousands of tooth faces. Membership in its
+    pad, individual fins and retained part is the same union, with much
+    smaller native classifiers. All faces and samples remain those of the
+    actual assembly; this is enabled only after declaration validation.
+    """
+    def __init__(self, part, support):
+        super().__init__(part, partition=False)
+        self.material = [*support.bodies, _ExactExclusion(support.retained)]
+
+    def is_inside(self, point, tolerance=1e-6):
+        point = tuple(Vector(point))
+        for body in self.material:
+            if not all(a-tolerance <= p <= b+tolerance
+                       for a,p,b in zip(body.lo,point,body.hi)):
+                continue
+            # Preserve the original compound classifier's tolerance at
+            # material boundaries, just like _ClassifiedPart's split path.
+            if any(min(abs(p-a),abs(p-b)) < 4*tolerance
+                   for a,p,b in zip(body.lo,point,body.hi)):
+                return self._native_inside(point,tolerance)
+            inside = body.is_inside(point,tolerance)
+            if body.classifier._classifier.IsOnAFace():
+                return self._native_inside(point,tolerance)
+            if inside:
+                return True
+        return False
 
 
 def audit(
@@ -924,14 +1027,15 @@ def _audit(part, orientation, *, cutters, exclusions, model, print_frame, design
     hmin = min(_height(v, up) for v in verts)
     extent = print_extent(part, up)
     support = _DesignedSupport(designed_support, part, up) if designed_support is not None else None
-    part = _ClassifiedPart(part)
+    part = (_SupportedPart(part, support) if support is not None and not support.failures
+            else _ClassifiedPart(part))
     wall_boxes = boxes + ([support.pad] if support is not None and not support.failures else [])
     overhang = _max_overhang(part, up, boxes, hmin, support)
     bridge = _longest_bridge(part, up, boxes, hmin, support)
     fillets = _downward_curved_faces(part, up, boxes, hmin, support)
     wall = _min_wall(part, up, wall_boxes)
     if support is not None:
-        # The fused pad must not make a too-thin retained floor look thick.
+        # Check the retained channel independently of the sacrificial material.
         wall = min(wall, _min_wall(_ClassifiedPart(support.retained), up, boxes))
 
     return PrintAuditReport(
