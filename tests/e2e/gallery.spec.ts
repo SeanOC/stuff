@@ -34,7 +34,7 @@ test.describe("gallery", () => {
     const rackShelf = page.locator("#shelf-rack10");
     for (const slug of [
       "rack10-blank-panel", "rack10-cradle", "rack10-ears", "rack10-hub-tray",
-      "rack10-keystone-panel", "rack10-shelf", "rack10-tray",
+      "rack10-keystone-panel", "rack10-rail-strip", "rack10-shelf", "rack10-tray",
     ]) {
       await expect(rackShelf.locator(`a[href="/models/${slug}"]`)).toBeVisible();
     }

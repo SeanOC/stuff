@@ -8,3 +8,4 @@ from .cradle import cradle
 from .shelf import shelf
 from .hub_tray import hub_tray
 from .ears import ears
+from .rail_strip import rail_strip
