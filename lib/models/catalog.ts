@@ -170,6 +170,18 @@ export const CATALOG: Record<string, CatalogEntry> = {
  * enforcement and cross-checks the manifest's categoryId against it.
  */
 export const BUILD123D_CATALOG: Record<string, CatalogEntry> = {
+  rack10_blank_panel: {
+    categoryId: "storage",
+    blurb: "Solid or vented 10-inch rack panels with reinforced ears. Print front face down without supports.",
+  },
+  rack10_keystone_panel: {
+    categoryId: "storage",
+    blurb: "A 1U keystone panel with up to eleven nominal ports and recessed latch seats. Print face down and verify the chosen jack with a fit print.",
+  },
+  rack10_tray: {
+    categoryId: "storage",
+    blurb: "An open-rear device tray with tapered side webs and zip-tie slots. Includes Apple TV, generic switch and mini-PC fit examples; print front face down.",
+  },
   openconnect_drawer: {
     categoryId: "multiboard",
     blurb:
