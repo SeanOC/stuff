@@ -12,15 +12,30 @@ geometry.
 | BOSL2                       | Attachment / transform system; broad toolkit     | `456fcd8`  | ✅        |
 | gridfinity-rebuilt-openscad | Gridfinity bins, baseplates, lite variants (MIT) | `910e22d`  | ✅        |
 | QuackWorks                  | Multiboard / Multiconnect accessory generators   | `6123129`  | ✅        |
+| HomeRacker | Modular rack frame and panel sources | `90556d1` | committed under `libs/homeracker/` |
+| HomeRacker-only BOSL2 | Isolated HomeRacker dependency | `v2.0.779` | committed under `libs/homeracker/BOSL2/` |
 | OpenCV.js | Browser capture, JS with embedded WASM (Apache-2.0) | `5.0.0` | committed vendored JS/WASM |
 
 OpenCV.js is committed under `public/vendor/opencv/`, with release provenance,
 SHA-256 and size in [NOTICE](../public/vendor/opencv/NOTICE). It is loaded only
 on capture; `scripts/vendor-libs.sh` does not download or modify it.
 
-For the OpenSCAD rows, **Vendored** means `scripts/vendor-libs.sh` clones it at the pinned SHA
+HomeRacker source, attribution, exact commits and applied import-prefix patch are
+recorded in [`homeracker/NOTICE`](homeracker/NOTICE) and its `SOURCE.json`.
+Its private BOSL2 is reached only through `<homeracker/BOSL2/...>`; existing
+models still resolve `<BOSL2/...>` to `456fcd8`. The older pin cannot render
+HomeRacker rack panels (`cuboid` length assertion). Both copies are tested
+without changing global include paths. HomeRacker wrappers/presets are
+CC BY-SA 4.0, with attribution beside them in `models/homeracker-LICENSE.md`.
+A second applied patch uses equivalent explicit placements and 2D rounded
+profiles for browser compatibility; a 0.001 mm foot-spacer overlap makes
+the foot a stable single solid. Preset reference tests bound every change.
+The committed subset is present in a fresh checkout and is never downloaded
+or modified by `vendor-libs.sh`.
+
+For the downloaded OpenSCAD rows, **Vendored** means `scripts/vendor-libs.sh` clones it at the pinned SHA
 (it runs as the npm `prebuild` hook and in CI) — only those three are
-present in a fresh clone, and they are the only ones shipped models use.
+downloaded at build time.
 The **menu only** rows are an available-libraries menu for `/scad-new`:
 documented pins, not cloned by the script. To actually use one in a
 model, add it to `scripts/vendor-libs.sh` (or vendor via the `scad-lib`

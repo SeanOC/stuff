@@ -42,6 +42,7 @@ SCHEMA = 2
 # Shared by reference validation, publishing and measurement provenance.
 # Keys preserve verbatim upstream spellings; do not collapse aliases.
 LICENCE_TEXTS = {
+    "Attribution-ShareAlike 4.0 International": "reference/LICENSES/CC-BY-SA-4.0.txt",
     "Multiboard Licence (non-commercial)": "reference/LICENSES/Multiboard-Licence-2025-12-19.txt",
     "Creative Commons — Attribution": "reference/LICENSES/CC-BY-4.0.txt",
     "CC BY-NC-SA 4.0": "reference/LICENSES/CC-BY-NC-SA-4.0.txt",
