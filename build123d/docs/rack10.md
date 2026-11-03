@@ -177,7 +177,7 @@ establish a PLA service rating.
 
 `cradle(W,D,H,units,clearance)` checks `tray_dimensions` before construction.
 The Steam Machine has 2 mm clearance on each side, a 160 mm inner width,
-8 mm low rails above its 3 mm floor, and a bezel that leaves the complete
+16 mm rails above its 16 mm perforated rib grid, and a bezel that leaves the complete
 front face exposed. The rear remains open. Four 1 mm pads support the device
 with or without its own feet; the fit envelope includes its feet. Pad seats
 and the rear cable notch are reserved from the vents. The test measures the
@@ -193,7 +193,7 @@ enclosures and route their cables behind the pockets. Heights are the fixed
 
 `ears(W,D,H,units,clearance)` implements the **clamp-style** option: two low
 L-shaped ears connected by a floor strap. Thread zip ties through the
-four peaked floor slots and around the device, clear of connectors and
+four peaked slots through the 9 mm floor and around the device, clear of connectors and
 cooling openings. This does not assume screw holes in the switch housing.
 The generic 210 mm body has positive clearance under the actual 222.25 mm
 rail opening; 210 mm is the device width, not the mounting flange. The
@@ -261,40 +261,134 @@ actual infill/perimeters, ear fasteners and equipment temperature remain part
 of physical validation. Print load-bearing ribs solid and check sustained
 deflection with a dummy load before installing equipment.
 
-The lighter cradle, clamp and hub tray do not yet have equivalent stiffness
-evidence. That work is tracked separately as **Validate stiffness and size
-ribs for rack10 cradle, clamp and hub tray**; their fit/printability checks
-must not be interpreted as device-load ratings.
+### Cradle, clamp and hub stiffness
 
-#### Stiffness input provenance (validation incomplete)
+`rack10/stiffness.py` pins these four **[C]** load constants. The two hub
+values are explicitly substituted design loads, not measured equipment
+masses (mayor, stiffness task rev 2, 2026-11-03).
 
-Source check for the cradle/clamp/hub stiffness follow-up, 2026-11-03:
-
-| Device | Mass input | Evidence / remaining input |
+| Device | Load input | Provenance |
 | --- | --- | --- |
 | Steam Machine | [C] 2.6 kg | Original device-mount task equipment list, Sean 2026-11-02 23:25Z; also specified by the stiffness task. |
 | USW-Lite-16-PoE | [C] 1.2 kg | [Ubiquiti technical specifications](https://techspecs.ui.com/unifi/switching/usw-lite-16-poe), Mechanical → Weight. |
-| Lutron L-BDG2 | [U] unresolved | [Lutron specification 369816g](https://www.lutron.com/TechnicalDocumentLibrary/369816_Smart_Bridge_Pro_Spec.pdf) supplies dimensions, but no mass. Need the supported device's measured mass or a manufacturer net-mass citation. |
-| Aqara Hub M3 | [U] unresolved | [Aqara M3 specifications](https://www.aqara.com/us/product/hub-m3-specs/) supplies dimensions, but no mass. An indexed Aqara store result says 200 g, but its [linked page](https://us.aqara.com/en-ca/pages/product-specs/hub-m-3) returned 404 during verification. Need a measurement or retrievable manufacturer net-mass citation. |
+| Lutron L-BDG2 | [C] 0.5 kg | Mayor substitute design load, pst-3fob4 rev 2. |
+| Aqara Hub M3 | [C] 0.5 kg | Mayor substitute design load, pst-3fob4 rev 2. |
 
-The original equipment list supplies neither hub mass. Packaging/shipping
-weights are not substitutes for the actual loads required by this task.
-The generic cradle and wide-box presets remain fit examples, not separately
-weighed equipment. Cable forces and equipment centre-of-gravity/contact
-locations also need explicit assumptions in the eventual load calculation.
+The generic cradle uses the same 2.6 kg test load; the wide-box clamp uses
+1.2 kg. Both remain fit examples rather than separately weighed equipment.
+All estimates assume the equipment's centre of gravity at its geometric
+centre, level front rails providing an ideal clamp, and symmetric loading
+left/right. Cable forces, mount self-weight, fastener compliance, impact and
+asymmetric centres of gravity are not included in this shelf-style proxy.
 
 For material sensitivity, [Extrudr's PCTG technical data sheet](https://s3.extrudr.com/extrudr-media/datasheets/tds/tds-en/pctg-TDS-en.pdf)
 (2025-06-26, section 3) lists a flexural modulus of 1650 MPa. This is a
-candidate short-term material input, not a measured modulus for these
+short-term material input, not a measured modulus for these
 front-down prints or a sustained-load rating. The shelf's 2000 MPa PETG
-assumption remains unchanged. Neither that assumption nor a datasheet HDT
-establishes a permissible rack temperature or creep duration.
+assumption remains unchanged. The calculation accepts either modulus and
+tests both; PCTG governs because it is the lower value.
 
-No sustained-load prototype result or explicit acceptance of predicted sag
-has been recorded for these three mounts. The follow-up still needs the
-load calculations, BREP section proofs, any required stiffening, endpoint
-print audits, and the task's physical-validation/acceptance step. This input
-inventory does not complete that validation or authorize a service load.
+**Sections and reactions.** The cradle uses a 16 mm perforated deck and
+32 mm total side rails. Its open fraction and four pads are retained. The
+clamp uses a 9 mm floor and 21 mm total side rails; its tie slots extend
+through the thicker floor. The hubs use a 3.8 mm floor and three 20 mm rails.
+Their front faces and rear cable access remain open. The hub bezel's top
+beam is 2.2 mm thick, preserving the M3's original 1.15 mm nominal head
+clearance as the floor rises. These changes leave the Sonos geometry/helpers untouched.
+
+As for the shelf, `R_rear = mg (z_cg-a_front)/(a_rear-a_front)` and
+`R_front = mg-R_rear`. The cradle uses the outer edges of its actual 8 mm
+pad tops. The clamp and each hub use the outer front/rear device edges as
+conservative contact lines, because their feet are not specified. Each
+row carries half the load and each side carries half the row reaction:
+6.3765 N per cradle pad, 2.943 N per clamp corner, and 1.22625 N per hub
+corner. These are modelled reactions, not measured foot forces.
+
+For longitudinal bending, the cradle counts the continuous webs and side
+bands between the vent cutters, plus its two side rails. The clamp counts
+the floor bands remaining after excluding tie-slot and rear-notch X ranges
+along the **entire** length, plus its side rails. Both remove 0.3 mm edge
+relief on each boundary and discard any residual floor band narrower than
+the 1.6 mm load-bearing minimum. The composite neutral axis is area-weighted:
+`y_bar = sum(A_i y_i)/sum(A_i)` and
+`I = sum(b_i h_i^3/12 + A_i (y_i-y_bar)^2)`.
+The hubs count **only** their rails; each pocket owns one outside rail and
+half the centre divider, so unequal depths do not borrow the other's
+stiffness. The half-divider rectangles are accounting partitions of a
+2.4 mm physical wall, not thin manufactured ribs.
+The divider is probed through the rear contact, where bending moment ends;
+the rear notch can interrupt it farther back in the unloaded cable tail.
+The outside rail is probed all the way to the tip and carries that tail at
+the rear contact's slope. No divider material in the tail is credited.
+
+The point-load formula is the shelf's, summed over both contact rows:
+`delta(x) = sum(P a^2 (3x-a)/(6 E I))` for `x >= a`. Report the rear
+contact and the actual free deck tip, including the hubs' cable-comb tail.
+`test_endpoint_audit_and_edges` intersects every credited longitudinal
+rectangle with the finished BREP and verifies full volume and no overlap.
+
+Transverse bending is checked separately. The cradle's solid front/rear
+cross bands include the two contact lines; the clamp uses 20 mm strips at
+its contact rows. The rear notch interrupts these bands, so each half is
+treated as a side-rail cantilever, with half the row load at the centreline:
+`delta = (R_row/2) (inner_width/2)^3/(3 E I_strip)`. This is more severe
+than corner pads/feet. The hubs use two 19.4 mm cross strips before their
+cable apertures; for each pocket, `delta = mg L^3/(48 E I_strips)` between
+its rail centres. Every transverse strip is also BREP-probed.
+
+| Preset / pocket | Front / rear contact Z, mm | Tip Z, mm | PETG tip, mm | PCTG rear / tip / transverse, mm |
+| --- | --- | --- | --- | --- |
+| Steam Machine | 6.075 / 166.325 | 169.4 | 0.388 | 0.457 / 0.470 / 0.337 |
+| Generic 3U cradle | 6 / 164 | 167 | 0.357 | 0.421 / 0.433 / 0.366 |
+| USW-Lite-16 | 4 / 189 | 190 | 0.486 | 0.585 / 0.589 / 0.549 |
+| Wide 210 mm clamp | 4 / 174 | 175 | 0.356 | 0.428 / 0.432 / 0.717 |
+| Lutron pocket | 4 / 74 | 142 | 0.241 | 0.123 / 0.292 / 0.241 |
+| Aqara pocket | 4 / 109 | 142 | 0.469 | 0.391 / 0.569 / 0.765 |
+
+The parameter-corner calculation stays below the copied **1 mm** criterion
+for both materials. Governing PCTG cases are the narrow/deep cradle
+(W=140, D=200, clearance=1): **0.883 mm** tip; narrow/deep clamp
+(W=140, D=200, clearance=2): **0.927 mm** tip; and widest hub pocket
+(W=110): **0.875 mm** transverse. The widest/deepest cradle at minimum
+clearance has 0.811 mm transverse deflection, and is a separate BREP/audit
+case. Presets, numeric endpoints, asymmetric hub pockets and named corners
+run both the production print audit and exposed-edge classifier.
+
+The hub's centred rear notch stays at least 10 mm wide. Where a pocket
+divider approaches it, the notch widens only in the unloaded tail to avoid
+a thin remnant of the divider's root blend; the loaded rail interval and
+device pockets remain intact. Two additional widths exercise the notch
+transition, and the wide/deep pocket case exercises the widened notch.
+
+| Preset | Previous volume, mm³ | Stiffened volume, mm³ | Change |
+| --- | ---: | ---: | ---: |
+| Steam Machine | 108015.029 | 324956.039 | +200.8% |
+| Generic 3U cradle | 94213.836 | 314759.236 | +234.1% |
+| USW-Lite-16 | 138286.326 | 367301.406 | +165.6% |
+| Wide 210 mm clamp | 127553.155 | 357288.235 | +180.1% |
+| Two-hub tray | 97555.390 | 128778.958 | +32.0% |
+
+The cradle's deeper open grid supplies transverse stiffness while taller
+side rails avoid a still thicker floor. The clamp's continuous floor keeps
+support under unspecified device feet and the tie slots; its thickness
+governs the transverse check. The hubs retain a thin floor and gain most of
+their longitudinal stiffness from the three narrow rails. The increases
+replace the earlier fit-only sections with sections meeting the stated
+elastic criterion; they are not claims of an optimised structural design.
+
+**Physical validation remains pending.** These are instantaneous elastic
+predictions for solid counted sections, using nominal material properties;
+the front-down layer stack has not been mechanically characterised. Neither
+a datasheet HDT nor these moduli establish a permissible rack temperature,
+creep duration, or sustained load rating. Print the counted sections solid.
+Before installing equipment, record filament/lot, slicer settings, actual
+contact positions and rack temperature, then measure rear-contact and tip
+sag under dummy loads initially, after sustained loading, and after unloading.
+Use the <=1 mm criterion and inspect for residual deformation. Test duration
+and maximum service temperature need to be set and recorded for the actual
+rack. Alternatively, the task permits explicit acceptance of these predicted
+values and their limitations; no such acceptance or prototype result is
+recorded yet.
 
 ### Proposed corrected 12U elevation and cables
 

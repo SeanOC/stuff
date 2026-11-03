@@ -134,6 +134,19 @@
     ],
     "schema_version": 1,
     "source_sha": "0aefda9a3c8c33a74a461b442871b3f5fb091f52",
+    "updates": {
+      "pst-3fob4": {
+        "presets": [
+          "rack10-cradle/steam-machine",
+          "rack10-cradle/generic-3u",
+          "rack10-ears/usw-lite-16",
+          "rack10-ears/wide-box-210",
+          "rack10-hub-tray/caseta-aqara-m3"
+        ],
+        "source": "gc-pilot/pst-3fob4; scoped scripts.geometry_baseline.measure",
+        "why": "Rev 2 design loads; deeper cradle grid and side rails, thicker clamp floor, taller hub rails; shelf rows preserved"
+      }
+    },
     "why": "pst-1z5db: full rebaseline after #252/#254/#255 added holder-bench-projector-mount; first capture since pst-ml7f9; pst-k4pan: added original designed-support preset (CANONICAL rev 2, mayor approved); existing rows unchanged"
   },
   "rows": {
@@ -14654,6 +14667,11 @@
         false,
         false,
         false,
+        true,
+        true,
+        true,
+        true,
+        true,
         false,
         false,
         false,
@@ -14674,6 +14692,11 @@
         false,
         false,
         false,
+        true,
+        true,
+        true,
+        true,
+        true,
         false,
         false,
         false,
@@ -14694,21 +14717,11 @@
         false,
         false,
         false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
+        true,
+        true,
+        true,
+        true,
+        true,
         false,
         false,
         false,
@@ -14770,8 +14783,8 @@
       ],
       "print_center": [
         0.000000000,
-        29.350784040,
-        50.468424531
+        16.078221360,
+        74.049429439
       ],
       "raw_bounds": [
         [
@@ -14786,7 +14799,7 @@
         ]
       ],
       "solids": 1,
-      "volume": 94213.835946965
+      "volume": 314759.235946965
     },
     "rack10-cradle/steam-machine": {
       "containment": [
@@ -14931,8 +14944,8 @@
       ],
       "print_center": [
         0.000000000,
-        45.710175340,
-        43.972908286
+        22.161930731,
+        71.151508169
       ],
       "raw_bounds": [
         [
@@ -14947,7 +14960,7 @@
         ]
       ],
       "solids": 1,
-      "volume": 108015.029369087
+      "volume": 324956.039369086
     },
     "rack10-ears/usw-lite-16": {
       "containment": [
@@ -14976,6 +14989,11 @@
         false,
         false,
         false,
+        true,
+        true,
+        true,
+        true,
+        true,
         false,
         false,
         false,
@@ -14996,6 +15014,11 @@
         false,
         false,
         false,
+        true,
+        true,
+        true,
+        true,
+        true,
         false,
         false,
         false,
@@ -15016,21 +15039,11 @@
         false,
         false,
         false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
+        true,
+        true,
+        true,
+        true,
+        true,
         false,
         false,
         false,
@@ -15092,8 +15105,8 @@
       ],
       "print_center": [
         0.000000000,
-        7.972394537,
-        82.500275783
+        6.987088690,
+        90.182456101
       ],
       "raw_bounds": [
         [
@@ -15108,10 +15121,15 @@
         ]
       ],
       "solids": 1,
-      "volume": 138286.325707237
+      "volume": 367301.405707237
     },
     "rack10-ears/wide-box-210": {
       "containment": [
+        true,
+        true,
+        true,
+        true,
+        true,
         false,
         false,
         false,
@@ -15132,6 +15150,11 @@
         false,
         false,
         false,
+        true,
+        true,
+        true,
+        true,
+        true,
         false,
         false,
         false,
@@ -15152,6 +15175,11 @@
         false,
         false,
         false,
+        true,
+        true,
+        true,
+        true,
+        true,
         false,
         false,
         false,
@@ -15172,6 +15200,11 @@
         false,
         false,
         false,
+        true,
+        true,
+        true,
+        true,
+        true,
         false,
         false,
         false,
@@ -15192,31 +15225,11 @@
         false,
         false,
         false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
+        true,
+        true,
+        true,
+        true,
+        true,
         false,
         false,
         false,
@@ -15253,8 +15266,8 @@
       ],
       "print_center": [
         0.000000000,
-        3.315598398,
-        82.204903920
+        5.272796173,
+        85.504667233
       ],
       "raw_bounds": [
         [
@@ -15269,7 +15282,7 @@
         ]
       ],
       "solids": 1,
-      "volume": 127553.154904533
+      "volume": 357288.234904533
     },
     "rack10-hub-tray/caseta-aqara-m3": {
       "containment": [
@@ -15413,9 +15426,9 @@
         ]
       ],
       "print_center": [
-        0.017616525,
-        4.584936521,
-        62.658595514
+        -0.470961049,
+        5.191516244,
+        64.656337797
       ],
       "raw_bounds": [
         [
@@ -15430,7 +15443,7 @@
         ]
       ],
       "solids": 1,
-      "volume": 97555.389774637
+      "volume": 128778.957774637
     },
     "rack10-shelf/2u-plain": {
       "containment": [
