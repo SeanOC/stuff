@@ -140,11 +140,12 @@ class PrintAuditReport:
     bridge_threshold_mm: float = MAX_BRIDGE_MM
     wall_threshold_mm: float = MIN_WALL_MM
     bed_threshold_mm: tuple[float, float, float] = (BED_X, BED_Y, BED_Z)
+    designed_support_failures: tuple[str, ...] = ()
 
     def failures(self) -> list[str]:
         """Blocking rule violations (empty = printable). Bed chamfer excluded
         — it is a warn."""
-        out: list[str] = []
+        out: list[str] = list(self.designed_support_failures)
         if self.max_overhang_deg > self.overhang_threshold_deg + 1e-6:
             out.append(
                 f"overhang {self.max_overhang_deg:.1f}° > "
@@ -464,7 +465,7 @@ def _signed(sample_n, ref_n, raw_ref_n):
 
 # --- individual checks ----------------------------------------------------
 
-def _max_overhang(part, up, boxes, hmin):
+def _max_overhang(part, up, boxes, hmin, support=None):
     """Steepest downward-facing surface, degrees from vertical (0 = vertical
     wall, 90 = flat ceiling). Bed-contact faces and library-cutter faces are
     excluded."""
@@ -484,11 +485,13 @@ def _max_overhang(part, up, boxes, hmin):
             s = _signed(sn, n, face.normal_at(c))
             cdot = s.X * up[0] + s.Y * up[1] + s.Z * up[2]
             if cdot < -_DOWN_EPS:
+                if support is not None and support.backs(p, s):
+                    continue
                 worst = max(worst, math.degrees(math.asin(min(1.0, -cdot))))
     return worst
 
 
-def _downward_curved_faces(part, up, boxes, hmin):
+def _downward_curved_faces(part, up, boxes, hmin, support=None):
     """Downward-facing NON-planar faces that print as a rough curl — a bottom-
     side *fillet*, the thing the guideline forbids ("use a 45° chamfer there").
     Library cutters excluded.
@@ -530,6 +533,8 @@ def _downward_curved_faces(part, up, boxes, hmin):
             s = _signed(sn, n, face.normal_at(c))
             cdot = s.X * up[0] + s.Y * up[1] + s.Z * up[2]
             if cdot < -_DOWN_EPS:
+                if support is not None and support.backs(p, s):
+                    continue
                 downward = True
                 worst = max(worst, math.degrees(math.asin(min(1.0, -cdot))))
         if downward and worst > MAX_OVERHANG_DEG + _ANGLE_TOL_DEG:
@@ -599,7 +604,7 @@ def _max_local_span(grid, step) -> float:
     return best
 
 
-def _longest_bridge(part, up, boxes, hmin):
+def _longest_bridge(part, up, boxes, hmin, support=None):
     """Widest unsupported flat span, measured (not bounding-boxed). For each
     downward-facing near-horizontal planar face above the bed, rasterise the
     face plane, keep only cells that are an actual unsupported ceiling (solid
@@ -654,6 +659,8 @@ def _longest_bridge(part, up, boxes, hmin):
                 above = (qx + up[0] * eps, qy + up[1] * eps, qz + up[2] * eps)
                 below = (qx - up[0] * eps, qy - up[1] * eps, qz - up[2] * eps)
                 if part.is_inside(above) and not part.is_inside(below):
+                    if support is not None and support.backs(Vector(qx, qy, qz), n):
+                        continue
                     grid[i][j] = True
         worst = max(worst, _max_local_span(grid, step))
     return worst
@@ -742,6 +749,94 @@ def _bed_chamfer(part, up, hmin) -> str:
     return "absent" if has_bed else "n/a"
 
 
+class _DesignedSupport:
+    """Opt-in exact material checks; never an overhang or wall bbox waiver.
+
+    Between fins, two contacts must bracket a sample within MAX_BRIDGE_MM.
+    A narrow edge cantilever (<= one fin thickness) is allowed. Samples are
+    offset along the downward normal, so curved tops use a normal gap.
+    """
+    def __init__(self, declaration, part, up):
+        self.gap = declaration.gap_mm
+        self.axis = Vector(_unit(declaration.bridge_axis))
+        self.pad = _ExactExclusion(declaration.pad)
+        self.bodies = [self.pad] + [_ExactExclusion(f) for f in declaration.fins]
+        self.failures = []
+        self.max_span = 0.
+        if not 0.1 - 1e-6 <= self.gap <= 0.3 + 1e-6:
+            self.failures.append('designed support gap must be 0.1–0.3 mm')
+        if abs(_dot(tuple(self.axis), up)) > 1e-6:
+            self.failures.append('designed support bridge axis must be horizontal')
+        pad = declaration.pad
+        heights = [_height(v, up) for v in pad.vertices()]
+        thickness = max(heights) - min(heights)
+        bed = min(_height(v, up) for v in part.vertices())
+        if abs(min(heights) - bed) > 1e-5:
+            self.failures.append('sacrificial pad must start on the bed')
+        if not 0.4 - 1e-6 <= thickness <= 0.6 + 1e-6:
+            self.failures.append(f'sacrificial pad thickness {thickness:.3f} outside 0.4–0.6 mm')
+        # A groove remnant is a vertical layer thickness, not the lateral
+        # width of the little strips between its outline and a curved top.
+        # Probe every upward face, including trimmed curved transition faces.
+        classified_pad = _ClassifiedPart(pad)
+        remnant_ok = True
+        for face in pad.faces():
+            center, outward = _outward_normal(classified_pad, face)
+            for point, normal in _face_samples(face, _WALL_UV):
+                normal = _signed(normal, outward, face.normal_at(center))
+                if _dot(tuple(normal), up) <= _DOWN_EPS:
+                    continue
+                if not classified_pad.is_inside(point - Vector(up) * (0.2 - 1e-5)):
+                    remnant_ok = False
+        if not remnant_ok:
+            self.failures.append('sacrificial groove remnant below 0.2 mm')
+        # A declaration must name actual material, not an imagined envelope
+        # suspended below a face. This also detects removal of a pad remnant.
+        for label, body in [('pad', pad)] + [('fin', f) for f in declaration.fins]:
+            if label == 'fin':
+                coordinates = [_dot(p, tuple(self.axis)) for p in _bbox_corners(body.bounding_box())]
+                fin_width = max(coordinates) - min(coordinates)
+                if not MIN_WALL_MM - 1e-6 <= fin_width <= 1.0 + 1e-6:
+                    self.failures.append(f'designed support fin wall {fin_width:.3f} outside 0.9–1.0 mm')
+            missing = body - part
+            if missing.volume > max(1e-5, body.volume * 1e-7):
+                self.failures.append(f'declared support {label} is absent from part')
+                break
+        self.retained = part - pad
+        for fin in declaration.fins:
+            self.retained = self.retained - fin
+
+    def backs(self, p, normal):
+        if self.failures:
+            return False
+        # Never let the support waive its own overhangs. Fin and pad surfaces
+        # still undergo the ordinary overhang/fillet/bridge checks.
+        if any(b.is_inside(p) for b in self.bodies):
+            return False
+        q = p + normal * (self.gap + 1e-5)
+        def contact(point):
+            return any(b.is_inside(point) for b in self.bodies)
+        if contact(q):
+            return True
+        distances = []
+        # 0.25 mm resolution cannot skip a compliant 0.9 mm fin. Conservatively
+        # use the sampled upper distance when testing the bridge limit.
+        for sign in (-1, 1):
+            distance = None
+            for i in range(1, int(MAX_BRIDGE_MM / 0.25) + 1):
+                d = i * 0.25
+                if contact(q + self.axis * (sign * d)):
+                    distance = d
+                    break
+            distances.append(distance)
+        if all(d is not None for d in distances):
+            span = sum(distances)
+            self.max_span = max(self.max_span, span)
+            return span <= MAX_BRIDGE_MM
+        # The outermost fin ends less than a perimeter from the floor edge.
+        return any(d is not None and d <= 0.5 for d in distances)
+
+
 def audit(
     part: Part,
     orientation: tuple[float, float, float] = (0.0, 0.0, 1.0),
@@ -750,6 +845,7 @@ def audit(
     exclusions=(),
     model: str = "part",
     print_frame=None,
+    designed_support=None,
 ) -> PrintAuditReport:
     """Run the full printability audit (AC 1).
 
@@ -767,20 +863,30 @@ def audit(
         exclusions: explicitly approved exact solid envelopes (no bbox growth).
             Production callers must regression-test every exception.
         model: a label for the report.
+        designed_support: opt-in exact pad/fins and normal gap declaration.
+            Pad/groove material alone may be under the wall floor; its own
+            0.4–0.6 mm pad and >=0.2 mm remnant limits remain blocking.
     """
     from tests import audit_cache
 
+    if designed_support is not None:
+        # Do not share an ordinary audit cache entry with a support-aware
+        # result. Existing callers and their cache protocol are unchanged.
+        return _audit(part, orientation, cutters=list(cutters), exclusions=list(exclusions),
+                      model=model, print_frame=print_frame, designed_support=designed_support)
     return audit_cache.cached(_audit, part, orientation, cutters=list(cutters),
                               exclusions=list(exclusions), model=model,
                               print_frame=print_frame)
 
 
-def _audit(part, orientation, *, cutters, exclusions, model, print_frame):
+def _audit(part, orientation, *, cutters, exclusions, model, print_frame, designed_support=None):
     """The uncached audit behind ``audit``."""
     if print_frame is not None:
         part = print_frame * part
         cutters = [print_frame * c for c in cutters]
         exclusions = [print_frame * e for e in exclusions]
+        if designed_support is not None:
+            designed_support = designed_support.moved(print_frame)
     up = _unit(orientation)
     # Analytic surface predicates (e.g. the cartridge dome) implement the
     # exclusion protocol without a BRep. Preserve those objects unchanged.
@@ -791,15 +897,25 @@ def _audit(part, orientation, *, cutters, exclusions, model, print_frame):
         raise ValueError(f"{model}: part has no geometry to audit")
     hmin = min(_height(v, up) for v in verts)
     extent = print_extent(part, up)
+    support = _DesignedSupport(designed_support, part, up) if designed_support is not None else None
     part = _ClassifiedPart(part)
+    wall_boxes = boxes + ([support.pad] if support is not None and not support.failures else [])
+    overhang = _max_overhang(part, up, boxes, hmin, support)
+    bridge = _longest_bridge(part, up, boxes, hmin, support)
+    fillets = _downward_curved_faces(part, up, boxes, hmin, support)
+    wall = _min_wall(part, up, wall_boxes)
+    if support is not None:
+        # The fused pad must not make a too-thin retained floor look thick.
+        wall = min(wall, _min_wall(_ClassifiedPart(support.retained), up, boxes))
 
     return PrintAuditReport(
         model=model,
         orientation=tuple(round(o, 6) for o in up),
-        max_overhang_deg=round(_max_overhang(part, up, boxes, hmin), 1),
-        longest_bridge_mm=round(_longest_bridge(part, up, boxes, hmin), 2),
-        min_wall_mm=round(_min_wall(part, up, boxes), 3),
-        downward_fillets=_downward_curved_faces(part, up, boxes, hmin),
+        max_overhang_deg=round(overhang, 1),
+        longest_bridge_mm=round(max(bridge, support.max_span if support else 0.), 2),
+        min_wall_mm=round(wall, 3),
+        downward_fillets=fillets,
         bed_chamfer=_bed_chamfer(part, up, hmin),
         extent_mm=extent,
+        designed_support_failures=tuple(support.failures) if support else (),
     )

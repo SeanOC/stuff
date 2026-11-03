@@ -136,6 +136,37 @@ def test_changed_exclusion_list_is_a_miss():
             != audit_cache.key(part, UP, exclusions=[(0, 0, 0, 1, 1, 2)]))
 
 
+def test_designed_support_key_includes_gap_material_and_axis():
+    from dataclasses import replace
+    from tests.test_underware_outside_support import synthetic
+
+    part, support = synthetic()
+    expected = audit_cache.key(part, designed_support=support)
+    assert expected != audit_cache.key(part)
+    rebuilt, declaration = synthetic()
+    assert expected == audit_cache.key(rebuilt, designed_support=declaration)
+    for changed in (
+        replace(support, gap_mm=.1),
+        replace(support, pad=Pos(.1, 0, 0) * support.pad),
+        replace(support, fins=support.fins[:1]),
+        replace(support, bridge_axis=(0., 1., 0.)),
+    ):
+        assert expected != audit_cache.key(part, designed_support=changed)
+
+
+def test_designed_support_audits_bypass_cache(store):
+    from tests.test_underware_outside_support import synthetic
+
+    part, support = synthetic()
+    assert not pa.audit(part).ok  # prime an ordinary result for this geometry
+    paths = set(store.glob("*.json"))
+    assert paths
+    before = _counts()
+    assert pa.audit(part, designed_support=support).ok
+    assert _counts() == before
+    assert set(store.glob("*.json")) == paths
+
+
 def test_exclusion_changed_in_shape_not_bbox_is_a_miss():
     """The case a bbox-keyed cache ships green on: same bbox, different BREP,
     different is_inside."""

@@ -476,10 +476,26 @@ def section_svg(part, plane: PlaneSpec) -> str:
     return ET.tostring(root, encoding="unicode") + "\n"
 
 
-def export_all(*, commit_review: bool = False) -> int:
+def export_supported_review(spec, renders):
+    """The outside-corner support variant needs its own underside review."""
+    preset = next(pr for pr in spec.presets if pr.id == 'outside-corner-r1-supported')
+    values = spec.resolve_values(preset.values)
+    raw = spec.build(values)
+    ctx = review_context(spec, values, raw)
+    part = in_print_frame(spec, values, raw)
+    glb = OUT / f'{preset.id}.glb'
+    export_glb(part, glb)
+    render_review(glb, renders / 'review' / f'{spec.slug}-{preset.id}.png', ctx=ctx)
+    (renders / 'sections' / f'{spec.slug}-{preset.id}.svg').write_text(
+        section_svg(part, ctx.sections[0]), encoding='utf-8')
+
+
+def export_all(*, commit_review: bool = False, model: str | None = None) -> int:
     """Export every model at defaults, optionally refreshing review artifacts."""
     OUT.mkdir(exist_ok=True)
     specs = all_models()
+    if model is not None:
+        specs = [spec for spec in specs if spec.slug == model]
     if not specs:
         print("no models registered"); return 1
     for spec in specs:
@@ -502,6 +518,8 @@ def export_all(*, commit_review: bool = False) -> int:
             shutil.copyfile(png, renders / "review" / f"{spec.slug}.png")
             (renders / "sections" / f"{spec.slug}.svg").write_text(
                 section_svg(part, ctx.sections[0]), encoding="utf-8")
+            if spec.slug == 'underware-outside-corner':
+                export_supported_review(spec, renders)
         print(f"review {spec.slug}: {elapsed:.3f}s; volume={part.volume:.6f} mm3")
         print(f"{spec.name}: vol={part.volume:.0f}mm3 -> {stl.name}, {glb.name}, {png.name}")
     return 0
@@ -703,6 +721,7 @@ def main() -> int:
     )
     parser.add_argument("--commit-review", action="store_true",
                         help="write non-smoke review PNGs and section SVGs to docs/renders")
+    parser.add_argument('--model', help='export one model slug (defaults/review mode only)')
     parser.add_argument("--cache-plan", metavar="PLAN_JSON",
                         help="with --presets-only: write each preset's bake-cache key "
                              "and expected files, without baking (pst-aqza2)")
@@ -712,6 +731,8 @@ def main() -> int:
     args = parser.parse_args()
     if args.presets_only and args.commit_review:
         parser.error("--commit-review cannot be combined with --presets-only")
+    if args.presets_only and args.model:
+        parser.error('--model cannot be combined with --presets-only')
     if (args.cache_plan or args.cache_dir) and not args.presets_only:
         parser.error("--cache-plan/--cache-dir need --presets-only")
     if args.cache_plan and args.cache_dir:
@@ -721,7 +742,7 @@ def main() -> int:
     if args.presets_only:
         return export_presets_only(Path(args.presets_only),
                                    Path(args.cache_dir) if args.cache_dir else None)
-    return export_all(commit_review=args.commit_review)
+    return export_all(commit_review=args.commit_review, model=args.model)
 
 
 if __name__ == "__main__":
