@@ -36,7 +36,9 @@ from build123d import (  # noqa: E402
     BuildLine,
     BuildPart,
     BuildSketch,
+    Cone,
     Cylinder,
+    GeomType,
     Line,
     Plane,
     Pos,
@@ -49,6 +51,7 @@ from opengrid.multiconnect import SnapInSlotCutter  # noqa: E402
 
 from holders.registry import all_models  # noqa: E402
 from tests import audit_cache  # noqa: E402
+from tests import print_audit as print_audit_module  # noqa: E402
 from tests.audit_record import record
 from tests.mount_contracts import resolve_fixtures  # noqa: E402
 from holders.printer import BED_X, BED_Y, BED_Z  # noqa: E402
@@ -345,6 +348,88 @@ def test_wall_1p2mm_passes():
     report = audit(_wall_box(1.2), _UP_Z, model="wall1.2")
     assert report.min_wall_mm == pytest.approx(1.2, abs=0.05)
     assert report.min_wall_mm >= MIN_WALL_MM
+
+
+def _conical_seat_wall(minimum, reverse=False):
+    """45° seat separated from a flat exit face by minimum/√2 in Z."""
+    align = (Align.CENTER, Align.CENTER, Align.MIN)
+    body = Box(20, 20, 2.8 + minimum / math.sqrt(2), align=align)
+    if reverse:
+        exit_height = minimum / math.sqrt(2)
+        bore = (Cylinder(3.2, exit_height, align=align)
+                + Pos(0, 0, exit_height) * Cone(3.2, 4, 0.8, align=align)
+                + Pos(0, 0, exit_height + 0.8) * Cylinder(4, 2, align=align))
+    else:
+        bore = (Cylinder(4, 2, align=align)
+                + Pos(0, 0, 2) * Cone(4, 3.2, 0.8, align=align)
+                + Pos(0, 0, 2.8) * Cylinder(3.2, 2, align=align))
+    return body - bore
+
+
+def _interior_wall(part, monkeypatch):
+    """Run the previous grid through the same wall marcher, without caching."""
+    with monkeypatch.context() as patch:
+        patch.setattr(print_audit_module, "_wall_samples",
+                      lambda face: _face_samples(face, _WALL_UV))
+        return print_audit_module._min_wall(
+            print_audit_module._ClassifiedPart(part), _UP_Z, [])
+
+
+@pytest.mark.parametrize("minimum", [0.82, 0.99, 1.2])
+@pytest.mark.parametrize("rotation", [0, 180])
+@pytest.mark.parametrize("reverse", [False, True], ids=["upper", "lower"])
+def test_conical_seat_endpoint_wall(minimum, rotation, reverse, monkeypatch):
+    part = Rot(X=rotation) * _conical_seat_wall(minimum, reverse)
+    # The old nearest sample is 0.3 * 0.8 mm short of the seat/exit join.
+    assert _interior_wall(part, monkeypatch) == pytest.approx(
+        minimum + 0.24 * math.sqrt(2), abs=1e-4)
+    up = (0, 0, (1 if rotation == 0 else -1) * (-1 if reverse else 1))
+    with audit_cache.disabled():
+        report = audit(part, up)
+    assert report.min_wall_mm == pytest.approx(minimum, abs=0.001)
+    assert report.ok == (minimum >= MIN_WALL_MM), report.format()
+    if minimum < MIN_WALL_MM:
+        assert report.failures() == ["wall 0.82 mm < 0.9 mm minimum"]
+
+
+@pytest.mark.parametrize("finish", ["chamfer", "tangent"])
+def test_conical_endpoint_edge_treatments_keep_thick_wall(finish, monkeypatch):
+    align = (Align.CENTER, Align.CENTER, Align.MIN)
+    if finish == "chamfer":
+        part = Cylinder(20, 10, align=align)
+        part = part.chamfer(0.4, None, part.edges().group_by(Axis.Z)[0])
+    else:
+        part = Cone(20, 15, 5, align=align)
+        # Cone/torus joins are tangent; neither seam is a thin wall.
+        part = part.fillet(2, part.edges().filter_by(GeomType.CIRCLE))
+        assert part.faces().filter_by(GeomType.TORUS)
+    assert part.faces().filter_by(GeomType.CONE)
+    before = _interior_wall(part, monkeypatch)
+    report = audit(part, _UP_Z)
+    assert before == pytest.approx(3.0)
+    assert report.min_wall_mm == pytest.approx(before)
+
+
+def test_conical_endpoint_samples_respect_trim():
+    # Cutting away half of the upper end leaves a non-rectangular UV domain.
+    part = _conical_seat_wall(0.99) - Pos(0, 5, 3.4) * Box(20, 10, 2)
+    [cone] = part.faces().filter_by(GeomType.CONE)
+    assert any(not cone.is_inside(cone.position_at(u, v))
+               for u in _WALL_UV for v in (0, 1)), "fixture must trim an endpoint"
+    samples = list(print_audit_module._wall_samples(cone))
+    assert all(cone.is_inside(point) for point, _ in samples)
+    assert len(samples) > len(_face_samples(cone, _WALL_UV))
+
+
+def test_cylindrical_wall_measurement_unchanged(monkeypatch):
+    # A straight cylinder has no conical generator extrema. Do not broaden
+    # the endpoint change to every curved surface or to shared face sampling.
+    part = Cylinder(10, 5) - Cylinder(8.8, 7)
+    before = _interior_wall(part, monkeypatch)
+    report = audit(part, _UP_Z)
+    assert before == pytest.approx(1.2, abs=1e-4)
+    assert report.min_wall_mm == pytest.approx(before, abs=0.001)
+    assert report.ok, report.format()
 
 
 # --- downward fillet vs chamfer (AC 2) ------------------------------------
