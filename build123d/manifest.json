@@ -4496,6 +4496,496 @@
       ]
     },
     {
+      "slug": "rack10-blank-panel",
+      "engine": "build123d",
+      "title": "10-inch rack blank panel",
+      "blurb": "A solid or vented rack panel with reinforced ears. Print front face down, without supports.",
+      "categoryId": "rack10",
+      "params": [
+        {
+          "name": "units",
+          "label": "Rack units",
+          "kind": "integer",
+          "default": 1,
+          "min": 1,
+          "max": 2,
+          "step": 1
+        },
+        {
+          "name": "vented",
+          "label": "Ventilation slots",
+          "kind": "boolean",
+          "default": false
+        },
+        {
+          "name": "slot_mm",
+          "label": "Slot length (0 round; 7\u20138 slot)",
+          "unit": "mm",
+          "kind": "number",
+          "default": 0,
+          "min": 0,
+          "max": 8,
+          "step": 1
+        }
+      ],
+      "presets": [
+        {
+          "id": "1u-solid",
+          "label": "1U solid",
+          "values": {}
+        },
+        {
+          "id": "1u-vented",
+          "label": "1U vented",
+          "values": {
+            "vented": true
+          }
+        },
+        {
+          "id": "2u-vented",
+          "label": "2U vented",
+          "values": {
+            "units": 2,
+            "vented": true
+          }
+        }
+      ]
+    },
+    {
+      "slug": "rack10-cradle",
+      "engine": "build123d",
+      "title": "10-inch rack low-rail cradle",
+      "blurb": "Vented cradle with an open bezel, low rails, four pads and rear cable access.",
+      "categoryId": "rack10",
+      "params": [
+        {
+          "name": "device_w",
+          "label": "Device W",
+          "unit": "mm",
+          "kind": "number",
+          "default": 156,
+          "min": 140,
+          "max": 200,
+          "step": 1
+        },
+        {
+          "name": "device_d",
+          "label": "Device D",
+          "unit": "mm",
+          "kind": "number",
+          "default": 162.4,
+          "min": 140,
+          "max": 200,
+          "step": 1
+        },
+        {
+          "name": "device_h",
+          "label": "Device H",
+          "unit": "mm",
+          "kind": "number",
+          "default": 152,
+          "min": 80,
+          "max": 152,
+          "step": 1
+        },
+        {
+          "name": "units",
+          "label": "Units",
+          "kind": "integer",
+          "default": 4,
+          "min": 3,
+          "max": 4,
+          "step": 1
+        },
+        {
+          "name": "clearance",
+          "label": "Clearance",
+          "unit": "mm",
+          "kind": "number",
+          "default": 2,
+          "min": 1,
+          "max": 2,
+          "step": 1
+        },
+        {
+          "name": "slot_mm",
+          "label": "Slot length (0 round; 7\u20138 slot)",
+          "unit": "mm",
+          "kind": "number",
+          "default": 0,
+          "min": 0,
+          "max": 8,
+          "step": 1
+        }
+      ],
+      "presets": [
+        {
+          "id": "steam-machine",
+          "label": "Steam Machine",
+          "values": {}
+        },
+        {
+          "id": "generic-3u",
+          "label": "Generic 3U",
+          "values": {
+            "device_w": 160,
+            "device_d": 160,
+            "device_h": 100,
+            "units": 3
+          }
+        }
+      ]
+    },
+    {
+      "slug": "rack10-ears",
+      "engine": "build123d",
+      "title": "10-inch rack clamp ears",
+      "blurb": "Clamp ears for devices without mounting screw holes. Secure with zip ties up to 3 mm wide.",
+      "categoryId": "rack10",
+      "params": [
+        {
+          "name": "device_w",
+          "label": "Device W",
+          "unit": "mm",
+          "kind": "number",
+          "default": 192,
+          "min": 140,
+          "max": 210,
+          "step": 1
+        },
+        {
+          "name": "device_d",
+          "label": "Device D",
+          "unit": "mm",
+          "kind": "number",
+          "default": 185,
+          "min": 100,
+          "max": 200,
+          "step": 1
+        },
+        {
+          "name": "device_h",
+          "label": "Device H",
+          "unit": "mm",
+          "kind": "number",
+          "default": 44,
+          "min": 20,
+          "max": 60,
+          "step": 1
+        },
+        {
+          "name": "units",
+          "label": "Units",
+          "kind": "integer",
+          "default": 2,
+          "min": 1,
+          "max": 2,
+          "step": 1
+        },
+        {
+          "name": "clearance",
+          "label": "Clearance",
+          "unit": "mm",
+          "kind": "number",
+          "default": 1,
+          "min": 1,
+          "max": 2,
+          "step": 1
+        },
+        {
+          "name": "slot_mm",
+          "label": "Slot length (0 round; 7\u20138 slot)",
+          "unit": "mm",
+          "kind": "number",
+          "default": 0,
+          "min": 0,
+          "max": 8,
+          "step": 1
+        }
+      ],
+      "presets": [
+        {
+          "id": "usw-lite-16",
+          "label": "Usw Lite 16",
+          "values": {}
+        },
+        {
+          "id": "wide-box-210",
+          "label": "Wide Box 210",
+          "values": {
+            "device_w": 210,
+            "device_d": 170,
+            "device_h": 31,
+            "units": 1
+          }
+        }
+      ]
+    },
+    {
+      "slug": "rack10-hub-tray",
+      "engine": "build123d",
+      "title": "10-inch rack two-hub tray",
+      "blurb": "1U open-front pockets with rear cable slots and a cable comb.",
+      "categoryId": "rack10",
+      "params": [
+        {
+          "name": "left_w",
+          "label": "Left W",
+          "unit": "mm",
+          "kind": "number",
+          "default": 70,
+          "min": 40,
+          "max": 105,
+          "step": 1
+        },
+        {
+          "name": "left_d",
+          "label": "Left D",
+          "unit": "mm",
+          "kind": "number",
+          "default": 70,
+          "min": 40,
+          "max": 110,
+          "step": 1
+        },
+        {
+          "name": "right_w",
+          "label": "Right W",
+          "unit": "mm",
+          "kind": "number",
+          "default": 105,
+          "min": 40,
+          "max": 110,
+          "step": 1
+        },
+        {
+          "name": "right_d",
+          "label": "Right D",
+          "unit": "mm",
+          "kind": "number",
+          "default": 105,
+          "min": 40,
+          "max": 110,
+          "step": 1
+        },
+        {
+          "name": "slot_mm",
+          "label": "Slot length (0 round; 7\u20138 slot)",
+          "unit": "mm",
+          "kind": "number",
+          "default": 0,
+          "min": 0,
+          "max": 8,
+          "step": 1
+        }
+      ],
+      "presets": [
+        {
+          "id": "caseta-aqara-m3",
+          "label": "Caseta Aqara M3",
+          "values": {}
+        }
+      ]
+    },
+    {
+      "slug": "rack10-keystone-panel",
+      "engine": "build123d",
+      "title": "10-inch rack keystone panel",
+      "blurb": "A 1U panel with nominal keystone windows and recessed rear latch seats. Print face down; verify jack fit with a test print.",
+      "categoryId": "rack10",
+      "params": [
+        {
+          "name": "count",
+          "label": "Keystone ports",
+          "kind": "integer",
+          "default": 6,
+          "min": 1,
+          "max": 11,
+          "step": 1
+        },
+        {
+          "name": "slot_mm",
+          "label": "Slot length (0 round; 7\u20138 slot)",
+          "unit": "mm",
+          "kind": "number",
+          "default": 0,
+          "min": 0,
+          "max": 8,
+          "step": 1
+        }
+      ],
+      "presets": [
+        {
+          "id": "1u-6-keystones",
+          "label": "1U six keystones",
+          "values": {}
+        },
+        {
+          "id": "1u-max",
+          "label": "1U maximum ports",
+          "values": {
+            "count": 11
+          }
+        }
+      ]
+    },
+    {
+      "slug": "rack10-shelf",
+      "engine": "build123d",
+      "title": "10-inch rack open shelf",
+      "blurb": "2U open shelf with a vented deck, ribs and four pads. The Sonos preset with stops is 222.2 mm wide: check your rails or disable stops.",
+      "categoryId": "rack10",
+      "params": [
+        {
+          "name": "device_w",
+          "label": "Device W",
+          "unit": "mm",
+          "kind": "number",
+          "default": 217,
+          "min": 100,
+          "max": 217,
+          "step": 1
+        },
+        {
+          "name": "device_d",
+          "label": "Device D",
+          "unit": "mm",
+          "kind": "number",
+          "default": 217,
+          "min": 100,
+          "max": 220,
+          "step": 1
+        },
+        {
+          "name": "device_h",
+          "label": "Device H",
+          "unit": "mm",
+          "kind": "number",
+          "default": 64,
+          "min": 20,
+          "max": 64,
+          "step": 1
+        },
+        {
+          "name": "side_stops",
+          "label": "5 mm side stops",
+          "kind": "boolean",
+          "default": true
+        },
+        {
+          "name": "slot_mm",
+          "label": "Slot length (0 round; 7\u20138 slot)",
+          "unit": "mm",
+          "kind": "number",
+          "default": 0,
+          "min": 0,
+          "max": 8,
+          "step": 1
+        }
+      ],
+      "presets": [
+        {
+          "id": "sonos-amp",
+          "label": "Sonos Amp",
+          "values": {}
+        },
+        {
+          "id": "2u-plain",
+          "label": "2U Plain",
+          "values": {
+            "device_w": 180,
+            "device_d": 180,
+            "device_h": 50,
+            "side_stops": false
+          }
+        }
+      ]
+    },
+    {
+      "slug": "rack10-tray",
+      "engine": "build123d",
+      "title": "10-inch rack device tray",
+      "blurb": "A fitted open-rear shelf with tapered side webs and zip-tie slots. Rack height follows device height. Print front face down, without supports.",
+      "categoryId": "rack10",
+      "params": [
+        {
+          "name": "device_w",
+          "label": "Device width",
+          "unit": "mm",
+          "kind": "number",
+          "default": 98,
+          "min": 40,
+          "max": 213.45,
+          "step": 0.1
+        },
+        {
+          "name": "device_d",
+          "label": "Device depth",
+          "unit": "mm",
+          "kind": "number",
+          "default": 98,
+          "min": 40,
+          "max": 200,
+          "step": 1
+        },
+        {
+          "name": "device_h",
+          "label": "Device height",
+          "unit": "mm",
+          "kind": "number",
+          "default": 31,
+          "min": 10,
+          "max": 72,
+          "step": 1
+        },
+        {
+          "name": "clearance",
+          "label": "Clearance per side",
+          "unit": "mm",
+          "kind": "number",
+          "default": 1,
+          "min": 0.5,
+          "max": 2,
+          "step": 0.1
+        },
+        {
+          "name": "slot_mm",
+          "label": "Slot length (0 round; 7\u20138 slot)",
+          "unit": "mm",
+          "kind": "number",
+          "default": 0,
+          "min": 0,
+          "max": 8,
+          "step": 1
+        }
+      ],
+      "presets": [
+        {
+          "id": "apple-tv-4k",
+          "label": "Apple TV 4K fit",
+          "values": {}
+        },
+        {
+          "id": "switch-8-port",
+          "label": "Generic eight-port switch fit",
+          "values": {
+            "device_w": 160,
+            "device_d": 100,
+            "device_h": 28
+          }
+        },
+        {
+          "id": "mini-pc-nuc",
+          "label": "Mini PC / NUC fit",
+          "values": {
+            "device_w": 117,
+            "device_d": 112,
+            "device_h": 51
+          }
+        }
+      ]
+    },
+    {
       "slug": "gridfinity-capture-bin",
       "engine": "build123d",
       "title": "Gridfinity capture bin",
@@ -4599,496 +5089,6 @@
         }
       ],
       "capture": true
-    },
-    {
-      "slug": "rack10-blank-panel",
-      "engine": "build123d",
-      "title": "10-inch rack blank panel",
-      "blurb": "A solid or vented rack panel with reinforced ears. Print front face down, without supports.",
-      "categoryId": "storage",
-      "params": [
-        {
-          "name": "units",
-          "label": "Rack units",
-          "kind": "integer",
-          "default": 1,
-          "min": 1,
-          "max": 2,
-          "step": 1
-        },
-        {
-          "name": "vented",
-          "label": "Ventilation slots",
-          "kind": "boolean",
-          "default": false
-        },
-        {
-          "name": "slot_mm",
-          "label": "Slot length (0 round; 7\u20138 slot)",
-          "unit": "mm",
-          "kind": "number",
-          "default": 0,
-          "min": 0,
-          "max": 8,
-          "step": 1
-        }
-      ],
-      "presets": [
-        {
-          "id": "1u-solid",
-          "label": "1U solid",
-          "values": {}
-        },
-        {
-          "id": "1u-vented",
-          "label": "1U vented",
-          "values": {
-            "vented": true
-          }
-        },
-        {
-          "id": "2u-vented",
-          "label": "2U vented",
-          "values": {
-            "units": 2,
-            "vented": true
-          }
-        }
-      ]
-    },
-    {
-      "slug": "rack10-cradle",
-      "engine": "build123d",
-      "title": "10-inch rack low-rail cradle",
-      "blurb": "Vented cradle with an open bezel, low rails, four pads and rear cable access.",
-      "categoryId": "storage",
-      "params": [
-        {
-          "name": "device_w",
-          "label": "Device W",
-          "unit": "mm",
-          "kind": "number",
-          "default": 156,
-          "min": 140,
-          "max": 200,
-          "step": 1
-        },
-        {
-          "name": "device_d",
-          "label": "Device D",
-          "unit": "mm",
-          "kind": "number",
-          "default": 162.4,
-          "min": 140,
-          "max": 200,
-          "step": 1
-        },
-        {
-          "name": "device_h",
-          "label": "Device H",
-          "unit": "mm",
-          "kind": "number",
-          "default": 152,
-          "min": 80,
-          "max": 152,
-          "step": 1
-        },
-        {
-          "name": "units",
-          "label": "Units",
-          "kind": "integer",
-          "default": 4,
-          "min": 3,
-          "max": 4,
-          "step": 1
-        },
-        {
-          "name": "clearance",
-          "label": "Clearance",
-          "unit": "mm",
-          "kind": "number",
-          "default": 2,
-          "min": 1,
-          "max": 2,
-          "step": 1
-        },
-        {
-          "name": "slot_mm",
-          "label": "Slot length (0 round; 7\u20138 slot)",
-          "unit": "mm",
-          "kind": "number",
-          "default": 0,
-          "min": 0,
-          "max": 8,
-          "step": 1
-        }
-      ],
-      "presets": [
-        {
-          "id": "steam-machine",
-          "label": "Steam Machine",
-          "values": {}
-        },
-        {
-          "id": "generic-3u",
-          "label": "Generic 3U",
-          "values": {
-            "device_w": 160,
-            "device_d": 160,
-            "device_h": 100,
-            "units": 3
-          }
-        }
-      ]
-    },
-    {
-      "slug": "rack10-ears",
-      "engine": "build123d",
-      "title": "10-inch rack clamp ears",
-      "blurb": "Clamp ears for devices without mounting screw holes. Secure with zip ties up to 3 mm wide.",
-      "categoryId": "storage",
-      "params": [
-        {
-          "name": "device_w",
-          "label": "Device W",
-          "unit": "mm",
-          "kind": "number",
-          "default": 192,
-          "min": 140,
-          "max": 210,
-          "step": 1
-        },
-        {
-          "name": "device_d",
-          "label": "Device D",
-          "unit": "mm",
-          "kind": "number",
-          "default": 185,
-          "min": 100,
-          "max": 200,
-          "step": 1
-        },
-        {
-          "name": "device_h",
-          "label": "Device H",
-          "unit": "mm",
-          "kind": "number",
-          "default": 44,
-          "min": 20,
-          "max": 60,
-          "step": 1
-        },
-        {
-          "name": "units",
-          "label": "Units",
-          "kind": "integer",
-          "default": 2,
-          "min": 1,
-          "max": 2,
-          "step": 1
-        },
-        {
-          "name": "clearance",
-          "label": "Clearance",
-          "unit": "mm",
-          "kind": "number",
-          "default": 1,
-          "min": 1,
-          "max": 2,
-          "step": 1
-        },
-        {
-          "name": "slot_mm",
-          "label": "Slot length (0 round; 7\u20138 slot)",
-          "unit": "mm",
-          "kind": "number",
-          "default": 0,
-          "min": 0,
-          "max": 8,
-          "step": 1
-        }
-      ],
-      "presets": [
-        {
-          "id": "usw-lite-16",
-          "label": "Usw Lite 16",
-          "values": {}
-        },
-        {
-          "id": "wide-box-210",
-          "label": "Wide Box 210",
-          "values": {
-            "device_w": 210,
-            "device_d": 170,
-            "device_h": 31,
-            "units": 1
-          }
-        }
-      ]
-    },
-    {
-      "slug": "rack10-hub-tray",
-      "engine": "build123d",
-      "title": "10-inch rack two-hub tray",
-      "blurb": "1U open-front pockets with rear cable slots and a cable comb.",
-      "categoryId": "storage",
-      "params": [
-        {
-          "name": "left_w",
-          "label": "Left W",
-          "unit": "mm",
-          "kind": "number",
-          "default": 70,
-          "min": 40,
-          "max": 105,
-          "step": 1
-        },
-        {
-          "name": "left_d",
-          "label": "Left D",
-          "unit": "mm",
-          "kind": "number",
-          "default": 70,
-          "min": 40,
-          "max": 110,
-          "step": 1
-        },
-        {
-          "name": "right_w",
-          "label": "Right W",
-          "unit": "mm",
-          "kind": "number",
-          "default": 105,
-          "min": 40,
-          "max": 110,
-          "step": 1
-        },
-        {
-          "name": "right_d",
-          "label": "Right D",
-          "unit": "mm",
-          "kind": "number",
-          "default": 105,
-          "min": 40,
-          "max": 110,
-          "step": 1
-        },
-        {
-          "name": "slot_mm",
-          "label": "Slot length (0 round; 7\u20138 slot)",
-          "unit": "mm",
-          "kind": "number",
-          "default": 0,
-          "min": 0,
-          "max": 8,
-          "step": 1
-        }
-      ],
-      "presets": [
-        {
-          "id": "caseta-aqara-m3",
-          "label": "Caseta Aqara M3",
-          "values": {}
-        }
-      ]
-    },
-    {
-      "slug": "rack10-keystone-panel",
-      "engine": "build123d",
-      "title": "10-inch rack keystone panel",
-      "blurb": "A 1U panel with nominal keystone windows and recessed rear latch seats. Print face down; verify jack fit with a test print.",
-      "categoryId": "storage",
-      "params": [
-        {
-          "name": "count",
-          "label": "Keystone ports",
-          "kind": "integer",
-          "default": 6,
-          "min": 1,
-          "max": 11,
-          "step": 1
-        },
-        {
-          "name": "slot_mm",
-          "label": "Slot length (0 round; 7\u20138 slot)",
-          "unit": "mm",
-          "kind": "number",
-          "default": 0,
-          "min": 0,
-          "max": 8,
-          "step": 1
-        }
-      ],
-      "presets": [
-        {
-          "id": "1u-6-keystones",
-          "label": "1U six keystones",
-          "values": {}
-        },
-        {
-          "id": "1u-max",
-          "label": "1U maximum ports",
-          "values": {
-            "count": 11
-          }
-        }
-      ]
-    },
-    {
-      "slug": "rack10-shelf",
-      "engine": "build123d",
-      "title": "10-inch rack open shelf",
-      "blurb": "2U open shelf with a vented deck, ribs and four pads. The Sonos preset with stops is 222.2 mm wide: check your rails or disable stops.",
-      "categoryId": "storage",
-      "params": [
-        {
-          "name": "device_w",
-          "label": "Device W",
-          "unit": "mm",
-          "kind": "number",
-          "default": 217,
-          "min": 100,
-          "max": 217,
-          "step": 1
-        },
-        {
-          "name": "device_d",
-          "label": "Device D",
-          "unit": "mm",
-          "kind": "number",
-          "default": 217,
-          "min": 100,
-          "max": 220,
-          "step": 1
-        },
-        {
-          "name": "device_h",
-          "label": "Device H",
-          "unit": "mm",
-          "kind": "number",
-          "default": 64,
-          "min": 20,
-          "max": 64,
-          "step": 1
-        },
-        {
-          "name": "side_stops",
-          "label": "5 mm side stops",
-          "kind": "boolean",
-          "default": true
-        },
-        {
-          "name": "slot_mm",
-          "label": "Slot length (0 round; 7\u20138 slot)",
-          "unit": "mm",
-          "kind": "number",
-          "default": 0,
-          "min": 0,
-          "max": 8,
-          "step": 1
-        }
-      ],
-      "presets": [
-        {
-          "id": "sonos-amp",
-          "label": "Sonos Amp",
-          "values": {}
-        },
-        {
-          "id": "2u-plain",
-          "label": "2U Plain",
-          "values": {
-            "device_w": 180,
-            "device_d": 180,
-            "device_h": 50,
-            "side_stops": false
-          }
-        }
-      ]
-    },
-    {
-      "slug": "rack10-tray",
-      "engine": "build123d",
-      "title": "10-inch rack device tray",
-      "blurb": "A fitted open-rear shelf with tapered side webs and zip-tie slots. Rack height follows device height. Print front face down, without supports.",
-      "categoryId": "storage",
-      "params": [
-        {
-          "name": "device_w",
-          "label": "Device width",
-          "unit": "mm",
-          "kind": "number",
-          "default": 98,
-          "min": 40,
-          "max": 213.45,
-          "step": 0.1
-        },
-        {
-          "name": "device_d",
-          "label": "Device depth",
-          "unit": "mm",
-          "kind": "number",
-          "default": 98,
-          "min": 40,
-          "max": 200,
-          "step": 1
-        },
-        {
-          "name": "device_h",
-          "label": "Device height",
-          "unit": "mm",
-          "kind": "number",
-          "default": 31,
-          "min": 10,
-          "max": 72,
-          "step": 1
-        },
-        {
-          "name": "clearance",
-          "label": "Clearance per side",
-          "unit": "mm",
-          "kind": "number",
-          "default": 1,
-          "min": 0.5,
-          "max": 2,
-          "step": 0.1
-        },
-        {
-          "name": "slot_mm",
-          "label": "Slot length (0 round; 7\u20138 slot)",
-          "unit": "mm",
-          "kind": "number",
-          "default": 0,
-          "min": 0,
-          "max": 8,
-          "step": 1
-        }
-      ],
-      "presets": [
-        {
-          "id": "apple-tv-4k",
-          "label": "Apple TV 4K fit",
-          "values": {}
-        },
-        {
-          "id": "switch-8-port",
-          "label": "Generic eight-port switch fit",
-          "values": {
-            "device_w": 160,
-            "device_d": 100,
-            "device_h": 28
-          }
-        },
-        {
-          "id": "mini-pc-nuc",
-          "label": "Mini PC / NUC fit",
-          "values": {
-            "device_w": 117,
-            "device_d": 112,
-            "device_h": 51
-          }
-        }
-      ]
     },
     {
       "slug": "littletikes-dream-machine-cartridge-holder",

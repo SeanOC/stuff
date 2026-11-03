@@ -9,7 +9,7 @@ def build(values=None):
 
 # [C] Aqara Hub M3 specifications (Dimensions): https://www.aqara.com/us/product/hub-m3-specs/ ; Lutron 369816 dimensions; docs/rack10.md.
 SPEC = register(ModelSpec(
-    name='rack10_hub_tray', title='10-inch rack two-hub tray', category_id='storage', build=build,
+    name='rack10_hub_tray', title='10-inch rack two-hub tray', category_id='rack10', build=build,
     description='1U open-front pockets with rear cable slots and a cable comb.', print_orientation=(0,0,1),
     params=(
         Param('left_w','number',70,min=40,max=105,step=1,unit='mm',label='Left W'),

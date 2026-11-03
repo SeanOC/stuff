@@ -9,7 +9,7 @@ def build(values=None):
 
 # [C] USW-Lite-16-PoE Dimensions: https://techspecs.ui.com/unifi/switching/usw-lite-16-poe (192 x 185 x 44 mm). Generic 210 mm example is original.
 SPEC = register(ModelSpec(
-    name='rack10_ears', title='10-inch rack clamp ears', category_id='storage', build=build,
+    name='rack10_ears', title='10-inch rack clamp ears', category_id='rack10', build=build,
     description='Clamp ears for devices without mounting screw holes. Secure with zip ties up to 3 mm wide.', print_orientation=(0,0,1),
     params=(
         Param('device_w','number',192,min=140,max=210,step=1,unit='mm',label='Device W'),
