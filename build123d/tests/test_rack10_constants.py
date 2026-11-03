@@ -11,6 +11,10 @@ from rack10 import constants as c
     ('SCREW_CLEAR', 6.4), ('EAR_HOLE_D', 7), ('MAX_SLOT_MM', 8),
     ('PANEL_THICKNESS', 3), ('EAR_THICKNESS', 4),
     ('KEYSTONE_WIDTH', 14.5), ('KEYSTONE_HEIGHT', 16), ('KEYSTONE_PITCH', 19),
+    ('INSERT_M6_HOLE_D',8), ('INSERT_M6_LEN',9), ('INSERT_WALL_MIN',2), ('INSERT_POCKET_DEPTH',9.5),
+    ('RAIL_WIDTH',31), ('RAIL_FLANGE',16), ('RAIL_MAX_UNITS',27),
+    ('SLEEVE_RELIEF_W',17.1), ('SLEEVE_RELIEF_D',2.1), ('RAIL_THICKNESS',12),
+    ('PEG_SQUARE',4), ('PEG_PITCH',15), ('PEG_TOL',.2),
 ])
 def test_rack10_interface_value(name, expected):
     assert getattr(c, name) == pytest.approx(expected)

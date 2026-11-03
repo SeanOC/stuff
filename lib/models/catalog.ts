@@ -196,6 +196,10 @@ export const CATALOG: Record<string, CatalogEntry> = {
  * enforcement and cross-checks the manifest's categoryId against it.
  */
 export const BUILD123D_CATALOG: Record<string, CatalogEntry> = {
+  rack10_rail_strip: {
+    categoryId: "rack10",
+    blurb: "Printed EIA rail strips for HomeRacker posts, with insert or cage-nut holes. Print face down; test the PETG coupon and align post holes front-to-back.",
+  },
   rack10_blank_panel: {
     categoryId: "rack10",
     blurb: "Solid or vented 10-inch rack panels with reinforced ears. Print front face down without supports.",

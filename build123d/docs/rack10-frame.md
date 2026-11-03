@@ -93,6 +93,97 @@ before adding rails or equipment.
 |---|---|---|---|---|
 | G / two 5U bays | 8 × `15u` (225 mm), 6 × `17u`, 6 × `16u` | 4 × `3d3w`, 8 × `3d4w` | 44 / 4 | ≈285 × 270 × 510 mm |
 
+## Printed EIA rail strips
+
+`rack10-rail-strip` is a separate 31 mm wide bar: 15 mm covers the post,
+16 mm projects into the opening. Use four `18u` strips per bay (front and
+rear, left and right), eight for plan F. The `18u` preset is **18 pin units
+= 270 mm = 6 rack U**, not 18 rack U. Plan G uses eight `15u` strips
+(225 mm, 5 rack U each). Roll **every strip-carrying post** so its single
+pin-hole axis runs front-to-back. Mirror the bar across the opening for
+the opposite side; do not shift its hole column independently.
+
+The local origin is the post's outer bottom corner. X runs inboard, Y up
+the post, Z from the rail's front face toward the post. The post front
+face is Z = thickness. Peg centers are X = 7.5, Y = 7.5 + 15k mm for
+k = 1 through n−2; the end stations are reserved for connector lock pins.
+Peg width is **3.8 mm** (4.0 minus the cited 0.2 mm tolerance), length
+14.8 mm. The back relief clears a 2.1 mm deep, 15 mm long and
+**17.1 mm wide** sleeve footprint, including its overlap into the flange.
+The cutter adds 0.3 mm around that footprint to allow for concave chamfers. The
+whole-body sleeve intersection test checks both ends.
+
+The hole column is X = 24.2375 mm, 6.7625 mm from the flange's free edge.
+Across the 255 mm post opening the mirrored columns are 236.525 mm apart;
+the flanges leave 223 mm clear. Each bar contains complete U groups,
+centered along its length: `(length − floor(length / 44.45) × 44.45) / 2`
+is the first U boundary above the post's bottom end. The bottom connector's
+outer sleeve top face is 15 mm above that end, so the first U boundary is
+**13.35 mm below** that face for `18u`, **13.625 mm below** for `15u`.
+Hole centers are 6.35, 22.225 and 38.1 mm above each U boundary.
+
+Restart the U grid in each bay; equipment never straddles the 15 mm middle
+connector. For F, upper-bay post coordinates start 285 mm above lower-bay
+post coordinates. All holes populated means 18 inserts per strip, 144
+total: 3 holes × 12 rack U × 4 strip columns (front-left, front-right,
+rear-left, rear-right). The 15 mm and 15.875 mm pitches coincide only every
+1905 mm; mounting and equipment columns are independent.
+
+The `coupon` is 5 pin units (75 mm), with three interior mounts and both
+end reliefs. Sean's PETG fit print must check seating on a sleeved post,
+grid alignment, insertion and pull-off before committing to eight rails.
+Workers do not print.
+
+The default fastener is an M6 heat-set insert in a **stepped through bore**:
+Ø8.0 mm for 9.5 mm from the front face, then a 0.8 mm tall 45° cone
+narrowing to Ø6.4 mm through the back. There is no blind roof or backing
+web. The insert seats against the cone; displaced plastic and a long screw
+can exit behind the flange, clear of the post. The free-edge ligament is
+6.7625 − 4 = **2.7625 mm**, above the vendor's 2 mm minimum.
+[C] [Harrison Silverdale series 20103](https://www.harrisonsilverdale.com/products/details/thermocert-heatstake-insert-for-thermoplastic72.html),
+row **TH060H090**, specifies a 9 mm insert, 8 mm hole and 2 mm minimum wall.
+Its 11 mm blind-hole depth is replaced here by the open exit; the coupon
+must validate this seating arrangement and heat setting in Sean's PETG.
+
+`cage_nut` provides 9.525 mm square windows through a 2 mm front web.
+The continuous rear relief is open to the back and free edge, at least
+9 mm deep at the 11 mm minimum thickness. The nominal free-edge ligament
+is 2 mm. Select M6 cages for a 9.525 mm opening and 2 mm panel; the coupon
+must check clip insertion, seating and release with the actual hardware.
+`pin_holes` replaces the integral pegs with 4 mm square through holes at
+the same interior stations. Insert standard HomeRacker pins **from the
+rear of the post**, with their tips entering the rail: a standard pin
+cannot span both the entire rail thickness and the 15 mm post from the
+front. Check pin seating, grip access and retention on the coupon.
+
+Print **front face down, pegs up**. The 270 × 31 mm primary preset fits
+along the bed's long axis. Supported length is **5–27 pin units**;
+long strips rotate 45° in the exported print frame. A 27-unit strip's
+bounding square is `(405 + 31) / sqrt(2) = 308.3 mm`, leaving at least
+11 mm total margin on the 325 × 320 mm single-nozzle bed. It requires the
+H2C left nozzle (the right nozzle's 305 mm X reach is too short).
+28 units leaves only about 1 mm; 29–30 do not fit. Requests above 27 raise
+a named bed-limit error instructing the caller to **segment at a connector
+sleeve**. Length is never silently clamped. Thickness is 11–14 mm; **11–11.5 mm is cage-nut-only**. Insert mode needs
+12–14 mm on the 0.5 mm control steps. The seat's thinnest wall, normal to
+the cone at its Ø6.4 exit, is `(thickness − 10.3) × sqrt(2)`:
+2.404 mm at thickness 12, clearing the 2 mm hardware wall floor. At
+thickness 11 it would be only 0.99 mm; the library rejects that combination
+with an `insert seat wall` error and the 12 mm / cage-nut remedy. This
+analytical check supplements the print audit's general 0.9 mm wall floor.
+The production audit checks all presets, numeric endpoints and hardware
+mode corners with no new exceptions; the insert cone needs no bridge.
+
+HomeRacker provenance [C]: upstream commit **90556d1**, full paths
+`libs/homeracker/models/core/lib/constants.scad` (TOLERANCE, BASE_UNIT,
+LOCKPIN_HOLE_SIDE_LENGTH), `libs/homeracker/models/core/lib/support.scad:62–71`
+(single-axis stations), `:103–129` (4 mm throat, 5.6 mm flared mouth),
+`libs/homeracker/models/core/lib/connector.scad:33` (19.2 mm sleeve),
+`:184–185` (orthogonal ports), and
+`libs/homeracker/models/core/lib/lockpin.scad:30–40` (pin and grip dimensions).
+Bar/interface dimensions [C]: E2b rev 4 and round-3 PASS. These rails are
+original geometry; they do not copy HomeRacker's pin or support solids.
+
 ## Optional panels
 
 Neither F nor G requires blank panels to assemble the frame. For this
