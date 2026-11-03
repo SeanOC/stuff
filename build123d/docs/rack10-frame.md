@@ -93,6 +93,86 @@ before adding rails or equipment.
 |---|---|---|---|---|
 | G / two 5U bays | 8 × `15u` (225 mm), 6 × `17u`, 6 × `16u` | 4 × `3d3w`, 8 × `3d4w` | 44 / 4 | ≈285 × 270 × 510 mm |
 
+## Printed EIA rail strips (implementation checkpoint; not released)
+
+`rack10-rail-strip` is a separate 30 mm wide bar: 15 mm covers the post,
+15 mm projects into the opening. Use four `18u` strips per bay (front and
+rear, left and right), eight for plan F. The `18u` preset is **18 pin units
+= 270 mm = 6 rack U**, not 18 rack U. Plan G uses eight `15u` strips
+(225 mm, 5 rack U each). Roll **every strip-carrying post** so its single
+pin-hole axis runs front-to-back. Mirror the bar across the opening for
+the opposite side; do not shift its hole column independently.
+
+The local origin is the post's outer bottom corner. X runs inboard, Y up
+the post, Z from the rail's front face toward the post. The post front
+face is Z = thickness. Peg centers are X = 7.5, Y = 7.5 + 15k mm for
+k = 1 through n−2; the end stations are reserved for connector lock pins.
+Peg width is **3.8 mm** (4.0 minus the cited 0.2 mm tolerance), length
+14.8 mm. The back relief at each end is 2.1 mm deep, 15 mm long and
+**17.1 mm wide**, including the sleeve overlap into the flange. The
+whole-body sleeve intersection test checks both ends.
+
+The hole column is X = 24.2375 mm, 5.7625 mm from the flange's free edge.
+Across the 255 mm post opening the mirrored columns are 236.525 mm apart;
+the flanges leave 225 mm clear. Each bar contains complete U groups,
+centered along its length: `(length − floor(length / 44.45) × 44.45) / 2`
+is the first U boundary above the post's bottom end. The bottom connector's
+outer sleeve top face is 15 mm above that end, so the first U boundary is
+**13.35 mm below** that face for `18u`, **13.625 mm below** for `15u`.
+Hole centers are 6.35, 22.225 and 38.1 mm above each U boundary.
+
+Restart the U grid in each bay; equipment never straddles the 15 mm middle
+connector. For F, upper-bay post coordinates start 285 mm above lower-bay
+post coordinates. All holes populated means 18 inserts per strip, 144
+total: 3 holes × 12 rack U × 4 strip columns (front-left, front-right,
+rear-left, rear-right). The 15 mm and 15.875 mm pitches coincide only every
+1905 mm; mounting and equipment columns are independent.
+
+The `coupon` is 5 pin units (75 mm), with three interior mounts and both
+end reliefs. Sean's PETG fit print must check seating on a sleeved post,
+grid alignment, insertion and pull-off before committing to eight rails.
+Workers do not print. The baseline geometry uses the requested 8 mm
+diameter, 8.5 mm deep blind pockets and at least 3 mm backing; insert mode
+below 11.5 mm thickness raises `RailFitError: insert web`. Cage mode uses
+a 9.525 mm square window through a 2 mm front web and an open rear channel
+at least 8 mm deep. Front face down is the declared print orientation.
+The 270 × 30 mm primary preset fits both printers without rotation.
+
+### Checkpoint blockers requiring a specification revision
+
+The ordinary production audit rejects the blind insert ceiling at 90°,
+even though its measured bridge span is 7.5 mm (below the 10 mm bridge
+limit). Its overhang and bridge gates are independent. Keeping a full
+8 mm diameter cylindrical pocket 8.5 mm deep, adding a 45° conical roof,
+then retaining 3 mm backing needs **15.5 mm thickness**, beyond the 14 mm
+maximum. No audit exception has been added. The scoped endpoint test is
+intentionally still red until the hardware/roof contract is revised.
+
+Likewise 30 pin units means a 450 × 30 mm flat bar. Even the best square
+bounding box is `(450 + 30) / sqrt(2) = 339.41 mm` on each side, exceeding
+325 × 320 mm. A one-piece 30-unit strip cannot meet the specified beds.
+The checkpoint preserves the requested range and reports the failed
+endpoint; it does not silently shorten or segment the rail.
+
+The requested short M6 × 8 mm insert is not yet tied to a verified vendor
+part. [Harrison Silverdale series 20103](https://www.harrisonsilverdale.com/products/details/thermocert-heatstake-insert-for-thermoplastic72.html),
+row **TH060H090**, cites an 8.0 mm hole but a **9.0 mm insert length**, an
+11 mm hole depth and a 2 mm minimum wall. This supports only the cited hole
+diameter, **not** compatibility with the present pocket or its 1.7625 mm
+outer ligament. Hardware choice and roof/backing geometry need a consistent
+revision together. Pin-hole-mode grip seating and cage-nut hardware fit
+also still need verification; this checkpoint is not a production release.
+
+HomeRacker provenance [C]: upstream commit **90556d1**, full paths
+`libs/homeracker/models/core/lib/constants.scad` (TOLERANCE, BASE_UNIT,
+LOCKPIN_HOLE_SIDE_LENGTH), `libs/homeracker/models/core/lib/support.scad:62–71`
+(single-axis stations), `:103–129` (4 mm throat, 5.6 mm flared mouth),
+`libs/homeracker/models/core/lib/connector.scad:33` (19.2 mm sleeve),
+`:184–185` (orthogonal ports), and
+`libs/homeracker/models/core/lib/lockpin.scad:30–40` (pin and grip dimensions).
+Bar/interface dimensions [C]: E2b rev 2/3 and round-3 PASS. These rails are
+original geometry; they do not copy HomeRacker's pin or support solids.
+
 ## Optional panels
 
 Neither F nor G requires blank panels to assemble the frame. For this

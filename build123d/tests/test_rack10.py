@@ -7,16 +7,19 @@ from OCP.BRep import BRep_Tool
 from build123d import Align, Box, Pos
 
 from holders import rack10_blank_panel as blank, rack10_keystone_panel as keystone, rack10_tray as shelf
+from holders import rack10_rail_strip as rail
+from holders.registry import in_print_frame
 from rack10 import constants as c
 from rack10.keystone import keystone_row, mating_edge
 from rack10.panel import ear_profile, hole_centres, panel, panel_height
+from rack10.rail_strip import RailFitError, peg_stations, rail_hole_centres
 from rack10.tray import TrayFitError, tie_mating_edge, tray, tray_dimensions
 from rack10.vent import vent_pattern
 from scripts.export import export_stl
 from tests.audit_record import record
 from tests.print_audit import audit
 
-SPECS = (blank.SPEC, keystone.SPEC, shelf.SPEC)
+SPECS = (blank.SPEC, keystone.SPEC, shelf.SPEC, rail.SPEC)
 PRESETS = [(spec, pr) for spec in SPECS for pr in spec.presets]
 CASES = [(spec, pr.values, pr.id) for spec, pr in PRESETS]
 for spec in SPECS:
@@ -157,15 +160,75 @@ def test_preset_is_one_watertight_solid_inside_both_beds(spec,preset,tmp_path):
 @pytest.mark.audit
 @pytest.mark.parametrize('spec,values,case',CASES,ids=[f'{s.name}-{n}' for s,v,n in CASES])
 def test_endpoint_audit_and_edges(spec,values,case):
+    if spec is rail.SPEC and values.get('thickness', 12) < 11.5 and values.get('hole', 'insert') == 'insert':
+        with pytest.raises(RailFitError, match='insert web'):
+            spec.build(values)
+        record(f'{spec.name}-{case}', result='REJECTED', reason='insert web below 3 mm')
+        return
     part=spec.build(values)
     if spec is shelf.SPEC:
         v=spec.resolve_values(values)
         device=Pos(0,c.FLOOR+v['clearance'],c.PANEL_THICKNESS+v['clearance'])*Box(
             v['device_w'],v['device_h'],v['device_d'],align=(Align.CENTER,Align.MIN,Align.MIN))
         assert (part & device).volume < 1e-6, 'floor, rails or root blend intrudes into the device envelope'
-    report=audit(part,model=spec.name)
+    report=audit(in_print_frame(spec, values, part),model=spec.name)
     assert report.ok,report.format()
     worst=assert_finished_edges(part,spec,values)
     print(f'RACK10 | {spec.name}/{case} | wall {report.min_wall_mm:.3f} | overhang {report.max_overhang_deg:.1f} | edges {worst:.1f} | volume {part.volume:.3f} | PASS')
     record(f'{spec.name}-{case}',min_wall=report.min_wall_mm,worst_overhang=report.max_overhang_deg,
            exposed_edge_angle=worst,volume=part.volume,result='PASS')
+
+
+@pytest.mark.parametrize('pin_units,units', [(5,1),(15,5),(18,6),(30,10)])
+def test_rack10_rail_strip_hole_and_peg_layout(pin_units, units):
+    centres = rail_hole_centres(pin_units)
+    length = pin_units * 15
+    datum = (length-units*44.45)/2
+    assert len(centres) == 3*units
+    assert [y for x,y in centres[:3]] == pytest.approx([datum+6.35, datum+22.225, datum+38.1])
+    assert centres[-1][1] == pytest.approx(length-centres[0][1])
+    # Place the left outer edge at -15 and the mirrored right edge at 270.
+    left = -15+centres[0][0]
+    right = 270-centres[0][0]
+    assert right-left == pytest.approx(236.525)
+    assert 255-2*c.RAIL_FLANGE >= c.CLEAR_OPENING
+    assert peg_stations(pin_units) == [7.5+15*k for k in range(1,pin_units-1)]
+    assert centres[0][0]-4-c.SLEEVE_X >= 3
+    assert centres[0][0]-4-(7.5+1.9) >= 2
+
+
+@pytest.mark.parametrize('pin_units', [5,15,18])
+def test_rack10_rail_strip_sleeves_and_insert_web(pin_units):
+    thickness = 12
+    length = 15*pin_units
+    part = rail.build({'pin_units':pin_units})
+    for y in (0,length-15):
+        sleeve = Pos(-2.1,y,thickness-2.1)*Box(19.2,15,2.1,align=(Align.MIN,)*3)
+        assert (part & sleeve).volume < 1e-6
+    for x,y in rail_hole_centres(pin_units):
+        assert not part.is_inside((x+3.99,y,4))
+        assert part.is_inside((x+4.01,y,4))
+        assert not part.is_inside((x,y,8.49))
+        assert part.is_inside((x,y,8.51))
+        assert part.is_inside((x,y,11.99))
+    for y in peg_stations(pin_units):
+        assert part.is_inside((7.5,y,thickness+10))
+        assert part.is_inside((7.5+1.89,y,thickness+10))
+        assert not part.is_inside((7.5+1.91,y,thickness+10))
+    for y in (7.5,length-7.5):
+        assert not part.is_inside((7.5,y,thickness+1))
+
+
+@pytest.mark.parametrize('hole', ['insert','cage_nut'])
+@pytest.mark.parametrize('mount', ['pegs','pin_holes'])
+def test_rack10_rail_strip_coupon_modes(hole, mount):
+    part = rail.build({'pin_units':5, 'hole':hole, 'mount':mount})
+    assert part.is_valid and len(part.solids()) == 1
+    for y in peg_stations(5):
+        assert part.is_inside((7.5,y,6)) == (mount == 'pegs')
+    if hole == 'cage_nut':
+        x,y = rail_hole_centres(5)[1]
+        assert not part.is_inside((x+4.75,y,1))
+        assert part.is_inside((x+4.78,y,1))
+        assert part.is_inside((x,y+5,1.99))
+        assert not part.is_inside((x,y+5,2.01))

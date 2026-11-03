@@ -37,3 +37,24 @@ KEYSTONE_LATCH_WALL = 2.5  # [C] davidwkeith/rack-build README: 1U keystone pane
 KEYSTONE_RELIEF = 1.6  # Rear clearance per end; 16 + 2*1.6 = 19.2 mm [C] Delock 67068 port height
 TIE_WIDTH = 3.0  # Original zip-tie aperture (>= 2 mm)
 TIE_LENGTH = 8.0  # Original zip-tie aperture, with 45-degree peaked ceiling
+
+# [C] E2b = pst-go6df.4 rev 2/3, invariants 1–2 and round-3 PASS.
+# [C] HR = HomeRacker 90556d1, models/core/lib/constants.scad:31,38,44;
+# support.scad:62–71,103–129; connector.scad:33 (full paths in rack10-frame.md).
+INSERT_M6_HOLE_D = 8.0  # [C] E2b; Harrison Silverdale series 20103 TH060H090 hole column
+INSERT_M6_LEN = 8.0  # [C] E2b specified short insert length
+INSERT_WEB_MIN = 3.0  # [C] E2b minimum blind-pocket backing
+INSERT_POCKET_DEPTH = INSERT_M6_LEN + 0.5  # [C] E2b
+RAIL_WIDTH = 30.0  # [C] E2b
+RAIL_FLANGE = 15.0  # [C] E2b
+RAIL_THICKNESS = 12.0  # [C] E2b
+PEG_SQUARE = 4.0  # [C] HR LOCKPIN_HOLE_SIDE_LENGTH (nominal throat)
+PEG_PITCH = 15.0  # [C] HR BASE_UNIT
+PEG_TOL = 0.2  # [C] HR TOLERANCE; E2b round-3 A4 applies to peg width
+POST_INNER_SPAN = 255.0  # [C] E2b, 17 HomeRacker units
+RAIL_HOLE_X = PEG_PITCH + (POST_INNER_SPAN-HOLE_SPAN)/2  # [C] E2b
+SLEEVE_PROUD = 2.1  # [C] HR: (19.2 mm sleeve - 15 mm post)/2
+SLEEVE_X = PEG_PITCH + SLEEVE_PROUD  # [C] E2b round-3 A1
+CAGE_WEB = 2.0  # [C] E2b
+PEG_LENGTH = PEG_PITCH - PEG_TOL  # Original straight peg, stays inside post
+PEG_ROOT = 0.8  # Functional blend within HR's 5.6 mm flared hole mouth

@@ -4935,6 +4935,77 @@
       ]
     },
     {
+      "slug": "rack10-rail-strip",
+      "engine": "build123d",
+      "title": "10-inch rack rail strip",
+      "blurb": "EIA rail for HomeRacker posts. Print front face down; roll posts so pin holes run front-to-back. Test the coupon before loading equipment.",
+      "categoryId": "storage",
+      "params": [
+        {
+          "name": "pin_units",
+          "label": "Post length (15 mm pin units)",
+          "description": "18 pin units hold 6 rack U; 15 hold 5 U. The longest strips exceed the supported beds.",
+          "kind": "integer",
+          "default": 18,
+          "min": 5,
+          "max": 30,
+          "step": 1
+        },
+        {
+          "name": "thickness",
+          "label": "Bar thickness",
+          "description": "Insert mode requires at least 11.5 mm; 10\u201311 mm is cage-nut-only.",
+          "unit": "mm",
+          "kind": "number",
+          "default": 12,
+          "min": 10,
+          "max": 14,
+          "step": 0.5
+        },
+        {
+          "name": "mount",
+          "label": "Post attachment",
+          "kind": "enum",
+          "default": "pegs",
+          "choices": [
+            "pegs",
+            "pin_holes"
+          ]
+        },
+        {
+          "name": "hole",
+          "label": "Equipment fastener",
+          "kind": "enum",
+          "default": "insert",
+          "choices": [
+            "insert",
+            "cage_nut"
+          ]
+        }
+      ],
+      "presets": [
+        {
+          "id": "18u",
+          "label": "18 pin units / 6U \u2014 front-to-back post holes",
+          "values": {}
+        },
+        {
+          "id": "15u",
+          "label": "15 pin units / 5U \u2014 front-to-back post holes",
+          "values": {
+            "pin_units": 15
+          }
+        },
+        {
+          "id": "coupon",
+          "label": "5 pin units \u2014 PETG fit coupon; front-to-back post holes",
+          "values": {
+            "pin_units": 5
+          }
+        }
+      ]
+    },
+    {
       "slug": "rack10-shelf",
       "engine": "build123d",
       "title": "10-inch rack open shelf",

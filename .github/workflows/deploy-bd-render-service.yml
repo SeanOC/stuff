@@ -46,6 +46,7 @@ on:
       - "build123d/gridfinity/**"
       - "build123d/opengrid_snap/**"
       - "build123d/underware/**"
+      - "build123d/rack10/**"
       - "build123d/profiles/**"
       - "build123d/scripts/**"
       - "build123d/vendor/**"
