@@ -65,7 +65,9 @@ tile thickness further from the edge: 6.8 mm for openGrid full, 4 mm for
 openGrid lite. `edge_offset_mm` (0–8 mm, default 0) adds that distance to the
 formula above on the arm `offset_arm` names (`first` | `second`, default
 `second`): its cells move toward its free tip by exactly the offset, while
-the other arm, the bend, both arm lengths and the extents stay as they are.
+the other arm, the bend and both arm lengths stay as they are. A shifted
+grip can extend beyond the wall envelope in the print frame: the extents
+include the surviving grip profiles and their end ramps.
 The arm is still length_units × 28 mm long and its outermost (tip-side) grip
 has only 28/2 − 15/2 = 6.5 mm of slack to the tip, so a cell whose 15 mm grip
 would cross the tip face is dropped: past 6.5 mm the shifted arm loses its
@@ -92,6 +94,16 @@ combination the bed check allows fits the H2S's 325 × 320 × 325 mm
 (`outside_extent`, equal to the print-frame bounding box); 8-cell arms overrun
 the bed even at width 1, height 10, so `length_units` ≤ 7
 (`MAX_ARM_OUTSIDE`), and longer/wider/taller combinations are named errors.
+
+The analytic bed check includes `grip_flare` and `edge_offset_mm`, including
+one-sided/suppressed grips and dropped cells. Previously it used only the
+unflared wall envelope. For example, at otherwise default values, flare
+9.9° increases the width from 26.400 to 33.940 mm, and offset 6.5 mm increases
+the height from 38.365 to 38.789 mm. Mirroring preserves these sizes. These
+examples fit the H2S; the corrected check rejects any combination whose
+full grip envelope exceeds the bed limits, and its error names flare and
+offset among the settings to reduce. This correction changes size validation,
+with no change to the built geometry, parameters or presets.
 
 ### The one published exception: `BendUnderside` (signed by the mayor on pst-38hu7, 2026-10-31)
 
