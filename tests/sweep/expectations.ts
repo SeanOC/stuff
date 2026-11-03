@@ -13,6 +13,8 @@ type Values = Record<string, ParamValue>;
 type Expectation = (values: Values) => number | null;
 
 const EXCEPTIONS: Record<string, Expectation> = {
+  homeracker_lockpin: (v) => Number(v.quantity),
+
   // Sidecar: pod_gap > 0 separates the pods for slicer export; at
   // pod_gap == 0 the dovetailed pods form one connected assembly.
   goblu_filter_holder_3x90mm: (v) =>

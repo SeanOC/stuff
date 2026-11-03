@@ -1,0 +1,30 @@
+HomeRacker — vendored source subset
+
+© 2025 Patrick Pötz / HomeRacker
+https://github.com/kellervater/homeracker
+Pinned commit: 90556d1 (full commit in SOURCE.json).
+
+Upstream code retains its MIT notices (LICENSE); upstream models are
+Attribution-ShareAlike 4.0 International (CC BY-SA 4.0; models/LICENSE).
+https://creativecommons.org/licenses/by-sa/4.0/
+
+Changes: imports point at the private homeracker/BOSL2 v2.0.779 copy.
+The applied diff is scripts/patches/homeracker/0001-isolate-bosl2.patch.
+Also applied: 0002-browser-compatible-primitives.patch: equivalent explicit
+hole, foot and unbraced full-panel placement; rounded XZ profiles extruded
+in 2D instead of 3D hulls; 0.001 mm foot spacer overlap to avoid a tangent
+union splitting in CGAL; 0.001 mm neck and 0.002 mm inner grip-base
+overlaps to keep pins connected; and the missing panel split-constants
+include. The overlaps preserve the outer envelopes. These avoid crashes and
+stalls in OpenSCAD wasm 2025.01; measured geometry stays within 0.01 mm
+and 0.1% of unmodified upstream. The patches retain the source license.
+See SOURCE.json for the retained subset and applied patches.
+The derived wrapper models and presets are also CC BY-SA 4.0; see
+models/homeracker-LICENSE.md at the repository root.
+
+HomeRacker is the author's unregistered trademark. This distribution is
+independent and is not endorsed by Patrick Pötz / HomeRacker.
+
+BOSL2 v2.0.779 is committed under BOSL2/, with its own BSD-2-Clause license,
+README and SOURCE.json. It is used only by HomeRacker; the global BOSL2
+pin and existing consumers are unchanged. No build-time download is needed.

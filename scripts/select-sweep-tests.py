@@ -119,6 +119,11 @@ MEASURED_SECONDS: dict[str, int | None] = {
     "kidscleancar_knob_cover": 14,
     "lcd_stylus_75mm": 9,
     "popcorn_kernel": 7,
+    "homeracker_support": None,  # measured after the next full sweep
+    "homeracker_connector": None,  # measured after the next full sweep
+    "homeracker_lockpin": None,  # measured after the next full sweep
+    "homeracker_foot": None,  # measured after the next full sweep
+    "homeracker_rackpanel": None,  # measured after the next full sweep
 }
 
 # Full-sweep seconds per sweep case, for models with no measured entry
