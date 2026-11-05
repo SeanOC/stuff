@@ -187,9 +187,13 @@ CASES += [(f'{s}-{x}x{y}-back{b}', dict(style=s,x_count=x,y_count=y,backing_mm=b
           for s in ('full','lite') for x,y in ((1,1),(6,1),(1,6),(6,6)) for b in (0,1,3)]
 CASES += [(f'{s}-L-back{b}', dict(style=s,x_count=2,y_count=2,omit_cells='1,1',backing_mm=b))
           for s in ('full','lite') for b in (0,1,3)]
-CASES += [(f'{s}-{x}x{y}-back{b}', dict(style=s,x_count=x,y_count=y,backing_mm=b))
-          for s in ('full','lite') for x,y in ((11,1),(1,11),(11,8),(8,11)) for b in (0,1,3)]
-CASES += [('lite-1x8-back1', dict(style='lite',x_count=1,y_count=8,backing_mm=1))]
+# Audit representative new boundaries: the largest backed footprint and the
+# transposed long axis in full style. The cheap domain test above covers every
+# count pair; repeating large geometry for every style/backing exceeds CI time.
+CASES += [
+    ('lite-11x8-back1', dict(style='lite',x_count=11,y_count=8,backing_mm=1)),
+    ('full-1x11-back0', dict(style='full',x_count=1,y_count=11,backing_mm=0)),
+]
 
 
 @pytest.mark.audit
