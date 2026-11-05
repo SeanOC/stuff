@@ -478,6 +478,29 @@ def test_text_below_the_stroke_floor_is_400_with_the_models_message(base_url, fm
     assert "below the" in message and "the longest that fits is" in message
 
 
+@pytest.mark.parametrize('x,y,expected', [(1,8,(28,224,5)), (11,8,(308,224,5))])
+def test_opengrid_tile_larger_adhesive_stl(base_url, x, y, expected):
+    import io
+    import trimesh
+
+    status, _h, body = _post(base_url, '/render?format=stl', {
+        'slug': 'opengrid-tile',
+        'params': {'style': 'lite', 'x_count': x, 'y_count': y, 'backing_mm': 1},
+    })
+    assert status == 200, body
+    mesh = trimesh.load(io.BytesIO(body), file_type='stl')
+    assert mesh.is_watertight
+    assert tuple(mesh.extents) == pytest.approx(expected)
+
+
+def test_opengrid_tile_oversize_pair_is_400(base_url):
+    status, _h, body = _post(base_url, '/render?format=stl', {
+        'slug': 'opengrid-tile', 'params': {'x_count': 9, 'y_count': 9},
+    })
+    assert status == 400, body
+    assert '323 x 244 mm bake envelope' in json.loads(body)['errorMessage']
+
+
 def _run_worker(monkeypatch, slug: str, fmt: str, params: dict, out, *profile: str) -> int:
     import io
     worker_path = REPO_ROOT / "services" / "bd-render" / "render_worker.py"

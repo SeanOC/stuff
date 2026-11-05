@@ -20,13 +20,26 @@ LITE = 4.0  # [C] assets/openConnect/lib/opengrid_base.scad:6 OG_LITE_THICKNESS
 CORNER = 4.2  # [C] vendor Base.corner_chamfer_length
 RELIEF = 0.3
 MIN_BACKING = 1.0  # nonzero minimum; endpoint audit includes the bed relief
+# [C] scripts/export.py::max_footprint, H2C printing nozzle + prime tower.
+BAKE_ENVELOPE = (323, 244)  # mm, either orientation
+MAX_COUNT = int(max(BAKE_ENVELOPE) // PITCH)
+MAX_SHORT_COUNT = int(min(BAKE_ENVELOPE) // PITCH)
 
 
 def cells(x_count, y_count, omit_cells=''):
-    """Parse whitespace/semicolon separated x,y pairs; require edge connection."""
+    """Require bake fit and edge connection; parse whitespace/semicolon x,y pairs.
+
+    The bake accepts either orientation: long <= 323 mm and short <= 244 mm
+    is equivalent to long <= 11 cells and short <= 8 at the fixed 28 mm pitch.
+    Apply this to the requested grid, before omissions.
+    """
     for name, value in (('x_count', x_count), ('y_count', y_count)):
-        if type(value) is not int or not 1 <= value <= 6:
-            raise ValueError(f'{name} must be an integer from 1 to 6')
+        if type(value) is not int or not 1 <= value <= MAX_COUNT:
+            raise ValueError(f'{name} must be an integer from 1 to {MAX_COUNT}')
+    if min(x_count, y_count) > MAX_SHORT_COUNT:
+        raise ValueError('tile exceeds the 323 x 244 mm bake envelope: '
+                         f'longer side must be <= {MAX_COUNT} cells and shorter '
+                         f'side <= {MAX_SHORT_COUNT}, either orientation')
     if not isinstance(omit_cells, str) or len(omit_cells) > 256:
         raise ValueError('omit_cells must be a string of at most 256 characters')
     omitted = set()

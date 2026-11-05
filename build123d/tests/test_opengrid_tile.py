@@ -84,6 +84,31 @@ def test_mask_duplicates_and_spaces():
     assert cells(2,2,'1,1; 1,1') == {(0,0),(0,1),(1,0)}
 
 
+def test_count_domain_matches_bake_envelope():
+    from profiles import PROFILES
+    from scripts.export import max_footprint
+
+    width, depth = max_footprint(PROFILES['bambu-h2c-0.4'].settings())
+    assert (width, depth) == (323, 244)
+    for x in range(1, 13):
+        for y in range(1, 13):
+            fits = (28*x <= width and 28*y <= depth) or (28*y <= width and 28*x <= depth)
+            if fits:
+                assert len(cells(x, y)) == x*y
+                assert SPEC.resolve_values({'x_count': x, 'y_count': y})['x_count'] == x
+            else:
+                with pytest.raises(ValueError):
+                    cells(x, y)
+
+
+@pytest.mark.parametrize('x,y', [(9,9), (9,11), (11,9), (11,11)])
+def test_reject_oversize_pair_before_geometry(x, y):
+    # Both pass the catalog's per-axis range; the model owns the pair rule.
+    values = SPEC.resolve_values({'x_count': x, 'y_count': y})
+    with pytest.raises(ValueError, match='323 x 244 mm bake envelope'):
+        SPEC.build(values)
+
+
 @pytest.mark.parametrize('style', ['full','lite'])
 def test_backing_kept_cells_and_new_corners(style):
     v = {'x_count':2,'y_count':2,'omit_cells':'1,1','backing_mm':1,'style':style}
@@ -162,6 +187,9 @@ CASES += [(f'{s}-{x}x{y}-back{b}', dict(style=s,x_count=x,y_count=y,backing_mm=b
           for s in ('full','lite') for x,y in ((1,1),(6,1),(1,6),(6,6)) for b in (0,1,3)]
 CASES += [(f'{s}-L-back{b}', dict(style=s,x_count=2,y_count=2,omit_cells='1,1',backing_mm=b))
           for s in ('full','lite') for b in (0,1,3)]
+CASES += [(f'{s}-{x}x{y}-back{b}', dict(style=s,x_count=x,y_count=y,backing_mm=b))
+          for s in ('full','lite') for x,y in ((11,1),(1,11),(11,8),(8,11)) for b in (0,1,3)]
+CASES += [('lite-1x8-back1', dict(style='lite',x_count=1,y_count=8,backing_mm=1))]
 
 
 @pytest.mark.audit
