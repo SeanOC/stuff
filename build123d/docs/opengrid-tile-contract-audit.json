@@ -1,0 +1,39 @@
+{
+  "bead": "pst-jzfsa",
+  "status": "blocked pending specification clarification; generator not implemented",
+  "source_commit": "d645c5cf45456953efa3af3072d2f944f19d583b",
+  "vendor_changed": false,
+  "audit_command": "cd build123d && uv run python -m bd audit smoke-opengrid-tile-1x1 --json",
+  "audit_exit_code": 1,
+  "vendor_full_1x1": {
+    "extent_mm": [28.0, 28.0, 6.8],
+    "volume_mm3": 983.2920047799935,
+    "min_wall_mm": 0.8,
+    "wall_threshold_mm": 0.9,
+    "max_overhang_deg": 45.0,
+    "longest_bridge_mm": 0.0,
+    "downward_fillets": [],
+    "audit_ok": false,
+    "failure": "wall 0.80 mm < 0.9 mm minimum"
+  },
+  "wall_evidence": {
+    "geometry": "vendor/opengrid/opengrid/base.py:101 BaseSnapSlotCutter.snap_cut_bottom_dent_width = 0.8",
+    "existing_policy": "tests/test_print_audit.py:498-526 pins the vendor tile failure and limits the advisory exemption to smoke artifacts",
+    "production_policy": "tests/test_print_audit.py:786-816 requires production models to pass; the published-wall selector inventory currently contains only the approved Gridfinity shelf family"
+  },
+  "bed_edge_probe": {
+    "operation": "Apply a 0.3 mm chamfer to the eight horizontal outer perimeter edges at Z=0 of the cached vendor Base()",
+    "edge_selection": "abs(bbox.min.Z)<1e-7 and abs(bbox.max.Z)<1e-7 and (abs(center.X)>13.5 or abs(center.Y)>13.5 or abs(center.X)+abs(center.Y)>23.7)",
+    "selected_edge_count": 8,
+    "chamfer_mm": 0.3,
+    "volume_after_mm3": 978.7246827033293,
+    "volume_delta_mm3": -4.567322076664141,
+    "required_volume_tolerance_mm3": 0.000001,
+    "audit_limitation": "The raw audit reports bed_chamfer present because the vendor has inner opening chamfers; that does not establish relief on the outer perimeter."
+  },
+  "questions_for_spec_revision": [
+    "May the production tile retain the published 0.8 mm snap-retention wall under a narrowly inventoried, reference-pinned exception, keeping the raw report and auditing all remaining faces? The smoke-only exemption does not currently authorize a production tile.",
+    "For plain full tiles, should exact vendor-volume acceptance yield to the required 0.3-0.5 mm outer bed-edge chamfer, or should the unchanged vendor outer bed perimeter receive an explicit exception? Chamfering changes the required volume by much more than 1e-6 mm3."
+  ],
+  "resume": "Resolve these two policy choices in the bead before implementing the generator, catalog registration, presets and endpoint tests. No PR opened, gate relaxed or vendor code modified."
+}
