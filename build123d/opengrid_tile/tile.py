@@ -19,6 +19,7 @@ FULL = OPEN_GRID_BASE_HEIGHT
 LITE = 4.0  # [C] assets/openConnect/lib/opengrid_base.scad:6 OG_LITE_THICKNESS
 CORNER = 4.2  # [C] vendor Base.corner_chamfer_length
 RELIEF = 0.3
+MIN_BACKING = 1.0  # nonzero minimum; endpoint audit includes the bed relief
 
 
 def cells(x_count, y_count, omit_cells=''):
@@ -101,8 +102,8 @@ def tile(x_count=1, y_count=1, style='full', backing_mm=0.0, omit_cells='',
         raise ValueError('style must be full or lite')
     if (isinstance(backing_mm, bool) or not isinstance(backing_mm, (int, float))
             or not math.isfinite(backing_mm)
-            or not (backing_mm == 0 or 0.9 <= backing_mm <= 3)):
-        raise ValueError('backing_mm must be 0 (none) or between 0.9 and 3 mm')
+            or not (backing_mm == 0 or MIN_BACKING <= backing_mm <= 3)):
+        raise ValueError(f'backing_mm must be 0 (none) or between {MIN_BACKING:g} and 3 mm')
     profile = outline(x_count, y_count, omit_cells)
     masked = len(cells(x_count, y_count, omit_cells)) != x_count*y_count
     kwargs = dict(x_count=x_count, y_count=y_count,

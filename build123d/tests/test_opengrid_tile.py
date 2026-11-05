@@ -10,7 +10,8 @@ from shapely.geometry import Point
 from holders.opengrid_tile import SPEC
 from opengrid_tile.tile import FULL, LITE, cells, outline
 from tests.audit_record import record
-from tests.opengrid_tile_audit import accepted_report, connector_envelopes, waist_boxes
+from tests.opengrid_tile_audit import (accepted_report, connector_envelopes,
+                                     reference_tapers, taper_regions, waist_boxes)
 from tests.print_audit import audit
 
 
@@ -46,7 +47,7 @@ def test_full_preserves_vendor_except_outer_bed_relief():
                     assert profile.boundary.distance(Point(pt.X,pt.Y)) <= .3+1e-6
 
 
-@pytest.mark.parametrize('backing', [0, .9, 1, 3])
+@pytest.mark.parametrize('backing', [0, 1, 3])
 @pytest.mark.parametrize('directional', [False, True])
 def test_lite_snap_fits_like_full_reference(backing, directional):
     # The published click nubs have a small, intentional seated interference.
@@ -71,6 +72,7 @@ def test_lite_snap_fits_like_full_reference(backing, directional):
     ({'x_count':2,'y_count':2,'omit_cells':'0,1 1,0'}, 'edge-connected'),
     ({'omit_cells':'1,0'}, 'outside'), ({'omit_cells':'1,2,3'}, 'x,y pairs'),
     ({'omit_cells':'-1,0'}, 'x,y pairs'), ({'backing_mm':.5}, 'backing_mm'),
+    ({'backing_mm':.9}, 'backing_mm'),
     ({'x_count':1.5}, 'integer'),
 ])
 def test_invalid_inputs(values, message):
@@ -157,9 +159,9 @@ def assert_bed_edges(part, values):
 
 CASES = [(p.id, p.values) for p in SPEC.presets]
 CASES += [(f'{s}-{x}x{y}-back{b}', dict(style=s,x_count=x,y_count=y,backing_mm=b))
-          for s in ('full','lite') for x,y in ((1,1),(6,1),(1,6),(6,6)) for b in (0,.9,3)]
+          for s in ('full','lite') for x,y in ((1,1),(6,1),(1,6),(6,6)) for b in (0,1,3)]
 CASES += [(f'{s}-L-back{b}', dict(style=s,x_count=2,y_count=2,omit_cells='1,1',backing_mm=b))
-          for s in ('full','lite') for b in (0,.9,3)]
+          for s in ('full','lite') for b in (0,1,3)]
 
 
 @pytest.mark.audit
@@ -175,6 +177,7 @@ def test_endpoint_audit(name, values):
            min_wall=accepted.min_wall_mm, raw_max_overhang=raw.max_overhang_deg,
            max_overhang=accepted.max_overhang_deg, bridge_mm=raw.longest_bridge_mm,
            exposed_edge_angle=angle, bed_edges=edges, waist_regions=count,
+           taper_regions=count*(2 if v['style']=='full' else 1),
            volume=part.volume, ok=accepted.ok)
     assert accepted.ok, accepted.format()
 
@@ -187,11 +190,18 @@ def test_exception_rejects_damage_inside_waist():
         accepted_report(damaged,v,audit(damaged))
 
 
-def test_waist_excludes_neither_taper_nor_backing():
+def test_waist_and_taper_are_separate_from_backing_and_corners():
     v = SPEC.resolve_values(SPEC.presets[-1].values)
     regions = waist_boxes(v)
     # Backed Lite waist is z=1..2.6; observed thin taper is at z=2.65.
     assert all(b[2] == pytest.approx(1) and b[5] == pytest.approx(2.6) for b in regions)
+    tapers = taper_regions(v)
+    assert len(reference_tapers())==8 and len(tapers)==8
+    assert all(r.bounding_box().min.Z == pytest.approx(2.6) and
+               r.bounding_box().max.Z == pytest.approx(3.6) for r in tapers)
+    assert any(r.is_inside((28,-14,2.65)) for r in tapers)
+    for point in ((28,-14,.5),(28,-14,3.7),(27,-27,2.65)):
+        assert not any(r.is_inside(point) for r in tapers)
 
 
 def test_bare_lite_relief_leaves_vendor_waist_above_point_three():
@@ -205,14 +215,30 @@ def test_bare_lite_relief_leaves_vendor_waist_above_point_three():
 
 
 def test_thin_taper_reproduces_in_unmodified_vendor():
-    # Checkpoint evidence: source taper z=1.4..2.4 linearly changes the wall
-    # from 1.5 to .8 mm. At z=2.35 it is .835 mm, OUTSIDE the approved waist.
+    # Source taper z=1.4..2.4 linearly changes the wall from 1.5 to .8 mm.
+    # At z=2.35 it is .835 mm: approved separately from the planar waist.
     reference = Base()
     backed_l = SPEC.build(SPEC.presets[-1].values)
     for delta, inside in ((-.005,False),(.005,True)):
         assert reference.is_inside((13.165+delta,0,2.35)) == inside
         assert backed_l.is_inside((27.165+delta,-14,2.65)) == inside
     assert 1.5-.7*(2.35-1.4) == pytest.approx(.835)
+
+
+def test_exception_rejects_damage_inside_taper():
+    v = SPEC.resolve_values({'style':'lite','backing_mm':1})
+    part = SPEC.build(v)-Pos(13.6,0,2.7)*Box(.2,.5,.1)
+    with pytest.raises(AssertionError,match='damaged retention taper'):
+        accepted_report(part,v,audit(part))
+
+
+def test_exception_does_not_hide_thin_backing():
+    v = SPEC.resolve_values({'style':'lite','backing_mm':1})
+    # Thin the backing at the cavity floor, far from all approved cell walls.
+    part = SPEC.build(v)-Pos(0,0,.9)*Box(12,12,.6)
+    accepted,_ = accepted_report(part,v,audit(part))
+    assert accepted.min_wall_mm == pytest.approx(.6,abs=.01)
+    assert not accepted.ok
 
 
 def test_connector_exclusion_is_clipped_and_absent_on_masks():

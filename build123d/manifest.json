@@ -2794,7 +2794,7 @@
         },
         {
           "name": "backing_mm",
-          "description": "0 = open; otherwise 0.9\u20133 mm. Adhesive presets use 1 mm.",
+          "description": "0 = open; otherwise 1\u20133 mm. Adhesive presets use 1 mm.",
           "unit": "mm",
           "kind": "number",
           "default": 0,

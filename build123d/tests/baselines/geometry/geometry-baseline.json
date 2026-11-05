@@ -38,8 +38,16 @@
         "why": "Original rail strips, rev 4; additive rows only, mayor sign-off = plan review PASS; no exceptions"
       },
       "pst-jzfsa": {
-        "source": "gc-pilot/pst-jzfsa checkpoint; scripts.geometry_baseline.measure, preserving unrelated rows",
-        "why": "New openGrid tile presets; measured from generator composed on pinned vendor Base with required outer bed relief. Audit exception clarification still pending."
+        "why": "Four new openGrid tile presets, measured by scripts.geometry_baseline.measure; vendor composed with mandatory outer bed relief.",
+        "source": {
+          "command": "uv run pytest tests/ -q -n 4 -k opengrid_tile",
+          "result": "75 passed, 6 skipped, 1 xfailed",
+          "code_sha256": "aedab24e719de1ee0c5f0732e3310eb1579c6ca39414d06d0445850c7270d029"
+        },
+        "capture_scope": [
+          "[\"not upstream\",null]"
+        ],
+        "new_geometry_rows": 4
       }
     },
     "build123d": "0.13.0",

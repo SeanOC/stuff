@@ -1,14 +1,15 @@
-"""Mayor-approved openGrid retention-waist exception, 2026-11-05.
+"""Mayor-approved openGrid retention waist/taper exceptions, 2026-11-05.
 
 Only the exposed 0.8 mm wall prisms inside the vendor cutter's planar waist
-band qualify. Neither the taper, corner walls nor backing is excluded. Check
-the complete prism is still solid before skipping its wall samples; damage
-inside the approved region must not disappear behind the exception.
+band and exact lead-in taper wall solids qualify (vendor points 3->4 and
+mirror). Neither corner walls nor backing is excluded. Check the complete
+reference wall solid before skipping its samples: damage inside an approved
+region must not disappear behind the exception.
 """
 from dataclasses import replace
 from functools import lru_cache
 
-from build123d import Align, Box, Plane, Pos, Rot, chamfer
+from build123d import Align, Box, Plane, Pos, Rot, chamfer, extrude
 from opengrid.base import BaseSnapSlotCutter, ConnectorCutter
 from opengrid_tile.tile import FULL, LITE, PITCH, RELIEF, cells, outline, outline_solid
 from tests import print_audit as a
@@ -57,6 +58,60 @@ def waist_boxes(values):
     return boxes
 
 
+@lru_cache(maxsize=1)
+def reference_tapers():
+    """Eight exact vendor face extrusions, limited by the half-cell boundary.
+
+    A planar face from the opening is extruded outward to the lattice line;
+    its trimmed wire preserves the diagonal-corner boundary. This is not a
+    bounding-box waiver of the whole taper band or any corner walls.
+    """
+    opening = BaseSnapSlotCutter()
+    low = opening.snap_cut_bottom_chamfer + opening.snap_cut_bottom_bump_height
+    high = FULL/2 - opening.snap_cut_bottom_dent_height
+    outer = opening.snap_cut_bottom_width + opening.snap_cut_bottom_chamfer
+    inner = opening.snap_cut_bottom_dent_width
+    assert (low, high, outer, inner) == (1.4, 2.4, 1.5, .8)
+    cell = Box(PITCH,PITCH,FULL,align=(Align.CENTER,Align.CENTER,Align.MIN))
+    result = []
+    for face in opening.faces():
+        b = face.bounding_box()
+        front = abs(b.min.Z-low)<1e-7 and abs(b.max.Z-high)<1e-7
+        rear = abs(b.min.Z-(FULL-high))<1e-7 and abs(b.max.Z-(FULL-low))<1e-7
+        if not (front or rear):
+            continue
+        n = face.normal_at()
+        assert face.geom_type.name == 'PLANE'
+        assert abs(abs(n.Z) - .7/(1+.7**2)**.5)<1e-7
+        dx,dy = (int(round(n.X/abs(n.X))),0) if abs(n.X)>.5 else (0,int(round(n.Y/abs(n.Y))))
+        for vertex in face.vertices():
+            z = vertex.Z if front else FULL-vertex.Z
+            thickness = outer-(outer-inner)*(z-low)/(high-low)
+            radius = abs(vertex.X) if dx else abs(vertex.Y)
+            assert abs(PITCH/2-radius-thickness)<1e-7
+            # Exact intersection with the vendor diagonal wall, at both ends.
+            assert abs(abs(vertex.X)+abs(vertex.Y)-20.12304473783)<1e-7
+        region = extrude(face, amount=outer, dir=(dx,dy,0)) & cell
+        result.append((dx,dy,front,region))
+    assert len(result)==8
+    assert len({(x,y,front) for x,y,front,_ in result})==8
+    return result
+
+
+def taper_regions(values):
+    kept = cells(values['x_count'],values['y_count'],values['omit_cells'])
+    height = LITE if values['style']=='lite' else FULL
+    total = height+values['backing_mm']
+    result = []
+    for x,y in sorted(kept):
+        cx,cy = (x-(values['x_count']-1)/2)*PITCH,(y-(values['y_count']-1)/2)*PITCH
+        for dx,dy,front,reference in reference_tapers():
+            if (x+dx,y+dy) in kept or (height==LITE and not front):
+                continue
+            result.append(Pos(cx,cy,0)*reference.mirror(Plane.XY.offset(total/2)))
+    return result
+
+
 def connector_envelopes(values):
     """Exact vendor cutters, clipped to tile depth; only overhang classification.
 
@@ -88,7 +143,7 @@ def connector_envelopes(values):
 
 
 def accepted_report(part, values, raw):
-    """Keep raw measurements; accept only the waist and library connector angles."""
+    """Keep raw measurements; accept only approved profiles and connector angles."""
     regions = waist_boxes(values)
     # The mayor also requires outer bed relief on bare Lite tiles. Their back
     # ends in the waist, so compare those prisms to vendor MINUS exactly that
@@ -106,8 +161,13 @@ def accepted_report(part, values, raw):
         missing = reference - part
         assert missing is None or abs(missing.volume) < 1e-6, 'damaged retention waist'
     # Only library connector angles may be exempted; raw local bridge spans,
-    # fillets and all wall measurements outside the waist remain blocking.
+    # fillets and all wall measurements outside the approved profiles still gate.
     boxes = [tuple(v + (-1e-6 if i < 3 else 1e-6) for i, v in enumerate(b)) for b in regions]
+    tapers = taper_regions(values)
+    for reference in tapers:
+        missing = reference-part
+        assert missing is None or abs(missing.volume)<1e-6, 'damaged retention taper'
+    boxes += [a._ExactExclusion(region) for region in tapers]
     remainder = a._min_wall(a._ClassifiedPart(part), (0,0,1), boxes)
     connectors = [a._ExactExclusion(c) for c in connector_envelopes(values)]
     overhang = a._max_overhang(a._ClassifiedPart(part), (0,0,1), connectors, 0)

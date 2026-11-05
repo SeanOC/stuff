@@ -11,7 +11,8 @@ Design-guidelines §6 checklist:
    Connector ceilings are exact vendor mating pockets: raw local bridge span
    is 5 mm. Only their angle is excluded, never bridge length or wall thickness.
 2. No added fillets; every outer bed edge has 0.3 mm 45-degree relief.
-3. Mayor-approved 0.80 mm retention-waist exception ONLY; raw audit retained,
+3. Mayor-approved 0.80 mm retention-waist and exact vendor lead-in taper
+   exceptions ONLY (polyline points 3->4 and mirror); raw audit retained,
    remainder >=0.9 mm. See tests/opengrid_tile_audit.py and endpoint table.
 4. 4.2 mm convex XY corner chamfers; reflex corners, opening rims and upper
    perimeter are functional lattice/mating datums. Vendor cutters untouched.
@@ -21,13 +22,17 @@ Design-guidelines §6 checklist:
 7. Counts/mask/backing and four connector edges tunable; pitch/profile fixed.
    Masked outlines disable ALL connectors (including on still-exterior edges).
 8. PLA/PCTG; shallow adhesive backing is not rated for heavy levered loads.
-9. Waist exception pinned to vendor BaseSnapSlotCutter, not enlarged to taper,
-   backing or relief. Full parity permits only outer bed-edge material removal.
+9. Waist/taper inventory pinned to vendor BaseSnapSlotCutter; no exception for
+   backing or other faces. Bare Lite waist includes the mandated bed relief.
+   Full parity permits only outer bed-edge material removal.
 10. Count domain 1..6 => at most 168 x 168 x 9.8 mm, fits H2S and H2C.
 
 omit_cells uses zero-indexed x,y pairs separated by spaces or semicolons.
 Examples: 2x2 / "1,1" is an L; duplicates are harmless. Backing may be 0
-or 0.9..3 mm; the discontinuous range is validated before geometry is built.
+or 1..3 mm; the discontinuous range is validated before geometry is built.
+The nonzero minimum is 1.0 mm (five layers): endpoint audits check the backing
+and its bed relief without any wall exception. The smallest unexempt wall at
+backing=1 was 1.000 mm across the endpoint table. 0.9 mm is rejected.
 """
 from holders.registry import ModelSpec, Param, Preset, register
 from opengrid_tile import tile
@@ -48,7 +53,7 @@ SPEC = register(ModelSpec(
         Param('y_count', 'integer', 1, min=1, max=6, step=1),
         Param('style', 'enum', 'full', choices=('full', 'lite')),
         Param('backing_mm', 'number', 0, min=0, max=3, step=0.1, unit='mm',
-              description='0 = open; otherwise 0.9–3 mm. Adhesive presets use 1 mm.'),
+              description='0 = open; otherwise 1–3 mm. Adhesive presets use 1 mm.'),
         Param('omit_cells', 'string', '', max_length=256, charset='printable-ascii',
               description='Zero-indexed x,y pairs separated by spaces or semicolons; 1,1 on 2×2 makes an L. Disables connectors.'),
         *(Param('connector_'+edge, 'boolean', True, group='Connectors')
