@@ -1,12 +1,16 @@
 {
   "bead": "pst-jzfsa",
-  "status": "blocked pending specification clarification; generator not implemented",
+  "status": "Generator/catalog checkpoint implemented; blocked on reference taper outside approved waist band; no PR",
   "source_commit": "d645c5cf45456953efa3af3072d2f944f19d583b",
   "vendor_changed": false,
   "audit_command": "cd build123d && uv run python -m bd audit smoke-opengrid-tile-1x1 --json",
   "audit_exit_code": 1,
   "vendor_full_1x1": {
-    "extent_mm": [28.0, 28.0, 6.8],
+    "extent_mm": [
+      28.0,
+      28.0,
+      6.8
+    ],
     "volume_mm3": 983.2920047799935,
     "min_wall_mm": 0.8,
     "wall_threshold_mm": 0.9,
@@ -28,12 +32,541 @@
     "chamfer_mm": 0.3,
     "volume_after_mm3": 978.7246827033293,
     "volume_delta_mm3": -4.567322076664141,
-    "required_volume_tolerance_mm3": 0.000001,
+    "required_volume_tolerance_mm3": 1e-06,
     "audit_limitation": "The raw audit reports bed_chamfer present because the vendor has inner opening chamfers; that does not establish relief on the outer perimeter."
   },
-  "questions_for_spec_revision": [
+  "resume": "Read mayor taper decision; implement only approved inventory changes and rerun scoped suite; add successful audit baseline rows and PR endpoint table, then open PR only when green.",
+  "mayor_resolution": {
+    "date": "2026-11-05",
+    "waist": "0.80 mm waist-only production exception approved; raw measurements retained; all other faces >=0.9 mm",
+    "relief": "Keep 0.3 mm outer bed relief on every variant; Full parity now permits only 4.5673 +/-0.01 mm3 of bed relief removal"
+  },
+  "resolved_questions": [
     "May the production tile retain the published 0.8 mm snap-retention wall under a narrowly inventoried, reference-pinned exception, keeping the raw report and auditing all remaining faces? The smoke-only exemption does not currently authorize a production tile.",
     "For plain full tiles, should exact vendor-volume acceptance yield to the required 0.3-0.5 mm outer bed-edge chamfer, or should the unchanged vendor outer bed perimeter receive an explicit exception? Chamfering changes the required volume by much more than 1e-6 mm3."
   ],
-  "resume": "Resolve these two policy choices in the bead before implementing the generator, catalog registration, presets and endpoint tests. No PR opened, gate relaxed or vendor code modified."
+  "questions_for_spec_revision": [
+    "May the exception also cover the exact vendor retention lead-in taper face family, pinned to the vendor linear profile? The required unchanged profile measures 0.835 mm at source (14,0,2.35), outside the approved waist z=2.4..4.4. The backed Lite L measures the same wall at (28,-14,2.65). Keeping this profile and requiring every non-waist ray >=0.9 mm conflict. No taper exclusion has been added."
+  ],
+  "additional_reference_evidence": {
+    "vendor_taper_ray": {
+      "origin": [
+        14,
+        0,
+        2.35
+      ],
+      "inward": [
+        -1,
+        0,
+        0
+      ],
+      "wall_mm": 0.8350009992718697
+    },
+    "backed_L_taper_ray": {
+      "origin": [
+        28,
+        -14,
+        2.65
+      ],
+      "inward": [
+        -1,
+        0,
+        0
+      ],
+      "wall_mm": 0.8350009992718697
+    },
+    "bare_lite_relief_ray": {
+      "origin": [
+        13.75,
+        0,
+        0.05
+      ],
+      "inward": [
+        -1,
+        0,
+        0
+      ],
+      "wall_mm": 0.5500009898096323
+    },
+    "bare_lite_raw": "print audit: part  (up = (0.00, 0.00, 1.00))\n  overhang   :  45.0\u00b0   (\u2264 45\u00b0) OK\n  bridge     :   0.0 mm (\u2264 10 mm) OK\n  min wall   :  0.80 mm (\u2265 0.9 mm) FAIL\n  dn fillets :     0     (= 0)    OK\n  bed chamfer: present   (warn)\n  extent     : 28.0 \u00d7 28.0 \u00d7 4.0 mm (\u2264 325 \u00d7 320 \u00d7 325) OK\n  => FAIL: wall 0.80 mm < 0.9 mm minimum",
+    "strip_raw": "print audit: part  (up = (0.00, 0.00, 1.00))\n  overhang   :  90.0\u00b0   (\u2264 45\u00b0) FAIL\n  bridge     :   5.0 mm (\u2264 10 mm) OK\n  min wall   :  0.80 mm (\u2265 0.9 mm) FAIL\n  dn fillets :     0     (= 0)    OK\n  bed chamfer: present   (warn)\n  extent     : 28.0 \u00d7 168.0 \u00d7 5.0 mm (\u2264 325 \u00d7 320 \u00d7 325) OK\n  => FAIL: overhang 90.0\u00b0 > 45\u00b0 (steeper than 45\u00b0 from vertical); wall 0.80 mm < 0.9 mm minimum",
+    "connector_cutter_extent": [
+      5.2,
+      5.1,
+      2.4
+    ],
+    "bare_lite_relief_resolution": "The mayor explicitly requires this relief on every variant. The inventory compares the waist to vendor minus exactly the 0.3 mm outer bed relief; 0.8 mm remains above Z=0.3. No exemption extends outside the waist band.",
+    "connector_resolution": "Exact ConnectorCutter envelopes are used only for angle classification under existing library-cutter policy. Raw bridge span 5 mm remains checked; backing and wall samples are never excluded by connector envelopes. Mutation test rejects an unrelated ceiling."
+  },
+  "implementation": [
+    "opengrid_tile/tile.py library composed on untouched vendor Base",
+    "holders/opengrid_tile.py registration, parameters, four presets and design checklist",
+    "manifest regenerated and web catalog entry added",
+    "tests/test_opengrid_tile.py fit, mask, backing, relief, connector and endpoint contracts",
+    "tests/opengrid_tile_audit.py narrow waist inventory; bd audit retains raw_report",
+    "four additive geometry baseline rows; audit baseline rows deferred until successful capture"
+  ],
+  "validation": {
+    "geometry_and_vendor": "All non-audit model contracts pass in scoped run; separate vendor integrity suite: 3 passed",
+    "manifest": "43 passed",
+    "web": "604 passed, 1 skipped",
+    "typecheck": "passed",
+    "export": "default STL/GLB/review PNG exported; five-view render inspected",
+    "vendor_changed": false,
+    "scoped_command": "cd build123d && uv run pytest tests/ -q -n 4 -k opengrid_tile",
+    "scoped_result": "6 failed, 68 passed, 6 skipped, 1 xfailed",
+    "failed_test_ids": [
+      "tests/test_opengrid_tile.py::test_endpoint_audit[lite-1x1-back0.9]",
+      "tests/test_opengrid_tile.py::test_endpoint_audit[lite-1x6-back0.9]",
+      "tests/test_opengrid_tile.py::test_endpoint_audit[lite-6x1-back0.9]",
+      "tests/test_opengrid_tile.py::test_endpoint_audit[lite-L-back0.9]",
+      "tests/test_opengrid_tile.py::test_endpoint_audit[lite-backed-1x6]",
+      "tests/test_opengrid_tile.py::test_endpoint_audit[lite-backed-l-2x2]"
+    ],
+    "geometry_baselines": "All four new rows measured and independently compared; unrelated baseline rows preserved byte-for-byte"
+  },
+  "endpoint_results": [
+    {
+      "case": "full",
+      "raw_min_wall": 0.8,
+      "min_wall": 0.905,
+      "raw_max_overhang": 45.0,
+      "max_overhang": 45.0,
+      "bridge_mm": 0.0,
+      "exposed_edge_angle": 45.000000000000064,
+      "bed_edges": 8,
+      "waist_regions": 4,
+      "volume": 978.7246827033359,
+      "ok": true
+    },
+    {
+      "case": "full-1x1-back0",
+      "raw_min_wall": 0.8,
+      "min_wall": 0.905,
+      "raw_max_overhang": 45.0,
+      "max_overhang": 45.0,
+      "bridge_mm": 0.0,
+      "exposed_edge_angle": 45.000000000000064,
+      "bed_edges": 8,
+      "waist_regions": 4,
+      "volume": 978.7246827033359,
+      "ok": true
+    },
+    {
+      "case": "full-1x1-back0.9",
+      "raw_min_wall": 0.8,
+      "min_wall": 0.9,
+      "raw_max_overhang": 45.0,
+      "max_overhang": 45.0,
+      "bridge_mm": 0.0,
+      "exposed_edge_angle": 45.000000000000064,
+      "bed_edges": 8,
+      "waist_regions": 4,
+      "volume": 1652.572682703336,
+      "ok": true
+    },
+    {
+      "case": "full-1x1-back3",
+      "raw_min_wall": 0.8,
+      "min_wall": 1.045,
+      "raw_max_overhang": 45.0,
+      "max_overhang": 45.0,
+      "bridge_mm": 0.0,
+      "exposed_edge_angle": 45.000000000000064,
+      "bed_edges": 8,
+      "waist_regions": 4,
+      "volume": 3224.884682703332,
+      "ok": true
+    },
+    {
+      "case": "full-1x6-back0",
+      "raw_min_wall": 0.8,
+      "min_wall": 0.905,
+      "raw_max_overhang": 90.0,
+      "max_overhang": 45.0,
+      "bridge_mm": 5.0,
+      "exposed_edge_angle": 45.00000000000029,
+      "bed_edges": 8,
+      "waist_regions": 14,
+      "volume": 6526.488380027295,
+      "ok": true
+    },
+    {
+      "case": "full-1x6-back0.9",
+      "raw_min_wall": 0.8,
+      "min_wall": 0.9,
+      "raw_max_overhang": 90.0,
+      "max_overhang": 45.0,
+      "bridge_mm": 5.0,
+      "exposed_edge_angle": 45.00000000000029,
+      "bed_edges": 8,
+      "waist_regions": 14,
+      "volume": 10728.336380027305,
+      "ok": true
+    },
+    {
+      "case": "full-1x6-back3",
+      "raw_min_wall": 0.8,
+      "min_wall": 1.045,
+      "raw_max_overhang": 90.0,
+      "max_overhang": 45.0,
+      "bridge_mm": 5.0,
+      "exposed_edge_angle": 45.00000000000029,
+      "bed_edges": 8,
+      "waist_regions": 14,
+      "volume": 20532.648380027396,
+      "ok": true
+    },
+    {
+      "case": "full-6x1-back0",
+      "raw_min_wall": 0.8,
+      "min_wall": 0.905,
+      "raw_max_overhang": 90.0,
+      "max_overhang": 45.0,
+      "bridge_mm": 5.0,
+      "exposed_edge_angle": 45.00000000000029,
+      "bed_edges": 8,
+      "waist_regions": 14,
+      "volume": 6526.488380027302,
+      "ok": true
+    },
+    {
+      "case": "full-6x1-back0.9",
+      "raw_min_wall": 0.8,
+      "min_wall": 0.9,
+      "raw_max_overhang": 90.0,
+      "max_overhang": 45.0,
+      "bridge_mm": 5.0,
+      "exposed_edge_angle": 45.00000000000029,
+      "bed_edges": 8,
+      "waist_regions": 14,
+      "volume": 10728.336380027264,
+      "ok": true
+    },
+    {
+      "case": "full-6x1-back3",
+      "raw_min_wall": 0.8,
+      "min_wall": 1.045,
+      "raw_max_overhang": 90.0,
+      "max_overhang": 45.0,
+      "bridge_mm": 5.0,
+      "exposed_edge_angle": 45.00000000000029,
+      "bed_edges": 8,
+      "waist_regions": 14,
+      "volume": 20532.64838002737,
+      "ok": true
+    },
+    {
+      "case": "full-6x6-back0",
+      "raw_min_wall": 0.8,
+      "min_wall": 1.202,
+      "raw_max_overhang": 90.0,
+      "max_overhang": 45.0,
+      "bridge_mm": 5.0,
+      "exposed_edge_angle": 45.000000000000526,
+      "bed_edges": 8,
+      "waist_regions": 24,
+      "volume": 42654.152196849784,
+      "ok": true
+    },
+    {
+      "case": "full-6x6-back0.9",
+      "raw_min_wall": 0.8,
+      "min_wall": 0.9,
+      "raw_max_overhang": 90.0,
+      "max_overhang": 45.0,
+      "bridge_mm": 5.0,
+      "exposed_edge_angle": 45.000000000000526,
+      "bed_edges": 8,
+      "waist_regions": 24,
+      "volume": 68024.00019685028,
+      "ok": true
+    },
+    {
+      "case": "full-6x6-back3",
+      "raw_min_wall": 0.8,
+      "min_wall": 1.202,
+      "raw_max_overhang": 90.0,
+      "max_overhang": 45.0,
+      "bridge_mm": 5.0,
+      "exposed_edge_angle": 45.000000000000526,
+      "bed_edges": 8,
+      "waist_regions": 24,
+      "volume": 127220.31219685165,
+      "ok": true
+    },
+    {
+      "case": "full-L-back0",
+      "raw_min_wall": 0.8,
+      "min_wall": 0.905,
+      "raw_max_overhang": 45.0,
+      "max_overhang": 45.0,
+      "bridge_mm": 0.0,
+      "exposed_edge_angle": 45.000000000000064,
+      "bed_edges": 11,
+      "waist_regions": 8,
+      "volume": 3360.209861744165,
+      "ok": true
+    },
+    {
+      "case": "full-L-back0.9",
+      "raw_min_wall": 0.8,
+      "min_wall": 0.9,
+      "raw_max_overhang": 45.0,
+      "max_overhang": 45.0,
+      "bridge_mm": 0.0,
+      "exposed_edge_angle": 45.000000000000064,
+      "bed_edges": 11,
+      "waist_regions": 8,
+      "volume": 5437.319861744161,
+      "ok": true
+    },
+    {
+      "case": "full-L-back3",
+      "raw_min_wall": 0.8,
+      "min_wall": 1.045,
+      "raw_max_overhang": 45.0,
+      "max_overhang": 45.0,
+      "bridge_mm": 0.0,
+      "exposed_edge_angle": 45.000000000000064,
+      "bed_edges": 11,
+      "waist_regions": 8,
+      "volume": 10283.909861744169,
+      "ok": true
+    },
+    {
+      "case": "lite",
+      "raw_min_wall": 0.8,
+      "min_wall": 1.185,
+      "raw_max_overhang": 45.0,
+      "max_overhang": 45.0,
+      "bridge_mm": 0.0,
+      "exposed_edge_angle": 45.000000000000064,
+      "bed_edges": 8,
+      "waist_regions": 4,
+      "volume": 565.4148811492764,
+      "ok": true
+    },
+    {
+      "case": "lite-1x1-back0",
+      "raw_min_wall": 0.8,
+      "min_wall": 1.185,
+      "raw_max_overhang": 45.0,
+      "max_overhang": 45.0,
+      "bridge_mm": 0.0,
+      "exposed_edge_angle": 45.000000000000064,
+      "bed_edges": 8,
+      "waist_regions": 4,
+      "volume": 565.4148811492764,
+      "ok": true
+    },
+    {
+      "case": "lite-1x1-back0.9",
+      "raw_min_wall": 0.8,
+      "min_wall": 0.87,
+      "raw_max_overhang": 45.0,
+      "max_overhang": 45.0,
+      "bridge_mm": 0.0,
+      "exposed_edge_angle": 45.000000000000064,
+      "bed_edges": 8,
+      "waist_regions": 4,
+      "volume": 1239.262881149276,
+      "ok": false
+    },
+    {
+      "case": "lite-1x1-back3",
+      "raw_min_wall": 0.8,
+      "min_wall": 1.073,
+      "raw_max_overhang": 45.0,
+      "max_overhang": 45.0,
+      "bridge_mm": 0.0,
+      "exposed_edge_angle": 45.000000000000064,
+      "bed_edges": 8,
+      "waist_regions": 4,
+      "volume": 2811.574881149277,
+      "ok": true
+    },
+    {
+      "case": "lite-1x6-back0",
+      "raw_min_wall": 0.8,
+      "min_wall": 1.185,
+      "raw_max_overhang": 90.0,
+      "max_overhang": 45.0,
+      "bridge_mm": 5.0,
+      "exposed_edge_angle": 45.00000000000029,
+      "bed_edges": 18,
+      "waist_regions": 14,
+      "volume": 3693.7646689386015,
+      "ok": true
+    },
+    {
+      "case": "lite-1x6-back0.9",
+      "raw_min_wall": 0.8,
+      "min_wall": 0.87,
+      "raw_max_overhang": 90.0,
+      "max_overhang": 45.0,
+      "bridge_mm": 5.0,
+      "exposed_edge_angle": 45.00000000000029,
+      "bed_edges": 8,
+      "waist_regions": 14,
+      "volume": 7893.461652346954,
+      "ok": false
+    },
+    {
+      "case": "lite-1x6-back3",
+      "raw_min_wall": 0.8,
+      "min_wall": 1.073,
+      "raw_max_overhang": 90.0,
+      "max_overhang": 45.0,
+      "bridge_mm": 5.0,
+      "exposed_edge_angle": 45.00000000000029,
+      "bed_edges": 8,
+      "waist_regions": 14,
+      "volume": 17697.77365234696,
+      "ok": true
+    },
+    {
+      "case": "lite-6x1-back0",
+      "raw_min_wall": 0.8,
+      "min_wall": 1.185,
+      "raw_max_overhang": 90.0,
+      "max_overhang": 45.0,
+      "bridge_mm": 5.0,
+      "exposed_edge_angle": 45.00000000000029,
+      "bed_edges": 18,
+      "waist_regions": 14,
+      "volume": 3693.764668938594,
+      "ok": true
+    },
+    {
+      "case": "lite-6x1-back0.9",
+      "raw_min_wall": 0.8,
+      "min_wall": 0.87,
+      "raw_max_overhang": 90.0,
+      "max_overhang": 45.0,
+      "bridge_mm": 5.0,
+      "exposed_edge_angle": 45.00000000000029,
+      "bed_edges": 8,
+      "waist_regions": 14,
+      "volume": 7893.46165234696,
+      "ok": false
+    },
+    {
+      "case": "lite-6x1-back3",
+      "raw_min_wall": 0.8,
+      "min_wall": 1.073,
+      "raw_max_overhang": 90.0,
+      "max_overhang": 45.0,
+      "bridge_mm": 5.0,
+      "exposed_edge_angle": 45.00000000000029,
+      "bed_edges": 8,
+      "waist_regions": 14,
+      "volume": 17697.773652346958,
+      "ok": true
+    },
+    {
+      "case": "lite-6x6-back0",
+      "raw_min_wall": 0.8,
+      "min_wall": 1.202,
+      "raw_max_overhang": 90.0,
+      "max_overhang": 45.0,
+      "bridge_mm": 5.0,
+      "exposed_edge_angle": 45.000000000000526,
+      "bed_edges": 28,
+      "waist_regions": 24,
+      "volume": 24599.669537419537,
+      "ok": true
+    },
+    {
+      "case": "lite-6x6-back0.9",
+      "raw_min_wall": 0.8,
+      "min_wall": 0.9,
+      "raw_max_overhang": 90.0,
+      "max_overhang": 45.0,
+      "bridge_mm": 5.0,
+      "exposed_edge_angle": 45.000000000000526,
+      "bed_edges": 8,
+      "waist_regions": 24,
+      "volume": 49965.21550419196,
+      "ok": true
+    },
+    {
+      "case": "lite-6x6-back3",
+      "raw_min_wall": 0.8,
+      "min_wall": 1.202,
+      "raw_max_overhang": 90.0,
+      "max_overhang": 45.0,
+      "bridge_mm": 5.0,
+      "exposed_edge_angle": 45.000000000000526,
+      "bed_edges": 8,
+      "waist_regions": 24,
+      "volume": 109161.5275041937,
+      "ok": true
+    },
+    {
+      "case": "lite-L-back0",
+      "raw_min_wall": 0.8,
+      "min_wall": 1.042,
+      "raw_max_overhang": 45.0,
+      "max_overhang": 45.0,
+      "bridge_mm": 0.0,
+      "exposed_edge_angle": 45.000000000000064,
+      "bed_edges": 11,
+      "waist_regions": 8,
+      "volume": 1947.4084570819882,
+      "ok": true
+    },
+    {
+      "case": "lite-L-back0.9",
+      "raw_min_wall": 0.8,
+      "min_wall": 0.87,
+      "raw_max_overhang": 45.0,
+      "max_overhang": 45.0,
+      "bridge_mm": 0.0,
+      "exposed_edge_angle": 45.000000000000064,
+      "bed_edges": 11,
+      "waist_regions": 8,
+      "volume": 4024.518457081984,
+      "ok": false
+    },
+    {
+      "case": "lite-L-back3",
+      "raw_min_wall": 0.8,
+      "min_wall": 1.073,
+      "raw_max_overhang": 45.0,
+      "max_overhang": 45.0,
+      "bridge_mm": 0.0,
+      "exposed_edge_angle": 45.000000000000064,
+      "bed_edges": 11,
+      "waist_regions": 8,
+      "volume": 8871.10845708198,
+      "ok": true
+    },
+    {
+      "case": "lite-backed-1x6",
+      "raw_min_wall": 0.8,
+      "min_wall": 0.835,
+      "raw_max_overhang": 90.0,
+      "max_overhang": 45.0,
+      "bridge_mm": 5.0,
+      "exposed_edge_angle": 45.00000000000029,
+      "bed_edges": 8,
+      "waist_regions": 14,
+      "volume": 8360.333652346953,
+      "ok": false
+    },
+    {
+      "case": "lite-backed-l-2x2",
+      "raw_min_wall": 0.8,
+      "min_wall": 0.835,
+      "raw_max_overhang": 45.0,
+      "max_overhang": 45.0,
+      "bridge_mm": 0.0,
+      "exposed_edge_angle": 45.000000000000064,
+      "bed_edges": 11,
+      "waist_regions": 8,
+      "volume": 4255.308457081985,
+      "ok": false
+    }
+  ]
 }

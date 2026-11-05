@@ -798,6 +798,11 @@ def test_model_print_audit(spec, capsys):
     # report.ok carries the same check (pst-hruv1).
     bed = bed_failure(report.extent_mm)
     assert bed is None, f"{spec.name}: {bed}"
+    if spec.name == 'opengrid_tile':
+        from tests.opengrid_tile_audit import accepted_report
+        accepted, _ = accepted_report(spec.build(), spec.resolve_values(), report)
+        assert accepted.ok, accepted.format()
+        return
     selector = _PUBLISHED_WALL_FACE_SELECTORS.get(spec.name)
     if selector is not None:
         # The registry default has the same published socket walls as the

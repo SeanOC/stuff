@@ -196,6 +196,10 @@ export const CATALOG: Record<string, CatalogEntry> = {
  * enforcement and cross-checks the manifest's categoryId against it.
  */
 export const BUILD123D_CATALOG: Record<string, CatalogEntry> = {
+  opengrid_tile: {
+    categoryId: "multiboard",
+    blurb: "Full or Lite openGrid tiles with optional solid adhesive backing and omitted-cell shapes. Includes a 1 × 6 strip and an L tile; print back down.",
+  },
   rack10_rail_strip: {
     categoryId: "rack10",
     blurb: "Printed EIA rail strips for HomeRacker posts, with insert or cage-nut holes. Print face down; test the PETG coupon and align post holes front-to-back.",

@@ -20,8 +20,14 @@ def run(args) -> tuple[int, str, dict]:
     spec = build.find_spec(entry.meta["model"])
     values = entry.meta["params"]
     report = audit(entry.load(), **_audit_kwargs(spec, values))
+    raw_report = None
+    if spec.name == 'opengrid_tile':
+        from tests.opengrid_tile_audit import accepted_report
+        raw_report = dataclasses.asdict(report)
+        report, _ = accepted_report(entry.load(), values, report)
     verdict = "PASS" if report.ok else "FAIL: " + "; ".join(report.failures())
     summary = f"{entry.key}  {spec.name}  audit {verdict}\n{report.format()}"
     return (0 if report.ok else 1), summary, {
         "key": entry.key, "model": spec.name, "ok": report.ok,
-        "failures": report.failures(), "report": dataclasses.asdict(report)}
+        "failures": report.failures(), "report": dataclasses.asdict(report),
+        **({'raw_report': raw_report} if raw_report is not None else {})}

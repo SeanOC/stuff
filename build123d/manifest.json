@@ -2761,6 +2761,116 @@
       ]
     },
     {
+      "slug": "opengrid-tile",
+      "engine": "build123d",
+      "title": "openGrid tile",
+      "blurb": "Full or Lite openGrid tiles, optional solid adhesive backing and omitted-cell shapes. Print back down.",
+      "categoryId": "multiboard",
+      "params": [
+        {
+          "name": "x_count",
+          "kind": "integer",
+          "default": 1,
+          "min": 1,
+          "max": 6,
+          "step": 1
+        },
+        {
+          "name": "y_count",
+          "kind": "integer",
+          "default": 1,
+          "min": 1,
+          "max": 6,
+          "step": 1
+        },
+        {
+          "name": "style",
+          "kind": "enum",
+          "default": "full",
+          "choices": [
+            "full",
+            "lite"
+          ]
+        },
+        {
+          "name": "backing_mm",
+          "description": "0 = open; otherwise 0.9\u20133 mm. Adhesive presets use 1 mm.",
+          "unit": "mm",
+          "kind": "number",
+          "default": 0,
+          "min": 0,
+          "max": 3,
+          "step": 0.1
+        },
+        {
+          "name": "omit_cells",
+          "description": "Zero-indexed x,y pairs separated by spaces or semicolons; 1,1 on 2\u00d72 makes an L. Disables connectors.",
+          "kind": "string",
+          "default": "",
+          "maxLength": 256,
+          "charset": "printable-ascii"
+        },
+        {
+          "name": "connector_neg_x",
+          "group": "Connectors",
+          "kind": "boolean",
+          "default": true
+        },
+        {
+          "name": "connector_pos_x",
+          "group": "Connectors",
+          "kind": "boolean",
+          "default": true
+        },
+        {
+          "name": "connector_neg_y",
+          "group": "Connectors",
+          "kind": "boolean",
+          "default": true
+        },
+        {
+          "name": "connector_pos_y",
+          "group": "Connectors",
+          "kind": "boolean",
+          "default": true
+        }
+      ],
+      "presets": [
+        {
+          "id": "full",
+          "label": "Full 1 \u00d7 1",
+          "values": {}
+        },
+        {
+          "id": "lite",
+          "label": "Lite 1 \u00d7 1",
+          "values": {
+            "style": "lite"
+          }
+        },
+        {
+          "id": "lite-backed-1x6",
+          "label": "Lite adhesive 1 \u00d7 6",
+          "values": {
+            "style": "lite",
+            "y_count": 6,
+            "backing_mm": 1
+          }
+        },
+        {
+          "id": "lite-backed-l-2x2",
+          "label": "Lite adhesive L 2 \u00d7 2",
+          "values": {
+            "style": "lite",
+            "x_count": 2,
+            "y_count": 2,
+            "omit_cells": "1,1",
+            "backing_mm": 1
+          }
+        }
+      ]
+    },
+    {
       "slug": "underware-i-channel",
       "engine": "build123d",
       "title": "Underware straight cable channel (openGrid)",

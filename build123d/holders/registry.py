@@ -581,6 +581,7 @@ def all_models() -> list[ModelSpec]:
     from holders import rack10_blank_panel, rack10_keystone_panel, rack10_tray, rack10_cradle, rack10_shelf, rack10_hub_tray, rack10_ears, rack10_rail_strip  # noqa: F401
     from holders import cup_lid  # noqa: F401
     from holders import smoke  # noqa: F401  (toolchain smoke artifacts)
+    from holders import opengrid_tile  # noqa: F401
     from holders import label_demo  # noqa: F401  (labels spike demo, smoke-tagged)
     try:
         from holders import cylindrical  # noqa: F401  (the PoC holder; lands via its bead)
