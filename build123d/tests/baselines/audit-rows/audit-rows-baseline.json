@@ -207,10 +207,16 @@
       {
         "test_file": "tests/test_opengrid_tile.py",
         "why": "pst-eur3l: representative max-corner and transposed long-axis audits for the 323 x 244 mm bake envelope; retain all existing endpoint rows; exhaustive count validation stays geometry-free",
-        "audit_source": "gc-pilot/pst-eur3l: BD_AUDIT_OUT=../.tmp-pst-eur3l/trimmed/rows.jsonl uv run pytest tests/ -q -n 4 -k opengrid_tile",
-        "added_measurement_rows": 2,
+        "source_sha": "705333c25b2b0082873f8810f378ca78a2dc3a76",
+        "build123d": "0.13.0",
+        "cadquery-ocp-novtk": "8.0.1.1.0",
+        "audit_source": "CI run 42132292541, bd123-audit-rows artifact 13467083649: both added measurements match at 1e-6 absolute tolerance; captured before the audit_full move",
+        "new_measurement_rows": 2,
+        "capture_scope": [
+          "[\"audit and not audit_full and not upstream\",null]"
+        ],
         "job_scope": [
-          "[\"not upstream\",null]"
+          "[\"audit_full and not upstream\",5]"
         ]
       }
     ]
