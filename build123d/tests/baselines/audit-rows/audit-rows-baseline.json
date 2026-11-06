@@ -203,6 +203,21 @@
         "job_scope": [
           "[\"not upstream\",null]"
         ]
+      },
+      {
+        "test_file": "tests/test_opengrid_tile.py",
+        "why": "pst-eur3l: representative max-corner and transposed long-axis audits for the 323 x 244 mm bake envelope; retain all existing endpoint rows; exhaustive count validation stays geometry-free",
+        "source_sha": "705333c25b2b0082873f8810f378ca78a2dc3a76",
+        "build123d": "0.13.0",
+        "cadquery-ocp-novtk": "8.0.1.1.0",
+        "audit_source": "CI run 42132292541, bd123-audit-rows artifact 13467083649: both added measurements match at 1e-6 absolute tolerance; captured before the audit_full move",
+        "new_measurement_rows": 2,
+        "capture_scope": [
+          "[\"audit and not audit_full and not upstream\",null]"
+        ],
+        "job_scope": [
+          "[\"audit_full and not upstream\",5]"
+        ]
       }
     ]
   },
@@ -13724,6 +13739,34 @@
       "waist_regions": 8,
       "taper_regions": 16,
       "volume": 10283.909861744,
+      "ok": true
+    },
+    "[\"tests/test_opengrid_tile.py::test_endpoint_audit[full-1x11-back0]\",\"opengrid-tile-endpoint\"]": {
+      "case": "full-1x11-back0",
+      "raw_min_wall": 0.800000000,
+      "min_wall": 1.202000000,
+      "raw_max_overhang": 90.000000000,
+      "max_overhang": 45.000000000,
+      "bridge_mm": 5.000000000,
+      "exposed_edge_angle": 45.000000000,
+      "bed_edges": 8,
+      "waist_regions": 24,
+      "taper_regions": 48,
+      "volume": 12074.252077351,
+      "ok": true
+    },
+    "[\"tests/test_opengrid_tile.py::test_endpoint_audit[lite-11x8-back1]\",\"opengrid-tile-endpoint\"]": {
+      "case": "lite-11x8-back1",
+      "raw_min_wall": 0.800000000,
+      "min_wall": 1.000000000,
+      "raw_max_overhang": 90.000000000,
+      "max_overhang": 45.000000000,
+      "bridge_mm": 5.000000000,
+      "exposed_edge_angle": 45.000000000,
+      "bed_edges": 8,
+      "waist_regions": 38,
+      "taper_regions": 38,
+      "volume": 129928.364929037,
       "ok": true
     }
   }
