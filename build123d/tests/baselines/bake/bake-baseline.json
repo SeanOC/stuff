@@ -185,7 +185,7 @@
       "vertex_coordinates": "5b1f6f2bd0232462b8afab2b87df1534bcbe09054dc1a3588a40f241fb8d9006"
     },
     "holder-tombstone-sign/pinned-base.stl": {
-      "oriented_triangles": "8a89817372a5a56cfc21ef5a3e1c168081f72e050836a538bfd36306de8a247e",
+      "oriented_triangles": "4f2241fa07581dcf454dddd00cf25a87429c01bb659462552ed3ceb818897ac4",
       "vertex_coordinates": "024e964674c9b02f014da1e91802e2b97bed9058f05e9a6e7a9e51a47050c302"
     },
     "holder-tombstone-sign/pinned-bone.stl": {
@@ -217,7 +217,7 @@
       "vertex_coordinates": "3da212b9f3941e613fed67242698584b25d6070b083a772b66dfa2fd4fecc680"
     },
     "holder-tombstone-sign/pinned.stl": {
-      "oriented_triangles": "3e4522f39694fda12e3a8a0ff284cf4a41b7e330cdf3e544e651f1ada02cf17d",
+      "oriented_triangles": "93554297d0708ab3c2bf5e0a60d51de588b43fbddb089ab1993d1a51aa130577",
       "vertex_coordinates": "a92ca443fcac815e013aac70c242987368bf52169b8afc6ee03a22b97160e2db"
     },
     "holder-tombstone-sign/small-base.stl": {
@@ -281,7 +281,7 @@
       "vertex_coordinates": "12073d2bc8dc601212b7d3fde3c7d60a33f3cf1184bb3c0df94a8888fc8153c4"
     },
     "holder-tombstone-stake/pinned.stl": {
-      "oriented_triangles": "37813df2deebe2c072d06cea8c5371a2e6c08bcb4bfc7414b3da1af87484fb6f",
+      "oriented_triangles": "8282a8485b25b701f0dd9e2f06950b1e977042bee6f6dc8ff6cd22aca845a406",
       "vertex_coordinates": "33a4e20df49fff1b0dc5fa00f22f27111a4d0de1e16bcc1e416950cfb233faf0"
     },
     "littletikes-dream-machine-cartridge-holder/blank_back.stl": {
@@ -360,6 +360,94 @@
       "oriented_triangles": "1baa1ef5bf4a308619412228da92ee73b70db811c717c17deec1a5ad735f9bbb",
       "vertex_coordinates": "2bf3f01ab7d866da3850b9b65c74a300d91a058cf0e022ab1d1b0c14c98c7114"
     },
+    "opengrid-tile/full.stl": {
+      "oriented_triangles": "75867961be612cded3494aeee409557b34a290585bc1145e6e453f384e7d75aa",
+      "vertex_coordinates": "6759b1ed9c76403a4a22f02348b926e75e7b3a22d367a2e26d6580c212505c55"
+    },
+    "opengrid-tile/lite-backed-1x6.stl": {
+      "oriented_triangles": "2df3fec028038fd1d257aa4bd1dbfb2aa5c382af473350f92a5fc47f0b2e6719",
+      "vertex_coordinates": "3f367cc3e0938a429f8b37a1832ae4f481daf8c0651fc1db858180f932278cef"
+    },
+    "opengrid-tile/lite-backed-l-2x2.stl": {
+      "oriented_triangles": "a69e2134912923f13b6607cc362a9b87740dea867fb7b8d808409cab33e14c64",
+      "vertex_coordinates": "998e22427c91cb6e8cc13fb6ceaa976a773f9e43eb14a1255fe20b56d16922ef"
+    },
+    "opengrid-tile/lite.stl": {
+      "oriented_triangles": "a7f4511e0d2d5406e5e50dafe2d9c4c33e772c0ae3718318fe41f304726fa439",
+      "vertex_coordinates": "e153d4d72d2eb70dfb5416b76f405a8268833aed515ff11f30db9442a30d97bd"
+    },
+    "rack10-blank-panel/1u-solid.stl": {
+      "oriented_triangles": "aa53a55c6c3484267d41eea43a290bad20fbf37b55c57818dcd073c6f4ebbc0e",
+      "vertex_coordinates": "898e45588b8aa3a7d1bdfc03db2156bbfbd5ff89b555156ed96028c243bd14c2"
+    },
+    "rack10-blank-panel/1u-vented.stl": {
+      "oriented_triangles": "2fb2e1f9c25d9790f740f3a3b6af521cde7f2ca9e8453067f658d370a702180c",
+      "vertex_coordinates": "492bcf14a56899613cecfbfed73d5487247660077f86ba837565e61b440da41f"
+    },
+    "rack10-blank-panel/2u-vented.stl": {
+      "oriented_triangles": "5d75a75150fa97ef49765384956fd8bf043a53fd15d3af5d531a59a77c15c2a8",
+      "vertex_coordinates": "e2e636a0ba3bf1266aa9a344d3b9cc5827c607faf04ff8975829dd333f7dd80c"
+    },
+    "rack10-cradle/generic-3u.stl": {
+      "oriented_triangles": "5b2ad4d8a4e137f6a6ecc6a95c6b05ee93a278f18c20734b0d88efb8c27f96a3",
+      "vertex_coordinates": "1be879e007450bbbe0be3159c29f42a90503716056208c9ea982182c30d3a25b"
+    },
+    "rack10-cradle/steam-machine.stl": {
+      "oriented_triangles": "01308ee19c7057341dfdc3ce2ebb3664966b68f65ecb232353aa99602df6d986",
+      "vertex_coordinates": "de1349e90b0a665a7b495e852ea41c1d551b31d70ee926a9719182d909a7676c"
+    },
+    "rack10-ears/usw-lite-16.stl": {
+      "oriented_triangles": "3fc79548c5955a7f5bd314d2afc5dbcce5f60af5711f64fc510a5f489bd39205",
+      "vertex_coordinates": "bf9e3be20e21da8b34d3df6929c22b2ea6c5220cd2eddf094b569fec38751cd8"
+    },
+    "rack10-ears/wide-box-210.stl": {
+      "oriented_triangles": "92b2f5dfb8b9a72912c9b651a0284f2b8548d065fb47a0271d88d0127ae8675d",
+      "vertex_coordinates": "cd5680dd079ea1919069da3170dca7d8023e44667260964ff12f280818c09965"
+    },
+    "rack10-hub-tray/caseta-aqara-m3.stl": {
+      "oriented_triangles": "2d09f1f628c9e608d028df6ceaf2025d9b6a0f1d34dcf05be073f0c207e9ed68",
+      "vertex_coordinates": "542778b941fd33d7c47e3fa57f087f2ef1c9f85c5c9485911df553f235edcf8a"
+    },
+    "rack10-keystone-panel/1u-6-keystones.stl": {
+      "oriented_triangles": "980f9863a6514f950a4bd9d33541165e145558b45d0815b4a7a67f0ba06d9c3b",
+      "vertex_coordinates": "eedf16c665e1088abb7f9f61f5b387f5e00e3f7c21756fe8a68c786fae8c6654"
+    },
+    "rack10-keystone-panel/1u-max.stl": {
+      "oriented_triangles": "e1dc4ac2b4be9880b266fcff32a93ceefa3559f8d6b484c26b7923f39cb8a5ac",
+      "vertex_coordinates": "612a2193e2d4385905a89c2b4ca0c99d3f0c3cb0923ce7a22b812ee303cbbe05"
+    },
+    "rack10-rail-strip/15u.stl": {
+      "oriented_triangles": "2ad958e84ff6ed1ec76cf61d499b808db2291b9aec6a081ce02a4cf0184674f8",
+      "vertex_coordinates": "05587a900f8fe97f46f1b42c130743ca33b85152b49f726507c9a0b61f8d876f"
+    },
+    "rack10-rail-strip/18u.stl": {
+      "oriented_triangles": "5c0e63c53b068a772e2f59e29ba84b4ccbc241292fc373bbaea6784544190a15",
+      "vertex_coordinates": "4b7213a9a7b99493ebfca78b91381f765c41d39e148f129e4429154961e21113"
+    },
+    "rack10-rail-strip/coupon.stl": {
+      "oriented_triangles": "41596665f91bc4977e8e2622fad1dd700665bb6d4b2d744ee8401e74a29a0383",
+      "vertex_coordinates": "52e5b39afa54593fc43b5f0691cfb6efbe9cbc6d7aef830a15acc34c10245a33"
+    },
+    "rack10-shelf/2u-plain.stl": {
+      "oriented_triangles": "e25920e31a2ee63bda05d1e76751d895ba138cb4b924d8e8bdc33c180ae8f58a",
+      "vertex_coordinates": "61f4e1c7473b800b901129a424f8009c4ff36e276489dcf9d7c1d15fbfcafef7"
+    },
+    "rack10-shelf/sonos-amp.stl": {
+      "oriented_triangles": "a737ab54b8d927a29f476196a2a03d37aebc0fc23e582f8db3074d91fddc7cc5",
+      "vertex_coordinates": "f0c02a335ab31cf12ca98db25f209ac5748e40120bf9e9991ef39b6bd7e33786"
+    },
+    "rack10-tray/apple-tv-4k.stl": {
+      "oriented_triangles": "48596790418327154919b27805bd0a99d7c8497dbd3b5ddeae6470f0e42eb785",
+      "vertex_coordinates": "5ef70265cc47627512ea7428198cda63b6e5f372ff74eab1cd5d2281637310f5"
+    },
+    "rack10-tray/mini-pc-nuc.stl": {
+      "oriented_triangles": "f1e20c4862d5a3458f265e68b902bc4bfc3e9425c8e07cc82f800826553e6c84",
+      "vertex_coordinates": "38e1118ded4ce35a9b911cf558ba1bbf4e2781766280ff5eaeffa48c6c196f33"
+    },
+    "rack10-tray/switch-8-port.stl": {
+      "oriented_triangles": "9b061fbbeb431a5a63d665014510a26cb8e8e35f869148ec6e34480772a621e9",
+      "vertex_coordinates": "bfd53a6050938e99f82eb77f19d430b49d34711154a6d7c6ff2599bcee719e4b"
+    },
     "underware-i-channel/cutouts.stl": {
       "oriented_triangles": "32f1ff06d83c4158b6733c64b347f22576de4076af17df7403e9888bea030406",
       "vertex_coordinates": "6bd41eb268f83f97d1c05c219c8770296657db5b302a3fb75faa2d71a08e69fd"
@@ -395,6 +483,18 @@
     "underware-mitre/mitre.stl": {
       "oriented_triangles": "b3f13b1224cfc5301a19cdb3b7c22ae09d8583b48df98ba60abb720345906b23",
       "vertex_coordinates": "ea11eace4c92ce18e9db3200a8d56ad71437bcdc10cb6503b9c95f18402d26dd"
+    },
+    "underware-outside-corner/outside-corner-r1.stl": {
+      "oriented_triangles": "4d296e42f1eceda73f0cb1251cf36b47e0d07ceb5c072f3347135f9d1a12e2cc",
+      "vertex_coordinates": "8d4287c6bad1bef48c7fc8e020940debb592fcbb7a9e0b3caa552f4584f193d4"
+    },
+    "underware-outside-corner/outside-corner-w2-h28-y2.stl": {
+      "oriented_triangles": "1464f17f1931d882340da90b0be0a0c967b0de795ba0145c5d56b97f418e3301",
+      "vertex_coordinates": "de6b52b392f9c46de6860faf7c8ffdee535add17c32f97d19954ab417639d502"
+    },
+    "underware-outside-corner/outside-corner.stl": {
+      "oriented_triangles": "a768ea5a0b656b40da0044dd2318cd78786c4cf00a1b270e315e70dbb220c046",
+      "vertex_coordinates": "7a759126d613640179169dec458eafdaf7922e735c4792ef234525ec789e4950"
     },
     "underware-path-channel/S-wide.stl": {
       "oriented_triangles": "36b9c8b6eb5b6ca9545afcf483ba98a3d620d19160dbd237b598503f08682c12",
@@ -527,6 +627,28 @@
       "openconnect-plate/default",
       "openconnect-plate/negslot",
       "openconnect-plate/one-tile",
+      "opengrid-tile/full",
+      "opengrid-tile/lite",
+      "opengrid-tile/lite-backed-1x6",
+      "opengrid-tile/lite-backed-l-2x2",
+      "rack10-blank-panel/1u-solid",
+      "rack10-blank-panel/1u-vented",
+      "rack10-blank-panel/2u-vented",
+      "rack10-cradle/generic-3u",
+      "rack10-cradle/steam-machine",
+      "rack10-ears/usw-lite-16",
+      "rack10-ears/wide-box-210",
+      "rack10-hub-tray/caseta-aqara-m3",
+      "rack10-keystone-panel/1u-6-keystones",
+      "rack10-keystone-panel/1u-max",
+      "rack10-rail-strip/15u",
+      "rack10-rail-strip/18u",
+      "rack10-rail-strip/coupon",
+      "rack10-shelf/2u-plain",
+      "rack10-shelf/sonos-amp",
+      "rack10-tray/apple-tv-4k",
+      "rack10-tray/mini-pc-nuc",
+      "rack10-tray/switch-8-port",
       "underware-i-channel/cutouts",
       "underware-i-channel/default",
       "underware-i-channel/label",
@@ -536,6 +658,9 @@
       "underware-l/L-tall",
       "underware-mitre/mitre",
       "underware-mitre/mitre-r1",
+      "underware-outside-corner/outside-corner",
+      "underware-outside-corner/outside-corner-r1",
+      "underware-outside-corner/outside-corner-w2-h28-y2",
       "underware-path-channel/S",
       "underware-path-channel/S-wide",
       "underware-path-channel/diagonal",
@@ -551,8 +676,8 @@
       "underware-x/X-tall"
     ],
     "schema_version": 1,
-    "source_sha": "0aefda9a3c8c33a74a461b442871b3f5fb091f52",
-    "why": "pst-1z5db: full rebaseline after #252/#254/#255 added holder-bench-projector-mount; first capture since pst-ml7f9"
+    "source_sha": "e467ea4a65d75368c8d10af3bcf4b2f9543a8e41",
+    "why": "pst-6yny1: re-declare job_scope after #290 sharded the PR audit tier; absorbs 0aefda9a..e467ea4a drift (see PR)"
   },
   "rows": {
     "gridfinity-capture-bin/deep.glb": {
@@ -59237,6 +59362,3567 @@
       "watertight": true,
       "winding_consistent": true
     },
+    "opengrid-tile/full.glb": {
+      "asset": {
+        "version": "2.0"
+      },
+      "meshes": [
+        {
+          "primitive_groups": [
+            {
+              "attributes": {
+                "NORMAL": {
+                  "count": 288,
+                  "count_inventory": {
+                    "16": 2,
+                    "4": 44,
+                    "6": 8,
+                    "8": 4
+                  }
+                },
+                "POSITION": {
+                  "count": 288,
+                  "count_inventory": {
+                    "16": 2,
+                    "4": 44,
+                    "6": 8,
+                    "8": 4
+                  },
+                  "max": [
+                    0.014000000,
+                    0.014000000,
+                    0.006800000
+                  ],
+                  "min": [
+                    -0.014000000,
+                    -0.014000000,
+                    0.000000000
+                  ]
+                },
+                "TEXCOORD_0": {
+                  "count": 288,
+                  "count_inventory": {
+                    "16": 2,
+                    "4": 44,
+                    "6": 8,
+                    "8": 4
+                  }
+                },
+                "indices": {
+                  "count": 528,
+                  "count_inventory": {
+                    "12": 8,
+                    "18": 4,
+                    "48": 2,
+                    "6": 44
+                  }
+                }
+              },
+              "primitives": 58,
+              "schema": {
+                "accessors": {
+                  "NORMAL": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "POSITION": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "TEXCOORD_0": {
+                    "componentType": 5126,
+                    "type": "VEC2"
+                  },
+                  "indices": {
+                    "componentType": 5123,
+                    "type": "SCALAR"
+                  }
+                },
+                "mode": 4
+              }
+            }
+          ]
+        }
+      ],
+      "nodes": [
+        {
+          "mesh": 0,
+          "rotation": [
+            -0.707106781,
+            0.000000000,
+            0.000000000,
+            0.707106781
+          ]
+        }
+      ],
+      "scene": 0,
+      "scenes": [
+        {
+          "nodes": [
+            0
+          ]
+        }
+      ]
+    },
+    "opengrid-tile/full.png": {
+      "dimensions": [
+        400,
+        400
+      ]
+    },
+    "opengrid-tile/full.stl": {
+      "bounds_mm": [
+        [
+          -14.000000000,
+          -14.000000000,
+          0.000000000
+        ],
+        [
+          14.000000000,
+          14.000000000,
+          6.800000191
+        ]
+      ],
+      "triangles": 176,
+      "vertices": 88,
+      "volume_mm3": 978.724752265,
+      "watertight": true,
+      "winding_consistent": true
+    },
+    "opengrid-tile/lite-backed-1x6.glb": {
+      "asset": {
+        "version": "2.0"
+      },
+      "meshes": [
+        {
+          "primitive_groups": [
+            {
+              "attributes": {
+                "NORMAL": {
+                  "count": 7688,
+                  "count_inventory": {
+                    "128": 10,
+                    "16": 20,
+                    "166": 20,
+                    "20": 20,
+                    "24": 2,
+                    "4": 130,
+                    "56": 1,
+                    "6": 48,
+                    "70": 20,
+                    "8": 7
+                  }
+                },
+                "POSITION": {
+                  "count": 7688,
+                  "count_inventory": {
+                    "128": 10,
+                    "16": 20,
+                    "166": 20,
+                    "20": 20,
+                    "24": 2,
+                    "4": 130,
+                    "56": 1,
+                    "6": 48,
+                    "70": 20,
+                    "8": 7
+                  },
+                  "max": [
+                    0.014000000,
+                    0.084000000,
+                    0.005000000
+                  ],
+                  "min": [
+                    -0.014000000,
+                    -0.084000000,
+                    0.000000000
+                  ]
+                },
+                "TEXCOORD_0": {
+                  "count": 7688,
+                  "count_inventory": {
+                    "128": 10,
+                    "16": 20,
+                    "166": 20,
+                    "20": 20,
+                    "24": 2,
+                    "4": 130,
+                    "56": 1,
+                    "6": 48,
+                    "70": 20,
+                    "8": 7
+                  }
+                },
+                "indices": {
+                  "count": 21492,
+                  "count_inventory": {
+                    "12": 48,
+                    "18": 7,
+                    "198": 1,
+                    "204": 20,
+                    "378": 10,
+                    "42": 20,
+                    "492": 20,
+                    "54": 20,
+                    "6": 130,
+                    "96": 2
+                  }
+                }
+              },
+              "primitives": 278,
+              "schema": {
+                "accessors": {
+                  "NORMAL": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "POSITION": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "TEXCOORD_0": {
+                    "componentType": 5126,
+                    "type": "VEC2"
+                  },
+                  "indices": {
+                    "componentType": 5123,
+                    "type": "SCALAR"
+                  }
+                },
+                "mode": 4
+              }
+            }
+          ]
+        }
+      ],
+      "nodes": [
+        {
+          "mesh": 0,
+          "rotation": [
+            -0.707106781,
+            0.000000000,
+            0.000000000,
+            0.707106781
+          ]
+        }
+      ],
+      "scene": 0,
+      "scenes": [
+        {
+          "nodes": [
+            0
+          ]
+        }
+      ]
+    },
+    "opengrid-tile/lite-backed-1x6.png": {
+      "dimensions": [
+        400,
+        400
+      ]
+    },
+    "opengrid-tile/lite-backed-1x6.stl": {
+      "bounds_mm": [
+        [
+          -14.000000000,
+          -84.000000000,
+          0.000000000
+        ],
+        [
+          14.000000000,
+          84.000000000,
+          5.000000000
+        ]
+      ],
+      "triangles": 7164,
+      "vertices": 3584,
+      "volume_mm3": 8360.396168240,
+      "watertight": true,
+      "winding_consistent": true
+    },
+    "opengrid-tile/lite-backed-l-2x2.glb": {
+      "asset": {
+        "version": "2.0"
+      },
+      "meshes": [
+        {
+          "primitive_groups": [
+            {
+              "attributes": {
+                "NORMAL": {
+                  "count": 494,
+                  "count_inventory": {
+                    "11": 1,
+                    "35": 1,
+                    "4": 70,
+                    "6": 24,
+                    "8": 3
+                  }
+                },
+                "POSITION": {
+                  "count": 494,
+                  "count_inventory": {
+                    "11": 1,
+                    "35": 1,
+                    "4": 70,
+                    "6": 24,
+                    "8": 3
+                  },
+                  "max": [
+                    0.028000000,
+                    0.028000000,
+                    0.005000000
+                  ],
+                  "min": [
+                    -0.028000000,
+                    -0.028000000,
+                    0.000000000
+                  ]
+                },
+                "TEXCOORD_0": {
+                  "count": 494,
+                  "count_inventory": {
+                    "11": 1,
+                    "35": 1,
+                    "4": 70,
+                    "6": 24,
+                    "8": 3
+                  }
+                },
+                "indices": {
+                  "count": 906,
+                  "count_inventory": {
+                    "117": 1,
+                    "12": 24,
+                    "18": 3,
+                    "27": 1,
+                    "6": 70
+                  }
+                }
+              },
+              "primitives": 99,
+              "schema": {
+                "accessors": {
+                  "NORMAL": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "POSITION": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "TEXCOORD_0": {
+                    "componentType": 5126,
+                    "type": "VEC2"
+                  },
+                  "indices": {
+                    "componentType": 5123,
+                    "type": "SCALAR"
+                  }
+                },
+                "mode": 4
+              }
+            }
+          ]
+        }
+      ],
+      "nodes": [
+        {
+          "mesh": 0,
+          "rotation": [
+            -0.707106781,
+            0.000000000,
+            0.000000000,
+            0.707106781
+          ]
+        }
+      ],
+      "scene": 0,
+      "scenes": [
+        {
+          "nodes": [
+            0
+          ]
+        }
+      ]
+    },
+    "opengrid-tile/lite-backed-l-2x2.png": {
+      "dimensions": [
+        400,
+        400
+      ]
+    },
+    "opengrid-tile/lite-backed-l-2x2.stl": {
+      "bounds_mm": [
+        [
+          -28.000000000,
+          -28.000000000,
+          0.000000000
+        ],
+        [
+          28.000000000,
+          28.000000000,
+          5.000000000
+        ]
+      ],
+      "triangles": 302,
+      "vertices": 153,
+      "volume_mm3": 4255.308259859,
+      "watertight": true,
+      "winding_consistent": true
+    },
+    "opengrid-tile/lite.glb": {
+      "asset": {
+        "version": "2.0"
+      },
+      "meshes": [
+        {
+          "primitive_groups": [
+            {
+              "attributes": {
+                "NORMAL": {
+                  "count": 208,
+                  "count_inventory": {
+                    "16": 2,
+                    "4": 32,
+                    "6": 8
+                  }
+                },
+                "POSITION": {
+                  "count": 208,
+                  "count_inventory": {
+                    "16": 2,
+                    "4": 32,
+                    "6": 8
+                  },
+                  "max": [
+                    0.014000000,
+                    0.014000000,
+                    0.004000000
+                  ],
+                  "min": [
+                    -0.014000000,
+                    -0.014000000,
+                    0.000000000
+                  ]
+                },
+                "TEXCOORD_0": {
+                  "count": 208,
+                  "count_inventory": {
+                    "16": 2,
+                    "4": 32,
+                    "6": 8
+                  }
+                },
+                "indices": {
+                  "count": 384,
+                  "count_inventory": {
+                    "12": 8,
+                    "48": 2,
+                    "6": 32
+                  }
+                }
+              },
+              "primitives": 42,
+              "schema": {
+                "accessors": {
+                  "NORMAL": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "POSITION": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "TEXCOORD_0": {
+                    "componentType": 5126,
+                    "type": "VEC2"
+                  },
+                  "indices": {
+                    "componentType": 5123,
+                    "type": "SCALAR"
+                  }
+                },
+                "mode": 4
+              }
+            }
+          ]
+        }
+      ],
+      "nodes": [
+        {
+          "mesh": 0,
+          "rotation": [
+            -0.707106781,
+            0.000000000,
+            0.000000000,
+            0.707106781
+          ]
+        }
+      ],
+      "scene": 0,
+      "scenes": [
+        {
+          "nodes": [
+            0
+          ]
+        }
+      ]
+    },
+    "opengrid-tile/lite.png": {
+      "dimensions": [
+        400,
+        400
+      ]
+    },
+    "opengrid-tile/lite.stl": {
+      "bounds_mm": [
+        [
+          -14.000000000,
+          -14.000000000,
+          0.000000000
+        ],
+        [
+          14.000000000,
+          14.000000000,
+          4.000000000
+        ]
+      ],
+      "triangles": 128,
+      "vertices": 64,
+      "volume_mm3": 565.414916863,
+      "watertight": true,
+      "winding_consistent": true
+    },
+    "rack10-blank-panel/1u-solid.glb": {
+      "asset": {
+        "version": "2.0"
+      },
+      "meshes": [
+        {
+          "primitive_groups": [
+            {
+              "attributes": {
+                "NORMAL": {
+                  "count": 8196,
+                  "count_inventory": {
+                    "10": 2,
+                    "254": 6,
+                    "3": 4,
+                    "318": 12,
+                    "4": 29,
+                    "446": 2,
+                    "66": 4,
+                    "83": 8,
+                    "888": 1
+                  }
+                },
+                "POSITION": {
+                  "count": 8196,
+                  "count_inventory": {
+                    "10": 2,
+                    "254": 6,
+                    "3": 4,
+                    "318": 12,
+                    "4": 29,
+                    "446": 2,
+                    "66": 4,
+                    "83": 8,
+                    "888": 1
+                  },
+                  "max": [
+                    0.127000000,
+                    0.043650000,
+                    0.004000000
+                  ],
+                  "min": [
+                    -0.127000000,
+                    0.000000000,
+                    0.000000000
+                  ]
+                },
+                "TEXCOORD_0": {
+                  "count": 8196,
+                  "count_inventory": {
+                    "10": 2,
+                    "254": 6,
+                    "3": 4,
+                    "318": 12,
+                    "4": 29,
+                    "446": 2,
+                    "66": 4,
+                    "83": 8,
+                    "888": 1
+                  }
+                },
+                "indices": {
+                  "count": 26892,
+                  "count_inventory": {
+                    "1134": 12,
+                    "1350": 2,
+                    "192": 4,
+                    "24": 2,
+                    "2694": 1,
+                    "294": 8,
+                    "3": 4,
+                    "6": 29,
+                    "756": 6
+                  }
+                }
+              },
+              "primitives": 68,
+              "schema": {
+                "accessors": {
+                  "NORMAL": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "POSITION": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "TEXCOORD_0": {
+                    "componentType": 5126,
+                    "type": "VEC2"
+                  },
+                  "indices": {
+                    "componentType": 5123,
+                    "type": "SCALAR"
+                  }
+                },
+                "mode": 4
+              }
+            }
+          ]
+        }
+      ],
+      "nodes": [
+        {
+          "mesh": 0,
+          "rotation": [
+            -0.707106781,
+            0.000000000,
+            0.000000000,
+            0.707106781
+          ]
+        }
+      ],
+      "scene": 0,
+      "scenes": [
+        {
+          "nodes": [
+            0
+          ]
+        }
+      ]
+    },
+    "rack10-blank-panel/1u-solid.png": {
+      "dimensions": [
+        400,
+        400
+      ]
+    },
+    "rack10-blank-panel/1u-solid.stl": {
+      "bounds_mm": [
+        [
+          -127.000000000,
+          0.000000000,
+          0.000000000
+        ],
+        [
+          127.000000000,
+          43.650001526,
+          4.000000000
+        ]
+      ],
+      "triangles": 8964,
+      "vertices": 4472,
+      "volume_mm3": 33603.796243515,
+      "watertight": true,
+      "winding_consistent": true
+    },
+    "rack10-blank-panel/1u-vented.glb": {
+      "asset": {
+        "version": "2.0"
+      },
+      "meshes": [
+        {
+          "primitive_groups": [
+            {
+              "attributes": {
+                "NORMAL": {
+                  "count": 12676,
+                  "count_inventory": {
+                    "10": 2,
+                    "1208": 1,
+                    "254": 6,
+                    "3": 4,
+                    "318": 12,
+                    "324": 1,
+                    "4": 988,
+                    "446": 2,
+                    "66": 4,
+                    "83": 8
+                  }
+                },
+                "POSITION": {
+                  "count": 12676,
+                  "count_inventory": {
+                    "10": 2,
+                    "1208": 1,
+                    "254": 6,
+                    "3": 4,
+                    "318": 12,
+                    "324": 1,
+                    "4": 988,
+                    "446": 2,
+                    "66": 4,
+                    "83": 8
+                  },
+                  "max": [
+                    0.127000000,
+                    0.043650000,
+                    0.004000000
+                  ],
+                  "min": [
+                    -0.127000000,
+                    0.000000000,
+                    0.000000000
+                  ]
+                },
+                "TEXCOORD_0": {
+                  "count": 12676,
+                  "count_inventory": {
+                    "10": 2,
+                    "1208": 1,
+                    "254": 6,
+                    "3": 4,
+                    "318": 12,
+                    "324": 1,
+                    "4": 988,
+                    "446": 2,
+                    "66": 4,
+                    "83": 8
+                  }
+                },
+                "indices": {
+                  "count": 35052,
+                  "count_inventory": {
+                    "1134": 12,
+                    "1206": 1,
+                    "1350": 2,
+                    "192": 4,
+                    "24": 2,
+                    "294": 8,
+                    "3": 4,
+                    "3894": 1,
+                    "6": 988,
+                    "756": 6
+                  }
+                }
+              },
+              "primitives": 1028,
+              "schema": {
+                "accessors": {
+                  "NORMAL": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "POSITION": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "TEXCOORD_0": {
+                    "componentType": 5126,
+                    "type": "VEC2"
+                  },
+                  "indices": {
+                    "componentType": 5123,
+                    "type": "SCALAR"
+                  }
+                },
+                "mode": 4
+              }
+            }
+          ]
+        }
+      ],
+      "nodes": [
+        {
+          "mesh": 0,
+          "rotation": [
+            -0.707106781,
+            0.000000000,
+            0.000000000,
+            0.707106781
+          ]
+        }
+      ],
+      "scene": 0,
+      "scenes": [
+        {
+          "nodes": [
+            0
+          ]
+        }
+      ]
+    },
+    "rack10-blank-panel/1u-vented.png": {
+      "dimensions": [
+        400,
+        400
+      ]
+    },
+    "rack10-blank-panel/1u-vented.stl": {
+      "bounds_mm": [
+        [
+          -127.000000000,
+          0.000000000,
+          0.000000000
+        ],
+        [
+          127.000000000,
+          43.650001526,
+          4.000000000
+        ]
+      ],
+      "triangles": 11684,
+      "vertices": 5752,
+      "volume_mm3": 28568.812601993,
+      "watertight": true,
+      "winding_consistent": true
+    },
+    "rack10-blank-panel/2u-vented.glb": {
+      "asset": {
+        "version": "2.0"
+      },
+      "meshes": [
+        {
+          "primitive_groups": [
+            {
+              "attributes": {
+                "NORMAL": {
+                  "count": 28488,
+                  "count_inventory": {
+                    "10": 2,
+                    "254": 12,
+                    "2604": 1,
+                    "3": 4,
+                    "318": 24,
+                    "4": 2908,
+                    "66": 4,
+                    "824": 2,
+                    "83": 8,
+                    "964": 1
+                  }
+                },
+                "POSITION": {
+                  "count": 28488,
+                  "count_inventory": {
+                    "10": 2,
+                    "254": 12,
+                    "2604": 1,
+                    "3": 4,
+                    "318": 24,
+                    "4": 2908,
+                    "66": 4,
+                    "824": 2,
+                    "83": 8,
+                    "964": 1
+                  },
+                  "max": [
+                    0.127000000,
+                    0.088100000,
+                    0.004000000
+                  ],
+                  "min": [
+                    -0.127000000,
+                    0.000000000,
+                    0.000000000
+                  ]
+                },
+                "TEXCOORD_0": {
+                  "count": 28488,
+                  "count_inventory": {
+                    "10": 2,
+                    "254": 12,
+                    "2604": 1,
+                    "3": 4,
+                    "318": 24,
+                    "4": 2908,
+                    "66": 4,
+                    "824": 2,
+                    "83": 8,
+                    "964": 1
+                  }
+                },
+                "indices": {
+                  "count": 74124,
+                  "count_inventory": {
+                    "1134": 24,
+                    "192": 4,
+                    "24": 2,
+                    "2502": 2,
+                    "294": 8,
+                    "3": 4,
+                    "3606": 1,
+                    "6": 2908,
+                    "756": 12,
+                    "8598": 1
+                  }
+                }
+              },
+              "primitives": 2966,
+              "schema": {
+                "accessors": {
+                  "NORMAL": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "POSITION": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "TEXCOORD_0": {
+                    "componentType": 5126,
+                    "type": "VEC2"
+                  },
+                  "indices": {
+                    "componentType": 5123,
+                    "type": "SCALAR"
+                  }
+                },
+                "mode": 4
+              }
+            }
+          ]
+        }
+      ],
+      "nodes": [
+        {
+          "mesh": 0,
+          "rotation": [
+            -0.707106781,
+            0.000000000,
+            0.000000000,
+            0.707106781
+          ]
+        }
+      ],
+      "scene": 0,
+      "scenes": [
+        {
+          "nodes": [
+            0
+          ]
+        }
+      ]
+    },
+    "rack10-blank-panel/2u-vented.png": {
+      "dimensions": [
+        400,
+        400
+      ]
+    },
+    "rack10-blank-panel/2u-vented.stl": {
+      "bounds_mm": [
+        [
+          -127.000000000,
+          0.000000000,
+          0.000000000
+        ],
+        [
+          127.000000000,
+          88.099998474,
+          4.000000000
+        ]
+      ],
+      "triangles": 24708,
+      "vertices": 12092,
+      "volume_mm3": 53442.208740280,
+      "watertight": true,
+      "winding_consistent": true
+    },
+    "rack10-cradle/generic-3u.glb": {
+      "asset": {
+        "version": "2.0"
+      },
+      "meshes": [
+        {
+          "primitive_groups": [
+            {
+              "attributes": {
+                "NORMAL": {
+                  "count": 28856,
+                  "count_inventory": {
+                    "10": 1,
+                    "1202": 2,
+                    "15": 14,
+                    "16": 1,
+                    "17": 2,
+                    "2470": 1,
+                    "254": 18,
+                    "3": 14,
+                    "318": 36,
+                    "38": 2,
+                    "4": 1312,
+                    "428": 1,
+                    "432": 1,
+                    "66": 6,
+                    "7": 2,
+                    "83": 8,
+                    "98": 4
+                  }
+                },
+                "POSITION": {
+                  "count": 28856,
+                  "count_inventory": {
+                    "10": 1,
+                    "1202": 2,
+                    "15": 14,
+                    "16": 1,
+                    "17": 2,
+                    "2470": 1,
+                    "254": 18,
+                    "3": 14,
+                    "318": 36,
+                    "38": 2,
+                    "4": 1312,
+                    "428": 1,
+                    "432": 1,
+                    "66": 6,
+                    "7": 2,
+                    "83": 8,
+                    "98": 4
+                  },
+                  "max": [
+                    0.127000000,
+                    0.132550000,
+                    0.167000000
+                  ],
+                  "min": [
+                    -0.127000000,
+                    0.000000000,
+                    0.000000000
+                  ]
+                },
+                "TEXCOORD_0": {
+                  "count": 28856,
+                  "count_inventory": {
+                    "10": 1,
+                    "1202": 2,
+                    "15": 14,
+                    "16": 1,
+                    "17": 2,
+                    "2470": 1,
+                    "254": 18,
+                    "3": 14,
+                    "318": 36,
+                    "38": 2,
+                    "4": 1312,
+                    "428": 1,
+                    "432": 1,
+                    "66": 6,
+                    "7": 2,
+                    "83": 8,
+                    "98": 4
+                  }
+                },
+                "indices": {
+                  "count": 86988,
+                  "count_inventory": {
+                    "108": 2,
+                    "1134": 36,
+                    "15": 2,
+                    "1626": 1,
+                    "1662": 1,
+                    "192": 6,
+                    "24": 1,
+                    "294": 8,
+                    "3": 14,
+                    "3654": 2,
+                    "384": 4,
+                    "42": 1,
+                    "6": 1312,
+                    "72": 14,
+                    "7518": 1,
+                    "756": 18,
+                    "84": 2
+                  }
+                }
+              },
+              "primitives": 1425,
+              "schema": {
+                "accessors": {
+                  "NORMAL": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "POSITION": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "TEXCOORD_0": {
+                    "componentType": 5126,
+                    "type": "VEC2"
+                  },
+                  "indices": {
+                    "componentType": 5123,
+                    "type": "SCALAR"
+                  }
+                },
+                "mode": 4
+              }
+            }
+          ]
+        }
+      ],
+      "nodes": [
+        {
+          "mesh": 0,
+          "rotation": [
+            -0.707106781,
+            0.000000000,
+            0.000000000,
+            0.707106781
+          ]
+        }
+      ],
+      "scene": 0,
+      "scenes": [
+        {
+          "nodes": [
+            0
+          ]
+        }
+      ]
+    },
+    "rack10-cradle/generic-3u.png": {
+      "dimensions": [
+        400,
+        400
+      ]
+    },
+    "rack10-cradle/generic-3u.stl": {
+      "bounds_mm": [
+        [
+          -127.000000000,
+          0.000000000,
+          0.000000000
+        ],
+        [
+          127.000000000,
+          132.550003052,
+          167.000000000
+        ]
+      ],
+      "triangles": 28996,
+      "vertices": 14346,
+      "volume_mm3": 314760.609968353,
+      "watertight": true,
+      "winding_consistent": true
+    },
+    "rack10-cradle/steam-machine.glb": {
+      "asset": {
+        "version": "2.0"
+      },
+      "meshes": [
+        {
+          "primitive_groups": [
+            {
+              "attributes": {
+                "NORMAL": {
+                  "count": 35410,
+                  "count_inventory": {
+                    "10": 1,
+                    "15": 16,
+                    "1580": 2,
+                    "16": 1,
+                    "254": 24,
+                    "3": 14,
+                    "318": 48,
+                    "3226": 1,
+                    "38": 2,
+                    "4": 1249,
+                    "407": 1,
+                    "411": 1,
+                    "66": 6,
+                    "7": 2,
+                    "83": 8,
+                    "98": 4
+                  }
+                },
+                "POSITION": {
+                  "count": 35410,
+                  "count_inventory": {
+                    "10": 1,
+                    "15": 16,
+                    "1580": 2,
+                    "16": 1,
+                    "254": 24,
+                    "3": 14,
+                    "318": 48,
+                    "3226": 1,
+                    "38": 2,
+                    "4": 1249,
+                    "407": 1,
+                    "411": 1,
+                    "66": 6,
+                    "7": 2,
+                    "83": 8,
+                    "98": 4
+                  },
+                  "max": [
+                    0.127000000,
+                    0.177000000,
+                    0.169400000
+                  ],
+                  "min": [
+                    -0.127000000,
+                    0.000000000,
+                    0.000000000
+                  ]
+                },
+                "TEXCOORD_0": {
+                  "count": 35410,
+                  "count_inventory": {
+                    "10": 1,
+                    "15": 16,
+                    "1580": 2,
+                    "16": 1,
+                    "254": 24,
+                    "3": 14,
+                    "318": 48,
+                    "3226": 1,
+                    "38": 2,
+                    "4": 1249,
+                    "407": 1,
+                    "411": 1,
+                    "66": 6,
+                    "7": 2,
+                    "83": 8,
+                    "98": 4
+                  }
+                },
+                "indices": {
+                  "count": 109176,
+                  "count_inventory": {
+                    "108": 2,
+                    "1134": 48,
+                    "15": 2,
+                    "1545": 1,
+                    "1581": 1,
+                    "192": 6,
+                    "24": 1,
+                    "294": 8,
+                    "3": 14,
+                    "384": 4,
+                    "42": 1,
+                    "4806": 2,
+                    "6": 1249,
+                    "72": 16,
+                    "756": 24,
+                    "9822": 1
+                  }
+                }
+              },
+              "primitives": 1380,
+              "schema": {
+                "accessors": {
+                  "NORMAL": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "POSITION": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "TEXCOORD_0": {
+                    "componentType": 5126,
+                    "type": "VEC2"
+                  },
+                  "indices": {
+                    "componentType": 5123,
+                    "type": "SCALAR"
+                  }
+                },
+                "mode": 4
+              }
+            }
+          ]
+        }
+      ],
+      "nodes": [
+        {
+          "mesh": 0,
+          "rotation": [
+            -0.707106781,
+            0.000000000,
+            0.000000000,
+            0.707106781
+          ]
+        }
+      ],
+      "scene": 0,
+      "scenes": [
+        {
+          "nodes": [
+            0
+          ]
+        }
+      ]
+    },
+    "rack10-cradle/steam-machine.png": {
+      "dimensions": [
+        400,
+        400
+      ]
+    },
+    "rack10-cradle/steam-machine.stl": {
+      "bounds_mm": [
+        [
+          -127.000000000,
+          0.000000000,
+          0.000000000
+        ],
+        [
+          127.000000000,
+          177.000000000,
+          169.399993896
+        ]
+      ],
+      "triangles": 36392,
+      "vertices": 18038,
+      "volume_mm3": 324957.863909862,
+      "watertight": true,
+      "winding_consistent": true
+    },
+    "rack10-ears/usw-lite-16.glb": {
+      "asset": {
+        "version": "2.0"
+      },
+      "meshes": [
+        {
+          "primitive_groups": [
+            {
+              "attributes": {
+                "NORMAL": {
+                  "count": 16164,
+                  "count_inventory": {
+                    "10": 1,
+                    "16": 1,
+                    "1714": 1,
+                    "254": 12,
+                    "3": 14,
+                    "30": 1,
+                    "318": 24,
+                    "38": 2,
+                    "4": 110,
+                    "42": 1,
+                    "66": 6,
+                    "7": 2,
+                    "824": 2,
+                    "83": 8,
+                    "98": 4
+                  }
+                },
+                "POSITION": {
+                  "count": 16164,
+                  "count_inventory": {
+                    "10": 1,
+                    "16": 1,
+                    "1714": 1,
+                    "254": 12,
+                    "3": 14,
+                    "30": 1,
+                    "318": 24,
+                    "38": 2,
+                    "4": 110,
+                    "42": 1,
+                    "66": 6,
+                    "7": 2,
+                    "824": 2,
+                    "83": 8,
+                    "98": 4
+                  },
+                  "max": [
+                    0.127000000,
+                    0.088100000,
+                    0.190000000
+                  ],
+                  "min": [
+                    -0.127000000,
+                    0.000000000,
+                    0.000000000
+                  ]
+                },
+                "TEXCOORD_0": {
+                  "count": 16164,
+                  "count_inventory": {
+                    "10": 1,
+                    "16": 1,
+                    "1714": 1,
+                    "254": 12,
+                    "3": 14,
+                    "30": 1,
+                    "318": 24,
+                    "38": 2,
+                    "4": 110,
+                    "42": 1,
+                    "66": 6,
+                    "7": 2,
+                    "824": 2,
+                    "83": 8,
+                    "98": 4
+                  }
+                },
+                "indices": {
+                  "count": 52812,
+                  "count_inventory": {
+                    "108": 3,
+                    "1134": 24,
+                    "144": 1,
+                    "15": 2,
+                    "192": 6,
+                    "24": 1,
+                    "2502": 2,
+                    "294": 8,
+                    "3": 14,
+                    "384": 4,
+                    "42": 1,
+                    "5214": 1,
+                    "6": 110,
+                    "756": 12
+                  }
+                }
+              },
+              "primitives": 189,
+              "schema": {
+                "accessors": {
+                  "NORMAL": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "POSITION": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "TEXCOORD_0": {
+                    "componentType": 5126,
+                    "type": "VEC2"
+                  },
+                  "indices": {
+                    "componentType": 5123,
+                    "type": "SCALAR"
+                  }
+                },
+                "mode": 4
+              }
+            }
+          ]
+        }
+      ],
+      "nodes": [
+        {
+          "mesh": 0,
+          "rotation": [
+            -0.707106781,
+            0.000000000,
+            0.000000000,
+            0.707106781
+          ]
+        }
+      ],
+      "scene": 0,
+      "scenes": [
+        {
+          "nodes": [
+            0
+          ]
+        }
+      ]
+    },
+    "rack10-ears/usw-lite-16.png": {
+      "dimensions": [
+        400,
+        400
+      ]
+    },
+    "rack10-ears/usw-lite-16.stl": {
+      "bounds_mm": [
+        [
+          -127.000000000,
+          0.000000000,
+          0.000000000
+        ],
+        [
+          127.000000000,
+          88.099998474,
+          190.000000000
+        ]
+      ],
+      "triangles": 17604,
+      "vertices": 8770,
+      "volume_mm3": 367302.351319147,
+      "watertight": true,
+      "winding_consistent": true
+    },
+    "rack10-ears/wide-box-210.glb": {
+      "asset": {
+        "version": "2.0"
+      },
+      "meshes": [
+        {
+          "primitive_groups": [
+            {
+              "attributes": {
+                "NORMAL": {
+                  "count": 9312,
+                  "count_inventory": {
+                    "10": 1,
+                    "16": 1,
+                    "254": 6,
+                    "3": 14,
+                    "30": 1,
+                    "318": 12,
+                    "38": 2,
+                    "4": 110,
+                    "42": 1,
+                    "446": 2,
+                    "66": 6,
+                    "7": 2,
+                    "83": 8,
+                    "958": 1,
+                    "98": 4
+                  }
+                },
+                "POSITION": {
+                  "count": 9312,
+                  "count_inventory": {
+                    "10": 1,
+                    "16": 1,
+                    "254": 6,
+                    "3": 14,
+                    "30": 1,
+                    "318": 12,
+                    "38": 2,
+                    "4": 110,
+                    "42": 1,
+                    "446": 2,
+                    "66": 6,
+                    "7": 2,
+                    "83": 8,
+                    "958": 1,
+                    "98": 4
+                  },
+                  "max": [
+                    0.127000000,
+                    0.043650000,
+                    0.175000000
+                  ],
+                  "min": [
+                    -0.127000000,
+                    0.000000000,
+                    0.000000000
+                  ]
+                },
+                "TEXCOORD_0": {
+                  "count": 9312,
+                  "count_inventory": {
+                    "10": 1,
+                    "16": 1,
+                    "254": 6,
+                    "3": 14,
+                    "30": 1,
+                    "318": 12,
+                    "38": 2,
+                    "4": 110,
+                    "42": 1,
+                    "446": 2,
+                    "66": 6,
+                    "7": 2,
+                    "83": 8,
+                    "958": 1,
+                    "98": 4
+                  }
+                },
+                "indices": {
+                  "count": 30060,
+                  "count_inventory": {
+                    "108": 3,
+                    "1134": 12,
+                    "1350": 2,
+                    "144": 1,
+                    "15": 2,
+                    "192": 6,
+                    "24": 1,
+                    "2910": 1,
+                    "294": 8,
+                    "3": 14,
+                    "384": 4,
+                    "42": 1,
+                    "6": 110,
+                    "756": 6
+                  }
+                }
+              },
+              "primitives": 171,
+              "schema": {
+                "accessors": {
+                  "NORMAL": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "POSITION": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "TEXCOORD_0": {
+                    "componentType": 5126,
+                    "type": "VEC2"
+                  },
+                  "indices": {
+                    "componentType": 5123,
+                    "type": "SCALAR"
+                  }
+                },
+                "mode": 4
+              }
+            }
+          ]
+        }
+      ],
+      "nodes": [
+        {
+          "mesh": 0,
+          "rotation": [
+            -0.707106781,
+            0.000000000,
+            0.000000000,
+            0.707106781
+          ]
+        }
+      ],
+      "scene": 0,
+      "scenes": [
+        {
+          "nodes": [
+            0
+          ]
+        }
+      ]
+    },
+    "rack10-ears/wide-box-210.png": {
+      "dimensions": [
+        400,
+        400
+      ]
+    },
+    "rack10-ears/wide-box-210.stl": {
+      "bounds_mm": [
+        [
+          -127.000000000,
+          0.000000000,
+          0.000000000
+        ],
+        [
+          127.000000000,
+          43.650001526,
+          175.000000000
+        ]
+      ],
+      "triangles": 10020,
+      "vertices": 4990,
+      "volume_mm3": 357288.719604052,
+      "watertight": true,
+      "winding_consistent": true
+    },
+    "rack10-hub-tray/caseta-aqara-m3.glb": {
+      "asset": {
+        "version": "2.0"
+      },
+      "meshes": [
+        {
+          "primitive_groups": [
+            {
+              "attributes": {
+                "NORMAL": {
+                  "count": 11635,
+                  "count_inventory": {
+                    "10": 2,
+                    "108": 1,
+                    "147": 2,
+                    "148": 1,
+                    "150": 5,
+                    "16": 1,
+                    "21": 4,
+                    "254": 6,
+                    "3": 66,
+                    "318": 12,
+                    "4": 400,
+                    "446": 2,
+                    "52": 3,
+                    "55": 2,
+                    "61": 1,
+                    "66": 4,
+                    "7": 4,
+                    "83": 8,
+                    "902": 1
+                  }
+                },
+                "POSITION": {
+                  "count": 11635,
+                  "count_inventory": {
+                    "10": 2,
+                    "108": 1,
+                    "147": 2,
+                    "148": 1,
+                    "150": 5,
+                    "16": 1,
+                    "21": 4,
+                    "254": 6,
+                    "3": 66,
+                    "318": 12,
+                    "4": 400,
+                    "446": 2,
+                    "52": 3,
+                    "55": 2,
+                    "61": 1,
+                    "66": 4,
+                    "7": 4,
+                    "83": 8,
+                    "902": 1
+                  },
+                  "max": [
+                    0.127000000,
+                    0.043650000,
+                    0.142000000
+                  ],
+                  "min": [
+                    -0.127000000,
+                    0.000000000,
+                    0.000000000
+                  ]
+                },
+                "TEXCOORD_0": {
+                  "count": 11635,
+                  "count_inventory": {
+                    "10": 2,
+                    "108": 1,
+                    "147": 2,
+                    "148": 1,
+                    "150": 5,
+                    "16": 1,
+                    "21": 4,
+                    "254": 6,
+                    "3": 66,
+                    "318": 12,
+                    "4": 400,
+                    "446": 2,
+                    "52": 3,
+                    "55": 2,
+                    "61": 1,
+                    "66": 4,
+                    "7": 4,
+                    "83": 8,
+                    "902": 1
+                  }
+                },
+                "indices": {
+                  "count": 38790,
+                  "count_inventory": {
+                    "108": 4,
+                    "1134": 12,
+                    "1350": 2,
+                    "15": 4,
+                    "177": 1,
+                    "192": 4,
+                    "195": 1,
+                    "24": 2,
+                    "2742": 1,
+                    "294": 11,
+                    "3": 66,
+                    "312": 1,
+                    "330": 1,
+                    "42": 1,
+                    "6": 400,
+                    "756": 6,
+                    "864": 2,
+                    "870": 1,
+                    "882": 5
+                  }
+                }
+              },
+              "primitives": 525,
+              "schema": {
+                "accessors": {
+                  "NORMAL": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "POSITION": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "TEXCOORD_0": {
+                    "componentType": 5126,
+                    "type": "VEC2"
+                  },
+                  "indices": {
+                    "componentType": 5123,
+                    "type": "SCALAR"
+                  }
+                },
+                "mode": 4
+              }
+            }
+          ]
+        }
+      ],
+      "nodes": [
+        {
+          "mesh": 0,
+          "rotation": [
+            -0.707106781,
+            0.000000000,
+            0.000000000,
+            0.707106781
+          ]
+        }
+      ],
+      "scene": 0,
+      "scenes": [
+        {
+          "nodes": [
+            0
+          ]
+        }
+      ]
+    },
+    "rack10-hub-tray/caseta-aqara-m3.png": {
+      "dimensions": [
+        400,
+        400
+      ]
+    },
+    "rack10-hub-tray/caseta-aqara-m3.stl": {
+      "bounds_mm": [
+        [
+          -127.000000000,
+          0.000000000,
+          0.000000000
+        ],
+        [
+          127.000000000,
+          43.650001526,
+          142.000000000
+        ]
+      ],
+      "triangles": 12930,
+      "vertices": 6449,
+      "volume_mm3": 128779.330016477,
+      "watertight": true,
+      "winding_consistent": true
+    },
+    "rack10-keystone-panel/1u-6-keystones.glb": {
+      "asset": {
+        "version": "2.0"
+      },
+      "meshes": [
+        {
+          "primitive_groups": [
+            {
+              "attributes": {
+                "NORMAL": {
+                  "count": 8580,
+                  "count_inventory": {
+                    "10": 2,
+                    "254": 6,
+                    "28": 1,
+                    "3": 4,
+                    "318": 12,
+                    "4": 88,
+                    "446": 2,
+                    "66": 4,
+                    "8": 12,
+                    "83": 8,
+                    "912": 1
+                  }
+                },
+                "POSITION": {
+                  "count": 8580,
+                  "count_inventory": {
+                    "10": 2,
+                    "254": 6,
+                    "28": 1,
+                    "3": 4,
+                    "318": 12,
+                    "4": 88,
+                    "446": 2,
+                    "66": 4,
+                    "8": 12,
+                    "83": 8,
+                    "912": 1
+                  },
+                  "max": [
+                    0.127000000,
+                    0.043650000,
+                    0.004000000
+                  ],
+                  "min": [
+                    -0.127000000,
+                    0.000000000,
+                    0.000000000
+                  ]
+                },
+                "TEXCOORD_0": {
+                  "count": 8580,
+                  "count_inventory": {
+                    "10": 2,
+                    "254": 6,
+                    "28": 1,
+                    "3": 4,
+                    "318": 12,
+                    "4": 88,
+                    "446": 2,
+                    "66": 4,
+                    "8": 12,
+                    "83": 8,
+                    "912": 1
+                  }
+                },
+                "indices": {
+                  "count": 27684,
+                  "count_inventory": {
+                    "1134": 12,
+                    "114": 1,
+                    "1350": 2,
+                    "18": 12,
+                    "192": 4,
+                    "24": 2,
+                    "2802": 1,
+                    "294": 8,
+                    "3": 4,
+                    "6": 88,
+                    "756": 6
+                  }
+                }
+              },
+              "primitives": 140,
+              "schema": {
+                "accessors": {
+                  "NORMAL": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "POSITION": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "TEXCOORD_0": {
+                    "componentType": 5126,
+                    "type": "VEC2"
+                  },
+                  "indices": {
+                    "componentType": 5123,
+                    "type": "SCALAR"
+                  }
+                },
+                "mode": 4
+              }
+            }
+          ]
+        }
+      ],
+      "nodes": [
+        {
+          "mesh": 0,
+          "rotation": [
+            -0.707106781,
+            0.000000000,
+            0.000000000,
+            0.707106781
+          ]
+        }
+      ],
+      "scene": 0,
+      "scenes": [
+        {
+          "nodes": [
+            0
+          ]
+        }
+      ]
+    },
+    "rack10-keystone-panel/1u-6-keystones.png": {
+      "dimensions": [
+        400,
+        400
+      ]
+    },
+    "rack10-keystone-panel/1u-6-keystones.stl": {
+      "bounds_mm": [
+        [
+          -127.000000000,
+          0.000000000,
+          0.000000000
+        ],
+        [
+          127.000000000,
+          43.650001526,
+          4.000000000
+        ]
+      ],
+      "triangles": 9228,
+      "vertices": 4592,
+      "volume_mm3": 29271.910111371,
+      "watertight": true,
+      "winding_consistent": true
+    },
+    "rack10-keystone-panel/1u-max.glb": {
+      "asset": {
+        "version": "2.0"
+      },
+      "meshes": [
+        {
+          "primitive_groups": [
+            {
+              "attributes": {
+                "NORMAL": {
+                  "count": 8900,
+                  "count_inventory": {
+                    "10": 2,
+                    "254": 6,
+                    "3": 4,
+                    "318": 12,
+                    "4": 138,
+                    "446": 2,
+                    "48": 1,
+                    "66": 4,
+                    "8": 22,
+                    "83": 8,
+                    "932": 1
+                  }
+                },
+                "POSITION": {
+                  "count": 8900,
+                  "count_inventory": {
+                    "10": 2,
+                    "254": 6,
+                    "3": 4,
+                    "318": 12,
+                    "4": 138,
+                    "446": 2,
+                    "48": 1,
+                    "66": 4,
+                    "8": 22,
+                    "83": 8,
+                    "932": 1
+                  },
+                  "max": [
+                    0.127000000,
+                    0.043650000,
+                    0.004000000
+                  ],
+                  "min": [
+                    -0.127000000,
+                    0.000000000,
+                    0.000000000
+                  ]
+                },
+                "TEXCOORD_0": {
+                  "count": 8900,
+                  "count_inventory": {
+                    "10": 2,
+                    "254": 6,
+                    "3": 4,
+                    "318": 12,
+                    "4": 138,
+                    "446": 2,
+                    "48": 1,
+                    "66": 4,
+                    "8": 22,
+                    "83": 8,
+                    "932": 1
+                  }
+                },
+                "indices": {
+                  "count": 28344,
+                  "count_inventory": {
+                    "1134": 12,
+                    "1350": 2,
+                    "18": 22,
+                    "192": 4,
+                    "204": 1,
+                    "24": 2,
+                    "2892": 1,
+                    "294": 8,
+                    "3": 4,
+                    "6": 138,
+                    "756": 6
+                  }
+                }
+              },
+              "primitives": 200,
+              "schema": {
+                "accessors": {
+                  "NORMAL": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "POSITION": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "TEXCOORD_0": {
+                    "componentType": 5126,
+                    "type": "VEC2"
+                  },
+                  "indices": {
+                    "componentType": 5123,
+                    "type": "SCALAR"
+                  }
+                },
+                "mode": 4
+              }
+            }
+          ]
+        }
+      ],
+      "nodes": [
+        {
+          "mesh": 0,
+          "rotation": [
+            -0.707106781,
+            0.000000000,
+            0.000000000,
+            0.707106781
+          ]
+        }
+      ],
+      "scene": 0,
+      "scenes": [
+        {
+          "nodes": [
+            0
+          ]
+        }
+      ]
+    },
+    "rack10-keystone-panel/1u-max.png": {
+      "dimensions": [
+        400,
+        400
+      ]
+    },
+    "rack10-keystone-panel/1u-max.stl": {
+      "bounds_mm": [
+        [
+          -127.000000000,
+          0.000000000,
+          0.000000000
+        ],
+        [
+          127.000000000,
+          43.650001526,
+          4.000000000
+        ]
+      ],
+      "triangles": 9448,
+      "vertices": 4692,
+      "volume_mm3": 25662.004904477,
+      "watertight": true,
+      "winding_consistent": true
+    },
+    "rack10-rail-strip/15u.glb": {
+      "asset": {
+        "version": "2.0"
+      },
+      "meshes": [
+        {
+          "primitive_groups": [
+            {
+              "attributes": {
+                "NORMAL": {
+                  "count": 27314,
+                  "count_inventory": {
+                    "10": 1,
+                    "1894": 1,
+                    "2004": 1,
+                    "254": 45,
+                    "3": 66,
+                    "318": 15,
+                    "382": 15,
+                    "4": 316,
+                    "7": 2
+                  }
+                },
+                "POSITION": {
+                  "count": 27314,
+                  "count_inventory": {
+                    "10": 1,
+                    "1894": 1,
+                    "2004": 1,
+                    "254": 45,
+                    "3": 66,
+                    "318": 15,
+                    "382": 15,
+                    "4": 316,
+                    "7": 2
+                  },
+                  "max": [
+                    0.031000000,
+                    0.225000000,
+                    0.026800000
+                  ],
+                  "min": [
+                    0.000000000,
+                    0.000000000,
+                    0.000000000
+                  ]
+                },
+                "TEXCOORD_0": {
+                  "count": 27314,
+                  "count_inventory": {
+                    "10": 1,
+                    "1894": 1,
+                    "2004": 1,
+                    "254": 45,
+                    "3": 66,
+                    "318": 15,
+                    "382": 15,
+                    "4": 316,
+                    "7": 2
+                  }
+                },
+                "indices": {
+                  "count": 87798,
+                  "count_inventory": {
+                    "1134": 15,
+                    "15": 2,
+                    "1512": 15,
+                    "24": 1,
+                    "3": 66,
+                    "5766": 1,
+                    "6": 316,
+                    "6174": 1,
+                    "756": 45
+                  }
+                }
+              },
+              "primitives": 462,
+              "schema": {
+                "accessors": {
+                  "NORMAL": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "POSITION": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "TEXCOORD_0": {
+                    "componentType": 5126,
+                    "type": "VEC2"
+                  },
+                  "indices": {
+                    "componentType": 5123,
+                    "type": "SCALAR"
+                  }
+                },
+                "mode": 4
+              }
+            }
+          ]
+        }
+      ],
+      "nodes": [
+        {
+          "mesh": 0,
+          "rotation": [
+            -0.707106781,
+            0.000000000,
+            0.000000000,
+            0.707106781
+          ]
+        }
+      ],
+      "scene": 0,
+      "scenes": [
+        {
+          "nodes": [
+            0
+          ]
+        }
+      ]
+    },
+    "rack10-rail-strip/15u.png": {
+      "dimensions": [
+        400,
+        400
+      ]
+    },
+    "rack10-rail-strip/15u.stl": {
+      "bounds_mm": [
+        [
+          0.000000000,
+          0.000000000,
+          0.000000000
+        ],
+        [
+          31.000000000,
+          225.000000000,
+          26.799999237
+        ]
+      ],
+      "triangles": 29266,
+      "vertices": 14605,
+      "volume_mm3": 76617.015718352,
+      "watertight": true,
+      "winding_consistent": true
+    },
+    "rack10-rail-strip/18u.glb": {
+      "asset": {
+        "version": "2.0"
+      },
+      "meshes": [
+        {
+          "primitive_groups": [
+            {
+              "attributes": {
+                "NORMAL": {
+                  "count": 32768,
+                  "count_inventory": {
+                    "10": 1,
+                    "2272": 1,
+                    "2406": 1,
+                    "254": 54,
+                    "3": 78,
+                    "318": 18,
+                    "382": 18,
+                    "4": 379,
+                    "7": 2
+                  }
+                },
+                "POSITION": {
+                  "count": 32768,
+                  "count_inventory": {
+                    "10": 1,
+                    "2272": 1,
+                    "2406": 1,
+                    "254": 54,
+                    "3": 78,
+                    "318": 18,
+                    "382": 18,
+                    "4": 379,
+                    "7": 2
+                  },
+                  "max": [
+                    0.031000000,
+                    0.270000000,
+                    0.026800000
+                  ],
+                  "min": [
+                    0.000000000,
+                    0.000000000,
+                    0.000000000
+                  ]
+                },
+                "TEXCOORD_0": {
+                  "count": 32768,
+                  "count_inventory": {
+                    "10": 1,
+                    "2272": 1,
+                    "2406": 1,
+                    "254": 54,
+                    "3": 78,
+                    "318": 18,
+                    "382": 18,
+                    "4": 379,
+                    "7": 2
+                  }
+                },
+                "indices": {
+                  "count": 105348,
+                  "count_inventory": {
+                    "1134": 18,
+                    "15": 2,
+                    "1512": 18,
+                    "24": 1,
+                    "3": 78,
+                    "6": 379,
+                    "6918": 1,
+                    "7416": 1,
+                    "756": 54
+                  }
+                }
+              },
+              "primitives": 552,
+              "schema": {
+                "accessors": {
+                  "NORMAL": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "POSITION": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "TEXCOORD_0": {
+                    "componentType": 5126,
+                    "type": "VEC2"
+                  },
+                  "indices": {
+                    "componentType": 5123,
+                    "type": "SCALAR"
+                  }
+                },
+                "mode": 4
+              }
+            }
+          ]
+        }
+      ],
+      "nodes": [
+        {
+          "mesh": 0,
+          "rotation": [
+            -0.707106781,
+            0.000000000,
+            0.000000000,
+            0.707106781
+          ]
+        }
+      ],
+      "scene": 0,
+      "scenes": [
+        {
+          "nodes": [
+            0
+          ]
+        }
+      ]
+    },
+    "rack10-rail-strip/18u.png": {
+      "dimensions": [
+        400,
+        400
+      ]
+    },
+    "rack10-rail-strip/18u.stl": {
+      "bounds_mm": [
+        [
+          0.000000000,
+          0.000000000,
+          0.000000000
+        ],
+        [
+          31.000000000,
+          270.000000000,
+          26.799999237
+        ]
+      ],
+      "triangles": 35116,
+      "vertices": 17524,
+      "volume_mm3": 92281.923682923,
+      "watertight": true,
+      "winding_consistent": true
+    },
+    "rack10-rail-strip/coupon.glb": {
+      "asset": {
+        "version": "2.0"
+      },
+      "meshes": [
+        {
+          "primitive_groups": [
+            {
+              "attributes": {
+                "NORMAL": {
+                  "count": 5706,
+                  "count_inventory": {
+                    "10": 1,
+                    "254": 9,
+                    "3": 26,
+                    "318": 3,
+                    "382": 4,
+                    "4": 106,
+                    "412": 1,
+                    "7": 2
+                  }
+                },
+                "POSITION": {
+                  "count": 5706,
+                  "count_inventory": {
+                    "10": 1,
+                    "254": 9,
+                    "3": 26,
+                    "318": 3,
+                    "382": 4,
+                    "4": 106,
+                    "412": 1,
+                    "7": 2
+                  },
+                  "max": [
+                    0.031000000,
+                    0.075000000,
+                    0.026800000
+                  ],
+                  "min": [
+                    0.000000000,
+                    0.000000000,
+                    0.000000000
+                  ]
+                },
+                "TEXCOORD_0": {
+                  "count": 5706,
+                  "count_inventory": {
+                    "10": 1,
+                    "254": 9,
+                    "3": 26,
+                    "318": 3,
+                    "382": 4,
+                    "4": 106,
+                    "412": 1,
+                    "7": 2
+                  }
+                },
+                "indices": {
+                  "count": 17934,
+                  "count_inventory": {
+                    "1134": 3,
+                    "1158": 1,
+                    "1266": 1,
+                    "15": 2,
+                    "1512": 3,
+                    "24": 1,
+                    "3": 26,
+                    "6": 106,
+                    "756": 9
+                  }
+                }
+              },
+              "primitives": 152,
+              "schema": {
+                "accessors": {
+                  "NORMAL": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "POSITION": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "TEXCOORD_0": {
+                    "componentType": 5126,
+                    "type": "VEC2"
+                  },
+                  "indices": {
+                    "componentType": 5123,
+                    "type": "SCALAR"
+                  }
+                },
+                "mode": 4
+              }
+            }
+          ]
+        }
+      ],
+      "nodes": [
+        {
+          "mesh": 0,
+          "rotation": [
+            -0.707106781,
+            0.000000000,
+            0.000000000,
+            0.707106781
+          ]
+        }
+      ],
+      "scene": 0,
+      "scenes": [
+        {
+          "nodes": [
+            0
+          ]
+        }
+      ]
+    },
+    "rack10-rail-strip/coupon.png": {
+      "dimensions": [
+        400,
+        400
+      ]
+    },
+    "rack10-rail-strip/coupon.stl": {
+      "bounds_mm": [
+        [
+          0.000000000,
+          0.000000000,
+          0.000000000
+        ],
+        [
+          31.000000000,
+          75.000000000,
+          26.799999237
+        ]
+      ],
+      "triangles": 5978,
+      "vertices": 2985,
+      "volume_mm3": 25534.148008045,
+      "watertight": true,
+      "winding_consistent": true
+    },
+    "rack10-shelf/2u-plain.glb": {
+      "asset": {
+        "version": "2.0"
+      },
+      "meshes": [
+        {
+          "primitive_groups": [
+            {
+              "attributes": {
+                "NORMAL": {
+                  "count": 20576,
+                  "count_inventory": {
+                    "148": 4,
+                    "15": 14,
+                    "1650": 1,
+                    "17": 2,
+                    "254": 12,
+                    "3": 16,
+                    "318": 24,
+                    "324": 1,
+                    "354": 1,
+                    "4": 1017,
+                    "5": 4,
+                    "66": 4,
+                    "7": 2,
+                    "827": 2,
+                    "83": 8
+                  }
+                },
+                "POSITION": {
+                  "count": 20576,
+                  "count_inventory": {
+                    "148": 4,
+                    "15": 14,
+                    "1650": 1,
+                    "17": 2,
+                    "254": 12,
+                    "3": 16,
+                    "318": 24,
+                    "324": 1,
+                    "354": 1,
+                    "4": 1017,
+                    "5": 4,
+                    "66": 4,
+                    "7": 2,
+                    "827": 2,
+                    "83": 8
+                  },
+                  "max": [
+                    0.127000000,
+                    0.088100000,
+                    0.199000000
+                  ],
+                  "min": [
+                    -0.127000000,
+                    0.000000000,
+                    0.000000000
+                  ]
+                },
+                "TEXCOORD_0": {
+                  "count": 20576,
+                  "count_inventory": {
+                    "148": 4,
+                    "15": 14,
+                    "1650": 1,
+                    "17": 2,
+                    "254": 12,
+                    "3": 16,
+                    "318": 24,
+                    "324": 1,
+                    "354": 1,
+                    "4": 1017,
+                    "5": 4,
+                    "66": 4,
+                    "7": 2,
+                    "827": 2,
+                    "83": 8
+                  }
+                },
+                "indices": {
+                  "count": 62916,
+                  "count_inventory": {
+                    "1134": 24,
+                    "12": 4,
+                    "1230": 1,
+                    "1356": 1,
+                    "15": 2,
+                    "192": 4,
+                    "2511": 2,
+                    "294": 8,
+                    "3": 16,
+                    "5016": 1,
+                    "6": 1017,
+                    "72": 14,
+                    "756": 12,
+                    "84": 2,
+                    "870": 4
+                  }
+                }
+              },
+              "primitives": 1112,
+              "schema": {
+                "accessors": {
+                  "NORMAL": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "POSITION": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "TEXCOORD_0": {
+                    "componentType": 5126,
+                    "type": "VEC2"
+                  },
+                  "indices": {
+                    "componentType": 5123,
+                    "type": "SCALAR"
+                  }
+                },
+                "mode": 4
+              }
+            }
+          ]
+        }
+      ],
+      "nodes": [
+        {
+          "mesh": 0,
+          "rotation": [
+            -0.707106781,
+            0.000000000,
+            0.000000000,
+            0.707106781
+          ]
+        }
+      ],
+      "scene": 0,
+      "scenes": [
+        {
+          "nodes": [
+            0
+          ]
+        }
+      ]
+    },
+    "rack10-shelf/2u-plain.png": {
+      "dimensions": [
+        400,
+        400
+      ]
+    },
+    "rack10-shelf/2u-plain.stl": {
+      "bounds_mm": [
+        [
+          -127.000000000,
+          0.000000000,
+          0.000000000
+        ],
+        [
+          127.000000000,
+          88.099998474,
+          199.000000000
+        ]
+      ],
+      "triangles": 20972,
+      "vertices": 10376,
+      "volume_mm3": 626144.997353150,
+      "watertight": true,
+      "winding_consistent": true
+    },
+    "rack10-shelf/sonos-amp.glb": {
+      "asset": {
+        "version": "2.0"
+      },
+      "meshes": [
+        {
+          "primitive_groups": [
+            {
+              "attributes": {
+                "NORMAL": {
+                  "count": 23572,
+                  "count_inventory": {
+                    "148": 1,
+                    "15": 12,
+                    "150": 3,
+                    "1650": 1,
+                    "17": 4,
+                    "254": 12,
+                    "3": 14,
+                    "318": 24,
+                    "4": 1656,
+                    "5": 4,
+                    "541": 1,
+                    "559": 1,
+                    "66": 4,
+                    "7": 4,
+                    "827": 2,
+                    "83": 8
+                  }
+                },
+                "POSITION": {
+                  "count": 23572,
+                  "count_inventory": {
+                    "148": 1,
+                    "15": 12,
+                    "150": 3,
+                    "1650": 1,
+                    "17": 4,
+                    "254": 12,
+                    "3": 14,
+                    "318": 24,
+                    "4": 1656,
+                    "5": 4,
+                    "541": 1,
+                    "559": 1,
+                    "66": 4,
+                    "7": 4,
+                    "827": 2,
+                    "83": 8
+                  },
+                  "max": [
+                    0.127000000,
+                    0.088100000,
+                    0.236000000
+                  ],
+                  "min": [
+                    -0.127000000,
+                    0.000000000,
+                    0.000000000
+                  ]
+                },
+                "TEXCOORD_0": {
+                  "count": 23572,
+                  "count_inventory": {
+                    "148": 1,
+                    "15": 12,
+                    "150": 3,
+                    "1650": 1,
+                    "17": 4,
+                    "254": 12,
+                    "3": 14,
+                    "318": 24,
+                    "4": 1656,
+                    "5": 4,
+                    "541": 1,
+                    "559": 1,
+                    "66": 4,
+                    "7": 4,
+                    "827": 2,
+                    "83": 8
+                  }
+                },
+                "indices": {
+                  "count": 68472,
+                  "count_inventory": {
+                    "1134": 24,
+                    "12": 4,
+                    "15": 4,
+                    "192": 4,
+                    "2067": 1,
+                    "2157": 1,
+                    "2511": 2,
+                    "294": 8,
+                    "3": 14,
+                    "5016": 1,
+                    "6": 1656,
+                    "72": 12,
+                    "756": 12,
+                    "84": 4,
+                    "870": 1,
+                    "882": 3
+                  }
+                }
+              },
+              "primitives": 1751,
+              "schema": {
+                "accessors": {
+                  "NORMAL": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "POSITION": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "TEXCOORD_0": {
+                    "componentType": 5126,
+                    "type": "VEC2"
+                  },
+                  "indices": {
+                    "componentType": 5123,
+                    "type": "SCALAR"
+                  }
+                },
+                "mode": 4
+              }
+            }
+          ]
+        }
+      ],
+      "nodes": [
+        {
+          "mesh": 0,
+          "rotation": [
+            -0.707106781,
+            0.000000000,
+            0.000000000,
+            0.707106781
+          ]
+        }
+      ],
+      "scene": 0,
+      "scenes": [
+        {
+          "nodes": [
+            0
+          ]
+        }
+      ]
+    },
+    "rack10-shelf/sonos-amp.png": {
+      "dimensions": [
+        400,
+        400
+      ]
+    },
+    "rack10-shelf/sonos-amp.stl": {
+      "bounds_mm": [
+        [
+          -127.000000000,
+          0.000000000,
+          0.000000000
+        ],
+        [
+          127.000000000,
+          88.099998474,
+          236.000000000
+        ]
+      ],
+      "triangles": 22824,
+      "vertices": 11240,
+      "volume_mm3": 691582.373007660,
+      "watertight": true,
+      "winding_consistent": true
+    },
+    "rack10-tray/apple-tv-4k.glb": {
+      "asset": {
+        "version": "2.0"
+      },
+      "meshes": [
+        {
+          "primitive_groups": [
+            {
+              "attributes": {
+                "NORMAL": {
+                  "count": 10909,
+                  "count_inventory": {
+                    "10": 1,
+                    "122": 1,
+                    "123": 1,
+                    "124": 1,
+                    "18": 2,
+                    "24": 1,
+                    "254": 6,
+                    "3": 10,
+                    "318": 12,
+                    "36": 1,
+                    "39": 2,
+                    "4": 71,
+                    "446": 2,
+                    "592": 2,
+                    "66": 7,
+                    "67": 2,
+                    "72": 1,
+                    "83": 8,
+                    "888": 1,
+                    "9": 2,
+                    "96": 2,
+                    "98": 2
+                  }
+                },
+                "POSITION": {
+                  "count": 10909,
+                  "count_inventory": {
+                    "10": 1,
+                    "122": 1,
+                    "123": 1,
+                    "124": 1,
+                    "18": 2,
+                    "24": 1,
+                    "254": 6,
+                    "3": 10,
+                    "318": 12,
+                    "36": 1,
+                    "39": 2,
+                    "4": 71,
+                    "446": 2,
+                    "592": 2,
+                    "66": 7,
+                    "67": 2,
+                    "72": 1,
+                    "83": 8,
+                    "888": 1,
+                    "9": 2,
+                    "96": 2,
+                    "98": 2
+                  },
+                  "max": [
+                    0.127000000,
+                    0.043650000,
+                    0.103000000
+                  ],
+                  "min": [
+                    -0.127000000,
+                    0.000000000,
+                    0.000000000
+                  ]
+                },
+                "TEXCOORD_0": {
+                  "count": 10909,
+                  "count_inventory": {
+                    "10": 1,
+                    "122": 1,
+                    "123": 1,
+                    "124": 1,
+                    "18": 2,
+                    "24": 1,
+                    "254": 6,
+                    "3": 10,
+                    "318": 12,
+                    "36": 1,
+                    "39": 2,
+                    "4": 71,
+                    "446": 2,
+                    "592": 2,
+                    "66": 7,
+                    "67": 2,
+                    "72": 1,
+                    "83": 8,
+                    "888": 1,
+                    "9": 2,
+                    "96": 2,
+                    "98": 2
+                  }
+                },
+                "indices": {
+                  "count": 38592,
+                  "count_inventory": {
+                    "111": 2,
+                    "1134": 12,
+                    "126": 1,
+                    "1350": 2,
+                    "192": 7,
+                    "195": 2,
+                    "21": 2,
+                    "210": 1,
+                    "24": 1,
+                    "2694": 1,
+                    "294": 8,
+                    "3": 10,
+                    "3255": 2,
+                    "360": 1,
+                    "384": 2,
+                    "471": 1,
+                    "477": 1,
+                    "48": 2,
+                    "558": 2,
+                    "6": 71,
+                    "756": 6,
+                    "90": 1
+                  }
+                }
+              },
+              "primitives": 138,
+              "schema": {
+                "accessors": {
+                  "NORMAL": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "POSITION": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "TEXCOORD_0": {
+                    "componentType": 5126,
+                    "type": "VEC2"
+                  },
+                  "indices": {
+                    "componentType": 5123,
+                    "type": "SCALAR"
+                  }
+                },
+                "mode": 4
+              }
+            }
+          ]
+        }
+      ],
+      "nodes": [
+        {
+          "mesh": 0,
+          "rotation": [
+            -0.707106781,
+            0.000000000,
+            0.000000000,
+            0.707106781
+          ]
+        }
+      ],
+      "scene": 0,
+      "scenes": [
+        {
+          "nodes": [
+            0
+          ]
+        }
+      ]
+    },
+    "rack10-tray/apple-tv-4k.png": {
+      "dimensions": [
+        400,
+        400
+      ]
+    },
+    "rack10-tray/apple-tv-4k.stl": {
+      "bounds_mm": [
+        [
+          -127.000000000,
+          0.000000000,
+          0.000000000
+        ],
+        [
+          127.000000000,
+          43.650001526,
+          103.000000000
+        ]
+      ],
+      "triangles": 12862,
+      "vertices": 6413,
+      "volume_mm3": 76029.407495860,
+      "watertight": true,
+      "winding_consistent": true
+    },
+    "rack10-tray/mini-pc-nuc.glb": {
+      "asset": {
+        "version": "2.0"
+      },
+      "meshes": [
+        {
+          "primitive_groups": [
+            {
+              "attributes": {
+                "NORMAL": {
+                  "count": 17715,
+                  "count_inventory": {
+                    "10": 1,
+                    "106": 1,
+                    "109": 1,
+                    "122": 1,
+                    "1644": 1,
+                    "19": 2,
+                    "24": 1,
+                    "254": 12,
+                    "3": 6,
+                    "318": 24,
+                    "36": 1,
+                    "38": 2,
+                    "4": 71,
+                    "5": 4,
+                    "592": 2,
+                    "64": 2,
+                    "66": 7,
+                    "72": 1,
+                    "8": 2,
+                    "824": 2,
+                    "83": 8,
+                    "87": 1,
+                    "91": 1,
+                    "98": 2
+                  }
+                },
+                "POSITION": {
+                  "count": 17715,
+                  "count_inventory": {
+                    "10": 1,
+                    "106": 1,
+                    "109": 1,
+                    "122": 1,
+                    "1644": 1,
+                    "19": 2,
+                    "24": 1,
+                    "254": 12,
+                    "3": 6,
+                    "318": 24,
+                    "36": 1,
+                    "38": 2,
+                    "4": 71,
+                    "5": 4,
+                    "592": 2,
+                    "64": 2,
+                    "66": 7,
+                    "72": 1,
+                    "8": 2,
+                    "824": 2,
+                    "83": 8,
+                    "87": 1,
+                    "91": 1,
+                    "98": 2
+                  },
+                  "max": [
+                    0.127000000,
+                    0.088100000,
+                    0.117000000
+                  ],
+                  "min": [
+                    -0.127000000,
+                    0.000000000,
+                    0.000000000
+                  ]
+                },
+                "TEXCOORD_0": {
+                  "count": 17715,
+                  "count_inventory": {
+                    "10": 1,
+                    "106": 1,
+                    "109": 1,
+                    "122": 1,
+                    "1644": 1,
+                    "19": 2,
+                    "24": 1,
+                    "254": 12,
+                    "3": 6,
+                    "318": 24,
+                    "36": 1,
+                    "38": 2,
+                    "4": 71,
+                    "5": 4,
+                    "592": 2,
+                    "64": 2,
+                    "66": 7,
+                    "72": 1,
+                    "8": 2,
+                    "824": 2,
+                    "83": 8,
+                    "87": 1,
+                    "91": 1,
+                    "98": 2
+                  }
+                },
+                "indices": {
+                  "count": 61116,
+                  "count_inventory": {
+                    "108": 2,
+                    "1134": 24,
+                    "126": 1,
+                    "18": 2,
+                    "186": 2,
+                    "192": 7,
+                    "210": 1,
+                    "24": 1,
+                    "2502": 2,
+                    "294": 8,
+                    "3": 6,
+                    "3255": 2,
+                    "360": 1,
+                    "384": 2,
+                    "393": 1,
+                    "411": 1,
+                    "4998": 1,
+                    "504": 1,
+                    "51": 2,
+                    "528": 1,
+                    "6": 71,
+                    "756": 12,
+                    "9": 4,
+                    "90": 1
+                  }
+                }
+              },
+              "primitives": 156,
+              "schema": {
+                "accessors": {
+                  "NORMAL": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "POSITION": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "TEXCOORD_0": {
+                    "componentType": 5126,
+                    "type": "VEC2"
+                  },
+                  "indices": {
+                    "componentType": 5123,
+                    "type": "SCALAR"
+                  }
+                },
+                "mode": 4
+              }
+            }
+          ]
+        }
+      ],
+      "nodes": [
+        {
+          "mesh": 0,
+          "rotation": [
+            -0.707106781,
+            0.000000000,
+            0.000000000,
+            0.707106781
+          ]
+        }
+      ],
+      "scene": 0,
+      "scenes": [
+        {
+          "nodes": [
+            0
+          ]
+        }
+      ]
+    },
+    "rack10-tray/mini-pc-nuc.png": {
+      "dimensions": [
+        400,
+        400
+      ]
+    },
+    "rack10-tray/mini-pc-nuc.stl": {
+      "bounds_mm": [
+        [
+          -127.000000000,
+          0.000000000,
+          0.000000000
+        ],
+        [
+          127.000000000,
+          88.099998474,
+          117.000000000
+        ]
+      ],
+      "triangles": 20370,
+      "vertices": 10155,
+      "volume_mm3": 135022.047332542,
+      "watertight": true,
+      "winding_consistent": true
+    },
+    "rack10-tray/switch-8-port.glb": {
+      "asset": {
+        "version": "2.0"
+      },
+      "meshes": [
+        {
+          "primitive_groups": [
+            {
+              "attributes": {
+                "NORMAL": {
+                  "count": 10910,
+                  "count_inventory": {
+                    "10": 1,
+                    "122": 1,
+                    "123": 1,
+                    "125": 1,
+                    "18": 2,
+                    "24": 1,
+                    "254": 6,
+                    "3": 10,
+                    "318": 12,
+                    "36": 1,
+                    "39": 2,
+                    "4": 71,
+                    "446": 2,
+                    "592": 2,
+                    "66": 7,
+                    "67": 2,
+                    "72": 1,
+                    "83": 8,
+                    "888": 1,
+                    "9": 2,
+                    "96": 2,
+                    "98": 2
+                  }
+                },
+                "POSITION": {
+                  "count": 10910,
+                  "count_inventory": {
+                    "10": 1,
+                    "122": 1,
+                    "123": 1,
+                    "125": 1,
+                    "18": 2,
+                    "24": 1,
+                    "254": 6,
+                    "3": 10,
+                    "318": 12,
+                    "36": 1,
+                    "39": 2,
+                    "4": 71,
+                    "446": 2,
+                    "592": 2,
+                    "66": 7,
+                    "67": 2,
+                    "72": 1,
+                    "83": 8,
+                    "888": 1,
+                    "9": 2,
+                    "96": 2,
+                    "98": 2
+                  },
+                  "max": [
+                    0.127000000,
+                    0.043650000,
+                    0.105000000
+                  ],
+                  "min": [
+                    -0.127000000,
+                    0.000000000,
+                    0.000000000
+                  ]
+                },
+                "TEXCOORD_0": {
+                  "count": 10910,
+                  "count_inventory": {
+                    "10": 1,
+                    "122": 1,
+                    "123": 1,
+                    "125": 1,
+                    "18": 2,
+                    "24": 1,
+                    "254": 6,
+                    "3": 10,
+                    "318": 12,
+                    "36": 1,
+                    "39": 2,
+                    "4": 71,
+                    "446": 2,
+                    "592": 2,
+                    "66": 7,
+                    "67": 2,
+                    "72": 1,
+                    "83": 8,
+                    "888": 1,
+                    "9": 2,
+                    "96": 2,
+                    "98": 2
+                  }
+                },
+                "indices": {
+                  "count": 38598,
+                  "count_inventory": {
+                    "111": 2,
+                    "1134": 12,
+                    "126": 1,
+                    "1350": 2,
+                    "192": 7,
+                    "195": 2,
+                    "21": 2,
+                    "210": 1,
+                    "24": 1,
+                    "2694": 1,
+                    "294": 8,
+                    "3": 10,
+                    "3255": 2,
+                    "360": 1,
+                    "384": 2,
+                    "471": 1,
+                    "48": 2,
+                    "483": 1,
+                    "558": 2,
+                    "6": 71,
+                    "756": 6,
+                    "90": 1
+                  }
+                }
+              },
+              "primitives": 138,
+              "schema": {
+                "accessors": {
+                  "NORMAL": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "POSITION": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "TEXCOORD_0": {
+                    "componentType": 5126,
+                    "type": "VEC2"
+                  },
+                  "indices": {
+                    "componentType": 5123,
+                    "type": "SCALAR"
+                  }
+                },
+                "mode": 4
+              }
+            }
+          ]
+        }
+      ],
+      "nodes": [
+        {
+          "mesh": 0,
+          "rotation": [
+            -0.707106781,
+            0.000000000,
+            0.000000000,
+            0.707106781
+          ]
+        }
+      ],
+      "scene": 0,
+      "scenes": [
+        {
+          "nodes": [
+            0
+          ]
+        }
+      ]
+    },
+    "rack10-tray/switch-8-port.png": {
+      "dimensions": [
+        400,
+        400
+      ]
+    },
+    "rack10-tray/switch-8-port.stl": {
+      "bounds_mm": [
+        [
+          -127.000000000,
+          0.000000000,
+          0.000000000
+        ],
+        [
+          127.000000000,
+          43.650001526,
+          105.000000000
+        ]
+      ],
+      "triangles": 12864,
+      "vertices": 6414,
+      "volume_mm3": 95864.998040128,
+      "watertight": true,
+      "winding_consistent": true
+    },
     "underware-i-channel/cutouts.glb": {
       "asset": {
         "version": "2.0"
@@ -60664,6 +64350,794 @@
       "triangles": 1212,
       "vertices": 608,
       "volume_mm3": 9654.626484179,
+      "watertight": true,
+      "winding_consistent": true
+    },
+    "underware-outside-corner/outside-corner-r1.glb": {
+      "asset": {
+        "version": "2.0"
+      },
+      "meshes": [
+        {
+          "primitive_groups": [
+            {
+              "attributes": {
+                "NORMAL": {
+                  "count": 1192,
+                  "count_inventory": {
+                    "12": 2,
+                    "4": 40,
+                    "6": 8,
+                    "66": 4,
+                    "70": 2,
+                    "8": 4,
+                    "82": 2,
+                    "90": 4
+                  }
+                },
+                "POSITION": {
+                  "count": 1192,
+                  "count_inventory": {
+                    "12": 2,
+                    "4": 40,
+                    "6": 8,
+                    "66": 4,
+                    "70": 2,
+                    "8": 4,
+                    "82": 2,
+                    "90": 4
+                  },
+                  "max": [
+                    -0.014800000,
+                    0.033400000,
+                    0.074600000
+                  ],
+                  "min": [
+                    -0.041200000,
+                    -0.042000000,
+                    0.000000000
+                  ]
+                },
+                "TEXCOORD_0": {
+                  "count": 1192,
+                  "count_inventory": {
+                    "12": 2,
+                    "4": 40,
+                    "6": 8,
+                    "66": 4,
+                    "70": 2,
+                    "8": 4,
+                    "82": 2,
+                    "90": 4
+                  }
+                },
+                "indices": {
+                  "count": 3468,
+                  "count_inventory": {
+                    "12": 8,
+                    "18": 4,
+                    "192": 4,
+                    "204": 2,
+                    "240": 2,
+                    "30": 2,
+                    "336": 4,
+                    "6": 40
+                  }
+                }
+              },
+              "primitives": 66,
+              "schema": {
+                "accessors": {
+                  "NORMAL": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "POSITION": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "TEXCOORD_0": {
+                    "componentType": 5126,
+                    "type": "VEC2"
+                  },
+                  "indices": {
+                    "componentType": 5123,
+                    "type": "SCALAR"
+                  }
+                },
+                "mode": 4
+              }
+            }
+          ]
+        },
+        {
+          "primitive_groups": [
+            {
+              "attributes": {
+                "NORMAL": {
+                  "count": 4362,
+                  "count_inventory": {
+                    "10": 56,
+                    "11": 2,
+                    "138": 2,
+                    "142": 6,
+                    "228": 1,
+                    "24": 2,
+                    "250": 1,
+                    "4": 167,
+                    "42": 2,
+                    "66": 6,
+                    "8": 60,
+                    "83": 6
+                  }
+                },
+                "POSITION": {
+                  "count": 4362,
+                  "count_inventory": {
+                    "10": 56,
+                    "11": 2,
+                    "138": 2,
+                    "142": 6,
+                    "228": 1,
+                    "24": 2,
+                    "250": 1,
+                    "4": 167,
+                    "42": 2,
+                    "66": 6,
+                    "8": 60,
+                    "83": 6
+                  },
+                  "max": [
+                    -0.003800000,
+                    0.049868690,
+                    0.050242641
+                  ],
+                  "min": [
+                    -0.042200000,
+                    -0.016842641,
+                    -0.016468690
+                  ]
+                },
+                "TEXCOORD_0": {
+                  "count": 4362,
+                  "count_inventory": {
+                    "10": 56,
+                    "11": 2,
+                    "138": 2,
+                    "142": 6,
+                    "228": 1,
+                    "24": 2,
+                    "250": 1,
+                    "4": 167,
+                    "42": 2,
+                    "66": 6,
+                    "8": 60,
+                    "83": 6
+                  }
+                },
+                "indices": {
+                  "count": 11580,
+                  "count_inventory": {
+                    "144": 2,
+                    "18": 60,
+                    "192": 6,
+                    "24": 56,
+                    "27": 2,
+                    "294": 6,
+                    "408": 2,
+                    "420": 6,
+                    "6": 167,
+                    "66": 2,
+                    "678": 1,
+                    "750": 1
+                  }
+                }
+              },
+              "primitives": 311,
+              "schema": {
+                "accessors": {
+                  "NORMAL": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "POSITION": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "TEXCOORD_0": {
+                    "componentType": 5126,
+                    "type": "VEC2"
+                  },
+                  "indices": {
+                    "componentType": 5123,
+                    "type": "SCALAR"
+                  }
+                },
+                "mode": 4
+              }
+            }
+          ]
+        }
+      ],
+      "nodes": [
+        {
+          "children": [
+            1,
+            2
+          ],
+          "rotation": [
+            0.923879533,
+            0.000000000,
+            0.000000000,
+            -0.382683432
+          ]
+        },
+        {
+          "mesh": 0
+        },
+        {
+          "mesh": 1
+        }
+      ],
+      "scene": 0,
+      "scenes": [
+        {
+          "nodes": [
+            0
+          ]
+        }
+      ]
+    },
+    "underware-outside-corner/outside-corner-r1.png": {
+      "dimensions": [
+        400,
+        400
+      ]
+    },
+    "underware-outside-corner/outside-corner-r1.stl": {
+      "bounds_mm": [
+        [
+          -42.200000763,
+          -29.698484421,
+          -6.115014553
+        ],
+        [
+          -3.799999952,
+          76.367530823,
+          42.850669861
+        ]
+      ],
+      "triangles": 4984,
+      "vertices": 2496,
+      "volume_mm3": 16564.896884385,
+      "watertight": true,
+      "winding_consistent": true
+    },
+    "underware-outside-corner/outside-corner-w2-h28-y2.glb": {
+      "asset": {
+        "version": "2.0"
+      },
+      "meshes": [
+        {
+          "primitive_groups": [
+            {
+              "attributes": {
+                "NORMAL": {
+                  "count": 1138,
+                  "count_inventory": {
+                    "100": 2,
+                    "12": 6,
+                    "38": 2,
+                    "4": 68,
+                    "6": 16,
+                    "62": 2,
+                    "66": 2,
+                    "83": 2
+                  }
+                },
+                "POSITION": {
+                  "count": 1138,
+                  "count_inventory": {
+                    "100": 2,
+                    "12": 6,
+                    "38": 2,
+                    "4": 68,
+                    "6": 16,
+                    "62": 2,
+                    "66": 2,
+                    "83": 2
+                  },
+                  "max": [
+                    0.027200000,
+                    -0.002600000,
+                    0.080600000
+                  ],
+                  "min": [
+                    -0.027200000,
+                    -0.084000000,
+                    0.000000000
+                  ]
+                },
+                "TEXCOORD_0": {
+                  "count": 1138,
+                  "count_inventory": {
+                    "100": 2,
+                    "12": 6,
+                    "38": 2,
+                    "4": 68,
+                    "6": 16,
+                    "62": 2,
+                    "66": 2,
+                    "83": 2
+                  }
+                },
+                "indices": {
+                  "count": 3120,
+                  "count_inventory": {
+                    "108": 2,
+                    "12": 16,
+                    "180": 2,
+                    "192": 2,
+                    "294": 2,
+                    "30": 6,
+                    "396": 2,
+                    "6": 68
+                  }
+                }
+              },
+              "primitives": 100,
+              "schema": {
+                "accessors": {
+                  "NORMAL": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "POSITION": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "TEXCOORD_0": {
+                    "componentType": 5126,
+                    "type": "VEC2"
+                  },
+                  "indices": {
+                    "componentType": 5123,
+                    "type": "SCALAR"
+                  }
+                },
+                "mode": 4
+              }
+            }
+          ]
+        },
+        {
+          "primitive_groups": [
+            {
+              "attributes": {
+                "NORMAL": {
+                  "count": 5886,
+                  "count_inventory": {
+                    "11": 2,
+                    "12": 54,
+                    "14": 18,
+                    "228": 1,
+                    "24": 2,
+                    "290": 1,
+                    "4": 254,
+                    "42": 2,
+                    "66": 6,
+                    "8": 81,
+                    "83": 6,
+                    "94": 2,
+                    "98": 16
+                  }
+                },
+                "POSITION": {
+                  "count": 5886,
+                  "count_inventory": {
+                    "11": 2,
+                    "12": 54,
+                    "14": 18,
+                    "228": 1,
+                    "24": 2,
+                    "290": 1,
+                    "4": 254,
+                    "42": 2,
+                    "66": 6,
+                    "8": 81,
+                    "83": 6,
+                    "94": 2,
+                    "98": 16
+                  },
+                  "max": [
+                    0.038200000,
+                    0.009312341,
+                    0.028242641
+                  ],
+                  "min": [
+                    -0.028200000,
+                    -0.030842641,
+                    -0.011912341
+                  ]
+                },
+                "TEXCOORD_0": {
+                  "count": 5886,
+                  "count_inventory": {
+                    "11": 2,
+                    "12": 54,
+                    "14": 18,
+                    "228": 1,
+                    "24": 2,
+                    "290": 1,
+                    "4": 254,
+                    "42": 2,
+                    "66": 6,
+                    "8": 81,
+                    "83": 6,
+                    "94": 2,
+                    "98": 16
+                  }
+                },
+                "indices": {
+                  "count": 15348,
+                  "count_inventory": {
+                    "144": 2,
+                    "18": 81,
+                    "192": 6,
+                    "27": 2,
+                    "276": 2,
+                    "288": 16,
+                    "294": 6,
+                    "30": 54,
+                    "36": 18,
+                    "6": 254,
+                    "66": 2,
+                    "678": 1,
+                    "870": 1
+                  }
+                }
+              },
+              "primitives": 445,
+              "schema": {
+                "accessors": {
+                  "NORMAL": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "POSITION": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "TEXCOORD_0": {
+                    "componentType": 5126,
+                    "type": "VEC2"
+                  },
+                  "indices": {
+                    "componentType": 5123,
+                    "type": "SCALAR"
+                  }
+                },
+                "mode": 4
+              }
+            }
+          ]
+        }
+      ],
+      "nodes": [
+        {
+          "children": [
+            1,
+            2
+          ],
+          "rotation": [
+            0.923879533,
+            0.000000000,
+            0.000000000,
+            -0.382683432
+          ]
+        },
+        {
+          "mesh": 0
+        },
+        {
+          "mesh": 1
+        }
+      ],
+      "scene": 0,
+      "scenes": [
+        {
+          "nodes": [
+            0
+          ]
+        }
+      ]
+    },
+    "underware-outside-corner/outside-corner-w2-h28-y2.png": {
+      "dimensions": [
+        400,
+        400
+      ]
+    },
+    "underware-outside-corner/outside-corner-w2-h28-y2.stl": {
+      "bounds_mm": [
+        [
+          -28.200000763,
+          -59.396968842,
+          10.228131294
+        ],
+        [
+          38.200000763,
+          55.154327393,
+          76.791793823
+        ]
+      ],
+      "triangles": 6132,
+      "vertices": 3070,
+      "volume_mm3": 30530.850499236,
+      "watertight": true,
+      "winding_consistent": true
+    },
+    "underware-outside-corner/outside-corner.glb": {
+      "asset": {
+        "version": "2.0"
+      },
+      "meshes": [
+        {
+          "primitive_groups": [
+            {
+              "attributes": {
+                "NORMAL": {
+                  "count": 984,
+                  "count_inventory": {
+                    "102": 2,
+                    "104": 2,
+                    "12": 2,
+                    "38": 2,
+                    "4": 40,
+                    "50": 2,
+                    "6": 8,
+                    "66": 2,
+                    "8": 4
+                  }
+                },
+                "POSITION": {
+                  "count": 984,
+                  "count_inventory": {
+                    "102": 2,
+                    "104": 2,
+                    "12": 2,
+                    "38": 2,
+                    "4": 40,
+                    "50": 2,
+                    "6": 8,
+                    "66": 2,
+                    "8": 4
+                  },
+                  "max": [
+                    0.013200000,
+                    0.005400000,
+                    0.046600000
+                  ],
+                  "min": [
+                    -0.013200000,
+                    -0.042000000,
+                    0.000000000
+                  ]
+                },
+                "TEXCOORD_0": {
+                  "count": 984,
+                  "count_inventory": {
+                    "102": 2,
+                    "104": 2,
+                    "12": 2,
+                    "38": 2,
+                    "4": 40,
+                    "50": 2,
+                    "6": 8,
+                    "66": 2,
+                    "8": 4
+                  }
+                },
+                "indices": {
+                  "count": 3012,
+                  "count_inventory": {
+                    "108": 2,
+                    "12": 8,
+                    "144": 2,
+                    "18": 4,
+                    "192": 2,
+                    "30": 2,
+                    "408": 2,
+                    "420": 2,
+                    "6": 40
+                  }
+                }
+              },
+              "primitives": 64,
+              "schema": {
+                "accessors": {
+                  "NORMAL": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "POSITION": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "TEXCOORD_0": {
+                    "componentType": 5126,
+                    "type": "VEC2"
+                  },
+                  "indices": {
+                    "componentType": 5123,
+                    "type": "SCALAR"
+                  }
+                },
+                "mode": 4
+              }
+            }
+          ]
+        },
+        {
+          "primitive_groups": [
+            {
+              "attributes": {
+                "NORMAL": {
+                  "count": 3146,
+                  "count_inventory": {
+                    "11": 2,
+                    "14": 24,
+                    "228": 1,
+                    "24": 2,
+                    "250": 1,
+                    "4": 103,
+                    "42": 2,
+                    "66": 6,
+                    "78": 2,
+                    "8": 28,
+                    "82": 6,
+                    "83": 6
+                  }
+                },
+                "POSITION": {
+                  "count": 3146,
+                  "count_inventory": {
+                    "11": 2,
+                    "14": 24,
+                    "228": 1,
+                    "24": 2,
+                    "250": 1,
+                    "4": 103,
+                    "42": 2,
+                    "66": 6,
+                    "78": 2,
+                    "8": 28,
+                    "82": 6,
+                    "83": 6
+                  },
+                  "max": [
+                    0.024200000,
+                    0.016069701,
+                    0.022242641
+                  ],
+                  "min": [
+                    -0.014200000,
+                    -0.016842641,
+                    -0.010669701
+                  ]
+                },
+                "TEXCOORD_0": {
+                  "count": 3146,
+                  "count_inventory": {
+                    "11": 2,
+                    "14": 24,
+                    "228": 1,
+                    "24": 2,
+                    "250": 1,
+                    "4": 103,
+                    "42": 2,
+                    "66": 6,
+                    "78": 2,
+                    "8": 28,
+                    "82": 6,
+                    "83": 6
+                  }
+                },
+                "indices": {
+                  "count": 8700,
+                  "count_inventory": {
+                    "144": 2,
+                    "18": 28,
+                    "192": 6,
+                    "228": 2,
+                    "240": 6,
+                    "27": 2,
+                    "294": 6,
+                    "36": 24,
+                    "6": 103,
+                    "66": 2,
+                    "678": 1,
+                    "750": 1
+                  }
+                }
+              },
+              "primitives": 183,
+              "schema": {
+                "accessors": {
+                  "NORMAL": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "POSITION": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "TEXCOORD_0": {
+                    "componentType": 5126,
+                    "type": "VEC2"
+                  },
+                  "indices": {
+                    "componentType": 5123,
+                    "type": "SCALAR"
+                  }
+                },
+                "mode": 4
+              }
+            }
+          ]
+        }
+      ],
+      "nodes": [
+        {
+          "children": [
+            1,
+            2
+          ],
+          "rotation": [
+            0.923879533,
+            0.000000000,
+            0.000000000,
+            -0.382683432
+          ]
+        },
+        {
+          "mesh": 0
+        },
+        {
+          "mesh": 1
+        }
+      ],
+      "scene": 0,
+      "scenes": [
+        {
+          "nodes": [
+            0
+          ]
+        }
+      ]
+    },
+    "underware-outside-corner/outside-corner.png": {
+      "dimensions": [
+        400,
+        400
+      ]
+    },
+    "underware-outside-corner/outside-corner.stl": {
+      "bounds_mm": [
+        [
+          -14.199999809,
+          -29.698484421,
+          2.085995674
+        ],
+        [
+          24.200000763,
+          36.769554138,
+          42.850669861
+        ]
+      ],
+      "triangles": 3864,
+      "vertices": 1936,
+      "volume_mm3": 9851.249174387,
       "watertight": true,
       "winding_consistent": true
     },
