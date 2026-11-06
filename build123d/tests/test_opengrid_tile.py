@@ -196,8 +196,17 @@ CASES += [
 ]
 
 
+# These maxima took 653.9 s and 278.6 s in bd123 run 42132292541, whose
+# unsharded audit job timed out at 80m06s. Keep both in the sharded sweep.
+_LARGE_TILE_AUDITS = {'lite-11x8-back1', 'full-1x11-back0'}
+
+
 @pytest.mark.audit
-@pytest.mark.parametrize('name,values', CASES, ids=[c[0] for c in CASES])
+@pytest.mark.parametrize('name,values', [
+    pytest.param(name, values, id=name,
+                 marks=pytest.mark.audit_full if name in _LARGE_TILE_AUDITS else ())
+    for name, values in CASES
+])
 def test_endpoint_audit(name, values):
     v = SPEC.resolve_values(values)
     part = SPEC.build(v)
