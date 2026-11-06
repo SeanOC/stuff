@@ -577,6 +577,7 @@ def _bed_faces(placed, z):
 
 @pytest.mark.audit
 @pytest.mark.parametrize('case', MITRE_BED_CASES)
+@audit_cases(MSPEC, lambda p: MITRE_BED_CASES[p['case']])
 def test_mitre_bed_flat(case):
     """M2: the bed flat is derived per parameter set from the print frame:
     the plane sits BED_FLAT_MM above the higher arm tip, which equal arms put

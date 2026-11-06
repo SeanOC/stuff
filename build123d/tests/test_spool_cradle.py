@@ -622,6 +622,7 @@ def thin_walls(part, lo, hi):
 
 @pytest.mark.audit  # dense probes, ~20 s each -> bd123 `audit` job (pst-24tr6)
 @pytest.mark.parametrize('values', [{}, REAR_LAND_CORNER], ids=['default', 'rear-land-corner'])
+@audit_cases(SPEC)
 def test_outboard_rear_end_has_no_knife(values):
     # pst-dkqef: the print audit samples each face at UV 0.3/0.5/0.7 only,
     # so it saw the saddle's unbacked rear knife (~0.02 mm, including both
@@ -638,6 +639,7 @@ CHANNEL_PRESET = next(p.values for p in SPEC.presets if p.id == 'channel')
 @pytest.mark.audit  # dense probes like the outboard knife -> bd123 `audit` job
 @pytest.mark.parametrize('values', [{}, CHANNEL_PRESET, REAR_LAND_CORNER],
                          ids=['default', 'channel-preset', 'rear-land-corner'])
+@audit_cases(SPEC)
 def test_inboard_cap_rear_end_has_no_knife(values):
     # pst-2q3ej: the same unbacked knife on the inboard rail cap (0.02 mm
     # on main at both presets), between cap_inner and the rail.

@@ -16,6 +16,7 @@ from build123d import Align, Box, Pos, Rotation as Rot  # noqa: E402
 from opengrid.multiconnect import SnapInSlotCutter  # noqa: E402
 
 from holders.registry import KNOWN_MOUNTS, MountFixtures, all_models  # noqa: E402
+from tests.audit_tiers import audit_cases  # noqa: E402
 from tests.mount_contracts import (  # noqa: E402
     CONTRACTS,
     assert_aperture,
@@ -115,6 +116,7 @@ _HEAVY_CONTRACT_MODELS = {"holder_spool_cradle", "openconnect_drawer"}
      if s.name in _HEAVY_CONTRACT_MODELS else (s, m) for s, m in _MOUNTED],
     ids=[f"{s.name}:{m}" for s, m in _MOUNTED],
 )
+@audit_cases(lambda p: p['spec'], lambda p: {})
 def test_model_mount_contract(spec, mount):
     """Every mount on every registered model must satisfy its contract, at
     default params and at each registered preset where it is present."""
@@ -246,7 +248,8 @@ def test_negative_inverted_pocket_still_passes_a_through_d():
     """The inverted pocket passes aperture/orientation/seat/travel — that is
     WHY the v3 bug shipped, and why (e)/(f) had to be added. If any of (a)-(d)
     starts failing here, good, but the point stands: they were depth-blind."""
-    from tests.mount_contracts import (
+    from tests.audit_tiers import audit_cases  # noqa: E402
+from tests.mount_contracts import (
         assert_aperture as _ap,
         assert_orientation as _or,
         assert_seat_clearance as _sc,

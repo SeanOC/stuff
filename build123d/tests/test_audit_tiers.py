@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from holders.registry import Param, Preset
+from holders.registry import Param, Preset, all_models
 from tests.audit_tiers import pr_case
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -66,6 +66,37 @@ def test_live_collection_is_lossless_and_representative_cases_are_routed():
     assert not pr & full
     assert pr | full == all_audits
     assert len(all_audits) >= 1229  # original 1227 plus the two large tile rows
+    # Every registered model keeps a real default audit, independently of the
+    # all-model bed gate. Inherited audit_full marks must not hide these either.
+    for model in all_models():
+        assert f'tests/test_print_audit.py::test_model_print_audit[{model.name}]' in pr
+
+    # These carriers once lacked audit_case metadata and silently lost their
+    # presets/defaults. Pin the actual node IDs, including every heavy mount
+    # contract (each body checks defaults plus all registered presets).
+    restored = {
+        ('mount_contracts', 'model_mount_contract'): [
+            'holder_spool_cradle:multibuild-multiconnect-channel',
+            'holder_spool_cradle:openconnect-slot',
+            'holder_spool_cradle:multibuild-fixpoint-slot',
+            'openconnect_drawer:openconnect-slot-shallow'],
+        ('openconnect_dividers', 'bed_chamfer_exception_does_not_reach_other_parts'): [
+            'default', 'small', 'top-slot', 'container', 'two-compartments',
+            'organiser', 'container-solid'],
+        ('openconnect_dividers', 'new_presets_build'): [
+            'two-compartments', 'organiser', 'stopper-clips'],
+        ('spool_cradle', 'outboard_rear_end_has_no_knife'): ['default'],
+        ('spool_cradle', 'inboard_cap_rear_end_has_no_knife'): ['default', 'channel-preset'],
+        ('underware_path_channels', 'mitre_bed_flat'): [
+            'mitre', 'mitre-r1', 'w1-h10-r0', 'w1-h22-r0', 'w1-h22-r1',
+            'w1-h22-r2', 'w1-h72-r0', 'w4-h22-r0', 'length-7'],
+    }
+    for (module, function), cases in restored.items():
+        expected = {f'tests/test_{module}.py::test_{function}[{case}]' for case in cases}
+        assert expected <= pr, expected - pr
+    for function in ('outboard', 'inboard_cap'):
+        assert f'tests/test_spool_cradle.py::test_{function}_rear_end_has_no_knife[rear-land-corner]' in full
+    assert 'tests/test_underware_path_channels.py::test_mitre_bed_flat[max-corner]' in full
     assert 'tests/test_cartridge_holder.py::test_presets[full_holder]' in pr
     assert 'tests/test_tombstone_sign.py::test_print_audit_per_preset[small]' in pr
     assert 'tests/test_opengrid_tile.py::test_endpoint_audit[full-6x6-back3]' in full

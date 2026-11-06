@@ -590,6 +590,7 @@ ENDPOINT_CASES = {
 }
 
 
+# The forced enum differs from shipped presets, so these all run in the full tier.
 @pytest.mark.audit
 @pytest.mark.parametrize('case', ENDPOINT_CASES)
 @audit_cases(SPEC, lambda p: {**ENDPOINT_CASES[p['case']], 'supports': 'none'})

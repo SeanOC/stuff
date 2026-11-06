@@ -326,7 +326,7 @@ The initial **35-minute cap** was estimated from four successful main runs:
 | 41806835769 | 66.6 min | 22.1 min |
 | 41692429964 | 44.6 min | 18.7 min |
 
-These estimates replay the final **572-item** PR tier by assigning each
+These estimates replay the initial **572-item** PR tier by assigning each
 selected item's recorded `outcome.duration_s` to the earliest available of four
 workers in collection order. The latest CI run supplies all 466 existing
 selected audit durations. For each older run, use its 454 recorded rows and
@@ -372,7 +372,29 @@ are unrelated optional dependencies. This used the existing cache while the
 required full suite was also running. The standalone bed gate passed all 106
 items in 86.16 seconds. After the tile merge, main/schedule collect **1,335**
 audit-marked items: all 1,227 original IDs, both added tile rows and 106
-lightweight bed checks, partitioned into 571 PR and 764 full-tier items.
+lightweight bed checks. Review restored 26 existing preset/default/extreme rows
+whose carriers lacked classification metadata: nine mitre bed cases, ten drawer
+preset checks, three rear-knife probes and all four heavy mount contracts. The
+contracts check defaults plus registered presets; all four stay PR-tier under
+the same rule, regardless of runtime. The final partition is **597 PR**
+(491 existing audits + 106 bed checks) and **738 full-tier** items. The routing
+test pins all 26 restored IDs and requires a real default audit for every
+registered model, independently of the bed gate.
+
+The 50m05s unscoped measurement predates those 26 restored items; it is not a
+measurement of the final 597-item selection. The 60-minute cap is retained per
+the bead's revision 3, and fresh CI must validate that final selection. Against
+50m05s it provides about 20% headroom, less than the historical 1.5× convention.
+The earlier 80-minute cap also accounted for PR #204's cold-cache run (51m53s);
+cache state and runner variance remain relevant to the next timeout change.
+
+Extended harnesses without a single model/values case still run on main and
+schedule: the app-wide geometry baseline, all-preset bake, published snap print
+inventory (four rows), tombstone type/rhythm checks (five), and stake edge
+inventory (four). These are explicit PR-tier coverage gaps, in addition to the
+missing literal endpoint table in the PR; their assertions and full-sweep
+coverage are retained.
+
 This tiering change adds no print-audit or guard cases.
 Geometry, print thresholds and exception inventories are unchanged.
 

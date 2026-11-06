@@ -6,10 +6,9 @@
 # pst-24tr6 (CI P3+P4): three jobs selected by pytest marker (the contract is
 # in build123d/ci/README.md and enforced by build123d/tests/conftest.py):
 #   fast        everything that is not an audit, plus the serial budget step
-#   audit       every registry-sized print audit except the cradle corner sweep,
-#               plus the spool cradle mount contracts (registry-sized builds)
-#   audit_full  the cradle corner sweep, 6 pytest-split shards; PRs that touch
-#               model/audit code, every push to main, and nightly
+#   audit       presets, defaults and existing numeric extremes; all-model bed gate
+#   audit_full  extended audit sweep, 6 pytest-split shards on main and nightly
+# See build123d/ci/README.md, PR audit tier, for the tier table and scope.
 # pst-3bga4: on pull_request, fast and audit run only what the change can
 # affect (`changes` emits mode=full|scoped|skip and k_expr); push to main and
 # schedule always run everything.
@@ -120,7 +119,7 @@ jobs:
           path: build123d/.cache/audit
           key: bd-audit-${{ hashFiles('build123d/tests/print_audit.py', 'build123d/tests/audit_cache.py', 'build123d/uv.lock') }}-${{ matrix.group || 'audit' }}-${{ github.run_id }}
           restore-keys: bd-audit-${{ hashFiles('build123d/tests/print_audit.py', 'build123d/tests/audit_cache.py', 'build123d/uv.lock') }}-${{ matrix.group || 'audit' }}-
-      - name: print audits (presets, reproducers, other models)
+      - name: print audits (presets, defaults, numeric extremes)
         # pst-rir4i: one JSON row per audit item (+ measurement rows) for
         # reviewers; reader recipe in build123d/ci/README.md. A scoped PR run
         # writes rows for the selected models only.
@@ -212,7 +211,7 @@ jobs:
           path: build123d/.cache/audit
           key: bd-audit-${{ hashFiles('build123d/tests/print_audit.py', 'build123d/tests/audit_cache.py', 'build123d/uv.lock') }}-${{ matrix.group || 'audit' }}-${{ github.run_id }}
           restore-keys: bd-audit-${{ hashFiles('build123d/tests/print_audit.py', 'build123d/tests/audit_cache.py', 'build123d/uv.lock') }}-${{ matrix.group || 'audit' }}-
-      - name: cradle corner sweep (shard ${{ matrix.group }}/6)
+      - name: extended audit sweep (shard ${{ matrix.group }}/6)
         # tests/.test_durations balances the shards; a stale or missing entry
         # only degrades balance (pytest-split splits evenly), never coverage.
         # Nightly re-measures this shard's durations (--clean-durations keeps
