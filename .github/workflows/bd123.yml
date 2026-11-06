@@ -97,16 +97,12 @@ jobs:
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.mode != 'skip' }}
     runs-on: ubuntu-latest
-    # pst-hruv1: the same 164-item selection swung 18.8-32.5 min across main runs
-    # 38299848019 / 38334657942 / 38377646596 before #193 and ran 34m57s clean in
-    # 38432960766 (-n 4 on 2 physical cores = high variance). 45 = ~30% headroom
-    # over the slowest clean run; pytest-split of this tier is a separate bead.
-    # pst-t0ob3.4 (mayor carve-out): the D4 divider presets took this job to
-    # 37m22s in PR #199 run 38506273980; 37.4 x 1.5 = 56 -> 60.
-    # pst-dyobq (mayor carve-out): a cold cache (any PR touching print_audit.py,
-    # audit_cache.py or uv.lock) took this job to 51m53s in PR #204 run
-    # 38596072475; 51.9 x 1.5 = 78 -> 80.
-    timeout-minutes: 80
+    # pst-6gis4: replaying the PR selection with measured item durations from
+    # main runs 42076796470 / 42001797960 / 41806835769 / 41692429964 gives
+    # 17.1 / 16.9 / 20.8 / 17.2 min at -n 4 (older runs lack 12 new rows).
+    # 20.8 x 1.5 = 31.2; round to 35 for setup and the new tile rows.
+    # Measurements and assumptions: build123d/ci/README.md, PR audit tier.
+    timeout-minutes: 35
     defaults: { run: { working-directory: build123d } }
     steps:
       - uses: actions/checkout@v4
@@ -130,7 +126,7 @@ jobs:
           BD_AUDIT_OUT: out/audit/rows.jsonl
           K_EXPR: ${{ needs.changes.outputs.k_expr }}
         run: |
-          scope=(); if [ -n "$K_EXPR" ]; then scope=(-k "$K_EXPR"); fi
+          scope=(); if [ -n "$K_EXPR" ]; then scope=(-k "($K_EXPR) or test_registry_presets_fit_bed"); fi
           uv run pytest tests/ -q -n 4 --dist load -rf --tb=short -m "audit and not audit_full and not upstream" "${scope[@]}"
       - name: upload audit rows
         if: always()
@@ -141,8 +137,7 @@ jobs:
           retention-days: 14
 
   changes:
-    # Decides whether a PR runs the cradle corner sweep, and the fast/audit
-    # scope (pst-3bga4). pull_request only: on push to main and on schedule
+    # Decides the fast/audit scope. pull_request only: on main and schedule
     # every job runs in full. dorny/paths-filter lists the PR's files via the
     # API; the checkout + sync are for the selector, which reads the registry.
     name: detect model/audit changes
@@ -156,7 +151,6 @@ jobs:
       # call fails with "Resource not accessible by integration" (ci.yml same).
       pull-requests: read
     outputs:
-      cradle: ${{ steps.filter.outputs.cradle }}
       mode: ${{ steps.select.outputs.mode }}
       k_expr: ${{ steps.select.outputs.k_expr }}
     steps:
@@ -172,46 +166,6 @@ jobs:
           filters: |
             any:
               - '**'
-            cradle:
-              # the swept holder modules, the holders modules they import
-              # (tombstone_sign: label_card, sign_ghost, signs; spool_cradle:
-              # label_card) and the registry + bed constants they all use
-              - 'build123d/holders/cartridge_holder.py'
-              - 'build123d/holders/gridfinity_capture_bin.py'
-              - 'build123d/holders/label_card.py'
-              - 'build123d/holders/openconnect_drawer.py'
-              - 'build123d/holders/printer.py'
-              - 'build123d/holders/registry.py'
-              - 'build123d/holders/sign_ghost.py'
-              - 'build123d/holders/signs.py'
-              - 'build123d/holders/spool_cradle.py'
-              - 'build123d/holders/tombstone_sign.py'
-              - 'build123d/labels/**'
-              - 'build123d/multibuild/**'
-              - 'build123d/openconnect/**'
-              - 'build123d/tests/print_audit.py'
-              - 'build123d/tests/audit_cache.py'
-              - 'build123d/tests/audit_record.py'
-              - 'build123d/tests/mount_contracts.py'
-              - 'build123d/tests/test_spool_cradle.py'
-              # capture-bin endpoint sweep lives in audit_full (pst-8vwop)
-              - 'build123d/gridfinity/**'
-              - 'build123d/tests/test_gridfinity_capture_bin.py'
-              # drawer endpoint/corner sweep lives in audit_full (pst-t0ob3.2)
-              - 'build123d/drawer/**'
-              - 'build123d/tests/test_openconnect_drawer.py'
-              - 'build123d/tests/openconnect_drawer_inventory.py'
-              - 'build123d/tests/parity.py'
-              - 'build123d/tests/test_honeycomb.py'
-              - 'build123d/tests/conftest.py'
-              - 'build123d/pyproject.toml'
-              - 'build123d/uv.lock'
-              # the other files carrying audit_full cases (tests/test_ci_filters.py
-              # fails when one, or a tests/ helper it imports, is missing)
-              - 'build123d/tests/test_audit_record.py'
-              - 'build123d/tests/test_cartridge_holder.py'
-              - 'build123d/tests/test_openconnect_drawer_container.py'
-              - 'build123d/tests/test_tombstone_sign.py'
       - name: Decide fast/audit scope
         id: select
         # Prints the mode and -k expression to the log and step summary. Every
@@ -224,9 +178,9 @@ jobs:
   audit_full:
     name: build123d audit (full sweep)
     needs: changes
-    # Fail-soft like ci.yml's render job: if `changes` failed, run the sweep.
-    # !cancelled() so a skipped `changes` (push/schedule) does not skip this.
-    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.result != 'success' || needs.changes.outputs.cradle == 'true') }}
+    # Extended cases run on main/schedule, never on PRs. Keep !cancelled()
+    # so the skipped PR-only changes job does not suppress either sweep.
+    if: ${{ !cancelled() && github.event_name != 'pull_request' }}
     runs-on: ubuntu-latest
     # pst-2z9ng: 6 shards on main run 38444800427 (post-#190) took
     # 16m19/12m00/21m34/21m40/15m30/12m07; 21m40 x 1.5 = 32.5 -> 35 (the

@@ -22,6 +22,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from tests.audit_tiers import audit_cases
 import trimesh
 from build123d import Align, Box, Cylinder, Location, Plane, Pos, Rectangle, Rot, Vector, mirror
 
@@ -518,6 +519,7 @@ def edge_inventory(part, values):
 
 @pytest.mark.audit
 @pytest.mark.parametrize('case', CASES)
+@audit_cases(SPEC, lambda p: CASES[p['case']])
 def test_endpoint_audit_and_edges(case):
     values = CASES[case]
     part = build(values)
@@ -798,6 +800,7 @@ def mitre_edge_inventory(part, values):
 
 @pytest.mark.audit
 @pytest.mark.parametrize('case', MITRE_CASES)
+@audit_cases(MSPEC, lambda p: MITRE_CASES[p['case']])
 def test_mitre_endpoint_audit_and_edges(case):
     """P4 table for underware_mitre in its 45 degree print frame: raw (only
     the arch fails, at 90 degrees), filtered (every exception family) and the

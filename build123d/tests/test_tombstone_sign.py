@@ -11,6 +11,7 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
+from tests.audit_tiers import audit_cases
 import segno
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -803,6 +804,7 @@ def test_part_stls_are_byte_stable_across_processes(tmp_path):
 @pytest.mark.audit
 @pytest.mark.audit_full
 @pytest.mark.parametrize('preset_id', list(PRESETS))
+@audit_cases(SPEC, lambda p: PRESETS[p['preset_id']].values)
 def test_print_audit_per_preset(preset_id, capsys):
     """Unexcluded, the only failure is the flat pocket roofs (and the pin
     hole's 1.33 mm flat): measured as bridges <= POCKET_W first, then

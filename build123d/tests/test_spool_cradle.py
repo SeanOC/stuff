@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from tests.audit_tiers import audit_cases
 import trimesh
 from build123d import Axis, Box, Cylinder, Plane, Pos, Rot, section
 
@@ -276,6 +277,7 @@ FULL = pytest.mark.audit_full
     pytest.param(dict(spool_width=70, guide_gap=.5, guide_height=30, rail_width=6,
                       saddle_clearance=1.5), id='insufficient-crest-room', marks=FULL),
     pytest.param(REAR_LAND_CORNER, id='rear-land-corner')])
+@audit_cases(SPEC)
 def test_production_print_audit(values):
     part=holder(**values)
     assert part.is_valid and len(part.solids()) == 1
@@ -811,6 +813,7 @@ POINTS_AUDIT_CASES = [p.values for p in POINTS_PRESETS] + [
     pytest.param(v, id=f"w{v['spool_width']}-c{v['saddle_clearance']}-a{v['cradle_angle']}",
                  marks=FULL)
     for v in POINTS_AUDIT_CASES[len(POINTS_PRESETS):]])
+@audit_cases(SPEC)
 def test_points_print_audit_and_edges(values):
     model = holder(**values)
     assert model.is_valid and len(model.solids()) == 1
@@ -1005,6 +1008,7 @@ OC_AUDIT_CASES = [p.values for p in OC_PRESETS] + [
     pytest.param(v, id=f"w{v['spool_width']}-c{v['saddle_clearance']}-a{v['cradle_angle']}",
                  marks=FULL)
     for v in OC_AUDIT_CASES[len(OC_PRESETS):]])
+@audit_cases(SPEC)
 def test_openconnect_print_audit_and_edges(values):
     model = holder(**values)
     assert model.is_valid and len(model.solids()) == 1

@@ -785,6 +785,7 @@ def test_module_audit_exclusions_are_registered(spec):
 
 @pytest.mark.audit
 @pytest.mark.parametrize("spec", _SPECS, ids=[s.name for s in _SPECS])
+@pytest.mark.audit_pr
 def test_model_print_audit(spec, capsys):
     """AC 3: printability audit over every registered model. The report is
     printed; a failure is a hard fail for a PRODUCTION model once
@@ -882,9 +883,9 @@ def test_angle_tolerance_does_not_hide_real_overhang():
     assert _downward_curved_faces(cone, _UP_Z, [], -10)
 
 
-# Presets whose own per-preset audit runs only in the audit_full tier (their
-# params carry audit_full, which bd123's `-m "audit and not audit_full"` drops),
-# so the audit tier would otherwise lose their non-waivable bed check (pst-hruv1).
+# Historical full-only preset bed checks remain in the full sweep, preserving
+# their node IDs. The PR tier now checks every model's presets below, including
+# unchanged models (the workflow keeps that test outside its changed-model -k).
 _BED_ONLY_IDS = {
     ("littletikes_dream_machine_cartridge_holder", "full_holder"),
     ("gridfinity_capture_bin", "deep"),
@@ -918,3 +919,23 @@ def test_audit_full_only_presets_fit_the_bed(spec, preset):
     record(spec.name, preset=preset.id, extent=extent)
     bed = bed_failure(extent)
     assert bed is None, f"{spec.name}: {bed}"
+
+
+_ALL_BED_CASES = [(spec, preset.id, preset.values)
+                 for spec in _SPECS for preset in spec.presets]
+_ALL_BED_CASES += [(spec, 'default', {}) for spec in _SPECS if not spec.presets]
+
+
+@pytest.mark.audit
+@pytest.mark.audit_pr
+@pytest.mark.parametrize('spec,case,overrides', _ALL_BED_CASES,
+                         ids=[f'{s.name}-{name}' for s, name, _ in _ALL_BED_CASES])
+def test_registry_presets_fit_bed(spec, case, overrides):
+    """Non-waivable bed fit for every model, even on a scoped model PR."""
+    values = spec.resolve_values(overrides)
+    part = spec.build(values)
+    if spec.print_frame:
+        part = spec.print_frame(values) * part
+    extent = print_extent(part, _unit(spec.print_orientation))
+    record(spec.name, preset=case, extent=extent)
+    assert bed_failure(extent) is None, f'{spec.name}/{case}: {bed_failure(extent)}'

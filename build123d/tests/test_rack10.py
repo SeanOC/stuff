@@ -2,6 +2,7 @@
 from math import acos, degrees
 
 import pytest
+from tests.audit_tiers import audit_cases
 import trimesh
 from OCP.BRep import BRep_Tool
 from build123d import Align, Box, Cylinder, Pos
@@ -165,6 +166,7 @@ def test_preset_is_one_watertight_solid_inside_both_beds(spec,preset,tmp_path):
 
 @pytest.mark.audit
 @pytest.mark.parametrize('spec,values,case',CASES,ids=[f'{s.name}-{n}' for s,v,n in CASES])
+@audit_cases(lambda p: p['spec'])
 def test_endpoint_audit_and_edges(spec,values,case):
     if spec is rail.SPEC and values.get('hole', 'insert') == 'insert' and values.get('thickness',12) < 12:
         with pytest.raises(RailFitError, match='insert seat wall'):

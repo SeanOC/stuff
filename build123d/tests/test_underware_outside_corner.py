@@ -16,6 +16,7 @@ from math import acos, atan2, degrees, pi, sqrt
 
 import numpy as np
 import pytest
+from tests.audit_tiers import audit_cases
 import trimesh
 from build123d import Cylinder, Location, Plane, Pos, Rot, Vector, mirror
 
@@ -591,6 +592,7 @@ ENDPOINT_CASES = {
 
 @pytest.mark.audit
 @pytest.mark.parametrize('case', ENDPOINT_CASES)
+@audit_cases(SPEC, lambda p: {**ENDPOINT_CASES[p['case']], 'supports': 'none'})
 def test_endpoint_audit_and_edges(case):
     """P4 table for underware_outside_corner in its -45 degree print frame:
     raw (only the bend underside fails), filtered (every exception family)

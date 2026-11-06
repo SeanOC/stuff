@@ -2,6 +2,7 @@
 import math
 
 import pytest
+from tests.audit_tiers import audit_cases
 from build123d import Box, Pos
 from opengrid.base import Base
 from opengrid_snap import snap
@@ -166,6 +167,7 @@ CASES += [(f'{s}-L-back{b}', dict(style=s,x_count=2,y_count=2,omit_cells='1,1',b
 
 @pytest.mark.audit
 @pytest.mark.parametrize('name,values', CASES, ids=[c[0] for c in CASES])
+@audit_cases(SPEC)
 def test_endpoint_audit(name, values):
     v = SPEC.resolve_values(values)
     part = SPEC.build(v)

@@ -6,6 +6,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import numpy as np
 import pytest
+from tests.audit_tiers import audit_cases
 import trimesh
 
 from drawer import shell
@@ -334,6 +335,7 @@ DIVIDER_WALL_EDGES = {
                  if name not in {p.id for p in m.SPEC.presets} else ())
     for name, values in CASES
 ])
+@audit_cases(m.SPEC)
 def test_endpoint_audit_and_edges(name, values, monkeypatch):
     # pst-we7g4: keep the before-bed-chamfer body and the slot fixtures that
     # m.build computes on its way, instead of rebuilding both below (~80 CPU s

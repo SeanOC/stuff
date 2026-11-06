@@ -13,6 +13,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from tests.audit_tiers import audit_cases
 import trimesh
 from build123d import Box, Pos
 
@@ -508,6 +509,7 @@ def _down_faces(part, frame):
 
 @pytest.mark.audit
 @pytest.mark.parametrize('name', CASES)
+@audit_cases(m.SPEC, lambda p: CASES[p['name']])
 def test_endpoint_audit_and_edges(name):
     values = CASES[name]
     v = m.SPEC.resolve_values(values)

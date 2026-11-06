@@ -1,5 +1,6 @@
 """Device envelope, cooling, load proxy and production endpoint contracts."""
 import pytest
+from tests.audit_tiers import audit_cases
 import trimesh
 from build123d import Align, Box, Pos
 from holders import rack10_cradle, rack10_shelf, rack10_hub_tray, rack10_ears
@@ -213,6 +214,7 @@ def test_preset_topology_envelope_and_bed(spec,preset,tmp_path):
 
 @pytest.mark.audit
 @pytest.mark.parametrize('spec,values,case',CASES,ids=[f'{s.name}-{n}' for s,v,n in CASES])
+@audit_cases(lambda p: p['spec'])
 def test_endpoint_audit_and_edges(spec,values,case):
     try:
         part=spec.build(values)
