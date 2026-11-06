@@ -1,37 +1,37 @@
 {
   "source_sha": "ccb5f2aa10cc89fc6a426878ff25ae7007f7a52f",
-  "description": "Pre-extension zero-offset geometry signatures and volumes; tests.audit_cache.shape_sig (1e-6 mm), plus exported STL triangle counts, both support modes.",
+  "description": "Pre-extension zero-offset oriented STL triangle digests (raw coordinates, duplicates and winding retained), geometry signatures and volumes; tests.audit_cache.shape_sig (0.01 mm mesh tolerance, coordinates and face area rounded to 1e-6), both support modes.",
   "presets": {
     "outside-corner-none": {
       "volume": 8624.18104280388,
       "shape_sig": "647686d61d6443df80bcea46ff207abb3def31501e46cb4d871f290747f9e0b7",
-      "triangles": 1012
+      "oriented_triangles_sha256": "72a59e7d267ae1a6889a71b76f56924e56cdfced598c179c63dad6a696f5671e"
     },
     "outside-corner-built_in": {
       "volume": 9852.347181422316,
       "shape_sig": "ba447f109778cb02d10098eb0ab46e15b819a2c17ab3e6a9c2c181428e711816",
-      "triangles": 3880
+      "oriented_triangles_sha256": "9f708c5e8455c1e32945287fb939ae31570da3a4c84dd0b7811ca65ee5b1ee09"
     },
     "outside-corner-r1-none": {
       "volume": 13473.292598513312,
       "shape_sig": "9cc1dfc65e17dfe57f4a484aedc4ba0592a61a6085e71cb09f0baa25c4f3ea0b",
-      "triangles": 1168
+      "oriented_triangles_sha256": "9a5f82ce30c548ae8066ff4aef5ccc56fa16f2a7fcc6ba35b160792f220d271e"
     },
     "outside-corner-r1-built_in": {
       "volume": 16567.965973674007,
       "shape_sig": "a8c5b96def51797167da054219910ce258dff80cfb04fba1d40cc2106c697f97",
-      "triangles": 5008
+      "oriented_triangles_sha256": "feede8a49fd0a4a5f380e47c66c341fa0e1d68ac7c18dd7ba602a1e2e19a8d39"
     },
     "outside-corner-w2-h28-y2-none": {
       "volume": 27271.29169077515,
       "shape_sig": "27e7c3c6b13792659b77bb99a429c443310e82f18d021709dc32f8f0b60ba1d5",
-      "triangles": 1064
+      "oriented_triangles_sha256": "5056e6d7d96a76fe60bb06d7b9f629d1fdbe8d7bf3ba0752f936be1ff1e46d02"
     },
     "outside-corner-w2-h28-y2-built_in": {
       "volume": 30533.8144117346,
       "shape_sig": "d0b1daaffb78d32da18159f672e4ef34e4b47e3351607386fcce28bbf0f22761",
-      "triangles": 6156
+      "oriented_triangles_sha256": "99a9fc848eb393ed1d1cd4da7f29430192b753aec55e7d88eb3b5adbfdf53961"
     }
   },
-  "signature_source_sha": "e467ea4a65d75368c8d10af3bcf4b2f9543a8e41"
+  "signatures_captured_at_sha": "e467ea4a65d75368c8d10af3bcf4b2f9543a8e41"
 }
