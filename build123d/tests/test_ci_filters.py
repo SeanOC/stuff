@@ -166,3 +166,10 @@ def test_scoped_split_keeps_unknown_durations_once_and_allows_empty_shards(tmp_p
     assert sum(not shard for shard in selections[0]) == 2
     assert sorted(node for shard in selections[0] for node in shard) == [
         'test_models.py::test_registry_presets_fit_bed', 'test_models.py::test_small_model']
+
+
+@pytest.mark.audit
+@pytest.mark.audit_pr
+def test_temporary_live_audit_failure_probe():
+    """Throwaway PR acceptance probe; remove after the aggregate turns red."""
+    assert False, 'Intentional PR audit failure: verify matrix-to-aggregate plumbing'
