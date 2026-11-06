@@ -38,17 +38,14 @@ def test_interior_hardware_modes_and_corners_are_full(values):
     assert not pr_case(spec(), values)
 
 
-def test_future_large_tile_corners_are_full():
+def test_large_tile_corners_are_full_and_single_extremes_are_pr():
     from holders.opengrid_tile import SPEC
-    # Model-independent classification: extend only the declared limits here,
-    # not the production geometry, to pin the forthcoming 11x8 tile envelope.
-    from dataclasses import replace
-    tile = replace(SPEC, params=tuple(replace(p, max=11 if p.name == 'x_count' else 8)
-                                      if p.name in ('x_count', 'y_count') else p for p in SPEC.params))
-    assert pr_case(tile, {'x_count':11})
-    assert pr_case(tile, {'y_count':8})
-    assert not pr_case(tile, {'x_count':11, 'y_count':8})
-    assert not pr_case(tile, {'style':'lite', 'x_count':11, 'y_count':8})
+    assert pr_case(SPEC, {'x_count':11})
+    assert pr_case(SPEC, {'x_count':1, 'y_count':11, 'backing_mm':0})
+    assert not pr_case(SPEC, {'x_count':6})
+    assert not pr_case(SPEC, {'x_count':11, 'y_count':8})
+    assert not pr_case(SPEC, {'x_count':8, 'y_count':11})
+    assert not pr_case(SPEC, {'style':'lite', 'x_count':11, 'y_count':8})
 
 
 def collected(expression, keyword=None):
@@ -68,11 +65,13 @@ def test_live_collection_is_lossless_and_representative_cases_are_routed():
     all_audits = collected('audit and not upstream')
     assert not pr & full
     assert pr | full == all_audits
-    assert len(all_audits) >= 1227  # pre-change main 23a2df94
+    assert len(all_audits) >= 1229  # original 1227 plus the two large tile rows
     assert 'tests/test_cartridge_holder.py::test_presets[full_holder]' in pr
     assert 'tests/test_tombstone_sign.py::test_print_audit_per_preset[small]' in pr
     assert 'tests/test_opengrid_tile.py::test_endpoint_audit[full-6x6-back3]' in full
-    assert 'tests/test_opengrid_tile.py::test_endpoint_audit[full-6x1-back0]' in pr
+    assert 'tests/test_opengrid_tile.py::test_endpoint_audit[full-6x1-back0]' in full
+    assert 'tests/test_opengrid_tile.py::test_endpoint_audit[lite-11x8-back1]' in full
+    assert 'tests/test_opengrid_tile.py::test_endpoint_audit[full-1x11-back0]' in pr
     assert 'tests/test_spool_cradle.py::test_production_print_audit[diagonal-root-corner]' in full
     # A model with five presets and nine numeric parameters: at most the
     # default + presets + two endpoints per parameter; never its corners.

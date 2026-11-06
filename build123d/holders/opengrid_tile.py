@@ -25,7 +25,9 @@ Design-guidelines §6 checklist:
 9. Waist/taper inventory pinned to vendor BaseSnapSlotCutter; no exception for
    backing or other faces. Bare Lite waist includes the mandated bed relief.
    Full parity permits only outer bed-edge material removal.
-10. Count domain 1..6 => at most 168 x 168 x 9.8 mm, fits H2S and H2C.
+10. Counts 1..11, shorter side <=8: at most 308 x 224 x 9.8 mm, either
+    orientation. Derived from scripts/export.py::max_footprint's 323 x 244 mm
+    H2C/multi-colour bake envelope; also fits H2S.
 
 omit_cells uses zero-indexed x,y pairs separated by spaces or semicolons.
 Examples: 2x2 / "1,1" is an L; duplicates are harmless. Backing may be 0
@@ -36,6 +38,7 @@ backing=1 was 1.000 mm across the endpoint table. 0.9 mm is rejected.
 """
 from holders.registry import ModelSpec, Param, Preset, register
 from opengrid_tile import tile
+from opengrid_tile.tile import MAX_COUNT
 from scripts.thumbnail import PlaneSpec
 
 
@@ -49,8 +52,8 @@ SPEC = register(ModelSpec(
     print_orientation=(0, 0, 1),
     review_sections=(PlaneSpec((0, 0, 0), (1, 0, 0), 'snap profile and backing'),),
     params=(
-        Param('x_count', 'integer', 1, min=1, max=6, step=1),
-        Param('y_count', 'integer', 1, min=1, max=6, step=1),
+        Param('x_count', 'integer', 1, min=1, max=MAX_COUNT, step=1),
+        Param('y_count', 'integer', 1, min=1, max=MAX_COUNT, step=1),
         Param('style', 'enum', 'full', choices=('full', 'lite')),
         Param('backing_mm', 'number', 0, min=0, max=3, step=0.1, unit='mm',
               description='0 = open; otherwise 1–3 mm. Adhesive presets use 1 mm.'),

@@ -101,6 +101,8 @@ jobs:
     # Its 521 completed items plus 51 estimated remaining items replay to
     # 38.0 min (matched CI items took 2.134x historical durations).
     # 38.0 x 1.5 = 57 -> 60, including setup and runner variance.
+    # Confirmed by unscoped PR run 42155150319: 50m05s with empty K_EXPR
+    # (this workflow changed). Scoped saddle + bed: 130 passed in 84.74s local.
     # Measurements and assumptions: build123d/ci/README.md, PR audit tier.
     timeout-minutes: 60
     defaults: { run: { working-directory: build123d } }

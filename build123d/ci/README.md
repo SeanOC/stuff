@@ -350,15 +350,30 @@ estimates; this is not a completed run. Applying the same 50% headroom rule
 The uploaded `bd123-audit-rows` artifact supplies the measurements even though
 the job timed out. Audit sharding is separate work.
 
+The subsequent [unscoped PR run 42155150319](https://github.com/SeanOC/stuff/actions/runs/42155150319/job/127687547675)
+**passed in 50m05s** (03:13:18Z–04:03:23Z), inside the 60-minute cap. A PR
+touching `.github/workflows/bd123.yml` selects all models with an empty
+`K_EXPR`, so the cap must cover this run as well as the scoped saddle run
+below. The successful unscoped result supersedes the earlier replay estimates.
+
+After integrating the tile envelope expansion, the same classifier sends
+`lite-11x8-back1` to the full sweep and `full-1x11-back0` to the PR tier:
+the latter changes only `y_count` to its declared maximum. Existing `6x1`
+and `1x6` full-style rows now have interior counts and move to the full tier.
+Both `11x8` and `8x11` corners classify as full; no row-specific override is
+needed. The two new rows' recorded durations (653.9s and 278.6s from run
+42132292541) are retained in the shard timing inventory.
+
 The local combined saddle/bed run used the production PR marker expression,
 `-n 4` and `-k 'bench_width_saddle or test_registry_presets_fit_bed'`:
 **130 passed in 84.74 seconds** (24 existing saddle audits: 23 preset/endpoint
 rows plus its registry default; and 106 bed checks). Four module-level skips
 are unrelated optional dependencies. This used the existing cache while the
 required full suite was also running. The standalone bed gate passed all 106
-items in 86.16 seconds. Main/schedule now collect **1,333** audit-marked items:
-all 1,227 original IDs plus 106 lightweight bed checks, partitioned into 572 PR
-and 761 full-tier items. No new print-audit or guard cases were added.
+items in 86.16 seconds. After the tile merge, main/schedule collect **1,335**
+audit-marked items: all 1,227 original IDs, both added tile rows and 106
+lightweight bed checks, partitioned into 571 PR and 764 full-tier items.
+This tiering change adds no print-audit or guard cases.
 Geometry, print thresholds and exception inventories are unchanged.
 
 PRs still upload **`bd123-audit-rows`**. Main/schedule additionally upload

@@ -84,7 +84,7 @@ export const CATALOG: Record<string, CatalogEntry> = {
   gridfinity_bin: {
     categoryId: "storage",
     blurb:
-      "Parametric Gridfinity bin: pick a footprint, height, compartments, and base options. Snaps onto any standard 42mm Gridfinity baseplate.",
+      "Parametric Gridfinity bin: pick a footprint, height in 7mm units or total millimetres including the stacking lip, compartments, and base options. Includes a 65mm drawer test-fit preset. Snaps onto any standard 42mm Gridfinity baseplate.",
   },
   disney_ear_hanger: {
     categoryId: "household",

@@ -11,14 +11,17 @@
 // shipped is not.
 //
 // Drops onto any standard 42mm Gridfinity baseplate. Footprint is
-// grid_x × grid_y × 42mm; height is height_units × 7mm + a stacking
-// lip the library adds (~3.55mm, no impact on stack pitch).
+// grid_x × grid_y × 42mm. In units mode, height is height_units × 7mm
+// + the stacking lip (~3.55mm, no impact on stack pitch). In total mm
+// mode, height_mm is the bed-to-lip height, with no 7mm rounding.
 //
 // Wrapper-to-library parameter mapping:
 //   grid_x          -> gridx
 //   grid_y          -> gridy
 //   height_units    -> gridz             (gridz_define=0: 7mm increments,
 //                                          excludes stacking lip)
+//   height_mm       -> body height + actual stacking_lip_height()
+//                      (height_mode="total mm" only; z-snap disabled)
 //   divisions_x     -> divx              (compartments along X)
 //   divisions_y     -> divy              (compartments along Y)
 //   enable_scoop    -> scoop             (1.0 if true, 0 if false)
@@ -35,6 +38,7 @@ use <gridfinity-rebuilt-openscad/src/core/gridfinity-rebuilt-utility.scad>
 use <gridfinity-rebuilt-openscad/src/core/gridfinity-rebuilt-holes.scad>
 use <gridfinity-rebuilt-openscad/src/core/bin.scad>
 use <gridfinity-rebuilt-openscad/src/core/cutouts.scad>
+use <gridfinity-rebuilt-openscad/src/core/wall.scad>
 
 $fa = 4;
 $fs = 0.25;
@@ -42,7 +46,9 @@ $fs = 0.25;
 // === User-tunable parameters ===
 grid_x           = 1;     // @param integer min=1 max=6 group=footprint label="Grid X (cells)"
 grid_y           = 1;     // @param integer min=1 max=6 group=footprint label="Grid Y (cells)"
+height_mode      = "units"; // @param enum choices="units|total mm" group=footprint label="Height mode"
 height_units     = 3;     // @param integer min=2 max=8 group=footprint label="Height (7mm units)"
+height_mm        = 65;    // @param number min=11 max=120 step=0.5 unit=mm group=footprint label="Total height including lip (mm mode; floor ~10.55mm)"
 
 divisions_x      = 1;     // @param integer min=1 max=6 group=compartments label="Divisions X"
 divisions_y      = 1;     // @param integer min=1 max=6 group=compartments label="Divisions Y"
@@ -63,6 +69,8 @@ screw_holes      = false; // @param boolean group=base label="M3 screw holes (ne
 // overrides the value pulled in from standard.scad above.
 wall_thickness   = 0.95;  // @param number min=0.6 max=3 step=0.05 unit=mm group=walls label="Wall thickness"
 
+// @preset id="test-fit-65mm" label="1×1 test-fit bin, 65mm total" grid_x=1 grid_y=1 height_mode="total mm" height_mm=65 divisions_x=1 divisions_y=1 enable_scoop=true enable_label_tab=false magnet_holes=false screw_holes=false wall_thickness=0.95
+
 // === Library overrides ===
 // d_wall comes from standard.scad; redeclaring after the include
 // makes wall_thickness the effective value everywhere downstream.
@@ -77,9 +85,16 @@ hole_options = bundle_hole_options(
     screw_holes   = screw_holes
 );
 
+// Mode 3 subtracts the nominal lip, which is taller than the rounded
+// geometry. Subtract the library's actual lip instead, then use external
+// body millimetres (mode 2) with z-snap OFF. Keep the units path unchanged.
+body_height_mm = height_mode == "total mm"
+    ? height(height_mm - stacking_lip_height(), 2, false)
+    : height(height_units, 0, false);
+
 bin = new_bin(
     grid_size     = [grid_x, grid_y],
-    height_mm     = height(height_units, 0, false),
+    height_mm     = body_height_mm,
     include_lip   = true,
     hole_options  = hole_options
 );

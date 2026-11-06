@@ -2,7 +2,7 @@
 
 The built-in invariants (`is_watertight`, `connected_solids == 1`,
 `PRINT_ANCHOR_BBOX` match) cover the structural claims a bin must
-satisfy. This sidecar adds two parameter-level guards the wrapper
+satisfy. This sidecar adds parameter-level guards the wrapper
 can't enforce at the @param level:
 
   1. screw_holes implies magnet_holes — the gridfinity-rebuilt
@@ -11,6 +11,7 @@ can't enforce at the @param level:
      dangles in space.
   2. wall_thickness can't exceed half the cell pitch — once the wall
      swallows half the cell width there's no compartment volume left.
+  3. Total-mm mode must match the requested bed-to-lip height within 0.1mm.
 """
 
 from __future__ import annotations
@@ -39,5 +40,15 @@ def check(ctx):
             f"wall_thickness={wall}mm leaves no compartment volume "
             f"in a {CELL_PITCH_MM}mm cell",
         ))
+
+    if p.get("height_mode") == "total mm":
+        requested = p["height_mm"]
+        actual = ctx["bbox_mm"][2]
+        if abs(actual - requested) > 0.1:
+            failures.append(Failure(
+                "height",
+                f"total height including lip is {actual:.3f}mm, "
+                f"expected {requested}mm ±0.1mm",
+            ))
 
     return failures
