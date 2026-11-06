@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from tests.audit_tiers import audit_cases
 import trimesh
 from build123d import Axis, Compound, Pos, Rot
 
@@ -78,6 +79,7 @@ def test_negative_is_exportable_author_grid_without_base(tmp_path):
 
 @pytest.mark.parametrize('preset', m.SPEC.presets, ids=lambda p:p.id)
 @pytest.mark.audit
+@audit_cases(m.SPEC, lambda p: p['preset'].values)
 def test_preset_print_audit(preset):
     v = m.SPEC.resolve_values(preset.values)
     if v['slot_type'] == 'negslot':
@@ -213,6 +215,7 @@ AUDIT_CASES = {
 
 @pytest.mark.audit
 @pytest.mark.parametrize('name,overrides', AUDIT_CASES.items(), ids=AUDIT_CASES)
+@audit_cases(m.SPEC, lambda p: p['overrides'])
 def test_printable_endpoints(name, overrides):
     v = m.SPEC.resolve_values(overrides)
     part = m.build(v)

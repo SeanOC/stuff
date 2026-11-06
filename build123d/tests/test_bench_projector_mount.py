@@ -2,6 +2,7 @@
 import math
 
 import pytest
+from tests.audit_tiers import audit_cases
 from build123d import Axis, Rectangle, Pos, Vector
 
 from holders import bench_lip_clip
@@ -378,6 +379,7 @@ def test_insert_and_bridges(values):
 
 @pytest.mark.audit
 @pytest.mark.parametrize('values', CASES, ids=_id)
+@audit_cases(SPEC)
 def test_endpoint_audit(values):
     p = dimensions(values)
     part = holder(**values)

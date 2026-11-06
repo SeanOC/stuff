@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from tests.audit_tiers import audit_cases
 import trimesh
 from build123d import Plane
 from OCP.BRepAdaptor import BRepAdaptor_Surface
@@ -438,6 +439,7 @@ SEAT_AUDIT_CASES = [pytest.param({}, id='sippy_cup_85mm')] + [
 
 @pytest.mark.audit
 @pytest.mark.parametrize('values', SEAT_AUDIT_CASES)
+@audit_cases(SPEC)
 def test_endpoint_countersink_audit(values):
     from holders.cup_lid import _uncut_holder, audit_exclusions
     from tests.print_audit import audit

@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from tests.audit_tiers import audit_cases
 import trimesh
 from build123d import Axis, Box, Cylinder, Plane, Pos, Rot, section
 
@@ -276,6 +277,7 @@ FULL = pytest.mark.audit_full
     pytest.param(dict(spool_width=70, guide_gap=.5, guide_height=30, rail_width=6,
                       saddle_clearance=1.5), id='insufficient-crest-room', marks=FULL),
     pytest.param(REAR_LAND_CORNER, id='rear-land-corner')])
+@audit_cases(SPEC)
 def test_production_print_audit(values):
     part=holder(**values)
     assert part.is_valid and len(part.solids()) == 1
@@ -620,6 +622,7 @@ def thin_walls(part, lo, hi):
 
 @pytest.mark.audit  # dense probes, ~20 s each -> bd123 `audit` job (pst-24tr6)
 @pytest.mark.parametrize('values', [{}, REAR_LAND_CORNER], ids=['default', 'rear-land-corner'])
+@audit_cases(SPEC)
 def test_outboard_rear_end_has_no_knife(values):
     # pst-dkqef: the print audit samples each face at UV 0.3/0.5/0.7 only,
     # so it saw the saddle's unbacked rear knife (~0.02 mm, including both
@@ -636,6 +639,7 @@ CHANNEL_PRESET = next(p.values for p in SPEC.presets if p.id == 'channel')
 @pytest.mark.audit  # dense probes like the outboard knife -> bd123 `audit` job
 @pytest.mark.parametrize('values', [{}, CHANNEL_PRESET, REAR_LAND_CORNER],
                          ids=['default', 'channel-preset', 'rear-land-corner'])
+@audit_cases(SPEC)
 def test_inboard_cap_rear_end_has_no_knife(values):
     # pst-2q3ej: the same unbacked knife on the inboard rail cap (0.02 mm
     # on main at both presets), between cap_inner and the rail.
@@ -811,6 +815,7 @@ POINTS_AUDIT_CASES = [p.values for p in POINTS_PRESETS] + [
     pytest.param(v, id=f"w{v['spool_width']}-c{v['saddle_clearance']}-a{v['cradle_angle']}",
                  marks=FULL)
     for v in POINTS_AUDIT_CASES[len(POINTS_PRESETS):]])
+@audit_cases(SPEC)
 def test_points_print_audit_and_edges(values):
     model = holder(**values)
     assert model.is_valid and len(model.solids()) == 1
@@ -1005,6 +1010,7 @@ OC_AUDIT_CASES = [p.values for p in OC_PRESETS] + [
     pytest.param(v, id=f"w{v['spool_width']}-c{v['saddle_clearance']}-a{v['cradle_angle']}",
                  marks=FULL)
     for v in OC_AUDIT_CASES[len(OC_PRESETS):]])
+@audit_cases(SPEC)
 def test_openconnect_print_audit_and_edges(values):
     model = holder(**values)
     assert model.is_valid and len(model.solids()) == 1

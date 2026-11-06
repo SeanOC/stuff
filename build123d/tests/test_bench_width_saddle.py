@@ -2,6 +2,7 @@
 import math
 
 import pytest
+from tests.audit_tiers import audit_cases
 from build123d import Vector
 
 from holders.bench_width_saddle import (FIT_KIT, OUTER_RADIUS, PARAMS, SPEC, audit_exclusions, dimensions,
@@ -196,6 +197,7 @@ def test_preset_label_deboss(values):
 
 @pytest.mark.audit
 @pytest.mark.parametrize('values', CASES, ids=_id)
+@audit_cases(SPEC)
 def test_endpoint_audit(values):
     p = dimensions(values)
     part = holder(**values)

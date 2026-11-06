@@ -171,15 +171,20 @@ def test_github_output(tmp_path, monkeypatch):
 
 
 def test_pr_247_audit_selection_keeps_the_models_own_sweep_and_registry_audits():
-    k_expr = sel.classify(PR_247).k_expr
+    k_expr = f'({sel.classify(PR_247).k_expr}) or test_registry_presets_fit_bed'
     files = collected(AUDIT, k_expr)
     own = collected(AUDIT, "test_bench_lip_clip", "tests/test_bench_lip_clip.py")
-    # every endpoint/corner audit in the model's own file, not just the
-    # registry-wide test_print_audit row (round-1 BLOCKING 1: 1 test, not 35)
+    # Every PR-tier audit in the model's own file, not just the registry
+    # default. Corners and other extended rows now run in the full sweep.
     assert files["tests/test_bench_lip_clip.py"] == own["tests/test_bench_lip_clip.py"] > 1
     assert files["tests/test_print_audit.py"] >= 1
-    # registry-wide audits whose ids name no model still run
-    assert files["tests/test_geometry_baseline.py"] == 1
+    # The all-preset geometry comparison remains covered on main/schedule;
+    # the scoped PR tier retains the inexpensive all-model bed gate instead.
+    assert files["tests/test_geometry_baseline.py"] == 0
+    assert files["tests/test_print_audit.py"] >= 106
+    full = collected('audit_full and not upstream', 'not nothing_matches_this',
+                     'tests/test_geometry_baseline.py')
+    assert full["tests/test_geometry_baseline.py"] == 1
     assert "tests/test_spool_cradle.py" not in files
     assert sum(files.values()) < sum(collected(AUDIT, "not nothing_matches_this").values())
 

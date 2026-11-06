@@ -11,6 +11,7 @@ import pytest
 from drawer import constants as c, container, dividers, shell, stopper
 from holders import openconnect_drawer as m
 from tests import print_audit as audit
+from tests.audit_tiers import audit_cases
 from tests.openconnect_drawer_inventory import container_skin_mask, source_contact_mask
 from tests.parity import (band_mask, bbox_parity, boundary_edges, load_reference,
                           over_cap_exclusion, surface_distance, volume_parity)
@@ -285,6 +286,7 @@ def test_stopper_bed_edge_exception_is_exactly_the_profile_boundary(length):
 @pytest.mark.audit
 @pytest.mark.parametrize('preset', [p for p in m.SPEC.presets if p.id != 'stopper-clips'],
                          ids=lambda p: p.id)
+@audit_cases(m.SPEC, lambda p: p['preset'].values)
 def test_bed_chamfer_exception_does_not_reach_other_parts(preset):
     """The clip exception is the ONLY bed-chamfer miss in the drawer."""
     v = m.SPEC.resolve_values(preset.values)
@@ -334,6 +336,7 @@ def test_stopper_clip_length_endpoints(length):
 
 @pytest.mark.audit
 @pytest.mark.parametrize('preset', ['two-compartments', 'organiser', 'stopper-clips'])
+@audit_cases(m.SPEC, lambda p: next(pr.values for pr in m.SPEC.presets if pr.id == p['preset']))
 def test_new_presets_build(preset):
     values = next(p.values for p in m.SPEC.presets if p.id == preset)
     part = m.build(values)

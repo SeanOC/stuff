@@ -6,6 +6,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from tests.audit_tiers import audit_cases
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -183,6 +184,7 @@ def assert_containment(part, values):
 @pytest.mark.audit
 @pytest.mark.audit_full
 @pytest.mark.parametrize('name,values,error', CASES, ids=[c[0] for c in CASES])
+@audit_cases(m.SPEC)
 def test_endpoint_audit_edges_and_containment(name, values, error):
     if error:
         with pytest.raises(ValueError, match=f'^{error.replace("+", r"\+")}$'):

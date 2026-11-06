@@ -16,6 +16,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from tests.audit_tiers import audit_cases
 import trimesh
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -346,6 +347,7 @@ def edge_inventory(part, values):
 
 @pytest.mark.audit
 @pytest.mark.parametrize('name', CASES)
+@audit_cases(m.SPEC, lambda p: CASES[p['name']])
 def test_endpoint_audit_and_edges(name):
     values = CASES[name]
     part = m.build(values)

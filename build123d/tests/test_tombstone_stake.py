@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from tests.audit_tiers import audit_cases
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -242,6 +243,7 @@ def test_cross_bar_half_lap_interlocks_flush():
 
 @pytest.mark.audit
 @pytest.mark.parametrize('preset_id', list(PRESETS))
+@audit_cases(m.SPEC, lambda p: PRESETS[p['preset_id']].values)
 def test_print_audit_per_preset(preset_id, capsys):
     """Every preset passes flat, with no exclusion except the pinned preset's
     pin-hole roofs (measured as a <= 1.5 mm bridge first). Both cross-bar

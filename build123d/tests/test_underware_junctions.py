@@ -13,6 +13,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from tests.audit_tiers import audit_cases
 import trimesh
 from build123d import Plane, mirror
 
@@ -490,6 +491,7 @@ def _inside_u(part, mid, faces):
 
 @pytest.mark.audit
 @pytest.mark.parametrize('case', CASES)
+@audit_cases(lambda p: m.SPECS[CASES[p['case']][0]], lambda p: CASES[p['case']][1])
 def test_endpoint_audit_and_edges(case):
     name, values = CASES[case]
     part = build(name, values)

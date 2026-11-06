@@ -272,54 +272,136 @@ diff /tmp/ctx-before.json /tmp/ctx-after.json   # must be empty: job names are u
 If the pst-ae3v proposal is activated later, rebase its one ADDED step onto
 the then-live file. Do not copy it over this one.
 
-# bd123 jobs and the marker contract (pst-24tr6)
+# bd123 jobs and the marker contract
 
-`.github/workflows/bd123.yml` is split into three jobs, and pytest markers in
-`build123d/pyproject.toml` decide which job runs each test. **fast** (`build123d
-fast`) runs the manifest checks, every test that is neither `audit` nor
-`budget`, then the `budget` tests serially (`-n 0`, because the 60 s per-model
-budget measures serial CPU time), then the export. **audit** (`build123d
-audit`) runs `audit and not audit_full`: every registry-sized print audit,
-including each cradle style's presets, `PRINT_CORNER` and the reproducers,
-plus the other registry-sized cradle checks that made `fast` 9m48s on the
-runner: the mount-contract tests (20–130 s each), the dense-probe rear-knife
-tests (outboard rear end and inboard cap) and the preset bake.
-The label stroke cache's three-face live comparison also runs in **audit** on
-every build123d PR (no `slow` opt-in); all six cached rows run in **audit_full**.
-The fast tier separately checks every preset candidate has a current key and
-that changed scan code or engine versions invalidate it.
-The drawer keeps its three preset audits and six reference parity cases in
-**audit**; its 34 parameter endpoint/corner audits run in **audit_full**.
-The `baseline` marker identifies the all-app-preset BREP comparison
-(`tests/test_geometry_baseline.py`). It also carries `audit`: measuring the
-65 presets and their 125 containment samples took **324.289 s** during initial
-local generation, exceeding the 60 s fast-job allowance. Its CI
-`outcome.duration_s` in `bd123-audit-rows` measures
-runner cost independently of the rest of the job. No bake or downloaded audit
-rows are consumed by this test; the two offline comparators have tiny fixture
-tests in **fast**.
-The raw bridge, filtered print audit, exposed-edge inventory and mount-contract
-assertions run unchanged in both jobs.
-**audit_full** (`build123d audit (full sweep)`) runs the cradle, capture-bin and
-drawer endpoint/corner sweeps (`audit_full`) as six `pytest-split` shards,
-balanced by the committed
-`build123d/tests/.test_durations`. A PR runs it only when it touches a path
-in the `cradle:` filter of `.github/workflows/bd123.yml`: the model packages
-(`holders/`, `labels/`, `multibuild/`, `openconnect/`, `gridfinity/`,
-`drawer/`), every test file carrying an `audit_full` case plus the `tests/`
-helpers those files import, `tests/conftest.py`, `pyproject.toml` or
-`uv.lock`. The fast-tier `tests/test_ci_filters.py` fails when an
-`audit_full` carrier or one of its helpers is missing from that filter, or
-when a filter entry names a path that does not exist.
-Every push to `main` and the nightly schedule (`17 9 * * *` UTC) run all three
-jobs unconditionally. The contract: a test that builds a registry-sized model
-and calls `audit()` gets `@pytest.mark.audit`; a cradle corner case also gets
-`audit_full`; `tests/conftest.py` fails collection if an `audit_full` item lacks
-`audit` or a `budget` item has it. Because a command-line `-m` replaces
-`addopts`, every job's expression ends in `and not upstream`, which keeps PR CI
-offline (`reference/FETCH.md`). Nightly failures are not filed as issues
-(`issues: write` is outside this workflow's permissions); the mayor's heartbeat
-checks `gh run list --workflow bd123 --event schedule`.
+The live `.github/workflows/bd123.yml` partitions tests with pytest markers:
+
+| Tier | Expression (also excludes `upstream`) | When |
+| --- | --- | --- |
+| fast | `not audit and not budget` | scoped PRs, main, schedule |
+| budget | `budget` (serial step in fast) | scoped PRs, main, schedule |
+| audit | `audit and not audit_full` | scoped PRs, main, schedule |
+| audit_full | `audit_full`, six pytest-split shards | main and schedule |
+
+## PR audit tier
+
+`tests/audit_tiers.py` classifies existing rows once: a preset, the defaults, or one
+numeric parameter at its declared min/max with all other values at defaults
+belongs in the PR tier. Compare resolved values, so an explicitly spelled-out
+default does not turn an endpoint into a corner. Hardware-mode combinations,
+interior values, corners, reproducers and other expensive checks run in the
+full sweep. Existing test bodies, assertions and node IDs are retained. Missing
+endpoint rows are not synthesized, and explicit-rejection guard tests stay in
+the fast tier unchanged.
+
+Generators expose their model and values using `@audit_cases(spec, resolver)`.
+The resolver reads pytest parameter data, never builds geometry. The collection
+hook classifies items **before** marker deselection and shard selection. This
+also promotes previously full-only presets into the PR tier. Registry defaults
+and the bed-fit checks use `audit_pr`. Every other `audit` item receives
+`audit_full`; unknown new cases therefore remain covered on main and schedule.
+An `audit_full` item without `audit`, or an audit marked `budget`, fails collection.
+
+The old `cradle` path filter is removed: more full-tier test carriers cannot
+accidentally bring the full sweep back onto model PRs. The audit job uses the
+existing changed-model `k_expr` for print audits,
+while `test_registry_presets_fit_bed` checks every registered preset (and
+defaults for models without presets) even when its model is unchanged. All
+expressions exclude `upstream` because
+a command-line `-m` replaces pytest addopts. The full sweep's six shards use
+`tests/.test_durations`; durations were refreshed from the 1,227 successful
+outcome rows in main run 42076796470. Main and schedule retain every old audit
+item across the two disjoint tiers. `tests/test_audit_tiers.py` checks their
+union and representative routing, including large tile corners and presets
+that used to run only in the full sweep. `tests/test_ci_filters.py` pins the
+live workflow routing and artifact contract. Historical `.proposed` workflows
+must be rebased before activation; copying their old cradle filter is unsafe.
+
+The initial **35-minute cap** was estimated from four successful main runs:
+
+| Run | Old audit job elapsed | Replayed PR selection, four workers |
+| --- | ---: | ---: |
+| 42076796470 | 56.5 min | 17.9 min |
+| 42001797960 | 39.6 min | 18.4 min |
+| 41806835769 | 66.6 min | 22.1 min |
+| 41692429964 | 44.6 min | 18.7 min |
+
+These estimates replay the initial **572-item** PR tier by assigning each
+selected item's recorded `outcome.duration_s` to the earliest available of four
+workers in collection order. The latest CI run supplies all 466 existing
+selected audit durations. For each older run, use its 454 recorded rows and
+fill the 12 subsequently added rows from the latest run. Add the 106 bed-check
+durations from the local combined run below (264.1 task-seconds in total).
+These are estimates, not observed full CI runs of this PR: bed timings are
+local, and xdist batching, cache state, setup and contention can differ.
+The slowest estimate times 1.5 was 33.2 minutes, rounded to 35, but the first
+actual PR run disproved that estimate.
+
+[PR run 42150014497](https://github.com/SeanOC/stuff/actions/runs/42150014497)
+hit the 35-minute limit after recording 521 of 572 items (519 passed and two
+skip outcomes, including the expected xfail; no failures). All 106 bed checks
+finished. Its 415 completed historical audit items took 7,415.709 task-seconds
+versus 3,475.576 in main run 42076796470: **2.133663×** as long. The cause of
+that timing difference is not established. Replaying the 521 actual durations
+plus the 51 unfinished items' historical durations scaled by that observed
+ratio gives **38.0 minutes** on four workers. The unfinished durations remain
+estimates; this is not a completed run. Applying the same 50% headroom rule
+(38.0 × 1.5 = 57.0) and rounding up sets the revised cap to **60 minutes**.
+The uploaded `bd123-audit-rows` artifact supplies the measurements even though
+the job timed out. Audit sharding is separate work.
+
+The subsequent [unscoped PR run 42155150319](https://github.com/SeanOC/stuff/actions/runs/42155150319/job/127687547675)
+**passed in 50m05s** (03:13:18Z–04:03:23Z), inside the 60-minute cap. A PR
+touching `.github/workflows/bd123.yml` selects all models with an empty
+`K_EXPR`, so the cap must cover this run as well as the scoped saddle run
+below. The successful unscoped result supersedes the earlier replay estimates.
+
+After integrating the tile envelope expansion, the same classifier sends
+`lite-11x8-back1` to the full sweep and `full-1x11-back0` to the PR tier:
+the latter changes only `y_count` to its declared maximum. Existing `6x1`
+and `1x6` full-style rows now have interior counts and move to the full tier.
+Both `11x8` and `8x11` corners classify as full; no row-specific override is
+needed. The two new rows' recorded durations (653.9s and 278.6s from run
+42132292541) are retained in the shard timing inventory.
+
+The local combined saddle/bed run used the production PR marker expression,
+`-n 4` and `-k 'bench_width_saddle or test_registry_presets_fit_bed'`:
+**130 passed in 84.74 seconds** (24 existing saddle audits: 23 preset/endpoint
+rows plus its registry default; and 106 bed checks). Four module-level skips
+are unrelated optional dependencies. This used the existing cache while the
+required full suite was also running. The standalone bed gate passed all 106
+items in 86.16 seconds. After the tile merge, main/schedule collect **1,335**
+audit-marked items: all 1,227 original IDs, both added tile rows and 106
+lightweight bed checks. Review restored 26 existing preset/default/extreme rows
+whose carriers lacked classification metadata: nine mitre bed cases, ten drawer
+preset checks, three rear-knife probes and all four heavy mount contracts. The
+contracts check defaults plus registered presets; all four stay PR-tier under
+the same rule, regardless of runtime. The final partition is **597 PR**
+(491 existing audits + 106 bed checks) and **738 full-tier** items. The routing
+test pins all 26 restored IDs and requires a real default audit for every
+registered model, independently of the bed gate.
+
+The 50m05s unscoped measurement predates those 26 restored items; it is not a
+measurement of the final 597-item selection. The 60-minute cap is retained per
+the bead's revision 3, and fresh CI must validate that final selection. Against
+50m05s it provides about 20% headroom, less than the historical 1.5× convention.
+The earlier 80-minute cap also accounted for PR #204's cold-cache run (51m53s);
+cache state and runner variance remain relevant to the next timeout change.
+
+Extended harnesses without a single model/values case still run on main and
+schedule: the app-wide geometry baseline, all-preset bake, published snap print
+inventory (four rows), tombstone type/rhythm checks (five), and stake edge
+inventory (four). These are explicit PR-tier coverage gaps, in addition to the
+missing literal endpoint table in the PR; their assertions and full-sweep
+coverage are retained.
+
+This tiering change adds no print-audit or guard cases.
+Geometry, print thresholds and exception inventories are unchanged.
+
+PRs still upload **`bd123-audit-rows`**. Main/schedule additionally upload
+`bd123-audit-rows-1` through `-6`. The download and reading recipe below is
+unchanged; inspect session marker expressions to identify each tier. A PR
+artifact is evidence only for its selected items, not for the full matrix.
 
 To refresh the shard balance, each nightly shard re-measures its own tests and
 uploads them as `bd123-test-durations-<group>` (1–6), the file

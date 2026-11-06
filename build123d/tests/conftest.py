@@ -27,6 +27,7 @@ _ROOT = str(Path(__file__).resolve().parent.parent)
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 from tests import audit_record
+from tests.audit_tiers import classify
 
 
 @pytest.fixture(autouse=True)
@@ -43,7 +44,12 @@ def pytest_addoption(parser):
                      help='run explicitly gated expensive geometry contracts')
 
 
+@pytest.hookimpl(tryfirst=True)
 def pytest_collection_modifyitems(config, items):
+    # Run before pytest's -m deselection and pytest-split's shard selection.
+    for item in items:
+        if item.get_closest_marker('audit'):
+            classify(item)
     if not config.getoption('--run-slow'):
         skip = pytest.mark.skip(reason='requires --run-slow')
         for item in items:

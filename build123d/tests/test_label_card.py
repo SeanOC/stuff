@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from tests.audit_tiers import audit_cases
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -376,6 +377,7 @@ AUDIT_CASES = [('inlaid', 'Filament'), ('raised', 'Filament'),
 
 @pytest.mark.audit
 @pytest.mark.parametrize('style,text', AUDIT_CASES)
+@audit_cases(SPEC, lambda p: {'text_style': p['style'], 'text': p['text']})
 def test_print_audit_on_the_assembled_card(style, text, capsys):
     """Inlaid: glyphs are interior to the fused card, audited as is. Raised: the
     raised text is excluded (its strokes are gated by fit_text, below; see

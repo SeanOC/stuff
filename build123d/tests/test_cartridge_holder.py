@@ -6,6 +6,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from functools import lru_cache
 
 import pytest
+from tests.audit_tiers import audit_cases
 from build123d import Align, Box, Pos
 from holders import cartridge_holder as m
 from tests import audit_cache
@@ -74,6 +75,7 @@ def checked(values):
 @pytest.mark.parametrize('preset', [
     pytest.param(p, marks=pytest.mark.audit_full) if p.id == 'full_holder' else p
     for p in m.SPEC.presets], ids=lambda p: p.id)
+@audit_cases(m.SPEC, lambda p: p['preset'].values)
 def test_presets(preset):
     report, angle = checked(preset.values)
     print(preset.id, report.min_wall_mm, report.max_overhang_deg, angle, report.ok)
@@ -90,6 +92,7 @@ CORNERS = [('full-snaps', {'snap_lite':False}),
 @pytest.mark.audit
 @pytest.mark.audit_full
 @pytest.mark.parametrize('name,values', ENDPOINTS+CORNERS, ids=[c[0] for c in ENDPOINTS+CORNERS])
+@audit_cases(m.SPEC)
 def test_endpoints(name, values):
     report, angle = checked(values)
     print(f'| {name} | {report.min_wall_mm:.3f} | {report.max_overhang_deg:.1f} | {angle:.1f} | {report.ok} |')

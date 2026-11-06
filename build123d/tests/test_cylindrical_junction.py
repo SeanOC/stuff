@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from tests.audit_tiers import audit_cases
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -120,6 +121,7 @@ def test_tall_thick_junction_sweep(diameter, height, wall, count, travel):
     [(spec, preset) for spec in SPECS for preset in spec.presets],
     ids=[preset.id for spec in SPECS for preset in spec.presets],
 )
+@audit_cases(lambda p: p['spec'], lambda p: p['preset'].values)
 def test_shipped_presets_unchanged_and_printable(spec, preset, monkeypatch):
     reinforce = cylindrical._reinforce_junction
     calls = []

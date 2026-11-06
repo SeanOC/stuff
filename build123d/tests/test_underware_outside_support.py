@@ -3,6 +3,7 @@ from dataclasses import replace
 from math import sqrt
 
 import pytest
+from tests.audit_tiers import audit_cases
 from build123d import Align, Box, GeomType, Pos
 
 from holders import underware_path_channels as m
@@ -143,6 +144,7 @@ for corner in ('min-corner', 'max-corner'):
 
 @pytest.mark.audit
 @pytest.mark.parametrize('case', SUPPORTED_CASES)
+@audit_cases(m.SPEC_OUTSIDE, lambda p: SUPPORTED_CASES[p['case']])
 def test_underware_outside_supported_endpoint_audit(case):
     values = SUPPORTED_CASES[case]
     part = m.build_outside_corner(values)

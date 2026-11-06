@@ -6,10 +6,9 @@
 # pst-24tr6 (CI P3+P4): three jobs selected by pytest marker (the contract is
 # in build123d/ci/README.md and enforced by build123d/tests/conftest.py):
 #   fast        everything that is not an audit, plus the serial budget step
-#   audit       every registry-sized print audit except the cradle corner sweep,
-#               plus the spool cradle mount contracts (registry-sized builds)
-#   audit_full  the cradle corner sweep, 6 pytest-split shards; PRs that touch
-#               model/audit code, every push to main, and nightly
+#   audit       presets, defaults and existing numeric extremes; all-model bed gate
+#   audit_full  extended audit sweep, 6 pytest-split shards on main and nightly
+# See build123d/ci/README.md, PR audit tier, for the tier table and scope.
 # pst-3bga4: on pull_request, fast and audit run only what the change can
 # affect (`changes` emits mode=full|scoped|skip and k_expr); push to main and
 # schedule always run everything.
@@ -97,16 +96,14 @@ jobs:
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.mode != 'skip' }}
     runs-on: ubuntu-latest
-    # pst-hruv1: the same 164-item selection swung 18.8-32.5 min across main runs
-    # 38299848019 / 38334657942 / 38377646596 before #193 and ran 34m57s clean in
-    # 38432960766 (-n 4 on 2 physical cores = high variance). 45 = ~30% headroom
-    # over the slowest clean run; pytest-split of this tier is a separate bead.
-    # pst-t0ob3.4 (mayor carve-out): the D4 divider presets took this job to
-    # 37m22s in PR #199 run 38506273980; 37.4 x 1.5 = 56 -> 60.
-    # pst-dyobq (mayor carve-out): a cold cache (any PR touching print_audit.py,
-    # audit_cache.py or uv.lock) took this job to 51m53s in PR #204 run
-    # 38596072475; 51.9 x 1.5 = 78 -> 80.
-    timeout-minutes: 80
+    # pst-6gis4: PR run 42150014497 exceeded the initial 35-minute cap.
+    # Its 521 completed items plus 51 estimated remaining items replay to
+    # 38.0 min (matched CI items took 2.134x historical durations).
+    # 38.0 x 1.5 = 57 -> 60, including setup and runner variance.
+    # Confirmed by unscoped PR run 42155150319: 50m05s with empty K_EXPR
+    # (this workflow changed). Scoped saddle + bed: 130 passed in 84.74s local.
+    # Measurements and assumptions: build123d/ci/README.md, PR audit tier.
+    timeout-minutes: 60
     defaults: { run: { working-directory: build123d } }
     steps:
       - uses: actions/checkout@v4
@@ -122,7 +119,7 @@ jobs:
           path: build123d/.cache/audit
           key: bd-audit-${{ hashFiles('build123d/tests/print_audit.py', 'build123d/tests/audit_cache.py', 'build123d/uv.lock') }}-${{ matrix.group || 'audit' }}-${{ github.run_id }}
           restore-keys: bd-audit-${{ hashFiles('build123d/tests/print_audit.py', 'build123d/tests/audit_cache.py', 'build123d/uv.lock') }}-${{ matrix.group || 'audit' }}-
-      - name: print audits (presets, reproducers, other models)
+      - name: print audits (presets, defaults, numeric extremes)
         # pst-rir4i: one JSON row per audit item (+ measurement rows) for
         # reviewers; reader recipe in build123d/ci/README.md. A scoped PR run
         # writes rows for the selected models only.
@@ -130,7 +127,7 @@ jobs:
           BD_AUDIT_OUT: out/audit/rows.jsonl
           K_EXPR: ${{ needs.changes.outputs.k_expr }}
         run: |
-          scope=(); if [ -n "$K_EXPR" ]; then scope=(-k "$K_EXPR"); fi
+          scope=(); if [ -n "$K_EXPR" ]; then scope=(-k "($K_EXPR) or test_registry_presets_fit_bed"); fi
           uv run pytest tests/ -q -n 4 --dist load -rf --tb=short -m "audit and not audit_full and not upstream" "${scope[@]}"
       - name: upload audit rows
         if: always()
@@ -141,8 +138,7 @@ jobs:
           retention-days: 14
 
   changes:
-    # Decides whether a PR runs the cradle corner sweep, and the fast/audit
-    # scope (pst-3bga4). pull_request only: on push to main and on schedule
+    # Decides the fast/audit scope. pull_request only: on main and schedule
     # every job runs in full. dorny/paths-filter lists the PR's files via the
     # API; the checkout + sync are for the selector, which reads the registry.
     name: detect model/audit changes
@@ -156,7 +152,6 @@ jobs:
       # call fails with "Resource not accessible by integration" (ci.yml same).
       pull-requests: read
     outputs:
-      cradle: ${{ steps.filter.outputs.cradle }}
       mode: ${{ steps.select.outputs.mode }}
       k_expr: ${{ steps.select.outputs.k_expr }}
     steps:
@@ -172,51 +167,6 @@ jobs:
           filters: |
             any:
               - '**'
-            cradle:
-              # the swept holder modules, the holders modules they import
-              # (tombstone_sign: label_card, sign_ghost, signs; spool_cradle:
-              # label_card) and the registry + bed constants they all use
-              - 'build123d/holders/cartridge_holder.py'
-              - 'build123d/holders/gridfinity_capture_bin.py'
-              - 'build123d/holders/label_card.py'
-              - 'build123d/holders/openconnect_drawer.py'
-              - 'build123d/holders/printer.py'
-              - 'build123d/holders/registry.py'
-              - 'build123d/holders/sign_ghost.py'
-              - 'build123d/holders/signs.py'
-              - 'build123d/holders/spool_cradle.py'
-              - 'build123d/holders/tombstone_sign.py'
-              - 'build123d/labels/**'
-              - 'build123d/multibuild/**'
-              - 'build123d/openconnect/**'
-              - 'build123d/tests/print_audit.py'
-              - 'build123d/tests/audit_cache.py'
-              - 'build123d/tests/audit_record.py'
-              - 'build123d/tests/mount_contracts.py'
-              - 'build123d/tests/test_spool_cradle.py'
-              # capture-bin endpoint sweep lives in audit_full (pst-8vwop)
-              - 'build123d/gridfinity/**'
-              - 'build123d/tests/test_gridfinity_capture_bin.py'
-              # opengrid tile max-envelope cases live in audit_full (#286)
-              - 'build123d/opengrid_tile/**'
-              - 'build123d/holders/opengrid_tile.py'
-              - 'build123d/tests/test_opengrid_tile.py'
-              - 'build123d/tests/opengrid_tile_audit.py'
-              # drawer endpoint/corner sweep lives in audit_full (pst-t0ob3.2)
-              - 'build123d/drawer/**'
-              - 'build123d/tests/test_openconnect_drawer.py'
-              - 'build123d/tests/openconnect_drawer_inventory.py'
-              - 'build123d/tests/parity.py'
-              - 'build123d/tests/test_honeycomb.py'
-              - 'build123d/tests/conftest.py'
-              - 'build123d/pyproject.toml'
-              - 'build123d/uv.lock'
-              # the other files carrying audit_full cases (tests/test_ci_filters.py
-              # fails when one, or a tests/ helper it imports, is missing)
-              - 'build123d/tests/test_audit_record.py'
-              - 'build123d/tests/test_cartridge_holder.py'
-              - 'build123d/tests/test_openconnect_drawer_container.py'
-              - 'build123d/tests/test_tombstone_sign.py'
       - name: Decide fast/audit scope
         id: select
         # Prints the mode and -k expression to the log and step summary. Every
@@ -229,9 +179,9 @@ jobs:
   audit_full:
     name: build123d audit (full sweep)
     needs: changes
-    # Fail-soft like ci.yml's render job: if `changes` failed, run the sweep.
-    # !cancelled() so a skipped `changes` (push/schedule) does not skip this.
-    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.result != 'success' || needs.changes.outputs.cradle == 'true') }}
+    # Extended cases run on main/schedule, never on PRs. Keep !cancelled()
+    # so the skipped PR-only changes job does not suppress either sweep.
+    if: ${{ !cancelled() && github.event_name != 'pull_request' }}
     runs-on: ubuntu-latest
     # pst-2z9ng: 6 shards on main run 38444800427 (post-#190) took
     # 16m19/12m00/21m34/21m40/15m30/12m07; 21m40 x 1.5 = 32.5 -> 35 (the
@@ -261,7 +211,7 @@ jobs:
           path: build123d/.cache/audit
           key: bd-audit-${{ hashFiles('build123d/tests/print_audit.py', 'build123d/tests/audit_cache.py', 'build123d/uv.lock') }}-${{ matrix.group || 'audit' }}-${{ github.run_id }}
           restore-keys: bd-audit-${{ hashFiles('build123d/tests/print_audit.py', 'build123d/tests/audit_cache.py', 'build123d/uv.lock') }}-${{ matrix.group || 'audit' }}-
-      - name: cradle corner sweep (shard ${{ matrix.group }}/6)
+      - name: extended audit sweep (shard ${{ matrix.group }}/6)
         # tests/.test_durations balances the shards; a stale or missing entry
         # only degrades balance (pytest-split splits evenly), never coverage.
         # Nightly re-measures this shard's durations (--clean-durations keeps

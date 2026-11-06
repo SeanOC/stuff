@@ -69,7 +69,9 @@ markers = [
     "slow: expensive geometry contracts, opt in with --run-slow",
     "upstream: needs build123d/reference/upstream/ pulled from the private GCS mirror",
     "audit: builds a registry-sized model and runs the BRep print audit (tens of seconds each); bd123 'audit' job",
-    "audit_full: cradle corner sweep (always also 'audit'); cradle-touching PRs, push to main, nightly",
+    "audit_full: extended audits (always also 'audit'); push to main and nightly",
+    "audit_case: model spec and parameter resolvers for the shared PR-tier classifier",
+    "audit_pr: registry default audits and inexpensive bed-fit gates in the PR tier",
     "budget: the per-model audit budget test; serial step of bd123's 'fast' job",
 ]
 addopts = "-m 'not upstream'"

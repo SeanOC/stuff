@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from tests.audit_tiers import audit_cases
 from build123d import Axis, Face, Solid, Wire
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -440,6 +441,7 @@ def edge_inventory(part, values):
 
 @pytest.mark.audit
 @pytest.mark.parametrize('name,values', CASES, ids=[name for name, _ in CASES])
+@audit_cases(m.SPEC)
 def test_endpoint_audit_mount_and_edges(name, values):
     import json
 

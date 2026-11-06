@@ -7,6 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import numpy as np
 import pytest
+from tests.audit_tiers import audit_cases
 from shapely import maximum_inscribed_circle
 
 from drawer import container, shell
@@ -446,6 +447,7 @@ NAMED = (
 @pytest.mark.audit
 @pytest.mark.audit_full
 @pytest.mark.parametrize('name,values', CASES, ids=[name for name, _ in CASES])
+@audit_cases(m.SPEC)
 def test_endpoint_audit_and_edges(name, values):
     try:
         part = m.build(values)
