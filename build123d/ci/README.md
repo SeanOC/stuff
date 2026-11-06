@@ -257,11 +257,15 @@ hang) to check the selected file set for #247's files, and that every tier
 ```bash
 gh api repos/:owner/:repo/branches/main/protection/required_status_checks/contexts > /tmp/ctx-before.json
 uvx --from actionlint-py==1.7.12.25 actionlint build123d/ci/bd123.scoped.yml.proposed
-#   two findings, both pre-existing on main: matrix.group in the non-matrix audit job's cache key
+#   historical proposal only: rebase onto the live sharded workflow before activation
 git mv build123d/ci/bd123.scoped.yml.proposed .github/workflows/bd123.yml   # git mv -f: the target exists
 # delete the PROPOSED header block (the first 9 lines) from the moved file
 git commit -m "ops(bd123): activate change-scoped fast/audit selection (pst-3bga4)"
 ```
+
+The live workflow passes `uvx --from actionlint-py==1.7.12.25 actionlint
+.github/workflows/bd123.yml`: the audit cache now has a real `matrix.group`.
+No workflow enforces actionlint; this is a local check, not a CI gate.
 
 That PR changes the workflow without a model, so its own run is `full`. Test
 `scoped` and `skip` on throwaway PRs (one model module edit; a `build123d/ci/` edit), then
@@ -351,7 +355,8 @@ ratio gives **38.0 minutes** on four workers. The unfinished durations remain
 estimates; this is not a completed run. Applying the same 50% headroom rule
 (38.0 × 1.5 = 57.0) and rounding up sets the revised cap to **60 minutes**.
 The uploaded `bd123-audit-rows` artifact supplies the measurements even though
-the job timed out. Audit sharding is separate work.
+the job timed out. This is the historical single-job cap; the four-shard tier
+below replaces it.
 
 The subsequent [unscoped PR run 42155150319](https://github.com/SeanOC/stuff/actions/runs/42155150319/job/127687547675)
 **passed in 50m05s** (03:13:18Z–04:03:23Z), inside the 60-minute cap. A PR
@@ -385,8 +390,8 @@ test pins all 26 restored IDs and requires a real default audit for every
 registered model, independently of the bed gate.
 
 The 50m05s unscoped measurement predates those 26 restored items; it is not a
-measurement of the final 597-item selection. The 60-minute cap is retained per
-the bead's revision 3, and fresh CI must validate that final selection. Against
+measurement of the final 597-item selection. The single-job 60-minute cap was retained per
+the tiering revision 3. Against
 50m05s it provides about 20% headroom, less than the historical 1.5× convention.
 The earlier 80-minute cap also accounted for PR #204's cold-cache run (51m53s);
 cache state and runner variance remain relevant to the next timeout change.
@@ -401,27 +406,76 @@ coverage are retained.
 This tiering change adds no print-audit or guard cases.
 Geometry, print thresholds and exception inventories are unchanged.
 
-PRs still upload **`bd123-audit-rows`**. Main/schedule additionally upload
-`bd123-audit-rows-1` through `-6`. The download and reading recipe below is
-unchanged; inspect session marker expressions to identify each tier. A PR
-artifact is evidence only for its selected items, not for the full matrix.
+### Four audit shards and the aggregate check
+
+The `audit` matrix runs four shards named **build123d audit (shard K/4)**,
+with `fail-fast: false`, four xdist workers each, and pytest-split's default
+`duration_based_chunks` algorithm. `-m` and the PR's `-k` (including the
+all-model `test_registry_presets_fit_bed` tail) narrow collection before
+pytest-split divides it. Missing duration entries receive the plugin's average
+estimate deterministically; they are never dropped. The collection regression
+in `test_ci_filters.py` checks this with more shards than selected tests.
+
+The always-running aggregate retains **build123d audit** and depends on scope
+selection and all shards. Failed/cancelled shards or untrusted PR selection
+fail it. An empty shard (pytest exit 5) reports that in its step summary and
+succeeds, but the aggregate requires at least one nonempty shard. A trusted
+`mode=skip` is green without collection; push/schedule run even though their
+PR-only selector is skipped. Each shard emits only its own `collected_K` output,
+so matrix completion order cannot replace another shard's collection result.
+
+PRs upload **`bd123-audit-rows-s1`** through **`-s4`**. Main/schedule also
+upload `bd123-audit-rows-1` through `-6` for the extended sweep. Cache keys and
+restore prefixes likewise use `-s<K>-` for the PR tier versus `-<group>-` for
+the sweep, avoiding collisions on push/schedule. The first run of this tier
+starts cold because old cache keys have no `-s<K>-` segment.
+
+Durations refreshed for this change come from successful nightly run
+[42001797960](https://github.com/SeanOC/stuff/actions/runs/42001797960)
+(235 sweep timings) and successful post-tiering PR run
+[42165811904](https://github.com/SeanOC/stuff/actions/runs/42165811904)
+(595 passing audit call durations; the final 597-item single-job audit took
+22m09s on that run); existing timings for other IDs are retained.
+All 597 current PR-tier IDs have durations, including the two skip/xfail IDs
+whose prior timings remain. Replaying collection on `d3be96e8` with the default
+splitter gives:
+
+| Shards | Slowest shard task-minutes | Estimated elapsed, four workers |
+| --- | ---: | ---: |
+| 3 | 24.9 | 7.6 min |
+| 4 | 18.7 | 5.4 min |
+| 5 | 14.9 | 6.5 min |
+| 6 | 12.6 | 4.5 min |
+
+Four shards balance the improvement against setup costs. These are greedy
+four-worker replay estimates, not CI measurements; cache state, setup and
+xdist batching differ. The bootstrap timeout is **30 minutes per shard**.
+The PR's first full 597-item run must replace it with the measured slowest
+shard elapsed × **1.5**, rounded up to whole minutes, and quote that run in
+the PR body. Compare that measurement against the historical single-job
+50m05s run, noting that the latter predates 26 restored items. A concrete
+acceptance target is slowest shard below **22.5 minutes** (60 / 4 × 1.5).
 
 To refresh the shard balance, each nightly shard re-measures its own tests and
-uploads them as `bd123-test-durations-<group>` (1–6), the file
+uploads them as `bd123-test-durations-s<K>` (1–4, PR tier) or
+`bd123-test-durations-<group>` (1–6, sweep), the file
 `build123d/tests/.test_durations`. The step sets `include-hidden-files: true`:
 `actions/upload-artifact@v4` skips dotfiles by default (v4.4.0+), so before
 pst-mv1b9 it found nothing and only warned. It also sets
 `if-no-files-found: error`, so a shard that dies before pytest-split writes
 durations shows a second red X on the upload. That's the fix working, not a
 new failure. Each artifact is PARTIAL (`--clean-durations` keeps only that
-shard's tests), so merge all six. From the repo root:
+shard's tests), so union all ten artifacts from both disjoint tiers; their
+nodeids are unique. Retain existing entries for tests absent from the capture
+(e.g. newly added tests) rather than losing their timing history. From the repo root:
 
 ```bash
 run=$(gh run list --workflow bd123 --event schedule --status success \
   --limit 1 --json databaseId -q '.[0].databaseId')
 gh run download "$run" -p 'bd123-test-durations-*' -D /tmp/durations
-jq -s add /tmp/durations/bd123-test-durations-*/.test_durations \
-  > build123d/tests/.test_durations
+jq -s add build123d/tests/.test_durations \
+  /tmp/durations/bd123-test-durations-*/.test_durations > /tmp/merged-durations.json
+cp -f /tmp/merged-durations.json build123d/tests/.test_durations
 jq length build123d/tests/.test_durations   # >= the committed key count
 ```
 
@@ -430,12 +484,12 @@ green, refresh by a LOCAL measurement on a named `main` SHA, from
 `build123d/`:
 
 ```bash
-uv run pytest tests/ -q -n 4 --dist load -m "audit_full and not upstream" \
-  --store-durations --clean-durations --durations-path tests/.test_durations
+uv run pytest tests/ -q -n 4 --dist load -m "audit and not upstream" \
+  --store-durations --durations-path tests/.test_durations
 ```
 
-Then check that every `audit_full` id has an entry, and commit the file with the
-SHA and command in the PR body. A stale or missing entry only skews shard
+Then check that every `audit` id in either tier has an entry, and commit the
+file with the SHA and command in the PR body. A stale or missing entry only skews shard
 balance, never coverage. pst-2z9ng measured all 193 cases on `a84da775`.
 
 # Audit rows artefact (pst-rir4i)
@@ -444,16 +498,17 @@ The `-q` job log swallows the per-case `AUDIT |` / `AUDIT_ROW |` / `BED EXTENT`
 print lines on a pass. So the **audit** and **audit_full** jobs set
 `BD_AUDIT_OUT=out/audit/rows.jsonl`, and each job uploads `build123d/out/audit/`
 (14 days; `if: always()`, so red runs upload too). Download it instead of
-re-running a sweep. The audit job's artefact is `bd123-audit-rows` and each
-shard's is `bd123-audit-rows-<group>` (1–6):
+re-running a sweep. Audit-tier artifacts are `bd123-audit-rows-s<K>` (1–4);
+sweep artifacts are `bd123-audit-rows-<group>` (1–6):
 
 ```bash
-gh run download <run-id> -n bd123-audit-rows -D rows/audit
-gh run download <run-id> -p 'bd123-audit-rows-*' -D rows/full   # sweep shards, if they ran
+gh run download <run-id> -n bd123-audit-rows-s1 -D rows/audit-s1  # one audit shard
+gh run download <run-id> -p 'bd123-audit-rows-s*' -D rows/audit   # all audit shards
+gh run download <run-id> -p 'bd123-audit-rows-[1-6]' -D rows/full  # sweep only
 ```
 
-Once pst-3bga4's scoped selection is active, a PR run's `bd123-audit-rows`
-covers the selected models only (`Decide fast/audit scope` in the
+A PR run's `bd123-audit-rows-s*` artifacts collectively cover the selected
+models only (`Decide fast/audit scope` in the
 `detect model/audit changes` job prints the `-k`). A missing row there means the
 model was not selected, not that a measurement regressed. Main and nightly runs
 are always full.
@@ -511,9 +566,14 @@ old/new values and tolerance mode. Exit **0** is a numerical/structural pass,
 **1** is a difference or invalid input. Audit exit **2**, **NOT COMPARABLE**,
 means a declared job/shard never supplied a session: e.g. an upstream PR
 without the conditional `audit_full` job. The audit baseline header declares
-the exact marker expressions and shard groups (initially audit plus all six
-full-sweep shards), source run and SHA. Extra jobs outside that scope are
-ignored. Within scope, a missing measurement row fails unless explicitly
+the exact marker expressions and shard groups, source run and SHA. The current
+committed header still declares the old unsharded audit (`group: null`) plus
+six sweep shards. After sharding, **compare_audit_rows exits 2** until a
+follow-up re-declares `header.job_scope` with `scripts/rebaseline.py` from the
+first post-merge complete push/nightly capture (four audit shards plus six
+sweep shards). The mayor files that re-baseline work on merge. Do not hand-edit
+the baseline or use row waivers to hide the missing scope. Extra jobs outside
+that scope are ignored. Within scope, a missing measurement row fails unless explicitly
 waived; duplicate rows and malformed sessions fail. Sessions are read from
 every `rows*.jsonl`, regardless of directory names or worker assignment.
 The numerical baseline joins **measurement** rows by `(nodeid, name)`, matching
@@ -598,8 +658,9 @@ Each process writes its own file: `rows.jsonl` for the pytest controller, which
 holds just its `session` row, and `rows.gw0.jsonl`…`rows.gw3.jsonl` for the
 xdist workers. **Always glob `rows*.jsonl`.** Every line is JSON with a `kind`:
 
-- `session`: `markexpr`, `group` (the pytest-split `--group`; null in the audit
-  job) and `started_at`, one per process.
+- `session`: `markexpr`, `group` (pytest-split `--group`: 1–4 in audit, 1–6
+  in the sweep; null only in historical unsharded/local captures) and
+  `started_at`, one per process. The marker expression distinguishes tiers.
 - `collection`: `collected` (this job's or shard's selected items) and `audited`
   (how many of them carry `audit`/`audit_full`, which is the number of outcome
   rows owed). Every xdist worker collects the whole selection, so each worker

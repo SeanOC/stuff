@@ -94,18 +94,24 @@ jobs:
           for f in out/*.png; do echo "### $(basename "$f" .png)" >> "$GITHUB_STEP_SUMMARY"; done
 
   audit:
-    name: build123d audit
+    name: build123d audit (shard ${{ matrix.group }}/4)
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.mode != 'skip' }}
     runs-on: ubuntu-latest
-    # pst-6gis4: PR run 42150014497 exceeded the initial 35-minute cap.
-    # Its 521 completed items plus 51 estimated remaining items replay to
-    # 38.0 min (matched CI items took 2.134x historical durations).
-    # 38.0 x 1.5 = 57 -> 60, including setup and runner variance.
-    # Confirmed by unscoped PR run 42155150319: 50m05s with empty K_EXPR
-    # (this workflow changed). Scoped saddle + bed: 130 passed in 84.74s local.
-    # Measurements and assumptions: build123d/ci/README.md, PR audit tier.
-    timeout-minutes: 60
+    # Four shards replay to 5.4 min at four workers from run 42165811904.
+    # Bootstrap cap includes cold caches/runner variance; replace with the
+    # PR's measured slowest shard x 1.5, rounded up (ci/README.md).
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [1, 2, 3, 4]
+    # Unique output names avoid matrix jobs overwriting each other's result.
+    outputs:
+      collected_1: ${{ steps.audit.outputs.collected_1 }}
+      collected_2: ${{ steps.audit.outputs.collected_2 }}
+      collected_3: ${{ steps.audit.outputs.collected_3 }}
+      collected_4: ${{ steps.audit.outputs.collected_4 }}
     defaults: { run: { working-directory: build123d } }
     steps:
       - uses: actions/checkout@v4
@@ -119,25 +125,85 @@ jobs:
         uses: actions/cache@v4
         with:
           path: build123d/.cache/audit
-          key: bd-audit-${{ hashFiles('build123d/tests/print_audit.py', 'build123d/tests/audit_cache.py', 'build123d/uv.lock') }}-${{ matrix.group || 'audit' }}-${{ github.run_id }}
-          restore-keys: bd-audit-${{ hashFiles('build123d/tests/print_audit.py', 'build123d/tests/audit_cache.py', 'build123d/uv.lock') }}-${{ matrix.group || 'audit' }}-
+          key: bd-audit-${{ hashFiles('build123d/tests/print_audit.py', 'build123d/tests/audit_cache.py', 'build123d/uv.lock') }}-s${{ matrix.group }}-${{ github.run_id }}
+          restore-keys: bd-audit-${{ hashFiles('build123d/tests/print_audit.py', 'build123d/tests/audit_cache.py', 'build123d/uv.lock') }}-s${{ matrix.group }}-
       - name: print audits (presets, defaults, numeric extremes)
+        id: audit
         # pst-rir4i: one JSON row per audit item (+ measurement rows) for
         # reviewers; reader recipe in build123d/ci/README.md. A scoped PR run
         # writes rows for the selected models only.
         env:
           BD_AUDIT_OUT: out/audit/rows.jsonl
           K_EXPR: ${{ needs.changes.outputs.k_expr }}
+          GROUP: ${{ matrix.group }}
+          STORE: ${{ github.event_name == 'schedule' && '--store-durations --clean-durations' || '' }}
         run: |
           scope=(); if [ -n "$K_EXPR" ]; then scope=(-k "($K_EXPR) or test_registry_presets_fit_bed"); fi
-          uv run pytest tests/ -q -n 4 --dist load -rf --tb=short -m "audit and not audit_full and not upstream" "${scope[@]}"
+          status=0
+          uv run pytest tests/ -q -n 4 --dist load -rf --tb=short \
+            -m "audit and not audit_full and not upstream" "${scope[@]}" \
+            --splits 4 --group "$GROUP" --durations-path tests/.test_durations \
+            $STORE || status=$?
+          if [ "$status" -eq 5 ]; then
+            echo "collected_$GROUP=false" >> "$GITHUB_OUTPUT"
+            echo "Audit shard $GROUP/4: no tests collected (exit 5); aggregate checks coverage." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [ "$status" -eq 0 ]; then
+            echo "collected_$GROUP=true" >> "$GITHUB_OUTPUT"
+          fi
+          exit "$status"
       - name: upload audit rows
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: bd123-audit-rows
+          name: bd123-audit-rows-s${{ matrix.group }}
           path: build123d/out/audit/
           retention-days: 14
+      - name: upload refreshed durations (nightly)
+        if: ${{ !cancelled() && github.event_name == 'schedule' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: bd123-test-durations-s${{ matrix.group }}
+          path: build123d/tests/.test_durations
+          include-hidden-files: true
+          if-no-files-found: error
+
+  audit_gate:
+    name: build123d audit
+    needs: [changes, audit]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Reduce audit shards to one conclusion
+        env:
+          EVENT: ${{ github.event_name }}
+          SELECT_RESULT: ${{ needs.changes.result }}
+          MODE: ${{ needs.changes.outputs.mode }}
+          AUDIT_RESULT: ${{ needs.audit.result }}
+          COLLECTED_1: ${{ needs.audit.outputs.collected_1 }}
+          COLLECTED_2: ${{ needs.audit.outputs.collected_2 }}
+          COLLECTED_3: ${{ needs.audit.outputs.collected_3 }}
+          COLLECTED_4: ${{ needs.audit.outputs.collected_4 }}
+        run: |
+          if [ "$EVENT" = pull_request ] && [ "$SELECT_RESULT" != success ]; then
+            echo "Scope selection did not succeed." >&2
+            exit 1
+          fi
+          if [ "$EVENT" = pull_request ] && [ "$MODE" = skip ] && [ "$AUDIT_RESULT" = skipped ]; then
+            echo "No audit-relevant changes; tier skipped." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [ "$AUDIT_RESULT" != success ]; then
+            echo "Audit shards did not all succeed: $AUDIT_RESULT" >&2
+            exit 1
+          fi
+          for collected in "$COLLECTED_1" "$COLLECTED_2" "$COLLECTED_3" "$COLLECTED_4"; do
+            if [ "$collected" = true ]; then exit 0; fi
+          done
+          echo "No audit shard collected tests." >&2
+          exit 1
 
   changes:
     # Decides the fast/audit scope. pull_request only: on main and schedule
