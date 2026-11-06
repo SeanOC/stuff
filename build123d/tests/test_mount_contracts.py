@@ -248,8 +248,7 @@ def test_negative_inverted_pocket_still_passes_a_through_d():
     """The inverted pocket passes aperture/orientation/seat/travel — that is
     WHY the v3 bug shipped, and why (e)/(f) had to be added. If any of (a)-(d)
     starts failing here, good, but the point stands: they were depth-blind."""
-    from tests.audit_tiers import audit_cases  # noqa: E402
-from tests.mount_contracts import (
+    from tests.mount_contracts import (
         assert_aperture as _ap,
         assert_orientation as _or,
         assert_seat_clearance as _sc,
