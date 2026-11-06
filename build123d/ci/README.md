@@ -426,9 +426,15 @@ so matrix completion order cannot replace another shard's collection result.
 With the current mandatory 106-case bed tail, even the smallest scope splits
 into 27 / 30 / 14 / 35 items with the committed durations; no shard is empty.
 Exit-5 handling is defensive and tested synthetically. The live scoped-model
-demonstration therefore verifies scoped collection and a green aggregate,
+demonstration must therefore verify scoped collection and a green aggregate,
 not an unreachable empty shard. The aggregate checks nonempty participation,
 not exact tiling; collection and row-artifact checks verify full coverage.
+
+The throwaway failure probe in PR run
+[42180235223](https://github.com/SeanOC/stuff/actions/runs/42180235223) failed
+only shard 1; shards 2–4 succeeded, and the aggregate failed with
+`Audit shards did not all succeed: failure`. The probe is removed after this
+capture; this verifies the real matrix-result-to-aggregate failure path.
 
 PRs upload **`bd123-audit-rows-s1`** through **`-s4`**. Main/schedule also
 upload `bd123-audit-rows-1` through `-6` for the extended sweep. Cache keys and
