@@ -6,15 +6,17 @@ repo-relative paths — dorny/paths-filter `list-files: shell`, the same
 convention as the repo-root scripts/select-sweep-tests.py) and decides:
 
   full    — a shared input changed (SHARED_FILES / SHARED_PREFIXES, this
-            script, the workflow), a path the registry cannot attribute to
+            script), a path the registry cannot attribute to
             a model changed, or no change list is available (push to main,
             schedule, filter failure), or no model module is affected
-            (manifest.json, baselines or a non-model test file alone):
+            (workflow, manifest.json, baselines or a non-model test file alone):
             run every test. There is nothing to scope to then, and the
             budget tier, whose ids name only models, would collect nothing.
-  scoped  — only registered model modules (holders/<stem>.py), test files
+  scoped  — only registered model modules (holders/<stem>.py), their
+            explicitly owned MODEL_PACKAGES, test files
             (tests/test_*.py), manifest.json, baselines, docs, test data and
-            NEUTRAL paths changed: run the K_EXPR selection below. A section
+            NEUTRAL paths changed (optionally alongside the workflow): run
+            the K_EXPR selection below. A section
             golden docs/renders/sections/<slug>.svg counts as its model's
             change; any other docs/ file or non-.py file under tests/ counts
             as a change to the model modules and test files that name it,
@@ -76,6 +78,9 @@ SHARED_FILES = frozenset(
 )
 SHARED_PREFIXES = ("labels/", "multibuild/", "openconnect/")
 WORKFLOW = ".github/workflows/bd123.yml"
+# Implementation packages with a single registered owner. Keep this explicit:
+# shared libraries (e.g. openconnect/) must still select the full suite.
+MODEL_PACKAGES = {"opengrid_tile/": "opengrid_tile"}
 
 # Paths no fast/audit test reads.
 NEUTRAL_PREFIXES = ("ci/",)
@@ -200,9 +205,10 @@ def classify(paths: list[str], registry: Registry | None = None) -> Selection:
 
     changed: set[str] = set()
     mine: set[str] = set()
+    workflow_changed = WORKFLOW in paths
     for path in paths:
         if path == WORKFLOW:
-            return Selection("full", reason=f"{path} changed")
+            continue  # A workflow edit does not erase model attribution.
         if not path.startswith(PREFIX):
             continue
         rel = path[len(PREFIX):]
@@ -214,6 +220,9 @@ def classify(paths: list[str], registry: Registry | None = None) -> Selection:
             mine.add("test_manifest")
         elif (m := MODEL_RE.match(rel)) and m.group(1) in modules:
             changed.add(m.group(1))
+        elif owner := next((stem for prefix, stem in MODEL_PACKAGES.items()
+                            if rel.startswith(prefix) and stem in modules), None):
+            changed.add(owner)
         elif m := TEST_RE.match(rel):
             mine.add(m.group(1))
             if (stem := m.group(1).removeprefix("test_")) in modules:
@@ -236,6 +245,8 @@ def classify(paths: list[str], registry: Registry | None = None) -> Selection:
             return Selection("full", reason=f"{path} is not attributable to a model")
 
     if not changed and not mine:
+        if workflow_changed:
+            return Selection("full", reason=f"{WORKFLOW} changed without a model")
         return Selection("skip", reason="no build123d test input changed")
 
     affected = affected_modules(changed, modules)

@@ -4,9 +4,40 @@ The old cradle path filter is deliberately gone: promoting more carriers must
 not accidentally run the extended sweep on every model PR. Staged historical
 workflow proposals must be rebased before activation (see ci/README.md).
 """
+import os
 from pathlib import Path
+import subprocess
+import sys
 
 WORKFLOW = Path(__file__).resolve().parents[2]/'.github/workflows/bd123.yml'
+
+
+def test_model_package_and_workflow_keep_package_scope(tmp_path):
+    """Replay PR #286's actual paths through the workflow's selector CLI."""
+    paths = [
+        ".github/workflows/bd123.yml",
+        "build123d/holders/opengrid_tile.py",
+        "build123d/manifest.json",
+        "build123d/opengrid_tile/tile.py",
+        "build123d/tests/baselines/audit-rows/audit-rows-baseline.json",
+        "build123d/tests/test_bd_render_service.py",
+        "build123d/tests/test_opengrid_tile.py",
+    ]
+    assert 'run: uv run python scripts/select-bd-tests.py --changed-paths "$CHANGED_PATHS"' in WORKFLOW.read_text()
+    output = tmp_path / "output"
+    env = {**os.environ, "GITHUB_OUTPUT": str(output),
+           "GITHUB_STEP_SUMMARY": str(tmp_path / "summary")}
+    subprocess.run(
+        [sys.executable, "scripts/select-bd-tests.py", "--changed-paths", " ".join(paths)],
+        cwd=WORKFLOW.parents[2] / "build123d", env=env, check=True,
+        capture_output=True, text=True, timeout=60,
+    )
+    selected = dict(line.split("=", 1) for line in output.read_text().splitlines())
+    assert selected["mode"] == "scoped"
+    mine, others = selected["k_expr"].split(" or not ", 1)
+    assert {"opengrid_tile", "opengrid-tile", "test_opengrid_tile",
+            "test_bd_render_service"} <= set(mine.strip("()").split(" or "))
+    assert "test_spool_cradle" in others
 
 
 def test_full_sweep_runs_on_main_and_schedule_not_prs():

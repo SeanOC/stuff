@@ -68,6 +68,11 @@ def collected(markexpr, k_expr, *paths):
 @pytest.mark.parametrize("paths", [
     [],
     [".github/workflows/bd123.yml"],
+    [".github/workflows/bd123.yml", "build123d/ci/README.md"],
+    [".github/workflows/bd123.yml", "build123d/holders/cup_lid.py",
+     "build123d/holders/registry.py"],
+    [".github/workflows/bd123.yml", "build123d/opengrid_tile/tile.py",
+     "build123d/openconnect/slot.py"],
     *([f"build123d/{p}"] for p in sorted(sel.SHARED_FILES)),
     ["build123d/labels/label_text.py"],
     ["build123d/multibuild/channel.py"],
@@ -107,6 +112,12 @@ def test_skip(paths, registry):
 
 
 @pytest.mark.parametrize("paths, mine", [
+    (["build123d/opengrid_tile/tile.py", ".github/workflows/bd123.yml"],
+     {"opengrid_tile", "opengrid-tile", "test_opengrid_tile"}),
+    (["build123d/opengrid_tile/__init__.py"],
+     {"opengrid_tile", "opengrid-tile", "test_opengrid_tile"}),
+    (["build123d/holders/cup_lid.py", ".github/workflows/bd123.yml"],
+     {"holder_cup_lid", "holder-cup-lid", "test_cup_lid"}),
     # A model's own test file counts as a change to that model.
     (["build123d/tests/test_cup_lid.py"], {"holder_cup_lid", "holder-cup-lid", "test_cup_lid"}),
     (["build123d/holders/cup_lid.py", "build123d/manifest.json",

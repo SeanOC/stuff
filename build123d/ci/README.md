@@ -205,19 +205,22 @@ Job names are unchanged. `audit_full` and its gate are unchanged.
 `full` when a shared input changed: `holders/printer.py`,
 `holders/registry.py`, `labels/**`, `multibuild/**`, `openconnect/**`,
 `scripts/manifest.py`, `tests/{print_audit,audit_cache,mount_contracts,conftest}.py`,
-`pyproject.toml`, `uv.lock`, the selector itself or the workflow. Any path it
+`pyproject.toml`, `uv.lock`, or the selector itself. Any path it
 cannot attribute is also `full`: holders helpers that register no model,
 `drawer/`, `gridfinity/`, `underware/`, other `scripts/`, `README.md`. So is a
-change that affects no model module (`manifest.json`, `tests/baselines/**`
-or a non-model test file alone): there is nothing to scope to, and the
+change that affects no model module (the workflow, `manifest.json`,
+`tests/baselines/**` or a non-model test file alone): there is nothing to scope to, and the
 `budget` tier, whose ids name only models, would collect nothing and exit 5.
 `scoped` when at least one model module is affected and every change is a
-registered model module, its `tests/test_<stem>.py` (counts as that module's
-change), another `tests/test_*.py`, `manifest.json` (→ `test_manifest`),
+registered model module, an explicitly owned implementation package
+(`opengrid_tile/**` → `holders/opengrid_tile.py`), its `tests/test_<stem>.py`
+(counts as that module's change), another `tests/test_*.py`, `manifest.json` (→ `test_manifest`),
 `tests/baselines/**` (→ the two baseline tests), a section golden
 `docs/renders/sections/<slug>.svg` (→ that model), or a doc or test data file
-named only by tests or model modules. `skip` when only
-`ci/`, `tests/.test_durations`, render PNGs or docs nothing names changed.
+named only by tests or model modules. A simultaneous `bd123.yml` edit retains
+that model scope; shared or unattributable inputs still force `full`.
+Push-to-main and scheduled runs still run all tests, budgets and exports.
+`skip` when only `ci/`, `tests/.test_durations`, render PNGs or docs nothing names changed.
 
 The scoped `-k` is `(<mine>) or not (<others>)`. `<mine>` lists every registry
 name and slug of each affected model module, its `test_<stem>`, and every
@@ -260,8 +263,8 @@ git mv build123d/ci/bd123.scoped.yml.proposed .github/workflows/bd123.yml   # gi
 git commit -m "ops(bd123): activate change-scoped fast/audit selection (pst-3bga4)"
 ```
 
-That PR changes the workflow file, so its own run is `full`. Test `scoped` and
-`skip` on throwaway PRs (one model module edit; a `build123d/ci/` edit), then
+That PR changes the workflow without a model, so its own run is `full`. Test
+`scoped` and `skip` on throwaway PRs (one model module edit; a `build123d/ci/` edit), then
 check the `Decide fast/audit scope` step summary. After merge:
 
 ```bash
