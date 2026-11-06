@@ -97,12 +97,12 @@ jobs:
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.mode != 'skip' }}
     runs-on: ubuntu-latest
-    # pst-6gis4: replaying the final 572-item PR tier with recorded durations
-    # from main runs 42076796470 / 42001797960 / 41806835769 / 41692429964,
-    # plus 106 locally measured bed checks, gives 17.9 / 18.4 / 22.1 / 18.7 min.
-    # 22.1 x 1.5 = 33.2 -> 35, including headroom for setup and runner variance.
+    # pst-6gis4: PR run 42150014497 exceeded the initial 35-minute cap.
+    # Its 521 completed items plus 51 estimated remaining items replay to
+    # 38.0 min (matched CI items took 2.134x historical durations).
+    # 38.0 x 1.5 = 57 -> 60, including setup and runner variance.
     # Measurements and assumptions: build123d/ci/README.md, PR audit tier.
-    timeout-minutes: 35
+    timeout-minutes: 60
     defaults: { run: { working-directory: build123d } }
     steps:
       - uses: actions/checkout@v4

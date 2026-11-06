@@ -317,7 +317,7 @@ that used to run only in the full sweep. `tests/test_ci_filters.py` pins the
 live workflow routing and artifact contract. Historical `.proposed` workflows
 must be rebased before activation; copying their old cradle filter is unsafe.
 
-The audit job's **35-minute cap** is based on four successful main runs:
+The initial **35-minute cap** was estimated from four successful main runs:
 
 | Run | Old audit job elapsed | Replayed PR selection, four workers |
 | --- | ---: | ---: |
@@ -334,8 +334,21 @@ fill the 12 subsequently added rows from the latest run. Add the 106 bed-check
 durations from the local combined run below (264.1 task-seconds in total).
 These are estimates, not observed full CI runs of this PR: bed timings are
 local, and xdist batching, cache state, setup and contention can differ.
-The slowest estimate times 1.5 is 33.2 minutes, rounded to **35**. Audit sharding
-is separate work.
+The slowest estimate times 1.5 was 33.2 minutes, rounded to 35, but the first
+actual PR run disproved that estimate.
+
+[PR run 42150014497](https://github.com/SeanOC/stuff/actions/runs/42150014497)
+hit the 35-minute limit after recording 521 of 572 items (519 passed and two
+skip outcomes, including the expected xfail; no failures). All 106 bed checks
+finished. Its 415 completed historical audit items took 7,415.709 task-seconds
+versus 3,475.576 in main run 42076796470: **2.133663×** as long. The cause of
+that timing difference is not established. Replaying the 521 actual durations
+plus the 51 unfinished items' historical durations scaled by that observed
+ratio gives **38.0 minutes** on four workers. The unfinished durations remain
+estimates; this is not a completed run. Applying the same 50% headroom rule
+(38.0 × 1.5 = 57.0) and rounding up sets the revised cap to **60 minutes**.
+The uploaded `bd123-audit-rows` artifact supplies the measurements even though
+the job timed out. Audit sharding is separate work.
 
 The local combined saddle/bed run used the production PR marker expression,
 `-n 4` and `-k 'bench_width_saddle or test_registry_presets_fit_bed'`:
