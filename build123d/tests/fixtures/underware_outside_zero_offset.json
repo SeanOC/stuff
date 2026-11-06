@@ -1,30 +1,37 @@
 {
   "source_sha": "ccb5f2aa10cc89fc6a426878ff25ae7007f7a52f",
-  "description": "Pre-extension zero-offset STL digests and volumes; scripts.export.export_stl, both support modes.",
+  "description": "Pre-extension zero-offset geometry signatures and volumes; tests.audit_cache.shape_sig (1e-6 mm), plus exported STL triangle counts, both support modes.",
   "presets": {
     "outside-corner-none": {
-      "sha256": "f853e44cd4010f8f5cb2d976a5aefb4c6336f3af0a69aeb4200429b9b3c34240",
-      "volume": 8624.18104280388
+      "volume": 8624.18104280388,
+      "shape_sig": "647686d61d6443df80bcea46ff207abb3def31501e46cb4d871f290747f9e0b7",
+      "triangles": 1012
     },
     "outside-corner-built_in": {
-      "sha256": "fc82e4bbc0355667368367b54ad49ac3246a801f3bb5bc83531b596ef4fcd97b",
-      "volume": 9852.347181422316
+      "volume": 9852.347181422316,
+      "shape_sig": "ba447f109778cb02d10098eb0ab46e15b819a2c17ab3e6a9c2c181428e711816",
+      "triangles": 3880
     },
     "outside-corner-r1-none": {
-      "sha256": "04e4c39164c511696b6ae63c283865e6c3c04aadef4d879f71920c98c2eb190b",
-      "volume": 13473.292598513312
+      "volume": 13473.292598513312,
+      "shape_sig": "9cc1dfc65e17dfe57f4a484aedc4ba0592a61a6085e71cb09f0baa25c4f3ea0b",
+      "triangles": 1168
     },
     "outside-corner-r1-built_in": {
-      "sha256": "59419bece31ca5c38fd55fc13f143f1b5b560fcbb66c0d1936d94a2bcec3e283",
-      "volume": 16567.965973674007
+      "volume": 16567.965973674007,
+      "shape_sig": "a8c5b96def51797167da054219910ce258dff80cfb04fba1d40cc2106c697f97",
+      "triangles": 5008
     },
     "outside-corner-w2-h28-y2-none": {
-      "sha256": "b22150eb307fcf6e4b6fec683686f8b4675b7e3a1352be0962923966e3679a6b",
-      "volume": 27271.29169077515
+      "volume": 27271.29169077515,
+      "shape_sig": "27e7c3c6b13792659b77bb99a429c443310e82f18d021709dc32f8f0b60ba1d5",
+      "triangles": 1064
     },
     "outside-corner-w2-h28-y2-built_in": {
-      "sha256": "1924cc666b8fa992130527b78762fd6953538df9c350e9f08f8f92bb195a5c59",
-      "volume": 30533.8144117346
+      "volume": 30533.8144117346,
+      "shape_sig": "d0b1daaffb78d32da18159f672e4ef34e4b47e3351607386fcce28bbf0f22761",
+      "triangles": 6156
     }
-  }
+  },
+  "signature_source_sha": "e467ea4a65d75368c8d10af3bcf4b2f9543a8e41"
 }

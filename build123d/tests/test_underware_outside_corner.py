@@ -24,6 +24,7 @@ from holders import underware_path_channels as m
 from holders.printer import BED_X, BED_Y, BED_Z
 from scripts.export import export_stl
 from tests import print_audit as pa
+from tests.audit_cache import shape_sig
 from tests.audit_record import record
 from tests.test_underware_path_channels import (SEPARATOR_CONTINUITY, _bed_faces, _inside_u_at,
                                                  _print_frame_cut, _to, flat, separator_probes)
@@ -85,8 +86,7 @@ def test_presets_fit_the_bed_and_are_two_watertight_solids(preset, tmp_path):
 
 @pytest.mark.parametrize('preset', PRESETS)
 @pytest.mark.parametrize('supports', ['none', 'built_in'])
-def test_zero_offset_preserves_pre_extension_stl(preset, supports, tmp_path):
-    import hashlib
+def test_zero_offset_preserves_pre_extension_geometry(preset, supports, tmp_path):
     import json
     from pathlib import Path
     baseline = json.loads((Path(__file__).parent/'fixtures'/'underware_outside_zero_offset.json').read_text())
@@ -95,7 +95,11 @@ def test_zero_offset_preserves_pre_extension_stl(preset, supports, tmp_path):
         part = SPEC.build({**PRESETS[preset], 'supports': supports, 'edge_offset_mm': 0, 'offset_arm': arm})
         path = tmp_path/'zero.stl'
         export_stl(part, path)
-        assert hashlib.sha256(path.read_bytes()).hexdigest() == expected['sha256']
+        # STL normal bytes vary between Ubuntu runner images even when every
+        # triangle coordinate agrees. Use the project's canonical face geometry
+        # signature, and retain a separate check on the exported triangle count.
+        assert shape_sig(part) == expected['shape_sig']
+        assert len(trimesh.load_mesh(path, process=False).faces) == expected['triangles']
         assert part.volume == pytest.approx(expected['volume'], abs=1e-7)
 
 
