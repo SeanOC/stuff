@@ -423,6 +423,12 @@ succeeds, but the aggregate requires at least one nonempty shard. A trusted
 `mode=skip` is green without collection; push/schedule run even though their
 PR-only selector is skipped. Each shard emits only its own `collected_K` output,
 so matrix completion order cannot replace another shard's collection result.
+With the current mandatory 106-case bed tail, even the smallest scope splits
+into 27 / 30 / 14 / 35 items with the committed durations; no shard is empty.
+Exit-5 handling is defensive and tested synthetically. The live scoped-model
+demonstration therefore verifies scoped collection and a green aggregate,
+not an unreachable empty shard. The aggregate checks nonempty participation,
+not exact tiling; collection and row-artifact checks verify full coverage.
 
 PRs upload **`bd123-audit-rows-s1`** through **`-s4`**. Main/schedule also
 upload `bd123-audit-rows-1` through `-6` for the extended sweep. Cache keys and
@@ -435,7 +441,8 @@ Durations refreshed for this change come from successful nightly run
 (235 sweep timings) and successful post-tiering PR run
 [42165811904](https://github.com/SeanOC/stuff/actions/runs/42165811904)
 (595 passing audit call durations; the final 597-item single-job audit took
-22m09s on that run); existing timings for other IDs are retained.
+22m09s on that run). The union retains all existing node IDs, updates 640 of
+1229 prior values, and adds 106 entries; other timings are retained.
 All 597 current PR-tier IDs have durations, including the two skip/xfail IDs
 whose prior timings remain. Replaying collection on `d3be96e8` with the default
 splitter gives:
@@ -449,12 +456,13 @@ splitter gives:
 
 Four shards balance the improvement against setup costs. These are greedy
 four-worker replay estimates, not CI measurements; cache state, setup and
-xdist batching differ. The bootstrap timeout is **30 minutes per shard**.
-The PR's first full 597-item run must replace it with the measured slowest
-shard elapsed × **1.5**, rounded up to whole minutes, and quote that run in
-the PR body. Compare that measurement against the historical single-job
-50m05s run, noting that the latter predates 26 restored items. A concrete
-acceptance target is slowest shard below **22.5 minutes** (60 / 4 × 1.5).
+xdist batching differ. The measured 597-item PR run
+[42175749831](https://github.com/SeanOC/stuff/actions/runs/42175749831) took
+**11m45s / 9m45s / 14m16s / 15m53s** for shards 1–4. The timeout is therefore
+**24 minutes per shard**: slowest 15m53s × **1.5** = 23.825 minutes, rounded up.
+The green aggregate followed all four successful shards. Slowest elapsed fell
+from the post-tiering single-job **22m09s** to **15m53s**, also below the
+historical **50m05s** run (which predates 26 restored items).
 
 To refresh the shard balance, each nightly shard re-measures its own tests and
 uploads them as `bd123-test-durations-s<K>` (1–4, PR tier) or
