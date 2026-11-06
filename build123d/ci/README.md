@@ -433,8 +433,13 @@ not exact tiling; collection and row-artifact checks verify full coverage.
 The throwaway failure probe in PR run
 [42180235223](https://github.com/SeanOC/stuff/actions/runs/42180235223) failed
 only shard 1; shards 2–4 succeeded, and the aggregate failed with
-`Audit shards did not all succeed: failure`. The probe is removed after this
+`Audit shards did not all succeed: failure`. The probe was removed after this
 capture; this verifies the real matrix-result-to-aggregate failure path.
+The subsequent scoped run
+[42182014689](https://github.com/SeanOC/stuff/actions/runs/42182014689)
+selected `rack10_blank_panel`: **38 / 44 / 55 / 5** items, 142 distinct,
+all passed, with a green aggregate. The temporary model comment used to
+trigger that scope was then removed; the final PR selects the full tier.
 
 PRs upload **`bd123-audit-rows-s1`** through **`-s4`**. Main/schedule also
 upload `bd123-audit-rows-1` through `-6` for the extended sweep. Cache keys and

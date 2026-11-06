@@ -29,5 +29,3 @@ SPEC = register(ModelSpec(
     presets=(Preset('1u-solid','1U solid',{}), Preset('1u-vented','1U vented',{'vented':True}),
              Preset('2u-vented','2U vented',{'units':2,'vented':True})),
 ))
-
-# Temporary PR audit scoped-selection demonstration; remove after CI capture.
