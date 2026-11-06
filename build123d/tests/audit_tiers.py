@@ -22,9 +22,9 @@ def pr_case(spec, overrides):
 def audit_cases(spec, values=lambda p: p['values']):
     """Attach collection-time metadata to an existing parametrized audit.
 
-`spec` may be a resolver for tests spanning multiple registered models. The
-values resolver reads pytest callspec params without building any geometry.
-"""
+    `spec` may be a resolver for tests spanning multiple registered models. The
+    values resolver reads pytest callspec params without building any geometry.
+    """
     return pytest.mark.audit_case(spec, values)
 
 

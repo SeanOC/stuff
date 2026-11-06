@@ -97,10 +97,10 @@ jobs:
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.mode != 'skip' }}
     runs-on: ubuntu-latest
-    # pst-6gis4: replaying the PR selection with measured item durations from
-    # main runs 42076796470 / 42001797960 / 41806835769 / 41692429964 gives
-    # 17.1 / 16.9 / 20.8 / 17.2 min at -n 4 (older runs lack 12 new rows).
-    # 20.8 x 1.5 = 31.2; round to 35 for setup and the new tile rows.
+    # pst-6gis4: replaying the final 572-item PR tier with recorded durations
+    # from main runs 42076796470 / 42001797960 / 41806835769 / 41692429964,
+    # plus 106 locally measured bed checks, gives 17.9 / 18.4 / 22.1 / 18.7 min.
+    # 22.1 x 1.5 = 33.2 -> 35, including headroom for setup and runner variance.
     # Measurements and assumptions: build123d/ci/README.md, PR audit tier.
     timeout-minutes: 35
     defaults: { run: { working-directory: build123d } }

@@ -890,8 +890,8 @@ _BED_ONLY_IDS = {
     ("littletikes_dream_machine_cartridge_holder", "full_holder"),
     ("gridfinity_capture_bin", "deep"),
     ("gridfinity_capture_bin", "wide"),
-    # holder_tombstone_sign: test_print_audit_per_preset is audit_full (#206);
-    # 'default' keeps its full audit in test_model_print_audit.
+    # Legacy sign subset from when per-preset audits ran only in the full
+    # sweep; the default already had its registry audit.
     ("holder_tombstone_sign", "one-ams"),
     ("holder_tombstone_sign", "two-colour"),
     ("holder_tombstone_sign", "pinned"),

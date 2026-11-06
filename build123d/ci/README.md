@@ -285,12 +285,14 @@ The live `.github/workflows/bd123.yml` partitions tests with pytest markers:
 
 ## PR audit tier
 
-`tests/audit_tiers.py` defines the rule once: a preset, the defaults, or one
+`tests/audit_tiers.py` classifies existing rows once: a preset, the defaults, or one
 numeric parameter at its declared min/max with all other values at defaults
 belongs in the PR tier. Compare resolved values, so an explicitly spelled-out
 default does not turn an endpoint into a corner. Hardware-mode combinations,
 interior values, corners, reproducers and other expensive checks run in the
-full sweep. Existing test bodies, assertions and node IDs are retained.
+full sweep. Existing test bodies, assertions and node IDs are retained. Missing
+endpoint rows are not synthesized, and explicit-rejection guard tests stay in
+the fast tier unchanged.
 
 Generators expose their model and values using `@audit_cases(spec, resolver)`.
 The resolver reads pytest parameter data, never builds geometry. The collection
@@ -301,9 +303,11 @@ and the bed-fit checks use `audit_pr`. Every other `audit` item receives
 An `audit_full` item without `audit`, or an audit marked `budget`, fails collection.
 
 The old `cradle` path filter is removed: more full-tier test carriers cannot
-accidentally bring the full sweep back onto model PRs. The audit job uses the existing changed-model `k_expr` for print audits,
+accidentally bring the full sweep back onto model PRs. The audit job uses the
+existing changed-model `k_expr` for print audits,
 while `test_registry_presets_fit_bed` checks every registered preset (and
-defaults for models without presets) even when its model is unchanged. All expressions exclude `upstream` because
+defaults for models without presets) even when its model is unchanged. All
+expressions exclude `upstream` because
 a command-line `-m` replaces pytest addopts. The full sweep's six shards use
 `tests/.test_durations`; durations were refreshed from the 1,227 successful
 outcome rows in main run 42076796470. Main and schedule retain every old audit
@@ -317,20 +321,32 @@ The audit job's **35-minute cap** is based on four successful main runs:
 
 | Run | Old audit job elapsed | Replayed PR selection, four workers |
 | --- | ---: | ---: |
-| 42076796470 | 56.5 min | 17.1 min |
-| 42001797960 | 39.6 min | 16.9 min |
-| 41806835769 | 66.6 min | 20.8 min |
-| 41692429964 | 44.6 min | 17.2 min |
+| 42076796470 | 56.5 min | 17.9 min |
+| 42001797960 | 39.6 min | 18.4 min |
+| 41806835769 | 66.6 min | 22.1 min |
+| 41692429964 | 44.6 min | 18.7 min |
 
-These estimates assign each selected item's recorded `outcome.duration_s` to
-the earliest available of four workers in collection order. They are estimates,
-not observed runs of this PR: xdist batching, cache state, setup, and runner
-contention can differ. The latest run covers every selected item; the older
-runs lack 12 subsequently added rows. The slowest estimate times 1.5 is 31.2
-minutes, rounded to 35 for setup and those rows. Audit sharding is separate work.
-The local bench-width-saddle selection ran 24 items (23 preset/endpoint rows
-plus its registry default) in 16.6 seconds with four workers and the existing
-cache. Geometry, print thresholds and exception inventories are unchanged.
+These estimates replay the final **572-item** PR tier by assigning each
+selected item's recorded `outcome.duration_s` to the earliest available of four
+workers in collection order. The latest CI run supplies all 466 existing
+selected audit durations. For each older run, use its 454 recorded rows and
+fill the 12 subsequently added rows from the latest run. Add the 106 bed-check
+durations from the local combined run below (264.1 task-seconds in total).
+These are estimates, not observed full CI runs of this PR: bed timings are
+local, and xdist batching, cache state, setup and contention can differ.
+The slowest estimate times 1.5 is 33.2 minutes, rounded to **35**. Audit sharding
+is separate work.
+
+The local combined saddle/bed run used the production PR marker expression,
+`-n 4` and `-k 'bench_width_saddle or test_registry_presets_fit_bed'`:
+**130 passed in 84.74 seconds** (24 existing saddle audits: 23 preset/endpoint
+rows plus its registry default; and 106 bed checks). Four module-level skips
+are unrelated optional dependencies. This used the existing cache while the
+required full suite was also running. The standalone bed gate passed all 106
+items in 86.16 seconds. Main/schedule now collect **1,333** audit-marked items:
+all 1,227 original IDs plus 106 lightweight bed checks, partitioned into 572 PR
+and 761 full-tier items. No new print-audit or guard cases were added.
+Geometry, print thresholds and exception inventories are unchanged.
 
 PRs still upload **`bd123-audit-rows`**. Main/schedule additionally upload
 `bd123-audit-rows-1` through `-6`. The download and reading recipe below is

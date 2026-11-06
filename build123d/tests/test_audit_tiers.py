@@ -51,9 +51,12 @@ def test_future_large_tile_corners_are_full():
     assert not pr_case(tile, {'style':'lite', 'x_count':11, 'y_count':8})
 
 
-def collected(expression):
-    run = subprocess.run([sys.executable, '-m', 'pytest', 'tests/', '--collect-only',
-                          '-q', '--disable-warnings', '-m', expression],
+def collected(expression, keyword=None):
+    args = [sys.executable, '-m', 'pytest', 'tests/', '--collect-only',
+            '-q', '--disable-warnings', '-m', expression]
+    if keyword:
+        args += ['-k', keyword]
+    run = subprocess.run(args,
                          cwd=ROOT, text=True, capture_output=True, timeout=120)
     assert run.returncode == 0, run.stdout + run.stderr
     return {line for line in run.stdout.splitlines() if line.startswith('tests/') and '::' in line}
@@ -75,6 +78,13 @@ def test_live_collection_is_lossless_and_representative_cases_are_routed():
     # default + presets + two endpoints per parameter; never its corners.
     saddle = {n for n in pr if n.startswith('tests/test_bench_width_saddle.py::test_endpoint_audit[')}
     assert len(saddle) == 23
+    assert not any('test_unreachable_endpoints_raise' in n for n in all_audits)
+    scoped = collected('audit and not audit_full and not upstream',
+                       'bench_width_saddle or test_registry_presets_fit_bed')
+    beds = {n for n in pr if '::test_registry_presets_fit_bed[' in n}
+    assert len(beds) >= 106
+    assert beds <= scoped
+    assert len(scoped - beds) == 24
 
 
 def test_selected_extreme_failure_still_fails_pr(pytester):
