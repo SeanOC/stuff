@@ -7,9 +7,10 @@ The Gridfinity foot profile (including its 0.8 mm bed chamfer) is functional.
 [U] Strainer defaults are the mayor's photo estimates (2026-11-06), +/-3 mm:
 93 mm coil, 67 mm centre-to-handle TIP, 55 mm centre-to-ear TIP. Physical
 measurements/test print remain necessary; handle 67 is deliberately rounded down.
+Some in-domain strainer/scoop combinations cannot take a 0.1 mm rim break;
+these raise EdgeTreatmentError instead of returning an unfinished rim.
 """
 from math import cos, radians, sin
-import sys
 
 from build123d import Face, Pos, RectangleRounded, Wire, chamfer, extrude, fillet
 from shapely import affinity
@@ -26,6 +27,11 @@ SCOOP_RADIUS = 5.0
 # outline, and coarser facets can leave sub-0.01 mm edges at that crossing.
 POCKET_SIMPLIFY_MM = .04
 FIT_ERROR = 'strainer does not fit this bin depth'
+EDGE_ERROR = 'strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter'
+
+
+class EdgeTreatmentError(ValueError):
+    """The pocket/scoop facets cannot support the required edge treatment."""
 
 
 def stadium(reach, width, angle):
@@ -81,6 +87,23 @@ def _cut(polygon, bottom, top):
     return extrude(face, amount=top-bottom+1, dir=(0, 0, 1))
 
 
+def _sharp_edges(part, floor):
+    """Convex hand-contact edges above the functional pocket floor."""
+    adjacency = {}
+    for face in part.faces():
+        for edge in face.edges():
+            adjacency.setdefault(edge, []).append(face)
+    edges = []
+    for edge, faces in adjacency.items():
+        if edge.bounding_box().max.Z <= floor+1e-6:
+            continue
+        p = edge.position_at(.5)
+        n1, n2 = [face.normal_at(p) for face in faces]
+        if n1.dot(n2) < 2**-.5-1e-6 and not part.is_inside(p+(n1-n2)*.01):
+            edges.append(edge)
+    return edges
+
+
 def build(values=None):
     v, floor, centre_y, _, _, pocket, scoop_height = dimensions(values)
     top = v['height_mm']
@@ -123,29 +146,33 @@ def build(values=None):
             # Narrow scoops can intersect a short simplified pocket facet:
             # there is no room for R1, but a 45-degree break still removes
             # the exposed corner without changing the floor footprint.
-            part = chamfer(corners, POCKET_BREAK)
+            for length in (POCKET_BREAK, POCKET_BREAK/2, .05):
+                try:
+                    part = chamfer(corners, length)
+                    break
+                except ValueError as error:
+                    last_error = error
+            else:
+                raise EdgeTreatmentError(EDGE_ERROR) from last_error
     # Break upward-facing pocket and scoop rims; concave floor seams stay
     # sharp to preserve the full footprint down to the declared pocket floor.
-    adjacency = {}
-    for face in part.faces():
-        for edge in face.edges():
-            adjacency.setdefault(edge, []).append(face)
-    edges = []
-    for edge, faces in adjacency.items():
-        if edge.bounding_box().max.Z <= floor+1e-6:
-            continue
-        p = edge.position_at(.5)
-        n1, n2 = [face.normal_at(p) for face in faces]
-        if n1.dot(n2) < 2**-.5-1e-6 and not part.is_inside(p+(n1-n2)*.01):
-            edges.append(edge)
-    for length in (POCKET_BREAK, POCKET_BREAK/2, .05):
+    edges = _sharp_edges(part, floor)
+    # Never return an untreated hand-contact rim, or a microscopic chamfer
+    # that only satisfies the edge-angle classifier. Reject combinations
+    # whose short facets cannot support a meaningful physical edge break.
+    for length in (POCKET_BREAK, .1):
         try:
-            part = chamfer(edges, length)
+            finished = chamfer(edges, length)
+            # OCC can succeed yet leave a sharp termination at a three-way
+            # scoop junction. Treat that like a failed edge break as well.
+            if _sharp_edges(finished, floor):
+                raise EdgeTreatmentError(EDGE_ERROR)
+            part = finished
             break
         except ValueError as error:
             last_error = error
     else:
-        print(f'[hawthorne-strainer-bin] pocket break skipped: {last_error}', file=sys.stderr)
+        raise EdgeTreatmentError(EDGE_ERROR) from last_error
     return part
 
 

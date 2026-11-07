@@ -94,6 +94,9 @@ for param in m.SPEC.params:
         error = m.FIT_ERROR if (param.name, endpoint) in {
             ('coil_diameter', 110), ('handle_reach', 85),
         } else None
+        if (param.name, endpoint) == ('handle_width', 40):
+            # This endpoint previously depended on a sub-0.1 mm rim break.
+            error = m.EDGE_ERROR
         CASES.append((f'{param.name}={endpoint}', {param.name: endpoint}, error))
 CASES += [
     ('too-long-3x3', {'coil_diameter': 110, 'handle_reach': 85}, m.FIT_ERROR),
@@ -105,6 +108,53 @@ CASES += [
                             'clearance': 4, 'floor_thickness': 1.2}, None),
     ('wide-ears', {'ear_reach': 65, 'ear_width': 24, 'ear_angle': 80}, m.FIT_ERROR),
 ]
+# Cross-parameter regressions: the junction fallback may succeed, but these
+# short pocket facets still cannot take the required 0.1 mm rim break.
+CASES += [
+    (f'narrow-scoop-coil-{coil}-depth-{depth}',
+     {'coil_diameter': coil, 'depth_units': depth, 'scoop_width': 20}, m.EDGE_ERROR)
+    for depth in (3, 4) for coil in (80, 100)
+]
+CASES += [
+    (f'long-narrow-scoop-height-{height}',
+     {'coil_diameter': 110, 'handle_reach': 85, 'depth_units': 4,
+      'scoop_width': 20, 'scoop_height': height}, m.EDGE_ERROR)
+    for height in (22, 50)
+]
+CASES += [
+    (f'short-rim-facets-depth-{depth}',
+     {'coil_diameter': 100, 'depth_units': depth, 'scoop_width': 30}, m.EDGE_ERROR)
+    for depth in (3, 4)
+]
+CASES += [
+    ('long-short-rim-facets', {'coil_diameter': 110, 'handle_reach': 85,
+                             'depth_units': 4, 'scoop_width': 30}, m.EDGE_ERROR),
+]
+# All four min/max pairs, including the depth-4 fallback for large coils.
+# The omitted pairs already have named cases above.
+CASES += [
+    (f'coil-scoop-pair-{coil}-{scoop}-depth-{depth}',
+     {'coil_diameter': coil, 'scoop_width': scoop, 'depth_units': depth},
+     m.FIT_ERROR if coil == 110 and depth == 3
+     else m.EDGE_ERROR if coil == 80 and scoop == 70 else None)
+    for depth in (3, 4) for coil in (80, 110) for scoop in (20, 70)
+    if (coil, scoop) != (80, 20)
+]
+CASES += [
+    (f'handle-scoop-pair-{handle}-{scoop}',
+     {'handle_width': handle, 'scoop_width': scoop}, None)
+    for handle in (20, 40) for scoop in (20, 70)
+    if (handle, scoop) != (40, 20)
+]
+
+
+def test_unfinishable_edges_raise_named_error(monkeypatch):
+    def failed_chamfer(*args, **kwargs):
+        raise ValueError('OCC cannot chamfer this edge selection')
+
+    monkeypatch.setattr(m, 'chamfer', failed_chamfer)
+    with pytest.raises(m.EdgeTreatmentError, match=m.EDGE_ERROR):
+        m.build()
 
 
 @pytest.mark.audit
