@@ -6,6 +6,8 @@ geometry baseline before CI. Then regenerate all three baselines using
 the stale geometry assertion failing the capture needed for a full rebaseline.
 Use --audit-test-file to refresh only one test file's existing audit rows from
 a complete successful capture, preserving all unrelated baseline measurements.
+Use --new-model with a model-scoped audit capture to add a new registry model
+to all three baselines without regenerating existing measurements.
 """
 import argparse
 import importlib.metadata
@@ -68,6 +70,68 @@ def refresh_audit_file(args, rows, scope):
     return 0
 
 
+def add_new_model(args, audit, scope):
+    from holders.registry import all_models, resolve_colour_parts
+    from scripts.export import bake_preset, preset_files
+
+    spec = next((spec for spec in all_models() if spec.name == args.new_model), None)
+    if spec is None or spec.is_smoke:
+        raise ValueError(f"--new-model requires an app-listed registry name: {args.new_model}")
+    if not audit:
+        raise ValueError("--new-model requires a nonempty model-scoped audit capture")
+    paths = {kind: BASELINES / kind / f"{kind}-baseline.json"
+             for kind in ("geometry", "bake", "audit-rows")}
+    documents = {kind: read_baseline(kind, path) for kind, path in paths.items()}
+    prefix = spec.slug + "/"
+    for kind, document in documents.items():
+        existing = (set(audit) & document["rows"].keys() if kind == "audit-rows" else
+                    {key for key in document["rows"] if key.startswith(prefix)})
+        if existing:
+            raise ValueError(f"{spec.name} already has {kind} rows: {sorted(existing)}; "
+                             "use --geometry-only followed by a full rebaseline, or "
+                             "--audit-test-file for existing audit rows")
+
+    presets = sorted(spec.presets, key=lambda preset: preset.id)
+    geometry = {f"{spec.slug}/{preset.id}": geometry_baseline.measure(spec, preset)
+                for preset in presets}
+    with tempfile.TemporaryDirectory(prefix="bd123-baseline-") as temporary:
+        directory = Path(temporary)
+        expected, unfit = set(), []
+        for preset in presets:
+            expected.update(prefix + name for name in preset_files(spec, preset))
+            if spec.is_multi_colour:
+                expected.update(f"{prefix}{preset.id}-{name}.stl"
+                                for name, _, _ in resolve_colour_parts(spec, preset.values))
+            if bake_preset(spec, preset, directory / spec.slug, unfit) is None:
+                raise ValueError(f"empty preset bake: {spec.slug}/{preset.id}")
+        if unfit:
+            raise ValueError(f"unfit preset bake: {unfit}")
+        bake, diagnostics = compare_bake.collect(directory)
+        if set(bake) != expected:
+            raise ValueError(f"incomplete model-preset bake: missing={sorted(expected - bake.keys())}, "
+                             f"extra={sorted(bake.keys() - expected)}")
+
+    update = {
+        "model": spec.name, "why": args.why,
+        "source_sha": subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
+        "build123d": importlib.metadata.version("build123d"),
+        "cadquery-ocp-novtk": importlib.metadata.version("cadquery-ocp-novtk"),
+        "audit_source": args.audit_source, "job_scope": scope,
+        "presets": list(geometry),
+    }
+    additions = {"geometry": geometry, "bake": bake, "audit-rows": audit}
+    # Finish all measurements and inventory checks before writing any baseline.
+    for kind, document in documents.items():
+        document["rows"].update(additions[kind])
+        document["header"].setdefault("scoped_updates", []).append(update)
+        if kind == "bake":
+            document.setdefault("diagnostics", {}).update(diagnostics)
+        write_json(paths[kind], document)
+        print(f"added {kind}: {len(additions[kind])} rows for {spec.name}")
+    return 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--why", required=True, type=nonempty)
@@ -78,7 +142,11 @@ def main(argv=None):
                         help="capture provenance (CI run or local command, with source SHA)")
     parser.add_argument("--audit-test-file", type=nonempty,
                         help="refresh only this test file's existing audit rows from a complete capture")
+    parser.add_argument("--new-model", type=nonempty,
+                        help="add one new registry name using a model-scoped audit capture")
     args = parser.parse_args(argv)
+    if args.new_model and (args.geometry_only or args.audit_test_file):
+        parser.error("--new-model cannot be combined with --geometry-only or --audit-test-file")
     if args.geometry_only:
         if args.audit_rows is not None or args.audit_source is not None or args.audit_test_file:
             parser.error("--geometry-only cannot be combined with audit options")
@@ -87,6 +155,8 @@ def main(argv=None):
     load_waivers()  # Fail on malformed waiver policy before expensive work.
     if not args.geometry_only:
         audit, scope = compare_audit_rows.collect(args.audit_rows)
+        if args.new_model:
+            return add_new_model(args, audit, scope)
         if args.audit_test_file:
             return refresh_audit_file(args, audit, scope)
     keys = geometry_baseline.preset_keys()
