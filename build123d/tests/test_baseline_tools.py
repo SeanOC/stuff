@@ -12,7 +12,19 @@ from scripts import compare_audit_rows as audit
 from scripts import compare_bake as bake
 from scripts import geometry_baseline as geometry
 from scripts import rebaseline
-from scripts.baseline_common import compare, load_waivers, write_json
+from scripts.baseline_common import compare, load_waivers, read_baseline, write_json
+from tests.bake_contract import expected_bake_keys
+
+
+@pytest.mark.parametrize("kind", ["bake", "geometry"])
+def test_committed_baseline_keys_match_registry(kind):
+    expected = expected_bake_keys() if kind == "bake" else set(geometry.preset_keys())
+    actual = set(read_baseline(kind)["rows"])
+    assert actual == expected, (
+        f"{kind} baseline keys differ from registry: "
+        f"missing={sorted(expected - actual)}, extra={sorted(actual - expected)}. "
+        "Repair with scripts/rebaseline.py (regenerates the bake and baselines)."
+    )
 
 
 def test_geometry_fixture_pair_and_field_modes():
