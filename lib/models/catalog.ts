@@ -196,6 +196,10 @@ export const CATALOG: Record<string, CatalogEntry> = {
  * enforcement and cross-checks the manifest's categoryId against it.
  */
 export const BUILD123D_CATALOG: Record<string, CatalogEntry> = {
+  hawthorne_strainer_bin: {
+    categoryId: "storage",
+    blurb: "A 3 × 3 Gridfinity bin for stacked OXO SteeL cocktail strainers, 68 mm tall for the bar drawer. Front finger scoop; print feet down without supports.",
+  },
   opengrid_tile: {
     categoryId: "multiboard",
     blurb: "Full or Lite openGrid tiles with optional solid adhesive backing and omitted-cell shapes. Includes a 1 × 6 strip and an L tile; print back down.",
