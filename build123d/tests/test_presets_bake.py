@@ -25,10 +25,9 @@ import trimesh
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from holders.registry import (all_models, resolve_colour_parts,  # noqa: E402
-                              resolve_preview_parts)
-from profiles import PROFILES  # noqa: E402
+from holders.registry import all_models, resolve_preview_parts  # noqa: E402
 from scripts.manifest import MANIFEST_PATH  # noqa: E402
+from tests.bake_contract import expected_bake_keys  # noqa: E402
 
 
 # Bakes every app-listed preset (~30 s) -> bd123 `audit` job (pst-24tr6).
@@ -47,22 +46,10 @@ def test_presets_only_bakes_every_app_listed_preset(tmp_path):
     specs = [s for s in all_models() if not s.is_smoke]
     assert specs, "expected app-listed models"
 
-    # Per-filament STLs are named after the colour parts (pst-tl4ac.1).
-    colour_names = {(s.slug, p.id): [name for name, _, _ in resolve_colour_parts(s, p.values)]
-                    for s in specs if s.is_multi_colour for p in s.presets}
-    expected_files: set[Path] = set()
     for spec in specs:
         assert spec.presets, f"{spec.name}: app-listed models need presets"
-        for preset in spec.presets:
-            expected_files.add(target / spec.slug / f"{preset.id}.stl")
-            expected_files.add(target / spec.slug / f"{preset.id}.glb")
-            expected_files.add(target / spec.slug / f"{preset.id}.png")
-            if spec.is_multi_colour:  # gated extras (labels L2): 3MF + one STL per filament
-                expected_files.add(target / spec.slug / f"{preset.id}.3mf")
-                for profile in PROFILES:  # + one slicer-project 3MF per printer profile (pst-jyey1)
-                    expected_files.add(target / spec.slug / f"{preset.id}.{profile}.3mf")
-                for name in colour_names[spec.slug, preset.id]:
-                    expected_files.add(target / spec.slug / f"{preset.id}-{name}.stl")
+    expected_keys = expected_bake_keys()
+    expected_files = {target / key for key in expected_keys}
 
     # Every expected artifact exists and is a valid mesh / non-empty PNG.
     for path in sorted(expected_files):
@@ -100,9 +87,7 @@ def test_presets_only_bakes_every_app_listed_preset(tmp_path):
 
     # Count: STL + GLB + PNG per preset; multi-colour adds the 3MF, one 3MF per
     # printer profile and one STL per part.
-    expected_count = sum(4 + len(PROFILES) + len(colour_names[s.slug, p.id]) if s.is_multi_colour else 3
-                         for s in specs for p in s.presets)
-    assert len(actual_files) == expected_count
+    assert len(actual_files) == len(expected_keys)
 
 
 
