@@ -135,6 +135,17 @@
         "job_scope": [
           "[\"not upstream\",null]"
         ]
+      },
+      {
+        "test_file": "tests/test_hawthorne_strainer_bin.py",
+        "why": "pst-1ie29: enforce a 0.1 mm minimum rim break and capture pairwise endpoint regressions",
+        "source_sha": "ba70fbff30a23ba80c4034c71beb58fa328b8d8e",
+        "build123d": "0.13.0",
+        "cadquery-ocp-novtk": "8.0.1.1.0",
+        "audit_source": "Local completed BD_AUDIT_OUT capture: pytest tests/ -q -n 4 -k \"hawthorne_strainer_bin or hawthorne-strainer-bin\"; source_sha pins the tested model and test changes",
+        "job_scope": [
+          "[\"not upstream\",null]"
+        ]
       }
     ]
   },
@@ -14658,14 +14669,7 @@
       "raw_ovh": 90.000000000
     },
     "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[handle_width=40]\",\"handle_width=40\"]": {
-      "wall": 3.000000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.220000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 548222.725855473
+      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
     },
     "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[handle_reach=50]\",\"handle_reach=50\"]": {
       "wall": 3.000000000,
@@ -14731,7 +14735,7 @@
       "bridge": 0.000000000,
       "worst_edge": 45.000000000,
       "result": "PASS",
-      "volume": 555991.964273587
+      "volume": 556063.173766558
     },
     "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[long-max-clearance]\",\"long-max-clearance\"]": {
       "wall": 3.000000000,
@@ -14811,7 +14815,7 @@
       "bridge": 0.000000000,
       "worst_edge": 45.000000000,
       "result": "PASS",
-      "volume": 724688.265588808
+      "volume": 724753.104198628
     },
     "[\"tests/test_print_audit.py::test_registry_presets_fit_bed[hawthorne_strainer_bin-default]\",\"hawthorne_strainer_bin\"]": {
       "preset": "default",
@@ -14879,7 +14883,7 @@
       "bridge": 0.000000000,
       "worst_edge": 45.000000000,
       "result": "PASS",
-      "volume": 565375.706224313
+      "volume": 565444.017160190
     },
     "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[clamped-scoop]\",\"clamped-scoop\"]": {
       "wall": 3.000000000,
@@ -14976,6 +14980,95 @@
       "worst_edge": 45.000000000,
       "result": "PASS",
       "volume": 481656.284442738
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[narrow-scoop-coil-100-depth-3]\",\"narrow-scoop-coil-100-depth-3\"]": {
+      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[long-narrow-scoop-height-50]\",\"long-narrow-scoop-height-50\"]": {
+      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[coil-scoop-pair-80-70-depth-3]\",\"coil-scoop-pair-80-70-depth-3\"]": {
+      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[coil-scoop-pair-110-70-depth-3]\",\"coil-scoop-pair-110-70-depth-3\"]": {
+      "rejected": "strainer does not fit this bin depth"
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[coil-scoop-pair-110-70-depth-4]\",\"coil-scoop-pair-110-70-depth-4\"]": {
+      "wall": 3.000000000,
+      "overhang_raw": 90.000000000,
+      "overhang": 45.000000000,
+      "bridge_raw": 2.960000000,
+      "bridge": 0.000000000,
+      "worst_edge": 45.000000000,
+      "result": "PASS",
+      "volume": 707158.497618830
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[handle-scoop-pair-20-20]\",\"handle-scoop-pair-20-20\"]": {
+      "wall": 3.000000000,
+      "overhang_raw": 90.000000000,
+      "overhang": 45.000000000,
+      "bridge_raw": 2.220000000,
+      "bridge": 0.000000000,
+      "worst_edge": 45.000000000,
+      "result": "PASS",
+      "volume": 574859.425618678
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[narrow-scoop-coil-80-depth-3]\",\"narrow-scoop-coil-80-depth-3\"]": {
+      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[narrow-scoop-coil-80-depth-4]\",\"narrow-scoop-coil-80-depth-4\"]": {
+      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[narrow-scoop-coil-100-depth-4]\",\"narrow-scoop-coil-100-depth-4\"]": {
+      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[long-narrow-scoop-height-22]\",\"long-narrow-scoop-height-22\"]": {
+      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[long-short-rim-facets]\",\"long-short-rim-facets\"]": {
+      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[coil-scoop-pair-110-20-depth-3]\",\"coil-scoop-pair-110-20-depth-3\"]": {
+      "rejected": "strainer does not fit this bin depth"
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[coil-scoop-pair-80-70-depth-4]\",\"coil-scoop-pair-80-70-depth-4\"]": {
+      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[coil-scoop-pair-110-20-depth-4]\",\"coil-scoop-pair-110-20-depth-4\"]": {
+      "wall": 3.000000000,
+      "overhang_raw": 90.000000000,
+      "overhang": 45.000000000,
+      "bridge_raw": 2.960000000,
+      "bridge": 0.000000000,
+      "worst_edge": 45.000000000,
+      "result": "PASS",
+      "volume": 773937.446392617
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[handle-scoop-pair-20-70]\",\"handle-scoop-pair-20-70\"]": {
+      "wall": 3.000000000,
+      "overhang_raw": 90.000000000,
+      "overhang": 45.000000000,
+      "bridge_raw": 2.220000000,
+      "bridge": 0.000000000,
+      "worst_edge": 45.000000000,
+      "result": "PASS",
+      "volume": 520038.696394296
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[short-rim-facets-depth-3]\",\"short-rim-facets-depth-3\"]": {
+      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[short-rim-facets-depth-4]\",\"short-rim-facets-depth-4\"]": {
+      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[handle-scoop-pair-40-70]\",\"handle-scoop-pair-40-70\"]": {
+      "wall": 3.000000000,
+      "overhang_raw": 90.000000000,
+      "overhang": 45.000000000,
+      "bridge_raw": 2.220000000,
+      "bridge": 0.000000000,
+      "worst_edge": 45.000000000,
+      "result": "PASS",
+      "volume": 512877.115323964
     }
   }
 }
