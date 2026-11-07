@@ -21,7 +21,6 @@
       "gridfinity-capture-bin/deep",
       "gridfinity-capture-bin/default",
       "gridfinity-capture-bin/wide",
-      "hawthorne-strainer-bin/default",
       "holder-bench-lip-clip/fit-plus-0-3",
       "holder-bench-lip-clip/fit-plus-0-8",
       "holder-bench-lip-clip/fit-plus-1-3",
@@ -125,29 +124,24 @@
     ],
     "row_scope": "measurement rows joined by (nodeid, name) in the declared CI jobs, including endpoint/corner tests beyond the app presets; session/collection/outcome rows validate capture integrity",
     "schema_version": 1,
-    "source_sha": "e467ea4a65d75368c8d10af3bcf4b2f9543a8e41",
-    "why": "pst-6yny1: re-declare job_scope after #290 sharded the PR audit tier; absorbs 0aefda9a..e467ea4a drift (see PR)",
     "scoped_updates": [
       {
-        "model": "hawthorne_strainer_bin",
-        "why": "pst-1ie29: new strainer bin endpoint and registry measurements",
-        "audit_source": "Local BD_AUDIT_OUT capture: uv run pytest tests/ -q -n 4 -k hawthorne_strainer_bin; task worktree based on 5bcd03d3",
-        "job_scope": [
-          "[\"not upstream\",null]"
-        ]
-      },
-      {
-        "test_file": "tests/test_hawthorne_strainer_bin.py",
-        "why": "pst-1ie29: enforce a 0.1 mm minimum rim break and capture pairwise endpoint regressions",
-        "source_sha": "ba70fbff30a23ba80c4034c71beb58fa328b8d8e",
+        "audit_source": "Local completed model audit capture at bde0db93c973e8917b1c513c09f302050bbc29bd; uv run pytest tests/ -q -n 4 -k hawthorne_strainer_bin; 59 passed, 1 serial-budget skip",
         "build123d": "0.13.0",
         "cadquery-ocp-novtk": "8.0.1.1.0",
-        "audit_source": "Local completed BD_AUDIT_OUT capture: pytest tests/ -q -n 4 -k \"hawthorne_strainer_bin or hawthorne-strainer-bin\"; source_sha pins the tested model and test changes",
         "job_scope": [
           "[\"not upstream\",null]"
-        ]
+        ],
+        "model": "hawthorne_strainer_bin",
+        "presets": [
+          "hawthorne-strainer-bin/default"
+        ],
+        "source_sha": "bde0db93c973e8917b1c513c09f302050bbc29bd",
+        "why": "pst-1ie29: add the OXO strainer bin default preset using canonical new-model provenance"
       }
-    ]
+    ],
+    "source_sha": "e467ea4a65d75368c8d10af3bcf4b2f9543a8e41",
+    "why": "pst-6yny1: re-declare job_scope after #290 sharded the PR audit tier; absorbs 0aefda9a..e467ea4a drift (see PR)"
   },
   "rows": {
     "[\"tests/test_bench_lip_clip.py::test_endpoint_audit[bed_chamfer=0.3]\",\"bench-lip-clip-endpoint\"]": {
@@ -3041,6 +3035,400 @@
       "volume": 53063.492632731,
       "wall": 0.698000000,
       "worst_edge": 90.000000000
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[clamped-scoop]\",\"clamped-scoop\"]": {
+      "bridge": 0.000000000,
+      "bridge_raw": 2.220000000,
+      "overhang": 45.000000000,
+      "overhang_raw": 90.000000000,
+      "result": "PASS",
+      "volume": 314893.799114878,
+      "wall": 3.000000000,
+      "worst_edge": 45.000000000
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[clearance=1]\",\"clearance=1\"]": {
+      "bridge": 0.000000000,
+      "bridge_raw": 2.220000000,
+      "overhang": 45.000000000,
+      "overhang_raw": 90.000000000,
+      "result": "PASS",
+      "volume": 571734.522112619,
+      "wall": 3.000000000,
+      "worst_edge": 45.000000000
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[clearance=4]\",\"clearance=4\"]": {
+      "bridge": 0.000000000,
+      "bridge_raw": 2.220000000,
+      "overhang": 45.000000000,
+      "overhang_raw": 90.000000000,
+      "result": "PASS",
+      "volume": 515982.746030778,
+      "wall": 1.971000000,
+      "worst_edge": 45.000000000
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[coil-scoop-pair-110-20-depth-3]\",\"coil-scoop-pair-110-20-depth-3\"]": {
+      "rejected": "strainer does not fit this bin depth"
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[coil-scoop-pair-110-20-depth-4]\",\"coil-scoop-pair-110-20-depth-4\"]": {
+      "bridge": 0.000000000,
+      "bridge_raw": 2.960000000,
+      "overhang": 45.000000000,
+      "overhang_raw": 90.000000000,
+      "result": "PASS",
+      "volume": 773937.446392617,
+      "wall": 3.000000000,
+      "worst_edge": 45.000000000
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[coil-scoop-pair-110-70-depth-3]\",\"coil-scoop-pair-110-70-depth-3\"]": {
+      "rejected": "strainer does not fit this bin depth"
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[coil-scoop-pair-110-70-depth-4]\",\"coil-scoop-pair-110-70-depth-4\"]": {
+      "bridge": 0.000000000,
+      "bridge_raw": 2.960000000,
+      "overhang": 45.000000000,
+      "overhang_raw": 90.000000000,
+      "result": "PASS",
+      "volume": 707158.497618830,
+      "wall": 3.000000000,
+      "worst_edge": 45.000000000
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[coil-scoop-pair-80-70-depth-3]\",\"coil-scoop-pair-80-70-depth-3\"]": {
+      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[coil-scoop-pair-80-70-depth-4]\",\"coil-scoop-pair-80-70-depth-4\"]": {
+      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[coil_diameter=110]\",\"coil_diameter=110\"]": {
+      "rejected": "strainer does not fit this bin depth"
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[coil_diameter=80]\",\"coil_diameter=80\"]": {
+      "bridge": 0.000000000,
+      "bridge_raw": 2.220000000,
+      "overhang": 45.000000000,
+      "overhang_raw": 90.000000000,
+      "result": "PASS",
+      "volume": 627084.576100097,
+      "wall": 3.000000000,
+      "worst_edge": 45.000000000
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[default]\",\"default\"]": {
+      "bridge": 0.000000000,
+      "bridge_raw": 2.220000000,
+      "overhang": 45.000000000,
+      "overhang_raw": 90.000000000,
+      "result": "PASS",
+      "volume": 553493.044677525,
+      "wall": 3.000000000,
+      "worst_edge": 45.000000000
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[depth_units=3]\",\"depth_units=3\"]": {
+      "bridge": 0.000000000,
+      "bridge_raw": 2.220000000,
+      "overhang": 45.000000000,
+      "overhang_raw": 90.000000000,
+      "result": "PASS",
+      "volume": 553493.044677525,
+      "wall": 3.000000000,
+      "worst_edge": 45.000000000
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[depth_units=4]\",\"depth_units=4\"]": {
+      "bridge": 0.000000000,
+      "bridge_raw": 2.960000000,
+      "overhang": 45.000000000,
+      "overhang_raw": 90.000000000,
+      "result": "PASS",
+      "volume": 876412.693163604,
+      "wall": 3.000000000,
+      "worst_edge": 45.000000000
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[ear_angle=30]\",\"ear_angle=30\"]": {
+      "bridge": 0.000000000,
+      "bridge_raw": 2.220000000,
+      "overhang": 45.000000000,
+      "overhang_raw": 90.000000000,
+      "result": "PASS",
+      "volume": 555013.456603663,
+      "wall": 2.880000000,
+      "worst_edge": 45.000000000
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[ear_angle=80]\",\"ear_angle=80\"]": {
+      "bridge": 0.000000000,
+      "bridge_raw": 2.220000000,
+      "overhang": 45.000000000,
+      "overhang_raw": 90.000000000,
+      "result": "PASS",
+      "volume": 553477.370046724,
+      "wall": 3.000000000,
+      "worst_edge": 45.000000000
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[ear_reach=45]\",\"ear_reach=45\"]": {
+      "bridge": 0.000000000,
+      "bridge_raw": 2.220000000,
+      "overhang": 45.000000000,
+      "overhang_raw": 90.000000000,
+      "result": "PASS",
+      "volume": 569200.460900471,
+      "wall": 3.000000000,
+      "worst_edge": 45.000000000
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[ear_reach=65]\",\"ear_reach=65\"]": {
+      "bridge": 0.000000000,
+      "bridge_raw": 2.220000000,
+      "overhang": 45.000000000,
+      "overhang_raw": 90.000000000,
+      "result": "PASS",
+      "volume": 529698.586222350,
+      "wall": 3.000000000,
+      "worst_edge": 45.000000000
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[ear_width=10]\",\"ear_width=10\"]": {
+      "bridge": 0.000000000,
+      "bridge_raw": 2.220000000,
+      "overhang": 45.000000000,
+      "overhang_raw": 90.000000000,
+      "result": "PASS",
+      "volume": 557265.491608736,
+      "wall": 3.000000000,
+      "worst_edge": 45.000000000
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[ear_width=24]\",\"ear_width=24\"]": {
+      "bridge": 0.000000000,
+      "bridge_raw": 2.220000000,
+      "overhang": 45.000000000,
+      "overhang_raw": 90.000000000,
+      "result": "PASS",
+      "volume": 548652.870770285,
+      "wall": 3.000000000,
+      "worst_edge": 45.000000000
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[floor_thickness=1.2]\",\"floor_thickness=1.2\"]": {
+      "bridge": 0.000000000,
+      "bridge_raw": 2.220000000,
+      "overhang": 45.000000000,
+      "overhang_raw": 90.000000000,
+      "result": "PASS",
+      "volume": 546533.405473782,
+      "wall": 3.000000000,
+      "worst_edge": 45.000000000
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[floor_thickness=4]\",\"floor_thickness=4\"]": {
+      "bridge": 0.000000000,
+      "bridge_raw": 2.220000000,
+      "overhang": 45.000000000,
+      "overhang_raw": 90.000000000,
+      "result": "PASS",
+      "volume": 570892.142686882,
+      "wall": 3.000000000,
+      "worst_edge": 45.000000000
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[handle-scoop-pair-20-20]\",\"handle-scoop-pair-20-20\"]": {
+      "bridge": 0.000000000,
+      "bridge_raw": 2.220000000,
+      "overhang": 45.000000000,
+      "overhang_raw": 90.000000000,
+      "result": "PASS",
+      "volume": 574859.425618678,
+      "wall": 3.000000000,
+      "worst_edge": 45.000000000
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[handle-scoop-pair-20-70]\",\"handle-scoop-pair-20-70\"]": {
+      "bridge": 0.000000000,
+      "bridge_raw": 2.220000000,
+      "overhang": 45.000000000,
+      "overhang_raw": 90.000000000,
+      "result": "PASS",
+      "volume": 520038.696394296,
+      "wall": 3.000000000,
+      "worst_edge": 45.000000000
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[handle-scoop-pair-40-70]\",\"handle-scoop-pair-40-70\"]": {
+      "bridge": 0.000000000,
+      "bridge_raw": 2.220000000,
+      "overhang": 45.000000000,
+      "overhang_raw": 90.000000000,
+      "result": "PASS",
+      "volume": 512877.115323964,
+      "wall": 3.000000000,
+      "worst_edge": 45.000000000
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[handle_reach=50]\",\"handle_reach=50\"]": {
+      "bridge": 0.000000000,
+      "bridge_raw": 2.220000000,
+      "overhang": 45.000000000,
+      "overhang_raw": 90.000000000,
+      "result": "PASS",
+      "volume": 577986.706693680,
+      "wall": 3.000000000,
+      "worst_edge": 45.000000000
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[handle_reach=85]\",\"handle_reach=85\"]": {
+      "rejected": "strainer does not fit this bin depth"
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[handle_width=20]\",\"handle_width=20\"]": {
+      "bridge": 0.000000000,
+      "bridge_raw": 2.220000000,
+      "overhang": 45.000000000,
+      "overhang_raw": 90.000000000,
+      "result": "PASS",
+      "volume": 557076.168745410,
+      "wall": 3.000000000,
+      "worst_edge": 45.000000000
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[handle_width=40]\",\"handle_width=40\"]": {
+      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[height_mm=35]\",\"height_mm=35\"]": {
+      "bridge": 0.000000000,
+      "bridge_raw": 2.220000000,
+      "overhang": 45.000000000,
+      "overhang_raw": 90.000000000,
+      "result": "PASS",
+      "volume": 321085.889594226,
+      "wall": 3.000000000,
+      "worst_edge": 45.000000000
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[height_mm=90]\",\"height_mm=90\"]": {
+      "bridge": 0.000000000,
+      "bridge_raw": 2.220000000,
+      "overhang": 45.000000000,
+      "overhang_raw": 90.000000000,
+      "result": "PASS",
+      "volume": 708431.148066392,
+      "wall": 3.000000000,
+      "worst_edge": 45.000000000
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[long-3x4]\",\"long-3x4\"]": {
+      "bridge": 0.000000000,
+      "bridge_raw": 2.960000000,
+      "overhang": 45.000000000,
+      "overhang_raw": 90.000000000,
+      "result": "PASS",
+      "volume": 724753.104198628,
+      "wall": 3.000000000,
+      "worst_edge": 45.000000000
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[long-max-clearance]\",\"long-max-clearance\"]": {
+      "bridge": 0.000000000,
+      "bridge_raw": 2.960000000,
+      "overhang": 45.000000000,
+      "overhang_raw": 90.000000000,
+      "result": "PASS",
+      "volume": 672660.422640368,
+      "wall": 3.000000000,
+      "worst_edge": 45.000000000
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[long-narrow-scoop-height-22]\",\"long-narrow-scoop-height-22\"]": {
+      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[long-narrow-scoop-height-50]\",\"long-narrow-scoop-height-50\"]": {
+      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[long-short-rim-facets]\",\"long-short-rim-facets\"]": {
+      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[narrow-scoop-coil-100-depth-3]\",\"narrow-scoop-coil-100-depth-3\"]": {
+      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[narrow-scoop-coil-100-depth-4]\",\"narrow-scoop-coil-100-depth-4\"]": {
+      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[narrow-scoop-coil-80-depth-3]\",\"narrow-scoop-coil-80-depth-3\"]": {
+      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[narrow-scoop-coil-80-depth-4]\",\"narrow-scoop-coil-80-depth-4\"]": {
+      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[narrow-scoop-wide-handle]\",\"narrow-scoop-wide-handle\"]": {
+      "bridge": 0.000000000,
+      "bridge_raw": 2.220000000,
+      "overhang": 45.000000000,
+      "overhang_raw": 90.000000000,
+      "result": "PASS",
+      "volume": 556063.173766558,
+      "wall": 3.000000000,
+      "worst_edge": 45.000000000
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[scoop_height=0]\",\"scoop_height=0\"]": {
+      "bridge": 0.000000000,
+      "bridge_raw": 2.220000000,
+      "overhang": 45.000000000,
+      "overhang_raw": 90.000000000,
+      "result": "PASS",
+      "volume": 569275.664456275,
+      "wall": 3.000000000,
+      "worst_edge": 45.000000000
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[scoop_height=50]\",\"scoop_height=50\"]": {
+      "bridge": 0.000000000,
+      "bridge_raw": 2.220000000,
+      "overhang": 45.000000000,
+      "overhang_raw": 90.000000000,
+      "result": "PASS",
+      "volume": 565432.691501443,
+      "wall": 3.000000000,
+      "worst_edge": 45.000000000
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[scoop_width=20]\",\"scoop_width=20\"]": {
+      "bridge": 0.000000000,
+      "bridge_raw": 2.220000000,
+      "overhang": 45.000000000,
+      "overhang_raw": 90.000000000,
+      "result": "PASS",
+      "volume": 565444.017160190,
+      "wall": 3.000000000,
+      "worst_edge": 45.000000000
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[scoop_width=70]\",\"scoop_width=70\"]": {
+      "bridge": 0.000000000,
+      "bridge_raw": 2.220000000,
+      "overhang": 45.000000000,
+      "overhang_raw": 90.000000000,
+      "result": "PASS",
+      "volume": 516453.270294353,
+      "wall": 3.000000000,
+      "worst_edge": 45.000000000
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[short-rim-facets-depth-3]\",\"short-rim-facets-depth-3\"]": {
+      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[short-rim-facets-depth-4]\",\"short-rim-facets-depth-4\"]": {
+      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[too-long-3x3]\",\"too-long-3x3\"]": {
+      "rejected": "strainer does not fit this bin depth"
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[wall_min=1.2]\",\"wall_min=1.2\"]": {
+      "bridge": 0.000000000,
+      "bridge_raw": 2.220000000,
+      "overhang": 45.000000000,
+      "overhang_raw": 90.000000000,
+      "result": "PASS",
+      "volume": 553493.044677525,
+      "wall": 3.000000000,
+      "worst_edge": 45.000000000
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[wall_min=3]\",\"wall_min=3\"]": {
+      "bridge": 0.000000000,
+      "bridge_raw": 2.220000000,
+      "overhang": 45.000000000,
+      "overhang_raw": 90.000000000,
+      "result": "PASS",
+      "volume": 553493.044677525,
+      "wall": 3.000000000,
+      "worst_edge": 45.000000000
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[wide-ears]\",\"wide-ears\"]": {
+      "rejected": "strainer does not fit this bin depth"
+    },
+    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[wide-scoop-max-clearance]\",\"wide-scoop-max-clearance\"]": {
+      "bridge": 0.000000000,
+      "bridge_raw": 2.220000000,
+      "overhang": 45.000000000,
+      "overhang_raw": 90.000000000,
+      "result": "PASS",
+      "volume": 481656.284442738,
+      "wall": 1.971000000,
+      "worst_edge": 45.000000000
     },
     "[\"tests/test_openconnect_drawer.py::test_endpoint_audit_and_edges[1x1x1]\",\"1x1x1\"]": {
       "analytic_unroofed_chord": 7.860346119,
@@ -6349,6 +6737,14 @@
         35.000000000
       ],
       "preset": "wide"
+    },
+    "[\"tests/test_print_audit.py::test_registry_presets_fit_bed[hawthorne_strainer_bin-default]\",\"hawthorne_strainer_bin\"]": {
+      "extent": [
+        125.500000000,
+        125.500000000,
+        68.000000000
+      ],
+      "preset": "default"
     },
     "[\"tests/test_print_audit.py::test_registry_presets_fit_bed[holder_bench_lip_clip-fit-plus-0-3]\",\"holder_bench_lip_clip\"]": {
       "extent": [
@@ -14667,408 +15063,6 @@
       "faces": 22,
       "raw_bridge": 1.500000000,
       "raw_ovh": 90.000000000
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[handle_width=40]\",\"handle_width=40\"]": {
-      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[handle_reach=50]\",\"handle_reach=50\"]": {
-      "wall": 3.000000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.220000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 577986.706693680
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[handle_reach=85]\",\"handle_reach=85\"]": {
-      "rejected": "strainer does not fit this bin depth"
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[height_mm=35]\",\"height_mm=35\"]": {
-      "wall": 3.000000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.220000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 321085.889594226
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[height_mm=90]\",\"height_mm=90\"]": {
-      "wall": 3.000000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.220000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 708431.148066392
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[floor_thickness=1.2]\",\"floor_thickness=1.2\"]": {
-      "wall": 3.000000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.220000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 546533.405473782
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[scoop_height=0]\",\"scoop_height=0\"]": {
-      "wall": 3.000000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.220000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 569275.664456275
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[too-long-3x3]\",\"too-long-3x3\"]": {
-      "rejected": "strainer does not fit this bin depth"
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[narrow-scoop-wide-handle]\",\"narrow-scoop-wide-handle\"]": {
-      "wall": 3.000000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.220000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 556063.173766558
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[long-max-clearance]\",\"long-max-clearance\"]": {
-      "wall": 3.000000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.960000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 672660.422640368
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[default]\",\"default\"]": {
-      "wall": 3.000000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.220000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 553493.044677525
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[depth_units=3]\",\"depth_units=3\"]": {
-      "wall": 3.000000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.220000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 553493.044677525
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[ear_width=10]\",\"ear_width=10\"]": {
-      "wall": 3.000000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.220000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 557265.491608736
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[ear_width=24]\",\"ear_width=24\"]": {
-      "wall": 3.000000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.220000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 548652.870770285
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[floor_thickness=4]\",\"floor_thickness=4\"]": {
-      "wall": 3.000000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.220000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 570892.142686882
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[scoop_height=50]\",\"scoop_height=50\"]": {
-      "wall": 3.000000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.220000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 565432.691501443
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[long-3x4]\",\"long-3x4\"]": {
-      "wall": 3.000000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.960000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 724753.104198628
-    },
-    "[\"tests/test_print_audit.py::test_registry_presets_fit_bed[hawthorne_strainer_bin-default]\",\"hawthorne_strainer_bin\"]": {
-      "preset": "default",
-      "extent": [
-        125.500000000,
-        125.500000000,
-        68.000000000
-      ]
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[depth_units=4]\",\"depth_units=4\"]": {
-      "wall": 3.000000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.960000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 876412.693163604
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[coil_diameter=80]\",\"coil_diameter=80\"]": {
-      "wall": 3.000000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.220000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 627084.576100097
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[ear_angle=30]\",\"ear_angle=30\"]": {
-      "wall": 2.880000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.220000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 555013.456603663
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[ear_angle=80]\",\"ear_angle=80\"]": {
-      "wall": 3.000000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.220000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 553477.370046724
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[wall_min=1.2]\",\"wall_min=1.2\"]": {
-      "wall": 3.000000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.220000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 553493.044677525
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[scoop_width=20]\",\"scoop_width=20\"]": {
-      "wall": 3.000000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.220000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 565444.017160190
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[clamped-scoop]\",\"clamped-scoop\"]": {
-      "wall": 3.000000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.220000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 314893.799114878
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[wide-ears]\",\"wide-ears\"]": {
-      "rejected": "strainer does not fit this bin depth"
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[coil_diameter=110]\",\"coil_diameter=110\"]": {
-      "rejected": "strainer does not fit this bin depth"
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[handle_width=20]\",\"handle_width=20\"]": {
-      "wall": 3.000000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.220000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 557076.168745410
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[ear_reach=45]\",\"ear_reach=45\"]": {
-      "wall": 3.000000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.220000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 569200.460900471
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[ear_reach=65]\",\"ear_reach=65\"]": {
-      "wall": 3.000000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.220000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 529698.586222350
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[clearance=1]\",\"clearance=1\"]": {
-      "wall": 3.000000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.220000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 571734.522112619
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[clearance=4]\",\"clearance=4\"]": {
-      "wall": 1.971000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.220000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 515982.746030778
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[wall_min=3]\",\"wall_min=3\"]": {
-      "wall": 3.000000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.220000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 553493.044677525
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[scoop_width=70]\",\"scoop_width=70\"]": {
-      "wall": 3.000000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.220000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 516453.270294353
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[wide-scoop-max-clearance]\",\"wide-scoop-max-clearance\"]": {
-      "wall": 1.971000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.220000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 481656.284442738
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[narrow-scoop-coil-100-depth-3]\",\"narrow-scoop-coil-100-depth-3\"]": {
-      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[long-narrow-scoop-height-50]\",\"long-narrow-scoop-height-50\"]": {
-      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[coil-scoop-pair-80-70-depth-3]\",\"coil-scoop-pair-80-70-depth-3\"]": {
-      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[coil-scoop-pair-110-70-depth-3]\",\"coil-scoop-pair-110-70-depth-3\"]": {
-      "rejected": "strainer does not fit this bin depth"
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[coil-scoop-pair-110-70-depth-4]\",\"coil-scoop-pair-110-70-depth-4\"]": {
-      "wall": 3.000000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.960000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 707158.497618830
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[handle-scoop-pair-20-20]\",\"handle-scoop-pair-20-20\"]": {
-      "wall": 3.000000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.220000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 574859.425618678
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[narrow-scoop-coil-80-depth-3]\",\"narrow-scoop-coil-80-depth-3\"]": {
-      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[narrow-scoop-coil-80-depth-4]\",\"narrow-scoop-coil-80-depth-4\"]": {
-      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[narrow-scoop-coil-100-depth-4]\",\"narrow-scoop-coil-100-depth-4\"]": {
-      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[long-narrow-scoop-height-22]\",\"long-narrow-scoop-height-22\"]": {
-      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[long-short-rim-facets]\",\"long-short-rim-facets\"]": {
-      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[coil-scoop-pair-110-20-depth-3]\",\"coil-scoop-pair-110-20-depth-3\"]": {
-      "rejected": "strainer does not fit this bin depth"
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[coil-scoop-pair-80-70-depth-4]\",\"coil-scoop-pair-80-70-depth-4\"]": {
-      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[coil-scoop-pair-110-20-depth-4]\",\"coil-scoop-pair-110-20-depth-4\"]": {
-      "wall": 3.000000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.960000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 773937.446392617
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[handle-scoop-pair-20-70]\",\"handle-scoop-pair-20-70\"]": {
-      "wall": 3.000000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.220000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 520038.696394296
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[short-rim-facets-depth-3]\",\"short-rim-facets-depth-3\"]": {
-      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[short-rim-facets-depth-4]\",\"short-rim-facets-depth-4\"]": {
-      "rejected": "strainer rim cannot take a 0.1 mm edge break; adjust scoop width or coil diameter"
-    },
-    "[\"tests/test_hawthorne_strainer_bin.py::test_endpoint_audit_edges_and_fit[handle-scoop-pair-40-70]\",\"handle-scoop-pair-40-70\"]": {
-      "wall": 3.000000000,
-      "overhang_raw": 90.000000000,
-      "overhang": 45.000000000,
-      "bridge_raw": 2.220000000,
-      "bridge": 0.000000000,
-      "worst_edge": 45.000000000,
-      "result": "PASS",
-      "volume": 512877.115323964
     }
   }
 }

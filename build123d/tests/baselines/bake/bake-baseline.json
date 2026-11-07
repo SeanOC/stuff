@@ -12,6 +12,10 @@
       "oriented_triangles": "3e7c7a87e9b0553e4293c4e56b10f53d6251ff1e4318b9fab70aab2f53b75abe",
       "vertex_coordinates": "4f00215bd0044835ffde07b8862962ed2b94a9396c97ce470c59b4a7af7ade71"
     },
+    "hawthorne-strainer-bin/default.stl": {
+      "oriented_triangles": "78ed905dd0cf6bb701c8d985ee35311f4c78b0a860da1054f1d59e595ae498ec",
+      "vertex_coordinates": "bb7d992272e32c3ebb27029cc52f7e16a28c755032a26fa6fe3dffc7a10a0797"
+    },
     "holder-bench-lip-clip/fit-plus-0-3.stl": {
       "oriented_triangles": "f283f2143c2f1910e2909e7ffff46a5be0cc3728ce17b3415a057b23e43cc2e2",
       "vertex_coordinates": "9079e3a207b96c1ce36361588f9bac2d27f7bbcd86e137aa0733c51491a5d282"
@@ -563,10 +567,6 @@
     "underware-x/X.stl": {
       "oriented_triangles": "9ec905b2c86891e39e049e72716651f8b122bf00b38814b0ea395c569aa3f66c",
       "vertex_coordinates": "3b499c5e6d942d3b29067c30a00986ae463cf972fa3a6dcead1792479fb19204"
-    },
-    "hawthorne-strainer-bin/default.stl": {
-      "oriented_triangles": "c2f28641322753a5f38ce84f79ba52a71bb38f5c814b50504a4f176888d9d049",
-      "vertex_coordinates": "fbb26c8405ffce7243961d163e1b3111a0c827eb16ff445b0691f6dcc6775d50"
     }
   },
   "header": {
@@ -578,7 +578,6 @@
       "gridfinity-capture-bin/deep",
       "gridfinity-capture-bin/default",
       "gridfinity-capture-bin/wide",
-      "hawthorne-strainer-bin/default",
       "holder-bench-lip-clip/fit-plus-0-3",
       "holder-bench-lip-clip/fit-plus-0-8",
       "holder-bench-lip-clip/fit-plus-1-3",
@@ -681,14 +680,24 @@
       "underware-x/X-tall"
     ],
     "schema_version": 1,
-    "source_sha": "e467ea4a65d75368c8d10af3bcf4b2f9543a8e41",
-    "why": "pst-6yny1: re-declare job_scope after #290 sharded the PR audit tier; absorbs 0aefda9a..e467ea4a drift (see PR)",
     "scoped_updates": [
       {
-        "why": "pst-1ie29: add the OXO strainer bin default preset",
-        "model": "hawthorne_strainer_bin"
+        "audit_source": "Local completed model audit capture at bde0db93c973e8917b1c513c09f302050bbc29bd; uv run pytest tests/ -q -n 4 -k hawthorne_strainer_bin; 59 passed, 1 serial-budget skip",
+        "build123d": "0.13.0",
+        "cadquery-ocp-novtk": "8.0.1.1.0",
+        "job_scope": [
+          "[\"not upstream\",null]"
+        ],
+        "model": "hawthorne_strainer_bin",
+        "presets": [
+          "hawthorne-strainer-bin/default"
+        ],
+        "source_sha": "bde0db93c973e8917b1c513c09f302050bbc29bd",
+        "why": "pst-1ie29: add the OXO strainer bin default preset using canonical new-model provenance"
       }
-    ]
+    ],
+    "source_sha": "e467ea4a65d75368c8d10af3bcf4b2f9543a8e41",
+    "why": "pst-6yny1: re-declare job_scope after #290 sharded the PR audit tier; absorbs 0aefda9a..e467ea4a drift (see PR)"
   },
   "rows": {
     "gridfinity-capture-bin/deep.glb": {
@@ -1137,6 +1146,197 @@
       "triangles": 24200,
       "vertices": 12102,
       "volume_mm3": 417119.404676119,
+      "watertight": true,
+      "winding_consistent": true
+    },
+    "hawthorne-strainer-bin/default.glb": {
+      "asset": {
+        "version": "2.0"
+      },
+      "meshes": [
+        {
+          "primitive_groups": [
+            {
+              "attributes": {
+                "NORMAL": {
+                  "count": 21278,
+                  "count_inventory": {
+                    "1056": 1,
+                    "1089": 4,
+                    "111": 36,
+                    "12": 1,
+                    "126": 36,
+                    "132": 9,
+                    "189": 1,
+                    "19": 1,
+                    "21": 1,
+                    "323": 1,
+                    "36": 2,
+                    "4": 491,
+                    "54": 1,
+                    "58": 1,
+                    "66": 45,
+                    "72": 1,
+                    "76": 1,
+                    "8": 5,
+                    "80": 1,
+                    "98": 2
+                  }
+                },
+                "POSITION": {
+                  "count": 21278,
+                  "count_inventory": {
+                    "1056": 1,
+                    "1089": 4,
+                    "111": 36,
+                    "12": 1,
+                    "126": 36,
+                    "132": 9,
+                    "189": 1,
+                    "19": 1,
+                    "21": 1,
+                    "323": 1,
+                    "36": 2,
+                    "4": 491,
+                    "54": 1,
+                    "58": 1,
+                    "66": 45,
+                    "72": 1,
+                    "76": 1,
+                    "8": 5,
+                    "80": 1,
+                    "98": 2
+                  },
+                  "max": [
+                    0.062750000,
+                    0.062750000,
+                    0.068000000
+                  ],
+                  "min": [
+                    -0.062750000,
+                    -0.062750000,
+                    0.000000000
+                  ]
+                },
+                "TEXCOORD_0": {
+                  "count": 21278,
+                  "count_inventory": {
+                    "1056": 1,
+                    "1089": 4,
+                    "111": 36,
+                    "12": 1,
+                    "126": 36,
+                    "132": 9,
+                    "189": 1,
+                    "19": 1,
+                    "21": 1,
+                    "323": 1,
+                    "36": 2,
+                    "4": 491,
+                    "54": 1,
+                    "58": 1,
+                    "66": 45,
+                    "72": 1,
+                    "76": 1,
+                    "8": 5,
+                    "80": 1,
+                    "98": 2
+                  }
+                },
+                "indices": {
+                  "count": 83208,
+                  "count_inventory": {
+                    "102": 2,
+                    "156": 1,
+                    "168": 1,
+                    "18": 5,
+                    "192": 45,
+                    "234": 1,
+                    "282": 1,
+                    "30": 1,
+                    "300": 1,
+                    "3168": 1,
+                    "384": 2,
+                    "390": 9,
+                    "462": 36,
+                    "51": 1,
+                    "552": 36,
+                    "561": 1,
+                    "57": 1,
+                    "6": 491,
+                    "6144": 4,
+                    "963": 1
+                  }
+                }
+              },
+              "primitives": 641,
+              "schema": {
+                "accessors": {
+                  "NORMAL": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "POSITION": {
+                    "componentType": 5126,
+                    "type": "VEC3"
+                  },
+                  "TEXCOORD_0": {
+                    "componentType": 5126,
+                    "type": "VEC2"
+                  },
+                  "indices": {
+                    "componentType": 5123,
+                    "type": "SCALAR"
+                  }
+                },
+                "mode": 4
+              }
+            }
+          ]
+        }
+      ],
+      "nodes": [
+        {
+          "mesh": 0,
+          "rotation": [
+            -0.707106781,
+            0.000000000,
+            0.000000000,
+            0.707106781
+          ]
+        }
+      ],
+      "scene": 0,
+      "scenes": [
+        {
+          "nodes": [
+            0
+          ]
+        }
+      ]
+    },
+    "hawthorne-strainer-bin/default.png": {
+      "dimensions": [
+        400,
+        400
+      ]
+    },
+    "hawthorne-strainer-bin/default.stl": {
+      "bounds_mm": [
+        [
+          -62.750000000,
+          -62.750000000,
+          0.000000000
+        ],
+        [
+          62.750000000,
+          62.750000000,
+          68.000000000
+        ]
+      ],
+      "triangles": 27736,
+      "vertices": 13870,
+      "volume_mm3": 553081.659489527,
       "watertight": true,
       "winding_consistent": true
     },
@@ -76812,197 +77012,6 @@
       "triangles": 2620,
       "vertices": 1312,
       "volume_mm3": 15001.227843389,
-      "watertight": true,
-      "winding_consistent": true
-    },
-    "hawthorne-strainer-bin/default.glb": {
-      "asset": {
-        "version": "2.0"
-      },
-      "meshes": [
-        {
-          "primitive_groups": [
-            {
-              "schema": {
-                "mode": 4,
-                "accessors": {
-                  "NORMAL": {
-                    "componentType": 5126,
-                    "type": "VEC3"
-                  },
-                  "POSITION": {
-                    "componentType": 5126,
-                    "type": "VEC3"
-                  },
-                  "TEXCOORD_0": {
-                    "componentType": 5126,
-                    "type": "VEC2"
-                  },
-                  "indices": {
-                    "componentType": 5123,
-                    "type": "SCALAR"
-                  }
-                }
-              },
-              "primitives": 641,
-              "attributes": {
-                "NORMAL": {
-                  "count": 21278,
-                  "count_inventory": {
-                    "323": 1,
-                    "66": 45,
-                    "4": 491,
-                    "1089": 4,
-                    "76": 1,
-                    "72": 1,
-                    "12": 1,
-                    "98": 2,
-                    "36": 2,
-                    "58": 1,
-                    "8": 5,
-                    "54": 1,
-                    "1056": 1,
-                    "80": 1,
-                    "126": 36,
-                    "21": 1,
-                    "189": 1,
-                    "19": 1,
-                    "111": 36,
-                    "132": 9
-                  }
-                },
-                "POSITION": {
-                  "count": 21278,
-                  "count_inventory": {
-                    "323": 1,
-                    "66": 45,
-                    "4": 491,
-                    "1089": 4,
-                    "76": 1,
-                    "72": 1,
-                    "12": 1,
-                    "98": 2,
-                    "36": 2,
-                    "58": 1,
-                    "8": 5,
-                    "54": 1,
-                    "1056": 1,
-                    "80": 1,
-                    "126": 36,
-                    "21": 1,
-                    "189": 1,
-                    "19": 1,
-                    "111": 36,
-                    "132": 9
-                  },
-                  "min": [
-                    -0.062750000,
-                    -0.062750000,
-                    0.000000000
-                  ],
-                  "max": [
-                    0.062750000,
-                    0.062750000,
-                    0.068000000
-                  ]
-                },
-                "TEXCOORD_0": {
-                  "count": 21278,
-                  "count_inventory": {
-                    "323": 1,
-                    "66": 45,
-                    "4": 491,
-                    "1089": 4,
-                    "76": 1,
-                    "72": 1,
-                    "12": 1,
-                    "98": 2,
-                    "36": 2,
-                    "58": 1,
-                    "8": 5,
-                    "54": 1,
-                    "1056": 1,
-                    "80": 1,
-                    "126": 36,
-                    "21": 1,
-                    "189": 1,
-                    "19": 1,
-                    "111": 36,
-                    "132": 9
-                  }
-                },
-                "indices": {
-                  "count": 83208,
-                  "count_inventory": {
-                    "963": 1,
-                    "192": 45,
-                    "6": 491,
-                    "6144": 4,
-                    "300": 1,
-                    "282": 1,
-                    "30": 1,
-                    "384": 2,
-                    "102": 2,
-                    "168": 1,
-                    "18": 5,
-                    "156": 1,
-                    "3168": 1,
-                    "234": 1,
-                    "552": 36,
-                    "57": 1,
-                    "561": 1,
-                    "51": 1,
-                    "462": 36,
-                    "390": 9
-                  }
-                }
-              }
-            }
-          ]
-        }
-      ],
-      "nodes": [
-        {
-          "rotation": [
-            -0.707106781,
-            0.000000000,
-            0.000000000,
-            0.707106781
-          ],
-          "mesh": 0
-        }
-      ],
-      "scene": 0,
-      "scenes": [
-        {
-          "nodes": [
-            0
-          ]
-        }
-      ]
-    },
-    "hawthorne-strainer-bin/default.png": {
-      "dimensions": [
-        400,
-        400
-      ]
-    },
-    "hawthorne-strainer-bin/default.stl": {
-      "vertices": 13870,
-      "triangles": 27736,
-      "volume_mm3": 553081.659489527,
-      "bounds_mm": [
-        [
-          -62.750000000,
-          -62.750000000,
-          0.000000000
-        ],
-        [
-          62.750000000,
-          62.750000000,
-          68.000000000
-        ]
-      ],
       "watertight": true,
       "winding_consistent": true
     }
