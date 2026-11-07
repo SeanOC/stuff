@@ -649,7 +649,13 @@ SPEC_OUTSIDE = register(ModelSpec(
                 'where two openGrid boards meet, with an optional larger bend radius for a '
                 'rounded edge: the convex twin of the mitre, an original variant derived from '
                 'it. ' + BLURB + ' Prints standing on its bend at 45°; the curved floor under '
-                'the bend uses a detached toothed cradle by default; supports=none preserves the bed flat.',
+                'the bend uses a detached toothed cradle by default; supports=none preserves the bed flat. '
+                'For the clean bend floor printed on 2026-11-06, select supports=none and enable '
+                'slicer tree(auto) supports, build-plate only. Use PLA for the body and support '
+                'trees, with PETG as the support interface filament. Set top Z distance to 0 mm, '
+                'bottom Z distance to 0.2 mm, and interface layers to 3 top / 2 bottom. '
+                'The PETG interface peels away from PLA, leaving a flat floor; both materials '
+                'must be loaded (dual nozzle or AMS). supports=built_in remains the single-material fallback.',
     category_id='multiboard',
     build=build_outside_corner,
     print_frame=outside_print_frame,
