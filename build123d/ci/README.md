@@ -469,11 +469,22 @@ Four shards balance the improvement against setup costs. These are greedy
 four-worker replay estimates, not CI measurements; cache state, setup and
 xdist batching differ. The measured 597-item PR run
 [42175749831](https://github.com/SeanOC/stuff/actions/runs/42175749831) took
-**11m45s / 9m45s / 14m16s / 15m53s** for shards 1–4. The timeout is therefore
-**24 minutes per shard**: slowest 15m53s × **1.5** = 23.825 minutes, rounded up.
+**11m45s / 9m45s / 14m16s / 15m53s** for shards 1–4.
 The green aggregate followed all four successful shards. Slowest elapsed fell
 from the post-tiering single-job **22m09s** to **15m53s**, also below the
 historical **50m05s** run (which predates 26 restored items).
+
+The timeout is now **32 minutes per shard**: the slowest completed PR-tier
+job in [run 42261992382](https://github.com/SeanOC/stuff/actions/runs/42261992382),
+shard 3 on attempt 2, took **21m03s**; 21.05 × **1.5** = 31.575 minutes,
+rounded up. This is the pre-rebalance job-elapsed maximum. Attempt 1's
+**23m50s** was its pytest step alone, followed by job cancellation at the old
+24-minute cap, so it is not a completed-job measurement. The workflow comments
+retain the original cap's historical derivation. The durations have been
+refreshed from all ten artifacts in nightly
+[42194391701](https://github.com/SeanOC/stuff/actions/runs/42194391701), retaining
+entries absent from the capture; the next nightly provides the post-rebalance
+baseline.
 
 To refresh the shard balance, each nightly shard re-measures its own tests and
 uploads them as `bd123-test-durations-s<K>` (1–4, PR tier) or

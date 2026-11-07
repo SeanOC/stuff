@@ -100,7 +100,7 @@ jobs:
     runs-on: ubuntu-latest
     # PR run 42175749831: shards 1-4 took 11m45s / 9m45s / 14m16s / 15m53s.
     # Slowest shard x 1.5 = 23.825 min; round up (ci/README.md).
-    timeout-minutes: 24
+    timeout-minutes: 32
     strategy:
       fail-fast: false
       matrix:
