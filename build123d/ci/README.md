@@ -659,6 +659,20 @@ writing. Other rows and the original full-job provenance remain intact; a
 `scoped_updates` header records the new reason, source SHA, engine versions,
 capture provenance and selection. It cannot be combined with `--geometry-only`.
 
+For a brand-new app-listed registry model, run `uv run python scripts/rebaseline.py
+--new-model <registry_name> --audit-rows <capture-directory> --audit-source
+'local completed model audit capture at <source-sha>' --why 'new model baseline'`.
+Supply a fresh, successful audit capture scoped to that model (including its
+endpoint/corner tests); audit keys identify tests and measurements, so the caller
+must select the model's tests. This mode measures and bakes only that model's
+presets, adds its geometry, bake and audit rows in sorted order, and preserves
+existing measurements and bake diagnostics. Each baseline receives a model-keyed
+`header.scoped_updates` record with the reason, source SHA, engine versions,
+presets and audit provenance/scope. Any existing geometry/bake rows for the model
+or overlapping audit keys cause refusal; use the existing rebaseline modes for
+updates. `--new-model` requires both audit options and cannot be combined with
+`--geometry-only` or `--audit-test-file`.
+
 Fields or entire rows may be waived **only** in the committed
 `tests/baselines/waivers.json`. Each entry requires `kind` (`geometry`, `bake`,
 `audit-rows`), an exact JSON-pointer `path` copied from the diff, a `reason`
