@@ -596,12 +596,11 @@ old/new values and tolerance mode. Exit **0** is a numerical/structural pass,
 **1** is a difference or invalid input. Audit exit **2**, **NOT COMPARABLE**,
 means a declared job/shard never supplied a session: e.g. an upstream PR
 without the conditional `audit_full` job. The audit baseline header declares
-the exact marker expressions and shard groups, source run and SHA. The current
-committed header still declares the old unsharded audit (`group: null`) plus
-six sweep shards. After sharding, **compare_audit_rows exits 2** until a
-follow-up re-declares `header.job_scope` with `scripts/rebaseline.py` from the
-first post-merge complete push/nightly capture (four audit shards plus six
-sweep shards). The mayor files that re-baseline work on merge. Do not hand-edit
+the exact marker expressions and shard groups, source run and SHA. The committed
+`header.job_scope` was re-declared with `scripts/rebaseline.py` from the first
+complete post-sharding push capture, GitHub bd123 run `42188436418` at
+`e467ea4a` (four audit shards plus six sweep shards), in the PR for `pst-6yny1`.
+Do not hand-edit
 the baseline or use row waivers to hide the missing scope. Extra jobs outside
 that scope are ignored. Within scope, a missing measurement row fails unless explicitly
 waived; duplicate rows and malformed sessions fail. Sessions are read from
@@ -629,7 +628,7 @@ failed outcomes, or registry/manifest preset drift:
 ```bash
 uv run python scripts/rebaseline.py \
   --audit-rows ../.tmp-upgrade/rows \
-  --audit-source 'GitHub bd123 run <run-id> at <source-sha>; audit + full shards 1-6' \
+  --audit-source 'GitHub bd123 run <run-id> at <source-sha>; audit shards s1-s4 + full shards 1-6' \
   --why 'pst-xxxxx: deliberate old -> new kernel baseline; reviewed changes ...'
 git diff -- tests/baselines/
 ```
