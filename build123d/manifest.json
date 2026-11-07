@@ -5264,6 +5264,144 @@
       "capture": true
     },
     {
+      "slug": "hawthorne-strainer-bin",
+      "engine": "build123d",
+      "title": "Hawthorne strainer bin",
+      "blurb": "A 3-cell-wide Gridfinity bin for a flat stack of OXO SteeL cocktail strainers. 68 mm total height for the bar drawer, with a front finger scoop. Print feet down.",
+      "categoryId": "storage",
+      "params": [
+        {
+          "name": "depth_units",
+          "kind": "integer",
+          "default": 3,
+          "min": 3,
+          "max": 4,
+          "step": 1,
+          "filename": true
+        },
+        {
+          "name": "coil_diameter",
+          "unit": "mm",
+          "kind": "number",
+          "default": 93,
+          "min": 80,
+          "max": 110,
+          "step": 1
+        },
+        {
+          "name": "handle_width",
+          "unit": "mm",
+          "kind": "number",
+          "default": 30,
+          "min": 20,
+          "max": 40,
+          "step": 1
+        },
+        {
+          "name": "handle_reach",
+          "description": "Disc centre to rounded handle tip.",
+          "unit": "mm",
+          "kind": "number",
+          "default": 67,
+          "min": 50,
+          "max": 85,
+          "step": 1
+        },
+        {
+          "name": "ear_reach",
+          "description": "Disc centre to rounded ear tip.",
+          "unit": "mm",
+          "kind": "number",
+          "default": 55,
+          "min": 45,
+          "max": 65,
+          "step": 1
+        },
+        {
+          "name": "ear_width",
+          "unit": "mm",
+          "kind": "number",
+          "default": 16,
+          "min": 10,
+          "max": 24,
+          "step": 1
+        },
+        {
+          "name": "ear_angle",
+          "description": "Angle from +Y (back); handle points toward -Y (front).",
+          "unit": "deg",
+          "kind": "number",
+          "default": 55,
+          "min": 30,
+          "max": 80,
+          "step": 1
+        },
+        {
+          "name": "clearance",
+          "unit": "mm",
+          "kind": "number",
+          "default": 2,
+          "min": 1,
+          "max": 4,
+          "step": 0.1
+        },
+        {
+          "name": "height_mm",
+          "description": "Total height including the Gridfinity feet.",
+          "unit": "mm",
+          "kind": "number",
+          "default": 68,
+          "min": 35,
+          "max": 90,
+          "step": 1
+        },
+        {
+          "name": "floor_thickness",
+          "unit": "mm",
+          "kind": "number",
+          "default": 2,
+          "min": 1.2,
+          "max": 4,
+          "step": 0.1
+        },
+        {
+          "name": "wall_min",
+          "unit": "mm",
+          "kind": "number",
+          "default": 1.6,
+          "min": 1.2,
+          "max": 3,
+          "step": 0.1
+        },
+        {
+          "name": "scoop_height",
+          "description": "Height above pocket floor; 0 disables scoop. Clamped 3 mm below the rim.",
+          "unit": "mm",
+          "kind": "number",
+          "default": 22,
+          "min": 0,
+          "max": 50,
+          "step": 1
+        },
+        {
+          "name": "scoop_width",
+          "unit": "mm",
+          "kind": "number",
+          "default": 40,
+          "min": 20,
+          "max": 70,
+          "step": 1
+        }
+      ],
+      "presets": [
+        {
+          "id": "default",
+          "label": "OXO SteeL \u2014 bar drawer",
+          "values": {}
+        }
+      ]
+    },
+    {
       "slug": "littletikes-dream-machine-cartridge-holder",
       "engine": "build123d",
       "title": "Little Tikes Dream Machine cartridge + figure holder",

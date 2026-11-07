@@ -605,6 +605,7 @@ from holders.openconnect_drawer import audit_exclusions as drawer_exclusions
 from holders.openconnect_plate import audit_exclusions as plate_exclusions
 from holders.cartridge_holder import audit_exclusions as cartridge_exclusions
 from holders.gridfinity_capture_bin import audit_exclusions as capture_bin_exclusions
+from holders.hawthorne_strainer_bin import audit_exclusions as strainer_bin_exclusions
 from holders.tombstone_sign import audit_exclusions as tombstone_sign_exclusions
 from holders.tombstone_stake import audit_exclusions as tombstone_stake_exclusions
 from holders.underware_i_channel import audit_exclusions as underware_families
@@ -630,6 +631,7 @@ _MODEL_EXCLUSIONS = {
     'openconnect_drawer': drawer_exclusions,
     'littletikes_dream_machine_cartridge_holder': cartridge_exclusions,
     'gridfinity_capture_bin': capture_bin_exclusions,
+    'hawthorne_strainer_bin': strainer_bin_exclusions,
     'holder_tombstone_sign': tombstone_sign_exclusions,
     'holder_tombstone_stake': tombstone_stake_exclusions,
     'underware_i_channel': lambda values: [r for f in underware_families(values).values() for r in f],
