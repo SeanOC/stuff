@@ -263,6 +263,12 @@ def test_rebaseline_requires_reason_and_provenance():
     ["--why", "fixture", "--geometry-only", "--audit-rows", "absent"],
     ["--why", "fixture", "--geometry-only", "--audit-source", "run fixture"],
     ["--why", "fixture", "--geometry-only", "--audit-test-file", "tests/test_box.py"],
+    ["--why", "fixture", "--new-model", "box"],
+    ["--why", "fixture", "--new-model", "box", "--audit-rows", "absent"],
+    ["--why", "fixture", "--new-model", "box", "--audit-source", "run fixture"],
+    ["--why", "fixture", "--new-model", "box", "--geometry-only"],
+    ["--why", "fixture", "--new-model", "box", "--audit-test-file", "tests/test_box.py",
+     "--audit-rows", "absent", "--audit-source", "run fixture"],
 ])
 def test_rebaseline_rejects_invalid_modes(arguments):
     with pytest.raises(SystemExit) as error:
@@ -379,4 +385,155 @@ def test_rebaseline_audit_file_preserves_unrelated_rows_and_rejects_bad_capture(
         (directory / "rows.gw0.jsonl").write_text("".join(json.dumps(r) + "\n" for r in bad))
         with pytest.raises(ValueError):
             rebaseline.main(args)
+        assert path.read_bytes() == before
+
+
+@pytest.fixture
+def new_model_baselines(tmp_path, monkeypatch):
+    from build123d import Box
+    from holders import registry
+
+    # Isolate real, non-smoke registrations; no manifest entry is needed for
+    # this scoped operation and the fixture must not leak into registry gates.
+    monkeypatch.setattr(registry, "_REGISTRY", {})
+    monkeypatch.setattr(registry, "all_models", lambda: list(registry._REGISTRY.values()))
+    old = registry.register(registry.ModelSpec(
+        name="existing_box", build=lambda values: pytest.fail("rebuilt existing model"),
+        description="Existing fixture", category_id="storage",
+        presets=(registry.Preset(id="default", label="Default", values={}),),
+    ))
+    spec = registry.register(registry.ModelSpec(
+        name="test_box", build=lambda values: Box(values["width"], 3, 4),
+        description="New baseline fixture", category_id="storage",
+        params=(registry.Param(name="width", kind="number", default=2, min=1, max=5),),
+        presets=(registry.Preset(id="wide", label="Wide", values={"width": 4}),
+                 registry.Preset(id="default", label="Default", values={})),
+    ))
+    directory = tmp_path / "capture"
+    audit_fixture(directory)
+    rows, scope = audit.collect(directory)
+    old_audit_key = json.dumps(["tests/test_existing_box.py::test_box", "existing-box"],
+                               separators=(",", ":"))
+    baselines = tmp_path / "baselines"
+    documents = {}
+    for kind, old_rows in {
+        "geometry": {f"{old.slug}/default": {"volume": 123.456}},
+        "bake": {f"{old.slug}/default.{ext}": {"untouched": ext}
+                 for ext in ("stl", "glb", "png")},
+        "audit-rows": {old_audit_key: {"wall": 1.234}},
+    }.items():
+        document = {"header": {"schema_version": 1, "kind": kind,
+                               "source_sha": "original", "presets": [f"{old.slug}/default"],
+                               "scoped_updates": [{"why": "previous update"}]},
+                    "rows": old_rows}
+        if kind == "bake":
+            document["diagnostics"] = {f"{old.slug}/default.stl": {"original": "digest"}}
+        write_json(baselines / kind / f"{kind}-baseline.json", document)
+        documents[kind] = document
+    monkeypatch.setattr(rebaseline, "BASELINES", baselines)
+    monkeypatch.setattr(rebaseline, "load_waivers", lambda: [])
+    monkeypatch.setattr(rebaseline.subprocess, "check_output", lambda *a, **kw: "fixture-sha\n")
+    monkeypatch.setattr(geometry, "collect", lambda: pytest.fail("rebuilt full registry"))
+    monkeypatch.setattr(rebaseline.subprocess, "run", lambda *a, **kw: pytest.fail("full bake"))
+    return SimpleNamespace(
+        spec=spec, documents=documents, baselines=baselines, audit=rows, scope=scope,
+        capture=directory,
+        args=["--new-model", spec.name, "--why", "new fixture model",
+              "--audit-rows", str(directory), "--audit-source", "local model capture at fixture-sha"],
+    )
+
+
+def test_rebaseline_new_model_matches_registry_and_refuses_second_run(new_model_baselines):
+    fixture = new_model_baselines
+    assert rebaseline.main(fixture.args) == 0
+    snapshots = {}
+    for kind, original in fixture.documents.items():
+        path = fixture.baselines / kind / f"{kind}-baseline.json"
+        snapshots[path] = path.read_bytes()
+        result = read_baseline(kind, path)
+        assert list(result["rows"]) == sorted(result["rows"])
+        for key, value in original["rows"].items():
+            assert result["rows"][key] == value
+        assert {key: value for key, value in result["header"].items()
+                if key != "scoped_updates"} == {
+                    key: value for key, value in original["header"].items()
+                    if key != "scoped_updates"}
+        previous, update = result["header"]["scoped_updates"]
+        assert previous == original["header"]["scoped_updates"][0]
+        assert update == {
+            "model": fixture.spec.name, "why": "new fixture model", "source_sha": "fixture-sha",
+            "build123d": rebaseline.importlib.metadata.version("build123d"),
+            "cadquery-ocp-novtk": rebaseline.importlib.metadata.version("cadquery-ocp-novtk"),
+            "audit_source": "local model capture at fixture-sha", "job_scope": fixture.scope,
+            "presets": ["test-box/default", "test-box/wide"],
+        }
+        if kind == "geometry":
+            assert set(result["rows"]) == set(geometry.preset_keys())
+            assert result["rows"]["test-box/default"]["volume"] == pytest.approx(24)
+            assert result["rows"]["test-box/wide"]["volume"] == pytest.approx(48)
+        elif kind == "bake":
+            assert set(result["rows"]) == expected_bake_keys()
+            assert result["rows"]["test-box/default.stl"]["volume_mm3"] == pytest.approx(24)
+            for key, value in original["diagnostics"].items():
+                assert result["diagnostics"][key] == value
+            assert set(result["diagnostics"]) == {
+                "existing-box/default.stl", "test-box/default.stl", "test-box/wide.stl"}
+        else:
+            assert result["rows"] == original["rows"] | fixture.audit
+
+    with pytest.raises(ValueError, match="already has geometry rows.*--geometry-only.*--audit-test-file"):
+        rebaseline.main(fixture.args)
+    for path, before in snapshots.items():
+        assert path.read_bytes() == before
+
+
+@pytest.mark.parametrize("kind", ["geometry", "bake", "audit-rows"])
+def test_rebaseline_new_model_refuses_any_existing_baseline(new_model_baselines, monkeypatch, kind):
+    fixture = new_model_baselines
+    path = fixture.baselines / kind / f"{kind}-baseline.json"
+    document = read_baseline(kind, path)
+    key = {"geometry": "test-box/removed-preset", "bake": "test-box/removed-preset.stl",
+           "audit-rows": next(iter(fixture.audit))}[kind]
+    document["rows"][key] = {"untouched": True}
+    write_json(path, document)
+    snapshots = {p: p.read_bytes() for p in fixture.baselines.rglob("*.json")}
+    monkeypatch.setattr(geometry, "measure", lambda *a: pytest.fail("built existing model"))
+    with pytest.raises(ValueError, match=f"already has {kind} rows.*--geometry-only.*--audit-test-file"):
+        rebaseline.main(fixture.args)
+    for path, before in snapshots.items():
+        assert path.read_bytes() == before
+
+
+@pytest.mark.parametrize("failure", ["empty-audit", "failed-audit", "unknown", "smoke",
+                                    "empty-bake", "incomplete-bake", "unfit-bake"])
+def test_rebaseline_new_model_failure_preserves_baselines(new_model_baselines, monkeypatch, failure):
+    from scripts import export as exporter
+    from holders import registry
+
+    fixture = new_model_baselines
+    snapshots = {p: p.read_bytes() for p in fixture.baselines.rglob("*.json")}
+    if failure == "empty-audit":
+        audit_fixture(fixture.capture, measurement=False)
+    elif failure == "failed-audit":
+        path = fixture.capture / "rows.gw0.jsonl"
+        path.write_text(path.read_text().replace('"passed"', '"failed"'))
+    elif failure == "unknown":
+        fixture.args[1] = "unknown"
+    elif failure == "smoke":
+        from dataclasses import replace
+        monkeypatch.setitem(registry._REGISTRY, fixture.spec.name,
+                            replace(fixture.spec, tags=("smoke",)))
+    elif failure == "empty-bake":
+        monkeypatch.setattr(exporter, "bake_preset", lambda *a: None)
+    elif failure == "incomplete-bake":
+        monkeypatch.setattr(exporter, "bake_preset", lambda *a: [])
+        monkeypatch.setattr(bake, "collect", lambda *a: ({"test-box/default.stl": {}}, {}))
+    else:
+        def unfit(spec, preset, directory, failures):
+            failures.append("fixture does not fit printer")
+            return []
+        monkeypatch.setattr(exporter, "bake_preset", unfit)
+    with pytest.raises(ValueError):
+        rebaseline.main(fixture.args)
+    for path, before in snapshots.items():
         assert path.read_bytes() == before
